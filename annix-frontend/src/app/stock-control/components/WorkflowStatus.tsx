@@ -1,7 +1,7 @@
 "use client";
 
 import { Check, Circle, Clock, X } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { BackgroundStepStatus, JobCardApproval } from "@/app/lib/api/stockControlApi";
 import { formatDateLongZA } from "@/app/lib/datetime";
 
@@ -291,13 +291,48 @@ interface DesktopTransitMapProps {
   onSetHoveredRejection: (key: string | null) => void;
 }
 
+interface BranchSegment {
+  triggerFgKey: string;
+  triggerFgIdx: number;
+  nextFgIdx: number;
+  bgSteps: BackgroundStepStatus[];
+}
+
+const collectBranches = (
+  allSteps: ForegroundStep[],
+  backgroundSteps: BackgroundStepStatus[],
+  bgByTrigger: Record<string, BackgroundStepStatus[]>,
+): BranchSegment[] => {
+  const bgStepKeySet = new Set(backgroundSteps.map((bg) => bg.stepKey));
+
+  const resolveBgChain = (trigger: string): BackgroundStepStatus[] => {
+    const direct = bgByTrigger[trigger] || [];
+    return direct.reduce<BackgroundStepStatus[]>((chain, bg) => {
+      const rest = bgStepKeySet.has(bg.stepKey) ? resolveBgChain(bg.stepKey) : [];
+      return [...chain, bg, ...rest];
+    }, []);
+  };
+
+  return allSteps.reduce<BranchSegment[]>((branches, step, index) => {
+    const chain = resolveBgChain(step.key);
+    if (chain.length > 0) {
+      const nextFgIdx = index + 1 < allSteps.length ? index + 1 : index;
+      return [
+        ...branches,
+        { triggerFgKey: step.key, triggerFgIdx: index, nextFgIdx, bgSteps: chain },
+      ];
+    }
+    return branches;
+  }, []);
+};
+
 function DesktopTransitMap(props: DesktopTransitMapProps) {
   const {
     allSteps,
     currentStepIndex,
     approvalByStep,
-    bgByTrigger,
     backgroundSteps,
+    bgByTrigger,
     stepAssignments,
     currentUserName,
     onCompleteBackgroundStep,
@@ -309,248 +344,329 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
     onSetHoveredRejection,
   } = props;
 
-  const timeline = buildTimeline(allSteps, backgroundSteps, bgByTrigger);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const fgNodeRefs = useRef<Record<number, HTMLDivElement | null>>({});
+  const bgNodeRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const [svgPaths, setSvgPaths] = useState<
+    Array<{
+      d: string;
+      color: string;
+      key: string;
+    }>
+  >([]);
+  const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
 
-  const fgIndexForTrigger = (triggerKey: string): number => {
-    const found = allSteps.findIndex((s) => s.key === triggerKey);
-    return found >= 0 ? found : 0;
-  };
+  const branches = useMemo(
+    () => collectBranches(allSteps, backgroundSteps, bgByTrigger),
+    [allSteps, backgroundSteps, bgByTrigger],
+  );
+  const hasBranches = branches.length > 0;
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container || branches.length === 0) return;
+
+    const computePaths = () => {
+      const rect = container.getBoundingClientRect();
+      setContainerSize({ width: rect.width, height: rect.height });
+
+      const paths: Array<{ d: string; color: string; key: string }> = [];
+
+      branches.forEach((branch) => {
+        const startNode = fgNodeRefs.current[branch.triggerFgIdx];
+        const endNode = fgNodeRefs.current[branch.nextFgIdx];
+        const firstBg = bgNodeRefs.current[branch.bgSteps[0].stepKey];
+        const lastBg = bgNodeRefs.current[branch.bgSteps[branch.bgSteps.length - 1].stepKey];
+
+        if (!startNode || !endNode || !firstBg || !lastBg) return;
+
+        const branchActive = branch.triggerFgIdx <= currentStepIndex;
+        const allComplete = branch.bgSteps.every((bg) => bg.completedAt !== null);
+        const strokeColor = branchActive ? "#f59e0b" : "#d1d5db";
+        const mergeColor = branchActive && allComplete ? "#f59e0b" : "#d1d5db";
+
+        const sRect = startNode.getBoundingClientRect();
+        const fbRect = firstBg.getBoundingClientRect();
+        const sx = sRect.left + sRect.width / 2 - rect.left;
+        const sy = sRect.top + sRect.height / 2 - rect.top;
+        const fx = fbRect.left + fbRect.width / 2 - rect.left;
+        const fy = fbRect.top + fbRect.height / 2 - rect.top;
+
+        const r = 12;
+        paths.push({
+          key: `fork-${branch.triggerFgKey}`,
+          color: strokeColor,
+          d: `M ${sx} ${sy} L ${sx} ${fy - r} Q ${sx} ${fy} ${sx + r} ${fy} L ${fx} ${fy}`,
+        });
+
+        const eRect = endNode.getBoundingClientRect();
+        const lbRect = lastBg.getBoundingClientRect();
+        const ex = eRect.left + eRect.width / 2 - rect.left;
+        const ey = eRect.top + eRect.height / 2 - rect.top;
+        const lx = lbRect.left + lbRect.width / 2 - rect.left;
+        const ly = lbRect.top + lbRect.height / 2 - rect.top;
+
+        paths.push({
+          key: `merge-${branch.triggerFgKey}`,
+          color: mergeColor,
+          d: `M ${lx} ${ly} L ${ex - r} ${ly} Q ${ex} ${ly} ${ex} ${ly - r} L ${ex} ${ey}`,
+        });
+
+        branch.bgSteps.forEach((bg, bgIdx) => {
+          if (bgIdx === 0) return;
+          const prevEl = bgNodeRefs.current[branch.bgSteps[bgIdx - 1].stepKey];
+          const currEl = bgNodeRefs.current[bg.stepKey];
+          if (!prevEl || !currEl) return;
+
+          const pRect = prevEl.getBoundingClientRect();
+          const cRect = currEl.getBoundingClientRect();
+          const prevCompleted = branch.bgSteps[bgIdx - 1].completedAt !== null;
+          const lineColor = branchActive && prevCompleted ? "#f59e0b" : "#d1d5db";
+
+          paths.push({
+            key: `bg-line-${bg.stepKey}`,
+            color: lineColor,
+            d: `M ${pRect.left + pRect.width / 2 - rect.left} ${pRect.top + pRect.height / 2 - rect.top} L ${cRect.left + cRect.width / 2 - rect.left} ${cRect.top + cRect.height / 2 - rect.top}`,
+          });
+        });
+      });
+
+      setSvgPaths(paths);
+    };
+
+    const frameId = requestAnimationFrame(computePaths);
+
+    const observer = new ResizeObserver(computePaths);
+    observer.observe(container);
+
+    return () => {
+      cancelAnimationFrame(frameId);
+      observer.disconnect();
+    };
+  }, [branches, currentStepIndex, allSteps, backgroundSteps]);
 
   return (
     <div className="hidden lg:block overflow-x-auto">
-      <div className="min-w-[600px]">
-        <div className="flex items-start">
-          {timeline.map((node) => {
-            if (node.type === "foreground") {
-              const { step, index } = node;
-              const state = resolveStepState(step.key, index, currentStepIndex, approvalByStep);
-              const approval = approvalByStep[step.key];
-              const isLastFg = index === allSteps.length - 1;
-              const isFirst = index === 0;
-              const nextNode = timeline[timeline.indexOf(node) + 1];
-              const nextIsBranch = nextNode?.type === "bg-branch";
-              const prevNode = timeline[timeline.indexOf(node) - 1];
-              const prevIsBranch = prevNode?.type === "bg-branch";
+      <div ref={containerRef} className="relative min-w-[600px]">
+        {svgPaths.length > 0 && (
+          <svg
+            className="absolute inset-0 pointer-events-none"
+            width={containerSize.width}
+            height={containerSize.height}
+            style={{ overflow: "visible" }}
+          >
+            {svgPaths.map((path) => (
+              <path
+                key={path.key}
+                d={path.d}
+                fill="none"
+                stroke={path.color}
+                strokeWidth={3}
+                strokeLinecap="round"
+              />
+            ))}
+          </svg>
+        )}
 
-              const assignedName =
-                state === "current" || state === "pending"
-                  ? assignedNameForStep(step.key, stepAssignments)
-                  : null;
+        <div className="flex items-center">
+          {allSteps.map((step, index) => {
+            const state = resolveStepState(step.key, index, currentStepIndex, approvalByStep);
+            const approval = approvalByStep[step.key];
+            const isFirst = index === 0;
+            const isLast = index === allSteps.length - 1;
+            const lineCompleted = index < currentStepIndex;
 
-              const lineCompleted = index < currentStepIndex;
-
-              return (
-                <div
-                  key={step.key}
-                  className="flex flex-col items-center relative min-w-0"
-                  style={{ flex: nextIsBranch ? "0 0 auto" : "1 1 0%" }}
-                >
-                  <p
-                    className={`text-[10px] mb-1 truncate max-w-[90px] font-medium ${
-                      assignedName ? "text-gray-500" : "text-transparent"
-                    }`}
-                  >
-                    {assignedName || "\u00A0"}
-                  </p>
-
-                  <div className="flex items-center w-full">
-                    {!isFirst && !prevIsBranch && (
-                      <div
-                        className={`flex-1 h-1 rounded-full transition-colors duration-500 ${
-                          state === "completed" || state === "current"
-                            ? "bg-green-500"
-                            : state === "rejected"
-                              ? "bg-red-300"
-                              : "bg-gray-200"
-                        }`}
-                      />
-                    )}
-
-                    {prevIsBranch && (
-                      <div
-                        className={`flex-1 h-1 rounded-full transition-colors duration-500 ${
-                          lineCompleted || state === "current" ? "bg-amber-400" : "bg-gray-200"
-                        }`}
-                      />
-                    )}
-
-                    <div className="relative">
-                      <StepNode
-                        state={state}
-                        onStepClick={() => onStepClick(step.key, state)}
-                        onMouseEnter={() => {
-                          if (state === "rejected") onSetHoveredRejection(step.key);
-                        }}
-                        onMouseLeave={() => onSetHoveredRejection(null)}
-                      />
-
-                      {expandedStep === step.key && approval && (
-                        <StepPopover approval={approval} onClose={() => onSetExpandedStep(null)} />
-                      )}
-
-                      {hoveredRejection === step.key && state === "rejected" && approval && (
-                        <RejectionTooltip
-                          reason={approval.rejectedReason}
-                          approvedByName={approval.approvedByName}
-                        />
-                      )}
-                    </div>
-
-                    {!isLastFg && !nextIsBranch && (
-                      <div
-                        className={`flex-1 h-1 rounded-full transition-colors duration-500 ${
-                          lineCompleted ? "bg-green-500" : "bg-gray-200"
-                        }`}
-                      />
-                    )}
-
-                    {nextIsBranch && (
-                      <div
-                        className={`w-4 h-1 rounded-full transition-colors duration-500 ${
-                          lineCompleted ? "bg-green-500" : "bg-gray-200"
-                        }`}
-                      />
-                    )}
-                  </div>
-
-                  <div className="mt-2 text-center">
-                    <p
-                      className={`text-xs font-medium transition-colors duration-300 ${
-                        state === "completed"
-                          ? "text-green-700"
-                          : state === "current"
-                            ? "text-teal-600"
-                            : state === "rejected"
-                              ? "text-red-600"
-                              : "text-gray-400"
-                      }`}
-                    >
-                      {step.label}
-                    </p>
-
-                    {state === "current" && (
-                      <span className="inline-flex items-center mt-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-yellow-100 text-yellow-800">
-                        Awaiting
-                      </span>
-                    )}
-
-                    {state === "completed" && approval?.approvedByName && (
-                      <p className="text-[10px] text-gray-500 mt-0.5 truncate max-w-[80px] mx-auto">
-                        {approval.approvedByName}
-                      </p>
-                    )}
-
-                    {state === "completed" && approval?.approvedAt && (
-                      <p className="text-[10px] text-gray-400 truncate max-w-[80px] mx-auto">
-                        {formatDateLongZA(approval.approvedAt)}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              );
-            }
-
-            const { steps: bgSteps, triggerStepKey } = node;
-            const fgIdx = fgIndexForTrigger(triggerStepKey);
-            const branchCompleted = fgIdx < currentStepIndex;
-            const branchActive = fgIdx === currentStepIndex;
-            const allBgComplete = bgSteps.every((bg) => bg.completedAt !== null);
+            const assignedName =
+              state === "current" || state === "pending"
+                ? assignedNameForStep(step.key, stepAssignments)
+                : null;
 
             return (
-              <div
-                key={`branch-${triggerStepKey}`}
-                className="flex flex-col items-center relative"
-                style={{ flex: "1 1 0%" }}
-              >
-                <p className="text-[10px] mb-1 text-transparent font-medium">{"\u00A0"}</p>
+              <div key={step.key} className="flex-1 flex flex-col items-center min-w-0">
+                <p
+                  className={`text-[10px] mb-1 truncate max-w-[90px] font-medium ${
+                    assignedName ? "text-gray-500" : "text-transparent"
+                  }`}
+                >
+                  {assignedName || "\u00A0"}
+                </p>
 
-                <div className="flex items-center w-full relative">
+                <div className="flex items-center w-full">
+                  {!isFirst && (
+                    <div
+                      className={`flex-1 h-[3px] transition-colors duration-500 ${
+                        state === "completed" || state === "current"
+                          ? "bg-green-500"
+                          : state === "rejected"
+                            ? "bg-red-300"
+                            : "bg-gray-200"
+                      }`}
+                    />
+                  )}
+
                   <div
-                    className={`flex-1 h-1 transition-colors duration-500 ${
-                      branchCompleted || branchActive ? "bg-amber-400" : "bg-gray-200"
-                    }`}
-                  />
+                    ref={(el) => {
+                      fgNodeRefs.current[index] = el;
+                    }}
+                    className="relative"
+                  >
+                    <StepNode
+                      state={state}
+                      onStepClick={() => onStepClick(step.key, state)}
+                      onMouseEnter={() => {
+                        if (state === "rejected") onSetHoveredRejection(step.key);
+                      }}
+                      onMouseLeave={() => onSetHoveredRejection(null)}
+                    />
 
-                  <div className="flex items-center gap-3 px-1">
-                    {bgSteps.map((bg, bgIdx) => {
-                      const state = bgNodeState(bg, fgIdx, currentStepIndex);
-                      const canComplete =
-                        state === "active" &&
-                        isUserAssignedToStep(bg.stepKey, currentUserName, stepAssignments);
-                      const isCompleting = completingStepKey === bg.stepKey;
-                      const isLastBg = bgIdx === bgSteps.length - 1;
+                    {expandedStep === step.key && approval && (
+                      <StepPopover
+                        approval={approval}
+                        onClose={() => onSetExpandedStep(null)}
+                      />
+                    )}
 
-                      return (
-                        <div key={bg.stepKey} className="flex items-center gap-3">
-                          <div className="relative flex flex-col items-center">
-                            <div
-                              className={`w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 transition-all duration-300 ${
-                                state === "completed"
-                                  ? "bg-amber-500"
-                                  : state === "active"
-                                    ? "bg-amber-100 border-2 border-amber-500 animate-pulse"
-                                    : "bg-gray-100 border-2 border-gray-300"
-                              }`}
-                            >
-                              {state === "completed" && <Check className="h-3 w-3 text-white" />}
-                              {state === "active" && <Clock className="h-3 w-3 text-amber-600" />}
-                              {state === "pending" && <Circle className="h-2 w-2 text-gray-400" />}
-                            </div>
-
-                            <div className="mt-1.5 text-center">
-                              <p
-                                className={`text-[10px] font-medium whitespace-nowrap ${
-                                  state === "completed"
-                                    ? "text-amber-700"
-                                    : state === "active"
-                                      ? "text-amber-600"
-                                      : "text-gray-400"
-                                }`}
-                              >
-                                {bg.label}
-                              </p>
-                              {state === "completed" && bg.completedByName && (
-                                <p className="text-[9px] text-gray-400 truncate max-w-[70px]">
-                                  {bg.completedByName}
-                                </p>
-                              )}
-                              {canComplete && onCompleteBackgroundStep && (
-                                <button
-                                  type="button"
-                                  onClick={() => onCompleteBackgroundStep(bg.stepKey)}
-                                  disabled={isCompleting}
-                                  className="mt-0.5 px-2 py-0.5 text-[9px] font-semibold rounded bg-amber-600 text-white hover:bg-amber-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
-                                >
-                                  {isCompleting ? "..." : actionLabelForStep(bg.stepKey, bg.label)}
-                                </button>
-                              )}
-                            </div>
-                          </div>
-
-                          {!isLastBg && (
-                            <div
-                              className={`w-4 h-1 rounded-full transition-colors duration-500 ${
-                                state === "completed" ? "bg-amber-400" : "bg-gray-200"
-                              }`}
-                            />
-                          )}
-                        </div>
-                      );
-                    })}
+                    {hoveredRejection === step.key && state === "rejected" && approval && (
+                      <RejectionTooltip
+                        reason={approval.rejectedReason}
+                        approvedByName={approval.approvedByName}
+                      />
+                    )}
                   </div>
 
-                  <div
-                    className={`flex-1 h-1 transition-colors duration-500 ${
-                      branchCompleted || (branchActive && allBgComplete)
-                        ? "bg-amber-400"
-                        : "bg-gray-200"
+                  {!isLast && (
+                    <div
+                      className={`flex-1 h-[3px] transition-colors duration-500 ${
+                        lineCompleted ? "bg-green-500" : "bg-gray-200"
+                      }`}
+                    />
+                  )}
+                </div>
+
+                <div className="mt-2 text-center">
+                  <p
+                    className={`text-xs font-medium transition-colors duration-300 ${
+                      state === "completed"
+                        ? "text-green-700"
+                        : state === "current"
+                          ? "text-teal-600"
+                          : state === "rejected"
+                            ? "text-red-600"
+                            : "text-gray-400"
                     }`}
-                  />
+                  >
+                    {step.label}
+                  </p>
+
+                  {state === "current" && (
+                    <span className="inline-flex items-center mt-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-yellow-100 text-yellow-800">
+                      Awaiting
+                    </span>
+                  )}
+
+                  {state === "completed" && approval?.approvedByName && (
+                    <p className="text-[10px] text-gray-500 mt-0.5 truncate max-w-[80px] mx-auto">
+                      {approval.approvedByName}
+                    </p>
+                  )}
+
+                  {state === "completed" && approval?.approvedAt && (
+                    <p className="text-[10px] text-gray-400 truncate max-w-[80px] mx-auto">
+                      {formatDateLongZA(approval.approvedAt)}
+                    </p>
+                  )}
                 </div>
               </div>
             );
           })}
         </div>
+
+        {hasBranches && (
+          <div className="mt-4">
+            {branches.map((branch) => {
+              const branchActive = branch.triggerFgIdx <= currentStepIndex;
+              const totalColumns = allSteps.length;
+              const startCol = branch.triggerFgIdx;
+              const endCol = branch.nextFgIdx;
+              const spanCols = endCol - startCol;
+
+              return (
+                <div
+                  key={`bg-row-${branch.triggerFgKey}`}
+                  className="flex items-center"
+                  style={{
+                    paddingLeft: `${(startCol / totalColumns) * 100}%`,
+                    paddingRight: `${((totalColumns - endCol) / totalColumns) * 100}%`,
+                  }}
+                >
+                  {branch.bgSteps.map((bg, bgIdx) => {
+                    const state = bgNodeState(bg, branch.triggerFgIdx, currentStepIndex);
+                    const canComplete =
+                      state === "active" &&
+                      isUserAssignedToStep(bg.stepKey, currentUserName, stepAssignments);
+                    const isCompleting = completingStepKey === bg.stepKey;
+
+                    return (
+                      <div
+                        key={bg.stepKey}
+                        className="flex flex-col items-center"
+                        style={{
+                          flex: `1 1 ${100 / branch.bgSteps.length}%`,
+                        }}
+                      >
+                        <div
+                          ref={(el) => {
+                            bgNodeRefs.current[bg.stepKey] = el;
+                          }}
+                          className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 transition-all duration-300 ${
+                            state === "completed"
+                              ? "bg-amber-500"
+                              : state === "active"
+                                ? "bg-amber-100 border-2 border-amber-500 animate-pulse"
+                                : "bg-gray-100 border-2 border-gray-300"
+                          }`}
+                        >
+                          {state === "completed" && <Check className="h-3 w-3 text-white" />}
+                          {state === "active" && <Clock className="h-3 w-3 text-amber-600" />}
+                          {state === "pending" && <Circle className="h-2 w-2 text-gray-400" />}
+                        </div>
+
+                        <div className="mt-1 text-center">
+                          <p
+                            className={`text-[10px] font-medium whitespace-nowrap ${
+                              state === "completed"
+                                ? "text-amber-700"
+                                : state === "active"
+                                  ? "text-amber-600"
+                                  : "text-gray-400"
+                            }`}
+                          >
+                            {bg.label}
+                          </p>
+                          {state === "completed" && bg.completedByName && (
+                            <p className="text-[9px] text-gray-400 truncate max-w-[70px] mx-auto">
+                              {bg.completedByName}
+                            </p>
+                          )}
+                          {canComplete && onCompleteBackgroundStep && (
+                            <button
+                              type="button"
+                              onClick={() => onCompleteBackgroundStep(bg.stepKey)}
+                              disabled={isCompleting}
+                              className="mt-0.5 px-2 py-0.5 text-[9px] font-semibold rounded bg-amber-600 text-white hover:bg-amber-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+                            >
+                              {isCompleting ? "..." : actionLabelForStep(bg.stepKey, bg.label)}
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );
