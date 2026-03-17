@@ -136,6 +136,9 @@ export function LineItemsTab({ jobCard, attachments }: LineItemsTabProps) {
                         colSpan={6}
                         className="px-3 py-1.5 text-sm italic text-amber-800 whitespace-pre-wrap"
                       >
+                        <span className="font-semibold not-italic text-amber-900 mr-1">
+                          Source Notes:
+                        </span>
                         {li.notes}
                       </td>
                     </tr>,
@@ -188,7 +191,12 @@ export function LineItemsTab({ jobCard, attachments }: LineItemsTabProps) {
             if (isLastInNoteGroup && li.notes) {
               elements.push(
                 <div key={`note-${li.id}`} className="px-4 py-2 bg-amber-50">
-                  <p className="text-sm italic text-amber-800 whitespace-pre-wrap">{li.notes}</p>
+                  <p className="text-sm italic text-amber-800 whitespace-pre-wrap">
+                    <span className="font-semibold not-italic text-amber-900 mr-1">
+                      Source Notes:
+                    </span>
+                    {li.notes}
+                  </p>
                 </div>,
               );
             }

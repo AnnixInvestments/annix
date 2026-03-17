@@ -139,7 +139,7 @@ export class JobCardsController {
     return this.jobCardService.create(req.user.companyId, dto);
   }
 
-  @StockControlRoles("manager", "admin")
+  @StockControlRoles("manager", "admin", "accounts")
   @PermissionKey("job-cards.update")
   @Put(":id")
   @ApiOperation({ summary: "Update a job card" })
@@ -266,7 +266,7 @@ export class JobCardsController {
     return this.coatingAnalysisService.corrections(req.user.companyId, id);
   }
 
-  @StockControlRoles("admin")
+  @StockControlRoles("admin", "accounts")
   @Post(":id/corrections")
   @ApiOperation({ summary: "Save an extraction correction" })
   async saveCorrection(

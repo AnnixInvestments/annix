@@ -6,6 +6,7 @@ import { ChatMessage } from "../../nix/ai-providers/claude-chat.provider";
 import { CpoStatus } from "../entities/customer-purchase-order.entity";
 import { CustomerPurchaseOrderItem } from "../entities/customer-purchase-order-item.entity";
 import { JobCard, JobCardStatus, JobCardWorkflowStatus } from "../entities/job-card.entity";
+import { JobCardExtractionCorrection } from "../entities/job-card-extraction-correction.entity";
 import {
   FieldMapping,
   ImportMappingConfig,
@@ -265,12 +266,31 @@ export class JobCardImportService {
     private readonly mappingRepo: Repository<JobCardImportMapping>,
     @InjectRepository(CustomerPurchaseOrderItem)
     private readonly cpoItemRepo: Repository<CustomerPurchaseOrderItem>,
+    @InjectRepository(JobCardExtractionCorrection)
+    private readonly correctionRepo: Repository<JobCardExtractionCorrection>,
     private readonly aiChatService: AiChatService,
     private readonly drawingExtractionService: DrawingExtractionService,
     @Inject(forwardRef(() => CpoService))
     private readonly cpoService: CpoService,
     private readonly versionService: JobCardVersionService,
   ) {}
+
+  private async correctionHintsForCompany(companyId: number): Promise<string> {
+    const corrections = await this.correctionRepo.find({
+      where: { companyId },
+      order: { createdAt: "DESC" },
+      take: 50,
+    });
+
+    if (corrections.length === 0) return "";
+
+    const hints = corrections.map(
+      (c) =>
+        `- Customer "${c.customerName || "unknown"}", field "${c.fieldName}": AI extracted "${c.originalValue}" but user corrected to "${c.correctedValue}"`,
+    );
+
+    return `\n\nPREVIOUS USER CORRECTIONS (learn from these patterns):\n${hints.join("\n")}\n\nApply these corrections when you see similar patterns. Pay attention to specification formatting and field extraction accuracy.`;
+  }
 
   async parseFile(
     buffer: Buffer,
@@ -642,7 +662,7 @@ export class JobCardImportService {
     return this.mappingRepo.save(mapping);
   }
 
-  async autoDetectMapping(grid: string[][]): Promise<ImportMappingConfig> {
+  async autoDetectMapping(grid: string[][], companyId?: number): Promise<ImportMappingConfig> {
     this.logger.log(`Auto-detecting mapping for grid with ${grid.length} rows`);
 
     const gridSample = grid.slice(0, Math.min(50, grid.length));
@@ -653,10 +673,14 @@ export class JobCardImportService {
       )
       .join("\n");
 
+    const correctionHints = companyId
+      ? await this.correctionHintsForCompany(companyId)
+      : "";
+
     const messages: ChatMessage[] = [
       {
         role: "user",
-        content: `Analyze this job card grid and identify where each field is located:\n\n${gridText}\n\nRespond with JSON only.`,
+        content: `Analyze this job card grid and identify where each field is located:\n\n${gridText}${correctionHints}\n\nRespond with JSON only.`,
       },
     ];
 

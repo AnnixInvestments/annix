@@ -3,6 +3,7 @@ import { getRepositoryToken } from "@nestjs/typeorm";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
 import { CustomerPurchaseOrderItem } from "../entities/customer-purchase-order-item.entity";
 import { JobCard, JobCardStatus } from "../entities/job-card.entity";
+import { JobCardExtractionCorrection } from "../entities/job-card-extraction-correction.entity";
 import { JobCardImportMapping } from "../entities/job-card-import-mapping.entity";
 import { JobCardLineItem } from "../entities/job-card-line-item.entity";
 import { CpoService } from "./cpo.service";
@@ -43,6 +44,10 @@ describe("JobCardImportService", () => {
     update: jest.fn(),
   };
 
+  const mockCorrectionRepo = {
+    find: jest.fn().mockResolvedValue([]),
+  };
+
   const mockAiChatService = {
     chat: jest.fn(),
     chatWithImage: jest.fn(),
@@ -71,6 +76,7 @@ describe("JobCardImportService", () => {
         { provide: getRepositoryToken(JobCardLineItem), useValue: mockLineItemRepo },
         { provide: getRepositoryToken(JobCardImportMapping), useValue: mockMappingRepo },
         { provide: getRepositoryToken(CustomerPurchaseOrderItem), useValue: mockCpoItemRepo },
+        { provide: getRepositoryToken(JobCardExtractionCorrection), useValue: mockCorrectionRepo },
         { provide: AiChatService, useValue: mockAiChatService },
         { provide: DrawingExtractionService, useValue: mockDrawingExtractionService },
         { provide: CpoService, useValue: mockCpoService },

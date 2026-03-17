@@ -1,6 +1,7 @@
 "use client";
 
 import type React from "react";
+import { useState } from "react";
 import type { JobCard, JobCardAttachment, JobCardVersion } from "@/app/lib/api/stockControlApi";
 import { formatDateZA } from "@/app/lib/datetime";
 import {
@@ -41,6 +42,8 @@ interface DetailsTabProps {
   isExtractingAll: boolean;
   onExtractAll: () => void;
   onDeleteAttachment: (attachmentId: number) => void;
+  canEditNotes: boolean;
+  onSaveNotes: (notes: string) => Promise<void>;
 }
 
 function cleanedNotes(notes: string | null): string {
@@ -87,8 +90,28 @@ export function DetailsTab({
   isExtractingAll,
   onExtractAll,
   onDeleteAttachment,
+  canEditNotes,
+  onSaveNotes,
 }: DetailsTabProps) {
   const filteredNotes = cleanedNotes(jobCard.notes);
+  const [isEditingNotes, setIsEditingNotes] = useState(false);
+  const [editedNotes, setEditedNotes] = useState(filteredNotes);
+  const [isSavingNotes, setIsSavingNotes] = useState(false);
+
+  const handleSaveNotes = async () => {
+    try {
+      setIsSavingNotes(true);
+      await onSaveNotes(editedNotes);
+      setIsEditingNotes(false);
+    } finally {
+      setIsSavingNotes(false);
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setEditedNotes(filteredNotes);
+    setIsEditingNotes(false);
+  };
 
   return (
     <div className="space-y-6">
@@ -172,10 +195,51 @@ export function DetailsTab({
                 <dd className="text-sm text-gray-900">{jobCard.reference}</dd>
               </div>
             )}
-            {filteredNotes ? (
+            {filteredNotes || canEditNotes ? (
               <div className="col-span-2 sm:col-span-4">
-                <dt className="text-sm font-medium text-gray-500">Specifications</dt>
-                <dd className="text-sm text-gray-900 whitespace-pre-wrap">{filteredNotes}</dd>
+                <dt className="text-sm font-medium text-gray-500 flex items-center justify-between">
+                  <span>Specifications (AI Extracted)</span>
+                  {canEditNotes && !isEditingNotes && (
+                    <button
+                      onClick={() => {
+                        setEditedNotes(filteredNotes);
+                        setIsEditingNotes(true);
+                      }}
+                      className="text-xs text-teal-600 hover:text-teal-800 font-normal"
+                    >
+                      Edit
+                    </button>
+                  )}
+                </dt>
+                {isEditingNotes ? (
+                  <div className="mt-1 space-y-2">
+                    <textarea
+                      value={editedNotes}
+                      onChange={(e) => setEditedNotes(e.target.value)}
+                      rows={5}
+                      className="block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm"
+                    />
+                    <div className="flex items-center space-x-2">
+                      <button
+                        onClick={handleSaveNotes}
+                        disabled={isSavingNotes}
+                        className="px-3 py-1 text-sm font-medium text-white bg-teal-600 rounded-md hover:bg-teal-700 disabled:bg-gray-400"
+                      >
+                        {isSavingNotes ? "Saving..." : "Save"}
+                      </button>
+                      <button
+                        onClick={handleCancelEdit}
+                        className="px-3 py-1 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <dd className="text-sm text-gray-900 whitespace-pre-wrap">
+                    {filteredNotes || "No specifications extracted"}
+                  </dd>
+                )}
               </div>
             ) : null}
           </dl>

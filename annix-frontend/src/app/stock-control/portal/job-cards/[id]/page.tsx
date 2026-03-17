@@ -258,6 +258,21 @@ export default function JobCardDetailPage() {
     }
   };
 
+  const handleSaveNotes = async (editedNotes: string) => {
+    const originalNotes = jobCard?.notes || null;
+    await stockControlApiClient.updateJobCard(jobId, { notes: editedNotes });
+    if (editedNotes !== (originalNotes || "")) {
+      await stockControlApiClient
+        .saveJobCardCorrection(jobId, {
+          fieldName: "notes",
+          originalValue: originalNotes,
+          correctedValue: editedNotes,
+        })
+        .catch(() => null);
+    }
+    fetchData();
+  };
+
   const openApprovalModal = (stepName: string) => {
     setCurrentApprovalStep(stepName);
     setShowApprovalModal(true);
@@ -618,6 +633,8 @@ export default function JobCardDetailPage() {
               isExtractingAll={documents.isExtractingAll}
               onExtractAll={documents.handleExtractAll}
               onDeleteAttachment={documents.handleDeleteAttachment}
+              canEditNotes={userRole === "admin" || userRole === "accounts"}
+              onSaveNotes={handleSaveNotes}
             />
 
             {documents.versions.length > 0 && (
