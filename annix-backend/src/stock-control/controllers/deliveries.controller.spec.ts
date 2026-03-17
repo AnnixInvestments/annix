@@ -258,7 +258,7 @@ describe("DeliveriesController", () => {
       expect(deliveryService.createFromAnalyzedData).toHaveBeenCalledWith(
         1,
         file,
-        JSON.parse(analyzedData),
+        { ...JSON.parse(analyzedData), documentType: "SUPPLIER_DELIVERY" },
         "Test User",
       );
       expect(result).toBe(expected);
