@@ -211,14 +211,17 @@ export class DeliveriesController {
         return invoice;
       }
 
+      const resolvedDocType = documentType || "SUPPLIER_DELIVERY";
+      const stamped = { ...analyzedData, documentType: resolvedDocType };
+
       this.logger.log(
-        `Creating delivery note for company ${req.user.companyId} from analyzed data`,
+        `Creating ${resolvedDocType} for company ${req.user.companyId} from analyzed data`,
       );
 
       const deliveryNote = await this.deliveryService.createFromAnalyzedData(
         req.user.companyId,
         file,
-        analyzedData,
+        stamped,
         req.user.name,
       );
 

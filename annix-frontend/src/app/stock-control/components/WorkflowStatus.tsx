@@ -588,7 +588,6 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
               const totalColumns = allSteps.length;
               const startCol = branch.triggerFgIdx;
               const endCol = branch.nextFgIdx;
-              const spanCols = endCol - startCol;
 
               return (
                 <div

@@ -117,6 +117,7 @@ export default function ScanDeliveryNotePage() {
         const deliveryNote = await stockControlApiClient.acceptAnalyzedDeliveryNote(
           selectedFile,
           result.data,
+          "SUPPLIER_DELIVERY",
         );
         showToast(
           `Delivery note ${deliveryNote.deliveryNumber || ""} created successfully`,

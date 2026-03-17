@@ -42,6 +42,7 @@ declare module "./base" {
     acceptAnalyzedDeliveryNote(
       file: File,
       analyzedData: AnalyzedDeliveryNoteData,
+      documentType?: string,
     ): Promise<DeliveryNote>;
     acceptAnalyzedInvoice(
       file: File,
@@ -109,9 +110,11 @@ proto.analyzeDeliveryNotePhoto = async function (file) {
   return this.uploadFile("/stock-control/deliveries/analyze", file);
 };
 
-proto.acceptAnalyzedDeliveryNote = async function (file, analyzedData) {
+proto.acceptAnalyzedDeliveryNote = async function (file, analyzedData, documentType) {
+  const resolvedType = documentType || analyzedData.documentType || "SUPPLIER_DELIVERY";
   return this.uploadFile("/stock-control/deliveries/accept-analyzed", file, {
     analyzedData: JSON.stringify(analyzedData),
+    documentType: resolvedType,
   });
 };
 

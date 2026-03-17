@@ -76,6 +76,7 @@ export default function CustomerDeliveriesPage() {
         const deliveryNote = await stockControlApiClient.acceptAnalyzedDeliveryNote(
           file,
           result.data,
+          "CUSTOMER_DELIVERY",
         );
         showToast(
           `Delivery note ${deliveryNote.deliveryNumber || ""} created successfully`,
