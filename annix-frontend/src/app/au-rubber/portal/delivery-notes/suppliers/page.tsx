@@ -6,13 +6,13 @@ import { useEffect, useState } from "react";
 import { Breadcrumb } from "@/app/au-rubber/components/Breadcrumb";
 import { FileDropZone } from "@/app/au-rubber/components/FileDropZone";
 import {
-  ITEMS_PER_PAGE,
   Pagination,
-  SortDirection,
+  type SortDirection,
   SortIcon,
   TableIcons,
   TableLoadingState,
 } from "@/app/au-rubber/components/TableComponents";
+import { useTablePreferences } from "@/app/au-rubber/hooks/useTablePreferences";
 import { useToast } from "@/app/components/Toast";
 import {
   auRubberApiClient,
@@ -53,9 +53,14 @@ export default function SupplierDeliveryNotesPage() {
   const isLoading = notesQuery.isLoading;
   const error = notesQuery.error;
   const [currentPage, setCurrentPage] = useState(0);
-  const [pageSize, setPageSize] = useState(ITEMS_PER_PAGE);
-  const [sortColumn, setSortColumn] = useState<SortColumn>("deliveryDate");
-  const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
+  const tablePrefs = useTablePreferences("supplierDeliveryNotes", {
+    pageSize: 25,
+    sortColumn: "deliveryDate",
+    sortDirection: "desc",
+  });
+  const pageSize = tablePrefs.pageSize;
+  const sortColumn = tablePrefs.sortColumn as SortColumn;
+  const sortDirection = tablePrefs.sortDirection;
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [uploadType, setUploadType] = useState<DeliveryNoteType>("COMPOUND");
   const [uploadSupplierId, setUploadSupplierId] = useState<number | null>(null);
@@ -85,10 +90,10 @@ export default function SupplierDeliveryNotesPage() {
 
   const handleSort = (column: SortColumn) => {
     if (sortColumn === column) {
-      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
+      tablePrefs.setSortDirection(sortDirection === "asc" ? "desc" : "asc");
     } else {
-      setSortColumn(column);
-      setSortDirection("asc");
+      tablePrefs.setSortColumn(column);
+      tablePrefs.setSortDirection("asc");
     }
   };
 
@@ -676,7 +681,7 @@ export default function SupplierDeliveryNotesPage() {
           itemsPerPage={pageSize}
           itemName="notes"
           onPageChange={setCurrentPage}
-          onPageSizeChange={setPageSize}
+          onPageSizeChange={tablePrefs.setPageSize}
         />
       </div>
 

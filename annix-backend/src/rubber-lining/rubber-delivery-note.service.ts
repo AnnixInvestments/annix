@@ -424,6 +424,19 @@ export class RubberDeliveryNoteService {
           return this.linkToCoc(cdn.id, cocId);
         }),
       );
+
+      const linkedButNotStatusUpdated = matchingCdns.filter(
+        (cdn) => cdn.linkedCocId && cdn.status !== DeliveryNoteStatus.LINKED,
+      );
+      await Promise.all(
+        linkedButNotStatusUpdated.map(async (cdn) => {
+          cdn.status = DeliveryNoteStatus.LINKED;
+          await this.deliveryNoteRepository.save(cdn);
+          this.logger.log(
+            `Fixed status for CDN ${cdn.deliveryNoteNumber} (id=${cdn.id}): ${cdn.status} → LINKED`,
+          );
+        }),
+      );
     }
 
     return matchingCdns.map((cdn) => cdn.id);

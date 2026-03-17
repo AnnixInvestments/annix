@@ -8,13 +8,13 @@ import { Breadcrumb } from "@/app/au-rubber/components/Breadcrumb";
 import { CustomerDnAnalysisModal } from "@/app/au-rubber/components/CustomerDnAnalysisModal";
 import { FileDropZone } from "@/app/au-rubber/components/FileDropZone";
 import {
-  ITEMS_PER_PAGE,
   Pagination,
-  SortDirection,
+  type SortDirection,
   SortIcon,
   TableIcons,
   TableLoadingState,
 } from "@/app/au-rubber/components/TableComponents";
+import { useTablePreferences } from "@/app/au-rubber/hooks/useTablePreferences";
 import { useToast } from "@/app/components/Toast";
 import {
   type AnalyzeCustomerDnsResult,
@@ -55,9 +55,14 @@ export default function CustomerDeliveryNotesPage() {
   const isLoading = notesQuery.isLoading;
   const error = notesQuery.error;
   const [currentPage, setCurrentPage] = useState(0);
-  const [pageSize, setPageSize] = useState(ITEMS_PER_PAGE);
-  const [sortColumn, setSortColumn] = useState<SortColumn>("deliveryDate");
-  const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
+  const tablePrefs = useTablePreferences("customerDeliveryNotes", {
+    pageSize: 0,
+    sortColumn: "deliveryNoteNumber",
+    sortDirection: "desc",
+  });
+  const pageSize = tablePrefs.pageSize;
+  const sortColumn = tablePrefs.sortColumn as SortColumn;
+  const sortDirection = tablePrefs.sortDirection;
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [uploadType, setUploadType] = useState<DeliveryNoteType>("COMPOUND");
   const [uploadCustomerId, setUploadCustomerId] = useState<number | null>(null);
@@ -103,10 +108,10 @@ export default function CustomerDeliveryNotesPage() {
 
   const handleSort = (column: SortColumn) => {
     if (sortColumn === column) {
-      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
+      tablePrefs.setSortDirection(sortDirection === "asc" ? "desc" : "asc");
     } else {
-      setSortColumn(column);
-      setSortDirection("asc");
+      tablePrefs.setSortColumn(column);
+      tablePrefs.setSortDirection("asc");
     }
   };
 
@@ -696,7 +701,7 @@ export default function CustomerDeliveryNotesPage() {
           itemsPerPage={pageSize}
           itemName="notes"
           onPageChange={setCurrentPage}
-          onPageSizeChange={setPageSize}
+          onPageSizeChange={tablePrefs.setPageSize}
         />
       </div>
 
