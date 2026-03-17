@@ -60,6 +60,7 @@ export class JobCardWorkflowService {
     private readonly requisitionService: RequisitionService,
     private readonly stepConfigService: WorkflowStepConfigService,
     private readonly assignmentService: WorkflowAssignmentService,
+    @Inject(forwardRef(() => BackgroundStepService))
     private readonly backgroundStepService: BackgroundStepService,
     private readonly auditService: AuditService,
   ) {}
@@ -194,8 +195,13 @@ export class JobCardWorkflowService {
       await this.requisitionService.createFromJobCard(companyId, jobCardId, user.name);
     }
 
+    const bgStepKeys = new Set(
+      (await this.stepConfigService.backgroundSteps(companyId)).map((s) => s.key),
+    );
     const nextStep = this.currentStepForStatus(nextStatus);
-    if (nextStep) {
+    const nextStepIsBg = nextStep !== null && bgStepKeys.has(nextStep);
+
+    if (nextStep && !nextStepIsBg) {
       await this.notificationService.notifyApprovalRequired(
         companyId,
         jobCardId,
@@ -238,17 +244,78 @@ export class JobCardWorkflowService {
       completedStepKey,
     );
 
-    await Promise.all(
-      bgSteps.map((step) =>
-        this.notificationService.notifyBackgroundStepRequired(
-          companyId,
-          jobCardId,
-          step.key,
-          step.label,
-          sender,
-        ),
-      ),
+    if (bgSteps.length > 0) {
+      const firstStep = bgSteps[0];
+      await this.notificationService.notifyBackgroundStepRequired(
+        companyId,
+        jobCardId,
+        firstStep.key,
+        firstStep.label,
+        sender,
+      );
+    }
+  }
+
+  async advancePastBackgroundSteps(
+    companyId: number,
+    jobCardId: number,
+    sender: { id: number; name: string },
+  ): Promise<void> {
+    const jobCard = await this.jobCardForWorkflow(companyId, jobCardId);
+    const bgStepKeys = new Set(
+      (await this.stepConfigService.backgroundSteps(companyId)).map((s) => s.key),
     );
+
+    let status = jobCard.workflowStatus;
+    let advanced = false;
+
+    while (true) {
+      const stepForStatus = this.currentStepForStatus(status);
+      if (!stepForStatus || !bgStepKeys.has(stepForStatus)) {
+        break;
+      }
+      const next = this.nextStatus(status);
+      if (next === status) {
+        break;
+      }
+      if (next === JobCardWorkflowStatus.REQUISITION_SENT) {
+        await this.requisitionService.createFromJobCard(companyId, jobCardId, sender.name);
+      }
+      status = next;
+      advanced = true;
+    }
+
+    if (!advanced) {
+      return;
+    }
+
+    const updateResult = await this.jobCardRepo.update(
+      { id: jobCardId, companyId, workflowStatus: jobCard.workflowStatus },
+      { workflowStatus: status },
+    );
+
+    if (updateResult.affected === 0) {
+      this.logger.warn(
+        `Could not auto-advance job card ${jobCardId} past background steps (concurrent modification)`,
+      );
+      return;
+    }
+
+    if (status === JobCardWorkflowStatus.READY_FOR_DISPATCH) {
+      await this.notificationService.notifyDispatchReady(companyId, jobCardId);
+    }
+
+    const nextFgStep = this.currentStepForStatus(status);
+    if (nextFgStep) {
+      await this.notificationService.notifyApprovalRequired(
+        companyId,
+        jobCardId,
+        nextFgStep,
+        sender,
+      );
+    }
+
+    this.logger.log(`Auto-advanced job card ${jobCardId} past background steps to ${status}`);
   }
 
   async rejectStep(

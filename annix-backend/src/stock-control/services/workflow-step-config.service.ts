@@ -52,6 +52,7 @@ export class WorkflowStepConfigService {
   ): Promise<WorkflowStepConfig[]> {
     return this.repo.find({
       where: { companyId, isBackground: true, triggerAfterStep: triggerStepKey },
+      order: { sortOrder: "ASC", createdAt: "ASC" },
     });
   }
 

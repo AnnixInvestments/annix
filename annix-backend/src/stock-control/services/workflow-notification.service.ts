@@ -1077,14 +1077,16 @@ export class WorkflowNotificationService {
     const frontendUrl = this.configService.get<string>("FRONTEND_URL") || "http://localhost:3000";
     const actionUrl = `${frontendUrl}/stock-control/portal/job-cards/${jobCardId}`;
 
-    const admins = await this.userRepo.find({
+    const allAdmins = await this.userRepo.find({
       where: [
         { companyId, role: StockControlRole.ADMIN },
         { companyId, role: StockControlRole.MANAGER },
       ],
     });
 
-    const notifications = admins.map((user) =>
+    const recipients = allAdmins.filter((u) => u.id !== completer.id);
+
+    const notifications = recipients.map((user) =>
       this.notificationRepo.create({
         companyId,
         userId: user.id,
@@ -1101,7 +1103,7 @@ export class WorkflowNotificationService {
     await this.notificationRepo.save(notifications);
     this.webPushService
       .sendToUsers(
-        admins.map((u) => u.id),
+        recipients.map((u) => u.id),
         {
           title: `Background Task Completed: ${stepLabel}`,
           body: `${completer.name} completed "${stepLabel}" for job card ${jobCard.jobNumber}.`,

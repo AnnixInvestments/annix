@@ -365,6 +365,17 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
 
   const laneCount = branches.length > 0 ? Math.max(...Object.values(branchLanes)) + 1 : 0;
 
+  const visualStepIndex = useMemo(() => {
+    for (let i = currentStepIndex; i > 0; i--) {
+      const prevKey = allSteps[i - 1]?.key;
+      const branch = branches.find((b) => b.triggerFgKey === prevKey && b.nextFgIdx === i);
+      if (branch && !branch.bgSteps.every((bg) => bg.completedAt !== null)) {
+        return i - 1;
+      }
+    }
+    return currentStepIndex;
+  }, [currentStepIndex, branches, allSteps]);
+
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
@@ -521,11 +532,11 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
 
       <div className="flex items-start">
         {allSteps.map((step, index) => {
-          const state = resolveStepState(step.key, index, currentStepIndex, approvalByStep);
+          const state = resolveStepState(step.key, index, visualStepIndex, approvalByStep);
           const approval = approvalByStep[step.key];
           const isFirst = index === 0;
           const isLast = index === allSteps.length - 1;
-          const lineCompleted = index < currentStepIndex;
+          const lineCompleted = index < visualStepIndex;
 
           const assignedName =
             state === "current" || state === "pending"
@@ -717,7 +728,7 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
             return (
               <div
                 key={`bg-row-${branch.triggerFgKey}`}
-                className="absolute flex items-center"
+                className="absolute flex items-start"
                 style={{
                   left: pos ? `${pos.left}px` : "0",
                   right: pos ? `${pos.right}px` : "0",
@@ -855,6 +866,17 @@ function MobileTransitMap(props: MobileTransitMapProps) {
     [branches],
   );
 
+  const visualStepIndex = useMemo(() => {
+    for (let i = currentStepIndex; i > 0; i--) {
+      const prevKey = allSteps[i - 1]?.key;
+      const branch = branches.find((b) => b.triggerFgKey === prevKey && b.nextFgIdx === i);
+      if (branch && !branch.bgSteps.every((bg) => bg.completedAt !== null)) {
+        return i - 1;
+      }
+    }
+    return currentStepIndex;
+  }, [currentStepIndex, branches, allSteps]);
+
   if (allSteps.length === 0) {
     return <p className="text-sm text-gray-500">No workflow steps configured</p>;
   }
@@ -925,10 +947,10 @@ function MobileTransitMap(props: MobileTransitMapProps) {
         })()}
 
       {allSteps.map((step, index) => {
-        const state = resolveStepState(step.key, index, currentStepIndex, approvalByStep);
+        const state = resolveStepState(step.key, index, visualStepIndex, approvalByStep);
         const approval = approvalByStep[step.key];
         const isLast = index === allSteps.length - 1;
-        const lineCompleted = index < currentStepIndex;
+        const lineCompleted = index < visualStepIndex;
         const branch = branchForStep[step.key];
 
         const assignedName =

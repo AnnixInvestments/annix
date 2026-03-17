@@ -1,4 +1,11 @@
-import { BadRequestException, Injectable, Logger, NotFoundException } from "@nestjs/common";
+import {
+  BadRequestException,
+  forwardRef,
+  Inject,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { IsNull, Repository } from "typeorm";
 import { now } from "../../lib/datetime";
@@ -8,6 +15,7 @@ import {
   NotificationActionType,
   WorkflowNotification,
 } from "../entities/workflow-notification.entity";
+import { JobCardWorkflowService } from "./job-card-workflow.service";
 import { WorkflowNotificationService } from "./workflow-notification.service";
 import { WorkflowStepConfigService } from "./workflow-step-config.service";
 
@@ -30,6 +38,8 @@ export class BackgroundStepService {
     private readonly notificationRepo: Repository<WorkflowNotification>,
     private readonly stepConfigService: WorkflowStepConfigService,
     private readonly notificationService: WorkflowNotificationService,
+    @Inject(forwardRef(() => JobCardWorkflowService))
+    private readonly workflowService: JobCardWorkflowService,
   ) {}
 
   async completeStep(
@@ -75,6 +85,41 @@ export class BackgroundStepService {
       stepConfig.label,
       { id: user.id, name: user.name },
     );
+
+    if (stepConfig.triggerAfterStep) {
+      const siblings = await this.stepConfigService.backgroundStepsForTrigger(
+        companyId,
+        stepConfig.triggerAfterStep,
+      );
+      const currentIdx = siblings.findIndex((s) => s.key === stepKey);
+      if (currentIdx >= 0 && currentIdx + 1 < siblings.length) {
+        const nextStep = siblings[currentIdx + 1];
+        await this.notificationService.notifyBackgroundStepRequired(
+          companyId,
+          jobCardId,
+          nextStep.key,
+          nextStep.label,
+          { id: user.id, name: user.name },
+        );
+        this.logger.log(
+          `Triggered next background step "${nextStep.key}" for job card ${jobCardId}`,
+        );
+      }
+
+      const allCompletions = await this.completionRepo.find({ where: { jobCardId, companyId } });
+      const completedKeys = new Set(allCompletions.map((c) => c.stepKey));
+      const allSiblingsComplete = siblings.every((s) => completedKeys.has(s.key));
+
+      if (allSiblingsComplete) {
+        this.logger.log(
+          `All background steps complete for trigger "${stepConfig.triggerAfterStep}" on job card ${jobCardId}, advancing foreground`,
+        );
+        await this.workflowService.advancePastBackgroundSteps(companyId, jobCardId, {
+          id: user.id,
+          name: user.name,
+        });
+      }
+    }
 
     this.logger.log(
       `Background step "${stepKey}" completed for job card ${jobCardId} by ${user.name}`,

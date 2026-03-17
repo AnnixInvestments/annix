@@ -77,6 +77,7 @@ describe("JobCardWorkflowService", () => {
 
   const mockStepConfigService = {
     backgroundStepsForTrigger: jest.fn().mockResolvedValue([]),
+    backgroundSteps: jest.fn().mockResolvedValue([]),
   };
 
   const mockAssignmentService = {
