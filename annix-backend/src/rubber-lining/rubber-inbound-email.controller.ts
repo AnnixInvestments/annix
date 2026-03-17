@@ -184,7 +184,7 @@ export class RubberInboundEmailController {
           type: "array",
           items: { type: "string", format: "binary" },
         },
-        cocType: { type: "string", enum: ["COMPOUNDER", "CALENDARER"] },
+        cocType: { type: "string", enum: ["COMPOUNDER", "CALENDARER", "CALENDER_ROLL"] },
         supplierCompanyId: { type: "number" },
         cocNumber: { type: "string" },
         compoundCode: { type: "string" },

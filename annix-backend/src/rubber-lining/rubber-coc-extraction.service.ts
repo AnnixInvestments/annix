@@ -314,10 +314,10 @@ export class RubberCocExtractionService {
 
     const extractedData: ExtractedCocData = {
       cocNumber,
-      compoundCode: (rawData.compoundCode as string) || null,
-      compoundDescription: (rawData.calenderRollDescription as string) || null,
-      productionDate: (firstPage.productionDate as string) || null,
-      orderNumber: (firstPage.purchaseOrderNumber as string) || null,
+      compoundCode: (rawData.compoundCode as string) || undefined,
+      compoundDescription: (rawData.calenderRollDescription as string) || undefined,
+      productionDate: (firstPage.productionDate as string) || undefined,
+      orderNumber: (firstPage.purchaseOrderNumber as string) || undefined,
       rollNumbers,
       deliveryNoteNumber: dnNumber || null,
       waybillNumber: (firstPage.waybillNumber as string) || null,

@@ -352,6 +352,22 @@ export class RubberEmailMonitorService implements OnModuleInit {
         }
       }
 
+      if (aiResult.supplierType === "CALENDER_ROLL") {
+        const snRubberCompany = companies.find(
+          (c) =>
+            c.name.toLowerCase().includes("s&n") || c.name.toLowerCase().includes("sn rubber"),
+        );
+        if (snRubberCompany) {
+          this.logger.log(`Matched calender roll CoC to company: ${snRubberCompany.name}`);
+          return {
+            company: snRubberCompany,
+            cocType: SupplierCocType.CALENDER_ROLL,
+            deliveryNoteType: DeliveryNoteType.ROLL,
+            documentType: aiResult.documentType,
+          };
+        }
+      }
+
       if (aiResult.documentType === "INVOICE" || aiResult.documentType === "DELIVERY_NOTE") {
         this.logger.log(
           `AI classified as ${aiResult.documentType} - attempting supplier fallback matching`,
@@ -391,7 +407,7 @@ export class RubberEmailMonitorService implements OnModuleInit {
       | "INVOICE"
       | "QUOTE"
       | "UNKNOWN";
-    supplierType: "COMPOUNDER" | "CALENDARER" | null;
+    supplierType: "COMPOUNDER" | "CALENDARER" | "CALENDER_ROLL" | null;
     confidence: number;
   } | null> {
     const isAvailable = await this.aiChatService.isAvailable();
@@ -408,6 +424,7 @@ DOCUMENT TYPES:
 1. SUPPLIER_COC - Certificate of Conformance from suppliers
    - COMPOUNDER CoC: From rubber compounding companies (e.g., S&N Rubber). Contains batch numbers, compound codes, mixing dates, Shore A hardness, specific gravity, tensile strength, rheometer data (S-min, S-max, Ts2, Tc90)
    - CALENDARER CoC: From rubber calendering companies (e.g., Impilo Industries). Contains roll numbers, sheet specs, order/ticket numbers, calendering operations
+   - CALENDER_ROLL CoC: From S&N Rubber specifically for calendered production rolls. Title is "CERTIFICATE OF CONFORMANCE" with fields: COMPOUND CODE, CALENDER ROLL DESCRIPTION, PRODUCTION DATE OF CALENDER ROLLS, PURCHASE ORDER NUMBER, DELIVERY NOTE. Contains a LABORATORY ANALYSIS DATA table with per-roll Shore A values and shared density/tensile/elongation. Distinct from COMPOUNDER CoCs which have batch-level rheometer data.
 
 2. DELIVERY_NOTE - Goods received documentation
    - Contains delivery date, quantities, item descriptions, supplier details
@@ -423,10 +440,10 @@ DOCUMENT TYPES:
 
 6. UNKNOWN - Cannot confidently classify the document
 
-For SUPPLIER_COC documents, also identify the supplier type (COMPOUNDER or CALENDARER).
+For SUPPLIER_COC documents, also identify the supplier type (COMPOUNDER, CALENDARER, or CALENDER_ROLL).
 
 Respond ONLY with a JSON object:
-{"documentType": "SUPPLIER_COC"|"DELIVERY_NOTE"|"PURCHASE_ORDER"|"INVOICE"|"QUOTE"|"UNKNOWN", "supplierType": "COMPOUNDER"|"CALENDARER"|null, "confidence": 0.0-1.0, "reason": "brief explanation"}`;
+{"documentType": "SUPPLIER_COC"|"DELIVERY_NOTE"|"PURCHASE_ORDER"|"INVOICE"|"QUOTE"|"UNKNOWN", "supplierType": "COMPOUNDER"|"CALENDARER"|"CALENDER_ROLL"|null, "confidence": 0.0-1.0, "reason": "brief explanation"}`;
 
     const userMessage = `Analyze this PDF document and identify the supplier type.
 

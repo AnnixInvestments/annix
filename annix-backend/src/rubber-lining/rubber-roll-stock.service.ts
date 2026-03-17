@@ -39,6 +39,7 @@ const ROLL_STATUS_LABELS: Record<RollStockStatus, string> = {
 const COC_TYPE_LABELS: Record<SupplierCocType, string> = {
   [SupplierCocType.COMPOUNDER]: "Compounder",
   [SupplierCocType.CALENDARER]: "Calendarer",
+  [SupplierCocType.CALENDER_ROLL]: "Calender Roll",
 };
 
 const PROCESSING_STATUS_LABELS: Record<CocProcessingStatus, string> = {
@@ -638,6 +639,7 @@ export class RubberRollStockService {
       approvedBy: coc.approvedBy,
       approvedAt: coc.approvedAt ? coc.approvedAt.toISOString() : null,
       linkedDeliveryNoteId: coc.linkedDeliveryNoteId,
+      linkedCalenderRollCocId: coc.linkedCalenderRollCocId ?? null,
       createdBy: coc.createdBy,
       createdAt: coc.createdAt.toISOString(),
       updatedAt: coc.updatedAt.toISOString(),

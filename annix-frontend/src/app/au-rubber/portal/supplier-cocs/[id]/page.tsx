@@ -212,6 +212,7 @@ export default function SupplierCocDetailPage() {
     const colors: Record<SupplierCocType, string> = {
       COMPOUNDER: "bg-purple-100 text-purple-800",
       CALENDARER: "bg-indigo-100 text-indigo-800",
+      CALENDER_ROLL: "bg-amber-100 text-amber-800",
     };
     return (
       <span
