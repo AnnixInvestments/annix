@@ -155,7 +155,24 @@ export class DeliveryExtractionService {
       await this.movementRepo.save(movement);
     };
 
-    await lineItems.reduce((chain, item) => chain.then(() => processItem(item)), Promise.resolve());
+    let failedCount = 0;
+    await lineItems.reduce(
+      (chain, item) =>
+        chain.then(async () => {
+          try {
+            await processItem(item);
+          } catch (error) {
+            failedCount++;
+            this.logger.error(
+              `Failed to process item "${item.description}" for delivery ${deliveryNote.id}: ${error instanceof Error ? error.message : String(error)}`,
+            );
+            if (failedCount >= lineItems.length) {
+              throw error;
+            }
+          }
+        }),
+      Promise.resolve(),
+    );
   }
 
   calculateItemMetrics(item: ExtractedLineItem): {
@@ -186,20 +203,23 @@ export class DeliveryExtractionService {
   }
 
   generateSku(item: { itemCode?: string; productCode?: string; description?: string }): string {
-    if (item.itemCode) {
-      return item.itemCode.toUpperCase().replace(/\s+/g, "-");
-    }
-    if (item.productCode) {
-      return item.productCode.toUpperCase().replace(/\s+/g, "-");
-    }
-    const descWords = (item.description || "ITEM")
-      .toUpperCase()
-      .replace(/[^A-Z0-9\s]/g, "")
-      .split(/\s+/)
-      .filter((w) => w.length > 0)
-      .slice(0, 4)
-      .join("-");
-    return descWords || `ITEM-${nowMillis()}`;
+    const raw = (() => {
+      if (item.itemCode) {
+        return item.itemCode.toUpperCase().replace(/\s+/g, "-");
+      }
+      if (item.productCode) {
+        return item.productCode.toUpperCase().replace(/\s+/g, "-");
+      }
+      const descWords = (item.description || "ITEM")
+        .toUpperCase()
+        .replace(/[^A-Z0-9\s]/g, "")
+        .split(/\s+/)
+        .filter((w) => w.length > 0)
+        .slice(0, 4)
+        .join("-");
+      return descWords || `ITEM-${nowMillis()}`;
+    })();
+    return raw.slice(0, 100);
   }
 
   inferMediaTypeFromUrl(url: string): MediaType {
@@ -226,7 +246,7 @@ export class DeliveryExtractionService {
 
     if (existingBySku) {
       existingBySku.quantity = existingBySku.quantity + quantity;
-      if (costPerUnit > 0) {
+      if (Number.isFinite(costPerUnit) && costPerUnit > 0) {
         existingBySku.costPerUnit = costPerUnit;
       }
       await this.stockItemRepo.save(existingBySku);
@@ -246,7 +266,7 @@ export class DeliveryExtractionService {
       const oldSku = matched.sku;
       matched.sku = sku;
       matched.quantity = matched.quantity + quantity;
-      if (costPerUnit > 0) {
+      if (Number.isFinite(costPerUnit) && costPerUnit > 0) {
         matched.costPerUnit = costPerUnit;
       }
       await this.stockItemRepo.save(matched);
@@ -256,22 +276,21 @@ export class DeliveryExtractionService {
       return matched;
     }
 
+    const safeCost = Number.isFinite(costPerUnit) ? costPerUnit : 0;
     const created = this.stockItemRepo.create({
       sku,
-      name: item.description!,
+      name: (item.description || "Unknown Item").slice(0, 255),
       description: null,
       category: item.isPaint ? "Paint" : "Uncategorized",
       unitOfMeasure,
-      costPerUnit,
+      costPerUnit: safeCost,
       quantity,
       minStockLevel: 0,
       needsQrPrint: true,
       companyId,
     });
     await this.stockItemRepo.save(created);
-    this.logger.log(
-      `Created new stock item ${sku}: ${item.description} @ R${costPerUnit.toFixed(2)}`,
-    );
+    this.logger.log(`Created new stock item ${sku}: ${item.description} @ R${safeCost.toFixed(2)}`);
     return created;
   }
 

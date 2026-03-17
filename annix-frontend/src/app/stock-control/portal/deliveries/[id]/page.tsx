@@ -54,11 +54,11 @@ export default function DeliveryDetailPage() {
   const [isUploading, setIsUploading] = useState(false);
   const [mutationError, setMutationError] = useState<string | null>(null);
 
-  const error = queryError
+  const queryErrorMessage = queryError
     ? queryError instanceof Error
       ? queryError.message
       : "Failed to load delivery note"
-    : mutationError;
+    : null;
 
   const handlePhotoCapture = async (file: File) => {
     try {
@@ -112,12 +112,12 @@ export default function DeliveryDetailPage() {
     );
   }
 
-  if (error || !delivery) {
+  if (queryErrorMessage || !delivery) {
     return (
       <div className="flex items-center justify-center min-h-96">
         <div className="text-center">
           <div className="text-red-500 text-lg font-semibold mb-2">Error Loading Data</div>
-          <p className="text-gray-600">{error || "Delivery note not found"}</p>
+          <p className="text-gray-600">{queryErrorMessage || "Delivery note not found"}</p>
           <Link
             href="/stock-control/portal/deliveries"
             className="mt-4 inline-block text-teal-600 hover:text-teal-800"
@@ -132,6 +132,38 @@ export default function DeliveryDetailPage() {
   return (
     <div className="space-y-6">
       {ConfirmDialog}
+      {mutationError && (
+        <div className="rounded-md bg-red-50 border border-red-200 p-4">
+          <div className="flex items-start">
+            <svg
+              className="h-5 w-5 text-red-400 mt-0.5 mr-3 shrink-0"
+              viewBox="0 0 20 20"
+              fill="currentColor"
+            >
+              <path
+                fillRule="evenodd"
+                d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z"
+                clipRule="evenodd"
+              />
+            </svg>
+            <div className="flex-1">
+              <p className="text-sm font-medium text-red-800">{mutationError}</p>
+            </div>
+            <button
+              onClick={() => setMutationError(null)}
+              className="ml-3 text-red-400 hover:text-red-600"
+            >
+              <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                <path
+                  fillRule="evenodd"
+                  d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                  clipRule="evenodd"
+                />
+              </svg>
+            </button>
+          </div>
+        </div>
+      )}
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4">
           <Link

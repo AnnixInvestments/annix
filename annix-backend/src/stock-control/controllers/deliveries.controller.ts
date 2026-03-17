@@ -98,7 +98,24 @@ export class DeliveriesController {
   @Post(":id/link-to-stock")
   @ApiOperation({ summary: "Create stock items from extracted delivery note data" })
   async linkExtractedToStock(@Req() req: any, @Param("id") id: number) {
-    return this.deliveryService.linkExtractedItemsToStock(req.user.companyId, id, req.user.name);
+    try {
+      return await this.deliveryService.linkExtractedItemsToStock(
+        req.user.companyId,
+        id,
+        req.user.name,
+      );
+    } catch (error) {
+      this.logger.error(
+        `Failed to link delivery ${id} to stock: ${error instanceof Error ? error.message : String(error)}`,
+        error instanceof Error ? error.stack : undefined,
+      );
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new InternalServerErrorException(
+        `Failed to add items to stock: ${error instanceof Error ? error.message : "Unknown error"}`,
+      );
+    }
   }
 
   @Post("analyze")
