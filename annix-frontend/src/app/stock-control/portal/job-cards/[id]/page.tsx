@@ -273,6 +273,19 @@ export default function JobCardDetailPage() {
     fetchData();
   };
 
+  const [isReExtractingNotes, setIsReExtractingNotes] = useState(false);
+  const handleReExtractNotes = async () => {
+    try {
+      setIsReExtractingNotes(true);
+      await stockControlApiClient.reExtractJobCardNotes(jobId);
+      fetchData();
+    } catch (err) {
+      setError(err instanceof Error ? err : new Error("Failed to re-extract notes"));
+    } finally {
+      setIsReExtractingNotes(false);
+    }
+  };
+
   const openApprovalModal = (stepName: string) => {
     setCurrentApprovalStep(stepName);
     setShowApprovalModal(true);
@@ -635,6 +648,8 @@ export default function JobCardDetailPage() {
               onDeleteAttachment={documents.handleDeleteAttachment}
               canEditNotes={userRole === "admin" || userRole === "accounts"}
               onSaveNotes={handleSaveNotes}
+              onReExtractNotes={handleReExtractNotes}
+              isReExtracting={isReExtractingNotes}
             />
 
             {documents.versions.length > 0 && (

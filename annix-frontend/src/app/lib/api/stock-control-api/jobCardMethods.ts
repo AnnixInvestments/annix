@@ -123,6 +123,7 @@ declare module "./base" {
       correctedValue: string;
       createdAt: string;
     }>;
+    reExtractJobCardNotes(jobCardId: number): Promise<{ notes: string | null }>;
   }
 }
 
@@ -394,5 +395,11 @@ proto.saveJobCardCorrection = async function (jobCardId, data) {
   return this.request(`/stock-control/job-cards/${jobCardId}/corrections`, {
     method: "POST",
     body: JSON.stringify(data),
+  });
+};
+
+proto.reExtractJobCardNotes = async function (jobCardId) {
+  return this.request(`/stock-control/job-cards/${jobCardId}/re-extract-notes`, {
+    method: "POST",
   });
 };

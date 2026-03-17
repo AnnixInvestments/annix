@@ -40,6 +40,7 @@ import {
   StockControlRoles,
 } from "../guards/stock-control-role.guard";
 import { parseRubberSpecNote, suggestPlyCombinations } from "../lib/rubberCuttingCalculator";
+import { sanitizeNotes } from "../services/job-card-import.service";
 import { CoatingAnalysisService } from "../services/coating-analysis.service";
 import { CpoService } from "../services/cpo.service";
 import { DrawingExtractionService } from "../services/drawing-extraction.service";
@@ -282,6 +283,22 @@ export class JobCardsController {
       body.correctedValue,
       req.user.id,
     );
+  }
+
+  @StockControlRoles("admin", "accounts")
+  @Post(":id/re-extract-notes")
+  @ApiOperation({ summary: "Re-extract specifications from line item source notes" })
+  async reExtractNotes(@Req() req: any, @Param("id") id: number) {
+    const jobCard = await this.jobCardService.findById(req.user.companyId, id);
+    const lineItemNotes = (jobCard.lineItems || [])
+      .map((li: any) => (li.notes || "").trim())
+      .filter(Boolean);
+
+    const combined = lineItemNotes.join("\n");
+    const cleaned = sanitizeNotes(combined);
+
+    await this.jobCardService.update(req.user.companyId, id, { notes: cleaned });
+    return { notes: cleaned };
   }
 
   @Get(":id/rubber-stock-options")
