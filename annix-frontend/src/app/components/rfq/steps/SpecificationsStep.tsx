@@ -14,6 +14,11 @@ import {
   type ValidPressureClassInfo,
 } from "@/app/lib/api/client";
 import { WORKING_PRESSURE_BAR, WORKING_TEMPERATURE_CELSIUS } from "@/app/lib/config/rfq";
+import {
+  FLANGE_FACE_OPTIONS,
+  flangeFaceGasketCompatibility,
+  recommendFlangeFace,
+} from "@/app/lib/config/rfq/gasketRecommendations";
 import { nowISO } from "@/app/lib/datetime";
 import { usePtRecommendations } from "@/app/lib/hooks/usePtRecommendations";
 import { log } from "@/app/lib/logger";
@@ -1315,9 +1320,9 @@ export default function SpecificationsStep(props: {
                     Material Specifications
                   </h3>
 
-                  <div className="grid grid-cols-4 gap-3">
+                  <div className="grid grid-cols-5 gap-3">
                     {/* Steel Specification - with grouped options and suitability validation */}
-                    <div ref={steelSpecDropdownRef} className="relative">
+                    <div ref={steelSpecDropdownRef} className="relative col-span-2">
                       <label className="block text-xs font-semibold text-gray-900 mb-1">
                         Steel Specification <span className="text-red-500">*</span>
                       </label>
@@ -2173,6 +2178,67 @@ export default function SpecificationsStep(props: {
                         </div>
                       ) : null;
                     })()}
+
+                    {/* Flange Face - RF/FF/RTJ */}
+                    {globalSpecs?.flangeStandardId &&
+                      globalSpecs.flangeStandardId !== "PE" && (
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-900 mb-1">
+                            Flange Face *
+                            {globalSpecs?.gasketType &&
+                              recommendFlangeFace(globalSpecs.gasketType) !==
+                                globalSpecs?.flangeFace &&
+                              globalSpecs?.flangeFace && (
+                                <span className="ml-1 text-xs text-amber-600 font-normal">
+                                  (Override)
+                                </span>
+                              )}
+                          </label>
+                          <select
+                            value={globalSpecs?.flangeFace || ""}
+                            onChange={(e) =>
+                              onUpdateGlobalSpecs({
+                                ...globalSpecs,
+                                flangeFace:
+                                  (e.target.value as "RF" | "FF" | "RTJ") || undefined,
+                              })
+                            }
+                            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
+                            required
+                          >
+                            <option value="">Select face...</option>
+                            {FLANGE_FACE_OPTIONS.map((opt) => (
+                              <option key={opt.value} value={opt.value}>
+                                {opt.label}
+                              </option>
+                            ))}
+                          </select>
+                          {!globalSpecs?.flangeFace && globalSpecs?.gasketType && (
+                            <div className="mt-1 p-1.5 bg-blue-50 border border-blue-200 rounded text-xs">
+                              <p className="text-blue-800">
+                                <span className="font-medium">
+                                  Recommended: {recommendFlangeFace(globalSpecs.gasketType)}
+                                </span>
+                                <span className="text-blue-600 ml-1">
+                                  - based on gasket selection
+                                </span>
+                              </p>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  onUpdateGlobalSpecs({
+                                    ...globalSpecs,
+                                    flangeFace: recommendFlangeFace(globalSpecs.gasketType),
+                                  })
+                                }
+                                className="mt-1 px-2 py-0.5 bg-blue-600 text-white rounded text-xs hover:bg-blue-700"
+                              >
+                                Apply
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      )}
                   </div>
                 </div>
               </>
@@ -7600,6 +7666,42 @@ export default function SpecificationsStep(props: {
                           </div>
                         </div>
                       )}
+
+                    {(() => {
+                      const compat = flangeFaceGasketCompatibility(
+                        globalSpecs?.flangeFace,
+                        globalSpecs?.gasketType,
+                      );
+                      if (!compat) return null;
+
+                      const isError = compat.level === "error";
+                      return (
+                        <div
+                          className={`mt-2 p-2 rounded text-xs ${
+                            isError
+                              ? "bg-red-50 border border-red-300"
+                              : "bg-amber-50 border border-amber-200"
+                          }`}
+                        >
+                          <div className="flex items-start gap-2">
+                            <svg
+                              className={`w-4 h-4 flex-shrink-0 mt-0.5 ${isError ? "text-red-600" : "text-amber-600"}`}
+                              fill="currentColor"
+                              viewBox="0 0 20 20"
+                            >
+                              <path
+                                fillRule="evenodd"
+                                d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                                clipRule="evenodd"
+                              />
+                            </svg>
+                            <p className={isError ? "text-red-800" : "text-amber-800"}>
+                              {compat.message}
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    })()}
                   </div>
                 </div>
 

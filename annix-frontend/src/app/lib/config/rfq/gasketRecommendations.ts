@@ -152,3 +152,78 @@ export function recommendGasket(
     reason: bestRule.reason,
   };
 }
+
+export type FlangeFace = "RF" | "FF" | "RTJ";
+
+const RUBBER_GASKET_PREFIXES = ["EPDM", "NBR", "Viton", "Neoprene"];
+
+export function recommendFlangeFace(gasketType: string | undefined): FlangeFace {
+  if (!gasketType) return "RF";
+  if (gasketType.startsWith("RTJ")) return "RTJ";
+  if (RUBBER_GASKET_PREFIXES.some((prefix) => gasketType.startsWith(prefix))) return "FF";
+  return "RF";
+}
+
+export interface FlangeFaceCompatibility {
+  level: "warning" | "error";
+  message: string;
+}
+
+export function flangeFaceGasketCompatibility(
+  flangeFace: string | undefined,
+  gasketType: string | undefined,
+): FlangeFaceCompatibility | null {
+  if (!flangeFace || !gasketType) return null;
+
+  const isRtjGasket = gasketType.startsWith("RTJ");
+  const isRubberGasket = RUBBER_GASKET_PREFIXES.some((prefix) => gasketType.startsWith(prefix));
+  const isSpiralWound = gasketType.startsWith("SW-");
+
+  if (isRtjGasket && flangeFace !== "RTJ") {
+    return {
+      level: "error",
+      message: "RTJ gaskets require RTJ (Ring Type Joint) flange faces. Change flange face to RTJ.",
+    };
+  }
+
+  if (!isRtjGasket && flangeFace === "RTJ") {
+    return {
+      level: "error",
+      message:
+        "RTJ flange faces require RTJ ring gaskets. Change to an RTJ gasket or select RF/FF flange face.",
+    };
+  }
+
+  if (flangeFace === "FF" && isSpiralWound) {
+    return {
+      level: "warning",
+      message:
+        "Spiral wound gaskets are designed for Raised Face (RF) flanges. Flat Face flanges may not seal correctly with spiral wound gaskets.",
+    };
+  }
+
+  if (flangeFace === "RF" && isRubberGasket) {
+    return {
+      level: "warning",
+      message:
+        "Rubber gaskets are recommended for Flat Face (FF) flanges. Raised Face flanges can damage soft gaskets and cause uneven compression.",
+    };
+  }
+
+  return null;
+}
+
+export const FLANGE_FACE_OPTIONS: Array<{ value: FlangeFace; label: string; description: string }> =
+  [
+    { value: "RF", label: "RF - Raised Face", description: "Standard for most metallic gaskets" },
+    {
+      value: "FF",
+      label: "FF - Flat Face",
+      description: "For rubber-lined piping & soft gaskets",
+    },
+    {
+      value: "RTJ",
+      label: "RTJ - Ring Type Joint",
+      description: "High pressure/temperature service",
+    },
+  ];

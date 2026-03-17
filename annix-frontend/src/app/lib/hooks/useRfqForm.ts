@@ -354,6 +354,7 @@ export interface GlobalSpecs {
   flangeStandardId?: number;
   flangePressureClassId?: number;
   flangeTypeCode?: string;
+  flangeFace?: "RF" | "FF" | "RTJ";
 
   ecpMarineInfluence?: "None" | "Coastal" | "Offshore";
   ecpIso12944Category?: "C1" | "C2" | "C3" | "C4" | "C5" | "CX";

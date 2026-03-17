@@ -5,6 +5,7 @@ import { getFlangeMaterialGroup } from "@/app/components/rfq/utils";
 import { ArSteelWarningBanner } from "@/app/components/rfq/warnings/ArSteelWarningBanner";
 import { materialValidationApi, type ValidPressureClassInfo } from "@/app/lib/api/client";
 import { log } from "@/app/lib/logger";
+import { FLANGE_FACE_OPTIONS, recommendFlangeFace } from "@/app/lib/config/rfq/gasketRecommendations";
 import {
   checkSuitabilityFromCache,
   findMaterialLimits,
@@ -75,7 +76,9 @@ export interface MaterialSpecificationsSectionProps {
     flangeStandardId?: number | string;
     flangePressureClassId?: number;
     flangeTypeCode?: string;
+    flangeFace?: "RF" | "FF" | "RTJ";
     steelPipesSpecsConfirmed?: boolean;
+    gasketType?: string;
   };
   onUpdateGlobalSpecs: (specs: Record<string, unknown>) => void;
   masterData: {
@@ -429,8 +432,8 @@ export function MaterialSpecificationsSection(props: MaterialSpecificationsSecti
         <ArSteelWarningBanner steelSpecName={selectedSteelSpecName} className="mb-3" />
       )}
 
-      <div className="grid grid-cols-4 gap-3">
-        <div ref={steelSpecDropdownRef} className="relative">
+      <div className="grid grid-cols-5 gap-3">
+        <div ref={steelSpecDropdownRef} className="relative col-span-2">
           <label
             className={`block text-xs font-semibold mb-1 ${isSelectedSpecUnsuitable ? "text-red-700" : "text-gray-900"}`}
           >
@@ -982,6 +985,59 @@ export function MaterialSpecificationsSection(props: MaterialSpecificationsSecti
                 </option>
               ))}
             </select>
+          </div>
+        )}
+
+        {globalSpecs?.flangeStandardId && globalSpecs.flangeStandardId !== "PE" && (
+          <div>
+            <label className="block text-xs font-semibold text-gray-900 mb-1">
+              Flange Face *
+              {globalSpecs?.gasketType &&
+                recommendFlangeFace(globalSpecs.gasketType) !== globalSpecs?.flangeFace &&
+                globalSpecs?.flangeFace && (
+                  <span className="ml-1 text-xs text-amber-600 font-normal">(Override)</span>
+                )}
+            </label>
+            <select
+              value={globalSpecs?.flangeFace || ""}
+              onChange={(e) =>
+                onUpdateGlobalSpecs({
+                  ...globalSpecs,
+                  flangeFace: (e.target.value as "RF" | "FF" | "RTJ") || undefined,
+                })
+              }
+              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900"
+              required
+            >
+              <option value="">Select face...</option>
+              {FLANGE_FACE_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+            {!globalSpecs?.flangeFace && globalSpecs?.gasketType && (
+              <div className="mt-1 p-1.5 bg-blue-50 border border-blue-200 rounded text-xs">
+                <p className="text-blue-800">
+                  <span className="font-medium">
+                    Recommended: {recommendFlangeFace(globalSpecs.gasketType)}
+                  </span>
+                  <span className="text-blue-600 ml-1">- based on gasket selection</span>
+                </p>
+                <button
+                  type="button"
+                  onClick={() =>
+                    onUpdateGlobalSpecs({
+                      ...globalSpecs,
+                      flangeFace: recommendFlangeFace(globalSpecs.gasketType),
+                    })
+                  }
+                  className="mt-1 px-2 py-0.5 bg-blue-600 text-white rounded text-xs hover:bg-blue-700"
+                >
+                  Apply
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>

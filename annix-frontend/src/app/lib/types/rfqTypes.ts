@@ -228,6 +228,7 @@ export interface GlobalSpecs {
   flangeStandardId?: number;
   flangePressureClassId?: number;
   flangeTypeCode?: string;
+  flangeFace?: "RF" | "FF" | "RTJ";
   pressureClassDesignation?: string;
 }
 
