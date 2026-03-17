@@ -38,6 +38,7 @@ interface CompoundSection {
   linkedInvoices: Map<number, RubberTaxInvoiceDto>;
   linkedDeliveryNotes: Map<number, RubberDeliveryNoteDto>;
   calendaredInvoices: Map<number, RubberTaxInvoiceDto>;
+  calendaredInvoiceDns: Map<number, RubberDeliveryNoteDto>;
 }
 
 function rollsFromExtractedData(
@@ -184,6 +185,7 @@ function CompoundCard(props: {
               movements={section.dispatchedMovements}
               deliveryNotes={section.linkedDeliveryNotes}
               calendaredInvoices={section.calendaredInvoices}
+              calendaredInvoiceDns={section.calendaredInvoiceDns}
               totalDispatched={section.totalDispatched}
             />
           </div>
@@ -296,9 +298,21 @@ function DispatchedSection(props: {
   movements: RubberCompoundMovementDto[];
   deliveryNotes: Map<number, RubberDeliveryNoteDto>;
   calendaredInvoices: Map<number, RubberTaxInvoiceDto>;
+  calendaredInvoiceDns: Map<number, RubberDeliveryNoteDto>;
   totalDispatched: number;
 }) {
-  const { movements, deliveryNotes, calendaredInvoices, totalDispatched } = props;
+  const { movements, deliveryNotes, calendaredInvoices, calendaredInvoiceDns, totalDispatched } =
+    props;
+
+  const calendaringByInvoice = movements
+    .filter((m) => m.referenceType === "CALENDARING" && m.referenceId)
+    .reduce<Map<number, RubberCompoundMovementDto[]>>((acc, m) => {
+      const key = m.referenceId as number;
+      const existing = acc.get(key) || [];
+      return new Map([...acc, [key, [...existing, m]]]);
+    }, new Map());
+
+  const nonCalendaringMovements = movements.filter((m) => m.referenceType !== "CALENDARING");
 
   return (
     <div>
@@ -313,9 +327,69 @@ function DispatchedSection(props: {
         <p className="text-sm text-gray-500">No dispatches recorded</p>
       ) : (
         <div className="space-y-2 max-h-80 overflow-y-auto">
-          {movements.map((m) => {
+          {[...calendaringByInvoice.entries()].map(([invoiceId, invoiceMovements]) => {
+            const calInv = calendaredInvoices.get(invoiceId);
+            const linkedDn = calendaredInvoiceDns.get(invoiceId);
+            const dnRolls = linkedDn ? rollsFromExtractedData(linkedDn.extractedData) : [];
+            const totalKg = invoiceMovements.reduce((sum, m) => sum + m.quantityKg, 0);
+            const date = invoiceMovements[0]?.createdAt.split("T")[0] || "";
+
+            return (
+              <div
+                key={`cal-${invoiceId}`}
+                className="p-2 rounded border border-gray-100 bg-red-50 text-sm"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="font-medium text-red-700">-{formatKg(totalKg)}</span>
+                  <span className="text-xs text-gray-400">{date}</span>
+                </div>
+                {calInv && (
+                  <Link
+                    href={`/au-rubber/portal/tax-invoices/${calInv.id}`}
+                    className="text-xs text-yellow-600 hover:underline"
+                  >
+                    {calInv.invoiceNumber} - {calInv.companyName || "Calendarer"}
+                  </Link>
+                )}
+                {linkedDn && (
+                  <Link
+                    href={`/au-rubber/portal/delivery-notes/${linkedDn.id}`}
+                    className="text-xs text-yellow-600 hover:underline block"
+                  >
+                    DN: {linkedDn.deliveryNoteNumber || `#${linkedDn.id}`}
+                  </Link>
+                )}
+                {dnRolls.length > 0 ? (
+                  <div className="mt-1 ml-2 space-y-0.5">
+                    {dnRolls.map((roll, ri) => (
+                      <div
+                        key={ri}
+                        className="flex items-center justify-between text-xs text-gray-500"
+                      >
+                        <span>Roll {roll.rollNumber || ri + 1}</span>
+                        <span>{roll.weightKg != null ? formatKg(roll.weightKg) : "-"}</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="mt-1 ml-2 space-y-0.5">
+                    {invoiceMovements.map((im, idx) => (
+                      <div
+                        key={idx}
+                        className="flex items-center justify-between text-xs text-gray-500"
+                      >
+                        <span>Roll {idx + 1}</span>
+                        <span>{formatKg(im.quantityKg)}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+
+          {nonCalendaringMovements.map((m) => {
             const dn = m.referenceId ? deliveryNotes.get(m.referenceId) : null;
-            const calInv = m.referenceId ? calendaredInvoices.get(m.referenceId) : null;
             const rolls = dn ? rollsFromExtractedData(dn.extractedData) : [];
 
             return (
@@ -332,19 +406,8 @@ function DispatchedSection(props: {
                     DN: {dn.deliveryNoteNumber || `#${dn.id}`} - {dn.supplierCompanyName || ""}
                   </Link>
                 )}
-                {calInv && (
-                  <Link
-                    href={`/au-rubber/portal/tax-invoices/${calInv.id}`}
-                    className="text-xs text-yellow-600 hover:underline"
-                  >
-                    {calInv.invoiceNumber} - {calInv.companyName || "Calendarer"}
-                  </Link>
-                )}
-                {!dn && !calInv && m.referenceType && (
+                {!dn && m.referenceType && (
                   <p className="text-xs text-gray-500">{m.referenceType.replace(/_/g, " ")}</p>
-                )}
-                {m.notes && m.referenceType === "CALENDARING" && (
-                  <p className="text-xs text-gray-500 mt-0.5">{m.notes}</p>
                 )}
                 {rolls.length > 0 && (
                   <div className="mt-1 ml-2 space-y-0.5">
@@ -355,7 +418,7 @@ function DispatchedSection(props: {
                       >
                         <span>Roll {roll.rollNumber || ri + 1}</span>
                         <div className="flex items-center space-x-3">
-                          {roll.weightKg !== undefined && <span>{roll.weightKg} kg</span>}
+                          {roll.weightKg != null && <span>{formatKg(roll.weightKg)}</span>}
                           {roll.deliveryDate && <span>{roll.deliveryDate}</span>}
                         </div>
                       </div>
@@ -443,6 +506,11 @@ export default function CompoundStocksPage() {
 
       const invoiceMap = new Map(invoices.map((inv) => [inv.id, inv]));
       const dnMap = new Map(deliveryNotes.map((dn) => [dn.id, dn]));
+      const dnByNumber = new Map(
+        deliveryNotes
+          .filter((dn) => dn.deliveryNoteNumber)
+          .map((dn) => [dn.deliveryNoteNumber as string, dn]),
+      );
       const productMap = new Map(products.map((p) => [p.id, p]));
 
       const activeOrders = orders.filter((o) => o.status >= 2 && o.status <= 5);
@@ -472,6 +540,7 @@ export default function CompoundStocksPage() {
 
         const linkedDeliveryNotes = new Map<number, RubberDeliveryNoteDto>();
         const calendaredInvoices = new Map<number, RubberTaxInvoiceDto>();
+        const calendaredInvoiceDns = new Map<number, RubberDeliveryNoteDto>();
         dispatchedMovements.forEach((m) => {
           if (m.referenceId && m.referenceType === "DELIVERY_DEDUCTION") {
             const dn = dnMap.get(m.referenceId);
@@ -479,7 +548,14 @@ export default function CompoundStocksPage() {
           }
           if (m.referenceId && m.referenceType === "CALENDARING") {
             const inv = invoiceMap.get(m.referenceId);
-            if (inv) calendaredInvoices.set(m.referenceId, inv);
+            if (inv) {
+              calendaredInvoices.set(m.referenceId, inv);
+              const dnRef = inv.extractedData?.deliveryNoteRef;
+              if (dnRef) {
+                const linkedDn = dnByNumber.get(dnRef);
+                if (linkedDn) calendaredInvoiceDns.set(m.referenceId, linkedDn);
+              }
+            }
           }
         });
 
@@ -520,6 +596,7 @@ export default function CompoundStocksPage() {
           linkedInvoices,
           linkedDeliveryNotes,
           calendaredInvoices,
+          calendaredInvoiceDns,
         };
       });
 
@@ -560,12 +637,13 @@ export default function CompoundStocksPage() {
   };
 
   const filteredSections = sections.filter((s) => {
+    const hasReceivedStock = s.totalReceived > 0;
     const matchesSearch =
       searchQuery === "" ||
       s.stock.compoundName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       s.stock.compoundCode?.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesLowStock = !showLowStockOnly || s.stock.isLowStock;
-    return matchesSearch && matchesLowStock;
+    return hasReceivedStock && matchesSearch && matchesLowStock;
   });
 
   const totalActualSOH = filteredSections.reduce((sum, s) => sum + s.stock.quantityKg, 0);

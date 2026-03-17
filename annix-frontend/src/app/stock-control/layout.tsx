@@ -39,14 +39,15 @@ export async function generateMetadata(): Promise<Metadata> {
 
   const title = companyName ? `${companyName} Stock Control` : "Annix Stock Control";
 
-  const icons =
+  const iconUrl =
     hasCustomIcon && companyId
-      ? {
-          apple: [{ url: `/api/stock-control/${companyId}/icon/192`, sizes: "192x192" }],
-        }
-      : {
-          apple: [{ url: "/images/stock-control-icon-192.png", sizes: "192x192" }],
-        };
+      ? `/api/stock-control/${companyId}/icon/192`
+      : "/images/annix-icon.png";
+
+  const icons = {
+    icon: [{ url: iconUrl, sizes: "192x192", type: "image/png" }],
+    apple: [{ url: iconUrl, sizes: "192x192" }],
+  };
 
   return {
     title: {

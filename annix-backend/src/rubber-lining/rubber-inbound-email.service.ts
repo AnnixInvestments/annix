@@ -1693,10 +1693,8 @@ ${truncatedText}`;
       textLower.includes("batch no") ||
       textLower.includes("compound code");
 
-    if (hasDataSheetIndicators) {
-      this.logger.log(
-        `Document has data sheet indicators, treating as table CoC (overrides filename): ${filename}`,
-      );
+    if (hasDataSheetIndicators && !filenameIndicatesGraph) {
+      this.logger.log(`Document has data sheet indicators, treating as table CoC: ${filename}`);
       return { isGraph: false, batchNumbers: [] };
     }
 

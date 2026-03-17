@@ -9,7 +9,6 @@ import { CustomerDnAnalysisModal } from "@/app/au-rubber/components/CustomerDnAn
 import { FileDropZone } from "@/app/au-rubber/components/FileDropZone";
 import {
   Pagination,
-  type SortDirection,
   SortIcon,
   TableIcons,
   TableLoadingState,

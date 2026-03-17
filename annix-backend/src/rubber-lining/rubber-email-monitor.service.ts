@@ -354,8 +354,7 @@ export class RubberEmailMonitorService implements OnModuleInit {
 
       if (aiResult.supplierType === "CALENDER_ROLL") {
         const snRubberCompany = companies.find(
-          (c) =>
-            c.name.toLowerCase().includes("s&n") || c.name.toLowerCase().includes("sn rubber"),
+          (c) => c.name.toLowerCase().includes("s&n") || c.name.toLowerCase().includes("sn rubber"),
         );
         if (snRubberCompany) {
           this.logger.log(`Matched calender roll CoC to company: ${snRubberCompany.name}`);

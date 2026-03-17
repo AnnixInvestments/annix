@@ -150,7 +150,10 @@ export default function SupplierCocsPage() {
     }
   }, [uploadType, companies]);
 
-  const handleSort = (section: "compounder" | "calenderer" | "calenderRoll", column: SortColumn) => {
+  const handleSort = (
+    section: "compounder" | "calenderer" | "calenderRoll",
+    column: SortColumn,
+  ) => {
     const sortMap = {
       compounder: { setter: setCompounderSort, current: compounderSort },
       calenderer: { setter: setCalendererSort, current: calendererSort },
@@ -234,7 +237,14 @@ export default function SupplierCocsPage() {
     setCompounderPage(0);
     setCalendererPage(0);
     setCalenderRollPage(0);
-  }, [searchQuery, filterStatus, showAllVersions, compounderPageSize, calendererPageSize, calenderRollPageSize]);
+  }, [
+    searchQuery,
+    filterStatus,
+    showAllVersions,
+    compounderPageSize,
+    calendererPageSize,
+    calenderRollPageSize,
+  ]);
 
   useEffect(() => {
     if (!isAnalyzing) return;

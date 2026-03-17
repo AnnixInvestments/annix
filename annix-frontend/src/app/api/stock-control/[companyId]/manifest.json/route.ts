@@ -43,10 +43,10 @@ export async function GET(
       iconUrls: {
         size192: hasCustomIcon
           ? `/api/stock-control/${companyId}/icon/192`
-          : "/images/stock-control-icon-192.png",
+          : "/images/annix-icon.png",
         size512: hasCustomIcon
           ? `/api/stock-control/${companyId}/icon/512`
-          : "/images/stock-control-icon-512.png",
+          : "/images/annix-icon.png",
       },
       shortcuts: [
         { name: "Dashboard", url: "/stock-control/portal/dashboard" },

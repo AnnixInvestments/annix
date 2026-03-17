@@ -34,7 +34,7 @@ export function StockControlDynamicBranding() {
   return (
     <>
       <DynamicManifest manifestUrl={manifestUrl} />
-      <DynamicFavicon iconUrl={iconUrl} fallbackIconUrl="/images/stock-control-icon-192.png" />
+      <DynamicFavicon iconUrl={iconUrl} fallbackIconUrl="/images/annix-icon.png" />
     </>
   );
 }

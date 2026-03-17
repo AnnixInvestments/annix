@@ -7,7 +7,6 @@ import { Breadcrumb } from "@/app/au-rubber/components/Breadcrumb";
 import { FileDropZone } from "@/app/au-rubber/components/FileDropZone";
 import {
   Pagination,
-  type SortDirection,
   SortIcon,
   TableIcons,
   TableLoadingState,
