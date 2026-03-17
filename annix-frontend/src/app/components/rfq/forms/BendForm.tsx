@@ -96,7 +96,7 @@ export interface BendFormProps {
   requiredProducts?: string[];
   isUnregisteredCustomer?: boolean;
   onShowRestrictionPopup?: (
-    type: "fittings" | "itemLimit" | "quantityLimit" | "drawings",
+    type: "itemLimit" | "quantityLimit" | "drawings",
   ) => (e: React.MouseEvent) => void;
 }
 

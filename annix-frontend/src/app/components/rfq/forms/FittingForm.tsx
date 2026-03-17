@@ -110,7 +110,7 @@ export interface FittingFormProps {
   isLoadingNominalBores?: boolean;
   isUnregisteredCustomer?: boolean;
   onShowRestrictionPopup?: (
-    type: "fittings" | "itemLimit" | "quantityLimit" | "drawings",
+    type: "itemLimit" | "quantityLimit" | "drawings",
   ) => (e: React.MouseEvent) => void;
 }
 

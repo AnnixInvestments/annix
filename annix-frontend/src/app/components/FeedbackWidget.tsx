@@ -50,19 +50,23 @@ export function FeedbackWidget() {
       return;
     }
 
-    await submitFeedback.mutateAsync({
-      content: content.trim(),
-      source: feedbackSource,
-      pageUrl: pathname,
-    });
+    try {
+      await submitFeedback.mutateAsync({
+        content: content.trim(),
+        source: feedbackSource,
+        pageUrl: pathname,
+      });
 
-    setContent("");
-    resetTranscript();
-    setShowSuccess(true);
-    setTimeout(() => {
-      setShowSuccess(false);
-      setIsExpanded(false);
-    }, 3000);
+      setContent("");
+      resetTranscript();
+      setShowSuccess(true);
+      setTimeout(() => {
+        setShowSuccess(false);
+        setIsExpanded(false);
+      }, 3000);
+    } catch {
+      // Error is captured in submitFeedback.error and displayed in the UI
+    }
   };
 
   const handleVoiceToggle = () => {
@@ -77,12 +81,16 @@ export function FeedbackWidget() {
   const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setContent(e.target.value);
     setFeedbackSource("text");
+    if (submitFeedback.error) {
+      submitFeedback.reset();
+    }
   };
 
   const handleClose = () => {
     setIsExpanded(false);
     setContent("");
     resetTranscript();
+    submitFeedback.reset();
     if (isListening) {
       stopListening();
     }
@@ -185,7 +193,15 @@ export function FeedbackWidget() {
             {voiceError && <p className="text-xs text-red-600 mt-1">{voiceError}</p>}
 
             {submitFeedback.error && (
-              <p className="text-xs text-red-600 mt-1">{submitFeedback.error.message}</p>
+              <div className="flex items-center justify-between mt-1">
+                <p className="text-xs text-red-600">{submitFeedback.error.message}</p>
+                <button
+                  onClick={() => submitFeedback.reset()}
+                  className="text-xs text-red-400 hover:text-red-600 underline ml-2"
+                >
+                  Dismiss
+                </button>
+              </div>
             )}
 
             <div className="flex items-center justify-between mt-3">

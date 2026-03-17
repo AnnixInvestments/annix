@@ -111,7 +111,7 @@ interface ItemWrapperProps {
   requiredProducts: string[];
   isUnregisteredCustomer: boolean;
   onShowRestrictionPopup: (
-    type: "fittings" | "itemLimit" | "quantityLimit" | "drawings",
+    type: "itemLimit" | "quantityLimit" | "drawings",
   ) => (e: React.MouseEvent) => void;
 }
 
@@ -446,7 +446,7 @@ export default function ItemUploadStep(props: {
     !isAuthLoading && !isCustomerAuthenticated && !isAdminAuthenticated;
 
   // Restriction popup state - supports different popup types
-  type RestrictionPopupType = "fittings" | "itemLimit" | "quantityLimit" | "drawings";
+  type RestrictionPopupType = "itemLimit" | "quantityLimit" | "drawings";
   const [restrictionPopup, setRestrictionPopup] = useState<{
     type: RestrictionPopupType;
     x: number;
@@ -1443,10 +1443,6 @@ export default function ItemUploadStep(props: {
                 showRestrictionPopup("itemLimit")({} as React.MouseEvent);
                 return;
               }
-              if (itemType === "fitting" && isUnregisteredCustomer) {
-                showRestrictionPopup("fittings")({} as React.MouseEvent);
-                return;
-              }
               if (itemType === "pipe") {
                 handleAddPipe(material, insertAtStart);
               } else if (itemType === "bend") {
@@ -1456,7 +1452,6 @@ export default function ItemUploadStep(props: {
               }
             }}
             disabled={!canAddMoreItems}
-            fittingsDisabled={isUnregisteredCustomer}
           />
         )}
         {requiredProducts.includes("pipe_steel_work") && onAddPipeSteelWorkEntry && (
@@ -1664,10 +1659,6 @@ export default function ItemUploadStep(props: {
               <FirstItemMaterialSelector
                 selectedMaterials={requiredProducts}
                 onAddItem={(material, itemType) => {
-                  if (itemType === "fitting" && isUnregisteredCustomer) {
-                    showRestrictionPopup("fittings")({} as React.MouseEvent);
-                    return;
-                  }
                   if (itemType === "pipe") {
                     handleAddPipe(material);
                   } else if (itemType === "bend") {
@@ -1676,7 +1667,6 @@ export default function ItemUploadStep(props: {
                     onAddFittingEntry(undefined, false, material);
                   }
                 }}
-                fittingsDisabled={isUnregisteredCustomer}
               />
             )}
             {requiredProducts.includes("valves_meters_instruments") && onAddValveEntry && (
@@ -1987,19 +1977,19 @@ export default function ItemUploadStep(props: {
                     </button>
                     <button
                       onClick={
-                        isUnregisteredCustomer
-                          ? showRestrictionPopup("fittings")
+                        !canAddMoreItems
+                          ? showRestrictionPopup("itemLimit")
                           : () => onAddFittingEntry()
                       }
                       data-nix-target="add-fitting-button"
                       className={`flex items-center gap-2 px-4 py-2 rounded-lg border-2 transition-all ${
-                        isUnregisteredCustomer
+                        !canAddMoreItems
                           ? "bg-gray-100 border-gray-300 cursor-not-allowed"
                           : "bg-green-50 hover:bg-green-100 border-green-400 hover:border-green-500 hover:shadow-md"
                       }`}
                     >
                       <svg
-                        className={`w-5 h-5 ${isUnregisteredCustomer ? "text-gray-400" : "text-green-600"}`}
+                        className={`w-5 h-5 ${!canAddMoreItems ? "text-gray-400" : "text-green-600"}`}
                         fill="none"
                         stroke="currentColor"
                         viewBox="0 0 24 24"
@@ -2012,7 +2002,7 @@ export default function ItemUploadStep(props: {
                         />
                       </svg>
                       <span
-                        className={`text-sm font-semibold ${isUnregisteredCustomer ? "text-gray-500" : "text-green-700"}`}
+                        className={`text-sm font-semibold ${!canAddMoreItems ? "text-gray-500" : "text-green-700"}`}
                       >
                         Fitting
                       </span>
@@ -3177,49 +3167,14 @@ export default function ItemUploadStep(props: {
               stroke="currentColor"
               viewBox="0 0 24 24"
             >
-              {restrictionPopup.type === "fittings" ? (
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-                />
-              ) : (
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 15v2m0 0v2m0-2h2m-2 0H10m11-7a9 9 0 11-18 0 9 9 0 0118 0z"
-                />
-              )}
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 15v2m0 0v2m0-2h2m-2 0H10m11-7a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
             </svg>
             <div className="flex-1">
-              {restrictionPopup.type === "fittings" && (
-                <>
-                  <p className="text-sm font-semibold text-amber-400">Feature Under Construction</p>
-                  <p className="text-xs text-gray-300 mt-2">
-                    The Fittings module is currently being developed and will be available in a
-                    future update.
-                  </p>
-                  <p className="text-xs text-gray-400 mt-2">
-                    This feature will include support for tees, laterals, reducers, and other pipe
-                    fittings with automatic calculation of weights and materials.
-                  </p>
-                  <div className="mt-3 pt-2 border-t border-slate-600">
-                    <p className="text-xs text-gray-300">
-                      In the meantime, you can add straight pipes and bends to your RFQ.{" "}
-                      <Link
-                        href="/register"
-                        className="text-blue-400 hover:text-blue-300 underline"
-                        onClick={() => setRestrictionPopup(null)}
-                      >
-                        Create an account
-                      </Link>{" "}
-                      to be notified when this feature launches.
-                    </p>
-                  </div>
-                </>
-              )}
               {restrictionPopup.type === "itemLimit" && (
                 <>
                   <p className="text-sm font-semibold text-amber-400">Item Limit Reached</p>
