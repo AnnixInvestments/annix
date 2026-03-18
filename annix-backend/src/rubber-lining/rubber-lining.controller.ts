@@ -1552,7 +1552,10 @@ Formula: totalPrice = totalKg × salePricePerKg
       );
     }
 
-    const extractionResult = await this.rubberCocExtractionService.extractByType(coc.cocType, pdfText);
+    const extractionResult = await this.rubberCocExtractionService.extractByType(
+      coc.cocType,
+      pdfText,
+    );
 
     const updatedCoc = await this.rubberCocService.reextractAndUpdateCoc(
       Number(id),

@@ -454,9 +454,14 @@ export default function DeliveryNoteDetailPage() {
       <Breadcrumb
         items={[
           {
-            label: searchParams.get("returnUrl") ? "Back" : isCustomerDn ? "Customer Delivery Notes" : "Supplier Delivery Notes",
-            href: searchParams.get("returnUrl")
-              || (isCustomerDn
+            label: searchParams.get("returnUrl")
+              ? "Back"
+              : isCustomerDn
+                ? "Customer Delivery Notes"
+                : "Supplier Delivery Notes",
+            href:
+              searchParams.get("returnUrl") ||
+              (isCustomerDn
                 ? "/au-rubber/portal/delivery-notes/customers"
                 : "/au-rubber/portal/delivery-notes/suppliers"),
           },

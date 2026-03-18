@@ -696,9 +696,7 @@ Respond ONLY with JSON: {"cocType": "COMPOUNDER" | "CALENDARER", "reason": "brie
       if (jsonMatch) {
         const parsed = JSON.parse(jsonMatch[0]);
         if (parsed.cocType === "COMPOUNDER" || parsed.cocType === "CALENDARER") {
-          this.logger.log(
-            `AI classified Impilo document as ${parsed.cocType}: ${parsed.reason}`,
-          );
+          this.logger.log(`AI classified Impilo document as ${parsed.cocType}: ${parsed.reason}`);
           return parsed.cocType === "COMPOUNDER"
             ? SupplierCocType.COMPOUNDER
             : SupplierCocType.CALENDARER;
@@ -811,9 +809,7 @@ Respond ONLY with JSON: {"cocType": "COMPOUNDER" | "CALENDARER", "reason": "brie
     if (calendererMatch) {
       const cocType = this.classifyImpiloCocType(pdfText);
       const deliveryNoteType =
-        cocType === SupplierCocType.COMPOUNDER
-          ? DeliveryNoteType.COMPOUND
-          : DeliveryNoteType.ROLL;
+        cocType === SupplierCocType.COMPOUNDER ? DeliveryNoteType.COMPOUND : DeliveryNoteType.ROLL;
       return {
         company: calendererMatch,
         cocType,

@@ -221,14 +221,17 @@ export default function TaxInvoiceDetailPage() {
   }
 
   const returnUrl = searchParams.get("returnUrl");
-  const backPath = returnUrl
-    || (invoice.invoiceType === "SUPPLIER"
+  const backPath =
+    returnUrl ||
+    (invoice.invoiceType === "SUPPLIER"
       ? "/au-rubber/portal/tax-invoices/suppliers"
       : "/au-rubber/portal/tax-invoices/customers");
 
   const backLabel = returnUrl
     ? "Back"
-    : invoice.invoiceType === "SUPPLIER" ? "Supplier Tax Invoices" : "Customer Tax Invoices";
+    : invoice.invoiceType === "SUPPLIER"
+      ? "Supplier Tax Invoices"
+      : "Customer Tax Invoices";
 
   return (
     <div className="space-y-6">
