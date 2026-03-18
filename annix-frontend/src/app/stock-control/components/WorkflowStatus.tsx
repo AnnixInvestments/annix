@@ -55,14 +55,10 @@ const resolveStepState = (
 ): StepState => {
   const approval = approvalByStep[stepKey];
 
-  if (approval?.status === "rejected") {
-    return "rejected";
-  } else if (approval?.status === "approved") {
-    return "completed";
+  if (index < currentStepIndex) {
+    return approval?.status === "rejected" ? "rejected" : "completed";
   } else if (index === currentStepIndex) {
-    return "current";
-  } else if (index < currentStepIndex) {
-    return "completed";
+    return approval?.status === "rejected" ? "rejected" : "current";
   } else {
     return "pending";
   }
@@ -330,17 +326,6 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
 
   const laneCount = branches.length > 0 ? Math.max(...Object.values(branchLanes)) + 1 : 0;
 
-  const visualStepIndex = useMemo(() => {
-    for (let i = currentStepIndex; i > 0; i--) {
-      const prevKey = allSteps[i - 1]?.key;
-      const branch = branches.find((b) => b.triggerFgKey === prevKey && b.nextFgIdx === i);
-      if (branch && !branch.bgSteps.every((bg) => bg.completedAt !== null)) {
-        return i - 1;
-      }
-    }
-    return currentStepIndex;
-  }, [currentStepIndex, branches, allSteps]);
-
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
@@ -477,7 +462,7 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
     >
       {svgPaths.length > 0 && (
         <svg
-          className="absolute inset-0 pointer-events-none z-10"
+          className="absolute inset-0 pointer-events-none z-20"
           width={containerSize.width}
           height={containerSize.height}
           style={{ overflow: "visible" }}
@@ -497,11 +482,11 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
 
       <div className="flex items-start">
         {allSteps.map((step, index) => {
-          const state = resolveStepState(step.key, index, visualStepIndex, approvalByStep);
+          const state = resolveStepState(step.key, index, currentStepIndex, approvalByStep);
           const approval = approvalByStep[step.key];
           const isFirst = index === 0;
           const isLast = index === allSteps.length - 1;
-          const lineCompleted = index < visualStepIndex;
+          const lineCompleted = index < currentStepIndex;
 
           const assignedName =
             state === "current" || state === "pending"
@@ -524,7 +509,7 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
               className={`${isNarrowFirst ? "flex-none" : ""} flex flex-col items-center min-w-0`}
               style={isNarrowFirst ? { width: "80px" } : { flexGrow }}
             >
-              <div className="flex items-center w-full relative" style={{ zIndex: 20 }}>
+              <div className="flex items-center w-full relative" style={{ zIndex: 10 }}>
                 {!isFirst && (
                   <div
                     className="flex-1"
@@ -545,7 +530,7 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
                     fgNodeRefs.current[index] = el;
                   }}
                   className="relative"
-                  style={{ zIndex: 20 }}
+                  style={{ zIndex: 30 }}
                 >
                   <StepNode
                     state={state}
@@ -799,17 +784,6 @@ function MobileTransitMap(props: MobileTransitMapProps) {
     [branches],
   );
 
-  const visualStepIndex = useMemo(() => {
-    for (let i = currentStepIndex; i > 0; i--) {
-      const prevKey = allSteps[i - 1]?.key;
-      const branch = branches.find((b) => b.triggerFgKey === prevKey && b.nextFgIdx === i);
-      if (branch && !branch.bgSteps.every((bg) => bg.completedAt !== null)) {
-        return i - 1;
-      }
-    }
-    return currentStepIndex;
-  }, [currentStepIndex, branches, allSteps]);
-
   if (allSteps.length === 0) {
     return <p className="text-sm text-gray-500">No workflow steps configured</p>;
   }
@@ -866,10 +840,10 @@ function MobileTransitMap(props: MobileTransitMapProps) {
         })()}
 
       {allSteps.map((step, index) => {
-        const state = resolveStepState(step.key, index, visualStepIndex, approvalByStep);
+        const state = resolveStepState(step.key, index, currentStepIndex, approvalByStep);
         const approval = approvalByStep[step.key];
         const isLast = index === allSteps.length - 1;
-        const lineCompleted = index < visualStepIndex;
+        const lineCompleted = index < currentStepIndex;
         const branch = branchForStep[step.key];
 
         const assignedName =

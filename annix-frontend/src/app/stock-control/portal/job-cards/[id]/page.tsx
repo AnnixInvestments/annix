@@ -258,6 +258,20 @@ export default function JobCardDetailPage() {
     }
   };
 
+  const [isCompletingFgAction, setIsCompletingFgAction] = useState(false);
+  const handleCompleteFgAction = async () => {
+    if (!currentStep) return;
+    try {
+      setIsCompletingFgAction(true);
+      await stockControlApiClient.completeAction(jobId, currentStep, "primary");
+      fetchData();
+    } catch (err) {
+      setError(err instanceof Error ? err : new Error("Failed to complete action"));
+    } finally {
+      setIsCompletingFgAction(false);
+    }
+  };
+
   const handleSaveNotes = async (editedNotes: string) => {
     const originalNotes = jobCard?.notes || null;
     await stockControlApiClient.updateJobCard(jobId, { notes: editedNotes });
@@ -359,7 +373,7 @@ export default function JobCardDetailPage() {
       {},
     );
 
-    return backgroundSteps.filter((bg) => {
+    const allActionable = backgroundSteps.filter((bg) => {
       if (bg.completedAt !== null) return false;
 
       const trigger = bg.triggerAfterStep || "__root__";
@@ -381,7 +395,31 @@ export default function JobCardDetailPage() {
 
       return true;
     });
+
+    if (allActionable.length <= 1) return allActionable;
+
+    const firstTrigger = allActionable[0].triggerAfterStep || "__root__";
+    const firstTriggerFgIdx = firstTrigger === "__root__" ? 0 : fgKeys.indexOf(firstTrigger);
+
+    return allActionable.filter((bg) => {
+      const trigger = bg.triggerAfterStep || "__root__";
+      const triggerFgIdx = trigger === "__root__" ? 0 : fgKeys.indexOf(trigger);
+      return triggerFgIdx === firstTriggerFgIdx;
+    });
   }, [workflowStatus, backgroundSteps, currentStatus, user?.name]);
+
+  const currentStepActionCompleted = useMemo(() => {
+    if (!workflowStatus || !currentStep) return false;
+    const completions = workflowStatus.actionCompletions || [];
+    return completions.some((ac) => ac.stepKey === currentStep && ac.actionType === "primary");
+  }, [workflowStatus, currentStep]);
+
+  const currentStepActionLabel = useMemo(() => {
+    if (!workflowStatus || !currentStep) return null;
+    const fgSteps = workflowStatus.foregroundSteps || [];
+    const stepConfig = fgSteps.find((s) => s.key === currentStep);
+    return stepConfig?.actionLabel || null;
+  }, [workflowStatus, currentStep]);
 
   const { activeTab, visitedTabs, handleTabChange, visibleTabs } = useJobCardTabs(tabDefinitions);
 
@@ -583,24 +621,42 @@ export default function JobCardDetailPage() {
             currentUserName={user?.name || null}
           />
           <div className="bg-white rounded-lg border border-gray-200 p-4">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
               <h3 className="text-sm font-semibold text-gray-900">Workflow Actions</h3>
               {canApprove && currentStep ? (
-                <div className="flex items-center gap-3">
-                  <p className="text-sm text-gray-600">
-                    Awaiting your approval at{" "}
-                    <span className="font-medium">{currentStep.replace(/_/g, " ")}</span>
-                  </p>
-                  <button
-                    onClick={() => openApprovalModal(currentStep)}
-                    className="px-4 py-2 bg-teal-600 text-white rounded-md hover:bg-teal-700 font-medium text-sm"
-                  >
-                    Review &amp; Approve
-                  </button>
+                <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+                  {!currentStepActionCompleted && currentStepActionLabel ? (
+                    <>
+                      <p className="text-sm text-gray-600">
+                        Action required at{" "}
+                        <span className="font-medium">{currentStep.replace(/_/g, " ")}</span>
+                      </p>
+                      <button
+                        onClick={handleCompleteFgAction}
+                        disabled={isCompletingFgAction}
+                        className="px-4 py-2 bg-amber-600 text-white rounded-md hover:bg-amber-700 font-medium text-sm disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+                      >
+                        {isCompletingFgAction ? "..." : currentStepActionLabel}
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-sm text-gray-600">
+                        Awaiting your approval at{" "}
+                        <span className="font-medium">{currentStep.replace(/_/g, " ")}</span>
+                      </p>
+                      <button
+                        onClick={() => openApprovalModal(currentStep)}
+                        className="px-4 py-2 bg-teal-600 text-white rounded-md hover:bg-teal-700 font-medium text-sm"
+                      >
+                        Review &amp; Approve
+                      </button>
+                    </>
+                  )}
                 </div>
               ) : (
                 <div className="text-sm text-gray-500">
-                  {currentStatus === "dispatched" ? (
+                  {currentStatus === "file_closed" || !currentStep ? (
                     <p className="text-green-600 font-medium">Fully dispatched.</p>
                   ) : workflowStatus.jobCardStatus !== "active" ? (
                     <p className="text-amber-600 font-medium">
@@ -615,7 +671,7 @@ export default function JobCardDetailPage() {
             {userPendingBgSteps.length > 0 && (
               <div className="mt-3 pt-3 border-t border-gray-100">
                 <p className="text-xs font-medium text-gray-500 mb-2">
-                  Your pending background tasks
+                  Your pending background task
                 </p>
                 <div className="flex flex-wrap gap-2">
                   {userPendingBgSteps.map((bg) => (
