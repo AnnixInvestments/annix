@@ -211,7 +211,7 @@ function resolveJobCardPrompt(
     return {
       icon: checkIcon,
       message: `Ready for your review: ${stepLabel}`,
-      detail: "Complete the action button, then review and approve to continue.",
+      detail: "Review and approve to continue the workflow.",
       actionLabel: "Review & Approve",
       actionType: "approve",
       actionHref: null,

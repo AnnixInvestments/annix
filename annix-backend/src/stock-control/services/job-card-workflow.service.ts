@@ -142,17 +142,25 @@ export class JobCardWorkflowService {
       );
     }
 
+    await this.validateUserIsAssigned(user, currentStep.key);
+
     const actionCompletion = await this.actionCompletionRepo.findOne({
       where: { jobCardId, stepKey: currentStep.key, actionType: "primary" },
     });
 
     if (!actionCompletion) {
-      throw new BadRequestException(
-        `Action button must be completed before approving step "${currentStep.label}"`,
-      );
+      const autoAction = this.actionCompletionRepo.create({
+        jobCardId,
+        companyId,
+        stepKey: currentStep.key,
+        actionType: "primary",
+        completedById: user.id,
+        completedByName: user.name,
+        completedAt: now().toJSDate(),
+        metadata: { autoCreatedByApproval: true },
+      });
+      await this.actionCompletionRepo.save(autoAction);
     }
-
-    await this.validateUserIsAssigned(user, currentStep.key);
 
     await this.notificationService.markJobCardNotificationsAsRead(user.id, jobCardId);
 
@@ -535,14 +543,10 @@ export class JobCardWorkflowService {
       metadata: a.metadata,
     }));
 
-    const actionExists = actions.some(
-      (a) => currentStep && a.stepKey === currentStep.key && a.actionType === "primary",
-    );
-
     return {
       currentStatus: jobCard.workflowStatus,
       currentStep: currentStep?.key ?? null,
-      canApprove: currentStep !== null && jobCard.status === JobCardStatus.ACTIVE && actionExists,
+      canApprove: currentStep !== null && jobCard.status === JobCardStatus.ACTIVE,
       requiredRole: null,
       jobCardStatus: jobCard.status,
       stepAssignments,
