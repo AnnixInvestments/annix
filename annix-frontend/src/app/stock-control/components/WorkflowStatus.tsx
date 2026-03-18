@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, Circle, Clock, X } from "lucide-react";
+import { Check, Circle, Clock, RefreshCw, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { BackgroundStepStatus, JobCardApproval } from "@/app/lib/api/stockControlApi";
 import { formatDateLongZA } from "@/app/lib/datetime";
@@ -438,12 +438,19 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
     };
 
     const frameId = requestAnimationFrame(computePaths);
+    const settledId = setTimeout(computePaths, 100);
 
     const observer = new ResizeObserver(computePaths);
     observer.observe(container);
 
+    const branchContainer = container.querySelector("[data-branch-container]");
+    if (branchContainer) {
+      observer.observe(branchContainer);
+    }
+
     return () => {
       cancelAnimationFrame(frameId);
+      clearTimeout(settledId);
       observer.disconnect();
     };
   }, [branches, docUploadStep, currentStepIndex, allSteps, backgroundSteps]);
@@ -509,7 +516,7 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
               className={`${isNarrowFirst ? "flex-none" : ""} flex flex-col items-center min-w-0`}
               style={isNarrowFirst ? { width: "80px" } : { flexGrow }}
             >
-              <div className="flex items-center w-full relative" style={{ zIndex: 10 }}>
+              <div className="flex items-center w-full relative">
                 {!isFirst && (
                   <div
                     className="flex-1"
@@ -656,7 +663,7 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
         })()}
 
       {branches.length > 0 && (
-        <div className="mt-2 relative" style={{ height: `${laneCount * 52}px` }}>
+        <div data-branch-container className="mt-2 relative" style={{ height: `${laneCount * 52}px` }}>
           {branches.map((branch) => {
             const pos = branchPositions[branch.triggerFgKey];
             const lane = branchLanes[branch.triggerFgKey] || 0;
@@ -1065,6 +1072,8 @@ export function WorkflowStepper(props: WorkflowStepperProps) {
     return { ...acc, [trigger]: [...(acc[trigger] || []), bg] };
   }, {});
 
+  const [diagramKey, setDiagramKey] = useState(0);
+
   const handleStepClick = useCallback(
     (stepKey: string, state: StepState) => {
       if (state === "completed" && approvalByStep[stepKey]) {
@@ -1076,10 +1085,21 @@ export function WorkflowStepper(props: WorkflowStepperProps) {
 
   return (
     <div className="bg-white rounded-lg border border-gray-200 p-4">
-      <h3 className="text-sm font-semibold text-gray-900 mb-4">Workflow Progress</h3>
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-sm font-semibold text-gray-900">Workflow Progress</h3>
+        <button
+          type="button"
+          onClick={() => setDiagramKey((k) => k + 1)}
+          className="p-1 text-gray-400 hover:text-gray-600 transition-colors"
+          title="Refresh diagram"
+        >
+          <RefreshCw className="h-3.5 w-3.5" />
+        </button>
+      </div>
 
       <div className="hidden md:block">
         <DesktopTransitMap
+          key={`desktop-${diagramKey}`}
           allSteps={allSteps}
           currentStepIndex={currentStepIndex}
           approvalByStep={approvalByStep}

@@ -111,7 +111,6 @@ export class WorkflowController {
   }
 
   @Post("job-cards/:id/approve")
-  @StockControlRoles("admin", "manager", "storeman", "accounts")
   @ApiOperation({ summary: "Approve current workflow step" })
   async approve(@Req() req: any, @Param("id") id: number, @Body() dto: ApproveWorkflowStepDto) {
     return this.workflowService.approveStep(req.user.companyId, id, req.user, dto);
@@ -144,7 +143,6 @@ export class WorkflowController {
   }
 
   @Post("job-cards/:id/action")
-  @StockControlRoles("admin", "manager", "storeman", "accounts")
   @ApiOperation({ summary: "Complete an action button for a workflow step" })
   async completeAction(@Req() req: any, @Param("id") id: number, @Body() dto: CompleteActionDto) {
     return this.workflowService.completeAction(
