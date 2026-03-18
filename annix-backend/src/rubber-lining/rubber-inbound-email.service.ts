@@ -611,6 +611,107 @@ export class RubberInboundEmailService {
     }
   }
 
+  private classifyImpiloCocType(pdfText: string): SupplierCocType {
+    const textLower = pdfText.toLowerCase();
+
+    const compounderIndicators = [
+      textLower.includes("batch certificates"),
+      textLower.includes("batch certificate"),
+      textLower.includes("s' min") || textLower.includes("s'min") || textLower.includes("s min"),
+      textLower.includes("s' max") || textLower.includes("s'max") || textLower.includes("s max"),
+      textLower.includes("tc 90") || textLower.includes("tc90"),
+      textLower.includes("ts 2") || textLower.includes("ts2"),
+      textLower.includes("rheometer") || textLower.includes("scarabaeus"),
+    ].filter(Boolean).length;
+
+    const calendererIndicators = [
+      textLower.includes("calender roll"),
+      textLower.includes("production date of calender"),
+      textLower.includes("roll no.") || textLower.includes("roll number"),
+      textLower.includes("waybill") || textLower.includes("waybil"),
+      textLower.includes("purchase order number"),
+    ].filter(Boolean).length;
+
+    this.logger.log(
+      `Impilo CoC type classification - compounder indicators: ${compounderIndicators}, calenderer indicators: ${calendererIndicators}`,
+    );
+
+    if (compounderIndicators > calendererIndicators) {
+      this.logger.log("Classified Impilo document as COMPOUNDER (batch certificate)");
+      return SupplierCocType.COMPOUNDER;
+    } else if (calendererIndicators > compounderIndicators) {
+      this.logger.log("Classified Impilo document as CALENDARER (calendered rolls)");
+      return SupplierCocType.CALENDARER;
+    }
+
+    this.logger.log("Impilo CoC type inconclusive from rules, defaulting to CALENDARER");
+    return SupplierCocType.CALENDARER;
+  }
+
+  private async classifyImpiloCocTypeWithAiFallback(pdfText: string): Promise<SupplierCocType> {
+    const textLower = pdfText.toLowerCase();
+
+    const compounderIndicators = [
+      textLower.includes("batch certificates") || textLower.includes("batch certificate"),
+      textLower.includes("s' min") || textLower.includes("s'min") || textLower.includes("s min"),
+      textLower.includes("tc 90") || textLower.includes("tc90"),
+      textLower.includes("rheometer") || textLower.includes("scarabaeus"),
+    ].filter(Boolean).length;
+
+    const calendererIndicators = [
+      textLower.includes("calender roll"),
+      textLower.includes("production date of calender"),
+      textLower.includes("roll no.") || textLower.includes("roll number"),
+    ].filter(Boolean).length;
+
+    if (compounderIndicators > 0 && calendererIndicators === 0) {
+      this.logger.log("Rule-based: Impilo document is COMPOUNDER (batch certificate)");
+      return SupplierCocType.COMPOUNDER;
+    } else if (calendererIndicators > 0 && compounderIndicators === 0) {
+      this.logger.log("Rule-based: Impilo document is CALENDARER (calendered rolls)");
+      return SupplierCocType.CALENDARER;
+    }
+
+    this.logger.log("Rule-based classification inconclusive for Impilo, falling back to AI");
+    const isAvailable = await this.aiChatService.isAvailable();
+    if (!isAvailable) {
+      this.logger.warn("AI not available for Impilo CoC classification, defaulting to CALENDARER");
+      return SupplierCocType.CALENDARER;
+    }
+
+    const truncatedText = pdfText.length > 3000 ? pdfText.substring(0, 3000) : pdfText;
+    const systemPrompt = `You classify rubber industry documents from Impilo Industries. Determine if this is a COMPOUNDER batch certificate or a CALENDARER roll certificate.
+
+COMPOUNDER indicators: "Batch Certificates" header, batch test table with columns like Shore A, S'min, S'max, TS2, TC90, rheometer data, Pass/Fail per batch.
+CALENDARER indicators: "Calender Roll" in title, per-roll Shore A readings, shared density/tensile/elongation, delivery note numbers, waybill numbers, production date of calender rolls.
+
+Respond ONLY with JSON: {"cocType": "COMPOUNDER" | "CALENDARER", "reason": "brief explanation"}`;
+
+    try {
+      const response = await this.aiChatService.chat(
+        [{ role: "user", content: `Classify this Impilo document:\n\n${truncatedText}` }],
+        systemPrompt,
+      );
+      const jsonMatch = response.content.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        const parsed = JSON.parse(jsonMatch[0]);
+        if (parsed.cocType === "COMPOUNDER" || parsed.cocType === "CALENDARER") {
+          this.logger.log(
+            `AI classified Impilo document as ${parsed.cocType}: ${parsed.reason}`,
+          );
+          return parsed.cocType === "COMPOUNDER"
+            ? SupplierCocType.COMPOUNDER
+            : SupplierCocType.CALENDARER;
+        }
+      }
+    } catch (error) {
+      this.logger.warn(`AI Impilo classification failed: ${error.message}`);
+    }
+
+    this.logger.log("AI fallback inconclusive, defaulting to CALENDARER");
+    return SupplierCocType.CALENDARER;
+  }
+
   private async identifySupplierFromDocument(
     pdfText: string,
     filename: string,
@@ -642,16 +743,23 @@ export class RubberInboundEmailService {
     );
 
     if (hasImpiloInDocument && !hasSnInDocument) {
-      const calendarerCompany = companies.find(
+      const impiloCompany = companies.find(
         (c) =>
           c.name.toLowerCase().includes("impilo") || c.name.toLowerCase().includes("calendarer"),
       );
-      if (calendarerCompany) {
-        this.logger.log(`Identified supplier from document content: ${calendarerCompany.name}`);
+      if (impiloCompany) {
+        const cocType = this.classifyImpiloCocType(pdfText);
+        const deliveryNoteType =
+          cocType === SupplierCocType.COMPOUNDER
+            ? DeliveryNoteType.COMPOUND
+            : DeliveryNoteType.ROLL;
+        this.logger.log(
+          `Identified supplier from document content: ${impiloCompany.name} (${cocType})`,
+        );
         return {
-          company: calendarerCompany,
-          cocType: SupplierCocType.CALENDARER,
-          deliveryNoteType: DeliveryNoteType.ROLL,
+          company: impiloCompany,
+          cocType,
+          deliveryNoteType,
         };
       }
     }
@@ -671,16 +779,21 @@ export class RubberInboundEmailService {
     }
 
     if (filenameLower.includes("imp-") || filenameLower.includes("impilo")) {
-      const calendarerCompany = companies.find(
+      const impiloCompany = companies.find(
         (c) =>
           c.name.toLowerCase().includes("impilo") || c.name.toLowerCase().includes("calendarer"),
       );
-      if (calendarerCompany) {
-        this.logger.log(`Identified supplier from filename: ${calendarerCompany.name}`);
+      if (impiloCompany) {
+        const cocType = this.classifyImpiloCocType(pdfText);
+        const deliveryNoteType =
+          cocType === SupplierCocType.COMPOUNDER
+            ? DeliveryNoteType.COMPOUND
+            : DeliveryNoteType.ROLL;
+        this.logger.log(`Identified supplier from filename: ${impiloCompany.name} (${cocType})`);
         return {
-          company: calendarerCompany,
-          cocType: SupplierCocType.CALENDARER,
-          deliveryNoteType: DeliveryNoteType.ROLL,
+          company: impiloCompany,
+          cocType,
+          deliveryNoteType,
         };
       }
     }
@@ -696,10 +809,15 @@ export class RubberInboundEmailService {
     });
 
     if (calendererMatch) {
+      const cocType = this.classifyImpiloCocType(pdfText);
+      const deliveryNoteType =
+        cocType === SupplierCocType.COMPOUNDER
+          ? DeliveryNoteType.COMPOUND
+          : DeliveryNoteType.ROLL;
       return {
         company: calendererMatch,
-        cocType: SupplierCocType.CALENDARER,
-        deliveryNoteType: DeliveryNoteType.ROLL,
+        cocType,
+        deliveryNoteType,
       };
     }
 
@@ -1432,9 +1550,10 @@ ${truncatedText}`;
       pdfTextLower.includes("impilo rubber")
     ) {
       const impiloCompany = companies.find((c) => c.name.toLowerCase().includes("impilo"));
-      this.logger.log("Identified as Impilo from filename/content pattern");
+      const cocType = await this.classifyImpiloCocTypeWithAiFallback(pdfText);
+      this.logger.log(`Identified as Impilo from filename/content pattern (${cocType})`);
       return {
-        cocType: SupplierCocType.CALENDARER,
+        cocType,
         companyId: impiloCompany?.id,
       };
     }
@@ -1466,8 +1585,8 @@ ${truncatedText}`;
 
 DOCUMENT TYPES:
 1. SUPPLIER_COC - Certificate of Conformance from suppliers
-   - COMPOUNDER CoC: From rubber compounding companies (e.g., S&N Rubber). Contains batch numbers, compound codes, mixing dates, Shore A hardness, specific gravity, tensile strength, rheometer data (S-min, S-max, Ts2, Tc90)
-   - CALENDARER CoC: From rubber calendering companies (e.g., Impilo Industries). Contains roll numbers, sheet specs, order/ticket numbers, calendering operations
+   - COMPOUNDER CoC: From rubber compounding companies (e.g., S&N Rubber, or Impilo Industries acting as compounder). Contains batch numbers, compound codes, mixing dates, Shore A hardness, specific gravity, tensile strength, rheometer data (S-min, S-max, Ts2, Tc90). Impilo's compounder CoCs have a "BATCH CERTIFICATES" header with per-batch test results.
+   - CALENDARER CoC: From rubber calendering companies (e.g., Impilo Industries acting as calenderer). Contains roll numbers, sheet specs, order/ticket numbers, calendering operations. NOTE: Impilo Industries can be EITHER a compounder or calenderer — classify based on document content, not supplier name.
    - CALENDER_ROLL CoC: From S&N Rubber specifically for calendered production rolls. Title is "CERTIFICATE OF CONFORMANCE" with fields: COMPOUND CODE, CALENDER ROLL DESCRIPTION, PRODUCTION DATE OF CALENDER ROLLS, PURCHASE ORDER NUMBER, DELIVERY NOTE. Contains a LABORATORY ANALYSIS DATA table with per-roll Shore A values and shared density/tensile/elongation. Distinct from COMPOUNDER CoCs which have batch-level rheometer data.
 
 2. DELIVERY_NOTE - Goods received documentation
