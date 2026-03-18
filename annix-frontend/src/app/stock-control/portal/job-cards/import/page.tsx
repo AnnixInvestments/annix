@@ -2,6 +2,7 @@
 
 import { useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import type {
   DeliveryMatchResult,
@@ -363,20 +364,44 @@ function extractMappedRows(
       { grouped: new Map<string, GroupEntry>(), lastJobNumber: "" },
     );
 
-    const FOOTER_LABEL_PATTERN =
-      /^(production|foreman?\s*sign|forman\s*sign|material\s*spec|job\s*comp|completion\s*date|supervisor|quality\s*control|qc\s*sign|inspector|approved\s*by|checked\s*by|signature|remarks|comments)\b/i;
+    const SPEC_NOTE_PATTERN =
+      /^(EXT\s*:|INT\s*:|R\/L\b)/i;
+    const JUNK_ROW_PATTERN =
+      /^(production|foreman?\s*sign|forman\s*sign|material\s*spec|job\s*comp|completion\s*date|supervisor|quality\s*control|qc\s*sign|inspector|approved\s*by|checked\s*by|signature|remarks|comments|date\s+date|notes|sign|date)\b|^Sage\s*\d{3}\s*Evolution|\d{4}\/\d{2}\/\d{2}\s+\d{2}:\d{2}:\d{2}/i;
     if (grouped.size > 0) {
-      const lastEntry = Array.from(grouped.values()).pop()!;
-      Array.from({ length: grid.length - maxRow - 1 }, (_, i) => maxRow + 1 + i).forEach((r) => {
-        const gridRow = grid[r] ?? [];
-        const rowText = gridRow
-          .map((c) => c.trim())
-          .filter(Boolean)
-          .join(" ");
-        if (!rowText || rowText.length < 3) return;
-        if (FOOTER_LABEL_PATTERN.test(rowText.trim())) return;
-        lastEntry.notesList.push(rowText);
-        lastEntry.lines.push({ itemCode: rowText });
+      grouped.forEach((entry) => {
+        const segments: { items: Record<string, string>[]; specs: string[] }[] = [
+          { items: [], specs: [] },
+        ];
+        entry.lines.forEach((li) => {
+          const code = (li.itemCode || "").trim();
+          if (SPEC_NOTE_PATTERN.test(code)) {
+            const cleanedSpec = code.replace(/\s+PRODUCTION\s*$/i, "").trim();
+            segments[segments.length - 1].specs.push(cleanedSpec);
+            segments.push({ items: [], specs: [] });
+            return;
+          }
+          if (JUNK_ROW_PATTERN.test(code)) return;
+          const desc = (li.itemDescription || "").trim();
+          const hasRealData = desc || li.itemNo || li.quantity || li.jtNo;
+          if (!hasRealData && !code) return;
+          segments[segments.length - 1].items.push(li);
+        });
+
+        const cleanedLines: Record<string, string>[] = [];
+        const allSpecs: string[] = [];
+        segments.forEach((seg) => {
+          const specText = seg.specs.length > 0 ? seg.specs.join("\n") : null;
+          seg.items.forEach((item) => {
+            cleanedLines.push(specText ? { ...item, notes: specText } : item);
+          });
+          allSpecs.push(...seg.specs);
+        });
+
+        entry.lines = cleanedLines;
+        if (allSpecs.length > 0) {
+          entry.notesList = [...allSpecs, ...entry.notesList];
+        }
       });
     }
 
@@ -384,7 +409,11 @@ function extractMappedRows(
       const cfParsed = meta.customFieldsJson
         ? (JSON.parse(meta.customFieldsJson) as Record<string, string>)
         : undefined;
-      const combinedNotes = notesList.length > 0 ? notesList.join("\n") : undefined;
+      const cleanedNotesList = notesList
+        .flatMap((n) => n.split("\n"))
+        .map((n) => n.replace(/\s+PRODUCTION\s*$/i, "").trim())
+        .filter((n) => Boolean(n) && !/^PRODUCTION$/i.test(n));
+      const combinedNotes = cleanedNotesList.length > 0 ? cleanedNotesList.join("\n") : undefined;
       return {
         jobNumber: meta.jobNumber,
         jcNumber: meta.jcNumber,
@@ -568,6 +597,7 @@ function fieldForCell(
 
 export default function JobCardImportPage() {
   const queryClient = useQueryClient();
+  const router = useRouter();
   const [step, setStep] = useState<ImportStep>("upload");
   const [file, setFile] = useState<File | null>(null);
   const [grid, setGrid] = useState<string[][]>([]);
@@ -599,6 +629,10 @@ export default function JobCardImportPage() {
   const [isAutoDetecting, setIsAutoDetecting] = useState(false);
   const [isDrawingImport, setIsDrawingImport] = useState(false);
   const [drawingFiles, setDrawingFiles] = useState<File[]>([]);
+  const [micronPrompts, setMicronPrompts] = useState<
+    { rowIdx: number; specNote: string; microns: string }[]
+  >([]);
+  const [showMicronModal, setShowMicronModal] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const drawingInputRef = useRef<HTMLInputElement>(null);
   const hasCheckedPending = useRef(false);
@@ -899,6 +933,66 @@ export default function JobCardImportPage() {
     }
   };
 
+  const PAINT_SPEC_PATTERN =
+    /paint|coat|primer|oxide|epoxy|polyurethane|zinc|silicate|enamel|lacquer|varnish|FBE|fusion\s*bond/i;
+  const MICRON_PATTERN = /\d+\s*(?:um|µm|μm|micron|mic)\b|\bDFT\s*[:=]?\s*\d+|\d+\s*(?:mil)\b/i;
+
+  const detectMissingMicrons = (): { rowIdx: number; specNote: string }[] => {
+    const seen = new Set<string>();
+    const missing: { rowIdx: number; specNote: string }[] = [];
+    mappedRows.forEach((row, rowIdx) => {
+      const notes = (row.notes || "").trim();
+      const lineNotes = (row.lineItems || [])
+        .map((li) => (li.notes || "").trim())
+        .filter(Boolean);
+      const allSpecs = [notes, ...lineNotes].filter(Boolean);
+
+      allSpecs.forEach((spec) => {
+        if (PAINT_SPEC_PATTERN.test(spec) && !MICRON_PATTERN.test(spec) && !seen.has(spec)) {
+          seen.add(spec);
+          missing.push({ rowIdx, specNote: spec });
+        }
+      });
+    });
+    return missing;
+  };
+
+  const handleConfirmWithMicronCheck = () => {
+    const missing = detectMissingMicrons();
+    if (missing.length > 0) {
+      setMicronPrompts(missing.map((m) => ({ ...m, microns: "" })));
+      setShowMicronModal(true);
+      return;
+    }
+    handleConfirm();
+  };
+
+  const applyMicronsAndConfirm = () => {
+    const updates = micronPrompts.filter((p) => p.microns.trim());
+    if (updates.length > 0) {
+      const specToMicron = new Map(updates.map((u) => [u.specNote, u.microns.trim()]));
+      const updatedRows = mappedRows.map((row) => {
+        const rowNotes = (row.notes || "").trim();
+        const rowMicron = specToMicron.get(rowNotes);
+        const updatedNotes = rowMicron ? `${rowNotes} ${rowMicron}um` : row.notes;
+
+        const updatedLineItems = (row.lineItems || []).map((li) => {
+          const liNotes = (li.notes || "").trim();
+          const liMicron = specToMicron.get(liNotes);
+          if (liMicron) {
+            return { ...li, notes: `${liNotes} ${liMicron}um` };
+          }
+          return li;
+        });
+
+        return { ...row, notes: updatedNotes, lineItems: updatedLineItems };
+      });
+      setMappedRows(updatedRows);
+    }
+    setShowMicronModal(false);
+    handleConfirm();
+  };
+
   const handleConfirm = async () => {
     try {
       setIsConfirming(true);
@@ -935,6 +1029,11 @@ export default function JobCardImportPage() {
         }, {});
         setDeliverySelections(initialSelections);
         setStep("delivery-matching");
+      } else if (
+        importResult.createdJobCardIds &&
+        importResult.createdJobCardIds.length === 1
+      ) {
+        router.push(`/stock-control/portal/job-cards/${importResult.createdJobCardIds[0]}`);
       } else {
         setStep("result");
       }
@@ -1002,6 +1101,55 @@ export default function JobCardImportPage() {
 
   return (
     <div className="space-y-6">
+      {showMicronModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-white rounded-lg shadow-xl p-6 max-w-lg w-full mx-4">
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">No microns detected</h3>
+            <p className="text-sm text-gray-600 mb-4">
+              The following paint specifications have no micron thickness specified. Please enter the
+              required DFT (dry film thickness) in microns.
+            </p>
+            <div className="space-y-3 max-h-64 overflow-y-auto">
+              {micronPrompts.map((prompt, idx) => (
+                <div key={`${prompt.rowIdx}-${prompt.specNote}`} className="flex items-center gap-3">
+                  <p className="text-sm text-gray-700 flex-1 font-medium">{prompt.specNote}</p>
+                  <div className="flex items-center gap-1">
+                    <input
+                      type="number"
+                      value={prompt.microns}
+                      onChange={(e) => {
+                        setMicronPrompts((prev) =>
+                          prev.map((p, i) =>
+                            i === idx ? { ...p, microns: e.target.value } : p,
+                          ),
+                        );
+                      }}
+                      placeholder="e.g. 300"
+                      className="w-24 px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-teal-500 focus:border-teal-500"
+                    />
+                    <span className="text-sm text-gray-500">um</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="flex justify-end gap-3 mt-6">
+              <button
+                onClick={() => setShowMicronModal(false)}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={applyMicronsAndConfirm}
+                disabled={micronPrompts.some((p) => !p.microns.trim())}
+                className="px-4 py-2 text-sm font-medium text-white bg-teal-600 rounded-md hover:bg-teal-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+              >
+                Confirm Import
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       <div className="flex items-center space-x-4">
         <Link href="/stock-control/portal/job-cards" className="text-gray-500 hover:text-gray-700">
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1649,7 +1797,7 @@ export default function JobCardImportPage() {
                   Cancel
                 </button>
                 <button
-                  onClick={handleConfirm}
+                  onClick={handleConfirmWithMicronCheck}
                   disabled={isConfirming || mappedRows.length === 0}
                   className="px-4 py-2 text-sm font-medium text-white bg-teal-600 border border-transparent rounded-md hover:bg-teal-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
                 >

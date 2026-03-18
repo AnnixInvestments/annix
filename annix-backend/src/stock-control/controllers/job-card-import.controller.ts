@@ -116,16 +116,6 @@ export class JobCardImportController {
           this.logger.error(`Background coating analysis failed: ${message}`);
         });
 
-      this.notificationService
-        .notifyJobCardsImported(req.user.companyId, result.createdJobCardIds, {
-          id: req.user.id,
-          name: req.user.name,
-        })
-        .catch((err) => {
-          const message = err instanceof Error ? err.message : "Unknown error";
-          this.logger.error(`Job card import notification failed: ${message}`);
-        });
-
       const user = { id: req.user.id, name: req.user.name };
       Promise.all(
         result.createdJobCardIds.map((jobCardId) =>

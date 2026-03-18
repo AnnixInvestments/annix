@@ -168,10 +168,12 @@ export class JobCardsController {
       const warnings: string[] = [];
 
       try {
-        await this.workflowService.initializeWorkflow(req.user.companyId, id, {
-          id: req.user.id,
-          name: req.user.name,
-        });
+        await this.workflowService.initializeWorkflow(
+          req.user.companyId,
+          id,
+          { id: req.user.id, name: req.user.name },
+          { advance: true },
+        );
       } catch (err) {
         const message = err instanceof Error ? err.message : "Unknown error";
         this.logger.error(`Failed to initialize workflow for job card ${id}: ${message}`);

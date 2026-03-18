@@ -86,21 +86,29 @@ function isNoteRow(li: LineItemImportRow): boolean {
 }
 
 function mergeNoteRowsIntoItems(items: LineItemImportRow[]): LineItemImportRow[] {
-  const result: LineItemImportRow[] = [];
+  const segments: { items: LineItemImportRow[]; specs: string[] }[] = [
+    { items: [], specs: [] },
+  ];
 
   items.forEach((item) => {
     if (isNoteRow(item)) {
-      const noteText = (item.itemCode || "").trim();
-      if (result.length > 0) {
-        const last = result[result.length - 1];
-        last.notes = last.notes ? `${last.notes}\n${noteText}` : noteText;
-      }
+      const noteText = (item.itemCode || "").trim().replace(/\s+PRODUCTION\s*$/i, "").trim();
+      segments[segments.length - 1].specs.push(noteText);
+      segments.push({ items: [], specs: [] });
       return;
     }
-    result.push({ ...item });
+    segments[segments.length - 1].items.push({ ...item });
   });
 
-  return result;
+  return segments.reduce<LineItemImportRow[]>((result, seg) => {
+    const specText = seg.specs.length > 0 ? seg.specs.join("\n") : null;
+    return [
+      ...result,
+      ...seg.items.map((item) =>
+        specText ? { ...item, notes: item.notes ? `${item.notes}\n${specText}` : specText } : item,
+      ),
+    ];
+  }, []);
 }
 
 const SAGE_NOISE_PATTERNS: RegExp[] = [

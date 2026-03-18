@@ -14,6 +14,7 @@ export const INVALID_LINE_ITEM_PATTERNS = [
   /^approved\s*by/i,
   /^checked\s*by/i,
   /^date$/i,
+  /^date\s+date/i,
   /^signature$/i,
   /^sign$/i,
   /^remarks$/i,
@@ -22,6 +23,9 @@ export const INVALID_LINE_ITEM_PATTERNS = [
   /^item\s*code\s+item\s*desc/i,
   /^item\s*code\s+description/i,
   /^adhesives?\s*\d*$/i,
+  /^Sage\s*\d{3}\s*Evolution/i,
+  /^EXT\s*:/i,
+  /^INT\s*:/i,
 ];
 
 const NOISE_ONLY_PATTERN = /^[\d\s]+$/;

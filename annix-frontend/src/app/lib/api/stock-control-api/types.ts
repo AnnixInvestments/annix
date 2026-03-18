@@ -1680,6 +1680,7 @@ export interface JobCardImportResult {
   skipped: number;
   errors: { row: number; message: string }[];
   deliveryMatches: DeliveryMatchResult[];
+  createdJobCardIds: number[];
 }
 
 export interface JobCardImportUploadResponse {

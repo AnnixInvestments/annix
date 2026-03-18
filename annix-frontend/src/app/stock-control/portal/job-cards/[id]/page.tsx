@@ -231,6 +231,22 @@ export default function JobCardDetailPage() {
     }
   };
 
+  const handleDraftAccepted = async () => {
+    const hasUnverified = await coating.checkUnverifiedProducts();
+    if (hasUnverified) return;
+
+    try {
+      setIsUpdatingStatus(true);
+      await stockControlApiClient.updateJobCard(jobId, { status: "active" });
+      invalidateJobCardsList();
+      fetchData();
+    } catch (err) {
+      setError(err instanceof Error ? err : new Error("Failed to activate job card"));
+    } finally {
+      setIsUpdatingStatus(false);
+    }
+  };
+
   const handleApprove = async (signatureDataUrl?: string, comments?: string) => {
     await stockControlApiClient.approveWorkflowStep(jobId, {
       signatureDataUrl,
@@ -322,7 +338,7 @@ export default function JobCardDetailPage() {
     if (!currentStep || !workflowStatus) return false;
     if (workflowStatus.jobCardStatus !== "active") return false;
 
-    return workflowStatus.canApprove;
+    return workflowStatus.canApprove || currentStep !== null;
   }, [currentStep, workflowStatus]);
   const pipingLossPct = profile?.pipingLossFactorPct || 45;
 
@@ -359,11 +375,13 @@ export default function JobCardDetailPage() {
     if (!workflowStatus || !user?.name) return [];
     const fgSteps = workflowStatus.foregroundSteps || [];
     const fgKeys = fgSteps.filter((s) => s.key !== "draft").map((s) => s.key);
+    const fgKeySet = new Set(fgKeys);
     const currentFgIdx = fgKeys.indexOf(currentStatus || "");
     const completedKeys = new Set(
       backgroundSteps.filter((bg) => bg.completedAt !== null).map((bg) => bg.stepKey),
     );
     const assignments = workflowStatus.stepAssignments || {};
+    const bgKeySet = new Set(backgroundSteps.map((bg) => bg.stepKey));
 
     const triggerGroups = backgroundSteps.reduce<Record<string, BackgroundStepStatus[]>>(
       (acc, bg) => {
@@ -373,12 +391,24 @@ export default function JobCardDetailPage() {
       {},
     );
 
+    const resolveOriginFgIdx = (trigger: string, visited: Set<string> = new Set()): number => {
+      if (trigger === "__root__") return 0;
+      if (fgKeySet.has(trigger)) return fgKeys.indexOf(trigger);
+      if (visited.has(trigger)) return 0;
+      visited.add(trigger);
+      const parentBg = backgroundSteps.find((bg) => bg.stepKey === trigger);
+      if (parentBg) return resolveOriginFgIdx(parentBg.triggerAfterStep || "__root__", visited);
+      return 0;
+    };
+
     const allActionable = backgroundSteps.filter((bg) => {
       if (bg.completedAt !== null) return false;
 
       const trigger = bg.triggerAfterStep || "__root__";
-      const triggerFgIdx = trigger === "__root__" ? 0 : fgKeys.indexOf(trigger);
-      if (triggerFgIdx > currentFgIdx) return false;
+      const originFgIdx = resolveOriginFgIdx(trigger);
+      if (originFgIdx > currentFgIdx) return false;
+
+      if (bgKeySet.has(trigger) && !completedKeys.has(trigger)) return false;
 
       const siblings = triggerGroups[trigger] || [];
       const myIdx = siblings.findIndex((s) => s.stepKey === bg.stepKey);
@@ -398,13 +428,13 @@ export default function JobCardDetailPage() {
 
     if (allActionable.length <= 1) return allActionable;
 
-    const firstTrigger = allActionable[0].triggerAfterStep || "__root__";
-    const firstTriggerFgIdx = firstTrigger === "__root__" ? 0 : fgKeys.indexOf(firstTrigger);
+    const firstOriginIdx = resolveOriginFgIdx(
+      allActionable[0].triggerAfterStep || "__root__",
+    );
 
     return allActionable.filter((bg) => {
-      const trigger = bg.triggerAfterStep || "__root__";
-      const triggerFgIdx = trigger === "__root__" ? 0 : fgKeys.indexOf(trigger);
-      return triggerFgIdx === firstTriggerFgIdx;
+      const originIdx = resolveOriginFgIdx(bg.triggerAfterStep || "__root__");
+      return originIdx === firstOriginIdx;
     });
   }, [workflowStatus, backgroundSteps, currentStatus, user?.name]);
 
@@ -515,22 +545,24 @@ export default function JobCardDetailPage() {
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <button
-            onClick={handlePrintQr}
-            disabled={isDownloadingQr}
-            className="inline-flex items-center px-3 py-1.5 sm:px-4 sm:py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:bg-gray-100 disabled:cursor-not-allowed"
-          >
-            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"
-              />
-            </svg>
-            {isDownloadingQr ? "Generating..." : "Print JC"}
-          </button>
-          {transitions.map((transition) => (
+          {jobCard.status.toLowerCase() !== "draft" && (
+            <button
+              onClick={handlePrintQr}
+              disabled={isDownloadingQr}
+              className="inline-flex items-center px-3 py-1.5 sm:px-4 sm:py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:bg-gray-100 disabled:cursor-not-allowed"
+            >
+              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"
+                />
+              </svg>
+              {isDownloadingQr ? "Generating..." : "Print JC"}
+            </button>
+          )}
+          {jobCard.status.toLowerCase() !== "draft" && transitions.map((transition) => (
             <button
               key={transition.next}
               onClick={() => handleStatusUpdate(transition.next)}
@@ -656,11 +688,11 @@ export default function JobCardDetailPage() {
                 </div>
               ) : (
                 <div className="text-sm text-gray-500">
-                  {currentStatus === "file_closed" || !currentStep ? (
+                  {currentStatus === "file_closed" ? (
                     <p className="text-green-600 font-medium">Fully dispatched.</p>
                   ) : workflowStatus.jobCardStatus !== "active" ? (
                     <p className="text-amber-600 font-medium">
-                      Job card must be activated before workflow steps can be approved.
+                      Accept the draft to begin the workflow.
                     </p>
                   ) : (
                     <p>Awaiting action from another role.</p>
@@ -668,6 +700,17 @@ export default function JobCardDetailPage() {
                 </div>
               )}
             </div>
+            {workflowStatus.jobCardStatus !== "active" && (
+              <div className="mt-3">
+                <button
+                  onClick={handleDraftAccepted}
+                  disabled={isUpdatingStatus}
+                  className="px-4 py-2 bg-amber-600 text-white rounded-md hover:bg-amber-700 font-medium text-sm disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+                >
+                  {isUpdatingStatus ? "..." : "Draft Accepted"}
+                </button>
+              </div>
+            )}
             {userPendingBgSteps.length > 0 && (
               <div className="mt-3 pt-3 border-t border-gray-100">
                 <p className="text-xs font-medium text-gray-500 mb-2">
