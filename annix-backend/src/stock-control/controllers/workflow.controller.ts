@@ -101,7 +101,7 @@ export class WorkflowController {
   @Get("job-cards/:id/status")
   @ApiOperation({ summary: "Current workflow status" })
   async workflowStatus(@Req() req: any, @Param("id") id: number) {
-    return this.workflowService.workflowStatus(req.user.companyId, id);
+    return this.workflowService.workflowStatus(req.user.companyId, id, req.user.id);
   }
 
   @Get("job-cards/:id/history")

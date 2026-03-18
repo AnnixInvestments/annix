@@ -462,6 +462,7 @@ export class JobCardWorkflowService {
   async workflowStatus(
     companyId: number,
     jobCardId: number,
+    requestingUserId?: number,
   ): Promise<{
     currentStatus: string;
     currentStep: string | null;
@@ -543,10 +544,20 @@ export class JobCardWorkflowService {
       metadata: a.metadata,
     }));
 
+    const isAssignedToCurrentStep =
+      currentStep !== null && requestingUserId
+        ? (() => {
+            const assigned = allAssignments.find((sa) => sa.step === currentStep.key);
+            if (!assigned || assigned.users.length === 0) return true;
+            return assigned.users.some((u) => u.id === requestingUserId);
+          })()
+        : true;
+
     return {
       currentStatus: jobCard.workflowStatus,
       currentStep: currentStep?.key ?? null,
-      canApprove: currentStep !== null && jobCard.status === JobCardStatus.ACTIVE,
+      canApprove:
+        currentStep !== null && jobCard.status === JobCardStatus.ACTIVE && isAssignedToCurrentStep,
       requiredRole: null,
       jobCardStatus: jobCard.status,
       stepAssignments,
