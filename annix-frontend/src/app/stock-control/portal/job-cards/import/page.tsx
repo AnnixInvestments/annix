@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { Fragment, useCallback, useEffect, useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import type {
   DeliveryMatchResult,
   ImportMappingConfig,
@@ -12,6 +13,7 @@ import type {
 } from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { nowMillis } from "@/app/lib/datetime";
+import { stockControlKeys } from "@/app/lib/query/keys";
 import { consumePendingImportFile } from "./pending-file";
 
 type ImportStep = "upload" | "mapping" | "preview" | "delivery-matching" | "result";
@@ -565,6 +567,7 @@ function fieldForCell(
 }
 
 export default function JobCardImportPage() {
+  const queryClient = useQueryClient();
   const [step, setStep] = useState<ImportStep>("upload");
   const [file, setFile] = useState<File | null>(null);
   const [grid, setGrid] = useState<string[][]>([]);
@@ -914,6 +917,7 @@ export default function JobCardImportPage() {
       }));
       const importResult = await stockControlApiClient.confirmJobCardImport(rowsWithM2);
       setResult(importResult);
+      queryClient.invalidateQueries({ queryKey: stockControlKeys.jobCards.all });
 
       if (importResult.deliveryMatches && importResult.deliveryMatches.length > 0) {
         setPendingDeliveryMatches(importResult.deliveryMatches);
