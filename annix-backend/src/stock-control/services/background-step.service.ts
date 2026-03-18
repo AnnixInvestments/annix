@@ -66,6 +66,25 @@ export class BackgroundStepService {
       );
     }
 
+    if (stepConfig.triggerAfterStep) {
+      const siblings = await this.stepConfigService.backgroundStepsForTrigger(
+        companyId,
+        stepConfig.triggerAfterStep,
+      );
+      const currentIdx = siblings.findIndex((s) => s.key === stepKey);
+      if (currentIdx > 0) {
+        const previousStep = siblings[currentIdx - 1];
+        const previousCompletion = await this.completionRepo.findOne({
+          where: { jobCardId, stepKey: previousStep.key },
+        });
+        if (!previousCompletion) {
+          throw new BadRequestException(
+            `Cannot complete "${stepConfig.label}" — previous step "${previousStep.label}" must be completed first`,
+          );
+        }
+      }
+    }
+
     const completion = this.completionRepo.create({
       companyId,
       jobCardId,

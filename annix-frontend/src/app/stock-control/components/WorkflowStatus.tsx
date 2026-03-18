@@ -204,23 +204,6 @@ function StepNode(props: StepNodeProps) {
   );
 }
 
-const actionLabelForStep = (
-  stepKey: string,
-  label: string,
-  actionLabel: string | null | undefined,
-): string => actionLabel || `Complete ${label}`;
-
-const isUserAssignedToStep = (
-  stepKey: string,
-  currentUserName: string | null,
-  stepAssignments: Record<string, StepAssignmentUser[]>,
-): boolean => {
-  if (!currentUserName) return false;
-  const assigned = stepAssignments[stepKey];
-  if (!assigned || assigned.length === 0) return true;
-  return assigned.some((u) => u.name === currentUserName);
-};
-
 const bgNodeState = (
   bg: BackgroundStepStatus,
   fgIndex: number,
@@ -274,8 +257,6 @@ interface DesktopTransitMapProps {
   backgroundSteps: BackgroundStepStatus[];
   stepAssignments: Record<string, StepAssignmentUser[]>;
   currentUserName: string | null;
-  onCompleteBackgroundStep?: (stepKey: string) => void;
-  completingStepKey: string | null;
   expandedStep: string | null;
   hoveredRejection: string | null;
   onStepClick: (stepKey: string, state: StepState) => void;
@@ -292,8 +273,6 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
     bgByTrigger,
     stepAssignments,
     currentUserName,
-    onCompleteBackgroundStep,
-    completingStepKey,
     expandedStep,
     hoveredRejection,
     onStepClick,
@@ -647,10 +626,6 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
       {docUploadStep &&
         (() => {
           const docState = bgNodeState(docUploadStep, 0, currentStepIndex);
-          const canComplete =
-            docState === "active" &&
-            isUserAssignedToStep("document_upload", currentUserName, stepAssignments);
-          const isCompleting = completingStepKey === "document_upload";
 
           return (
             <div
@@ -690,16 +665,6 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
                     {docUploadStep.completedByName}
                   </p>
                 )}
-                {canComplete && onCompleteBackgroundStep && (
-                  <button
-                    type="button"
-                    onClick={() => onCompleteBackgroundStep("document_upload")}
-                    disabled={isCompleting}
-                    className="mt-0.5 px-1.5 py-0.5 text-[8px] font-semibold rounded bg-amber-600 text-white hover:bg-amber-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
-                  >
-                    {isCompleting ? "..." : "Upload"}
-                  </button>
-                )}
               </div>
             </div>
           );
@@ -723,10 +688,6 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
               >
                 {branch.bgSteps.map((bg) => {
                   const state = bgNodeState(bg, branch.triggerFgIdx, currentStepIndex);
-                  const canComplete =
-                    state === "active" &&
-                    isUserAssignedToStep(bg.stepKey, currentUserName, stepAssignments);
-                  const isCompleting = completingStepKey === bg.stepKey;
                   const bgAssigned = assignedNameForStep(bg.stepKey, stepAssignments);
                   const bgDisplayName = state === "completed" ? bg.completedByName : bgAssigned;
 
@@ -765,18 +726,6 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
                           {bgDisplayName}
                         </p>
                       )}
-                      {canComplete && onCompleteBackgroundStep && (
-                        <button
-                          type="button"
-                          onClick={() => onCompleteBackgroundStep(bg.stepKey)}
-                          disabled={isCompleting}
-                          className="mt-0.5 px-1.5 py-0.5 text-[8px] font-semibold rounded bg-amber-600 text-white hover:bg-amber-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
-                        >
-                          {isCompleting
-                            ? "..."
-                            : actionLabelForStep(bg.stepKey, bg.label, bg.actionLabel)}
-                        </button>
-                      )}
                     </div>
                   );
                 })}
@@ -797,8 +746,6 @@ interface MobileTransitMapProps {
   backgroundSteps: BackgroundStepStatus[];
   stepAssignments: Record<string, StepAssignmentUser[]>;
   currentUserName: string | null;
-  onCompleteBackgroundStep?: (stepKey: string) => void;
-  completingStepKey: string | null;
   expandedStep: string | null;
   hoveredRejection: string | null;
   onStepClick: (stepKey: string, state: StepState) => void;
@@ -815,8 +762,6 @@ function MobileTransitMap(props: MobileTransitMapProps) {
     bgByTrigger,
     stepAssignments,
     currentUserName,
-    onCompleteBackgroundStep,
-    completingStepKey,
     expandedStep,
     hoveredRejection,
     onStepClick,
@@ -874,10 +819,6 @@ function MobileTransitMap(props: MobileTransitMapProps) {
       {docUploadStep &&
         (() => {
           const docState = bgNodeState(docUploadStep, 0, currentStepIndex);
-          const canComplete =
-            docState === "active" &&
-            isUserAssignedToStep("document_upload", currentUserName, stepAssignments);
-          const isCompleting = completingStepKey === "document_upload";
           const bgAssigned = assignedNameForStep("document_upload", stepAssignments);
           const bgDisplayName =
             docState === "completed" ? docUploadStep.completedByName : bgAssigned;
@@ -919,16 +860,6 @@ function MobileTransitMap(props: MobileTransitMapProps) {
                   {docUploadStep.label || "Doc Upload"}
                 </p>
                 {bgDisplayName && <p className="text-[10px] text-gray-500">{bgDisplayName}</p>}
-                {canComplete && onCompleteBackgroundStep && (
-                  <button
-                    type="button"
-                    onClick={() => onCompleteBackgroundStep("document_upload")}
-                    disabled={isCompleting}
-                    className="mt-0.5 px-2 py-0.5 text-[10px] font-semibold rounded bg-amber-600 text-white hover:bg-amber-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
-                  >
-                    {isCompleting ? "..." : "Upload"}
-                  </button>
-                )}
               </div>
             </div>
           );
@@ -1044,10 +975,6 @@ function MobileTransitMap(props: MobileTransitMapProps) {
                   <div className="flex flex-wrap gap-x-4 gap-y-1.5">
                     {branch.bgSteps.map((bg) => {
                       const bgState = bgNodeState(bg, branch.triggerFgIdx, currentStepIndex);
-                      const canComplete =
-                        bgState === "active" &&
-                        isUserAssignedToStep(bg.stepKey, currentUserName, stepAssignments);
-                      const isCompleting = completingStepKey === bg.stepKey;
                       const bgAssigned = assignedNameForStep(bg.stepKey, stepAssignments);
                       const bgDisplayName =
                         bgState === "completed" ? bg.completedByName : bgAssigned;
@@ -1087,18 +1014,6 @@ function MobileTransitMap(props: MobileTransitMapProps) {
                               </p>
                             )}
                           </div>
-                          {canComplete && onCompleteBackgroundStep && (
-                            <button
-                              type="button"
-                              onClick={() => onCompleteBackgroundStep(bg.stepKey)}
-                              disabled={isCompleting}
-                              className="px-1.5 py-0.5 text-[9px] font-semibold rounded bg-amber-600 text-white hover:bg-amber-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
-                            >
-                              {isCompleting
-                                ? "..."
-                                : actionLabelForStep(bg.stepKey, bg.label, bg.actionLabel)}
-                            </button>
-                          )}
                         </div>
                       );
                     })}
@@ -1120,8 +1035,6 @@ interface WorkflowStepperProps {
   foregroundSteps: ForegroundStep[];
   backgroundSteps: BackgroundStepStatus[];
   currentUserName?: string | null;
-  onCompleteBackgroundStep?: (stepKey: string) => void;
-  completingStepKey?: string | null;
 }
 
 export function WorkflowStepper(props: WorkflowStepperProps) {
@@ -1132,8 +1045,6 @@ export function WorkflowStepper(props: WorkflowStepperProps) {
     foregroundSteps,
     backgroundSteps,
     currentUserName = null,
-    onCompleteBackgroundStep,
-    completingStepKey = null,
   } = props;
 
   const filteredFgSteps = foregroundSteps.filter((s) => s.key !== "draft");
@@ -1202,8 +1113,6 @@ export function WorkflowStepper(props: WorkflowStepperProps) {
           backgroundSteps={effectiveBgSteps}
           stepAssignments={stepAssignments}
           currentUserName={currentUserName}
-          onCompleteBackgroundStep={onCompleteBackgroundStep}
-          completingStepKey={completingStepKey}
           expandedStep={expandedStep}
           hoveredRejection={hoveredRejection}
           onStepClick={handleStepClick}
@@ -1221,8 +1130,6 @@ export function WorkflowStepper(props: WorkflowStepperProps) {
           backgroundSteps={effectiveBgSteps}
           stepAssignments={stepAssignments}
           currentUserName={currentUserName}
-          onCompleteBackgroundStep={onCompleteBackgroundStep}
-          completingStepKey={completingStepKey}
           expandedStep={expandedStep}
           hoveredRejection={hoveredRejection}
           onStepClick={handleStepClick}

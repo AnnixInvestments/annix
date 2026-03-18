@@ -341,6 +341,48 @@ export default function JobCardDetailPage() {
     ];
   }, [jobCard, validLineItemCount, allocations.length, currentStatus]);
 
+  const userPendingBgSteps = useMemo(() => {
+    if (!workflowStatus || !user?.name) return [];
+    const fgSteps = workflowStatus.foregroundSteps || [];
+    const fgKeys = fgSteps.filter((s) => s.key !== "draft").map((s) => s.key);
+    const currentFgIdx = fgKeys.indexOf(currentStatus || "");
+    const completedKeys = new Set(
+      backgroundSteps.filter((bg) => bg.completedAt !== null).map((bg) => bg.stepKey),
+    );
+    const assignments = workflowStatus.stepAssignments || {};
+
+    const triggerGroups = backgroundSteps.reduce<Record<string, BackgroundStepStatus[]>>(
+      (acc, bg) => {
+        const trigger = bg.triggerAfterStep || "__root__";
+        return { ...acc, [trigger]: [...(acc[trigger] || []), bg] };
+      },
+      {},
+    );
+
+    return backgroundSteps.filter((bg) => {
+      if (bg.completedAt !== null) return false;
+
+      const trigger = bg.triggerAfterStep || "__root__";
+      const triggerFgIdx = trigger === "__root__" ? 0 : fgKeys.indexOf(trigger);
+      if (triggerFgIdx > currentFgIdx) return false;
+
+      const siblings = triggerGroups[trigger] || [];
+      const myIdx = siblings.findIndex((s) => s.stepKey === bg.stepKey);
+      if (myIdx > 0) {
+        const prevSibling = siblings[myIdx - 1];
+        if (!completedKeys.has(prevSibling.stepKey)) return false;
+      }
+
+      const assigned = assignments[bg.stepKey];
+      if (assigned && assigned.length > 0) {
+        const isAssigned = assigned.some((u) => u.name === user.name);
+        if (!isAssigned) return false;
+      }
+
+      return true;
+    });
+  }, [workflowStatus, backgroundSteps, currentStatus, user?.name]);
+
   const { activeTab, visitedTabs, handleTabChange, visibleTabs } = useJobCardTabs(tabDefinitions);
 
   if (isLoading) {
@@ -376,11 +418,11 @@ export default function JobCardDetailPage() {
   return (
     <div className="space-y-6">
       {ConfirmDialog}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div className="flex items-center space-x-4 min-w-0">
           <Link
             href="/stock-control/portal/job-cards"
-            className="text-gray-500 hover:text-gray-700"
+            className="text-gray-500 hover:text-gray-700 flex-shrink-0"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
@@ -391,8 +433,8 @@ export default function JobCardDetailPage() {
               />
             </svg>
           </Link>
-          <div>
-            <div className="flex items-center space-x-3">
+          <div className="min-w-0">
+            <div className="flex items-center space-x-3 flex-wrap">
               <h1 className="text-2xl font-bold text-gray-900">{jobCard.jobNumber}</h1>
               {jobCard.versionNumber && jobCard.versionNumber > 1 && (
                 <span className="px-2 py-0.5 text-xs font-semibold rounded-full bg-purple-100 text-purple-800">
@@ -434,11 +476,11 @@ export default function JobCardDetailPage() {
             <p className="mt-1 text-sm text-gray-500">{jobCard.jobName}</p>
           </div>
         </div>
-        <div className="flex items-center space-x-3">
+        <div className="flex flex-wrap items-center gap-2">
           <button
             onClick={handlePrintQr}
             disabled={isDownloadingQr}
-            className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:bg-gray-100 disabled:cursor-not-allowed"
+            className="inline-flex items-center px-3 py-1.5 sm:px-4 sm:py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:bg-gray-100 disabled:cursor-not-allowed"
           >
             <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
@@ -455,7 +497,7 @@ export default function JobCardDetailPage() {
               key={transition.next}
               onClick={() => handleStatusUpdate(transition.next)}
               disabled={isUpdatingStatus}
-              className={`px-4 py-2 text-sm font-medium text-white rounded-md disabled:bg-gray-400 disabled:cursor-not-allowed ${transition.color}`}
+              className={`px-3 py-1.5 sm:px-4 sm:py-2 text-sm font-medium text-white rounded-md disabled:bg-gray-400 disabled:cursor-not-allowed ${transition.color}`}
             >
               {transition.label}
             </button>
@@ -463,7 +505,7 @@ export default function JobCardDetailPage() {
           {canApprove && currentStep && (
             <button
               onClick={() => openApprovalModal(currentStep)}
-              className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-teal-600 hover:bg-teal-700"
+              className="inline-flex items-center px-3 py-1.5 sm:px-4 sm:py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-teal-600 hover:bg-teal-700"
             >
               <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
@@ -479,7 +521,7 @@ export default function JobCardDetailPage() {
           {currentStatus === "dispatched" && (
             <button
               onClick={handlePrintSignedPdf}
-              className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+              className="inline-flex items-center px-3 py-1.5 sm:px-4 sm:py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
             >
               <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
@@ -495,7 +537,7 @@ export default function JobCardDetailPage() {
           {jobCard.status === "active" && (
             <button
               onClick={openAllocateModal}
-              className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-teal-600 hover:bg-teal-700"
+              className="inline-flex items-center px-3 py-1.5 sm:px-4 sm:py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-teal-600 hover:bg-teal-700"
             >
               <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
@@ -539,8 +581,6 @@ export default function JobCardDetailPage() {
             foregroundSteps={workflowStatus.foregroundSteps || []}
             backgroundSteps={backgroundSteps}
             currentUserName={user?.name || null}
-            onCompleteBackgroundStep={handleCompleteBackgroundStep}
-            completingStepKey={completingStepKey}
           />
           <div className="bg-white rounded-lg border border-gray-200 p-4">
             <div className="flex items-center justify-between">
@@ -572,6 +612,27 @@ export default function JobCardDetailPage() {
                 </div>
               )}
             </div>
+            {userPendingBgSteps.length > 0 && (
+              <div className="mt-3 pt-3 border-t border-gray-100">
+                <p className="text-xs font-medium text-gray-500 mb-2">
+                  Your pending background tasks
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {userPendingBgSteps.map((bg) => (
+                    <button
+                      key={bg.stepKey}
+                      onClick={() => handleCompleteBackgroundStep(bg.stepKey)}
+                      disabled={completingStepKey === bg.stepKey}
+                      className="px-3 py-1.5 text-xs font-medium rounded-md bg-amber-600 text-white hover:bg-amber-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+                    >
+                      {completingStepKey === bg.stepKey
+                        ? "..."
+                        : bg.actionLabel || `Complete ${bg.label}`}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
