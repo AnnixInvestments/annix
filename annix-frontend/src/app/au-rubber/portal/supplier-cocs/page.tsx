@@ -233,6 +233,13 @@ export default function SupplierCocsPage() {
     (calenderRollPage + 1) * effectiveCalenderRollPageSize,
   );
 
+  const sectionLabel = (typeLabel: string, items: RubberSupplierCocDto[]): string => {
+    const uniqueSuppliers = [...new Set(items.map((c) => c.supplierCompanyName).filter(Boolean))];
+    if (uniqueSuppliers.length === 1) return `${typeLabel} (${uniqueSuppliers[0]})`;
+    if (uniqueSuppliers.length > 1) return `${typeLabel} (${uniqueSuppliers.join(", ")})`;
+    return typeLabel;
+  };
+
   useEffect(() => {
     setCompounderPage(0);
     setCalendererPage(0);
@@ -603,7 +610,7 @@ export default function SupplierCocsPage() {
       ) : (
         [
           {
-            label: "Compounder (S&N Rubber)",
+            label: sectionLabel("Compounder", compounderCocs),
             badge: "bg-purple-100 text-purple-800",
             section: "compounder" as const,
             items: compounderCocs,
@@ -615,7 +622,7 @@ export default function SupplierCocsPage() {
             setPageSize: setCompounderPageSize,
           },
           {
-            label: "Calenderer (Impilo Industries)",
+            label: sectionLabel("Calenderer", calendererCocs),
             badge: "bg-indigo-100 text-indigo-800",
             section: "calenderer" as const,
             items: calendererCocs,
@@ -627,7 +634,7 @@ export default function SupplierCocsPage() {
             setPageSize: setCalendererPageSize,
           },
           {
-            label: "Calender Roll (S&N Rubber)",
+            label: sectionLabel("Calender Roll", calenderRollCocs),
             badge: "bg-amber-100 text-amber-800",
             section: "calenderRoll" as const,
             items: calenderRollCocs,
@@ -710,6 +717,12 @@ export default function SupplierCocsPage() {
                       </th>
                       <th
                         scope="col"
+                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                      >
+                        Supplier
+                      </th>
+                      <th
+                        scope="col"
                         className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                         onClick={() => handleSort(group.section, "processingStatus")}
                       >
@@ -782,6 +795,9 @@ export default function SupplierCocsPage() {
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                             {coc.compoundCode || "-"}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {coc.supplierCompanyName || "-"}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             {statusBadge(coc.processingStatus)}
@@ -924,9 +940,26 @@ export default function SupplierCocsPage() {
                     onChange={(e) => setUploadType(e.target.value as SupplierCocType)}
                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 sm:text-sm border p-2"
                   >
-                    <option value="COMPOUNDER">Compounder (S&N Rubber)</option>
-                    <option value="CALENDARER">Calendarer (Impilo)</option>
-                    <option value="CALENDER_ROLL">Calender Roll (S&N Rubber)</option>
+                    <option value="COMPOUNDER">Compounder</option>
+                    <option value="CALENDARER">Calenderer</option>
+                    <option value="CALENDER_ROLL">Calender Roll</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Supplier</label>
+                  <select
+                    value={uploadSupplierId || ""}
+                    onChange={(e) => setUploadSupplierId(e.target.value ? Number(e.target.value) : null)}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 sm:text-sm border p-2"
+                  >
+                    <option value="">Select supplier...</option>
+                    {companies
+                      .filter((c) => c.companyType === "SUPPLIER")
+                      .map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.name}
+                        </option>
+                      ))}
                   </select>
                 </div>
                 <div>
