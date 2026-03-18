@@ -1,7 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import type { CoatingAnalysis, UnverifiedProduct } from "@/app/lib/api/stockControlApi";
+import type {
+  CoatingAnalysis,
+  JobCardLineItem,
+  UnverifiedProduct,
+} from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { HelpTooltip } from "../../../../components/HelpTooltip";
 
@@ -22,6 +26,7 @@ interface CoatingAnalysisTabProps {
   onTdsUpload: () => void;
   isAdmin: boolean;
   sourceFileUrl: string | null;
+  lineItems: JobCardLineItem[];
 }
 
 interface ExtractionCorrection {
@@ -116,6 +121,7 @@ export function CoatingAnalysisTab(props: CoatingAnalysisTabProps) {
     onTdsUpload,
     isAdmin,
     sourceFileUrl,
+    lineItems,
   } = props;
 
   const [showTeachNix, setShowTeachNix] = useState(false);
@@ -189,8 +195,56 @@ export function CoatingAnalysisTab(props: CoatingAnalysisTabProps) {
     }
   };
 
+  const totalM2 = lineItems.reduce((sum, li) => {
+    const m2 = Number(li.m2) || 0;
+    const qty = Number(li.quantity) || 1;
+    return sum + m2 * qty;
+  }, 0);
+
   return (
     <div className="space-y-6">
+      {lineItems.length > 0 && (
+        <div>
+          <h4 className="text-sm font-medium text-gray-900 mb-2">
+            Line Items <span className="text-gray-400 font-normal">{lineItems.length} items</span>
+          </h4>
+          <table className="min-w-full text-sm">
+            <thead>
+              <tr className="border-b border-gray-200">
+                <th className="text-left py-2 pr-4 font-medium text-gray-500 w-10">#</th>
+                <th className="text-left py-2 pr-4 font-medium text-gray-500">Item Code</th>
+                <th className="text-left py-2 pr-4 font-medium text-gray-500">Description</th>
+                <th className="text-right py-2 pr-4 font-medium text-gray-500">Qty</th>
+                <th className="text-right py-2 pr-4 font-medium text-gray-500">m²</th>
+                <th className="text-right py-2 pr-4 font-medium text-gray-500">Total m²</th>
+              </tr>
+            </thead>
+            <tbody>
+              {lineItems.map((li, idx) => {
+                const m2 = Number(li.m2) || 0;
+                const qty = Number(li.quantity) || 1;
+                return (
+                  <tr key={li.id} className="border-b border-gray-100">
+                    <td className="py-2 pr-4 text-gray-400">{idx + 1}</td>
+                    <td className="py-2 pr-4 text-gray-900 font-medium">{li.itemCode || "—"}</td>
+                    <td className="py-2 pr-4 text-gray-700">{li.itemDescription || "—"}</td>
+                    <td className="py-2 pr-4 text-right font-semibold text-gray-900">{qty}</td>
+                    <td className="py-2 pr-4 text-right text-gray-700">{m2 > 0 ? m2.toFixed(2) : "—"}</td>
+                    <td className="py-2 pr-4 text-right font-semibold text-teal-700">{m2 > 0 ? (m2 * qty).toFixed(2) : "—"}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+            <tfoot>
+              <tr className="border-t border-gray-300">
+                <td colSpan={5} className="py-2 pr-4 text-right font-medium text-gray-600">Total m²</td>
+                <td className="py-2 pr-4 text-right font-bold text-teal-800">{totalM2.toFixed(2)}</td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      )}
+
       {coatingAnalysis &&
         (coatingAnalysis.status === "analysed" || coatingAnalysis.status === "accepted") &&
         coatingAnalysis.coats.length > 0 && (
@@ -241,7 +295,7 @@ export function CoatingAnalysisTab(props: CoatingAnalysisTabProps) {
                 </button>
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-x-4 gap-y-2 mb-4 text-sm">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-2 mb-4 text-sm">
               {coatingAnalysis.applicationType && (
                 <div>
                   <span className="font-medium text-gray-500">Application: </span>
@@ -286,210 +340,89 @@ export function CoatingAnalysisTab(props: CoatingAnalysisTabProps) {
                 />
               )}
             </div>
-            <table className="min-w-full text-sm">
-              <thead>
-                <tr className="border-b border-gray-200">
-                  <th className="text-left py-2 pr-4 font-medium text-gray-500">Area</th>
-                  <th className="text-left py-2 pr-4 font-medium text-gray-500">Product</th>
-                  <th className="text-right py-2 pr-4 font-medium text-gray-500">
-                    DFT (&#181;m) <HelpTooltip term="DFT" />
-                  </th>
-                  <th className="text-right py-2 pr-4 font-medium text-gray-500">
-                    Coverage (m&#178;/L)
-                  </th>
-                  <th className="text-right py-2 pr-4 font-medium text-gray-500">Litres Req.</th>
-                  {isAdmin && <th className="text-right py-2 font-medium text-gray-500 w-16"></th>}
-                </tr>
-              </thead>
-              <tbody>
-                {coatingAnalysis.coats.map((coat, idx) => (
-                  <tr key={idx} className="border-b border-gray-100">
-                    <td className="py-2 pr-4 text-gray-600 capitalize">
-                      {coat.area === "external" ? "Ext" : "Int"}
-                    </td>
-                    <td className="py-2 pr-4 text-gray-900 font-medium">
-                      {coat.product}
-                      {coat.verified === false && (
-                        <span
-                          className="ml-1.5 inline-flex px-1.5 py-0.5 text-xs font-medium rounded bg-amber-100 text-amber-700"
-                          title="Volume solids estimated - upload TDS to verify"
-                        >
-                          unverified
-                        </span>
-                      )}
-                      {coat.verified === true && (
-                        <span
-                          className="ml-1.5 inline-flex px-1.5 py-0.5 text-xs font-medium rounded bg-green-100 text-green-700"
-                          title="Volume solids verified"
-                        >
-                          verified
-                        </span>
-                      )}
-                    </td>
-                    <td className="py-2 pr-4 text-right text-gray-900">
-                      {isAdmin && editingDft === idx ? (
-                        <div className="flex items-center justify-end space-x-1">
-                          <input
-                            type="number"
-                            step="1"
-                            min="0"
-                            className="w-16 px-1 py-0.5 text-sm text-right border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-teal-500"
-                            value={dftMin}
-                            onChange={(e) => setDftMin(e.target.value)}
-                            disabled={savingDft}
-                            autoFocus
-                          />
-                          <span>-</span>
-                          <input
-                            type="number"
-                            step="1"
-                            min="0"
-                            className="w-16 px-1 py-0.5 text-sm text-right border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-teal-500"
-                            value={dftMax}
-                            onChange={(e) => setDftMax(e.target.value)}
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter") handleSaveDft(idx);
-                              if (e.key === "Escape") setEditingDft(null);
-                            }}
-                            disabled={savingDft}
-                          />
-                          <button
-                            type="button"
-                            onClick={() => handleSaveDft(idx)}
-                            disabled={savingDft}
-                            className="text-teal-600 hover:text-teal-800 disabled:text-gray-400"
-                            title="Save"
-                          >
-                            <svg
-                              className="w-4 h-4"
-                              fill="none"
-                              stroke="currentColor"
-                              viewBox="0 0 24 24"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M5 13l4 4L19 7"
-                              />
-                            </svg>
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setEditingDft(null)}
-                            className="text-gray-400 hover:text-gray-600"
-                            title="Cancel"
-                          >
-                            <svg
-                              className="w-4 h-4"
-                              fill="none"
-                              stroke="currentColor"
-                              viewBox="0 0 24 24"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M6 18L18 6M6 6l12 12"
-                              />
-                            </svg>
-                          </button>
-                        </div>
-                      ) : isAdmin ? (
-                        <button
-                          type="button"
-                          className="hover:text-teal-600 hover:underline cursor-pointer"
-                          onClick={() => {
-                            setDftMin(String(coat.minDftUm));
-                            setDftMax(String(coat.maxDftUm));
-                            setEditingDft(idx);
-                          }}
-                          title="Click to edit DFT"
-                        >
-                          {coat.minDftUm}-{coat.maxDftUm}
-                        </button>
-                      ) : (
-                        <span>
-                          {coat.minDftUm}-{coat.maxDftUm}
-                        </span>
-                      )}
-                    </td>
-                    <td className="py-2 pr-4 text-right text-gray-900">
-                      {coat.coverageM2PerLiter}
-                    </td>
-                    <td className="py-2 pr-4 text-right font-semibold text-gray-900">
-                      {coat.litersRequired === 0 ? "\u2014" : coat.litersRequired}
-                    </td>
-                    {isAdmin && (
-                      <td className="py-2 text-right">
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveCoat(idx)}
-                          disabled={removingCoat === idx}
-                          className="text-gray-400 hover:text-red-600 disabled:text-gray-300"
-                          title="Remove coat line"
-                        >
-                          {removingCoat === idx ? (
-                            <div className="w-4 h-4 animate-spin rounded-full border-b-2 border-red-500"></div>
-                          ) : (
-                            <svg
-                              className="w-4 h-4"
-                              fill="none"
-                              stroke="currentColor"
-                              viewBox="0 0 24 24"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                              />
-                            </svg>
-                          )}
-                        </button>
-                      </td>
-                    )}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            <p className="mt-2 text-xs text-gray-400 italic">
-              Coverage includes {pipingLossPct}% piping loss factor
-            </p>
-            {coatingAnalysis.stockAssessment.length > 0 && (
-              <div className="mt-4 pt-3 border-t border-gray-100">
-                <h5 className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">
-                  Stock Assessment
-                </h5>
-                <div className="space-y-1">
-                  {coatingAnalysis.stockAssessment.map((item, idx) => (
-                    <div key={idx} className="flex items-center justify-between text-sm">
-                      <span className="text-gray-700">{item.product}</span>
-                      <div className="flex items-center space-x-3">
-                        {item.stockItemId ? (
-                          <>
-                            <span className="text-gray-500">
-                              {item.currentStock} / {item.required} {item.unit}
-                            </span>
-                            <span
-                              className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full ${
-                                item.sufficient
-                                  ? "bg-green-100 text-green-800"
-                                  : "bg-red-100 text-red-800"
-                              }`}
-                            >
-                              {item.sufficient ? "OK" : "Short"}
-                            </span>
-                          </>
-                        ) : (
-                          <span className="text-xs text-amber-600 italic">Not in inventory</span>
+            {(() => {
+              const uniqueCoats = coatingAnalysis.coats.reduce<typeof coatingAnalysis.coats>((acc, coat) => {
+                const exists = acc.find((c) => c.product === coat.product && c.area === coat.area);
+                if (!exists) acc.push(coat);
+                return acc;
+              }, []);
+              const totalLitres = coatingAnalysis.coats.reduce((sum, c) => sum + c.litersRequired, 0);
+              return (
+                <div className="space-y-3">
+                  {uniqueCoats.map((coat, idx) => (
+                    <div key={idx} className="flex items-center justify-between text-sm border-b border-gray-100 pb-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-gray-500 capitalize">{coat.area === "external" ? "Ext" : "Int"}</span>
+                        <span className="font-medium text-gray-900">{coat.product}</span>
+                        {coat.verified === true && (
+                          <span className="inline-flex px-1.5 py-0.5 text-xs font-medium rounded bg-green-100 text-green-700">verified</span>
                         )}
+                        {coat.verified === false && (
+                          <span className="inline-flex px-1.5 py-0.5 text-xs font-medium rounded bg-amber-100 text-amber-700">unverified</span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-4 text-sm">
+                        <span className="text-gray-500">DFT: {coat.minDftUm}-{coat.maxDftUm} µm</span>
+                        <span className="text-gray-500">Coverage: {coat.coverageM2PerLiter} m²/L</span>
                       </div>
                     </div>
                   ))}
+                  <div className="flex items-center justify-between pt-1">
+                    <span className="text-sm font-medium text-gray-600">Total Litres Required</span>
+                    <span className="text-lg font-bold text-teal-800">{totalLitres.toFixed(1)} L</span>
+                  </div>
+                  <p className="text-xs text-gray-400 italic">
+                    Coverage includes {pipingLossPct}% piping loss factor
+                  </p>
                 </div>
-              </div>
-            )}
+              );
+            })()}
+            {coatingAnalysis.stockAssessment.length > 0 && (() => {
+              const deduped = coatingAnalysis.stockAssessment.reduce<typeof coatingAnalysis.stockAssessment>((acc, item) => {
+                const existing = acc.find((a) => a.product === item.product);
+                if (existing) {
+                  existing.required = existing.required + item.required;
+                  existing.sufficient = existing.stockItemId ? existing.currentStock >= existing.required : false;
+                } else {
+                  acc.push({ ...item });
+                }
+                return acc;
+              }, []);
+              return (
+                <div className="mt-4 pt-3 border-t border-gray-100">
+                  <h5 className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">
+                    Stock Assessment
+                  </h5>
+                  <div className="space-y-1">
+                    {deduped.map((item, idx) => (
+                      <div key={idx} className="flex items-center justify-between text-sm">
+                        <span className="text-gray-700">{item.product}</span>
+                        <div className="flex items-center space-x-3">
+                          {item.stockItemId ? (
+                            <>
+                              <span className="text-gray-500">
+                                {item.currentStock} / {item.required.toFixed(1)} {item.unit}
+                              </span>
+                              <span
+                                className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full ${
+                                  item.sufficient
+                                    ? "bg-green-100 text-green-800"
+                                    : "bg-red-100 text-red-800"
+                                }`}
+                              >
+                                {item.sufficient ? "OK" : "Short"}
+                              </span>
+                            </>
+                          ) : (
+                            <span className="text-xs text-amber-600 italic">Not in inventory</span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         )}
 

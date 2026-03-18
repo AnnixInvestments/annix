@@ -451,6 +451,14 @@ export default function JobCardDetailPage() {
     return stepConfig?.actionLabel || null;
   }, [workflowStatus, currentStep]);
 
+  const specsNeedReview = useMemo(() => {
+    if (!currentStep || currentStep !== "manager_approval") return false;
+    const ca = coating.coatingAnalysis;
+    const coatingPending = ca && ca.coats.length > 0 && ca.status !== "accepted";
+    const rubberPending = ca && ca.hasInternalLining && ca.status !== "accepted";
+    return coatingPending || rubberPending || false;
+  }, [currentStep, coating.coatingAnalysis]);
+
   const { activeTab, visitedTabs, handleTabChange, visibleTabs } = useJobCardTabs(tabDefinitions);
 
   if (isLoading) {
@@ -562,32 +570,6 @@ export default function JobCardDetailPage() {
               {isDownloadingQr ? "Generating..." : "Print JC"}
             </button>
           )}
-          {jobCard.status.toLowerCase() !== "draft" && transitions.map((transition) => (
-            <button
-              key={transition.next}
-              onClick={() => handleStatusUpdate(transition.next)}
-              disabled={isUpdatingStatus}
-              className={`px-3 py-1.5 sm:px-4 sm:py-2 text-sm font-medium text-white rounded-md disabled:bg-gray-400 disabled:cursor-not-allowed ${transition.color}`}
-            >
-              {transition.label}
-            </button>
-          ))}
-          {canApprove && currentStep && (
-            <button
-              onClick={() => openApprovalModal(currentStep)}
-              className="inline-flex items-center px-3 py-1.5 sm:px-4 sm:py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-teal-600 hover:bg-teal-700"
-            >
-              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M5 13l4 4L19 7"
-                />
-              </svg>
-              Review &amp; Approve
-            </button>
-          )}
           {currentStatus === "dispatched" && (
             <button
               onClick={handlePrintSignedPdf}
@@ -602,22 +584,6 @@ export default function JobCardDetailPage() {
                 />
               </svg>
               Print Signed JC
-            </button>
-          )}
-          {jobCard.status === "active" && (
-            <button
-              onClick={openAllocateModal}
-              className="inline-flex items-center px-3 py-1.5 sm:px-4 sm:py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-teal-600 hover:bg-teal-700"
-            >
-              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 4v16m8-8H4"
-                />
-              </svg>
-              Allocate Stock
             </button>
           )}
         </div>
@@ -654,37 +620,48 @@ export default function JobCardDetailPage() {
           />
           <div className="bg-white rounded-lg border border-gray-200 p-4">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-              <h3 className="text-sm font-semibold text-gray-900">Workflow Actions</h3>
+              <div className="flex items-center gap-3">
+                <h3 className="text-sm font-semibold text-gray-900">Workflow Actions</h3>
+                {canApprove && currentStep && specsNeedReview && (
+                  <>
+                    {coating.coatingAnalysis && coating.coatingAnalysis.coats.length > 0 && coating.coatingAnalysis.status !== "accepted" && (
+                      <button
+                        onClick={() => handleTabChange("coating")}
+                        className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-medium text-sm transition-colors"
+                      >
+                        Check Coating Spec
+                      </button>
+                    )}
+                    {coating.coatingAnalysis && coating.coatingAnalysis.hasInternalLining && coating.coatingAnalysis.status !== "accepted" && (
+                      <button
+                        onClick={() => handleTabChange("rubber-analysis")}
+                        className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-medium text-sm transition-colors"
+                      >
+                        Check Rubber Spec
+                      </button>
+                    )}
+                  </>
+                )}
+                {canApprove && currentStep && !specsNeedReview && !currentStepActionCompleted && currentStepActionLabel && (
+                  <button
+                    onClick={handleCompleteFgAction}
+                    disabled={isCompletingFgAction}
+                    className="px-4 py-2 bg-amber-600 text-white rounded-md hover:bg-amber-700 font-medium text-sm disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+                  >
+                    {isCompletingFgAction ? "..." : currentStepActionLabel}
+                  </button>
+                )}
+              </div>
               {canApprove && currentStep ? (
                 <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
-                  {!currentStepActionCompleted && currentStepActionLabel ? (
-                    <>
-                      <p className="text-sm text-gray-600">
-                        Action required at{" "}
-                        <span className="font-medium">{currentStep.replace(/_/g, " ")}</span>
-                      </p>
-                      <button
-                        onClick={handleCompleteFgAction}
-                        disabled={isCompletingFgAction}
-                        className="px-4 py-2 bg-amber-600 text-white rounded-md hover:bg-amber-700 font-medium text-sm disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
-                      >
-                        {isCompletingFgAction ? "..." : currentStepActionLabel}
-                      </button>
-                    </>
-                  ) : (
-                    <>
-                      <p className="text-sm text-gray-600">
-                        Awaiting your approval at{" "}
-                        <span className="font-medium">{currentStep.replace(/_/g, " ")}</span>
-                      </p>
-                      <button
-                        onClick={() => openApprovalModal(currentStep)}
-                        className="px-4 py-2 bg-teal-600 text-white rounded-md hover:bg-teal-700 font-medium text-sm"
-                      >
-                        Review &amp; Approve
-                      </button>
-                    </>
-                  )}
+                  <p className="text-sm text-gray-600">
+                    {specsNeedReview
+                      ? <>Review coating & rubber specs before proceeding</>
+                      : !currentStepActionCompleted && currentStepActionLabel
+                        ? <>Action required at{" "}<span className="font-medium">{currentStep.replace(/_/g, " ")}</span></>
+                        : <>Awaiting your approval at{" "}<span className="font-medium">{currentStep.replace(/_/g, " ")}</span></>
+                    }
+                  </p>
                 </div>
               ) : (
                 <div className="text-sm text-gray-500">
@@ -736,14 +713,16 @@ export default function JobCardDetailPage() {
         </div>
       )}
 
-      <JobCardNextAction
-        currentStatus={currentStatus}
-        canApprove={canApprove}
-        currentStep={currentStep}
-        userRole={userRole}
-        onApprove={currentStep ? () => openApprovalModal(currentStep) : undefined}
-        jobCardId={jobId}
-      />
+      {!specsNeedReview && (currentStepActionCompleted || !currentStepActionLabel) && (
+        <JobCardNextAction
+          currentStatus={currentStatus}
+          canApprove={canApprove}
+          currentStep={currentStep}
+          userRole={userRole}
+          onApprove={currentStep ? () => openApprovalModal(currentStep) : undefined}
+          jobCardId={jobId}
+        />
+      )}
 
       <div className="bg-white shadow rounded-lg overflow-x-auto">
         <JobCardTabs tabs={tabDefinitions} activeTab={activeTab} onTabChange={handleTabChange} />
@@ -951,6 +930,7 @@ export default function JobCardDetailPage() {
               onTdsUpload={coating.handleTdsUpload}
               isAdmin={userRole === "admin"}
               sourceFileUrl={jobCard?.sourceFilePath || null}
+              lineItems={jobCard?.lineItems || []}
             />
           </TabPanel>
 

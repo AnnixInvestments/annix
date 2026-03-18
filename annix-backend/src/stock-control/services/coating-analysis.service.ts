@@ -175,9 +175,13 @@ export class CoatingAnalysisService {
           return hasNoData && (code.length > 60 || SPEC_NOTE_PATTERN.test(code));
         })
         .map((li) => (li.itemCode || "").trim());
-      const lineItemNotes = lineItems
-        .map((li) => (li.notes || "").trim())
-        .filter((n) => n.length > 0);
+      const lineItemNotes = [
+        ...new Set(
+          lineItems
+            .map((li) => (li.notes || "").trim())
+            .filter((n) => n.length > 0),
+        ),
+      ];
       const combinedNotes =
         sanitizeNotes(
           [jobCard.notes || "", ...noteLineItems, ...lineItemNotes].filter(Boolean).join("\n"),

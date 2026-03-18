@@ -206,7 +206,7 @@ const bgNodeState = (
   currentStepIndex: number,
 ): "completed" | "active" | "pending" => {
   if (bg.completedAt !== null) return "completed";
-  if (fgIndex <= currentStepIndex) return "active";
+  if (fgIndex < currentStepIndex) return "active";
   return "pending";
 };
 
@@ -366,7 +366,7 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
 
         if (!startNode || !endNode || !firstBg || !lastBg) return;
 
-        const branchActive = branch.triggerFgIdx <= currentStepIndex;
+        const branchActive = branch.triggerFgIdx < currentStepIndex;
         const allComplete = branch.bgSteps.every((bg) => bg.completedAt !== null);
         const strokeColor = branchActive ? "#f59e0b" : "#d1d5db";
         const mergeColor = branchActive && allComplete ? "#f59e0b" : "#d1d5db";
