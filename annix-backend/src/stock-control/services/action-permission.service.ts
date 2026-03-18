@@ -31,6 +31,7 @@ export const DEFAULT_ACTION_PERMISSIONS: Record<string, string[]> = {
   "deliveries.delete": ["manager", "admin"],
   "issuance.issue": ["storeman", "receiving-clerk", "accounts", "manager", "admin"],
   "issuance.undo": ["storeman", "receiving-clerk", "accounts", "manager", "admin"],
+  "job-cards.line-items.manage": ["accounts", "admin"],
 };
 
 export const ACTION_PERMISSION_LABELS: Record<string, { group: string; label: string }> = {
@@ -60,6 +61,7 @@ export const ACTION_PERMISSION_LABELS: Record<string, { group: string; label: st
   "deliveries.delete": { group: "Deliveries", label: "Delete deliveries" },
   "issuance.issue": { group: "Issuance", label: "Issue stock" },
   "issuance.undo": { group: "Issuance", label: "Undo issuance" },
+  "job-cards.line-items.manage": { group: "Job Cards", label: "Add/delete line items" },
 };
 
 const IMMUTABLE_ACTIONS: string[] = [];

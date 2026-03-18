@@ -697,6 +697,8 @@ export {
   useRecentActivity,
   useRecentIssuances,
   useReclassifyAttachment,
+  useAddLineItem,
+  useDeleteLineItem,
   useReExtractLineItems,
   useRejectOverAllocation,
   useRejectWorkflowStep,

@@ -615,7 +615,12 @@ export default function JobCardDetailPage() {
               versions={documents.versions}
               attachments={documents.attachments}
               lineItemsContent={
-                <LineItemsTab jobCard={jobCard} attachments={documents.attachments} />
+                <LineItemsTab
+                  jobCard={jobCard}
+                  attachments={documents.attachments}
+                  canManageLineItems={userRole === "admin" || userRole === "accounts"}
+                  onRefresh={fetchData}
+                />
               }
               showVersionHistory={documents.showVersionHistory}
               onToggleVersionHistory={() =>

@@ -736,6 +736,37 @@ export function useReExtractLineItems() {
   });
 }
 
+export function useDeleteLineItem() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (params: { jobCardId: number; lineItemId: number }) =>
+      stockControlApiClient.deleteLineItem(params.jobCardId, params.lineItemId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: stockControlKeys.jobCardDetail.all });
+    },
+  });
+}
+
+export function useAddLineItem() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (params: {
+      jobCardId: number;
+      data: {
+        itemCode?: string;
+        itemDescription?: string;
+        itemNo?: string;
+        quantity?: number;
+        jtNo?: string;
+        m2?: number;
+      };
+    }) => stockControlApiClient.addLineItem(params.jobCardId, params.data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: stockControlKeys.jobCardDetail.all });
+    },
+  });
+}
+
 export function useApproveWorkflowStep() {
   const queryClient = useQueryClient();
   return useMutation({

@@ -4,6 +4,7 @@ import type {
   ImportMappingConfig,
   JobCard,
   JobCardAttachment,
+  JobCardLineItem,
   JobCardImportMapping,
   JobCardImportResult,
   JobCardImportRow,
@@ -131,6 +132,18 @@ declare module "./base" {
       updates: { minDftUm?: number; maxDftUm?: number },
     ): Promise<CoatingAnalysis>;
     removeCoatingCoat(jobCardId: number, coatIndex: number): Promise<CoatingAnalysis>;
+    deleteLineItem(jobCardId: number, lineItemId: number): Promise<void>;
+    addLineItem(
+      jobCardId: number,
+      data: {
+        itemCode?: string;
+        itemDescription?: string;
+        itemNo?: string;
+        quantity?: number;
+        jtNo?: string;
+        m2?: number;
+      },
+    ): Promise<JobCardLineItem>;
   }
 }
 
@@ -427,5 +440,18 @@ proto.updateCoatingCoat = async function (jobCardId, coatIndex, updates) {
 proto.removeCoatingCoat = async function (jobCardId, coatIndex) {
   return this.request(`/stock-control/job-cards/${jobCardId}/coating-analysis/coats/${coatIndex}`, {
     method: "DELETE",
+  });
+};
+
+proto.deleteLineItem = async function (jobCardId, lineItemId) {
+  return this.request(`/stock-control/job-cards/${jobCardId}/line-items/${lineItemId}`, {
+    method: "DELETE",
+  });
+};
+
+proto.addLineItem = async function (jobCardId, data) {
+  return this.request(`/stock-control/job-cards/${jobCardId}/line-items`, {
+    method: "POST",
+    body: JSON.stringify(data),
   });
 };

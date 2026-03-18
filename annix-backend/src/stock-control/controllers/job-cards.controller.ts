@@ -30,6 +30,7 @@ import { CreateAllocationDto } from "../dto/create-allocation.dto";
 import { CreateJobCardDto } from "../dto/create-job-card.dto";
 import { UpdateJobCardDto } from "../dto/update-job-card.dto";
 import { RejectAllocationDto } from "../dto/workflow.dto";
+import { JobCardLineItem } from "../entities/job-card-line-item.entity";
 import { RubberDimensionOverride } from "../entities/rubber-dimension-override.entity";
 import { StockItem } from "../entities/stock-item.entity";
 import { MovementType, ReferenceType, StockMovement } from "../entities/stock-movement.entity";
@@ -70,6 +71,8 @@ export class JobCardsController {
     private readonly dimensionOverrideRepo: Repository<RubberDimensionOverride>,
     @InjectRepository(StockMovement)
     private readonly stockMovementRepo: Repository<StockMovement>,
+    @InjectRepository(JobCardLineItem)
+    private readonly lineItemRepo: Repository<JobCardLineItem>,
   ) {}
 
   @Get()
@@ -333,6 +336,68 @@ export class JobCardsController {
 
     await this.jobCardService.update(req.user.companyId, id, { notes: cleaned });
     return { notes: cleaned };
+  }
+
+  @StockControlRoles("admin", "accounts")
+  @PermissionKey("job-cards.line-items.manage")
+  @Delete(":id/line-items/:lineItemId")
+  @ApiOperation({ summary: "Delete a line item from a job card" })
+  async deleteLineItem(
+    @Req() req: any,
+    @Param("id") id: number,
+    @Param("lineItemId") lineItemId: number,
+  ) {
+    const lineItem = await this.lineItemRepo.findOne({
+      where: { id: lineItemId, jobCardId: id, companyId: req.user.companyId },
+    });
+    if (!lineItem) {
+      throw new BadRequestException("Line item not found");
+    }
+    await this.lineItemRepo.remove(lineItem);
+    return { message: "Line item deleted" };
+  }
+
+  @StockControlRoles("admin", "accounts")
+  @PermissionKey("job-cards.line-items.manage")
+  @Post(":id/line-items")
+  @ApiOperation({ summary: "Add a line item to a job card" })
+  async addLineItem(
+    @Req() req: any,
+    @Param("id") id: number,
+    @Body()
+    body: {
+      itemCode?: string;
+      itemDescription?: string;
+      itemNo?: string;
+      quantity?: number;
+      jtNo?: string;
+      m2?: number;
+    },
+  ) {
+    const jobCard = await this.jobCardService.findById(req.user.companyId, id);
+    if (!jobCard) {
+      throw new BadRequestException("Job card not found");
+    }
+
+    const maxSort = (jobCard.lineItems || []).reduce(
+      (max: number, li: any) => (li.sortOrder > max ? li.sortOrder : max),
+      0,
+    );
+
+    const lineItem = this.lineItemRepo.create({
+      jobCardId: id,
+      companyId: req.user.companyId,
+      itemCode: body.itemCode || null,
+      itemDescription: body.itemDescription || null,
+      itemNo: body.itemNo || null,
+      quantity: body.quantity || null,
+      jtNo: body.jtNo || null,
+      m2: body.m2 || null,
+      sortOrder: maxSort + 1,
+    });
+
+    const saved = await this.lineItemRepo.save(lineItem);
+    return saved;
   }
 
   @Get(":id/rubber-stock-options")
