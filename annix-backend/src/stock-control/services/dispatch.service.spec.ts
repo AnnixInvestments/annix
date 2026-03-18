@@ -4,7 +4,7 @@ import { getRepositoryToken } from "@nestjs/typeorm";
 import { DataSource } from "typeorm";
 import { AuditService } from "../../audit/audit.service";
 import { DispatchScan } from "../entities/dispatch-scan.entity";
-import { JobCard, JobCardWorkflowStatus } from "../entities/job-card.entity";
+import { JobCard } from "../entities/job-card.entity";
 import { StockAllocation } from "../entities/stock-allocation.entity";
 import { StockItem } from "../entities/stock-item.entity";
 import { StockMovement } from "../entities/stock-movement.entity";
@@ -46,10 +46,7 @@ describe("DispatchService", () => {
 
   const mockUser = { id: 1, companyId: 1, name: "Test User" };
 
-  function makeJobCard(
-    status: JobCardWorkflowStatus,
-    overrides: Partial<JobCard> = {},
-  ): Partial<JobCard> {
+  function makeJobCard(status: string, overrides: Partial<JobCard> = {}): Partial<JobCard> {
     return {
       id: 1,
       companyId: 1,
@@ -108,7 +105,7 @@ describe("DispatchService", () => {
 
   describe("startDispatchSession", () => {
     it("returns job card and progress when ready for dispatch", async () => {
-      const jobCard = makeJobCard(JobCardWorkflowStatus.READY_FOR_DISPATCH, {
+      const jobCard = makeJobCard("ready", {
         allocations: [makeAllocation(10, 5) as StockAllocation],
       });
       mockJobCardRepo.findOne.mockResolvedValue(jobCard);
@@ -130,14 +127,14 @@ describe("DispatchService", () => {
     });
 
     it("throws BadRequestException when job card is not ready for dispatch", async () => {
-      const jobCard = makeJobCard(JobCardWorkflowStatus.DRAFT);
+      const jobCard = makeJobCard("draft");
       mockJobCardRepo.findOne.mockResolvedValue(jobCard);
 
       await expect(service.startDispatchSession(1, 1)).rejects.toThrow(BadRequestException);
     });
 
     it("throws BadRequestException when job card is already dispatched", async () => {
-      const jobCard = makeJobCard(JobCardWorkflowStatus.DISPATCHED);
+      const jobCard = makeJobCard("dispatched");
       mockJobCardRepo.findOne.mockResolvedValue(jobCard);
 
       await expect(service.startDispatchSession(1, 1)).rejects.toThrow(BadRequestException);
@@ -146,7 +143,7 @@ describe("DispatchService", () => {
 
   describe("scanItem", () => {
     it("creates a dispatch scan for a valid allocation", async () => {
-      const jobCard = makeJobCard(JobCardWorkflowStatus.READY_FOR_DISPATCH);
+      const jobCard = makeJobCard("ready");
       mockJobCardRepo.findOne.mockResolvedValue(jobCard);
       mockAllocationRepo.findOne.mockResolvedValue(makeAllocation(10, 5));
       mockDispatchScanRepo.find.mockResolvedValue([]);
@@ -169,7 +166,7 @@ describe("DispatchService", () => {
     });
 
     it("includes notes when provided", async () => {
-      const jobCard = makeJobCard(JobCardWorkflowStatus.READY_FOR_DISPATCH);
+      const jobCard = makeJobCard("ready");
       mockJobCardRepo.findOne.mockResolvedValue(jobCard);
       mockAllocationRepo.findOne.mockResolvedValue(makeAllocation(10, 5));
       mockDispatchScanRepo.find.mockResolvedValue([]);
@@ -190,14 +187,14 @@ describe("DispatchService", () => {
     });
 
     it("throws BadRequestException when job card is not ready for dispatch", async () => {
-      const jobCard = makeJobCard(JobCardWorkflowStatus.STOCK_ALLOCATED);
+      const jobCard = makeJobCard("allocated");
       mockJobCardRepo.findOne.mockResolvedValue(jobCard);
 
       await expect(service.scanItem(1, 1, 10, 1, mockUser)).rejects.toThrow(BadRequestException);
     });
 
     it("throws BadRequestException when stock item is not allocated", async () => {
-      const jobCard = makeJobCard(JobCardWorkflowStatus.READY_FOR_DISPATCH);
+      const jobCard = makeJobCard("ready");
       mockJobCardRepo.findOne.mockResolvedValue(jobCard);
       mockAllocationRepo.findOne.mockResolvedValue(null);
 
@@ -205,7 +202,7 @@ describe("DispatchService", () => {
     });
 
     it("throws BadRequestException when quantity exceeds remaining", async () => {
-      const jobCard = makeJobCard(JobCardWorkflowStatus.READY_FOR_DISPATCH);
+      const jobCard = makeJobCard("ready");
       mockJobCardRepo.findOne.mockResolvedValue(jobCard);
       mockAllocationRepo.findOne.mockResolvedValue(makeAllocation(10, 5));
       mockDispatchScanRepo.find.mockResolvedValue([makeScan(10, 3)]);
@@ -214,7 +211,7 @@ describe("DispatchService", () => {
     });
 
     it("allows scanning exact remaining quantity", async () => {
-      const jobCard = makeJobCard(JobCardWorkflowStatus.READY_FOR_DISPATCH);
+      const jobCard = makeJobCard("ready");
       mockJobCardRepo.findOne.mockResolvedValue(jobCard);
       mockAllocationRepo.findOne.mockResolvedValue(makeAllocation(10, 5));
       mockDispatchScanRepo.find.mockResolvedValue([makeScan(10, 3)]);
@@ -225,7 +222,7 @@ describe("DispatchService", () => {
     });
 
     it("accounts for multiple existing scans", async () => {
-      const jobCard = makeJobCard(JobCardWorkflowStatus.READY_FOR_DISPATCH);
+      const jobCard = makeJobCard("ready");
       mockJobCardRepo.findOne.mockResolvedValue(jobCard);
       mockAllocationRepo.findOne.mockResolvedValue(makeAllocation(10, 10));
       mockDispatchScanRepo.find.mockResolvedValue([makeScan(10, 3), makeScan(10, 4)]);
@@ -335,7 +332,7 @@ describe("DispatchService", () => {
       mockAllocationRepo.find.mockResolvedValue([makeAllocation(10, 5, 1)]);
       mockDispatchScanRepo.find.mockResolvedValue([makeScan(10, 5)]);
       mockJobCardRepo.update.mockResolvedValue({ affected: 1 });
-      const completedJobCard = makeJobCard(JobCardWorkflowStatus.DISPATCHED);
+      const completedJobCard = makeJobCard("dispatched");
       mockJobCardRepo.findOne.mockResolvedValue(completedJobCard);
 
       const result = await service.completeDispatch(1, 1, mockUser);
@@ -344,11 +341,11 @@ describe("DispatchService", () => {
         {
           id: 1,
           companyId: 1,
-          workflowStatus: JobCardWorkflowStatus.READY_FOR_DISPATCH,
+          workflowStatus: "ready",
         },
-        { workflowStatus: JobCardWorkflowStatus.DISPATCHED },
+        { workflowStatus: "dispatched" },
       );
-      expect(result.workflowStatus).toBe(JobCardWorkflowStatus.DISPATCHED);
+      expect(result.workflowStatus).toBe("dispatched");
     });
 
     it("throws BadRequestException when dispatch is not complete", async () => {
@@ -370,7 +367,7 @@ describe("DispatchService", () => {
       mockAllocationRepo.find.mockResolvedValue([makeAllocation(10, 5, 1)]);
       mockDispatchScanRepo.find.mockResolvedValue([makeScan(10, 5)]);
       mockJobCardRepo.update.mockResolvedValue({ affected: 1 });
-      mockJobCardRepo.findOne.mockResolvedValue(makeJobCard(JobCardWorkflowStatus.DISPATCHED));
+      mockJobCardRepo.findOne.mockResolvedValue(makeJobCard("dispatched"));
 
       await service.completeDispatch(1, 1, mockUser);
 
@@ -378,9 +375,9 @@ describe("DispatchService", () => {
         expect.objectContaining({
           entityType: "job_card_dispatch",
           entityId: 1,
-          oldValues: { workflowStatus: JobCardWorkflowStatus.READY_FOR_DISPATCH },
+          oldValues: { workflowStatus: "ready" },
           newValues: expect.objectContaining({
-            workflowStatus: JobCardWorkflowStatus.DISPATCHED,
+            workflowStatus: "dispatched",
             completedBy: "Test User",
           }),
         }),
@@ -405,7 +402,7 @@ describe("DispatchService", () => {
         jobCardId: 1,
         stockItemId: 10,
         quantityDispatched: 3,
-        jobCard: makeJobCard(JobCardWorkflowStatus.READY_FOR_DISPATCH),
+        jobCard: makeJobCard("ready"),
       };
       mockDispatchScanRepo.findOne.mockResolvedValue(scan);
 
@@ -429,7 +426,7 @@ describe("DispatchService", () => {
         jobCardId: 1,
         stockItemId: 10,
         quantityDispatched: 3,
-        jobCard: makeJobCard(JobCardWorkflowStatus.DISPATCHED),
+        jobCard: makeJobCard("dispatched"),
       };
       mockDispatchScanRepo.findOne.mockResolvedValue(scan);
 
@@ -445,7 +442,7 @@ describe("DispatchService", () => {
         jobCardId: 1,
         stockItemId: 10,
         quantityDispatched: 3,
-        jobCard: makeJobCard(JobCardWorkflowStatus.READY_FOR_DISPATCH),
+        jobCard: makeJobCard("ready"),
       };
       mockDispatchScanRepo.findOne.mockResolvedValue(scan);
 

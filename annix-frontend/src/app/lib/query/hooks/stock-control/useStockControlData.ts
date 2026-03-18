@@ -12,6 +12,7 @@ import type {
   DispatchProgress,
   DispatchScan,
   JobCard,
+  JobCardActionCompletion,
   JobCardApproval,
   Requisition,
   StaffMember,
@@ -764,6 +765,38 @@ export function useAddLineItem() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: stockControlKeys.jobCardDetail.all });
     },
+  });
+}
+
+export function useCompleteAction() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (params: {
+      jobCardId: number;
+      stepKey: string;
+      actionType?: string;
+      metadata?: Record<string, unknown>;
+    }) =>
+      stockControlApiClient.completeAction(
+        params.jobCardId,
+        params.stepKey,
+        params.actionType,
+        params.metadata,
+      ),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: stockControlKeys.jobCardDetail.all });
+    },
+  });
+}
+
+export function useActionCompletions(jobCardId: number) {
+  return useQuery<JobCardActionCompletion[]>({
+    queryKey: [...stockControlKeys.jobCardDetail.all, "actions", jobCardId] as const,
+    queryFn: async () => {
+      const data = await stockControlApiClient.actionCompletions(jobCardId);
+      return Array.isArray(data) ? data : [];
+    },
+    enabled: jobCardId > 0,
   });
 }
 

@@ -21,6 +21,7 @@ import { Response } from "express";
 import {
   AddStepConfigDto,
   ApproveWorkflowStepDto,
+  CompleteActionDto,
   CompleteBackgroundStepDto,
   PushSubscribeDto,
   PushUnsubscribeDto,
@@ -30,12 +31,12 @@ import {
   ScanQrDto,
   ToggleStepBackgroundDto,
   UpdateNotificationRecipientsDto,
+  UpdateStepActionLabelDto,
   UpdateStepAssignmentsDto,
   UpdateStepFollowsDto,
   UpdateStepLabelDto,
   UpdateUserLocationsDto,
 } from "../dto/workflow.dto";
-import { WorkflowStep } from "../entities/job-card-approval.entity";
 import { JobCardDocumentType } from "../entities/job-card-document.entity";
 import { StockControlAuthGuard } from "../guards/stock-control-auth.guard";
 import {
@@ -142,6 +143,32 @@ export class WorkflowController {
     return { canApprove };
   }
 
+  @Post("job-cards/:id/action")
+  @StockControlRoles("admin", "manager", "storeman", "accounts")
+  @ApiOperation({ summary: "Complete an action button for a workflow step" })
+  async completeAction(@Req() req: any, @Param("id") id: number, @Body() dto: CompleteActionDto) {
+    return this.workflowService.completeAction(
+      req.user.companyId,
+      id,
+      req.user,
+      dto.stepKey,
+      dto.actionType,
+      dto.metadata,
+    );
+  }
+
+  @Get("job-cards/:id/actions")
+  @ApiOperation({ summary: "Get all action completions for a job card" })
+  async actionCompletions(@Req() req: any, @Param("id") id: number) {
+    return this.workflowService.actionCompletions(req.user.companyId, id);
+  }
+
+  @Get("job-cards/:id/archive")
+  @ApiOperation({ summary: "Get presigned URLs for archived documents" })
+  async archiveUrls(@Req() req: any, @Param("id") id: number) {
+    return this.workflowService.archiveUrls(req.user.companyId, id);
+  }
+
   @Get("notifications")
   @ApiOperation({ summary: "All notifications for current user" })
   async notifications(@Req() req: any, @Query("limit") limit?: number) {
@@ -186,7 +213,7 @@ export class WorkflowController {
   @StockControlRoles("admin")
   @ApiOperation({ summary: "Get users eligible for a workflow step" })
   async eligibleUsersForStep(@Req() req: any, @Param("step") step: string) {
-    return this.assignmentService.eligibleUsersForStep(req.user.companyId, step as WorkflowStep);
+    return this.assignmentService.eligibleUsersForStep(req.user.companyId, step);
   }
 
   @Put("assignments/:step")
@@ -199,7 +226,7 @@ export class WorkflowController {
   ) {
     await this.assignmentService.updateAssignments(
       req.user.companyId,
-      step as WorkflowStep,
+      step,
       dto.userIds,
       dto.primaryUserId,
     );
@@ -221,11 +248,7 @@ export class WorkflowController {
     @Param("step") step: string,
     @Body() dto: UpdateNotificationRecipientsDto,
   ) {
-    await this.assignmentService.updateNotificationRecipients(
-      req.user.companyId,
-      step as WorkflowStep,
-      dto.emails,
-    );
+    await this.assignmentService.updateNotificationRecipients(req.user.companyId, step, dto.emails);
     return { success: true };
   }
 
@@ -365,6 +388,18 @@ export class WorkflowController {
     @Body() dto: UpdateStepLabelDto,
   ) {
     await this.stepConfigService.updateLabel(req.user.companyId, key, dto.label);
+    return { success: true };
+  }
+
+  @Put("step-configs/:key/action-label")
+  @StockControlRoles("admin")
+  @ApiOperation({ summary: "Update a workflow step action label" })
+  async updateStepActionLabel(
+    @Req() req: any,
+    @Param("key") key: string,
+    @Body() dto: UpdateStepActionLabelDto,
+  ) {
+    await this.stepConfigService.updateActionLabel(req.user.companyId, key, dto.actionLabel);
     return { success: true };
   }
 

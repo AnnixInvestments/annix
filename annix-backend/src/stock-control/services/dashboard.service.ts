@@ -6,7 +6,7 @@ import { CoatingAnalysisStatus, JobCardCoatingAnalysis } from "../entities/coati
 import { CalloffStatus, CpoCalloffRecord } from "../entities/cpo-calloff-record.entity";
 import { DashboardPreference } from "../entities/dashboard-preference.entity";
 import { DeliveryNote } from "../entities/delivery-note.entity";
-import { JobCard, JobCardStatus, JobCardWorkflowStatus } from "../entities/job-card.entity";
+import { JobCard, JobCardStatus, WORKFLOW_STATUS_DRAFT } from "../entities/job-card.entity";
 import { ApprovalStatus, JobCardApproval } from "../entities/job-card-approval.entity";
 import { Requisition, RequisitionStatus } from "../entities/requisition.entity";
 import { StockAllocation } from "../entities/stock-allocation.entity";
@@ -46,9 +46,7 @@ export interface WorkflowLaneCounts {
     jobCardsDraft: number;
     jobCardsPendingAdmin: number;
     jobCardsPendingManager: number;
-    jobCardsRequisitionSent: number;
     jobCardsPendingAllocation: number;
-    jobCardsPendingFinal: number;
     coatingPending: number;
     coatingAnalysed: number;
     requisitionsPending: number;
@@ -56,8 +54,8 @@ export interface WorkflowLaneCounts {
     requisitionsOrdered: number;
   };
   outbound: {
-    jobCardsReadyForDispatch: number;
     jobCardsDispatched: number;
+    jobCardsFileClosed: number;
     lowStockAlerts: number;
   };
 }
@@ -224,7 +222,7 @@ export class DashboardService {
   }
 
   async workflowLaneCounts(companyId: number): Promise<WorkflowLaneCounts> {
-    const jcCountByStatus = async (status: JobCardWorkflowStatus) =>
+    const jcCountByStatus = async (status: string) =>
       this.jobCardRepo.count({
         where: {
           companyId,
@@ -242,16 +240,14 @@ export class DashboardService {
       jobCardsDraft,
       jobCardsPendingAdmin,
       jobCardsPendingManager,
-      jobCardsRequisitionSent,
       jobCardsPendingAllocation,
-      jobCardsPendingFinal,
       coatingPending,
       coatingAnalysed,
       requisitionsPending,
       requisitionsApproved,
       requisitionsOrdered,
-      jobCardsReadyForDispatch,
       jobCardsDispatched,
+      jobCardsFileClosed,
       lowStockAlerts,
     ] = await Promise.all([
       this.deliveryNoteRepo.count({
@@ -275,12 +271,10 @@ export class DashboardService {
       this.invoiceRepo.count({
         where: { companyId, extractionStatus: InvoiceExtractionStatus.AWAITING_APPROVAL },
       }),
-      jcCountByStatus(JobCardWorkflowStatus.DRAFT),
-      jcCountByStatus(JobCardWorkflowStatus.DOCUMENT_UPLOADED),
-      jcCountByStatus(JobCardWorkflowStatus.ADMIN_APPROVED),
-      jcCountByStatus(JobCardWorkflowStatus.REQUISITION_SENT),
-      jcCountByStatus(JobCardWorkflowStatus.MANAGER_APPROVED),
-      jcCountByStatus(JobCardWorkflowStatus.STOCK_ALLOCATED),
+      jcCountByStatus(WORKFLOW_STATUS_DRAFT),
+      jcCountByStatus("admin_approval"),
+      jcCountByStatus("manager_approval"),
+      jcCountByStatus("quality_check"),
       this.coatingRepo.count({
         where: { companyId, status: CoatingAnalysisStatus.PENDING },
       }),
@@ -296,8 +290,8 @@ export class DashboardService {
       this.requisitionRepo.count({
         where: { companyId, status: RequisitionStatus.ORDERED },
       }),
-      jcCountByStatus(JobCardWorkflowStatus.READY_FOR_DISPATCH),
-      jcCountByStatus(JobCardWorkflowStatus.DISPATCHED),
+      jcCountByStatus("dispatched"),
+      jcCountByStatus("file_closed"),
       this.stockItemRepo
         .createQueryBuilder("item")
         .where("item.company_id = :companyId", { companyId })
@@ -318,9 +312,7 @@ export class DashboardService {
         jobCardsDraft,
         jobCardsPendingAdmin,
         jobCardsPendingManager,
-        jobCardsRequisitionSent,
         jobCardsPendingAllocation,
-        jobCardsPendingFinal,
         coatingPending,
         coatingAnalysed,
         requisitionsPending,
@@ -328,8 +320,8 @@ export class DashboardService {
         requisitionsOrdered,
       },
       outbound: {
-        jobCardsReadyForDispatch,
         jobCardsDispatched,
+        jobCardsFileClosed,
         lowStockAlerts,
       },
     };
@@ -347,7 +339,7 @@ export class DashboardService {
         this.jobCardRepo.count({
           where: {
             companyId,
-            workflowStatus: JobCardWorkflowStatus.READY_FOR_DISPATCH,
+            workflowStatus: "ready",
             status: In([JobCardStatus.ACTIVE, JobCardStatus.DRAFT]),
           },
         }),
@@ -438,7 +430,7 @@ export class DashboardService {
         this.jobCardRepo.count({
           where: {
             companyId,
-            workflowStatus: JobCardWorkflowStatus.READY_FOR_DISPATCH,
+            workflowStatus: "ready",
             status: In([JobCardStatus.ACTIVE, JobCardStatus.DRAFT]),
           },
         }),

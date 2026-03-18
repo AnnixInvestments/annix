@@ -51,6 +51,7 @@ import { InvoiceClarification } from "./entities/invoice-clarification.entity";
 import { InvoiceExtractionCorrection } from "./entities/invoice-extraction-correction.entity";
 import { IssuanceBatchRecord } from "./entities/issuance-batch-record.entity";
 import { JobCard } from "./entities/job-card.entity";
+import { JobCardActionCompletion } from "./entities/job-card-action-completion.entity";
 import { JobCardApproval } from "./entities/job-card-approval.entity";
 import { JobCardAttachment } from "./entities/job-card-attachment.entity";
 import { JobCardBackgroundCompletion } from "./entities/job-card-background-completion.entity";
@@ -166,6 +167,7 @@ import { WorkflowStepConfigService } from "./services/workflow-step-config.servi
       Requisition,
       RequisitionItem,
       StaffMember,
+      JobCardActionCompletion,
       JobCardApproval,
       JobCardDocument,
       JobCardVersion,

@@ -7,7 +7,6 @@ import {
   PrimaryGeneratedColumn,
   Unique,
 } from "typeorm";
-import { WorkflowStep } from "./job-card-approval.entity";
 import { StockControlCompany } from "./stock-control-company.entity";
 
 @Entity("workflow_notification_recipients")
@@ -24,7 +23,7 @@ export class WorkflowNotificationRecipient {
   companyId: number;
 
   @Column({ name: "workflow_step", type: "varchar", length: 50 })
-  workflowStep: WorkflowStep;
+  workflowStep: string;
 
   @Column({ type: "varchar", length: 255 })
   email: string;

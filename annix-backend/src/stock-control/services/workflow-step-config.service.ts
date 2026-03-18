@@ -3,15 +3,126 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { WorkflowStepConfig } from "../entities/workflow-step-config.entity";
 
-const DEFAULT_STEPS: ReadonlyArray<{ key: string; label: string; sortOrder: number }> = [
-  { key: "document_upload", label: "Doc Upload", sortOrder: 1 },
-  { key: "admin_approval", label: "Admin", sortOrder: 2 },
-  { key: "manager_approval", label: "Manager", sortOrder: 3 },
-  { key: "requisition_sent", label: "Requisition", sortOrder: 4 },
-  { key: "stock_allocation", label: "Stock Alloc", sortOrder: 5 },
-  { key: "manager_final", label: "Final Mgr", sortOrder: 6 },
-  { key: "ready_for_dispatch", label: "Ready", sortOrder: 7 },
-  { key: "dispatched", label: "Dispatched", sortOrder: 8 },
+const DEFAULT_STEPS: ReadonlyArray<{
+  key: string;
+  label: string;
+  sortOrder: number;
+  isBackground: boolean;
+  triggerAfterStep: string | null;
+  actionLabel: string | null;
+}> = [
+  {
+    key: "admin_approval",
+    label: "Admin",
+    sortOrder: 1,
+    isBackground: false,
+    triggerAfterStep: null,
+    actionLabel: "Accept JC",
+  },
+  {
+    key: "manager_approval",
+    label: "Manager",
+    sortOrder: 2,
+    isBackground: false,
+    triggerAfterStep: null,
+    actionLabel: "Release to Factory",
+  },
+  {
+    key: "quality_check",
+    label: "Quality",
+    sortOrder: 3,
+    isBackground: false,
+    triggerAfterStep: null,
+    actionLabel: "Quality Approved",
+  },
+  {
+    key: "dispatched",
+    label: "Dispatched",
+    sortOrder: 4,
+    isBackground: false,
+    triggerAfterStep: null,
+    actionLabel: "Dispatched",
+  },
+  {
+    key: "document_upload",
+    label: "Doc Upload",
+    sortOrder: 1,
+    isBackground: true,
+    triggerAfterStep: "admin_approval",
+    actionLabel: "Accept Draft",
+  },
+  {
+    key: "stock_allocation",
+    label: "Stock Alloc",
+    sortOrder: 2,
+    isBackground: true,
+    triggerAfterStep: "admin_approval",
+    actionLabel: "Complete Stock Alloc",
+  },
+  {
+    key: "reception",
+    label: "Reception",
+    sortOrder: 3,
+    isBackground: true,
+    triggerAfterStep: "admin_approval",
+    actionLabel: "Print JC",
+  },
+  {
+    key: "requisition",
+    label: "Requisition",
+    sortOrder: 4,
+    isBackground: true,
+    triggerAfterStep: "manager_approval",
+    actionLabel: "Req Sent",
+  },
+  {
+    key: "req_auth",
+    label: "Req Auth",
+    sortOrder: 5,
+    isBackground: true,
+    triggerAfterStep: "manager_approval",
+    actionLabel: "Req Auth",
+  },
+  {
+    key: "order_placement",
+    label: "Order Placement",
+    sortOrder: 6,
+    isBackground: true,
+    triggerAfterStep: "manager_approval",
+    actionLabel: "Order Placed",
+  },
+  {
+    key: "ready",
+    label: "Ready",
+    sortOrder: 7,
+    isBackground: true,
+    triggerAfterStep: "quality_check",
+    actionLabel: "Ready",
+  },
+  {
+    key: "contact_customer_collection",
+    label: "Contact Customer",
+    sortOrder: 8,
+    isBackground: true,
+    triggerAfterStep: "dispatched",
+    actionLabel: "Customer Called",
+  },
+  {
+    key: "job_file_review",
+    label: "Job File Review",
+    sortOrder: 9,
+    isBackground: true,
+    triggerAfterStep: "dispatched",
+    actionLabel: null,
+  },
+  {
+    key: "file_sign_off",
+    label: "File Sign Off",
+    sortOrder: 10,
+    isBackground: true,
+    triggerAfterStep: "dispatched",
+    actionLabel: "File Sign Off",
+  },
 ];
 
 @Injectable()
@@ -64,6 +175,9 @@ export class WorkflowStepConfigService {
         label: step.label,
         sortOrder: step.sortOrder,
         isSystem: true,
+        isBackground: step.isBackground,
+        triggerAfterStep: step.triggerAfterStep,
+        actionLabel: step.actionLabel,
       }),
     );
 
@@ -74,6 +188,18 @@ export class WorkflowStepConfigService {
       .values(entities)
       .orIgnore()
       .execute();
+  }
+
+  async updateActionLabel(
+    companyId: number,
+    stepKey: string,
+    actionLabel: string | null,
+  ): Promise<void> {
+    const result = await this.repo.update({ companyId, key: stepKey }, { actionLabel });
+
+    if (result.affected === 0) {
+      throw new NotFoundException(`Step "${stepKey}" not found for this company`);
+    }
   }
 
   async updateLabel(companyId: number, stepKey: string, label: string): Promise<void> {

@@ -9,41 +9,40 @@ interface ForegroundStep {
   key: string;
   label: string;
   sortOrder: number;
+  actionLabel: string | null;
 }
 
-const FALLBACK_FOREGROUND_STEPS: ForegroundStep[] = [
-  { key: "document_upload", label: "Documents", sortOrder: 1 },
-  { key: "admin_approval", label: "Admin", sortOrder: 2 },
-  { key: "manager_approval", label: "Manager", sortOrder: 3 },
-  { key: "requisition_sent", label: "Requisition", sortOrder: 4 },
-  { key: "stock_allocation", label: "Allocation", sortOrder: 5 },
-  { key: "manager_final", label: "Final Sign-off", sortOrder: 6 },
-  { key: "ready_for_dispatch", label: "Dispatch Ready", sortOrder: 7 },
-  { key: "dispatched", label: "Dispatched", sortOrder: 8 },
+const DEFAULT_FOREGROUND_STEPS: ForegroundStep[] = [
+  { key: "admin_approval", label: "Admin", sortOrder: 1, actionLabel: "Accept JC" },
+  { key: "manager_approval", label: "Manager", sortOrder: 2, actionLabel: "Release to Factory" },
+  { key: "quality_check", label: "Quality", sortOrder: 3, actionLabel: "Quality Approved" },
+  { key: "dispatched", label: "Dispatched", sortOrder: 4, actionLabel: "Dispatched" },
 ];
 
-const STATUS_TO_COMPLETED_STEP: Record<string, string> = {
-  document_uploaded: "document_upload",
-  admin_approved: "admin_approval",
-  manager_approved: "manager_approval",
-  requisition_sent: "requisition_sent",
-  stock_allocated: "stock_allocation",
-  manager_final: "manager_final",
-  ready_for_dispatch: "ready_for_dispatch",
-  dispatched: "dispatched",
+const LEGACY_STATUS_TO_STEP: Record<string, string> = {
+  document_uploaded: "admin_approval",
+  admin_approved: "manager_approval",
+  manager_approved: "quality_check",
+  requisition_sent: "quality_check",
+  stock_allocated: "quality_check",
+  manager_final: "dispatched",
+  ready_for_dispatch: "dispatched",
 };
 
 const resolveCurrentStepIndex = (currentStatus: string, allSteps: ForegroundStep[]): number => {
-  if (currentStatus === "draft") return 0;
-  if (currentStatus === "dispatched") return allSteps.length - 1;
+  if (currentStatus === "draft") return -1;
+  if (currentStatus === "file_closed") return allSteps.length;
 
-  const completedKey = STATUS_TO_COMPLETED_STEP[currentStatus];
-  if (!completedKey) return 0;
+  const directIdx = allSteps.findIndex((s) => s.key === currentStatus);
+  if (directIdx !== -1) return directIdx;
 
-  const completedIdx = allSteps.findIndex((s) => s.key === completedKey);
-  if (completedIdx === -1) return 0;
+  const mappedKey = LEGACY_STATUS_TO_STEP[currentStatus];
+  if (mappedKey) {
+    const mappedIdx = allSteps.findIndex((s) => s.key === mappedKey);
+    if (mappedIdx !== -1) return mappedIdx;
+  }
 
-  return Math.min(completedIdx + 1, allSteps.length - 1);
+  return -1;
 };
 
 type StepState = "completed" | "current" | "rejected" | "pending";
@@ -205,24 +204,11 @@ function StepNode(props: StepNodeProps) {
   );
 }
 
-const STEP_ACTION_LABELS: Record<string, string> = {
-  quality_check: "Confirm Quality Checked",
-  quality_inspection: "Confirm Inspection Done",
-  documentation_review: "Confirm Docs Reviewed",
-  safety_check: "Confirm Safety Cleared",
-  coating_inspection: "Confirm Coating Inspected",
-  material_verification: "Confirm Material Verified",
-  client_notification: "Confirm Client Notified",
-  packaging: "Confirm Packed",
-  labelling: "Confirm Labelled",
-  weighing: "Confirm Weighed",
-  photography: "Confirm Photos Taken",
-  certificate_generation: "Confirm Certificate Generated",
-  loading: "Confirm Loaded",
-};
-
-const actionLabelForStep = (stepKey: string, label: string): string =>
-  STEP_ACTION_LABELS[stepKey] || `Complete ${label}`;
+const actionLabelForStep = (
+  stepKey: string,
+  label: string,
+  actionLabel: string | null | undefined,
+): string => actionLabel || `Complete ${label}`;
 
 const isUserAssignedToStep = (
   stepKey: string,
@@ -786,7 +772,9 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
                           disabled={isCompleting}
                           className="mt-0.5 px-1.5 py-0.5 text-[8px] font-semibold rounded bg-amber-600 text-white hover:bg-amber-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
                         >
-                          {isCompleting ? "..." : actionLabelForStep(bg.stepKey, bg.label)}
+                          {isCompleting
+                            ? "..."
+                            : actionLabelForStep(bg.stepKey, bg.label, bg.actionLabel)}
                         </button>
                       )}
                     </div>
@@ -1106,7 +1094,9 @@ function MobileTransitMap(props: MobileTransitMapProps) {
                               disabled={isCompleting}
                               className="px-1.5 py-0.5 text-[9px] font-semibold rounded bg-amber-600 text-white hover:bg-amber-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
                             >
-                              {isCompleting ? "..." : actionLabelForStep(bg.stepKey, bg.label)}
+                              {isCompleting
+                                ? "..."
+                                : actionLabelForStep(bg.stepKey, bg.label, bg.actionLabel)}
                             </button>
                           )}
                         </div>
@@ -1148,7 +1138,7 @@ export function WorkflowStepper(props: WorkflowStepperProps) {
 
   const filteredFgSteps = foregroundSteps.filter((s) => s.key !== "draft");
   const allSteps: ForegroundStep[] =
-    filteredFgSteps.length > 0 ? filteredFgSteps : FALLBACK_FOREGROUND_STEPS;
+    filteredFgSteps.length > 0 ? filteredFgSteps : DEFAULT_FOREGROUND_STEPS;
 
   const currentStepIndex = resolveCurrentStepIndex(currentStatus, allSteps);
   const approvalByStep = buildApprovalMap(approvals);
@@ -1157,27 +1147,7 @@ export function WorkflowStepper(props: WorkflowStepperProps) {
 
   const firstFgKey = allSteps.length > 0 ? allSteps[0].key : "draft";
 
-  const isDocUploadFg = allSteps.some((s) => s.key === "document_upload");
-  const docUploadApproval = approvalByStep["document_upload"];
-  const docUploadFromBg = backgroundSteps.find((bg) => bg.stepKey === "document_upload");
-
-  const effectiveBgSteps: BackgroundStepStatus[] = isDocUploadFg
-    ? backgroundSteps
-    : [
-        {
-          ...(docUploadFromBg || {
-            stepKey: "document_upload",
-            label: "Doc Upload",
-            completedByName: null,
-            notes: null,
-          }),
-          triggerAfterStep: null,
-          completedAt: docUploadFromBg?.completedAt || docUploadApproval?.approvedAt || null,
-          completedByName:
-            docUploadFromBg?.completedByName || docUploadApproval?.approvedByName || null,
-        },
-        ...backgroundSteps.filter((bg) => bg.stepKey !== "document_upload"),
-      ];
+  const effectiveBgSteps: BackgroundStepStatus[] = backgroundSteps;
 
   const fgKeySet = new Set(allSteps.map((s) => s.key));
   const bgKeySet = new Set(effectiveBgSteps.map((s) => s.stepKey));
@@ -1245,18 +1215,23 @@ export function WorkflowStepper(props: WorkflowStepperProps) {
 
 interface CompactWorkflowStepperProps {
   workflowStatus: string;
+  foregroundSteps?: ForegroundStep[];
 }
 
 export function CompactWorkflowStepper(props: CompactWorkflowStepperProps) {
   const { workflowStatus } = props;
-  const currentStepIndex = resolveCurrentStepIndex(workflowStatus, FALLBACK_FOREGROUND_STEPS);
+  const steps =
+    props.foregroundSteps && props.foregroundSteps.length > 0
+      ? props.foregroundSteps
+      : DEFAULT_FOREGROUND_STEPS;
+  const currentStepIndex = resolveCurrentStepIndex(workflowStatus, steps);
 
   return (
     <div className="flex items-center gap-0.5 w-fit">
-      {FALLBACK_FOREGROUND_STEPS.map((step, index) => {
+      {steps.map((step, index) => {
         const isCompleted = index < currentStepIndex;
         const isCurrent = index === currentStepIndex;
-        const isLast = index === FALLBACK_FOREGROUND_STEPS.length - 1;
+        const isLast = index === steps.length - 1;
 
         return (
           <div key={step.key} className="flex items-center">

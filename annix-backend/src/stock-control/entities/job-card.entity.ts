@@ -59,17 +59,8 @@ export enum JobCardStatus {
   CANCELLED = "cancelled",
 }
 
-export enum JobCardWorkflowStatus {
-  DRAFT = "draft",
-  DOCUMENT_UPLOADED = "document_uploaded",
-  ADMIN_APPROVED = "admin_approved",
-  MANAGER_APPROVED = "manager_approved",
-  REQUISITION_SENT = "requisition_sent",
-  STOCK_ALLOCATED = "stock_allocated",
-  MANAGER_FINAL = "manager_final",
-  READY_FOR_DISPATCH = "ready_for_dispatch",
-  DISPATCHED = "dispatched",
-}
+export const WORKFLOW_STATUS_DRAFT = "draft";
+export const WORKFLOW_STATUS_FILE_CLOSED = "file_closed";
 
 @Entity("job_cards")
 export class JobCard {
@@ -125,9 +116,9 @@ export class JobCard {
     name: "workflow_status",
     type: "varchar",
     length: 50,
-    default: JobCardWorkflowStatus.DRAFT,
+    default: "'draft'",
   })
-  workflowStatus: JobCardWorkflowStatus;
+  workflowStatus: string;
 
   @Column({ name: "version_number", type: "integer", default: 1 })
   versionNumber: number;

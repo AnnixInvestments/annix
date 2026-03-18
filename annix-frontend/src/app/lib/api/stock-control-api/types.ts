@@ -1163,9 +1163,7 @@ export interface WorkflowLaneCounts {
     jobCardsDraft: number;
     jobCardsPendingAdmin: number;
     jobCardsPendingManager: number;
-    jobCardsRequisitionSent: number;
     jobCardsPendingAllocation: number;
-    jobCardsPendingFinal: number;
     coatingPending: number;
     coatingAnalysed: number;
     requisitionsPending: number;
@@ -1173,8 +1171,8 @@ export interface WorkflowLaneCounts {
     requisitionsOrdered: number;
   };
   outbound: {
-    jobCardsReadyForDispatch: number;
     jobCardsDispatched: number;
+    jobCardsFileClosed: number;
     lowStockAlerts: number;
   };
 }
@@ -1352,6 +1350,19 @@ export interface WorkflowStepConfig {
   isSystem: boolean;
   isBackground: boolean;
   triggerAfterStep: string | null;
+  actionLabel: string | null;
+}
+
+export interface JobCardActionCompletion {
+  id: number;
+  jobCardId: number;
+  companyId: number;
+  stepKey: string;
+  actionType: string;
+  completedById: number;
+  completedByName: string;
+  completedAt: string;
+  metadata: Record<string, unknown> | null;
 }
 
 export interface BackgroundStepStatus {
@@ -1361,6 +1372,7 @@ export interface BackgroundStepStatus {
   completedAt: string | null;
   completedByName: string | null;
   notes: string | null;
+  actionLabel: string | null;
 }
 
 export interface PendingBackgroundStep {
@@ -1405,7 +1417,12 @@ export interface WorkflowStatus {
   requiredRole: string | null;
   jobCardStatus: string;
   stepAssignments: Record<string, { name: string; isPrimary: boolean }[]>;
-  foregroundSteps: Array<{ key: string; label: string; sortOrder: number }>;
+  foregroundSteps: Array<{
+    key: string;
+    label: string;
+    sortOrder: number;
+    actionLabel: string | null;
+  }>;
   backgroundSteps: Array<{
     stepKey: string;
     label: string;
@@ -1413,7 +1430,9 @@ export interface WorkflowStatus {
     completedAt: string | null;
     completedByName: string | null;
     notes: string | null;
+    actionLabel: string | null;
   }>;
+  actionCompletions: JobCardActionCompletion[];
 }
 
 export interface DispatchScan {

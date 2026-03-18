@@ -28,6 +28,8 @@ export function WorkflowConfigurationSection({ teamMembers }: WorkflowConfigurat
 
   const [editingLabelKey, setEditingLabelKey] = useState<string | null>(null);
   const [editingLabelValue, setEditingLabelValue] = useState("");
+  const [editingActionLabelKey, setEditingActionLabelKey] = useState<string | null>(null);
+  const [editingActionLabelValue, setEditingActionLabelValue] = useState("");
   const [expandedStep, setExpandedStep] = useState<string | null>(null);
 
   const [showAddStep, setShowAddStep] = useState(false);
@@ -216,6 +218,28 @@ export function WorkflowConfigurationSection({ teamMembers }: WorkflowConfigurat
       setSuccess(true);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to update label");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleStartEditActionLabel = (key: string, currentActionLabel: string | null) => {
+    setEditingActionLabelKey(key);
+    setEditingActionLabelValue(currentActionLabel || "");
+  };
+
+  const handleSaveActionLabel = async () => {
+    if (!editingActionLabelKey) return;
+    setSaving(true);
+    setError("");
+    try {
+      const value = editingActionLabelValue.trim() || null;
+      await stockControlApiClient.updateStepActionLabel(editingActionLabelKey, value);
+      setEditingActionLabelKey(null);
+      await loadData();
+      setSuccess(true);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to update action label");
     } finally {
       setSaving(false);
     }
@@ -921,6 +945,71 @@ export function WorkflowConfigurationSection({ teamMembers }: WorkflowConfigurat
               </div>
             </div>
             {renderUserChips(step.key)}
+
+            <div className="mt-3 pt-3 border-t border-gray-100">
+              <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+                Action Button Label
+              </span>
+              {editingActionLabelKey === step.key ? (
+                <div className="flex items-center gap-2 mt-1.5">
+                  <input
+                    type="text"
+                    value={editingActionLabelValue}
+                    onChange={(e) => setEditingActionLabelValue(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") handleSaveActionLabel();
+                      if (e.key === "Escape") setEditingActionLabelKey(null);
+                    }}
+                    placeholder="e.g. Accept JC, Release to Factory"
+                    autoFocus
+                    className="px-2 py-1 text-sm border border-teal-400 rounded focus:ring-1 focus:ring-teal-500 flex-1 max-w-xs"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleSaveActionLabel}
+                    disabled={saving}
+                    className="text-teal-600 hover:text-teal-800 disabled:text-gray-400"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={3}
+                        d="M5 13l4 4L19 7"
+                      />
+                    </svg>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setEditingActionLabelKey(null)}
+                    className="text-gray-400 hover:text-gray-600"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={3}
+                        d="M6 18L18 6M6 6l12 12"
+                      />
+                    </svg>
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 mt-1.5">
+                  <span className="text-sm text-gray-700">
+                    {step.actionLabel || <span className="text-gray-400 italic">Not set</span>}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => handleStartEditActionLabel(step.key, step.actionLabel)}
+                    className="text-xs text-gray-400 hover:text-teal-600"
+                  >
+                    Edit
+                  </button>
+                </div>
+              )}
+            </div>
+
             {renderNotificationSection(step.key)}
           </div>
         )}

@@ -10,7 +10,7 @@ import { DataSource, Repository } from "typeorm";
 import { AuditService } from "../../audit/audit.service";
 import { AuditAction } from "../../audit/entities/audit-log.entity";
 import { DispatchScan } from "../entities/dispatch-scan.entity";
-import { JobCard, JobCardWorkflowStatus } from "../entities/job-card.entity";
+import { JobCard } from "../entities/job-card.entity";
 import { StockAllocation } from "../entities/stock-allocation.entity";
 import { StockItem } from "../entities/stock-item.entity";
 import { StockMovement } from "../entities/stock-movement.entity";
@@ -68,7 +68,7 @@ export class DispatchService {
       throw new NotFoundException(`Job card ${jobCardId} not found`);
     }
 
-    if (jobCard.workflowStatus !== JobCardWorkflowStatus.READY_FOR_DISPATCH) {
+    if (jobCard.workflowStatus !== "ready") {
       throw new BadRequestException(
         `Job card is not ready for dispatch. Current status: ${jobCard.workflowStatus}`,
       );
@@ -95,7 +95,7 @@ export class DispatchService {
       throw new NotFoundException(`Job card ${jobCardId} not found`);
     }
 
-    if (jobCard.workflowStatus !== JobCardWorkflowStatus.READY_FOR_DISPATCH) {
+    if (jobCard.workflowStatus !== "ready") {
       throw new BadRequestException("Job card is not ready for dispatch");
     }
 
@@ -205,8 +205,8 @@ export class DispatchService {
     }
 
     const result = await this.jobCardRepo.update(
-      { id: jobCardId, companyId, workflowStatus: JobCardWorkflowStatus.READY_FOR_DISPATCH },
-      { workflowStatus: JobCardWorkflowStatus.DISPATCHED },
+      { id: jobCardId, companyId, workflowStatus: "ready" },
+      { workflowStatus: "dispatched" },
     );
 
     if (result.affected === 0) {
@@ -218,8 +218,8 @@ export class DispatchService {
         entityType: "job_card_dispatch",
         entityId: jobCardId,
         action: AuditAction.UPDATE,
-        oldValues: { workflowStatus: JobCardWorkflowStatus.READY_FOR_DISPATCH },
-        newValues: { workflowStatus: JobCardWorkflowStatus.DISPATCHED, completedBy: user.name },
+        oldValues: { workflowStatus: "ready" },
+        newValues: { workflowStatus: "dispatched", completedBy: user.name },
       })
       .catch((err) => this.logger.error(`Audit log failed: ${err.message}`, err.stack));
 
@@ -247,7 +247,7 @@ export class DispatchService {
       throw new NotFoundException(`Dispatch scan ${scanId} not found`);
     }
 
-    if (scan.jobCard.workflowStatus === JobCardWorkflowStatus.DISPATCHED) {
+    if (scan.jobCard.workflowStatus === "dispatched") {
       throw new BadRequestException("Cannot reverse scans on a completed dispatch");
     }
 

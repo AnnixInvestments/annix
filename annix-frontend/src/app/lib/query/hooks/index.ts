@@ -614,6 +614,8 @@ export {
   useRfqs,
 } from "./rfq/useRfqs";
 export {
+  useActionCompletions,
+  useAddLineItem,
   useAllocateStock,
   useAnalyzeDeliveryNote,
   useApproveOverAllocation,
@@ -624,6 +626,7 @@ export {
   useCertificates,
   useCompanyRoles,
   useCompileDataBook,
+  useCompleteAction,
   useCompleteBackgroundStep,
   useCompleteDispatch,
   useCostByJobReport,
@@ -649,6 +652,7 @@ export {
   useDeleteDeliveryNote,
   useDeleteInvoice,
   useDeleteJobCard,
+  useDeleteLineItem,
   useDeliveryJobCards,
   useDeliveryNoteDetail,
   useDeliveryNotes,
@@ -697,8 +701,6 @@ export {
   useRecentActivity,
   useRecentIssuances,
   useReclassifyAttachment,
-  useAddLineItem,
-  useDeleteLineItem,
   useReExtractLineItems,
   useRejectOverAllocation,
   useRejectWorkflowStep,

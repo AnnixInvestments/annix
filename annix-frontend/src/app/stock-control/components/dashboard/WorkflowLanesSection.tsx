@@ -82,31 +82,19 @@ function WorkshopLane({ lanes }: { lanes: WorkflowLaneCounts | undefined }) {
         <CountBadge
           count={lanes?.workshop.jobCardsPendingAdmin || 0}
           label="Pending admin approval"
-          href="/stock-control/portal/job-cards?status=document_uploaded"
+          href="/stock-control/portal/job-cards?status=admin_approval"
           variant="warning"
         />
         <CountBadge
           count={lanes?.workshop.jobCardsPendingManager || 0}
           label="Pending manager approval"
-          href="/stock-control/portal/job-cards?status=admin_approved"
+          href="/stock-control/portal/job-cards?status=manager_approval"
           variant="warning"
-        />
-        <CountBadge
-          count={lanes?.workshop.jobCardsRequisitionSent || 0}
-          label="Requisition sent"
-          href="/stock-control/portal/job-cards?status=requisition_sent"
-          variant="info"
         />
         <CountBadge
           count={lanes?.workshop.jobCardsPendingAllocation || 0}
-          label="Pending allocation"
-          href="/stock-control/portal/job-cards?status=manager_approved"
-          variant="warning"
-        />
-        <CountBadge
-          count={lanes?.workshop.jobCardsPendingFinal || 0}
-          label="Pending final approval"
-          href="/stock-control/portal/job-cards?status=stock_allocated"
+          label="Quality check"
+          href="/stock-control/portal/job-cards?status=quality_check"
           variant="info"
         />
         {((lanes?.workshop.coatingPending || 0) > 0 ||
@@ -175,15 +163,15 @@ function OutboundLane({
           Dispatch
         </p>
         <CountBadge
-          count={lanes?.outbound.jobCardsReadyForDispatch || 0}
-          label="Ready for dispatch"
-          href="/stock-control/portal/job-cards?status=ready_for_dispatch"
-          variant="warning"
-        />
-        <CountBadge
           count={lanes?.outbound.jobCardsDispatched || 0}
           label="Dispatched"
           href="/stock-control/portal/job-cards?status=dispatched"
+          variant="warning"
+        />
+        <CountBadge
+          count={lanes?.outbound.jobCardsFileClosed || 0}
+          label="File closed"
+          href="/stock-control/portal/job-cards?status=file_closed"
           variant="success"
         />
         <div className="border-t border-gray-100 my-2" />

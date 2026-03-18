@@ -80,12 +80,14 @@ export default function NotificationsPage() {
       approval_required: "Approval Required",
       approval_completed: "Approved",
       approval_rejected: "Rejected",
-      stock_allocated: "Stock Allocated",
-      dispatch_ready: "Ready for Dispatch",
+      step_completed: "Step Completed",
       dispatch_completed: "Dispatched",
+      file_closed: "File Closed",
       over_allocation_approval: "Over-Allocation",
       background_step_required: "Background Task",
       background_step_completed: "Task Completed",
+      stock_allocated: "Stock Allocated",
+      dispatch_ready: "Ready for Dispatch",
     };
     return labels[actionType] || actionType;
   };
@@ -95,12 +97,14 @@ export default function NotificationsPage() {
       approval_required: "bg-yellow-100 text-yellow-800",
       approval_completed: "bg-green-100 text-green-800",
       approval_rejected: "bg-red-100 text-red-800",
-      stock_allocated: "bg-blue-100 text-blue-800",
-      dispatch_ready: "bg-purple-100 text-purple-800",
+      step_completed: "bg-blue-100 text-blue-800",
       dispatch_completed: "bg-teal-100 text-teal-800",
+      file_closed: "bg-slate-100 text-slate-800",
       over_allocation_approval: "bg-orange-100 text-orange-800",
       background_step_required: "bg-amber-100 text-amber-800",
       background_step_completed: "bg-emerald-100 text-emerald-800",
+      stock_allocated: "bg-blue-100 text-blue-800",
+      dispatch_ready: "bg-purple-100 text-purple-800",
     };
     return colors[actionType] || "bg-gray-100 text-gray-800";
   };

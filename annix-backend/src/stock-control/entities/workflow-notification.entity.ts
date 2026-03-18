@@ -25,6 +25,7 @@ export enum NotificationActionType {
   CALIBRATION_EXPIRED = "calibration_expired",
   BACKGROUND_STEP_REQUIRED = "background_step_required",
   BACKGROUND_STEP_COMPLETED = "background_step_completed",
+  DOCUMENT_ARRIVED = "document_arrived",
 }
 
 @Entity("workflow_notifications")

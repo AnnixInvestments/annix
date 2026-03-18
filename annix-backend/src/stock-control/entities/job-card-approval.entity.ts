@@ -11,17 +11,6 @@ import { JobCard } from "./job-card.entity";
 import { StockControlCompany } from "./stock-control-company.entity";
 import { StockControlUser } from "./stock-control-user.entity";
 
-export enum WorkflowStep {
-  DOCUMENT_UPLOAD = "document_upload",
-  ADMIN_APPROVAL = "admin_approval",
-  MANAGER_APPROVAL = "manager_approval",
-  REQUISITION_SENT = "requisition_sent",
-  STOCK_ALLOCATION = "stock_allocation",
-  MANAGER_FINAL = "manager_final",
-  READY_FOR_DISPATCH = "ready_for_dispatch",
-  DISPATCHED = "dispatched",
-}
-
 export enum ApprovalStatus {
   PENDING = "pending",
   APPROVED = "approved",
@@ -52,7 +41,7 @@ export class JobCardApproval {
   companyId: number;
 
   @Column({ type: "varchar", length: 50 })
-  step: WorkflowStep;
+  step: string;
 
   @Column({ type: "varchar", length: 20, default: ApprovalStatus.PENDING })
   status: ApprovalStatus;

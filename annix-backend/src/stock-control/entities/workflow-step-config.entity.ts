@@ -41,6 +41,9 @@ export class WorkflowStepConfig {
   @Column({ name: "trigger_after_step", type: "varchar", length: 50, nullable: true })
   triggerAfterStep: string | null;
 
+  @Column({ name: "action_label", type: "varchar", length: 100, nullable: true })
+  actionLabel: string | null;
+
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;
 

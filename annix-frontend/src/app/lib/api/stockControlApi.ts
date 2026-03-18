@@ -67,6 +67,7 @@ export type {
   IssuanceScanResult,
   ItemReleaseResult,
   JobCard,
+  JobCardActionCompletion,
   JobCardApproval,
   JobCardAttachment,
   JobCardDocument,

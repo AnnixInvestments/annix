@@ -6,6 +6,7 @@ import type {
   DispatchScan,
   EligibleUser,
   JobCard,
+  JobCardActionCompletion,
   JobCardApproval,
   JobCardDocument,
   PendingBackgroundStep,
@@ -90,6 +91,15 @@ declare module "./base" {
       keys: { p256dh: string; auth: string };
     }): Promise<{ success: boolean }>;
     unsubscribePush(endpoint: string): Promise<{ success: boolean }>;
+    completeAction(
+      jobCardId: number,
+      stepKey: string,
+      actionType?: string,
+      metadata?: Record<string, unknown>,
+    ): Promise<JobCardActionCompletion>;
+    actionCompletions(jobCardId: number): Promise<JobCardActionCompletion[]>;
+    archiveUrls(jobCardId: number): Promise<{ url: string; path: string }[]>;
+    updateStepActionLabel(key: string, actionLabel: string | null): Promise<{ success: boolean }>;
   }
 }
 
@@ -341,4 +351,29 @@ proto.unsubscribePush = async function (endpoint) {
     method: "POST",
     body: JSON.stringify({ endpoint }),
   });
+};
+
+proto.completeAction = async function (jobCardId, stepKey, actionType, metadata) {
+  return this.request(`/stock-control/workflow/job-cards/${jobCardId}/action`, {
+    method: "POST",
+    body: JSON.stringify({ stepKey, actionType, metadata }),
+  });
+};
+
+proto.actionCompletions = async function (jobCardId) {
+  return this.request(`/stock-control/workflow/job-cards/${jobCardId}/actions`);
+};
+
+proto.archiveUrls = async function (jobCardId) {
+  return this.request(`/stock-control/workflow/job-cards/${jobCardId}/archive`);
+};
+
+proto.updateStepActionLabel = async function (key, actionLabel) {
+  return this.request(
+    `/stock-control/workflow/step-configs/${encodeURIComponent(key)}/action-label`,
+    {
+      method: "PUT",
+      body: JSON.stringify({ actionLabel }),
+    },
+  );
 };

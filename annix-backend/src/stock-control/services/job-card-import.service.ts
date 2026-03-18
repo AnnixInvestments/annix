@@ -6,7 +6,7 @@ import { ChatMessage } from "../../nix/ai-providers/claude-chat.provider";
 import { IStorageService, STORAGE_SERVICE } from "../../storage/storage.interface";
 import { CpoStatus } from "../entities/customer-purchase-order.entity";
 import { CustomerPurchaseOrderItem } from "../entities/customer-purchase-order-item.entity";
-import { JobCard, JobCardStatus, JobCardWorkflowStatus } from "../entities/job-card.entity";
+import { JobCard, JobCardStatus, WORKFLOW_STATUS_DRAFT } from "../entities/job-card.entity";
 import { JobCardExtractionCorrection } from "../entities/job-card-extraction-correction.entity";
 import {
   FieldMapping,
@@ -950,7 +950,7 @@ export class JobCardImportService {
       reference: row.reference || null,
       customFields,
       status: JobCardStatus.DRAFT,
-      workflowStatus: JobCardWorkflowStatus.DRAFT,
+      workflowStatus: WORKFLOW_STATUS_DRAFT,
       versionNumber: 1,
       parentJobCardId: parentJobCard.id,
       jtDnNumber,

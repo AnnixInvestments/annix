@@ -1,21 +1,20 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { In, Repository } from "typeorm";
-import { WorkflowStep } from "../entities/job-card-approval.entity";
 import { StockControlRole, StockControlUser } from "../entities/stock-control-user.entity";
 import { UserLocationAssignment } from "../entities/user-location-assignment.entity";
 import { WorkflowNotificationRecipient } from "../entities/workflow-notification-recipient.entity";
 import { WorkflowStepAssignment } from "../entities/workflow-step-assignment.entity";
 
 export interface StepAssignment {
-  step: WorkflowStep;
+  step: string;
   userIds: number[];
   primaryUserId: number | null;
   users: { id: number; name: string; email: string; role: string }[];
 }
 
 export interface StepNotificationRecipients {
-  step: WorkflowStep;
+  step: string;
   emails: string[];
 }
 
@@ -77,24 +76,15 @@ export class WorkflowAssignmentService {
       >,
     );
 
-    const enumSteps = Object.values(WorkflowStep) as string[];
-    const allStepKeys = [
-      ...enumSteps,
-      ...Object.keys(stepGroups).filter((key) => !enumSteps.includes(key)),
-    ];
-
-    return allStepKeys.map((step) => ({
-      step: step as WorkflowStep,
+    return Object.keys(stepGroups).map((step) => ({
+      step,
       userIds: stepGroups[step]?.userIds || [],
       primaryUserId: stepGroups[step]?.primaryUserId || null,
       users: stepGroups[step]?.users || [],
     }));
   }
 
-  async assignmentsForStep(
-    companyId: number,
-    step: WorkflowStep,
-  ): Promise<WorkflowStepAssignment[]> {
+  async assignmentsForStep(companyId: number, step: string): Promise<WorkflowStepAssignment[]> {
     return this.assignmentRepo.find({
       where: { companyId, workflowStep: step },
       relations: ["user"],
@@ -104,7 +94,7 @@ export class WorkflowAssignmentService {
 
   async updateAssignments(
     companyId: number,
-    step: WorkflowStep,
+    step: string,
     userIds: number[],
     primaryUserId?: number,
   ): Promise<void> {
@@ -127,7 +117,7 @@ export class WorkflowAssignmentService {
     this.logger.log(`Updated ${step} assignments for company ${companyId}: ${userIds.join(", ")}`);
   }
 
-  async usersForStep(companyId: number, step: WorkflowStep): Promise<StockControlUser[]> {
+  async usersForStep(companyId: number, step: string): Promise<StockControlUser[]> {
     const assignments = await this.assignmentsForStep(companyId, step);
 
     if (assignments.length > 0) {
@@ -140,7 +130,7 @@ export class WorkflowAssignmentService {
     });
   }
 
-  async assignedUserIdsForStep(companyId: number, step: WorkflowStep): Promise<number[]> {
+  async assignedUserIdsForStep(companyId: number, step: string): Promise<number[]> {
     const assignments = await this.assignmentRepo.find({
       where: { companyId, workflowStep: step },
       select: ["userId"],
@@ -148,7 +138,7 @@ export class WorkflowAssignmentService {
     return assignments.map((a) => a.userId);
   }
 
-  async hasExplicitAssignments(companyId: number, step: WorkflowStep): Promise<boolean> {
+  async hasExplicitAssignments(companyId: number, step: string): Promise<boolean> {
     const count = await this.assignmentRepo.count({
       where: { companyId, workflowStep: step },
     });
@@ -157,7 +147,7 @@ export class WorkflowAssignmentService {
 
   async eligibleUsersForStep(
     companyId: number,
-    step: WorkflowStep,
+    step: string,
   ): Promise<{ id: number; name: string; email: string; role: string }[]> {
     const compatibleRoles = this.compatibleRolesForStep(step);
 
@@ -174,54 +164,12 @@ export class WorkflowAssignmentService {
     }));
   }
 
-  private rolesForStep(step: WorkflowStep): StockControlRole[] {
-    const roleMap: Record<WorkflowStep, StockControlRole[]> = {
-      [WorkflowStep.DOCUMENT_UPLOAD]: [StockControlRole.ACCOUNTS],
-      [WorkflowStep.ADMIN_APPROVAL]: [StockControlRole.ADMIN],
-      [WorkflowStep.MANAGER_APPROVAL]: [StockControlRole.MANAGER],
-      [WorkflowStep.REQUISITION_SENT]: [StockControlRole.MANAGER],
-      [WorkflowStep.STOCK_ALLOCATION]: [StockControlRole.STOREMAN],
-      [WorkflowStep.MANAGER_FINAL]: [StockControlRole.MANAGER],
-      [WorkflowStep.READY_FOR_DISPATCH]: [StockControlRole.STOREMAN],
-      [WorkflowStep.DISPATCHED]: [StockControlRole.STOREMAN],
-    };
-
-    return roleMap[step] || [StockControlRole.ADMIN];
+  private rolesForStep(_step: string): StockControlRole[] {
+    return Object.values(StockControlRole);
   }
 
-  private compatibleRolesForStep(step: WorkflowStep): StockControlRole[] {
-    const compatibleMap: Record<WorkflowStep, StockControlRole[]> = {
-      [WorkflowStep.DOCUMENT_UPLOAD]: [
-        StockControlRole.ACCOUNTS,
-        StockControlRole.ADMIN,
-        StockControlRole.MANAGER,
-      ],
-      [WorkflowStep.ADMIN_APPROVAL]: [StockControlRole.ADMIN],
-      [WorkflowStep.MANAGER_APPROVAL]: [StockControlRole.MANAGER, StockControlRole.ADMIN],
-      [WorkflowStep.REQUISITION_SENT]: [
-        StockControlRole.STOREMAN,
-        StockControlRole.MANAGER,
-        StockControlRole.ADMIN,
-      ],
-      [WorkflowStep.STOCK_ALLOCATION]: [
-        StockControlRole.STOREMAN,
-        StockControlRole.MANAGER,
-        StockControlRole.ADMIN,
-      ],
-      [WorkflowStep.MANAGER_FINAL]: [StockControlRole.MANAGER, StockControlRole.ADMIN],
-      [WorkflowStep.READY_FOR_DISPATCH]: [
-        StockControlRole.STOREMAN,
-        StockControlRole.MANAGER,
-        StockControlRole.ADMIN,
-      ],
-      [WorkflowStep.DISPATCHED]: [
-        StockControlRole.STOREMAN,
-        StockControlRole.MANAGER,
-        StockControlRole.ADMIN,
-      ],
-    };
-
-    return compatibleMap[step] || Object.values(StockControlRole);
+  private compatibleRolesForStep(_step: string): StockControlRole[] {
+    return Object.values(StockControlRole);
   }
 
   async allNotificationRecipients(companyId: number): Promise<StepNotificationRecipients[]> {
@@ -241,19 +189,13 @@ export class WorkflowAssignmentService {
       {} as Record<string, string[]>,
     );
 
-    const enumSteps = Object.values(WorkflowStep) as string[];
-    const allStepKeys = [
-      ...enumSteps,
-      ...Object.keys(grouped).filter((key) => !enumSteps.includes(key)),
-    ];
-
-    return allStepKeys.map((step) => ({
-      step: step as WorkflowStep,
+    return Object.keys(grouped).map((step) => ({
+      step,
       emails: grouped[step] || [],
     }));
   }
 
-  async notificationRecipientsForStep(companyId: number, step: WorkflowStep): Promise<string[]> {
+  async notificationRecipientsForStep(companyId: number, step: string): Promise<string[]> {
     const recipients = await this.recipientRepo.find({
       where: { companyId, workflowStep: step },
       order: { email: "ASC" },
@@ -263,7 +205,7 @@ export class WorkflowAssignmentService {
 
   async updateNotificationRecipients(
     companyId: number,
-    step: WorkflowStep,
+    step: string,
     emails: string[],
   ): Promise<void> {
     await this.recipientRepo.delete({ companyId, workflowStep: step });

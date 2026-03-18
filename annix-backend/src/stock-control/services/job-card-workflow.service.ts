@@ -13,15 +13,18 @@ import { Repository } from "typeorm";
 import { AuditService } from "../../audit/audit.service";
 import { AuditAction } from "../../audit/entities/audit-log.entity";
 import { now } from "../../lib/datetime";
-import { IStorageService, STORAGE_SERVICE } from "../../storage/storage.interface";
-import { JobCard, JobCardStatus, JobCardWorkflowStatus } from "../entities/job-card.entity";
+import { IStorageService, STORAGE_SERVICE, StorageArea } from "../../storage/storage.interface";
 import {
-  ApprovalStatus,
-  JobCardApproval,
-  WorkflowStep,
-} from "../entities/job-card-approval.entity";
+  JobCard,
+  JobCardStatus,
+  WORKFLOW_STATUS_DRAFT,
+  WORKFLOW_STATUS_FILE_CLOSED,
+} from "../entities/job-card.entity";
+import { JobCardActionCompletion } from "../entities/job-card-action-completion.entity";
+import { ApprovalStatus, JobCardApproval } from "../entities/job-card-approval.entity";
 import { JobCardDocument, JobCardDocumentType } from "../entities/job-card-document.entity";
 import { StockControlRole } from "../entities/stock-control-user.entity";
+import { WorkflowStepConfig } from "../entities/workflow-step-config.entity";
 import { BackgroundStepService } from "./background-step.service";
 import { RequisitionService } from "./requisition.service";
 import { SignatureService } from "./signature.service";
@@ -52,6 +55,8 @@ export class JobCardWorkflowService {
     private readonly approvalRepo: Repository<JobCardApproval>,
     @InjectRepository(JobCardDocument)
     private readonly documentRepo: Repository<JobCardDocument>,
+    @InjectRepository(JobCardActionCompletion)
+    private readonly actionCompletionRepo: Repository<JobCardActionCompletion>,
     @Inject(STORAGE_SERVICE)
     private readonly storageService: IStorageService,
     private readonly signatureService: SignatureService,
@@ -74,12 +79,12 @@ export class JobCardWorkflowService {
   ): Promise<JobCardDocument> {
     const jobCard = await this.jobCardForWorkflow(companyId, jobCardId);
 
-    if (
-      jobCard.workflowStatus !== JobCardWorkflowStatus.DRAFT &&
-      jobCard.workflowStatus !== JobCardWorkflowStatus.DOCUMENT_UPLOADED
-    ) {
+    const fgSteps = await this.stepConfigService.orderedSteps(companyId);
+    const firstFgKey = fgSteps.length > 0 ? fgSteps[0].key : "admin_approval";
+
+    if (jobCard.workflowStatus !== WORKFLOW_STATUS_DRAFT && jobCard.workflowStatus !== firstFgKey) {
       throw new BadRequestException(
-        "Documents can only be uploaded in draft or document_uploaded status",
+        "Documents can only be uploaded in draft or initial workflow status",
       );
     }
 
@@ -102,17 +107,15 @@ export class JobCardWorkflowService {
 
     const saved = await this.documentRepo.save(document);
 
-    if (jobCard.workflowStatus === JobCardWorkflowStatus.DRAFT) {
-      jobCard.workflowStatus = JobCardWorkflowStatus.DOCUMENT_UPLOADED;
+    if (jobCard.workflowStatus === WORKFLOW_STATUS_DRAFT) {
+      jobCard.workflowStatus = firstFgKey;
       await this.jobCardRepo.save(jobCard);
 
-      await this.createApprovalRecord(companyId, jobCardId, WorkflowStep.DOCUMENT_UPLOAD, user);
-      await this.notificationService.notifyApprovalRequired(
-        companyId,
-        jobCardId,
-        WorkflowStep.ADMIN_APPROVAL,
-        { id: user.id, name: user.name },
-      );
+      await this.createApprovalRecord(companyId, jobCardId, "document_upload", user);
+      await this.notificationService.notifyApprovalRequired(companyId, jobCardId, firstFgKey, {
+        id: user.id,
+        name: user.name,
+      });
     }
 
     this.logger.log(`Document uploaded for job card ${jobCardId} by ${user.name}`);
@@ -126,7 +129,8 @@ export class JobCardWorkflowService {
     input: ApprovalInput,
   ): Promise<JobCard> {
     const jobCard = await this.jobCardForWorkflow(companyId, jobCardId);
-    const currentStep = this.currentStepForStatus(jobCard.workflowStatus);
+    const fgSteps = await this.stepConfigService.orderedSteps(companyId);
+    const currentStep = this.currentFgStep(jobCard.workflowStatus, fgSteps);
 
     if (!currentStep) {
       throw new BadRequestException("Job card is not in an approvable state");
@@ -138,9 +142,17 @@ export class JobCardWorkflowService {
       );
     }
 
-    this.validateUserCanApprove(user.role, currentStep);
+    const actionCompletion = await this.actionCompletionRepo.findOne({
+      where: { jobCardId, stepKey: currentStep.key, actionType: "primary" },
+    });
 
-    await this.validateUserIsAssigned(user, currentStep);
+    if (!actionCompletion) {
+      throw new BadRequestException(
+        `Action button must be completed before approving step "${currentStep.label}"`,
+      );
+    }
+
+    await this.validateUserIsAssigned(user, currentStep.key);
 
     await this.notificationService.markJobCardNotificationsAsRead(user.id, jobCardId);
 
@@ -160,14 +172,14 @@ export class JobCardWorkflowService {
     await this.createApprovalRecord(
       companyId,
       jobCardId,
-      currentStep,
+      currentStep.key,
       user,
       ApprovalStatus.APPROVED,
       signatureUrl,
       input.comments,
     );
 
-    const nextStatus = this.nextStatus(jobCard.workflowStatus);
+    const nextStatus = this.nextFgStatus(currentStep.key, fgSteps);
 
     const updateResult = await this.jobCardRepo.update(
       { id: jobCardId, companyId, workflowStatus: jobCard.workflowStatus },
@@ -187,50 +199,151 @@ export class JobCardWorkflowService {
     await this.notificationService.notifyApprovalCompleted(
       companyId,
       jobCardId,
-      currentStep,
+      currentStep.key,
       senderInfo,
     );
 
-    if (nextStatus === JobCardWorkflowStatus.REQUISITION_SENT) {
-      await this.requisitionService.createFromJobCard(companyId, jobCardId, user.name);
-    }
-
-    const bgStepKeys = new Set(
-      (await this.stepConfigService.backgroundSteps(companyId)).map((s) => s.key),
-    );
-    const nextStep = this.currentStepForStatus(nextStatus);
-    const nextStepIsBg = nextStep !== null && bgStepKeys.has(nextStep);
-
-    if (nextStep && !nextStepIsBg) {
+    const nextStep = this.currentFgStep(nextStatus, fgSteps);
+    if (nextStep) {
       await this.notificationService.notifyApprovalRequired(
         companyId,
         jobCardId,
-        nextStep,
+        nextStep.key,
         senderInfo,
       );
     }
 
-    if (nextStatus === JobCardWorkflowStatus.READY_FOR_DISPATCH) {
-      await this.notificationService.notifyDispatchReady(companyId, jobCardId);
-    }
-
-    await this.triggerBackgroundSteps(companyId, jobCardId, currentStep, senderInfo);
+    await this.triggerBackgroundSteps(companyId, jobCardId, currentStep.key, senderInfo);
 
     this.auditService
       .log({
         entityType: "job_card_workflow",
         entityId: jobCardId,
         action: AuditAction.APPROVE,
-        oldValues: { workflowStatus: jobCard.workflowStatus, step: currentStep },
+        oldValues: { workflowStatus: jobCard.workflowStatus, step: currentStep.key },
         newValues: { workflowStatus: nextStatus, approvedBy: user.name },
       })
       .catch((err) => this.logger.error(`Audit log failed: ${err.message}`, err.stack));
 
     this.logger.log(
-      `Job card ${jobCardId} approved at step ${currentStep} by ${user.name}, moved to ${nextStatus}`,
+      `Job card ${jobCardId} approved at step ${currentStep.key} by ${user.name}, moved to ${nextStatus}`,
     );
 
     return this.jobCardForWorkflow(companyId, jobCardId);
+  }
+
+  async completeAction(
+    companyId: number,
+    jobCardId: number,
+    user: UserContext,
+    stepKey: string,
+    actionType: string = "primary",
+    metadata?: Record<string, unknown>,
+  ): Promise<JobCardActionCompletion> {
+    const jobCard = await this.jobCardForWorkflow(companyId, jobCardId);
+
+    if (jobCard.status !== JobCardStatus.ACTIVE) {
+      throw new BadRequestException("Job card must be active");
+    }
+
+    const fgSteps = await this.stepConfigService.orderedSteps(companyId);
+    const bgSteps = await this.stepConfigService.backgroundSteps(companyId);
+    const allSteps = [...fgSteps, ...bgSteps];
+    const stepConfig = allSteps.find((s) => s.key === stepKey);
+
+    if (!stepConfig) {
+      throw new NotFoundException(`Step "${stepKey}" not found for this company`);
+    }
+
+    await this.validateUserIsAssigned(user, stepKey);
+
+    const existing = await this.actionCompletionRepo.findOne({
+      where: { jobCardId, stepKey, actionType },
+    });
+
+    if (existing) {
+      throw new BadRequestException(`Action already completed for step "${stepKey}"`);
+    }
+
+    if (stepKey === "job_file_review" && actionType === "secondary") {
+      const completion = this.actionCompletionRepo.create({
+        jobCardId,
+        companyId,
+        stepKey,
+        actionType: "secondary",
+        completedById: user.id,
+        completedByName: user.name,
+        completedAt: now().toJSDate(),
+        metadata: { choice: "job_file_still_open", ...metadata },
+      });
+
+      const saved = await this.actionCompletionRepo.save(completion);
+      this.logger.log(
+        `Job file review marked as "still open" for job card ${jobCardId} by ${user.name}`,
+      );
+      return saved;
+    }
+
+    if (stepKey === "file_sign_off") {
+      const archiveMetadata = await this.archiveJobCardDocuments(companyId, jobCardId);
+      metadata = { ...metadata, ...archiveMetadata };
+    }
+
+    const completion = this.actionCompletionRepo.create({
+      jobCardId,
+      companyId,
+      stepKey,
+      actionType,
+      completedById: user.id,
+      completedByName: user.name,
+      completedAt: now().toJSDate(),
+      metadata: metadata ?? null,
+    });
+
+    const saved = await this.actionCompletionRepo.save(completion);
+
+    this.logger.log(
+      `Action "${actionType}" completed for step "${stepKey}" on job card ${jobCardId} by ${user.name}`,
+    );
+
+    return saved;
+  }
+
+  async actionCompletions(
+    companyId: number,
+    jobCardId: number,
+  ): Promise<JobCardActionCompletion[]> {
+    return this.actionCompletionRepo.find({
+      where: { jobCardId, companyId },
+      order: { completedAt: "ASC" },
+    });
+  }
+
+  async archiveUrls(
+    companyId: number,
+    jobCardId: number,
+  ): Promise<Array<{ filename: string; url: string }>> {
+    const completion = await this.actionCompletionRepo.findOne({
+      where: { jobCardId, companyId, stepKey: "file_sign_off", actionType: "primary" },
+    });
+
+    if (!completion?.metadata) {
+      return [];
+    }
+
+    const archivedPaths = (completion.metadata as Record<string, unknown>).archivedPaths;
+    if (!Array.isArray(archivedPaths)) {
+      return [];
+    }
+
+    const urls = await Promise.all(
+      (archivedPaths as Array<{ path: string; filename: string }>).map(async (entry) => {
+        const url = await this.storageService.presignedUrl(entry.path, 3600).catch(() => null);
+        return { filename: entry.filename, url: url || "" };
+      }),
+    );
+
+    return urls.filter((u) => u.url !== "");
   }
 
   private async triggerBackgroundSteps(
@@ -261,61 +374,9 @@ export class JobCardWorkflowService {
     jobCardId: number,
     sender: { id: number; name: string },
   ): Promise<void> {
-    const jobCard = await this.jobCardForWorkflow(companyId, jobCardId);
-    const bgStepKeys = new Set(
-      (await this.stepConfigService.backgroundSteps(companyId)).map((s) => s.key),
+    this.logger.log(
+      `Background steps complete for job card ${jobCardId}, no FG auto-advance needed in dynamic workflow`,
     );
-
-    let status = jobCard.workflowStatus;
-    let advanced = false;
-
-    while (true) {
-      const stepForStatus = this.currentStepForStatus(status);
-      if (!stepForStatus || !bgStepKeys.has(stepForStatus)) {
-        break;
-      }
-      const next = this.nextStatus(status);
-      if (next === status) {
-        break;
-      }
-      if (next === JobCardWorkflowStatus.REQUISITION_SENT) {
-        await this.requisitionService.createFromJobCard(companyId, jobCardId, sender.name);
-      }
-      status = next;
-      advanced = true;
-    }
-
-    if (!advanced) {
-      return;
-    }
-
-    const updateResult = await this.jobCardRepo.update(
-      { id: jobCardId, companyId, workflowStatus: jobCard.workflowStatus },
-      { workflowStatus: status },
-    );
-
-    if (updateResult.affected === 0) {
-      this.logger.warn(
-        `Could not auto-advance job card ${jobCardId} past background steps (concurrent modification)`,
-      );
-      return;
-    }
-
-    if (status === JobCardWorkflowStatus.READY_FOR_DISPATCH) {
-      await this.notificationService.notifyDispatchReady(companyId, jobCardId);
-    }
-
-    const nextFgStep = this.currentStepForStatus(status);
-    if (nextFgStep) {
-      await this.notificationService.notifyApprovalRequired(
-        companyId,
-        jobCardId,
-        nextFgStep,
-        sender,
-      );
-    }
-
-    this.logger.log(`Auto-advanced job card ${jobCardId} past background steps to ${status}`);
   }
 
   async rejectStep(
@@ -325,7 +386,8 @@ export class JobCardWorkflowService {
     reason: string,
   ): Promise<JobCard> {
     const jobCard = await this.jobCardForWorkflow(companyId, jobCardId);
-    const currentStep = this.currentStepForStatus(jobCard.workflowStatus);
+    const fgSteps = await this.stepConfigService.orderedSteps(companyId);
+    const currentStep = this.currentFgStep(jobCard.workflowStatus, fgSteps);
 
     if (!currentStep) {
       throw new BadRequestException("Job card is not in a rejectable state");
@@ -338,7 +400,7 @@ export class JobCardWorkflowService {
     await this.notificationService.markJobCardNotificationsAsRead(user.id, jobCardId);
 
     await this.approvalRepo.update(
-      { jobCardId, step: currentStep, status: ApprovalStatus.PENDING },
+      { jobCardId, step: currentStep.key, status: ApprovalStatus.PENDING },
       {
         status: ApprovalStatus.REJECTED,
         rejectedReason: reason,
@@ -348,9 +410,11 @@ export class JobCardWorkflowService {
       },
     );
 
+    const firstFgKey = fgSteps.length > 0 ? fgSteps[0].key : WORKFLOW_STATUS_DRAFT;
+
     const updateResult = await this.jobCardRepo.update(
       { id: jobCardId, companyId, workflowStatus: jobCard.workflowStatus },
-      { workflowStatus: JobCardWorkflowStatus.DOCUMENT_UPLOADED },
+      { workflowStatus: firstFgKey },
     );
 
     if (updateResult.affected === 0) {
@@ -359,7 +423,7 @@ export class JobCardWorkflowService {
       );
     }
 
-    jobCard.workflowStatus = JobCardWorkflowStatus.DOCUMENT_UPLOADED;
+    jobCard.workflowStatus = firstFgKey;
 
     await this.notificationService.notifyRejection(
       companyId,
@@ -373,16 +437,16 @@ export class JobCardWorkflowService {
         entityType: "job_card_workflow",
         entityId: jobCardId,
         action: AuditAction.REJECT,
-        oldValues: { workflowStatus: jobCard.workflowStatus, step: currentStep },
+        oldValues: { workflowStatus: jobCard.workflowStatus, step: currentStep.key },
         newValues: {
-          workflowStatus: JobCardWorkflowStatus.DOCUMENT_UPLOADED,
+          workflowStatus: firstFgKey,
           rejectedBy: user.name,
           reason,
         },
       })
       .catch((err) => this.logger.error(`Audit log failed: ${err.message}`, err.stack));
 
-    this.logger.log(`Job card ${jobCardId} rejected at step ${currentStep} by ${user.name}`);
+    this.logger.log(`Job card ${jobCardId} rejected at step ${currentStep.key} by ${user.name}`);
 
     return this.jobCardForWorkflow(companyId, jobCardId);
   }
@@ -391,13 +455,18 @@ export class JobCardWorkflowService {
     companyId: number,
     jobCardId: number,
   ): Promise<{
-    currentStatus: JobCardWorkflowStatus;
-    currentStep: WorkflowStep | null;
+    currentStatus: string;
+    currentStep: string | null;
     canApprove: boolean;
-    requiredRole: StockControlRole | null;
+    requiredRole: string | null;
     jobCardStatus: JobCardStatus;
     stepAssignments: Record<string, { name: string; isPrimary: boolean }[]>;
-    foregroundSteps: Array<{ key: string; label: string; sortOrder: number }>;
+    foregroundSteps: Array<{
+      key: string;
+      label: string;
+      sortOrder: number;
+      actionLabel: string | null;
+    }>;
     backgroundSteps: Array<{
       stepKey: string;
       label: string;
@@ -405,17 +474,29 @@ export class JobCardWorkflowService {
       completedAt: string | null;
       completedByName: string | null;
       notes: string | null;
+      actionLabel: string | null;
+    }>;
+    actionCompletions: Array<{
+      stepKey: string;
+      actionType: string;
+      completedByName: string;
+      completedAt: string;
+      metadata: Record<string, unknown> | null;
     }>;
   }> {
     const jobCard = await this.jobCardForWorkflow(companyId, jobCardId);
-    const currentStep = this.currentStepForStatus(jobCard.workflowStatus);
-    const requiredRole = currentStep ? this.roleForStep(currentStep) : null;
 
-    const [allAssignments, fgConfigs, bgStatuses] = await Promise.all([
+    const [allAssignments, fgConfigs, bgStatuses, actions] = await Promise.all([
       this.assignmentService.allAssignments(companyId),
       this.stepConfigService.orderedSteps(companyId),
       this.backgroundStepService.statusForJobCard(companyId, jobCardId),
+      this.actionCompletionRepo.find({
+        where: { jobCardId, companyId },
+        order: { completedAt: "ASC" },
+      }),
     ]);
+
+    const currentStep = this.currentFgStep(jobCard.workflowStatus, fgConfigs);
 
     const stepAssignments = allAssignments.reduce(
       (acc, sa) => ({
@@ -432,17 +513,42 @@ export class JobCardWorkflowService {
       key: s.key,
       label: s.label,
       sortOrder: s.sortOrder,
+      actionLabel: s.actionLabel,
     }));
+
+    const bgStepConfigs = await this.stepConfigService.backgroundSteps(companyId);
+    const bgConfigByKey = bgStepConfigs.reduce<Record<string, WorkflowStepConfig>>(
+      (acc, s) => ({ ...acc, [s.key]: s }),
+      {},
+    );
+
+    const backgroundSteps = bgStatuses.map((bs) => ({
+      ...bs,
+      actionLabel: bgConfigByKey[bs.stepKey]?.actionLabel ?? null,
+    }));
+
+    const actionCompletions = actions.map((a) => ({
+      stepKey: a.stepKey,
+      actionType: a.actionType,
+      completedByName: a.completedByName,
+      completedAt: a.completedAt.toISOString(),
+      metadata: a.metadata,
+    }));
+
+    const actionExists = actions.some(
+      (a) => currentStep && a.stepKey === currentStep.key && a.actionType === "primary",
+    );
 
     return {
       currentStatus: jobCard.workflowStatus,
-      currentStep,
-      canApprove: currentStep !== null && jobCard.status === JobCardStatus.ACTIVE,
-      requiredRole,
+      currentStep: currentStep?.key ?? null,
+      canApprove: currentStep !== null && jobCard.status === JobCardStatus.ACTIVE && actionExists,
+      requiredRole: null,
       jobCardStatus: jobCard.status,
       stepAssignments,
       foregroundSteps,
-      backgroundSteps: bgStatuses,
+      backgroundSteps,
+      actionCompletions,
     };
   }
 
@@ -473,7 +579,8 @@ export class JobCardWorkflowService {
     page: number = 1,
     limit: number = 50,
   ): Promise<JobCard[]> {
-    const statuses = this.statusesForRole(user.role);
+    const fgSteps = await this.stepConfigService.orderedSteps(user.companyId);
+    const statuses = fgSteps.map((s) => s.key);
 
     if (statuses.length === 0) {
       return [];
@@ -483,6 +590,7 @@ export class JobCardWorkflowService {
       .createQueryBuilder("jc")
       .where("jc.companyId = :companyId", { companyId: user.companyId })
       .andWhere("jc.workflowStatus IN (:...statuses)", { statuses })
+      .andWhere("jc.status = :status", { status: JobCardStatus.ACTIVE })
       .orderBy("jc.createdAt", "ASC")
       .take(limit)
       .skip((page - 1) * limit)
@@ -502,36 +610,20 @@ export class JobCardWorkflowService {
       return false;
     }
 
-    const currentStep = this.currentStepForStatus(jobCard.workflowStatus);
+    const fgSteps = await this.stepConfigService.orderedSteps(user.companyId);
+    const currentStep = this.currentFgStep(jobCard.workflowStatus, fgSteps);
     if (!currentStep) {
-      return false;
-    }
-
-    const requiredRole = this.roleForStep(currentStep);
-
-    if (user.role === StockControlRole.ADMIN) {
-      const adminApprovableSteps: WorkflowStep[] = [
-        WorkflowStep.DOCUMENT_UPLOAD,
-        WorkflowStep.ADMIN_APPROVAL,
-        WorkflowStep.STOCK_ALLOCATION,
-        WorkflowStep.READY_FOR_DISPATCH,
-        WorkflowStep.DISPATCHED,
-      ];
-      if (!adminApprovableSteps.includes(currentStep)) {
-        return false;
-      }
-    } else if (user.role !== requiredRole) {
       return false;
     }
 
     const hasExplicit = await this.assignmentService.hasExplicitAssignments(
       user.companyId,
-      currentStep,
+      currentStep.key,
     );
     if (hasExplicit) {
       const assignedIds = await this.assignmentService.assignedUserIdsForStep(
         user.companyId,
-        currentStep,
+        currentStep.key,
       );
       return assignedIds.includes(user.id);
     }
@@ -546,11 +638,14 @@ export class JobCardWorkflowService {
   ): Promise<void> {
     const jobCard = await this.jobCardForWorkflow(companyId, jobCardId);
 
-    if (jobCard.workflowStatus !== JobCardWorkflowStatus.DRAFT) {
+    if (jobCard.workflowStatus !== WORKFLOW_STATUS_DRAFT) {
       return;
     }
 
-    jobCard.workflowStatus = JobCardWorkflowStatus.DOCUMENT_UPLOADED;
+    const fgSteps = await this.stepConfigService.orderedSteps(companyId);
+    const firstFgKey = fgSteps.length > 0 ? fgSteps[0].key : "admin_approval";
+
+    jobCard.workflowStatus = firstFgKey;
     await this.jobCardRepo.save(jobCard);
 
     const firstDocument = await this.documentRepo.findOne({
@@ -563,7 +658,7 @@ export class JobCardWorkflowService {
         ? { id: firstDocument.uploadedById, name: firstDocument.uploadedByName }
         : user;
 
-    await this.createApprovalRecord(companyId, jobCardId, WorkflowStep.DOCUMENT_UPLOAD, {
+    await this.createApprovalRecord(companyId, jobCardId, "document_upload", {
       id: documentUploader.id,
       name: documentUploader.name,
       companyId,
@@ -597,8 +692,8 @@ export class JobCardWorkflowService {
   private async createApprovalRecord(
     companyId: number,
     jobCardId: number,
-    step: WorkflowStep,
-    user: UserContext,
+    step: string,
+    user: UserContext | { id: number; name: string; companyId: number; role: StockControlRole },
     status: ApprovalStatus = ApprovalStatus.APPROVED,
     signatureUrl?: string | null,
     comments?: string,
@@ -618,14 +713,20 @@ export class JobCardWorkflowService {
     return this.approvalRepo.save(approval);
   }
 
-  private async validateUserIsAssigned(user: UserContext, step: WorkflowStep): Promise<void> {
-    const hasExplicit = await this.assignmentService.hasExplicitAssignments(user.companyId, step);
+  private async validateUserIsAssigned(user: UserContext, stepKey: string): Promise<void> {
+    const hasExplicit = await this.assignmentService.hasExplicitAssignments(
+      user.companyId,
+      stepKey,
+    );
 
     if (!hasExplicit) {
       return;
     }
 
-    const assignedIds = await this.assignmentService.assignedUserIdsForStep(user.companyId, step);
+    const assignedIds = await this.assignmentService.assignedUserIdsForStep(
+      user.companyId,
+      stepKey,
+    );
 
     if (!assignedIds.includes(user.id)) {
       throw new ForbiddenException(
@@ -634,103 +735,73 @@ export class JobCardWorkflowService {
     }
   }
 
-  private validateUserCanApprove(role: StockControlRole, step: WorkflowStep): void {
-    const requiredRole = this.roleForStep(step);
+  private currentFgStep(status: string, fgSteps: WorkflowStepConfig[]): WorkflowStepConfig | null {
+    if (status === WORKFLOW_STATUS_DRAFT || status === WORKFLOW_STATUS_FILE_CLOSED) {
+      return null;
+    }
 
-    if (role === StockControlRole.ADMIN) {
-      const adminApprovableSteps: WorkflowStep[] = [
-        WorkflowStep.DOCUMENT_UPLOAD,
-        WorkflowStep.ADMIN_APPROVAL,
-        WorkflowStep.STOCK_ALLOCATION,
-        WorkflowStep.READY_FOR_DISPATCH,
-        WorkflowStep.DISPATCHED,
-      ];
+    const idx = fgSteps.findIndex((s) => s.key === status);
+    if (idx >= 0) {
+      return fgSteps[idx];
+    }
 
-      if (!adminApprovableSteps.includes(step)) {
-        throw new ForbiddenException(
-          `Admin cannot approve step ${step}. Required role: ${requiredRole}`,
+    return null;
+  }
+
+  private nextFgStatus(currentStepKey: string, fgSteps: WorkflowStepConfig[]): string {
+    const idx = fgSteps.findIndex((s) => s.key === currentStepKey);
+    if (idx < 0) {
+      return currentStepKey;
+    }
+
+    if (idx + 1 < fgSteps.length) {
+      return fgSteps[idx + 1].key;
+    }
+
+    return WORKFLOW_STATUS_FILE_CLOSED;
+  }
+
+  private async archiveJobCardDocuments(
+    companyId: number,
+    jobCardId: number,
+  ): Promise<Record<string, unknown>> {
+    const docs = await this.documentRepo.find({
+      where: { jobCardId, companyId },
+    });
+
+    const archivePath = `${StorageArea.STOCK_CONTROL}/job-cards/${jobCardId}/archive`;
+
+    const archivedPaths = await Promise.all(
+      docs.map(async (doc) => {
+        const sourceBuffer = await this.storageService.download(doc.fileUrl).catch(() => null);
+        if (!sourceBuffer) {
+          return null;
+        }
+
+        const archiveFilename = doc.originalFilename || `document-${doc.id}`;
+        const destPath = `${archivePath}/${archiveFilename}`;
+
+        await this.storageService.upload(
+          {
+            buffer: sourceBuffer,
+            originalname: archiveFilename,
+            mimetype: doc.mimeType || "application/octet-stream",
+          } as Express.Multer.File,
+          archivePath,
         );
-      }
-      return;
-    }
 
-    if (role !== requiredRole) {
-      throw new ForbiddenException(
-        `Role ${role} cannot approve step ${step}. Required: ${requiredRole}`,
-      );
-    }
-  }
+        return { path: destPath, filename: archiveFilename, originalDocId: doc.id };
+      }),
+    );
 
-  private roleForStep(step: WorkflowStep): StockControlRole {
-    const roleMap: Record<WorkflowStep, StockControlRole> = {
-      [WorkflowStep.DOCUMENT_UPLOAD]: StockControlRole.ACCOUNTS,
-      [WorkflowStep.ADMIN_APPROVAL]: StockControlRole.ADMIN,
-      [WorkflowStep.MANAGER_APPROVAL]: StockControlRole.MANAGER,
-      [WorkflowStep.REQUISITION_SENT]: StockControlRole.MANAGER,
-      [WorkflowStep.STOCK_ALLOCATION]: StockControlRole.STOREMAN,
-      [WorkflowStep.MANAGER_FINAL]: StockControlRole.MANAGER,
-      [WorkflowStep.READY_FOR_DISPATCH]: StockControlRole.STOREMAN,
-      [WorkflowStep.DISPATCHED]: StockControlRole.STOREMAN,
+    const validPaths = archivedPaths.filter((p) => p !== null);
+
+    this.logger.log(`Archived ${validPaths.length} documents for job card ${jobCardId}`);
+
+    return {
+      archivedAt: now().toISO(),
+      archivedPaths: validPaths,
+      totalDocuments: validPaths.length,
     };
-
-    return roleMap[step];
-  }
-
-  private currentStepForStatus(status: JobCardWorkflowStatus): WorkflowStep | null {
-    const stepMap: Record<JobCardWorkflowStatus, WorkflowStep | null> = {
-      [JobCardWorkflowStatus.DRAFT]: null,
-      [JobCardWorkflowStatus.DOCUMENT_UPLOADED]: WorkflowStep.ADMIN_APPROVAL,
-      [JobCardWorkflowStatus.ADMIN_APPROVED]: WorkflowStep.MANAGER_APPROVAL,
-      [JobCardWorkflowStatus.MANAGER_APPROVED]: WorkflowStep.REQUISITION_SENT,
-      [JobCardWorkflowStatus.REQUISITION_SENT]: WorkflowStep.STOCK_ALLOCATION,
-      [JobCardWorkflowStatus.STOCK_ALLOCATED]: WorkflowStep.MANAGER_FINAL,
-      [JobCardWorkflowStatus.MANAGER_FINAL]: WorkflowStep.READY_FOR_DISPATCH,
-      [JobCardWorkflowStatus.READY_FOR_DISPATCH]: WorkflowStep.DISPATCHED,
-      [JobCardWorkflowStatus.DISPATCHED]: null,
-    };
-
-    return stepMap[status];
-  }
-
-  private nextStatus(current: JobCardWorkflowStatus): JobCardWorkflowStatus {
-    const transitionMap: Record<JobCardWorkflowStatus, JobCardWorkflowStatus> = {
-      [JobCardWorkflowStatus.DRAFT]: JobCardWorkflowStatus.DOCUMENT_UPLOADED,
-      [JobCardWorkflowStatus.DOCUMENT_UPLOADED]: JobCardWorkflowStatus.ADMIN_APPROVED,
-      [JobCardWorkflowStatus.ADMIN_APPROVED]: JobCardWorkflowStatus.MANAGER_APPROVED,
-      [JobCardWorkflowStatus.MANAGER_APPROVED]: JobCardWorkflowStatus.REQUISITION_SENT,
-      [JobCardWorkflowStatus.REQUISITION_SENT]: JobCardWorkflowStatus.STOCK_ALLOCATED,
-      [JobCardWorkflowStatus.STOCK_ALLOCATED]: JobCardWorkflowStatus.MANAGER_FINAL,
-      [JobCardWorkflowStatus.MANAGER_FINAL]: JobCardWorkflowStatus.READY_FOR_DISPATCH,
-      [JobCardWorkflowStatus.READY_FOR_DISPATCH]: JobCardWorkflowStatus.DISPATCHED,
-      [JobCardWorkflowStatus.DISPATCHED]: JobCardWorkflowStatus.DISPATCHED,
-    };
-
-    return transitionMap[current];
-  }
-
-  private statusesForRole(role: StockControlRole): JobCardWorkflowStatus[] {
-    const roleStatuses: Record<StockControlRole, JobCardWorkflowStatus[]> = {
-      [StockControlRole.ACCOUNTS]: [],
-      [StockControlRole.ADMIN]: [JobCardWorkflowStatus.DOCUMENT_UPLOADED],
-      [StockControlRole.MANAGER]: [
-        JobCardWorkflowStatus.ADMIN_APPROVED,
-        JobCardWorkflowStatus.MANAGER_APPROVED,
-        JobCardWorkflowStatus.STOCK_ALLOCATED,
-      ],
-      [StockControlRole.STOREMAN]: [
-        JobCardWorkflowStatus.REQUISITION_SENT,
-        JobCardWorkflowStatus.READY_FOR_DISPATCH,
-      ],
-    };
-
-    if (role === StockControlRole.ADMIN) {
-      return [
-        JobCardWorkflowStatus.DOCUMENT_UPLOADED,
-        JobCardWorkflowStatus.REQUISITION_SENT,
-        JobCardWorkflowStatus.READY_FOR_DISPATCH,
-      ];
-    }
-
-    return roleStatuses[role] || [];
   }
 }

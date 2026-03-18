@@ -2,7 +2,7 @@ import { Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { IStorageService, STORAGE_SERVICE } from "../../storage/storage.interface";
-import { JobCard, JobCardWorkflowStatus } from "../entities/job-card.entity";
+import { JobCard, WORKFLOW_STATUS_DRAFT } from "../entities/job-card.entity";
 import { JobCardApproval } from "../entities/job-card-approval.entity";
 import { JobCardLineItem } from "../entities/job-card-line-item.entity";
 import { JobCardVersion } from "../entities/job-card-version.entity";
@@ -94,7 +94,7 @@ export class JobCardVersionService {
 
     await this.jobCardRepo.update(
       { id: jobCardId, companyId },
-      { workflowStatus: JobCardWorkflowStatus.DRAFT },
+      { workflowStatus: WORKFLOW_STATUS_DRAFT },
     );
 
     this.logger.log(`Reset workflow for job card ${jobCardId}`);

@@ -8,7 +8,6 @@ import {
   Unique,
   UpdateDateColumn,
 } from "typeorm";
-import { WorkflowStep } from "./job-card-approval.entity";
 import { StockControlCompany } from "./stock-control-company.entity";
 import { StockControlUser } from "./stock-control-user.entity";
 
@@ -26,7 +25,7 @@ export class WorkflowStepAssignment {
   companyId: number;
 
   @Column({ name: "workflow_step", type: "varchar", length: 50 })
-  workflowStep: WorkflowStep;
+  workflowStep: string;
 
   @ManyToOne(() => StockControlUser, { onDelete: "CASCADE" })
   @JoinColumn({ name: "user_id" })

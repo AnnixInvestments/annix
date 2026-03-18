@@ -169,3 +169,26 @@ export class RejectAllocationDto {
   @IsString()
   reason: string;
 }
+
+export class CompleteActionDto {
+  @ApiProperty({ description: "Step key to complete action for" })
+  @IsString()
+  stepKey: string;
+
+  @ApiPropertyOptional({ description: "Action type (primary or secondary)" })
+  @IsOptional()
+  @IsString()
+  actionType?: string;
+
+  @ApiPropertyOptional({ description: "Additional metadata" })
+  @IsOptional()
+  metadata?: Record<string, unknown>;
+}
+
+export class UpdateStepActionLabelDto {
+  @ApiProperty({ description: "New action label for the workflow step", maxLength: 100 })
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  actionLabel: string | null;
+}

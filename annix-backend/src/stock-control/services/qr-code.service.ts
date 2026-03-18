@@ -7,11 +7,7 @@ import { formatDateTime } from "../../lib/datetime";
 import { IStorageService, STORAGE_SERVICE } from "../../storage/storage.interface";
 import { JobCardCoatingAnalysis } from "../entities/coating-analysis.entity";
 import { JobCard } from "../entities/job-card.entity";
-import {
-  ApprovalStatus,
-  JobCardApproval,
-  WorkflowStep,
-} from "../entities/job-card-approval.entity";
+import { ApprovalStatus, JobCardApproval } from "../entities/job-card-approval.entity";
 import { StaffMember } from "../entities/staff-member.entity";
 import { StockControlCompany } from "../entities/stock-control-company.entity";
 import { StockItem } from "../entities/stock-item.entity";
@@ -401,15 +397,11 @@ export class QrCodeService {
     margin: number,
     contentWidth: number,
   ): void {
-    const stepLabels: { step: WorkflowStep; label: string }[] = [
-      { step: WorkflowStep.DOCUMENT_UPLOAD, label: "Document Upload" },
-      { step: WorkflowStep.ADMIN_APPROVAL, label: "Admin Approval" },
-      { step: WorkflowStep.MANAGER_APPROVAL, label: "Manager Approval" },
-      { step: WorkflowStep.REQUISITION_SENT, label: "Requisition Sent" },
-      { step: WorkflowStep.STOCK_ALLOCATION, label: "Stock Allocation" },
-      { step: WorkflowStep.MANAGER_FINAL, label: "Final Approval" },
-      { step: WorkflowStep.READY_FOR_DISPATCH, label: "Ready for Dispatch" },
-      { step: WorkflowStep.DISPATCHED, label: "Dispatched" },
+    const stepLabels: { step: string; label: string }[] = [
+      { step: "admin_approval", label: "Admin Approval" },
+      { step: "manager_approval", label: "Manager Approval" },
+      { step: "quality_check", label: "Quality Check" },
+      { step: "dispatched", label: "Dispatched" },
     ];
 
     const approvalMap = new Map(

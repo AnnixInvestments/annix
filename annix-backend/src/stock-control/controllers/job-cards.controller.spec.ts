@@ -1,6 +1,7 @@
 import { BadRequestException } from "@nestjs/common";
 import { Test, TestingModule } from "@nestjs/testing";
 import { getRepositoryToken } from "@nestjs/typeorm";
+import { JobCardLineItem } from "../entities/job-card-line-item.entity";
 import { RubberDimensionOverride } from "../entities/rubber-dimension-override.entity";
 import { StockItem } from "../entities/stock-item.entity";
 import { StockMovement } from "../entities/stock-movement.entity";
@@ -119,6 +120,10 @@ describe("JobCardsController", () => {
         { provide: getRepositoryToken(StockItem), useValue: stockItemRepo },
         { provide: getRepositoryToken(RubberDimensionOverride), useValue: dimensionOverrideRepo },
         { provide: getRepositoryToken(StockMovement), useValue: stockMovementRepo },
+        {
+          provide: getRepositoryToken(JobCardLineItem),
+          useValue: { findOne: jest.fn(), create: jest.fn(), save: jest.fn(), remove: jest.fn() },
+        },
       ],
     })
       .overrideGuard(StockControlAuthGuard)

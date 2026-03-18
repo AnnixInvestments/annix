@@ -12,6 +12,7 @@ import { DeliveryService } from "./delivery.service";
 import { InvoiceService } from "./invoice.service";
 import { InvoiceExtractionService } from "./invoice-extraction.service";
 import { ScDocumentType } from "./sc-email-classifier.service";
+import { WorkflowNotificationService } from "./workflow-notification.service";
 
 const SUPPORTED_MIME_TYPES = [
   "application/pdf",
@@ -32,6 +33,7 @@ export class ScEmailRouterService implements IDocumentRouter {
     private readonly invoiceService: InvoiceService,
     private readonly deliveryService: DeliveryService,
     private readonly extractionService: InvoiceExtractionService,
+    private readonly notificationService: WorkflowNotificationService,
     @InjectRepository(StockControlSupplier)
     private readonly supplierRepo: Repository<StockControlSupplier>,
   ) {}
@@ -89,6 +91,13 @@ export class ScEmailRouterService implements IDocumentRouter {
 
     this.triggerInvoiceExtraction(invoice.id, fileBuffer, attachment.mimeType);
 
+    this.notificationService
+      .notifyDocumentArrived(companyId, "invoice", supplierName, attachment.originalFilename)
+      .catch((error) => {
+        const msg = error instanceof Error ? error.message : String(error);
+        this.logger.error(`Failed to send document arrival notification: ${msg}`);
+      });
+
     this.logger.log(
       `Created invoice ${invoice.id} (${invoiceNumber}) from email attachment: ${attachment.originalFilename}`,
     );
@@ -115,6 +124,13 @@ export class ScEmailRouterService implements IDocumentRouter {
       supplierName,
       photoUrl: attachment.s3Path,
     });
+
+    this.notificationService
+      .notifyDocumentArrived(companyId, "delivery note", supplierName, attachment.originalFilename)
+      .catch((error) => {
+        const msg = error instanceof Error ? error.message : String(error);
+        this.logger.error(`Failed to send document arrival notification: ${msg}`);
+      });
 
     this.logger.log(
       `Created delivery note ${dn.id} (${deliveryNumber}) from email attachment: ${attachment.originalFilename}`,

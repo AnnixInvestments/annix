@@ -21,6 +21,8 @@ export {
   useWorkflowLaneCounts,
 } from "./useStockControlDashboard";
 export {
+  useActionCompletions,
+  useAddLineItem,
   useAllocateStock,
   useAnalyzeDeliveryNote,
   useApproveOverAllocation,
@@ -29,6 +31,7 @@ export {
   useCertificateStockItems,
   useCertificateSuppliers,
   useCertificates,
+  useCompleteAction,
   useCompleteBackgroundStep,
   useCompleteDispatch,
   useCostByJobReport,
@@ -51,6 +54,7 @@ export {
   useDeleteDeliveryNote,
   useDeleteInvoice,
   useDeleteJobCard,
+  useDeleteLineItem,
   useDeliveryJobCards,
   useDeliveryNoteDetail,
   useDeliveryNotes,
@@ -87,8 +91,6 @@ export {
   useMarkNotificationAsRead,
   useMovementHistoryReport,
   useRecentIssuances,
-  useAddLineItem,
-  useDeleteLineItem,
   useReExtractLineItems,
   useRejectOverAllocation,
   useRejectWorkflowStep,

@@ -133,7 +133,7 @@ function resolveJobCardPrompt(
   currentStep: string | null,
   userRole: string | null,
 ): JobCardPrompt | null {
-  if (!currentStatus || currentStatus === "dispatched") return null;
+  if (!currentStatus || currentStatus === "file_closed") return null;
 
   const uploadIcon = (
     <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -168,39 +168,6 @@ function resolveJobCardPrompt(
     </svg>
   );
 
-  const clipboardIcon = (
-    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={2}
-        d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
-      />
-    </svg>
-  );
-
-  const boxIcon = (
-    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={2}
-        d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
-      />
-    </svg>
-  );
-
-  const truckIcon = (
-    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={2}
-        d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8a1 1 0 011-1h2.586a1 1 0 01.707.293l3.414 3.414a1 1 0 01.293.707V16a1 1 0 01-1 1h-1m-6-1a1 1 0 001 1h1M5 17a2 2 0 104 0m-4 0a2 2 0 114 0m6 0a2 2 0 104 0m-4 0a2 2 0 114 0"
-      />
-    </svg>
-  );
-
   if (currentStatus === "draft") {
     return {
       icon: uploadIcon,
@@ -213,12 +180,12 @@ function resolveJobCardPrompt(
     };
   }
 
-  if (currentStatus === "document_uploaded") {
-    if (canApprove && (userRole === "admin" || userRole === "accounts")) {
+  if (currentStatus === "dispatched") {
+    if (canApprove) {
       return {
         icon: checkIcon,
-        message: "Ready for admin review",
-        detail: "Review the uploaded documents and approve to continue.",
+        message: "Confirm dispatch",
+        detail: "Scan and dispatch items, then review and approve to complete.",
         actionLabel: "Review & Approve",
         actionType: "approve",
         actionHref: null,
@@ -227,8 +194,8 @@ function resolveJobCardPrompt(
     }
     return {
       icon: clockIcon,
-      message: "Awaiting admin review",
-      detail: "Documents have been uploaded. An admin will review them shortly.",
+      message: "Awaiting dispatch confirmation",
+      detail: "Waiting for dispatch to be confirmed.",
       actionLabel: null,
       actionType: null,
       actionHref: null,
@@ -236,147 +203,31 @@ function resolveJobCardPrompt(
     };
   }
 
-  if (currentStatus === "admin_approved") {
-    if (canApprove && userRole === "manager") {
-      return {
-        icon: checkIcon,
-        message: "Ready for your approval",
-        detail: "Admin has approved this job card. Review and approve to continue.",
-        actionLabel: "Review & Approve",
-        actionType: "approve",
-        actionHref: null,
-        variant: "action",
-      };
-    }
+  const stepLabel = currentStep
+    ? currentStep.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())
+    : "next step";
+
+  if (canApprove) {
     return {
-      icon: clockIcon,
-      message: "Awaiting manager approval",
-      detail: "Admin has approved. A manager will review next.",
-      actionLabel: null,
-      actionType: null,
+      icon: checkIcon,
+      message: `Ready for your review: ${stepLabel}`,
+      detail: "Complete the action button, then review and approve to continue.",
+      actionLabel: "Review & Approve",
+      actionType: "approve",
       actionHref: null,
-      variant: "info",
+      variant: "action",
     };
   }
 
-  if (currentStatus === "manager_approved") {
-    if (canApprove && (userRole === "manager" || userRole === "admin")) {
-      return {
-        icon: clipboardIcon,
-        message: "Send requisition",
-        detail:
-          "Manager has approved. Run a coating analysis if needed, then approve to send the requisition.",
-        actionLabel: "Review & Approve",
-        actionType: "approve",
-        actionHref: null,
-        variant: "action",
-      };
-    }
-    return {
-      icon: clockIcon,
-      message: "Awaiting requisition",
-      detail: "Manager has approved. Waiting for the requisition to be sent.",
-      actionLabel: null,
-      actionType: null,
-      actionHref: null,
-      variant: "info",
-    };
-  }
-
-  if (currentStatus === "requisition_sent") {
-    if (canApprove && (userRole === "storeman" || userRole === "admin")) {
-      return {
-        icon: boxIcon,
-        message: "Allocate stock and approve",
-        detail:
-          "Requisition has been sent. Allocate the required stock items, then approve to continue.",
-        actionLabel: "Review & Approve",
-        actionType: "approve",
-        actionHref: null,
-        variant: "action",
-      };
-    }
-    return {
-      icon: clockIcon,
-      message: "Awaiting stock allocation",
-      detail: "Requisition has been sent. The warehouse team will allocate stock.",
-      actionLabel: null,
-      actionType: null,
-      actionHref: null,
-      variant: "info",
-    };
-  }
-
-  if (currentStatus === "stock_allocated") {
-    if (canApprove && userRole === "manager") {
-      return {
-        icon: checkIcon,
-        message: "Awaiting final manager sign-off",
-        detail: "Stock has been allocated. Review and give final approval.",
-        actionLabel: "Review & Approve",
-        actionType: "approve",
-        actionHref: null,
-        variant: "action",
-      };
-    }
-    return {
-      icon: clockIcon,
-      message: "Awaiting final manager sign-off",
-      detail: "Stock allocated. A manager will give final approval.",
-      actionLabel: null,
-      actionType: null,
-      actionHref: null,
-      variant: "info",
-    };
-  }
-
-  if (currentStatus === "manager_final") {
-    if (canApprove && (userRole === "storeman" || userRole === "admin")) {
-      return {
-        icon: truckIcon,
-        message: "Ready for dispatch approval",
-        detail: "Final manager sign-off complete. Approve to mark as ready for dispatch.",
-        actionLabel: "Review & Approve",
-        actionType: "approve",
-        actionHref: null,
-        variant: "action",
-      };
-    }
-    return {
-      icon: clockIcon,
-      message: "Awaiting dispatch readiness",
-      detail: "Final approval complete. Waiting for warehouse to confirm dispatch readiness.",
-      actionLabel: null,
-      actionType: null,
-      actionHref: null,
-      variant: "info",
-    };
-  }
-
-  if (currentStatus === "ready_for_dispatch") {
-    if (userRole === "storeman" || userRole === "admin") {
-      return {
-        icon: truckIcon,
-        message: "Scan items to dispatch",
-        detail: "This job is ready. Scan items to confirm dispatch.",
-        actionLabel: "Go to Dispatch",
-        actionType: "navigate",
-        actionHref: "/stock-control/portal/job-cards/{id}/dispatch",
-        variant: "action",
-      };
-    }
-    return {
-      icon: truckIcon,
-      message: "Ready for dispatch",
-      detail: "Waiting for warehouse to scan and dispatch items.",
-      actionLabel: null,
-      actionType: null,
-      actionHref: null,
-      variant: "success",
-    };
-  }
-
-  return null;
+  return {
+    icon: clockIcon,
+    message: `Awaiting: ${stepLabel}`,
+    detail: "This step is pending review and approval.",
+    actionLabel: null,
+    actionType: null,
+    actionHref: null,
+    variant: "info",
+  };
 }
 
 interface DeliveryNextActionProps {

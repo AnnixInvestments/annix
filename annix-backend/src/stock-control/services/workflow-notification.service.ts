@@ -6,7 +6,6 @@ import { now } from "../../lib/datetime";
 import { CpoCalloffRecord } from "../entities/cpo-calloff-record.entity";
 import { CustomerPurchaseOrder } from "../entities/customer-purchase-order.entity";
 import { JobCard } from "../entities/job-card.entity";
-import { WorkflowStep } from "../entities/job-card-approval.entity";
 import { StockControlRole, StockControlUser } from "../entities/stock-control-user.entity";
 import {
   NotificationActionType,
@@ -41,7 +40,7 @@ export class WorkflowNotificationService {
   async notifyApprovalRequired(
     companyId: number,
     jobCardId: number,
-    step: WorkflowStep,
+    step: string,
     sender?: SenderInfo,
   ): Promise<void> {
     const jobCard = await this.jobCardRepo.findOne({
@@ -108,7 +107,7 @@ export class WorkflowNotificationService {
   async notifyApprovalCompleted(
     companyId: number,
     jobCardId: number,
-    step: WorkflowStep,
+    step: string,
     sender: SenderInfo,
   ): Promise<void> {
     const jobCard = await this.jobCardRepo.findOne({
@@ -362,7 +361,7 @@ export class WorkflowNotificationService {
 
     const recipientEmails = await this.assignmentService.notificationRecipientsForStep(
       companyId,
-      WorkflowStep.DOCUMENT_UPLOAD,
+      "document_upload",
     );
 
     if (recipientEmails.length === 0) {
@@ -601,34 +600,8 @@ export class WorkflowNotificationService {
     );
   }
 
-  private rolesForStep(step: WorkflowStep): StockControlRole[] {
-    const roleMap: Record<WorkflowStep, StockControlRole[]> = {
-      [WorkflowStep.DOCUMENT_UPLOAD]: [StockControlRole.ACCOUNTS],
-      [WorkflowStep.ADMIN_APPROVAL]: [StockControlRole.ADMIN],
-      [WorkflowStep.MANAGER_APPROVAL]: [StockControlRole.MANAGER],
-      [WorkflowStep.REQUISITION_SENT]: [StockControlRole.MANAGER],
-      [WorkflowStep.STOCK_ALLOCATION]: [StockControlRole.STOREMAN],
-      [WorkflowStep.MANAGER_FINAL]: [StockControlRole.MANAGER],
-      [WorkflowStep.READY_FOR_DISPATCH]: [StockControlRole.STOREMAN],
-      [WorkflowStep.DISPATCHED]: [StockControlRole.STOREMAN],
-    };
-
-    return roleMap[step] || [StockControlRole.ADMIN];
-  }
-
-  private stepDisplayName(step: WorkflowStep): string {
-    const names: Record<WorkflowStep, string> = {
-      [WorkflowStep.DOCUMENT_UPLOAD]: "Document Upload",
-      [WorkflowStep.ADMIN_APPROVAL]: "Admin Approval",
-      [WorkflowStep.MANAGER_APPROVAL]: "Manager Approval",
-      [WorkflowStep.REQUISITION_SENT]: "Requisition",
-      [WorkflowStep.STOCK_ALLOCATION]: "Stock Allocation",
-      [WorkflowStep.MANAGER_FINAL]: "Final Manager Approval",
-      [WorkflowStep.READY_FOR_DISPATCH]: "Ready for Dispatch",
-      [WorkflowStep.DISPATCHED]: "Dispatched",
-    };
-
-    return names[step] || step;
+  private stepDisplayName(step: string): string {
+    return step.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
   }
 
   private async sendApprovalRequiredEmail(
@@ -1015,7 +988,7 @@ export class WorkflowNotificationService {
       return;
     }
 
-    const users = await this.assignmentService.usersForStep(companyId, stepKey as WorkflowStep);
+    const users = await this.assignmentService.usersForStep(companyId, stepKey);
 
     if (users.length === 0) {
       this.logger.warn(
@@ -1112,5 +1085,136 @@ export class WorkflowNotificationService {
         },
       )
       .catch((err) => this.logger.warn(`Push notification failed: ${err.message}`));
+  }
+
+  async notifyDocumentArrived(
+    companyId: number,
+    documentType: string,
+    documentIdentifier: string,
+    fromEmail: string,
+  ): Promise<void> {
+    const users = await this.assignmentService.usersForStep(companyId, "document_upload");
+
+    const fallbackUsers =
+      users.length > 0
+        ? users
+        : await this.userRepo.find({
+            where: [
+              { companyId, role: StockControlRole.ACCOUNTS },
+              { companyId, role: StockControlRole.ADMIN },
+            ],
+          });
+
+    if (fallbackUsers.length === 0) {
+      this.logger.warn(`No document upload users found for company ${companyId}`);
+      return;
+    }
+
+    const frontendUrl = this.configService.get<string>("FRONTEND_URL") || "http://localhost:3000";
+    const typeLabel = documentType.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+    const title = `New Document Arrived: ${typeLabel}`;
+    const message = `A ${typeLabel} (${documentIdentifier}) arrived via email from ${fromEmail} and needs processing.`;
+
+    const actionUrl =
+      documentType === "supplier_invoice"
+        ? `${frontendUrl}/stock-control/portal/invoices`
+        : `${frontendUrl}/stock-control/portal/deliveries`;
+
+    const notifications = fallbackUsers.map((user) =>
+      this.notificationRepo.create({
+        companyId,
+        userId: user.id,
+        jobCardId: null,
+        title,
+        message,
+        actionType: NotificationActionType.DOCUMENT_ARRIVED,
+        actionUrl,
+      }),
+    );
+
+    await this.notificationRepo.save(notifications);
+    this.webPushService
+      .sendToUsers(
+        fallbackUsers.map((u) => u.id),
+        {
+          title,
+          body: message,
+          tag: `doc-arrived-${documentType}-${documentIdentifier}`,
+          data: { url: actionUrl },
+        },
+      )
+      .catch((err) => this.logger.warn(`Push notification failed: ${err.message}`));
+
+    this.logger.log(
+      `Created ${notifications.length} document arrived notifications for ${typeLabel} from ${fromEmail}`,
+    );
+
+    await Promise.all(
+      fallbackUsers.map((user) =>
+        this.sendDocumentArrivedEmail(
+          companyId,
+          user.email,
+          user.name,
+          typeLabel,
+          documentIdentifier,
+          fromEmail,
+          actionUrl,
+        ),
+      ),
+    );
+  }
+
+  private async sendDocumentArrivedEmail(
+    companyId: number,
+    email: string,
+    recipientName: string,
+    typeLabel: string,
+    documentIdentifier: string,
+    fromEmail: string,
+    actionUrl: string,
+  ): Promise<boolean> {
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <title>New Document Arrived - Stock Control</title>
+      </head>
+      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+        <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+          <h1 style="color: #0d9488;">New Document Arrived</h1>
+          <p>Hello ${recipientName},</p>
+          <p>A new document has arrived via email and needs your attention.</p>
+
+          <div style="background-color: #f0fdfa; border-left: 4px solid #0d9488; padding: 15px; margin: 20px 0;">
+            <strong>Document Details:</strong>
+            <p style="margin: 5px 0 0 0;">
+              <strong>Type:</strong> ${typeLabel}<br/>
+              <strong>Reference:</strong> ${documentIdentifier}<br/>
+              <strong>From:</strong> ${fromEmail}
+            </p>
+          </div>
+
+          <p style="margin: 30px 0;">
+            <a href="${actionUrl}"
+               style="background-color: #0d9488; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
+              Review Document
+            </a>
+          </p>
+
+          <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
+          <p style="color: #999; font-size: 12px;">
+            This is an automated notification from Stock Control.
+          </p>
+        </div>
+      </body>
+      </html>
+    `;
+
+    return this.companyEmailService.sendEmail(companyId, {
+      to: email,
+      subject: `New ${typeLabel} Arrived: ${documentIdentifier}`,
+      html,
+    });
   }
 }

@@ -8,11 +8,7 @@ import { formatDateTime, now } from "../../lib/datetime";
 import { JobCardCoatingAnalysis } from "../entities/coating-analysis.entity";
 import type { RubberPlanManualRoll } from "../entities/job-card.entity";
 import { JobCard } from "../entities/job-card.entity";
-import {
-  ApprovalStatus,
-  JobCardApproval,
-  WorkflowStep,
-} from "../entities/job-card-approval.entity";
+import { ApprovalStatus, JobCardApproval } from "../entities/job-card-approval.entity";
 import { StockControlCompany } from "../entities/stock-control-company.entity";
 import { StockItem } from "../entities/stock-item.entity";
 import {
@@ -1088,32 +1084,14 @@ export class JobCardPdfService {
     startY: number,
     stepConfigs: { key: string; label: string }[] = [],
   ): number {
-    const STEP_KEY_TO_WORKFLOW_STEP: Record<string, WorkflowStep> = {
-      document_upload: WorkflowStep.DOCUMENT_UPLOAD,
-      admin_approval: WorkflowStep.ADMIN_APPROVAL,
-      manager_approval: WorkflowStep.MANAGER_APPROVAL,
-      requisition_sent: WorkflowStep.REQUISITION_SENT,
-      stock_allocation: WorkflowStep.STOCK_ALLOCATION,
-      manager_final: WorkflowStep.MANAGER_FINAL,
-      ready_for_dispatch: WorkflowStep.READY_FOR_DISPATCH,
-      dispatched: WorkflowStep.DISPATCHED,
-    };
-
     const steps =
       stepConfigs.length > 0
-        ? stepConfigs.map((sc) => ({
-            step: STEP_KEY_TO_WORKFLOW_STEP[sc.key] ?? sc.key,
-            label: sc.label,
-          }))
+        ? stepConfigs.map((sc) => ({ step: sc.key, label: sc.label }))
         : [
-            { step: WorkflowStep.DOCUMENT_UPLOAD, label: "Document Upload" },
-            { step: WorkflowStep.ADMIN_APPROVAL, label: "Admin Approval" },
-            { step: WorkflowStep.MANAGER_APPROVAL, label: "Manager Approval" },
-            { step: WorkflowStep.REQUISITION_SENT, label: "Requisition Sent" },
-            { step: WorkflowStep.STOCK_ALLOCATION, label: "Stock Allocation" },
-            { step: WorkflowStep.MANAGER_FINAL, label: "Final Approval" },
-            { step: WorkflowStep.READY_FOR_DISPATCH, label: "Ready for Dispatch" },
-            { step: WorkflowStep.DISPATCHED, label: "Dispatched" },
+            { step: "admin_approval", label: "Admin Approval" },
+            { step: "manager_approval", label: "Manager Approval" },
+            { step: "quality_check", label: "Quality Check" },
+            { step: "dispatched", label: "Dispatched" },
           ];
 
     const approvalMap = new Map(
@@ -1161,7 +1139,7 @@ export class JobCardPdfService {
         .fillColor("black")
         .text(label, x + 4, y + 4, { width: boxWidth - 8 });
 
-      const approval = approvalMap.get(step as WorkflowStep);
+      const approval = approvalMap.get(step);
       if (approval) {
         doc
           .fontSize(7)
