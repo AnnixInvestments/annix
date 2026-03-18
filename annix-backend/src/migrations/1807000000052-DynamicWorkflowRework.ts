@@ -84,7 +84,9 @@ export class DynamicWorkflowRework1807000000052 implements MigrationInterface {
 
     await queryRunner.query(`
       DO $$ BEGIN
-        ALTER TYPE notification_action_type ADD VALUE IF NOT EXISTS 'document_arrived';
+        IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'notification_action_type') THEN
+          ALTER TYPE notification_action_type ADD VALUE IF NOT EXISTS 'document_arrived';
+        END IF;
       EXCEPTION WHEN duplicate_object THEN NULL;
       END $$
     `);
