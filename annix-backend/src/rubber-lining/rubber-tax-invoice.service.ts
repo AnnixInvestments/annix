@@ -8,6 +8,7 @@ import {
 } from "./entities/document-version.types";
 import { RubberCompany } from "./entities/rubber-company.entity";
 import { CompoundMovementReferenceType } from "./entities/rubber-compound-movement.entity";
+import { RubberDeliveryNote } from "./entities/rubber-delivery-note.entity";
 import { RubberProduct } from "./entities/rubber-product.entity";
 import { ProductCodingType, RubberProductCoding } from "./entities/rubber-product-coding.entity";
 import {
@@ -103,6 +104,8 @@ export class RubberTaxInvoiceService {
     private correctionRepository: Repository<RubberTaxInvoiceCorrection>,
     @InjectRepository(RubberProduct)
     private productRepository: Repository<RubberProduct>,
+    @InjectRepository(RubberDeliveryNote)
+    private deliveryNoteRepository: Repository<RubberDeliveryNote>,
     private rubberStockService: RubberStockService,
     private versioningService: RubberDocumentVersioningService,
   ) {}
@@ -493,11 +496,11 @@ export class RubberTaxInvoiceService {
   }
 
   private async processCalendarerRollDeduction(invoice: RubberTaxInvoice): Promise<void> {
-    const alreadyProcessed = await this.rubberStockService.movementExistsForReference(
+    const alreadyByInvoice = await this.rubberStockService.movementExistsForReference(
       CompoundMovementReferenceType.CALENDARING,
       invoice.id,
     );
-    if (alreadyProcessed) return;
+    if (alreadyByInvoice) return;
 
     const data = invoice.extractedData;
     if (!data) return;
@@ -519,37 +522,83 @@ export class RubberTaxInvoiceService {
       invoice.invoiceNumber,
     );
 
-    const specificGravity = await this.specificGravityForCoding(compoundCoding.id);
-    const quantity = data.productQuantity || rollInfo.quantity || 1;
-    const rollWeightKg =
-      (rollInfo.thicknessMm / 1000) *
-      (rollInfo.widthMm / 1000) *
-      rollInfo.lengthM *
-      specificGravity *
-      1000;
+    const linkedDn = await this.linkedSupplierDeliveryNote(data.deliveryNoteRef);
 
-    if (rollWeightKg <= 0) {
-      this.logger.warn(
-        `Tax invoice ${invoice.invoiceNumber}: calculated roll weight is zero or negative`,
-      );
-      return;
-    }
-
-    await Array.from({ length: quantity }).reduce(async (prev, _, idx) => {
-      await prev;
-      const rollNum = idx + 1;
-      return this.rubberStockService.deductCompoundStockByCoding(
-        compoundCoding.id,
-        rollWeightKg,
+    if (linkedDn) {
+      const alreadyByDn = await this.rubberStockService.movementExistsForReference(
         CompoundMovementReferenceType.CALENDARING,
-        invoice.id,
-        `Calendarer invoice ${invoice.invoiceNumber} (roll ${rollNum}/${quantity}, ${rollWeightKg.toFixed(1)} kg)`,
+        linkedDn.id,
       );
-    }, Promise.resolve());
+      if (alreadyByDn) return;
+    }
+    const dnRolls = linkedDn?.extractedData?.rolls || [];
+    const rollWeights = dnRolls
+      .filter((r) => r.weightKg != null && Number(r.weightKg) > 0)
+      .map((r) => ({ rollNumber: r.rollNumber, weightKg: Number(r.weightKg) }));
 
-    this.logger.log(
-      `Tax invoice ${invoice.invoiceNumber}: deducted ${(rollWeightKg * quantity).toFixed(1)} kg from ${compoundCode} (${quantity} individual roll movements)`,
-    );
+    if (rollWeights.length > 0 && linkedDn) {
+      const referenceId = linkedDn.id;
+      const totalKg = rollWeights.reduce((sum, r) => sum + r.weightKg, 0);
+
+      await rollWeights.reduce<Promise<void>>(async (prev, roll, idx) => {
+        await prev;
+        await this.rubberStockService.deductCompoundStockByCoding(
+          compoundCoding.id,
+          roll.weightKg,
+          CompoundMovementReferenceType.CALENDARING,
+          referenceId,
+          `Calendarer invoice ${invoice.invoiceNumber}, DN ${linkedDn.deliveryNoteNumber || linkedDn.id} (roll ${roll.rollNumber || idx + 1}, ${roll.weightKg.toFixed(1)} kg)`,
+        );
+      }, Promise.resolve());
+
+      this.logger.log(
+        `Tax invoice ${invoice.invoiceNumber}: deducted ${totalKg.toFixed(1)} kg from ${compoundCode} using SDN ${linkedDn.deliveryNoteNumber} weights (${rollWeights.length} rolls)`,
+      );
+    } else {
+      const specificGravity = await this.specificGravityForCoding(compoundCoding.id);
+      const quantity = data.productQuantity || rollInfo.quantity || 1;
+      const rollWeightKg =
+        (rollInfo.thicknessMm / 1000) *
+        (rollInfo.widthMm / 1000) *
+        rollInfo.lengthM *
+        specificGravity *
+        1000;
+
+      if (rollWeightKg <= 0) {
+        this.logger.warn(
+          `Tax invoice ${invoice.invoiceNumber}: calculated roll weight is zero or negative`,
+        );
+        return;
+      }
+
+      const referenceId = linkedDn?.id || invoice.id;
+
+      await Array.from({ length: quantity }).reduce(async (prev, _, idx) => {
+        await prev;
+        const rollNum = idx + 1;
+        return this.rubberStockService.deductCompoundStockByCoding(
+          compoundCoding.id,
+          rollWeightKg,
+          CompoundMovementReferenceType.CALENDARING,
+          referenceId,
+          `Calendarer invoice ${invoice.invoiceNumber} (roll ${rollNum}/${quantity}, ${rollWeightKg.toFixed(1)} kg, calculated)`,
+        );
+      }, Promise.resolve());
+
+      this.logger.log(
+        `Tax invoice ${invoice.invoiceNumber}: deducted ${(rollWeightKg * quantity).toFixed(1)} kg from ${compoundCode} using calculated weights (${quantity} rolls, no SDN roll weights available)`,
+      );
+    }
+  }
+
+  private async linkedSupplierDeliveryNote(
+    deliveryNoteRef: string | null | undefined,
+  ): Promise<RubberDeliveryNote | null> {
+    if (!deliveryNoteRef) return null;
+    const dn = await this.deliveryNoteRepository.findOne({
+      where: { deliveryNoteNumber: deliveryNoteRef },
+    });
+    return dn || null;
   }
 
   private parseCalendarerRollDescription(text: string): {

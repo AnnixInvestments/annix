@@ -1,7 +1,7 @@
 "use client";
 
 import { CheckCircle, Download, FileText, Pencil, RefreshCw, Save, X } from "lucide-react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Breadcrumb } from "@/app/au-rubber/components/Breadcrumb";
 import { useToast } from "@/app/components/Toast";
@@ -16,6 +16,7 @@ import { formatDateTimeZA, formatDateZA } from "@/app/lib/datetime";
 export default function TaxInvoiceDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { showToast } = useToast();
   const [invoice, setInvoice] = useState<RubberTaxInvoiceDto | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -219,19 +220,21 @@ export default function TaxInvoiceDetailPage() {
     );
   }
 
-  const backPath =
-    invoice.invoiceType === "SUPPLIER"
+  const returnUrl = searchParams.get("returnUrl");
+  const backPath = returnUrl
+    || (invoice.invoiceType === "SUPPLIER"
       ? "/au-rubber/portal/tax-invoices/suppliers"
-      : "/au-rubber/portal/tax-invoices/customers";
+      : "/au-rubber/portal/tax-invoices/customers");
 
-  const backLabel =
-    invoice.invoiceType === "SUPPLIER" ? "Supplier Tax Invoices" : "Customer Tax Invoices";
+  const backLabel = returnUrl
+    ? "Back"
+    : invoice.invoiceType === "SUPPLIER" ? "Supplier Tax Invoices" : "Customer Tax Invoices";
 
   return (
     <div className="space-y-6">
       <Breadcrumb
         items={[
-          { label: "Tax Invoices", href: backPath },
+          { label: backLabel, href: backPath },
           { label: invoice.invoiceNumber || `INV-${invoice.id}` },
         ]}
       />

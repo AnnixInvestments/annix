@@ -225,7 +225,7 @@ function ReceivedSection(props: {
                 </div>
                 {invoice && (
                   <Link
-                    href={`/au-rubber/portal/tax-invoices/${invoice.id}`}
+                    href={`/au-rubber/portal/tax-invoices/${invoice.id}?returnUrl=${encodeURIComponent("/au-rubber/portal/compound-stocks")}`}
                     className="text-xs text-yellow-600 hover:underline"
                   >
                     {invoice.invoiceNumber} - {invoice.companyName || "Unknown"}
@@ -304,7 +304,7 @@ function DispatchedSection(props: {
   const { movements, deliveryNotes, calendaredInvoices, calendaredInvoiceDns, totalDispatched } =
     props;
 
-  const calendaringByInvoice = movements
+  const calendaringByRef = movements
     .filter((m) => m.referenceType === "CALENDARING" && m.referenceId)
     .reduce<Map<number, RubberCompoundMovementDto[]>>((acc, m) => {
       const key = m.referenceId as number;
@@ -327,36 +327,37 @@ function DispatchedSection(props: {
         <p className="text-sm text-gray-500">No dispatches recorded</p>
       ) : (
         <div className="space-y-2 max-h-80 overflow-y-auto">
-          {[...calendaringByInvoice.entries()].map(([invoiceId, invoiceMovements]) => {
-            const calInv = calendaredInvoices.get(invoiceId);
-            const linkedDn = calendaredInvoiceDns.get(invoiceId);
+          {[...calendaringByRef.entries()].map(([refId, refMovements]) => {
+            const linkedDn = calendaredInvoiceDns.get(refId);
+            const calInv = calendaredInvoices.get(refId);
             const dnRolls = linkedDn ? rollsFromExtractedData(linkedDn.extractedData) : [];
-            const totalKg = invoiceMovements.reduce((sum, m) => sum + m.quantityKg, 0);
-            const date = invoiceMovements[0]?.createdAt.split("T")[0] || "";
+            const totalKg = refMovements.reduce((sum, m) => sum + m.quantityKg, 0);
+            const date = refMovements[0]?.createdAt.split("T")[0] || "";
+            const returnUrl = encodeURIComponent("/au-rubber/portal/compound-stocks");
 
             return (
               <div
-                key={`cal-${invoiceId}`}
+                key={`cal-${refId}`}
                 className="p-2 rounded border border-gray-100 bg-red-50 text-sm"
               >
                 <div className="flex items-center justify-between">
                   <span className="font-medium text-red-700">-{formatKg(totalKg)}</span>
                   <span className="text-xs text-gray-400">{date}</span>
                 </div>
-                {calInv && (
-                  <Link
-                    href={`/au-rubber/portal/tax-invoices/${calInv.id}`}
-                    className="text-xs text-yellow-600 hover:underline"
-                  >
-                    {calInv.invoiceNumber} - {calInv.companyName || "Calendarer"}
-                  </Link>
-                )}
                 {linkedDn && (
                   <Link
-                    href={`/au-rubber/portal/delivery-notes/${linkedDn.id}`}
+                    href={`/au-rubber/portal/delivery-notes/${linkedDn.id}?returnUrl=${returnUrl}`}
+                    className="text-xs text-yellow-600 hover:underline"
+                  >
+                    SDN: {linkedDn.deliveryNoteNumber || `#${linkedDn.id}`}
+                  </Link>
+                )}
+                {calInv && (
+                  <Link
+                    href={`/au-rubber/portal/tax-invoices/${calInv.id}?returnUrl=${returnUrl}`}
                     className="text-xs text-yellow-600 hover:underline block"
                   >
-                    DN: {linkedDn.deliveryNoteNumber || `#${linkedDn.id}`}
+                    STI: {calInv.invoiceNumber} - {calInv.companyName || "Calendarer"}
                   </Link>
                 )}
                 {dnRolls.length > 0 ? (
@@ -373,7 +374,7 @@ function DispatchedSection(props: {
                   </div>
                 ) : (
                   <div className="mt-1 ml-2 space-y-0.5">
-                    {invoiceMovements.map((im, idx) => (
+                    {refMovements.map((im, idx) => (
                       <div
                         key={idx}
                         className="flex items-center justify-between text-xs text-gray-500"
@@ -400,7 +401,7 @@ function DispatchedSection(props: {
                 </div>
                 {dn && (
                   <Link
-                    href={`/au-rubber/portal/delivery-notes/${dn.id}`}
+                    href={`/au-rubber/portal/delivery-notes/${dn.id}?returnUrl=${encodeURIComponent("/au-rubber/portal/compound-stocks")}`}
                     className="text-xs text-yellow-600 hover:underline"
                   >
                     DN: {dn.deliveryNoteNumber || `#${dn.id}`} - {dn.supplierCompanyName || ""}
@@ -547,13 +548,18 @@ export default function CompoundStocksPage() {
             if (dn) linkedDeliveryNotes.set(m.referenceId, dn);
           }
           if (m.referenceId && m.referenceType === "CALENDARING") {
-            const inv = invoiceMap.get(m.referenceId);
-            if (inv) {
-              calendaredInvoices.set(m.referenceId, inv);
-              const dnRef = inv.extractedData?.deliveryNoteRef;
-              if (dnRef) {
-                const linkedDn = dnByNumber.get(dnRef);
-                if (linkedDn) calendaredInvoiceDns.set(m.referenceId, linkedDn);
+            const dn = dnMap.get(m.referenceId);
+            if (dn) {
+              calendaredInvoiceDns.set(m.referenceId, dn);
+            } else {
+              const inv = invoiceMap.get(m.referenceId);
+              if (inv) {
+                calendaredInvoices.set(m.referenceId, inv);
+                const dnRef = inv.extractedData?.deliveryNoteRef;
+                if (dnRef) {
+                  const linkedDn = dnByNumber.get(dnRef);
+                  if (linkedDn) calendaredInvoiceDns.set(m.referenceId, linkedDn);
+                }
               }
             }
           }

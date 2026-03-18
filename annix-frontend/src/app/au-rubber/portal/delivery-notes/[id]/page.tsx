@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Breadcrumb } from "@/app/au-rubber/components/Breadcrumb";
 import {
@@ -52,6 +52,7 @@ function safeFixed(value: unknown, decimals: number): string | null {
 export default function DeliveryNoteDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { showToast } = useToast();
   const [note, setNote] = useState<RubberDeliveryNoteDto | null>(null);
   const [items, setItems] = useState<RubberDeliveryNoteItemDto[]>([]);
@@ -453,10 +454,11 @@ export default function DeliveryNoteDetailPage() {
       <Breadcrumb
         items={[
           {
-            label: isCustomerDn ? "Customer Delivery Notes" : "Supplier Delivery Notes",
-            href: isCustomerDn
-              ? "/au-rubber/portal/delivery-notes/customers"
-              : "/au-rubber/portal/delivery-notes/suppliers",
+            label: searchParams.get("returnUrl") ? "Back" : isCustomerDn ? "Customer Delivery Notes" : "Supplier Delivery Notes",
+            href: searchParams.get("returnUrl")
+              || (isCustomerDn
+                ? "/au-rubber/portal/delivery-notes/customers"
+                : "/au-rubber/portal/delivery-notes/suppliers"),
           },
           { label: note.deliveryNoteNumber || `DN-${note.id}` },
         ]}
