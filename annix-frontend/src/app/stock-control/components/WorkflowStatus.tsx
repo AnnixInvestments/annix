@@ -1147,7 +1147,28 @@ export function WorkflowStepper(props: WorkflowStepperProps) {
 
   const firstFgKey = allSteps.length > 0 ? allSteps[0].key : "draft";
 
-  const effectiveBgSteps: BackgroundStepStatus[] = backgroundSteps;
+  const isDocUploadFg = allSteps.some((s) => s.key === "document_upload");
+  const docUploadApproval = approvalByStep["document_upload"];
+  const docUploadFromBg = backgroundSteps.find((bg) => bg.stepKey === "document_upload");
+
+  const effectiveBgSteps: BackgroundStepStatus[] = isDocUploadFg
+    ? backgroundSteps
+    : [
+        {
+          ...(docUploadFromBg || {
+            stepKey: "document_upload",
+            label: "Doc Upload",
+            completedByName: null,
+            notes: null,
+            actionLabel: null,
+          }),
+          triggerAfterStep: null,
+          completedAt: docUploadFromBg?.completedAt || docUploadApproval?.approvedAt || null,
+          completedByName:
+            docUploadFromBg?.completedByName || docUploadApproval?.approvedByName || null,
+        },
+        ...backgroundSteps.filter((bg) => bg.stepKey !== "document_upload"),
+      ];
 
   const fgKeySet = new Set(allSteps.map((s) => s.key));
   const bgKeySet = new Set(effectiveBgSteps.map((s) => s.stepKey));
