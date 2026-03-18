@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import type { JobCard, WorkflowNotification } from "@/app/lib/api/stockControlApi";
-import { formatDateZA } from "@/app/lib/datetime";
+import { formatDateTimeZA } from "@/app/lib/datetime";
 
 interface MyTasksWidgetProps {
   pendingApprovals: JobCard[];
@@ -100,7 +100,7 @@ export function MyTasksWidget({ pendingApprovals, notifications }: MyTasksWidget
                     )}
                   </div>
                   <span className="ml-2 flex-shrink-0 text-xs text-gray-400">
-                    {formatDateZA(notification.createdAt)}
+                    {formatDateTimeZA(notification.createdAt)}
                   </span>
                 </Link>
               ))}

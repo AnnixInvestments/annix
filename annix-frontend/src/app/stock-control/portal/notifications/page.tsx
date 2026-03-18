@@ -4,7 +4,7 @@ import { Bell, Check, CheckCheck, ClipboardCheck, Filter } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCallback, useState } from "react";
 import type { WorkflowNotification } from "@/app/lib/api/stockControlApi";
-import { formatDateLongZA } from "@/app/lib/datetime";
+import { formatDateTimeZA } from "@/app/lib/datetime";
 import {
   useCompleteBackgroundStep,
   useMarkAllNotificationsAsRead,
@@ -195,7 +195,7 @@ export default function NotificationsPage() {
                         </span>
                       )}
                       <span className="text-xs text-gray-400">
-                        {formatDateLongZA(notification.createdAt)}
+                        {formatDateTimeZA(notification.createdAt)}
                       </span>
                       {notification.jobCard && (
                         <span className="text-xs text-gray-500">

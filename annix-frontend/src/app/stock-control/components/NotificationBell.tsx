@@ -4,7 +4,7 @@ import { Bell, Check, CheckCheck, ClipboardCheck } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { stockControlApiClient, WorkflowNotification } from "@/app/lib/api/stockControlApi";
-import { formatDateLongZA } from "@/app/lib/datetime";
+import { formatDateTimeZA } from "@/app/lib/datetime";
 import { useNotificationCount } from "../hooks/useNotificationCount";
 
 export function NotificationBell() {
@@ -212,7 +212,7 @@ export function NotificationBell() {
                             </span>
                           )}
                           <span className="text-xs text-gray-400">
-                            {formatDateLongZA(notification.createdAt)}
+                            {formatDateTimeZA(notification.createdAt)}
                           </span>
                         </div>
                         {notification.actionType === "background_step_required" && (
