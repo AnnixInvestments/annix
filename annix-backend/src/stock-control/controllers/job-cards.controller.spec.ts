@@ -81,6 +81,7 @@ describe("JobCardsController", () => {
 
     const mockWorkflowService = {
       initializeWorkflow: jest.fn(),
+      effectiveWorkflowStatuses: jest.fn().mockResolvedValue({}),
     };
 
     const mockCpoService = {
@@ -158,17 +159,16 @@ describe("JobCardsController", () => {
 
   describe("GET / (list)", () => {
     it("should parse pagination and delegate to jobCardService.findAll", async () => {
-      const expected = { data: [], total: 0 };
-      jobCardService.findAll.mockResolvedValue(expected as any);
+      jobCardService.findAll.mockResolvedValue([] as any);
 
       const result = await controller.list(mockReq(), "active", "2", "25");
 
       expect(jobCardService.findAll).toHaveBeenCalledWith(1, "active", 2, 25);
-      expect(result).toBe(expected);
+      expect(result).toEqual([]);
     });
 
     it("should default to page 1 and limit 50", async () => {
-      jobCardService.findAll.mockResolvedValue({ data: [] } as any);
+      jobCardService.findAll.mockResolvedValue([] as any);
 
       await controller.list(mockReq());
 
@@ -176,7 +176,7 @@ describe("JobCardsController", () => {
     });
 
     it("should clamp page to minimum 1 and limit to max 100", async () => {
-      jobCardService.findAll.mockResolvedValue({ data: [] } as any);
+      jobCardService.findAll.mockResolvedValue([] as any);
 
       await controller.list(mockReq(), undefined, "0", "200");
 

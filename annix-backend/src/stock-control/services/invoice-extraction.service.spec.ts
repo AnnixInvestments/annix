@@ -25,6 +25,7 @@ describe("InvoiceExtractionService", () => {
     findOne: jest.fn(),
     save: jest.fn().mockImplementation((entity) => Promise.resolve({ id: 1, ...entity })),
     find: jest.fn(),
+    update: jest.fn().mockResolvedValue({ affected: 1 }),
   };
 
   const mockInvoiceItemRepo = {
@@ -154,7 +155,10 @@ describe("InvoiceExtractionService", () => {
     });
 
     it("sets status to FAILED when AI returns invalid JSON", async () => {
-      mockInvoiceRepo.findOne.mockResolvedValue({ ...baseInvoice });
+      mockInvoiceRepo.findOne.mockResolvedValueOnce({ ...baseInvoice }).mockResolvedValueOnce({
+        ...baseInvoice,
+        extractionStatus: InvoiceExtractionStatus.FAILED,
+      });
       mockInvoiceRepo.save.mockImplementation((entity) => Promise.resolve({ ...entity }));
 
       mockAiChatService.chatWithImage.mockResolvedValue({

@@ -502,7 +502,11 @@ export class CoatingAnalysisService {
   private sumPaintM2(lineItems: JobCardLineItem[]): number {
     return lineItems
       .filter((li) => li.itemCode && /paint/i.test(li.itemCode))
-      .reduce((sum, li) => sum + (Number(li.m2) || 0), 0);
+      .reduce((sum, li) => {
+        const m2 = Number(li.m2) || 0;
+        const qty = Number(li.quantity) || 1;
+        return sum + m2 * qty;
+      }, 0);
   }
 
   private sumLineItemM2WithQuantity(lineItems: JobCardLineItem[]): number {
