@@ -239,7 +239,11 @@ export class CoatingAnalysisService {
       }
 
       const retentionFactor = await this.lossFactorForCompany(companyId);
-      const coats = aiResult.coats.map((coat) => {
+      const dedupedAiCoats = aiResult.coats.reduce<typeof aiResult.coats>((acc, coat) => {
+        const exists = acc.find((c) => c.product === coat.product && c.area === coat.area);
+        return exists ? acc : [...acc, coat];
+      }, []);
+      const coats = dedupedAiCoats.map((coat) => {
         const m2ForCoat = coat.area === "internal" ? analysis.intM2 : analysis.extM2;
         return this.calculateCoatVolume(coat, m2ForCoat, retentionFactor);
       });

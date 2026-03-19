@@ -364,7 +364,7 @@ export function CoatingAnalysisTab(props: CoatingAnalysisTabProps) {
                 },
                 [],
               );
-              const totalLitres = coatingAnalysis.coats.reduce(
+              const totalLitres = uniqueCoats.reduce(
                 (sum, c) => sum + c.litersRequired,
                 0,
               );
