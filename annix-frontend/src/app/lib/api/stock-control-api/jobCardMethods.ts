@@ -8,6 +8,7 @@ import type {
   JobCardImportResult,
   JobCardImportRow,
   JobCardImportUploadResponse,
+  JobCardJobFile,
   JobCardLineItem,
   M2Result,
   RubberDimensionOverride,
@@ -144,6 +145,10 @@ declare module "./base" {
         m2?: number;
       },
     ): Promise<JobCardLineItem>;
+    jobCardJobFiles(jobCardId: number): Promise<JobCardJobFile[]>;
+    uploadJobCardJobFile(jobCardId: number, file: File): Promise<JobCardJobFile>;
+    deleteJobCardJobFile(jobCardId: number, fileId: number): Promise<void>;
+    jobCardJobFileViewUrl(jobCardId: number, fileId: number): Promise<{ url: string }>;
   }
 }
 
@@ -454,4 +459,22 @@ proto.addLineItem = async function (jobCardId, data) {
     method: "POST",
     body: JSON.stringify(data),
   });
+};
+
+proto.jobCardJobFiles = async function (jobCardId) {
+  return this.request(`/stock-control/job-cards/${jobCardId}/job-files`);
+};
+
+proto.uploadJobCardJobFile = async function (jobCardId, file) {
+  return this.uploadFile(`/stock-control/job-cards/${jobCardId}/job-files`, file);
+};
+
+proto.deleteJobCardJobFile = async function (jobCardId, fileId) {
+  return this.request(`/stock-control/job-cards/${jobCardId}/job-files/${fileId}`, {
+    method: "DELETE",
+  });
+};
+
+proto.jobCardJobFileViewUrl = async function (jobCardId, fileId) {
+  return this.request(`/stock-control/job-cards/${jobCardId}/job-files/${fileId}/view-url`);
 };

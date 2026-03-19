@@ -74,7 +74,7 @@ export interface JobCardImportResult {
 }
 
 const NOTE_ROW_PATTERN =
-  /INT\s*:|EXT\s*:|R\/L|rubber|lining|lagging|shore|paint|blast|coat|primer|oxide|epoxy|polyurethane|zinc|silicate|nitrile|neoprene|butadiene/i;
+  /INT\s*:|EXT\s*:|R\/L|rubber|lining|lagging|shore|paint|blast|coat|primer|oxide|epoxy|polyurethane|zinc|silicate|nitrile|neoprene|butadiene|ceramic/i;
 
 function isNoteRow(li: LineItemImportRow): boolean {
   const itemCode = (li.itemCode || "").trim();

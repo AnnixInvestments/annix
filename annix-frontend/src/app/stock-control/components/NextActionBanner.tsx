@@ -85,6 +85,7 @@ interface JobCardNextActionProps {
   userRole: string | null;
   onApprove?: () => void;
   jobCardId: number;
+  hasLineItems?: boolean;
 }
 
 export function JobCardNextAction({
@@ -94,8 +95,15 @@ export function JobCardNextAction({
   userRole,
   onApprove,
   jobCardId,
+  hasLineItems,
 }: JobCardNextActionProps) {
-  const prompt = resolveJobCardPrompt(currentStatus, canApprove, currentStep, userRole);
+  const prompt = resolveJobCardPrompt(
+    currentStatus,
+    canApprove,
+    currentStep,
+    userRole,
+    hasLineItems,
+  );
   if (!prompt) return null;
 
   const handleAction = prompt.actionType === "approve" && onApprove ? onApprove : null;
@@ -132,6 +140,7 @@ function resolveJobCardPrompt(
   canApprove: boolean,
   currentStep: string | null,
   userRole: string | null,
+  hasLineItems?: boolean,
 ): JobCardPrompt | null {
   if (!currentStatus || currentStatus === "file_closed") return null;
 
@@ -169,6 +178,7 @@ function resolveJobCardPrompt(
   );
 
   if (currentStatus === "draft") {
+    if (hasLineItems) return null;
     return {
       icon: uploadIcon,
       message: "Upload supporting documents to proceed",

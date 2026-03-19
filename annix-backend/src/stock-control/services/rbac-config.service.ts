@@ -12,6 +12,7 @@ const DEFAULT_NAV_CONFIG: Record<string, string[]> = {
   deliveries: ["viewer", "storeman", "accounts", "manager", "admin"],
   "issue-stock": ["storeman", "manager", "admin"],
   requisitions: ["viewer", "storeman", "accounts", "manager", "admin"],
+  "purchase-orders": ["viewer", "storeman", "accounts", "manager", "admin"],
   notifications: ["viewer", "storeman", "accounts", "manager", "admin"],
   reports: ["manager", "admin"],
   settings: ["admin"],

@@ -48,6 +48,7 @@ import { JobCardService } from "../services/job-card.service";
 import { JobCardImportService, sanitizeNotes } from "../services/job-card-import.service";
 import { JobCardVersionService } from "../services/job-card-version.service";
 import { JobCardWorkflowService } from "../services/job-card-workflow.service";
+import { JobFileService } from "../services/job-file.service";
 import { RequisitionService } from "../services/requisition.service";
 
 @ApiTags("Stock Control - Job Cards")
@@ -65,6 +66,7 @@ export class JobCardsController {
     private readonly workflowService: JobCardWorkflowService,
     private readonly cpoService: CpoService,
     private readonly jobCardImportService: JobCardImportService,
+    private readonly jobFileService: JobFileService,
     @InjectRepository(StockItem)
     private readonly stockItemRepo: Repository<StockItem>,
     @InjectRepository(RubberDimensionOverride)
@@ -765,5 +767,45 @@ export class JobCardsController {
   ) {
     await this.drawingExtractionService.deleteAttachment(req.user.companyId, id, attachmentId);
     return { message: "Attachment deleted" };
+  }
+
+  @Get(":id/job-files")
+  @ApiOperation({ summary: "List job files for a job card" })
+  async jobFiles(@Req() req: any, @Param("id") id: number) {
+    return this.jobFileService.filesForJobCard(req.user.companyId, id);
+  }
+
+  @StockControlRoles("manager", "admin")
+  @PermissionKey("job-cards.attachments")
+  @Post(":id/job-files")
+  @UseInterceptors(FileInterceptor("file"))
+  @ApiOperation({ summary: "Upload a job file" })
+  async uploadJobFile(
+    @Req() req: any,
+    @Param("id") id: number,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    return this.jobFileService.uploadFile(
+      req.user.companyId,
+      id,
+      file,
+      req.user.id || null,
+      req.user.name || null,
+    );
+  }
+
+  @StockControlRoles("manager", "admin")
+  @PermissionKey("job-cards.attachments")
+  @Delete(":id/job-files/:fileId")
+  @ApiOperation({ summary: "Delete a job file" })
+  async deleteJobFile(@Req() req: any, @Param("id") id: number, @Param("fileId") fileId: number) {
+    await this.jobFileService.deleteFile(req.user.companyId, id, fileId, req.user.id || null);
+    return { message: "Job file deleted" };
+  }
+
+  @Get(":id/job-files/:fileId/view-url")
+  @ApiOperation({ summary: "Presigned URL for a job file" })
+  async jobFileViewUrl(@Req() req: any, @Param("id") id: number, @Param("fileId") fileId: number) {
+    return this.jobFileService.presignedUrlForFile(req.user.companyId, id, fileId);
   }
 }

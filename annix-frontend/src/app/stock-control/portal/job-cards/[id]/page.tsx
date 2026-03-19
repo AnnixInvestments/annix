@@ -30,12 +30,14 @@ import {
   TabPanel,
   useJobCardTabs,
 } from "./components/JobCardTabs";
+import { JobFileTab } from "./components/JobFileTab";
 import { LineItemsTab } from "./components/LineItemsTab";
 import { QualityTab } from "./components/QualityTab";
 import { RequisitionTab } from "./components/RequisitionTab";
 import { RubberAllocationGuard } from "./components/RubberAllocation";
 import { useJobCardCoating } from "./hooks/useJobCardCoating";
 import { useJobCardDocuments } from "./hooks/useJobCardDocuments";
+import { useJobCardJobFiles } from "./hooks/useJobCardJobFiles";
 import { isValidLineItem, STATUS_TRANSITIONS, statusBadgeColor } from "./lib/helpers";
 
 export default function JobCardDetailPage() {
@@ -122,12 +124,14 @@ export default function JobCardDetailPage() {
 
   const documents = useJobCardDocuments(jobId, fetchData, confirm);
   const coating = useJobCardCoating(jobId);
+  const jobFilesHook = useJobCardJobFiles(jobId, confirm);
 
   useEffect(() => {
     fetchData();
     documents.loadDocuments();
     coating.loadCoatingAnalysis();
-  }, [fetchData, documents.loadDocuments, coating.loadCoatingAnalysis]);
+    jobFilesHook.loadJobFiles();
+  }, [fetchData, documents.loadDocuments, coating.loadCoatingAnalysis, jobFilesHook.loadJobFiles]);
 
   const fetchStockItems = async () => {
     try {
@@ -356,6 +360,11 @@ export default function JobCardDetailPage() {
         label: "Details",
         badge: validLineItemCount > 0 ? validLineItemCount : null,
       },
+      {
+        id: "job-files",
+        label: "Job Files",
+        badge: jobFilesHook.jobFiles.length > 0 ? jobFilesHook.jobFiles.length : null,
+      },
       { id: "coating", label: "Coating Analysis" },
       {
         id: "rubber-analysis",
@@ -469,9 +478,15 @@ export default function JobCardDetailPage() {
     return prevBgTasks.length > 0 && prevBgTasks.some((bg) => bg.completedAt === null);
   }, [workflowStatus, currentStep]);
 
+  const isReceptionStep = useCallback(
+    (bg: BackgroundStepStatus) =>
+      bg.stepKey === "reception" || bg.label?.toLowerCase() === "reception",
+    [],
+  );
+
   const receptionIsPending = useMemo(() => {
-    return userPendingBgSteps.some((bg) => bg.stepKey === "reception");
-  }, [userPendingBgSteps]);
+    return userPendingBgSteps.some(isReceptionStep);
+  }, [userPendingBgSteps, isReceptionStep]);
 
   const { activeTab, visitedTabs, handleTabChange, visibleTabs } = useJobCardTabs(tabDefinitions);
 
@@ -726,7 +741,7 @@ export default function JobCardDetailPage() {
                 </p>
                 <div className="flex flex-wrap gap-2">
                   {userPendingBgSteps.map((bg) =>
-                    bg.stepKey === "reception" ? (
+                    isReceptionStep(bg) ? (
                       <button
                         key={bg.stepKey}
                         onClick={async () => {
@@ -781,6 +796,7 @@ export default function JobCardDetailPage() {
             userRole={userRole}
             onApprove={currentStep ? () => openApprovalModal(currentStep) : undefined}
             jobCardId={jobId}
+            hasLineItems={validLineItemCount > 0}
           />
         )}
 
@@ -970,6 +986,26 @@ export default function JobCardDetailPage() {
                 </div>
               </div>
             )}
+          </TabPanel>
+
+          <TabPanel tabId="job-files" activeTab={activeTab} visited={visitedTabs.has("job-files")}>
+            <JobFileTab
+              jobFiles={jobFilesHook.jobFiles}
+              stagedFiles={jobFilesHook.stagedFiles}
+              isUploading={jobFilesHook.isUploading}
+              isDragging={jobFilesHook.isDragging}
+              viewingFile={jobFilesHook.viewingFile}
+              currentUserId={user?.id || null}
+              onDrop={jobFilesHook.handleDrop}
+              onDragOver={jobFilesHook.handleDragOver}
+              onDragLeave={jobFilesHook.handleDragLeave}
+              onUpload={jobFilesHook.handleUpload}
+              onDelete={jobFilesHook.handleDelete}
+              onView={jobFilesHook.handleView}
+              onDownload={jobFilesHook.handleDownload}
+              onRemoveStaged={jobFilesHook.handleRemoveStaged}
+              onCloseViewer={() => jobFilesHook.setViewingFile(null)}
+            />
           </TabPanel>
 
           <TabPanel tabId="coating" activeTab={activeTab} visited={visitedTabs.has("coating")}>

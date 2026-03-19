@@ -364,38 +364,51 @@ function extractMappedRows(
       { grouped: new Map<string, GroupEntry>(), lastJobNumber: "" },
     );
 
-    const SPEC_NOTE_PATTERN = /^(EXT\s*:|INT\s*:|R\/L\b)/i;
+    const SPEC_NOTE_PATTERN =
+      /^(EXT\s*:|INT\s*:|R\/L\b|CERAMIC|RUBBER|LINING|LAGGING|SHORE|PAINT|BLAST|COAT|PRIMER|OXIDE|EPOXY|POLYURETHANE|ZINC|SILICATE|NITRILE|NEOPRENE)/i;
     const JUNK_ROW_PATTERN =
       /^(production|foreman?\s*sign|forman\s*sign|material\s*spec|job\s*comp|completion\s*date|supervisor|quality\s*control|qc\s*sign|inspector|approved\s*by|checked\s*by|signature|remarks|comments|date\s+date|notes|sign|date)\b|^Sage\s*\d{3}\s*Evolution|\d{4}\/\d{2}\/\d{2}\s+\d{2}:\d{2}:\d{2}/i;
     if (grouped.size > 0) {
       grouped.forEach((entry) => {
-        const segments: { items: Record<string, string>[]; specs: string[] }[] = [
-          { items: [], specs: [] },
-        ];
+        const cleanedLines: Record<string, string>[] = [];
+        const pendingNotes: string[] = [];
+
         entry.lines.forEach((li) => {
           const code = (li.itemCode || "").trim();
-          if (SPEC_NOTE_PATTERN.test(code)) {
+          const desc = (li.itemDescription || "").trim();
+          const hasRealData = desc || li.itemNo || li.quantity || li.jtNo;
+
+          if (!hasRealData && code && SPEC_NOTE_PATTERN.test(code)) {
             const cleanedSpec = code.replace(/\s+PRODUCTION\s*$/i, "").trim();
-            segments[segments.length - 1].specs.push(cleanedSpec);
-            segments.push({ items: [], specs: [] });
+            pendingNotes.push(cleanedSpec);
             return;
           }
           if (JUNK_ROW_PATTERN.test(code)) return;
-          const desc = (li.itemDescription || "").trim();
-          const hasRealData = desc || li.itemNo || li.quantity || li.jtNo;
           if (!hasRealData && !code) return;
-          segments[segments.length - 1].items.push(li);
+
+          if (pendingNotes.length > 0 && cleanedLines.length > 0) {
+            const specText = pendingNotes.join("\n");
+            const lastItem = cleanedLines[cleanedLines.length - 1];
+            cleanedLines[cleanedLines.length - 1] = {
+              ...lastItem,
+              notes: lastItem.notes ? `${lastItem.notes}\n${specText}` : specText,
+            };
+            pendingNotes.length = 0;
+          }
+
+          cleanedLines.push({ ...li });
         });
 
-        const cleanedLines: Record<string, string>[] = [];
-        const allSpecs: string[] = [];
-        segments.forEach((seg) => {
-          const specText = seg.specs.length > 0 ? seg.specs.join("\n") : null;
-          seg.items.forEach((item) => {
-            cleanedLines.push(specText ? { ...item, notes: specText } : item);
-          });
-          allSpecs.push(...seg.specs);
-        });
+        if (pendingNotes.length > 0 && cleanedLines.length > 0) {
+          const specText = pendingNotes.join("\n");
+          const lastItem = cleanedLines[cleanedLines.length - 1];
+          cleanedLines[cleanedLines.length - 1] = {
+            ...lastItem,
+            notes: lastItem.notes ? `${lastItem.notes}\n${specText}` : specText,
+          };
+        }
+
+        const allSpecs = cleanedLines.map((li) => li.notes || "").filter(Boolean);
 
         entry.lines = cleanedLines;
         if (allSpecs.length > 0) {

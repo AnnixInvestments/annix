@@ -365,6 +365,21 @@ export interface JobCardAttachment {
   updatedAt: string;
 }
 
+export interface JobCardJobFile {
+  id: number;
+  jobCardId: number;
+  companyId: number;
+  filePath: string;
+  originalFilename: string;
+  aiGeneratedName: string | null;
+  fileType: string;
+  mimeType: string;
+  fileSizeBytes: number;
+  uploadedById: number | null;
+  uploadedByName: string | null;
+  createdAt: string;
+}
+
 export interface StaffMember {
   id: number;
   name: string;

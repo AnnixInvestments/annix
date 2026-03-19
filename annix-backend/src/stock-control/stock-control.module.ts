@@ -59,6 +59,7 @@ import { JobCardDataBook } from "./entities/job-card-data-book.entity";
 import { JobCardDocument } from "./entities/job-card-document.entity";
 import { JobCardExtractionCorrection } from "./entities/job-card-extraction-correction.entity";
 import { JobCardImportMapping } from "./entities/job-card-import-mapping.entity";
+import { JobCardJobFile } from "./entities/job-card-job-file.entity";
 import { JobCardLineItem } from "./entities/job-card-line-item.entity";
 import { JobCardVersion } from "./entities/job-card-version.entity";
 import { PushSubscription } from "./entities/push-subscription.entity";
@@ -126,6 +127,7 @@ import { JobCardImportService } from "./services/job-card-import.service";
 import { JobCardPdfService } from "./services/job-card-pdf.service";
 import { JobCardVersionService } from "./services/job-card-version.service";
 import { JobCardWorkflowService } from "./services/job-card-workflow.service";
+import { JobFileService } from "./services/job-file.service";
 import { LookupService } from "./services/lookup.service";
 import { M2CalculationService } from "./services/m2-calculation.service";
 import { MovementService } from "./services/movement.service";
@@ -205,6 +207,7 @@ import { WorkflowStepConfigService } from "./services/workflow-step-config.servi
       WorkflowStepConfig,
       JobCardBackgroundCompletion,
       JobCardExtractionCorrection,
+      JobCardJobFile,
     ]),
     EmailModule,
     JwtModule.registerAsync({
@@ -311,6 +314,7 @@ import { WorkflowStepConfigService } from "./services/workflow-step-config.servi
     ScEmailClassifierService,
     ScEmailRouterService,
     ScEmailRegistrationService,
+    JobFileService,
   ],
 })
 export class StockControlModule {}

@@ -13,6 +13,7 @@ import { DispatchScan } from "./dispatch-scan.entity";
 import { JobCardApproval } from "./job-card-approval.entity";
 import { JobCardAttachment } from "./job-card-attachment.entity";
 import { JobCardDocument } from "./job-card-document.entity";
+import { JobCardJobFile } from "./job-card-job-file.entity";
 import { JobCardLineItem } from "./job-card-line-item.entity";
 import { JobCardVersion } from "./job-card-version.entity";
 import { StockAllocation } from "./stock-allocation.entity";
@@ -186,6 +187,12 @@ export class JobCard {
     (doc) => doc.jobCard,
   )
   documents: JobCardDocument[];
+
+  @OneToMany(
+    () => JobCardJobFile,
+    (jobFile) => jobFile.jobCard,
+  )
+  jobFiles: JobCardJobFile[];
 
   @OneToMany(
     () => JobCardApproval,

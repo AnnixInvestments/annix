@@ -14,6 +14,7 @@ import { JobCardService } from "../services/job-card.service";
 import { JobCardImportService } from "../services/job-card-import.service";
 import { JobCardVersionService } from "../services/job-card-version.service";
 import { JobCardWorkflowService } from "../services/job-card-workflow.service";
+import { JobFileService } from "../services/job-file.service";
 import { RequisitionService } from "../services/requisition.service";
 import { JobCardsController } from "./job-cards.controller";
 
@@ -116,6 +117,15 @@ describe("JobCardsController", () => {
         {
           provide: JobCardImportService,
           useValue: { reExtractLineItems: jest.fn() },
+        },
+        {
+          provide: JobFileService,
+          useValue: {
+            listFiles: jest.fn(),
+            uploadFile: jest.fn(),
+            deleteFile: jest.fn(),
+            presignedUrlForFile: jest.fn(),
+          },
         },
         { provide: getRepositoryToken(StockItem), useValue: stockItemRepo },
         { provide: getRepositoryToken(RubberDimensionOverride), useValue: dimensionOverrideRepo },
