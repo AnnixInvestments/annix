@@ -176,11 +176,7 @@ export class CoatingAnalysisService {
         })
         .map((li) => (li.itemCode || "").trim());
       const lineItemNotes = [
-        ...new Set(
-          lineItems
-            .map((li) => (li.notes || "").trim())
-            .filter((n) => n.length > 0),
-        ),
+        ...new Set(lineItems.map((li) => (li.notes || "").trim()).filter((n) => n.length > 0)),
       ];
       const combinedNotes =
         sanitizeNotes(

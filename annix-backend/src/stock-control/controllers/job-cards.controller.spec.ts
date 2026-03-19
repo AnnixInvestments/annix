@@ -243,10 +243,15 @@ describe("JobCardsController", () => {
 
       const result = await controller.update(mockReq(), 5, dto);
 
-      expect(workflowService.initializeWorkflow).toHaveBeenCalledWith(1, 5, {
-        id: 10,
-        name: "Test User",
-      });
+      expect(workflowService.initializeWorkflow).toHaveBeenCalledWith(
+        1,
+        5,
+        {
+          id: 10,
+          name: "Test User",
+        },
+        { advance: true },
+      );
       expect(requisitionService.createFromJobCard).toHaveBeenCalledWith(1, 5, "Test User");
       expect(cpoService.createCalloffRecords).toHaveBeenCalledWith(1, 5);
       expect(result).toEqual({ id: 5 });

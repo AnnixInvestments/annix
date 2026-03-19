@@ -1,5 +1,6 @@
 import {
-  BadRequestException, ConflictException,
+  BadRequestException,
+  ConflictException,
   ForbiddenException,
   forwardRef,
   Inject,
@@ -544,15 +545,13 @@ export class JobCardWorkflowService {
     }));
 
     const isAssignedToCurrentStep =
-      process.env.WORKFLOW_BYPASS_ASSIGNMENT === "true"
-        ? true
-        : currentStep !== null && requestingUserId
-          ? (() => {
-              const assigned = allAssignments.find((sa) => sa.step === currentStep.key);
-              if (!assigned || assigned.users.length === 0) return true;
-              return assigned.users.some((u) => u.id === requestingUserId);
-            })()
-          : true;
+      currentStep !== null && requestingUserId
+        ? (() => {
+            const assigned = allAssignments.find((sa) => sa.step === currentStep.key);
+            if (!assigned || assigned.users.length === 0) return true;
+            return assigned.users.some((u) => u.id === requestingUserId);
+          })()
+        : true;
 
     return {
       currentStatus: jobCard.workflowStatus,
@@ -742,10 +741,6 @@ export class JobCardWorkflowService {
   }
 
   private async validateUserIsAssigned(user: UserContext, stepKey: string): Promise<void> {
-    if (process.env.WORKFLOW_BYPASS_ASSIGNMENT === "true") {
-      return;
-    }
-
     const hasExplicit = await this.assignmentService.hasExplicitAssignments(
       user.companyId,
       stepKey,

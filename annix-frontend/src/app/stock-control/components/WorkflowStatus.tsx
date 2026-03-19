@@ -52,13 +52,23 @@ const resolveStepState = (
   index: number,
   currentStepIndex: number,
   approvalByStep: Record<string, JobCardApproval>,
+  allSteps: ForegroundStep[],
+  bgByTrigger: Record<string, BackgroundStepStatus[]>,
 ): StepState => {
   const approval = approvalByStep[stepKey];
 
   if (index < currentStepIndex) {
     return approval?.status === "rejected" ? "rejected" : "completed";
   } else if (index === currentStepIndex) {
-    return approval?.status === "rejected" ? "rejected" : "current";
+    if (approval?.status === "rejected") return "rejected";
+    if (index > 0) {
+      const prevKey = allSteps[index - 1].key;
+      const prevBgTasks = bgByTrigger[prevKey] || [];
+      const prevBgIncomplete =
+        prevBgTasks.length > 0 && prevBgTasks.some((bg) => bg.completedAt === null);
+      if (prevBgIncomplete) return "pending";
+    }
+    return "current";
   } else {
     return "pending";
   }
@@ -204,9 +214,14 @@ const bgNodeState = (
   bg: BackgroundStepStatus,
   fgIndex: number,
   currentStepIndex: number,
+  branchBgSteps: BackgroundStepStatus[],
 ): "completed" | "active" | "pending" => {
   if (bg.completedAt !== null) return "completed";
-  if (fgIndex < currentStepIndex) return "active";
+  if (fgIndex < currentStepIndex) {
+    const firstIncomplete = branchBgSteps.find((b) => b.completedAt === null);
+    if (firstIncomplete && firstIncomplete.stepKey === bg.stepKey) return "active";
+    return "pending";
+  }
   return "pending";
 };
 
@@ -489,7 +504,14 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
 
       <div className="flex items-start">
         {allSteps.map((step, index) => {
-          const state = resolveStepState(step.key, index, currentStepIndex, approvalByStep);
+          const state = resolveStepState(
+            step.key,
+            index,
+            currentStepIndex,
+            approvalByStep,
+            allSteps,
+            bgByTrigger,
+          );
           const approval = approvalByStep[step.key];
           const isFirst = index === 0;
           const isLast = index === allSteps.length - 1;
@@ -517,20 +539,29 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
               style={isNarrowFirst ? { width: "80px" } : { flexGrow }}
             >
               <div className="flex items-center w-full relative">
-                {!isFirst && (
-                  <div
-                    className="flex-1"
-                    style={{
-                      height: "3px",
-                      backgroundColor:
-                        state === "completed" || state === "current"
-                          ? "#22c55e"
-                          : state === "rejected"
-                            ? "#fca5a5"
-                            : "#e5e7eb",
-                    }}
-                  />
-                )}
+                {!isFirst &&
+                  (() => {
+                    const prevStepKey = allSteps[index - 1]?.key;
+                    const prevBgTasks = prevStepKey ? bgByTrigger[prevStepKey] || [] : [];
+                    const prevBgAllComplete =
+                      prevBgTasks.length === 0 ||
+                      prevBgTasks.every((bg) => bg.completedAt !== null);
+                    const lineGreen =
+                      (state === "completed" || state === "current") && prevBgAllComplete;
+                    return (
+                      <div
+                        className="flex-1"
+                        style={{
+                          height: "3px",
+                          backgroundColor: lineGreen
+                            ? "#22c55e"
+                            : state === "rejected"
+                              ? "#fca5a5"
+                              : "#e5e7eb",
+                        }}
+                      />
+                    );
+                  })()}
 
                 <div
                   ref={(el) => {
@@ -595,15 +626,23 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
                   )}
                 </div>
 
-                {!isLast && (
-                  <div
-                    className="flex-1"
-                    style={{
-                      height: "3px",
-                      backgroundColor: lineCompleted ? "#22c55e" : "#e5e7eb",
-                    }}
-                  />
-                )}
+                {!isLast &&
+                  (() => {
+                    const thisBgTasks = bgByTrigger[step.key] || [];
+                    const thisBgAllComplete =
+                      thisBgTasks.length === 0 ||
+                      thisBgTasks.every((bg) => bg.completedAt !== null);
+                    const rightLineGreen = lineCompleted && thisBgAllComplete;
+                    return (
+                      <div
+                        className="flex-1"
+                        style={{
+                          height: "3px",
+                          backgroundColor: rightLineGreen ? "#22c55e" : "#e5e7eb",
+                        }}
+                      />
+                    );
+                  })()}
               </div>
             </div>
           );
@@ -617,7 +656,7 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
 
       {docUploadStep &&
         (() => {
-          const docState = bgNodeState(docUploadStep, 0, currentStepIndex);
+          const docState = bgNodeState(docUploadStep, 0, currentStepIndex, [docUploadStep]);
 
           return (
             <div
@@ -633,12 +672,12 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
                     docState === "completed"
                       ? "bg-amber-500"
                       : docState === "active"
-                        ? "bg-amber-100 border-2 border-amber-400 animate-pulse"
+                        ? "bg-red-100 border-2 border-red-500 animate-pulse"
                         : "bg-gray-100 border-2 border-gray-300"
                   }`}
                 >
                   {docState === "completed" && <Check className="h-2.5 w-2.5 text-white" />}
-                  {docState === "active" && <Clock className="h-2.5 w-2.5 text-amber-600" />}
+                  {docState === "active" && <Clock className="h-2.5 w-2.5 text-red-600" />}
                   {docState === "pending" && <Circle className="h-2 w-2 text-gray-400" />}
                 </div>
                 <p
@@ -646,7 +685,7 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
                     docState === "completed"
                       ? "text-amber-700"
                       : docState === "active"
-                        ? "text-amber-600"
+                        ? "text-red-600"
                         : "text-gray-400"
                   }`}
                 >
@@ -663,7 +702,11 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
         })()}
 
       {branches.length > 0 && (
-        <div data-branch-container className="mt-2 relative" style={{ height: `${laneCount * 52}px` }}>
+        <div
+          data-branch-container
+          className="mt-2 relative"
+          style={{ height: `${laneCount * 52}px` }}
+        >
           {branches.map((branch) => {
             const pos = branchPositions[branch.triggerFgKey];
             const lane = branchLanes[branch.triggerFgKey] || 0;
@@ -679,7 +722,12 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
                 }}
               >
                 {branch.bgSteps.map((bg) => {
-                  const state = bgNodeState(bg, branch.triggerFgIdx, currentStepIndex);
+                  const state = bgNodeState(
+                    bg,
+                    branch.triggerFgIdx,
+                    currentStepIndex,
+                    branch.bgSteps,
+                  );
                   const bgAssigned = assignedNameForStep(bg.stepKey, stepAssignments);
                   const bgDisplayName = state === "completed" ? bg.completedByName : bgAssigned;
 
@@ -693,12 +741,12 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
                           state === "completed"
                             ? "bg-amber-500"
                             : state === "active"
-                              ? "bg-amber-100 border-2 border-amber-400 animate-pulse"
+                              ? "bg-red-100 border-2 border-red-500 animate-pulse"
                               : "bg-gray-100 border-2 border-gray-300"
                         }`}
                       >
                         {state === "completed" && <Check className="h-2.5 w-2.5 text-white" />}
-                        {state === "active" && <Clock className="h-2.5 w-2.5 text-amber-600" />}
+                        {state === "active" && <Clock className="h-2.5 w-2.5 text-red-600" />}
                         {state === "pending" && <Circle className="h-2 w-2 text-gray-400" />}
                       </div>
 
@@ -707,7 +755,7 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
                           state === "completed"
                             ? "text-amber-700"
                             : state === "active"
-                              ? "text-amber-600"
+                              ? "text-red-600"
                               : "text-gray-400"
                         }`}
                       >
@@ -799,7 +847,7 @@ function MobileTransitMap(props: MobileTransitMapProps) {
     <div className="relative">
       {docUploadStep &&
         (() => {
-          const docState = bgNodeState(docUploadStep, 0, currentStepIndex);
+          const docState = bgNodeState(docUploadStep, 0, currentStepIndex, [docUploadStep]);
           const bgAssigned = assignedNameForStep("document_upload", stepAssignments);
           const bgDisplayName =
             docState === "completed" ? docUploadStep.completedByName : bgAssigned;
@@ -812,12 +860,12 @@ function MobileTransitMap(props: MobileTransitMapProps) {
                     docState === "completed"
                       ? "bg-amber-500"
                       : docState === "active"
-                        ? "bg-amber-100 border-2 border-amber-400 animate-pulse"
+                        ? "bg-red-100 border-2 border-red-500 animate-pulse"
                         : "bg-gray-100 border-2 border-gray-300"
                   }`}
                 >
                   {docState === "completed" && <Check className="h-2.5 w-2.5 text-white" />}
-                  {docState === "active" && <Clock className="h-2.5 w-2.5 text-amber-600" />}
+                  {docState === "active" && <Clock className="h-2.5 w-2.5 text-red-600" />}
                   {docState === "pending" && <Circle className="h-2 w-2 text-gray-400" />}
                 </div>
                 <div
@@ -834,7 +882,7 @@ function MobileTransitMap(props: MobileTransitMapProps) {
                     docState === "completed"
                       ? "text-amber-700"
                       : docState === "active"
-                        ? "text-amber-600"
+                        ? "text-red-600"
                         : "text-gray-400"
                   }`}
                 >
@@ -847,7 +895,14 @@ function MobileTransitMap(props: MobileTransitMapProps) {
         })()}
 
       {allSteps.map((step, index) => {
-        const state = resolveStepState(step.key, index, currentStepIndex, approvalByStep);
+        const state = resolveStepState(
+          step.key,
+          index,
+          currentStepIndex,
+          approvalByStep,
+          allSteps,
+          bgByTrigger,
+        );
         const approval = approvalByStep[step.key];
         const isLast = index === allSteps.length - 1;
         const lineCompleted = index < currentStepIndex;
@@ -884,15 +939,23 @@ function MobileTransitMap(props: MobileTransitMapProps) {
                   )}
                 </div>
 
-                {!isLast && (
-                  <div
-                    className="w-0.5 flex-1 mt-1"
-                    style={{
-                      backgroundColor: lineCompleted ? "#22c55e" : "#e5e7eb",
-                      minHeight: branch ? "8px" : "24px",
-                    }}
-                  />
-                )}
+                {!isLast &&
+                  (() => {
+                    const thisBgTasks = bgByTrigger[step.key] || [];
+                    const thisBgAllComplete =
+                      thisBgTasks.length === 0 ||
+                      thisBgTasks.every((bg) => bg.completedAt !== null);
+                    const mobileLineGreen = lineCompleted && thisBgAllComplete;
+                    return (
+                      <div
+                        className="w-0.5 flex-1 mt-1"
+                        style={{
+                          backgroundColor: mobileLineGreen ? "#22c55e" : "#e5e7eb",
+                          minHeight: branch ? "8px" : "24px",
+                        }}
+                      />
+                    );
+                  })()}
               </div>
 
               <div className="ml-3 min-w-0 flex-1 pt-1">
@@ -947,7 +1010,10 @@ function MobileTransitMap(props: MobileTransitMapProps) {
                   <div
                     className="w-0.5 flex-1"
                     style={{
-                      backgroundColor: lineCompleted ? "#22c55e" : "#e5e7eb",
+                      backgroundColor:
+                        lineCompleted && branch.bgSteps.every((bg) => bg.completedAt !== null)
+                          ? "#22c55e"
+                          : "#e5e7eb",
                     }}
                   />
                 </div>
@@ -955,7 +1021,12 @@ function MobileTransitMap(props: MobileTransitMapProps) {
                 <div className="ml-1 pl-3 border-l-2 border-dashed border-amber-300 py-1 flex-1 min-w-0">
                   <div className="flex flex-wrap gap-x-4 gap-y-1.5">
                     {branch.bgSteps.map((bg) => {
-                      const bgState = bgNodeState(bg, branch.triggerFgIdx, currentStepIndex);
+                      const bgState = bgNodeState(
+                        bg,
+                        branch.triggerFgIdx,
+                        currentStepIndex,
+                        branch.bgSteps,
+                      );
                       const bgAssigned = assignedNameForStep(bg.stepKey, stepAssignments);
                       const bgDisplayName =
                         bgState === "completed" ? bg.completedByName : bgAssigned;
@@ -967,12 +1038,12 @@ function MobileTransitMap(props: MobileTransitMapProps) {
                               bgState === "completed"
                                 ? "bg-amber-500"
                                 : bgState === "active"
-                                  ? "bg-amber-100 border-2 border-amber-400 animate-pulse"
+                                  ? "bg-red-100 border-2 border-red-500 animate-pulse"
                                   : "bg-gray-100 border border-gray-300"
                             }`}
                           >
                             {bgState === "completed" && <Check className="h-2 w-2 text-white" />}
-                            {bgState === "active" && <Clock className="h-2 w-2 text-amber-600" />}
+                            {bgState === "active" && <Clock className="h-2 w-2 text-red-600" />}
                             {bgState === "pending" && (
                               <Circle className="h-1.5 w-1.5 text-gray-400" />
                             )}
@@ -983,7 +1054,7 @@ function MobileTransitMap(props: MobileTransitMapProps) {
                                 bgState === "completed"
                                   ? "text-amber-700"
                                   : bgState === "active"
-                                    ? "text-amber-600"
+                                    ? "text-red-600"
                                     : "text-gray-400"
                               }`}
                             >

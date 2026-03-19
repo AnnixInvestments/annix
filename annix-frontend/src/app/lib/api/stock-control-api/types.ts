@@ -1623,6 +1623,7 @@ export interface LineItemImportRow {
   quantity?: string;
   jtNo?: string;
   m2?: number;
+  notes?: string;
 }
 
 export interface M2Result {

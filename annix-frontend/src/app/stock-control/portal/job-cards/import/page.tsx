@@ -364,8 +364,7 @@ function extractMappedRows(
       { grouped: new Map<string, GroupEntry>(), lastJobNumber: "" },
     );
 
-    const SPEC_NOTE_PATTERN =
-      /^(EXT\s*:|INT\s*:|R\/L\b)/i;
+    const SPEC_NOTE_PATTERN = /^(EXT\s*:|INT\s*:|R\/L\b)/i;
     const JUNK_ROW_PATTERN =
       /^(production|foreman?\s*sign|forman\s*sign|material\s*spec|job\s*comp|completion\s*date|supervisor|quality\s*control|qc\s*sign|inspector|approved\s*by|checked\s*by|signature|remarks|comments|date\s+date|notes|sign|date)\b|^Sage\s*\d{3}\s*Evolution|\d{4}\/\d{2}\/\d{2}\s+\d{2}:\d{2}:\d{2}/i;
     if (grouped.size > 0) {
@@ -942,9 +941,7 @@ export default function JobCardImportPage() {
     const missing: { rowIdx: number; specNote: string }[] = [];
     mappedRows.forEach((row, rowIdx) => {
       const notes = (row.notes || "").trim();
-      const lineNotes = (row.lineItems || [])
-        .map((li) => (li.notes || "").trim())
-        .filter(Boolean);
+      const lineNotes = (row.lineItems || []).map((li) => (li.notes || "").trim()).filter(Boolean);
       const allSpecs = [notes, ...lineNotes].filter(Boolean);
 
       allSpecs.forEach((spec) => {
@@ -1029,10 +1026,7 @@ export default function JobCardImportPage() {
         }, {});
         setDeliverySelections(initialSelections);
         setStep("delivery-matching");
-      } else if (
-        importResult.createdJobCardIds &&
-        importResult.createdJobCardIds.length === 1
-      ) {
+      } else if (importResult.createdJobCardIds && importResult.createdJobCardIds.length === 1) {
         router.push(`/stock-control/portal/job-cards/${importResult.createdJobCardIds[0]}`);
       } else {
         setStep("result");
@@ -1106,12 +1100,15 @@ export default function JobCardImportPage() {
           <div className="bg-white rounded-lg shadow-xl p-6 max-w-lg w-full mx-4">
             <h3 className="text-lg font-semibold text-gray-900 mb-2">No microns detected</h3>
             <p className="text-sm text-gray-600 mb-4">
-              The following paint specifications have no micron thickness specified. Please enter the
-              required DFT (dry film thickness) in microns.
+              The following paint specifications have no micron thickness specified. Please enter
+              the required DFT (dry film thickness) in microns.
             </p>
             <div className="space-y-3 max-h-64 overflow-y-auto">
               {micronPrompts.map((prompt, idx) => (
-                <div key={`${prompt.rowIdx}-${prompt.specNote}`} className="flex items-center gap-3">
+                <div
+                  key={`${prompt.rowIdx}-${prompt.specNote}`}
+                  className="flex items-center gap-3"
+                >
                   <p className="text-sm text-gray-700 flex-1 font-medium">{prompt.specNote}</p>
                   <div className="flex items-center gap-1">
                     <input
@@ -1119,9 +1116,7 @@ export default function JobCardImportPage() {
                       value={prompt.microns}
                       onChange={(e) => {
                         setMicronPrompts((prev) =>
-                          prev.map((p, i) =>
-                            i === idx ? { ...p, microns: e.target.value } : p,
-                          ),
+                          prev.map((p, i) => (i === idx ? { ...p, microns: e.target.value } : p)),
                         );
                       }}
                       placeholder="e.g. 300"

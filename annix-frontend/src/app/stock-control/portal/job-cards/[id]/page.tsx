@@ -282,7 +282,8 @@ export default function JobCardDetailPage() {
       await stockControlApiClient.completeAction(jobId, currentStep, "primary");
       fetchData();
     } catch (err) {
-      setError(err instanceof Error ? err : new Error("Failed to complete action"));
+      const msg = err instanceof Error ? err.message : "Failed to complete action";
+      alert(msg);
     } finally {
       setIsCompletingFgAction(false);
     }
@@ -338,7 +339,7 @@ export default function JobCardDetailPage() {
     if (!currentStep || !workflowStatus) return false;
     if (workflowStatus.jobCardStatus !== "active") return false;
 
-    return workflowStatus.canApprove || currentStep !== null;
+    return workflowStatus.canApprove;
   }, [currentStep, workflowStatus]);
   const pipingLossPct = profile?.pipingLossFactorPct || 45;
 
@@ -428,9 +429,7 @@ export default function JobCardDetailPage() {
 
     if (allActionable.length <= 1) return allActionable;
 
-    const firstOriginIdx = resolveOriginFgIdx(
-      allActionable[0].triggerAfterStep || "__root__",
-    );
+    const firstOriginIdx = resolveOriginFgIdx(allActionable[0].triggerAfterStep || "__root__");
 
     return allActionable.filter((bg) => {
       const originIdx = resolveOriginFgIdx(bg.triggerAfterStep || "__root__");
@@ -455,9 +454,24 @@ export default function JobCardDetailPage() {
     if (!currentStep || currentStep !== "manager_approval") return false;
     const ca = coating.coatingAnalysis;
     const coatingPending = ca && ca.coats.length > 0 && ca.status !== "accepted";
-    const rubberPending = ca && ca.hasInternalLining && ca.status !== "accepted";
+    const rubberPending = ca?.hasInternalLining && ca.status !== "accepted";
     return coatingPending || rubberPending || false;
   }, [currentStep, coating.coatingAnalysis]);
+
+  const prevStepBgPending = useMemo(() => {
+    if (!workflowStatus || !currentStep) return false;
+    const fgSteps = workflowStatus.foregroundSteps || [];
+    const currentIdx = fgSteps.findIndex((s) => s.key === currentStep);
+    if (currentIdx <= 0) return false;
+    const prevStepKey = fgSteps[currentIdx - 1].key;
+    const bgSteps = workflowStatus.backgroundSteps || [];
+    const prevBgTasks = bgSteps.filter((bg) => bg.triggerAfterStep === prevStepKey);
+    return prevBgTasks.length > 0 && prevBgTasks.some((bg) => bg.completedAt === null);
+  }, [workflowStatus, currentStep]);
+
+  const receptionIsPending = useMemo(() => {
+    return userPendingBgSteps.some((bg) => bg.stepKey === "reception");
+  }, [userPendingBgSteps]);
 
   const { activeTab, visitedTabs, handleTabChange, visibleTabs } = useJobCardTabs(tabDefinitions);
 
@@ -553,7 +567,7 @@ export default function JobCardDetailPage() {
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          {jobCard.status.toLowerCase() !== "draft" && (
+          {jobCard.status.toLowerCase() !== "draft" && !receptionIsPending && (
             <button
               onClick={handlePrintQr}
               disabled={isDownloadingQr}
@@ -624,43 +638,60 @@ export default function JobCardDetailPage() {
                 <h3 className="text-sm font-semibold text-gray-900">Workflow Actions</h3>
                 {canApprove && currentStep && specsNeedReview && (
                   <>
-                    {coating.coatingAnalysis && coating.coatingAnalysis.coats.length > 0 && coating.coatingAnalysis.status !== "accepted" && (
-                      <button
-                        onClick={() => handleTabChange("coating")}
-                        className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-medium text-sm transition-colors"
-                      >
-                        Check Coating Spec
-                      </button>
-                    )}
-                    {coating.coatingAnalysis && coating.coatingAnalysis.hasInternalLining && coating.coatingAnalysis.status !== "accepted" && (
-                      <button
-                        onClick={() => handleTabChange("rubber-analysis")}
-                        className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-medium text-sm transition-colors"
-                      >
-                        Check Rubber Spec
-                      </button>
-                    )}
+                    {coating.coatingAnalysis &&
+                      coating.coatingAnalysis.coats.length > 0 &&
+                      coating.coatingAnalysis.status !== "accepted" && (
+                        <button
+                          onClick={() => handleTabChange("coating")}
+                          className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-medium text-sm transition-colors"
+                        >
+                          Check Coating Spec
+                        </button>
+                      )}
+                    {coating.coatingAnalysis?.hasInternalLining &&
+                      coating.coatingAnalysis.status !== "accepted" && (
+                        <button
+                          onClick={() => handleTabChange("rubber-analysis")}
+                          className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-medium text-sm transition-colors"
+                        >
+                          Check Rubber Spec
+                        </button>
+                      )}
                   </>
                 )}
-                {canApprove && currentStep && !specsNeedReview && !currentStepActionCompleted && currentStepActionLabel && (
-                  <button
-                    onClick={handleCompleteFgAction}
-                    disabled={isCompletingFgAction}
-                    className="px-4 py-2 bg-amber-600 text-white rounded-md hover:bg-amber-700 font-medium text-sm disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
-                  >
-                    {isCompletingFgAction ? "..." : currentStepActionLabel}
-                  </button>
-                )}
+                {canApprove &&
+                  currentStep &&
+                  !specsNeedReview &&
+                  !prevStepBgPending &&
+                  !currentStepActionCompleted &&
+                  currentStepActionLabel && (
+                    <button
+                      onClick={handleCompleteFgAction}
+                      disabled={isCompletingFgAction}
+                      className="px-4 py-2 bg-amber-600 text-white rounded-md hover:bg-amber-700 font-medium text-sm disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+                    >
+                      {isCompletingFgAction ? "..." : currentStepActionLabel}
+                    </button>
+                  )}
               </div>
               {canApprove && currentStep ? (
                 <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
                   <p className="text-sm text-gray-600">
-                    {specsNeedReview
-                      ? <>Review coating & rubber specs before proceeding</>
-                      : !currentStepActionCompleted && currentStepActionLabel
-                        ? <>Action required at{" "}<span className="font-medium">{currentStep.replace(/_/g, " ")}</span></>
-                        : <>Awaiting your approval at{" "}<span className="font-medium">{currentStep.replace(/_/g, " ")}</span></>
-                    }
+                    {prevStepBgPending ? (
+                      <>Complete background tasks before proceeding</>
+                    ) : specsNeedReview ? (
+                      <>Review coating & rubber specs before proceeding</>
+                    ) : !currentStepActionCompleted && currentStepActionLabel ? (
+                      <>
+                        Action required at{" "}
+                        <span className="font-medium">{currentStep.replace(/_/g, " ")}</span>
+                      </>
+                    ) : (
+                      <>
+                        Awaiting your approval at{" "}
+                        <span className="font-medium">{currentStep.replace(/_/g, " ")}</span>
+                      </>
+                    )}
                   </p>
                 </div>
               ) : (
@@ -688,24 +719,51 @@ export default function JobCardDetailPage() {
                 </button>
               </div>
             )}
-            {userPendingBgSteps.length > 0 && (
+            {userPendingBgSteps.length > 0 && (!canApprove || prevStepBgPending) && (
               <div className="mt-3 pt-3 border-t border-gray-100">
                 <p className="text-xs font-medium text-gray-500 mb-2">
                   Your pending background task
                 </p>
                 <div className="flex flex-wrap gap-2">
-                  {userPendingBgSteps.map((bg) => (
-                    <button
-                      key={bg.stepKey}
-                      onClick={() => handleCompleteBackgroundStep(bg.stepKey)}
-                      disabled={completingStepKey === bg.stepKey}
-                      className="px-3 py-1.5 text-xs font-medium rounded-md bg-amber-600 text-white hover:bg-amber-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
-                    >
-                      {completingStepKey === bg.stepKey
-                        ? "..."
-                        : bg.actionLabel || `Complete ${bg.label}`}
-                    </button>
-                  ))}
+                  {userPendingBgSteps.map((bg) =>
+                    bg.stepKey === "reception" ? (
+                      <button
+                        key={bg.stepKey}
+                        onClick={async () => {
+                          await handlePrintQr();
+                          handleCompleteBackgroundStep(bg.stepKey);
+                        }}
+                        disabled={isDownloadingQr || completingStepKey === bg.stepKey}
+                        className="inline-flex items-center px-4 py-2 text-sm font-medium rounded-md bg-amber-600 text-white hover:bg-amber-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+                      >
+                        <svg
+                          className="w-4 h-4 mr-2"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"
+                          />
+                        </svg>
+                        {isDownloadingQr ? "Generating..." : "Print JC"}
+                      </button>
+                    ) : (
+                      <button
+                        key={bg.stepKey}
+                        onClick={() => handleCompleteBackgroundStep(bg.stepKey)}
+                        disabled={completingStepKey === bg.stepKey}
+                        className="px-3 py-1.5 text-xs font-medium rounded-md bg-amber-600 text-white hover:bg-amber-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+                      >
+                        {completingStepKey === bg.stepKey
+                          ? "..."
+                          : bg.actionLabel || `Complete ${bg.label}`}
+                      </button>
+                    ),
+                  )}
                 </div>
               </div>
             )}
@@ -713,16 +771,18 @@ export default function JobCardDetailPage() {
         </div>
       )}
 
-      {!specsNeedReview && (currentStepActionCompleted || !currentStepActionLabel) && (
-        <JobCardNextAction
-          currentStatus={currentStatus}
-          canApprove={canApprove}
-          currentStep={currentStep}
-          userRole={userRole}
-          onApprove={currentStep ? () => openApprovalModal(currentStep) : undefined}
-          jobCardId={jobId}
-        />
-      )}
+      {!specsNeedReview &&
+        !prevStepBgPending &&
+        (currentStepActionCompleted || !currentStepActionLabel) && (
+          <JobCardNextAction
+            currentStatus={currentStatus}
+            canApprove={canApprove}
+            currentStep={currentStep}
+            userRole={userRole}
+            onApprove={currentStep ? () => openApprovalModal(currentStep) : undefined}
+            jobCardId={jobId}
+          />
+        )}
 
       <div className="bg-white shadow rounded-lg overflow-x-auto">
         <JobCardTabs tabs={tabDefinitions} activeTab={activeTab} onTabChange={handleTabChange} />

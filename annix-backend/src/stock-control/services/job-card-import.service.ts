@@ -86,29 +86,42 @@ function isNoteRow(li: LineItemImportRow): boolean {
 }
 
 function mergeNoteRowsIntoItems(items: LineItemImportRow[]): LineItemImportRow[] {
-  const segments: { items: LineItemImportRow[]; specs: string[] }[] = [
-    { items: [], specs: [] },
-  ];
+  const result: LineItemImportRow[] = [];
+  const pendingNotes: string[] = [];
 
   items.forEach((item) => {
     if (isNoteRow(item)) {
-      const noteText = (item.itemCode || "").trim().replace(/\s+PRODUCTION\s*$/i, "").trim();
-      segments[segments.length - 1].specs.push(noteText);
-      segments.push({ items: [], specs: [] });
+      const noteText = (item.itemCode || "")
+        .trim()
+        .replace(/\s+PRODUCTION\s*$/i, "")
+        .trim();
+      pendingNotes.push(noteText);
       return;
     }
-    segments[segments.length - 1].items.push({ ...item });
+
+    if (pendingNotes.length > 0 && result.length > 0) {
+      const specText = pendingNotes.join("\n");
+      const lastItem = result[result.length - 1];
+      result[result.length - 1] = {
+        ...lastItem,
+        notes: lastItem.notes ? `${lastItem.notes}\n${specText}` : specText,
+      };
+      pendingNotes.length = 0;
+    }
+
+    result.push({ ...item });
   });
 
-  return segments.reduce<LineItemImportRow[]>((result, seg) => {
-    const specText = seg.specs.length > 0 ? seg.specs.join("\n") : null;
-    return [
-      ...result,
-      ...seg.items.map((item) =>
-        specText ? { ...item, notes: item.notes ? `${item.notes}\n${specText}` : specText } : item,
-      ),
-    ];
-  }, []);
+  if (pendingNotes.length > 0 && result.length > 0) {
+    const specText = pendingNotes.join("\n");
+    const lastItem = result[result.length - 1];
+    result[result.length - 1] = {
+      ...lastItem,
+      notes: lastItem.notes ? `${lastItem.notes}\n${specText}` : specText,
+    };
+  }
+
+  return result;
 }
 
 const SAGE_NOISE_PATTERNS: RegExp[] = [

@@ -229,16 +229,24 @@ export function CoatingAnalysisTab(props: CoatingAnalysisTabProps) {
                     <td className="py-2 pr-4 text-gray-900 font-medium">{li.itemCode || "—"}</td>
                     <td className="py-2 pr-4 text-gray-700">{li.itemDescription || "—"}</td>
                     <td className="py-2 pr-4 text-right font-semibold text-gray-900">{qty}</td>
-                    <td className="py-2 pr-4 text-right text-gray-700">{m2 > 0 ? m2.toFixed(2) : "—"}</td>
-                    <td className="py-2 pr-4 text-right font-semibold text-teal-700">{m2 > 0 ? (m2 * qty).toFixed(2) : "—"}</td>
+                    <td className="py-2 pr-4 text-right text-gray-700">
+                      {m2 > 0 ? m2.toFixed(2) : "—"}
+                    </td>
+                    <td className="py-2 pr-4 text-right font-semibold text-teal-700">
+                      {m2 > 0 ? (m2 * qty).toFixed(2) : "—"}
+                    </td>
                   </tr>
                 );
               })}
             </tbody>
             <tfoot>
               <tr className="border-t border-gray-300">
-                <td colSpan={5} className="py-2 pr-4 text-right font-medium text-gray-600">Total m²</td>
-                <td className="py-2 pr-4 text-right font-bold text-teal-800">{totalM2.toFixed(2)}</td>
+                <td colSpan={5} className="py-2 pr-4 text-right font-medium text-gray-600">
+                  Total m²
+                </td>
+                <td className="py-2 pr-4 text-right font-bold text-teal-800">
+                  {totalM2.toFixed(2)}
+                </td>
               </tr>
             </tfoot>
           </table>
@@ -341,35 +349,58 @@ export function CoatingAnalysisTab(props: CoatingAnalysisTabProps) {
               )}
             </div>
             {(() => {
-              const uniqueCoats = coatingAnalysis.coats.reduce<typeof coatingAnalysis.coats>((acc, coat) => {
-                const exists = acc.find((c) => c.product === coat.product && c.area === coat.area);
-                if (!exists) acc.push(coat);
-                return acc;
-              }, []);
-              const totalLitres = coatingAnalysis.coats.reduce((sum, c) => sum + c.litersRequired, 0);
+              const uniqueCoats = coatingAnalysis.coats.reduce<typeof coatingAnalysis.coats>(
+                (acc, coat) => {
+                  const exists = acc.find(
+                    (c) => c.product === coat.product && c.area === coat.area,
+                  );
+                  if (!exists) acc.push(coat);
+                  return acc;
+                },
+                [],
+              );
+              const totalLitres = coatingAnalysis.coats.reduce(
+                (sum, c) => sum + c.litersRequired,
+                0,
+              );
               return (
                 <div className="space-y-3">
                   {uniqueCoats.map((coat, idx) => (
-                    <div key={idx} className="flex items-center justify-between text-sm border-b border-gray-100 pb-2">
+                    <div
+                      key={idx}
+                      className="flex items-center justify-between text-sm border-b border-gray-100 pb-2"
+                    >
                       <div className="flex items-center gap-2">
-                        <span className="text-gray-500 capitalize">{coat.area === "external" ? "Ext" : "Int"}</span>
+                        <span className="text-gray-500 capitalize">
+                          {coat.area === "external" ? "Ext" : "Int"}
+                        </span>
                         <span className="font-medium text-gray-900">{coat.product}</span>
                         {coat.verified === true && (
-                          <span className="inline-flex px-1.5 py-0.5 text-xs font-medium rounded bg-green-100 text-green-700">verified</span>
+                          <span className="inline-flex px-1.5 py-0.5 text-xs font-medium rounded bg-green-100 text-green-700">
+                            verified
+                          </span>
                         )}
                         {coat.verified === false && (
-                          <span className="inline-flex px-1.5 py-0.5 text-xs font-medium rounded bg-amber-100 text-amber-700">unverified</span>
+                          <span className="inline-flex px-1.5 py-0.5 text-xs font-medium rounded bg-amber-100 text-amber-700">
+                            unverified
+                          </span>
                         )}
                       </div>
                       <div className="flex items-center gap-4 text-sm">
-                        <span className="text-gray-500">DFT: {coat.minDftUm}-{coat.maxDftUm} µm</span>
-                        <span className="text-gray-500">Coverage: {coat.coverageM2PerLiter} m²/L</span>
+                        <span className="text-gray-500">
+                          DFT: {coat.minDftUm}-{coat.maxDftUm} µm
+                        </span>
+                        <span className="text-gray-500">
+                          Coverage: {coat.coverageM2PerLiter} m²/L
+                        </span>
                       </div>
                     </div>
                   ))}
                   <div className="flex items-center justify-between pt-1">
                     <span className="text-sm font-medium text-gray-600">Total Litres Required</span>
-                    <span className="text-lg font-bold text-teal-800">{totalLitres.toFixed(1)} L</span>
+                    <span className="text-lg font-bold text-teal-800">
+                      {totalLitres.toFixed(1)} L
+                    </span>
                   </div>
                   <p className="text-xs text-gray-400 italic">
                     Coverage includes {pipingLossPct}% piping loss factor
@@ -377,52 +408,59 @@ export function CoatingAnalysisTab(props: CoatingAnalysisTabProps) {
                 </div>
               );
             })()}
-            {coatingAnalysis.stockAssessment.length > 0 && (() => {
-              const deduped = coatingAnalysis.stockAssessment.reduce<typeof coatingAnalysis.stockAssessment>((acc, item) => {
-                const existing = acc.find((a) => a.product === item.product);
-                if (existing) {
-                  existing.required = existing.required + item.required;
-                  existing.sufficient = existing.stockItemId ? existing.currentStock >= existing.required : false;
-                } else {
-                  acc.push({ ...item });
-                }
-                return acc;
-              }, []);
-              return (
-                <div className="mt-4 pt-3 border-t border-gray-100">
-                  <h5 className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">
-                    Stock Assessment
-                  </h5>
-                  <div className="space-y-1">
-                    {deduped.map((item, idx) => (
-                      <div key={idx} className="flex items-center justify-between text-sm">
-                        <span className="text-gray-700">{item.product}</span>
-                        <div className="flex items-center space-x-3">
-                          {item.stockItemId ? (
-                            <>
-                              <span className="text-gray-500">
-                                {item.currentStock} / {item.required.toFixed(1)} {item.unit}
+            {coatingAnalysis.stockAssessment.length > 0 &&
+              (() => {
+                const deduped = coatingAnalysis.stockAssessment.reduce<
+                  typeof coatingAnalysis.stockAssessment
+                >((acc, item) => {
+                  const existing = acc.find((a) => a.product === item.product);
+                  if (existing) {
+                    existing.required = existing.required + item.required;
+                    existing.sufficient = existing.stockItemId
+                      ? existing.currentStock >= existing.required
+                      : false;
+                  } else {
+                    acc.push({ ...item });
+                  }
+                  return acc;
+                }, []);
+                return (
+                  <div className="mt-4 pt-3 border-t border-gray-100">
+                    <h5 className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">
+                      Stock Assessment
+                    </h5>
+                    <div className="space-y-1">
+                      {deduped.map((item, idx) => (
+                        <div key={idx} className="flex items-center justify-between text-sm">
+                          <span className="text-gray-700">{item.product}</span>
+                          <div className="flex items-center space-x-3">
+                            {item.stockItemId ? (
+                              <>
+                                <span className="text-gray-500">
+                                  {item.currentStock} / {item.required.toFixed(1)} {item.unit}
+                                </span>
+                                <span
+                                  className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full ${
+                                    item.sufficient
+                                      ? "bg-green-100 text-green-800"
+                                      : "bg-red-100 text-red-800"
+                                  }`}
+                                >
+                                  {item.sufficient ? "OK" : "Short"}
+                                </span>
+                              </>
+                            ) : (
+                              <span className="text-xs text-amber-600 italic">
+                                Not in inventory
                               </span>
-                              <span
-                                className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full ${
-                                  item.sufficient
-                                    ? "bg-green-100 text-green-800"
-                                    : "bg-red-100 text-red-800"
-                                }`}
-                              >
-                                {item.sufficient ? "OK" : "Short"}
-                              </span>
-                            </>
-                          ) : (
-                            <span className="text-xs text-amber-600 italic">Not in inventory</span>
-                          )}
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
-                </div>
-              );
-            })()}
+                );
+              })()}
           </div>
         )}
 
