@@ -105,7 +105,7 @@ import { WorkflowModule } from "./workflow/workflow.module";
 
     HeavyFeaturesModule,
 
-    ComplySaModule,
+    ...(process.env.DISABLE_COMPLY_SA === "true" ? [] : [ComplySaModule]),
   ],
   controllers: [AppController, BendDimensionController],
   providers: [BendDimensionService],

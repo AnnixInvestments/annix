@@ -16,8 +16,10 @@ import { ThermalModule } from "../thermal/thermal.module";
   imports: [
     RubberLiningModule,
     StockControlModule,
-    AnnixRepModule,
-    CvAssistantModule,
+    ...(process.env.DISABLE_ANNIX_REP === "true" ? [] : [AnnixRepModule]),
+    ...(process.env.DISABLE_CV_ASSISTANT === "true"
+      ? []
+      : [CvAssistantModule]),
     AdminModule,
     PumpProductModule,
     PumpOrderModule,
@@ -30,8 +32,10 @@ import { ThermalModule } from "../thermal/thermal.module";
   exports: [
     RubberLiningModule,
     StockControlModule,
-    AnnixRepModule,
-    CvAssistantModule,
+    ...(process.env.DISABLE_ANNIX_REP === "true" ? [] : [AnnixRepModule]),
+    ...(process.env.DISABLE_CV_ASSISTANT === "true"
+      ? []
+      : [CvAssistantModule]),
     AdminModule,
     PumpProductModule,
     PumpOrderModule,
