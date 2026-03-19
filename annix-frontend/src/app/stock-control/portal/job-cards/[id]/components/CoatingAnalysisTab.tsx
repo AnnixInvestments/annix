@@ -364,10 +364,7 @@ export function CoatingAnalysisTab(props: CoatingAnalysisTabProps) {
                 },
                 [],
               );
-              const totalLitres = uniqueCoats.reduce(
-                (sum, c) => sum + c.litersRequired,
-                0,
-              );
+              const totalLitres = uniqueCoats.reduce((sum, c) => sum + c.litersRequired, 0);
               return (
                 <div className="space-y-3">
                   {uniqueCoats.map((coat, idx) => (
