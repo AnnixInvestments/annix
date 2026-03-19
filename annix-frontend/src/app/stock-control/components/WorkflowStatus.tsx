@@ -21,12 +21,16 @@ const DEFAULT_FOREGROUND_STEPS: ForegroundStep[] = [
 
 const LEGACY_STATUS_TO_STEP: Record<string, string> = {
   document_uploaded: "admin_approval",
+  document_upload: "admin_approval",
   admin_approved: "manager_approval",
   manager_approved: "quality_check",
   requisition_sent: "quality_check",
+  requisition: "quality_check",
   stock_allocated: "quality_check",
-  manager_final: "dispatched",
+  stock_allocation: "quality_check",
+  manager_final: "quality_check",
   ready_for_dispatch: "dispatched",
+  ready: "dispatched",
 };
 
 const resolveCurrentStepIndex = (currentStatus: string, allSteps: ForegroundStep[]): number => {

@@ -762,6 +762,20 @@ export class JobCardWorkflowService {
     }
   }
 
+  private static readonly LEGACY_STATUS_POSITION: Record<string, number> = {
+    document_uploaded: 0,
+    document_upload: 0,
+    admin_approved: 1,
+    manager_approved: 2,
+    requisition_sent: 2,
+    requisition: 2,
+    stock_allocated: 2,
+    stock_allocation: 2,
+    manager_final: 2,
+    ready_for_dispatch: 3,
+    ready: 3,
+  };
+
   private currentFgStep(status: string, fgSteps: WorkflowStepConfig[]): WorkflowStepConfig | null {
     if (status === WORKFLOW_STATUS_DRAFT || status === WORKFLOW_STATUS_FILE_CLOSED) {
       return null;
@@ -770,6 +784,11 @@ export class JobCardWorkflowService {
     const idx = fgSteps.findIndex((s) => s.key === status);
     if (idx >= 0) {
       return fgSteps[idx];
+    }
+
+    const position = JobCardWorkflowService.LEGACY_STATUS_POSITION[status];
+    if (position !== undefined && position < fgSteps.length) {
+      return fgSteps[position];
     }
 
     return null;

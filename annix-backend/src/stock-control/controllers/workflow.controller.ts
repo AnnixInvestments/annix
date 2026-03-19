@@ -493,26 +493,49 @@ export class WorkflowController {
   @ApiOperation({ summary: "Place a requisition for coating materials" })
   async placeRequisition(@Req() req: any, @Param("id") id: number) {
     await this.requisitionService.createFromJobCard(req.user.companyId, id, req.user.name);
-    await this.backgroundStepService.completeStep(
-      req.user.companyId,
-      id,
-      "requisition",
-      req.user,
-      "Requisition placed via stock decision",
-    );
+    const reqStep = await this.resolveRequisitionStep(req.user.companyId);
+    if (reqStep) {
+      await this.backgroundStepService.completeStep(
+        req.user.companyId,
+        id,
+        reqStep,
+        req.user,
+        "Requisition placed via stock decision",
+      );
+    }
     return { success: true };
   }
 
   @Post("job-cards/:id/stock-decision/use-current-stock")
   @ApiOperation({ summary: "Use current stock and skip requisition steps" })
   async useCurrentStock(@Req() req: any, @Param("id") id: number) {
+    const bgSteps = await this.stepConfigService.backgroundSteps(req.user.companyId);
+    const requisitionKeys = bgSteps
+      .filter(
+        (s) =>
+          s.key === "requisition" ||
+          s.key === "requisition_sent" ||
+          s.key === "req_auth" ||
+          s.key === "custom_req_auth" ||
+          s.key === "order_placement" ||
+          s.key === "custom_order_placement",
+      )
+      .map((s) => s.key);
     await this.backgroundStepService.completeMultipleSteps(
       req.user.companyId,
       id,
-      ["requisition", "req_auth", "order_placement"],
+      requisitionKeys,
       req.user,
       "Using current stock — requisition not required",
     );
     return { success: true };
+  }
+
+  private async resolveRequisitionStep(companyId: number): Promise<string | null> {
+    const bgSteps = await this.stepConfigService.backgroundSteps(companyId);
+    const match = bgSteps.find(
+      (s) => s.key === "requisition" || s.key === "requisition_sent",
+    );
+    return match ? match.key : null;
   }
 }
