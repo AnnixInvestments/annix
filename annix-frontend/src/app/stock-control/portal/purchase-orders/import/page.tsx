@@ -9,6 +9,7 @@ import type {
   JobCardImportRow,
 } from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
+import { correctLineItemsEndRow, validItemRows } from "../../../lib/lineItemsEndRow";
 import { consumePendingCpoImportFile } from "./pending-file";
 
 type ImportStep = "upload" | "preview" | "result";
@@ -397,10 +398,12 @@ function extractRowsFromGrid(grid: string[][], mapping: ImportMappingConfig): Jo
 
   const lineItemStart =
     mapping.lineItems?.itemCode?.startRow || mapping.lineItems?.itemDescription?.startRow || 0;
-  const lineItemEnd =
+  const rawLineItemEnd =
     mapping.lineItems?.itemCode?.endRow ||
     mapping.lineItems?.itemDescription?.endRow ||
     grid.length - 1;
+  const lineItemEnd = correctLineItemsEndRow(grid, lineItemStart, rawLineItemEnd);
+  const validRows = validItemRows(grid, lineItemStart);
 
   const lineItems: Array<{
     itemCode?: string;
@@ -411,6 +414,7 @@ function extractRowsFromGrid(grid: string[][], mapping: ImportMappingConfig): Jo
   }> = [];
 
   for (let r = lineItemStart; r <= Math.min(lineItemEnd, grid.length - 1); r++) {
+    if (validRows.size > 0 && !validRows.has(r)) continue;
     const itemCode = mapping.lineItems?.itemCode
       ? (grid[r]?.[mapping.lineItems.itemCode.column] || "").trim()
       : "";

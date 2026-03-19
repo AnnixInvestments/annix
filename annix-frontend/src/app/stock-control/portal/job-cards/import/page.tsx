@@ -15,6 +15,7 @@ import type {
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { nowMillis } from "@/app/lib/datetime";
 import { stockControlKeys } from "@/app/lib/query/keys";
+import { correctLineItemsEndRow, validItemRows } from "../../../lib/lineItemsEndRow";
 import { consumePendingImportFile } from "./pending-file";
 
 type ImportStep = "upload" | "mapping" | "preview" | "delivery-matching" | "result";
@@ -283,6 +284,9 @@ function extractMappedRows(
 
   const hasLineItems = Array.from(LINE_ITEM_KEYS).some((k) => regions[k] !== null);
 
+  const liRegion = regions["itemCode"] || regions["itemDescription"];
+  const validRows = liRegion ? validItemRows(grid, liRegion.startRow) : new Set<number>();
+
   if (hasLineItems) {
     type GroupEntry = {
       meta: Record<string, string>;
@@ -344,16 +348,19 @@ function extractMappedRows(
           return { ...acc, lastJobNumber: currentJobNumber };
         }
 
-        const lineItem = Array.from(LINE_ITEM_KEYS).reduce<Record<string, string>>((li, key) => {
-          const region = regions[key];
-          if (region && r >= region.startRow && r <= region.endRow) {
-            const val = (gridRow[region.col] ?? "").trim();
-            if (val) {
-              return { ...li, [key]: val };
-            }
-          }
-          return li;
-        }, {});
+        const inValidSection = validRows.size === 0 || validRows.has(r);
+        const lineItem = inValidSection
+          ? Array.from(LINE_ITEM_KEYS).reduce<Record<string, string>>((li, key) => {
+              const region = regions[key];
+              if (region && r >= region.startRow && r <= region.endRow) {
+                const val = (gridRow[region.col] ?? "").trim();
+                if (val) {
+                  return { ...li, [key]: val };
+                }
+              }
+              return li;
+            }, {})
+          : {};
 
         if (Object.keys(lineItem).length > 0) {
           acc.grouped.get(currentJobNumber)!.lines.push(lineItem);
@@ -502,11 +509,26 @@ function savedMappingToRegions(
 
   const lastRow = grid.length - 1;
 
+  const liStartRow = config.lineItems?.itemCode?.startRow
+    || config.lineItems?.itemDescription?.startRow
+    || 0;
+  const liEndRow = config.lineItems?.itemCode?.endRow
+    || config.lineItems?.itemDescription?.endRow
+    || lastRow;
+  const correctedLiEndRow = correctLineItemsEndRow(grid, liStartRow, liEndRow);
+
   const toRegion = (
     fm: { column: number; startRow: number; endRow: number } | null,
   ): CellRegion | null => {
     if (!fm) return null;
     return { col: fm.column, startRow: fm.startRow, endRow: Math.min(fm.endRow, lastRow) };
+  };
+
+  const toLineItemRegion = (
+    fm: { column: number; startRow: number; endRow: number } | null,
+  ): CellRegion | null => {
+    if (!fm) return null;
+    return { col: fm.column, startRow: fm.startRow, endRow: Math.min(correctedLiEndRow, lastRow) };
   };
 
   const regions: Record<string, CellRegion | null> = {
@@ -522,11 +544,11 @@ function savedMappingToRegions(
     dueDate: toRegion(config.dueDate),
     notes: toRegion(config.notes),
     reference: toRegion(config.reference),
-    itemCode: toRegion(config.lineItems ? config.lineItems.itemCode : null),
-    itemDescription: toRegion(config.lineItems ? config.lineItems.itemDescription : null),
-    itemNo: toRegion(config.lineItems ? config.lineItems.itemNo : null),
-    quantity: toRegion(config.lineItems ? config.lineItems.quantity : null),
-    jtNo: toRegion(config.lineItems ? config.lineItems.jtNo : null),
+    itemCode: toLineItemRegion(config.lineItems ? config.lineItems.itemCode : null),
+    itemDescription: toLineItemRegion(config.lineItems ? config.lineItems.itemDescription : null),
+    itemNo: toLineItemRegion(config.lineItems ? config.lineItems.itemNo : null),
+    quantity: toLineItemRegion(config.lineItems ? config.lineItems.quantity : null),
+    jtNo: toLineItemRegion(config.lineItems ? config.lineItems.jtNo : null),
   };
 
   const customFields: CustomFieldDef[] = (config.customFields ?? []).map((cf, idx) => ({
@@ -1998,7 +2020,8 @@ export default function JobCardImportPage() {
                                         ? m2Results[li.itemDescription]
                                         : null;
                                       return (
-                                        <tr key={liIdx} className="hover:bg-gray-100/50">
+                                        <Fragment key={liIdx}>
+                                        <tr className="hover:bg-gray-100/50">
                                           <td className="px-3 py-1.5 text-xs text-gray-600 whitespace-nowrap">
                                             {li.itemCode || "-"}
                                           </td>
@@ -2078,6 +2101,16 @@ export default function JobCardImportPage() {
                                             )}
                                           </td>
                                         </tr>
+                                        {li.notes && (
+                                          <tr className="bg-teal-50/50">
+                                            <td colSpan={6} className="px-3 py-1 pl-8">
+                                              <span className="text-[10px] italic text-teal-700 whitespace-pre-wrap">
+                                                {li.notes}
+                                              </span>
+                                            </td>
+                                          </tr>
+                                        )}
+                                        </Fragment>
                                       );
                                     })}
                                   </tbody>

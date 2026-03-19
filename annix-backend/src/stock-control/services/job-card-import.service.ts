@@ -851,50 +851,53 @@ export class JobCardImportService {
 
   private static readonly PRODUCT_CODE_PATTERN = /^[A-Z]\d{3,}/;
 
+  private static readonly ITEM_HEADER_PATTERN = /^Item\s*Code/i;
+
   private findLineItemsEndRow(grid: string[][], startRow: number, aiEndRow: number): number {
-    const sampleRows = grid.slice(startRow, aiEndRow + 1);
-    const colCount = sampleRows.reduce((max, row) => Math.max(max, row.length), 0);
+    const itemSectionStarts = grid.reduce<number[]>((acc, row, r) => {
+      const firstCell = (row[0] || "").trim();
+      return JobCardImportService.ITEM_HEADER_PATTERN.test(firstCell)
+        ? [...acc, r]
+        : acc;
+    }, []);
 
-    const codeCol = Array.from({ length: colCount }).reduce<number | null>((found, _, c) => {
-      if (found !== null) return found;
-      const matchCount = sampleRows.filter((row) =>
-        JobCardImportService.PRODUCT_CODE_PATTERN.test((row[c as number] || "").trim()),
-      ).length;
-      return matchCount > sampleRows.length * 0.3 ? (c as number) : null;
-    }, null);
-
-    if (codeCol === null) return aiEndRow;
-
-    const descCol =
-      codeCol + 1 < colCount &&
-      sampleRows.filter((row) => (row[codeCol + 1] || "").trim().length > 5).length >
-        sampleRows.length * 0.3
-        ? codeCol + 1
-        : null;
-
-    const lastItemRow = grid.reduce((last, row, r) => {
-      if (r < startRow) return last;
-      const codeVal = (row[codeCol] || "").trim();
-      const descVal = descCol !== null ? (row[descCol] || "").trim() : "";
-      const hasItemData = codeVal.length > 0 && (descCol === null || descVal.length > 0);
-
-      if (
-        hasItemData &&
-        !JobCardImportService.LINE_ITEMS_FOOTER_PATTERN.test(codeVal) &&
-        !JobCardImportService.PAGE_HEADER_PATTERN.test(codeVal)
-      ) {
-        return Math.max(last, r);
-      }
-      return last;
-    }, aiEndRow);
-
-    if (lastItemRow > aiEndRow) {
-      this.logger.log(
-        `Extended line items endRow from ${aiEndRow} to ${lastItemRow} (multi-page document)`,
-      );
+    if (itemSectionStarts.length <= 1) {
+      return this.scanSectionEndRow(grid, startRow, aiEndRow);
     }
 
-    return lastItemRow;
+    const lastEndRow = itemSectionStarts.reduce((best, sectionStart) => {
+      const dataStart = sectionStart + 1;
+      if (dataStart < startRow) return best;
+      const hasItems = grid.slice(dataStart, Math.min(dataStart + 3, grid.length)).some((row) => {
+        const code = (row[0] || "").trim();
+        return JobCardImportService.PRODUCT_CODE_PATTERN.test(code);
+      });
+      if (!hasItems) return best;
+
+      const sectionEnd = this.scanSectionEndRow(grid, dataStart, dataStart);
+      return Math.max(best, sectionEnd);
+    }, aiEndRow);
+
+    return lastEndRow;
+  }
+
+  private scanSectionEndRow(grid: string[][], startRow: number, currentEnd: number): number {
+    const { lastContent } = grid.slice(startRow).reduce<{ lastContent: number; stopped: boolean }>(
+      (acc, row, idx) => {
+        if (acc.stopped) return acc;
+
+        const firstCell = (row[0] || "").trim();
+        if (JobCardImportService.LINE_ITEMS_FOOTER_PATTERN.test(firstCell)) {
+          return { ...acc, stopped: true };
+        }
+
+        const hasContent = row.some((cell) => (cell || "").trim().length > 0);
+        return hasContent ? { ...acc, lastContent: startRow + idx } : acc;
+      },
+      { lastContent: startRow, stopped: false },
+    );
+
+    return Math.max(lastContent, currentEnd);
   }
 
   private extractLineItemsFromGrid(

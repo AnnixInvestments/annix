@@ -492,18 +492,28 @@ export class WorkflowController {
   @Post("job-cards/:id/stock-decision/place-requisition")
   @ApiOperation({ summary: "Place a requisition for coating materials" })
   async placeRequisition(@Req() req: any, @Param("id") id: number) {
-    await this.requisitionService.createFromJobCard(req.user.companyId, id, req.user.name);
+    const requisition = await this.requisitionService.createFromJobCard(
+      req.user.companyId,
+      id,
+      req.user.name,
+    );
     const reqStep = await this.resolveRequisitionStep(req.user.companyId);
     if (reqStep) {
-      await this.backgroundStepService.completeStep(
-        req.user.companyId,
-        id,
-        reqStep,
-        req.user,
-        "Requisition placed via stock decision",
-      );
+      try {
+        await this.backgroundStepService.completeStep(
+          req.user.companyId,
+          id,
+          reqStep,
+          req.user,
+          "Requisition placed via stock decision",
+        );
+      } catch (err) {
+        this.logger.warn(
+          `Could not complete BG step "${reqStep}" for job card ${id}: ${err.message}`,
+        );
+      }
     }
-    return { success: true };
+    return { success: true, requisitionId: requisition?.id ?? null };
   }
 
   @Post("job-cards/:id/stock-decision/use-current-stock")
