@@ -184,7 +184,10 @@ export class InvoiceExtractionService {
         invoice.supplierName = extractedData.supplierName;
       }
       if (extractedData.invoiceDate) {
-        invoice.invoiceDate = new Date(extractedData.invoiceDate);
+        const parsed = fromISO(extractedData.invoiceDate);
+        if (parsed.isValid) {
+          invoice.invoiceDate = parsed.toJSDate();
+        }
       }
       if (extractedData.totalAmount !== undefined) {
         invoice.totalAmount = extractedData.totalAmount;
@@ -218,12 +221,20 @@ export class InvoiceExtractionService {
       return this.invoiceRepo.save(invoice);
     } catch (error) {
       this.logger.error(`Invoice extraction failed for ${invoiceId}: ${error.message}`);
-      invoice.extractionStatus = InvoiceExtractionStatus.FAILED;
-      invoice.extractedData = {
-        ...previousExtractedData,
-        rawText: error.message,
-      };
-      return this.invoiceRepo.save(invoice);
+      try {
+        await this.invoiceRepo.update(invoiceId, {
+          extractionStatus: InvoiceExtractionStatus.FAILED,
+          extractedData: {
+            ...previousExtractedData,
+            rawText: error.message,
+          },
+        });
+      } catch (saveError) {
+        this.logger.error(
+          `Failed to save error status for invoice ${invoiceId}: ${saveError.message}`,
+        );
+      }
+      return this.invoiceRepo.findOne({ where: { id: invoiceId } });
     }
   }
 

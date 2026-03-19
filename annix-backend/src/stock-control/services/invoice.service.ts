@@ -168,21 +168,31 @@ export class InvoiceService {
       throw new NotFoundException("No scan uploaded for this invoice");
     }
 
-    const s3Key = this.extractS3Key(invoice.scanUrl);
-    const fileBuffer = await this.storageService.download(s3Key);
-    const imageBase64 = fileBuffer.toString("base64");
-    const mediaType = this.mimeFromPath(s3Key);
+    try {
+      const s3Key = this.extractS3Key(invoice.scanUrl);
+      this.logger.log(`Re-extracting invoice ${invoiceId}, S3 key: ${s3Key}`);
+      const fileBuffer = await this.storageService.download(s3Key);
+      this.logger.log(`Downloaded ${fileBuffer.length} bytes for invoice ${invoiceId}`);
+      const imageBase64 = fileBuffer.toString("base64");
+      const mediaType = this.mimeFromPath(s3Key);
 
-    this.auditService
-      .log({
-        entityType: "supplier_invoice",
-        entityId: invoiceId,
-        action: AuditAction.UPDATE,
-        newValues: { reExtracted: true },
-      })
-      .catch((err) => this.logger.error(`Audit log failed: ${err.message}`, err.stack));
+      this.auditService
+        .log({
+          entityType: "supplier_invoice",
+          entityId: invoiceId,
+          action: AuditAction.UPDATE,
+          newValues: { reExtracted: true },
+        })
+        .catch((err) => this.logger.error(`Audit log failed: ${err.message}`, err.stack));
 
-    return this.extractionService.extractFromImage(invoiceId, imageBase64, mediaType);
+      return await this.extractionService.extractFromImage(invoiceId, imageBase64, mediaType);
+    } catch (err) {
+      this.logger.error(
+        `Re-extract failed for invoice ${invoiceId}: ${err.message}`,
+        err.stack,
+      );
+      throw err;
+    }
   }
 
   private extractS3Key(scanUrl: string): string {

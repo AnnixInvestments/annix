@@ -18,7 +18,7 @@ export function useNotificationCount(): NotificationCountResult {
       const result = await stockControlApiClient.notificationCount();
       setCount(result.count);
     } catch (error) {
-      console.error("Failed to fetch notification count:", error);
+      console.debug("Failed to fetch notification count:", error);
     } finally {
       setIsLoading(false);
     }

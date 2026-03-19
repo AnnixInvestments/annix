@@ -20,7 +20,7 @@ export function NotificationBell() {
       const notifs = await stockControlApiClient.unreadNotifications();
       setNotifications(notifs);
     } catch (error) {
-      console.error("Failed to fetch notifications:", error);
+      console.debug("Failed to fetch notifications:", error);
     }
   }, []);
 

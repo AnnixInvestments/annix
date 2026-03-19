@@ -115,7 +115,7 @@ export function useChatState() {
             };
       });
     } catch (e) {
-      console.error("Chat poll failed:", errorMessage(e, "Unknown error"));
+      console.debug("Chat poll failed:", errorMessage(e, "Unknown error"));
     }
   }, [messagingEnabled]);
 
@@ -137,7 +137,7 @@ export function useChatState() {
           : { ...prev, convMessages: merged, convLastMessageId: lastNew.id };
       });
     } catch (e) {
-      console.error("Conversation poll failed:", errorMessage(e, "Unknown error"));
+      console.debug("Conversation poll failed:", errorMessage(e, "Unknown error"));
     }
   }, [messagingEnabled]);
 
@@ -165,7 +165,7 @@ export function useChatState() {
         const convs = await stockControlApiClient.chatConversations();
         updateState({ conversations: convs });
       } catch (e) {
-        console.error("Fetch conversations failed:", errorMessage(e, "Unknown error"));
+        console.debug("Fetch conversations failed:", errorMessage(e, "Unknown error"));
       }
     };
 
@@ -182,7 +182,7 @@ export function useChatState() {
         const counts = await stockControlApiClient.chatUnreadCounts();
         updateState({ convUnreadCounts: counts });
       } catch (e) {
-        console.error("Fetch unread counts failed:", errorMessage(e, "Unknown error"));
+        console.debug("Fetch unread counts failed:", errorMessage(e, "Unknown error"));
       }
     };
 
