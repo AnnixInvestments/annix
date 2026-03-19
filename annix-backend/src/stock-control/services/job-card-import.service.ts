@@ -724,7 +724,7 @@ export class JobCardImportService {
       }
 
       const parsed = JSON.parse(jsonMatch[0]);
-      return this.convertAiResponseToMappingConfig(parsed, grid.length);
+      return this.convertAiResponseToMappingConfig(parsed, grid);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Unknown error";
       this.logger.error(`Auto-detect mapping failed: ${message}`);
@@ -734,8 +734,9 @@ export class JobCardImportService {
 
   private convertAiResponseToMappingConfig(
     aiResult: Record<string, unknown>,
-    gridRowCount: number,
+    grid: string[][],
   ): ImportMappingConfig {
+    const gridRowCount = grid.length;
     const toFieldMapping = (
       val: unknown,
       defaultStartRow = 0,
@@ -753,8 +754,9 @@ export class JobCardImportService {
 
     const lineItemsStartRow =
       typeof aiResult.lineItemsStartRow === "number" ? aiResult.lineItemsStartRow : 0;
-    const lineItemsEndRow =
+    const aiEndRow =
       typeof aiResult.lineItemsEndRow === "number" ? aiResult.lineItemsEndRow : gridRowCount - 1;
+    const lineItemsEndRow = this.findLineItemsEndRow(grid, lineItemsStartRow, aiEndRow);
 
     const lineItemsObj = (aiResult.lineItems || {}) as Record<string, unknown>;
 
@@ -839,6 +841,60 @@ export class JobCardImportService {
         companyId,
       }),
     );
+  }
+
+  private static readonly LINE_ITEMS_FOOTER_PATTERN =
+    /^(production|foreman?\s*sign|forman\s*sign|material\s*spec|job\s*comp|completion\s*date|supervisor|quality\s*control|qc\s*sign|inspector|approved\s*by|checked\s*by|despatch)\b|^Sage\s*\d{3}\s*Evolution/i;
+
+  private static readonly PAGE_HEADER_PATTERN =
+    /^(POLYMER\s+LINING|CUSTOMER\b|ORDER\s+NO|QTY\s+REQ|MATERIAL$|BLASTING$|ADHESIVES|LINING$|PAINTING$|SOLVENTS$|Item\s+Code|Page\s+\d)/i;
+
+  private static readonly PRODUCT_CODE_PATTERN = /^[A-Z]\d{3,}/;
+
+  private findLineItemsEndRow(grid: string[][], startRow: number, aiEndRow: number): number {
+    const sampleRows = grid.slice(startRow, aiEndRow + 1);
+    const colCount = sampleRows.reduce((max, row) => Math.max(max, row.length), 0);
+
+    const codeCol = Array.from({ length: colCount }).reduce<number | null>((found, _, c) => {
+      if (found !== null) return found;
+      const matchCount = sampleRows.filter((row) =>
+        JobCardImportService.PRODUCT_CODE_PATTERN.test((row[c as number] || "").trim()),
+      ).length;
+      return matchCount > sampleRows.length * 0.3 ? (c as number) : null;
+    }, null);
+
+    if (codeCol === null) return aiEndRow;
+
+    const descCol =
+      codeCol + 1 < colCount &&
+      sampleRows.filter((row) => (row[codeCol + 1] || "").trim().length > 5).length >
+        sampleRows.length * 0.3
+        ? codeCol + 1
+        : null;
+
+    const lastItemRow = grid.reduce((last, row, r) => {
+      if (r < startRow) return last;
+      const codeVal = (row[codeCol] || "").trim();
+      const descVal = descCol !== null ? (row[descCol] || "").trim() : "";
+      const hasItemData = codeVal.length > 0 && (descCol === null || descVal.length > 0);
+
+      if (
+        hasItemData &&
+        !JobCardImportService.LINE_ITEMS_FOOTER_PATTERN.test(codeVal) &&
+        !JobCardImportService.PAGE_HEADER_PATTERN.test(codeVal)
+      ) {
+        return Math.max(last, r);
+      }
+      return last;
+    }, aiEndRow);
+
+    if (lastItemRow > aiEndRow) {
+      this.logger.log(
+        `Extended line items endRow from ${aiEndRow} to ${lastItemRow} (multi-page document)`,
+      );
+    }
+
+    return lastItemRow;
   }
 
   private extractLineItemsFromGrid(
