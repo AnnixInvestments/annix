@@ -9,7 +9,7 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
+import { In, Repository } from "typeorm";
 import { AuditService } from "../../audit/audit.service";
 import { AuditAction } from "../../audit/entities/audit-log.entity";
 import { now } from "../../lib/datetime";
@@ -22,6 +22,7 @@ import {
 } from "../entities/job-card.entity";
 import { JobCardActionCompletion } from "../entities/job-card-action-completion.entity";
 import { ApprovalStatus, JobCardApproval } from "../entities/job-card-approval.entity";
+import { JobCardBackgroundCompletion } from "../entities/job-card-background-completion.entity";
 import { JobCardDocument, JobCardDocumentType } from "../entities/job-card-document.entity";
 import { StockControlRole } from "../entities/stock-control-user.entity";
 import { WorkflowStepConfig } from "../entities/workflow-step-config.entity";
@@ -57,6 +58,8 @@ export class JobCardWorkflowService {
     private readonly documentRepo: Repository<JobCardDocument>,
     @InjectRepository(JobCardActionCompletion)
     private readonly actionCompletionRepo: Repository<JobCardActionCompletion>,
+    @InjectRepository(JobCardBackgroundCompletion)
+    private readonly bgCompletionRepo: Repository<JobCardBackgroundCompletion>,
     @Inject(STORAGE_SERVICE)
     private readonly storageService: IStorageService,
     private readonly signatureService: SignatureService,
@@ -760,6 +763,72 @@ export class JobCardWorkflowService {
         "You are not assigned to this workflow step. Only the assigned person can approve.",
       );
     }
+  }
+
+  async effectiveWorkflowStatuses(
+    companyId: number,
+    jobCards: Array<{ id: number; workflowStatus: string }>,
+  ): Promise<Record<number, string>> {
+    if (jobCards.length === 0) {
+      return {};
+    }
+
+    const [fgSteps, bgSteps] = await Promise.all([
+      this.stepConfigService.orderedSteps(companyId),
+      this.stepConfigService.backgroundSteps(companyId),
+    ]);
+
+    const jobCardIds = jobCards.map((jc) => jc.id);
+
+    const completions =
+      jobCardIds.length > 0
+        ? await this.bgCompletionRepo.find({
+            where: { companyId, jobCardId: In(jobCardIds) },
+            select: ["jobCardId", "stepKey"],
+          })
+        : [];
+
+    const completedByJob = completions.reduce<Record<number, Set<string>>>((acc, c) => {
+      const set = acc[c.jobCardId] || new Set<string>();
+      set.add(c.stepKey);
+      return { ...acc, [c.jobCardId]: set };
+    }, {});
+
+    const bgByTrigger = bgSteps.reduce<Record<string, string[]>>((acc, s) => {
+      const trigger = s.triggerAfterStep;
+      if (!trigger) {
+        return acc;
+      }
+      return { ...acc, [trigger]: [...(acc[trigger] || []), s.key] };
+    }, {});
+
+    return jobCards.reduce<Record<number, string>>((acc, jc) => {
+      const currentStep = this.currentFgStep(jc.workflowStatus, fgSteps);
+      if (!currentStep) {
+        return { ...acc, [jc.id]: jc.workflowStatus };
+      }
+
+      const currentIdx = fgSteps.findIndex((s) => s.key === currentStep.key);
+      if (currentIdx <= 0) {
+        return { ...acc, [jc.id]: jc.workflowStatus };
+      }
+
+      const previousFgKey = fgSteps[currentIdx - 1].key;
+      const requiredBgKeys = bgByTrigger[previousFgKey] || [];
+
+      if (requiredBgKeys.length === 0) {
+        return { ...acc, [jc.id]: jc.workflowStatus };
+      }
+
+      const completed = completedByJob[jc.id] || new Set<string>();
+      const allBgDone = requiredBgKeys.every((key) => completed.has(key));
+
+      if (allBgDone) {
+        return { ...acc, [jc.id]: jc.workflowStatus };
+      }
+
+      return { ...acc, [jc.id]: previousFgKey };
+    }, {});
   }
 
   private static readonly LEGACY_STATUS_POSITION: Record<string, number> = {

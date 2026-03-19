@@ -452,7 +452,7 @@ export default function JobCardsPage() {
                     ) : null}
                   </td>
                   <td className="hidden xl:table-cell px-6 py-4 whitespace-nowrap">
-                    <CompactWorkflowStepper workflowStatus={job.workflowStatus || job.status} />
+                    <CompactWorkflowStepper workflowStatus={job.effectiveWorkflowStatus || job.workflowStatus || job.status} />
                   </td>
                   <td className="hidden lg:table-cell px-6 py-4 whitespace-nowrap">
                     {dataBookStatuses[job.id] ? (

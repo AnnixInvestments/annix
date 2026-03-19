@@ -324,6 +324,7 @@ export interface JobCard {
   parentJobCardId: number | null;
   jtDnNumber: string | null;
   workflowCeiling: string | null;
+  effectiveWorkflowStatus?: string;
   allocations?: StockAllocation[];
   lineItems?: JobCardLineItem[];
 }

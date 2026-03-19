@@ -3,7 +3,7 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { IsNull, Repository } from "typeorm";
 import { AiUsageService } from "../../ai-usage/ai-usage.service";
 import { AiApp, AiProvider } from "../../ai-usage/entities/ai-usage-log.entity";
-import { fromJSDate, now } from "../../lib/datetime";
+import { fromISO, fromJSDate, now } from "../../lib/datetime";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
 import { DeliveryNote } from "../entities/delivery-note.entity";
 import {
@@ -234,7 +234,7 @@ export class InvoiceExtractionService {
           `Failed to save error status for invoice ${invoiceId}: ${saveError.message}`,
         );
       }
-      return this.invoiceRepo.findOne({ where: { id: invoiceId } });
+      return this.invoiceRepo.findOne({ where: { id: invoiceId } }) as Promise<SupplierInvoice>;
     }
   }
 

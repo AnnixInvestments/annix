@@ -524,6 +524,7 @@ export default function JobCardDetailPage() {
       setDecisionError(null);
       await stockControlApiClient.placeRequisitionDecision(jobId);
       fetchData();
+      handleTabChange("requisition");
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to place requisition";
       setDecisionError(message);
