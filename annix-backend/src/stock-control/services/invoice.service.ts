@@ -1,9 +1,9 @@
 import { Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { IsNull, Repository } from "typeorm";
+import { IsNull, LessThan, Repository } from "typeorm";
 import { AuditService } from "../../audit/audit.service";
 import { AuditAction } from "../../audit/entities/audit-log.entity";
-import { fromISO, fromJSDate } from "../../lib/datetime";
+import { fromISO, fromJSDate, now } from "../../lib/datetime";
 import { IStorageService, STORAGE_SERVICE } from "../../storage/storage.interface";
 import { DeliveryNote } from "../entities/delivery-note.entity";
 import { InvoiceClarification } from "../entities/invoice-clarification.entity";
@@ -91,6 +91,8 @@ export class InvoiceService {
     page: number = 1,
     limit: number = 50,
   ): Promise<SupplierInvoice[]> {
+    await this.recoverStaleProcessingInvoices(companyId);
+
     const invoices = await this.invoiceRepo.find({
       where: { companyId },
       relations: ["deliveryNote"],
@@ -100,6 +102,44 @@ export class InvoiceService {
     });
 
     return Promise.all(invoices.map((inv) => this.resolveScanUrl(inv)));
+  }
+
+  private async recoverStaleProcessingInvoices(companyId: number): Promise<void> {
+    const staleThreshold = now().minus({ minutes: 5 }).toJSDate();
+    const staleInvoices = await this.invoiceRepo.find({
+      where: {
+        companyId,
+        extractionStatus: InvoiceExtractionStatus.PROCESSING,
+        updatedAt: LessThan(staleThreshold),
+      },
+    });
+
+    if (staleInvoices.length === 0) return;
+
+    await Promise.all(
+      staleInvoices.map(async (invoice) => {
+        const itemCount = await this.invoiceItemRepo.count({
+          where: { invoiceId: invoice.id },
+        });
+
+        if (itemCount > 0) {
+          const pendingClarifications = await this.clarificationRepo.count({
+            where: { invoiceId: invoice.id, status: "pending" as any },
+          });
+          invoice.extractionStatus =
+            pendingClarifications > 0
+              ? InvoiceExtractionStatus.NEEDS_CLARIFICATION
+              : InvoiceExtractionStatus.AWAITING_APPROVAL;
+        } else {
+          invoice.extractionStatus = InvoiceExtractionStatus.FAILED;
+        }
+
+        this.logger.warn(
+          `Recovered stale PROCESSING invoice ${invoice.id} → ${invoice.extractionStatus}`,
+        );
+        return this.invoiceRepo.save(invoice);
+      }),
+    );
   }
 
   async findById(companyId: number, id: number): Promise<SupplierInvoice> {

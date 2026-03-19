@@ -79,6 +79,10 @@ export class UpdateInvoiceItemDto {
   @IsOptional()
   @IsString()
   unitType?: string;
+
+  @IsOptional()
+  @IsString()
+  extractedDescription?: string;
 }
 
 export class ConfirmCpoImportDto {

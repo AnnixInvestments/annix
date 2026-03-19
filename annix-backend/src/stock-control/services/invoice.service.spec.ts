@@ -22,9 +22,13 @@ describe("InvoiceService", () => {
     update: jest.fn().mockResolvedValue({ affected: 1 }),
   };
 
-  const mockInvoiceItemRepo = {};
+  const mockInvoiceItemRepo = {
+    count: jest.fn().mockResolvedValue(0),
+  };
 
-  const mockClarificationRepo = {};
+  const mockClarificationRepo = {
+    count: jest.fn().mockResolvedValue(0),
+  };
 
   const mockDeliveryNoteRepo = {
     findOne: jest.fn(),
@@ -190,7 +194,7 @@ describe("InvoiceService", () => {
 
   describe("findAll", () => {
     it("returns paginated invoices with presigned URLs", async () => {
-      mockInvoiceRepo.find.mockResolvedValue([
+      mockInvoiceRepo.find.mockResolvedValueOnce([]).mockResolvedValueOnce([
         { id: 1, scanUrl: "stock-control/invoices/scan1.pdf" },
         { id: 2, scanUrl: null },
       ]);
@@ -212,7 +216,7 @@ describe("InvoiceService", () => {
     });
 
     it("applies correct offset for page 2", async () => {
-      mockInvoiceRepo.find.mockResolvedValue([]);
+      mockInvoiceRepo.find.mockResolvedValueOnce([]).mockResolvedValueOnce([]);
 
       await service.findAll(1, 2, 25);
 

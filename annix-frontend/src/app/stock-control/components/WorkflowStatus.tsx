@@ -82,7 +82,9 @@ const resolveBgChainFlat = (
 ): BackgroundStepStatus[] => {
   const direct = bgByTrigger[trigger] || [];
   return direct.reduce<BackgroundStepStatus[]>((chain, bg) => {
-    const rest = bgKeySet.has(bg.stepKey) ? resolveBgChainFlat(bg.stepKey, bgByTrigger, bgKeySet) : [];
+    const rest = bgKeySet.has(bg.stepKey)
+      ? resolveBgChainFlat(bg.stepKey, bgByTrigger, bgKeySet)
+      : [];
     return [...chain, bg, ...rest];
   }, []);
 };

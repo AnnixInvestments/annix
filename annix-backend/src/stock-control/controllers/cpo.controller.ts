@@ -88,6 +88,7 @@ export class CpoController {
   }
 
   @Post("upload")
+  @StockControlRoles("accounts", "manager", "admin")
   @UseInterceptors(FileInterceptor("file"))
   @ApiOperation({ summary: "Upload and parse a file for CPO import" })
   async upload(@UploadedFile() file: Express.Multer.File, @Req() req: any) {
@@ -103,6 +104,7 @@ export class CpoController {
   }
 
   @Post("confirm")
+  @StockControlRoles("accounts", "manager", "admin")
   @ApiOperation({ summary: "Confirm and import mapped rows as CPO" })
   async confirm(@Body() dto: ConfirmCpoImportDto, @Req() req: any) {
     const result = await this.cpoService.createFromImportRows(

@@ -372,6 +372,7 @@ function extractMappedRows(
       grouped.forEach((entry) => {
         const cleanedLines: Record<string, string>[] = [];
         const pendingNotes: string[] = [];
+        let sectionStartIdx = 0;
 
         entry.lines.forEach((li) => {
           const code = (li.itemCode || "").trim();
@@ -388,12 +389,17 @@ function extractMappedRows(
 
           if (pendingNotes.length > 0 && cleanedLines.length > 0) {
             const specText = pendingNotes.join("\n");
-            const lastItem = cleanedLines[cleanedLines.length - 1];
-            cleanedLines[cleanedLines.length - 1] = {
-              ...lastItem,
-              notes: lastItem.notes ? `${lastItem.notes}\n${specText}` : specText,
-            };
+            cleanedLines.slice(sectionStartIdx).forEach((_sectionItem, i) => {
+              const idx = sectionStartIdx + i;
+              cleanedLines[idx] = {
+                ...cleanedLines[idx],
+                notes: cleanedLines[idx].notes
+                  ? `${cleanedLines[idx].notes}\n${specText}`
+                  : specText,
+              };
+            });
             pendingNotes.length = 0;
+            sectionStartIdx = cleanedLines.length;
           }
 
           cleanedLines.push({ ...li });
@@ -401,11 +407,13 @@ function extractMappedRows(
 
         if (pendingNotes.length > 0 && cleanedLines.length > 0) {
           const specText = pendingNotes.join("\n");
-          const lastItem = cleanedLines[cleanedLines.length - 1];
-          cleanedLines[cleanedLines.length - 1] = {
-            ...lastItem,
-            notes: lastItem.notes ? `${lastItem.notes}\n${specText}` : specText,
-          };
+          cleanedLines.slice(sectionStartIdx).forEach((_sectionItem, i) => {
+            const idx = sectionStartIdx + i;
+            cleanedLines[idx] = {
+              ...cleanedLines[idx],
+              notes: cleanedLines[idx].notes ? `${cleanedLines[idx].notes}\n${specText}` : specText,
+            };
+          });
         }
 
         const allSpecs = cleanedLines.map((li) => li.notes || "").filter(Boolean);

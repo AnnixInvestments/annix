@@ -88,6 +88,7 @@ function isNoteRow(li: LineItemImportRow): boolean {
 function mergeNoteRowsIntoItems(items: LineItemImportRow[]): LineItemImportRow[] {
   const result: LineItemImportRow[] = [];
   const pendingNotes: string[] = [];
+  let sectionStartIdx = 0;
 
   items.forEach((item) => {
     if (isNoteRow(item)) {
@@ -101,12 +102,15 @@ function mergeNoteRowsIntoItems(items: LineItemImportRow[]): LineItemImportRow[]
 
     if (pendingNotes.length > 0 && result.length > 0) {
       const specText = pendingNotes.join("\n");
-      const lastItem = result[result.length - 1];
-      result[result.length - 1] = {
-        ...lastItem,
-        notes: lastItem.notes ? `${lastItem.notes}\n${specText}` : specText,
-      };
+      result.slice(sectionStartIdx).forEach((_sectionItem, i) => {
+        const idx = sectionStartIdx + i;
+        result[idx] = {
+          ...result[idx],
+          notes: result[idx].notes ? `${result[idx].notes}\n${specText}` : specText,
+        };
+      });
       pendingNotes.length = 0;
+      sectionStartIdx = result.length;
     }
 
     result.push({ ...item });
@@ -114,11 +118,13 @@ function mergeNoteRowsIntoItems(items: LineItemImportRow[]): LineItemImportRow[]
 
   if (pendingNotes.length > 0 && result.length > 0) {
     const specText = pendingNotes.join("\n");
-    const lastItem = result[result.length - 1];
-    result[result.length - 1] = {
-      ...lastItem,
-      notes: lastItem.notes ? `${lastItem.notes}\n${specText}` : specText,
-    };
+    result.slice(sectionStartIdx).forEach((_sectionItem, i) => {
+      const idx = sectionStartIdx + i;
+      result[idx] = {
+        ...result[idx],
+        notes: result[idx].notes ? `${result[idx].notes}\n${specText}` : specText,
+      };
+    });
   }
 
   return result;

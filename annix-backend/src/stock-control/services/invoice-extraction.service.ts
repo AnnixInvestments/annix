@@ -890,6 +890,7 @@ export class InvoiceExtractionService {
       quantity?: number;
       unitPrice?: number;
       unitType?: string;
+      extractedDescription?: string;
     },
     userId: number | null,
   ): Promise<SupplierInvoiceItem> {
@@ -929,6 +930,18 @@ export class InvoiceExtractionService {
         corrected: updates.unitType,
       });
       item.unitType = updates.unitType;
+    }
+
+    if (
+      updates.extractedDescription !== undefined &&
+      updates.extractedDescription !== item.extractedDescription
+    ) {
+      corrections.push({
+        field: "extractedDescription",
+        original: item.extractedDescription ?? "",
+        corrected: updates.extractedDescription,
+      });
+      item.extractedDescription = updates.extractedDescription;
     }
 
     const savedItem = await this.invoiceItemRepo.save(item);

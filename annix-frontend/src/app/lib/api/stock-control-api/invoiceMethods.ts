@@ -32,7 +32,12 @@ declare module "./base" {
     updateInvoiceItem(
       invoiceId: number,
       itemId: number,
-      updates: { quantity?: number; unitPrice?: number; unitType?: string },
+      updates: {
+        quantity?: number;
+        unitPrice?: number;
+        unitType?: string;
+        extractedDescription?: string;
+      },
     ): Promise<SupplierInvoiceItem>;
     manualMatchInvoiceItem(
       invoiceId: number,

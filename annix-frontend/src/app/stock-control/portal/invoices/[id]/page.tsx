@@ -70,7 +70,8 @@ export default function InvoiceDetailPage() {
     quantity: string;
     unitPrice: string;
     unitType: string;
-  }>({ quantity: "", unitPrice: "", unitType: "" });
+    description: string;
+  }>({ quantity: "", unitPrice: "", unitType: "", description: "" });
   const [isSavingItem, setIsSavingItem] = useState(false);
 
   const fetchInvoice = useCallback(async () => {
@@ -243,6 +244,7 @@ export default function InvoiceDetailPage() {
       quantity: String(item.quantity),
       unitPrice: item.unitPrice !== null ? String(item.unitPrice) : "",
       unitType: uType || sItem?.unitOfMeasure || "each",
+      description: item.extractedDescription || "",
     });
   };
 
@@ -257,6 +259,7 @@ export default function InvoiceDetailPage() {
         quantity: Number(editValues.quantity),
         unitPrice: Number(editValues.unitPrice),
         unitType: editValues.unitType,
+        extractedDescription: editValues.description,
       });
       setEditingItemId(null);
       await fetchInvoice();
@@ -470,7 +473,19 @@ export default function InvoiceDetailPage() {
                           {item.lineNumber}
                         </td>
                         <td className="px-4 py-4 text-sm text-gray-900">
-                          <div>{item.extractedDescription}</div>
+                          {isEditing ? (
+                            <input
+                              type="text"
+                              value={editValues.description}
+                              onChange={(e) =>
+                                setEditValues((prev) => ({ ...prev, description: e.target.value }))
+                              }
+                              onClick={(e) => e.stopPropagation()}
+                              className="w-full px-2 py-1 text-sm border border-teal-300 rounded focus:ring-1 focus:ring-teal-500 focus:border-teal-500"
+                            />
+                          ) : (
+                            <div>{item.extractedDescription}</div>
+                          )}
                           {item.extractedSku && (
                             <div className="text-xs text-gray-500">SKU: {item.extractedSku}</div>
                           )}
