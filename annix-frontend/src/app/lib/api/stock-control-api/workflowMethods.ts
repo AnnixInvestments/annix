@@ -100,7 +100,7 @@ declare module "./base" {
     actionCompletions(jobCardId: number): Promise<JobCardActionCompletion[]>;
     archiveUrls(jobCardId: number): Promise<{ url: string; path: string }[]>;
     updateStepActionLabel(key: string, actionLabel: string | null): Promise<{ success: boolean }>;
-    placeRequisitionDecision(jobCardId: number): Promise<{ success: boolean }>;
+    placeRequisitionDecision(jobCardId: number): Promise<{ success: boolean; requisitionId: number | null }>;
     useCurrentStockDecision(jobCardId: number): Promise<{ success: boolean }>;
   }
 }

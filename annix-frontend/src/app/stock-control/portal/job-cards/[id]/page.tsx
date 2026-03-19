@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
 import type {
@@ -42,6 +42,7 @@ import { isValidLineItem, STATUS_TRANSITIONS, statusBadgeColor } from "./lib/hel
 
 export default function JobCardDetailPage() {
   const params = useParams();
+  const router = useRouter();
   const authContext = useStockControlAuth();
   const user = authContext.user;
   const profile = authContext.profile;
@@ -522,9 +523,13 @@ export default function JobCardDetailPage() {
     try {
       setIsProcessingDecision(true);
       setDecisionError(null);
-      await stockControlApiClient.placeRequisitionDecision(jobId);
+      const result = await stockControlApiClient.placeRequisitionDecision(jobId);
       fetchData();
-      handleTabChange("requisition");
+      if (result.requisitionId) {
+        router.push(`/stock-control/portal/requisitions/${result.requisitionId}`);
+      } else {
+        handleTabChange("requisition");
+      }
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to place requisition";
       setDecisionError(message);

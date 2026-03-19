@@ -142,23 +142,17 @@ export class CoatingAnalysisService {
         where: { jobCardId, companyId },
       });
 
+      const lineItemTotalM2 = this.sumLineItemM2WithQuantity(lineItems);
       const paintM2 = this.sumPaintM2(lineItems);
       let calculatedExtM2 = 0;
       let calculatedIntM2 = 0;
 
-      if (paintM2 === 0) {
+      if (lineItemTotalM2 === 0 && paintM2 === 0) {
         const calculated = await this.calculatePipeM2(lineItems);
         calculatedExtM2 = calculated.extM2;
         calculatedIntM2 = calculated.intM2;
         this.logger.log(
-          `No paint line items for JC ${jobCardId}, calculated from pipe dims: ext=${calculatedExtM2.toFixed(2)}, int=${calculatedIntM2.toFixed(2)}`,
-        );
-      }
-
-      const lineItemTotalM2 = this.sumLineItemM2WithQuantity(lineItems);
-      if (calculatedExtM2 === 0 && calculatedIntM2 === 0 && lineItemTotalM2 > 0) {
-        this.logger.log(
-          `Using line item m² × qty fallback for JC ${jobCardId}: ${lineItemTotalM2.toFixed(2)}`,
+          `No line item m² for JC ${jobCardId}, calculated from pipe dims: ext=${calculatedExtM2.toFixed(2)}, int=${calculatedIntM2.toFixed(2)}`,
         );
       }
 
@@ -214,28 +208,18 @@ export class CoatingAnalysisService {
       const hasInt = aiResult.coats.some((c) => c.area === "internal");
       const needsIntM2 = hasInt || hasInternalRubberLining;
 
-      if (paintM2 > 0) {
+      if (lineItemTotalM2 > 0) {
+        analysis.extM2 = hasExt ? lineItemTotalM2 : 0;
+        analysis.intM2 = needsIntM2 ? lineItemTotalM2 : 0;
+      } else if (paintM2 > 0) {
         analysis.extM2 = hasExt ? paintM2 : 0;
         analysis.intM2 = needsIntM2 ? paintM2 : 0;
       } else if (calculatedExtM2 > 0 || calculatedIntM2 > 0) {
         analysis.extM2 = hasExt ? calculatedExtM2 : 0;
         analysis.intM2 = needsIntM2 ? calculatedIntM2 : 0;
       } else {
-        analysis.extM2 = hasExt ? lineItemTotalM2 : 0;
-        analysis.intM2 = needsIntM2 ? lineItemTotalM2 : 0;
-      }
-
-      if (analysis.extM2 === 0 && hasExt && lineItemTotalM2 > 0) {
-        this.logger.log(
-          `Ext m² was 0 despite external coat detected for JC ${jobCardId}, using line item total: ${lineItemTotalM2.toFixed(2)}`,
-        );
-        analysis.extM2 = lineItemTotalM2;
-      }
-      if (analysis.intM2 === 0 && needsIntM2 && lineItemTotalM2 > 0) {
-        this.logger.log(
-          `Int m² was 0 despite internal coat/lining detected for JC ${jobCardId}, using line item total: ${lineItemTotalM2.toFixed(2)}`,
-        );
-        analysis.intM2 = lineItemTotalM2;
+        analysis.extM2 = 0;
+        analysis.intM2 = 0;
       }
 
       const retentionFactor = await this.lossFactorForCompany(companyId);
@@ -666,17 +650,29 @@ export class CoatingAnalysisService {
   ): Promise<StockAssessmentItem[]> {
     const stockItems = await this.stockItemRepo.find({ where: { companyId } });
 
-    return coats.map((coat) => {
-      const matched = this.fuzzyMatchStockItem(coat.product, stockItems);
+    const grouped = coats.reduce<Record<string, { totalRequired: number; coat: CoatDetail }>>(
+      (acc, coat) => {
+        const key = coat.product;
+        if (acc[key]) {
+          acc[key].totalRequired = acc[key].totalRequired + coat.litersRequired;
+        } else {
+          acc[key] = { totalRequired: coat.litersRequired, coat };
+        }
+        return acc;
+      },
+      {},
+    );
 
+    return Object.values(grouped).map(({ totalRequired, coat }) => {
+      const matched = this.fuzzyMatchStockItem(coat.product, stockItems);
       return {
         product: coat.product,
         stockItemId: matched?.id ?? null,
         stockItemName: matched?.name ?? null,
         currentStock: matched ? Number(matched.quantity) : 0,
-        required: coat.litersRequired,
+        required: totalRequired,
         unit: "liters",
-        sufficient: matched ? Number(matched.quantity) >= coat.litersRequired : false,
+        sufficient: matched ? Number(matched.quantity) >= totalRequired : false,
       };
     });
   }

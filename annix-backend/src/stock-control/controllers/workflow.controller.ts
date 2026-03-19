@@ -497,22 +497,6 @@ export class WorkflowController {
       id,
       req.user.name,
     );
-    const reqStep = await this.resolveRequisitionStep(req.user.companyId);
-    if (reqStep) {
-      try {
-        await this.backgroundStepService.completeStep(
-          req.user.companyId,
-          id,
-          reqStep,
-          req.user,
-          "Requisition placed via stock decision",
-        );
-      } catch (err) {
-        this.logger.warn(
-          `Could not complete BG step "${reqStep}" for job card ${id}: ${err.message}`,
-        );
-      }
-    }
     return { success: true, requisitionId: requisition?.id ?? null };
   }
 
@@ -541,9 +525,4 @@ export class WorkflowController {
     return { success: true };
   }
 
-  private async resolveRequisitionStep(companyId: number): Promise<string | null> {
-    const bgSteps = await this.stepConfigService.backgroundSteps(companyId);
-    const match = bgSteps.find((s) => s.key === "requisition" || s.key === "requisition_sent");
-    return match ? match.key : null;
-  }
 }
