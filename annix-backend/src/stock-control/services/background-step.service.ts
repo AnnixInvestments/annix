@@ -147,6 +147,59 @@ export class BackgroundStepService {
     return saved;
   }
 
+  async completeMultipleSteps(
+    companyId: number,
+    jobCardId: number,
+    stepKeys: string[],
+    user: UserContext,
+    notes?: string,
+  ): Promise<void> {
+    const bgSteps = await this.stepConfigService.backgroundSteps(companyId);
+    const existingCompletions = await this.completionRepo.find({ where: { jobCardId, companyId } });
+    const completedKeys = new Set(existingCompletions.map((c) => c.stepKey));
+
+    const newCompletions = stepKeys
+      .filter((key) => !completedKeys.has(key))
+      .filter((key) => bgSteps.some((s) => s.key === key))
+      .map((key) =>
+        this.completionRepo.create({
+          companyId,
+          jobCardId,
+          stepKey: key,
+          completedById: user.id,
+          completedByName: user.name,
+          completedAt: now().toJSDate(),
+          notes: notes ?? null,
+        }),
+      );
+
+    if (newCompletions.length > 0) {
+      await this.completionRepo.save(newCompletions);
+      this.logger.log(
+        `Auto-completed ${newCompletions.length} background step(s) [${stepKeys.join(", ")}] for job card ${jobCardId} by ${user.name}`,
+      );
+    }
+
+    const allCompletions = await this.completionRepo.find({ where: { jobCardId, companyId } });
+    const allCompletedKeys = new Set(allCompletions.map((c) => c.stepKey));
+
+    const triggerGroups = bgSteps.reduce<Record<string, string[]>>((acc, s) => {
+      const trigger = s.triggerAfterStep ?? "__root__";
+      return { ...acc, [trigger]: [...(acc[trigger] || []), s.key] };
+    }, {});
+
+    const allGroupsComplete = Object.values(triggerGroups).every((group) =>
+      group.every((key) => allCompletedKeys.has(key)),
+    );
+
+    if (allGroupsComplete) {
+      await this.workflowService.advancePastBackgroundSteps(companyId, jobCardId, {
+        id: user.id,
+        name: user.name,
+      });
+    }
+  }
+
   async statusForJobCard(
     companyId: number,
     jobCardId: number,

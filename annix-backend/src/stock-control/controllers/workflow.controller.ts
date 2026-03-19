@@ -48,6 +48,7 @@ import { BackgroundStepService } from "../services/background-step.service";
 import { DispatchService } from "../services/dispatch.service";
 import { JobCardPdfService } from "../services/job-card-pdf.service";
 import { JobCardWorkflowService } from "../services/job-card-workflow.service";
+import { RequisitionService } from "../services/requisition.service";
 import { WebPushService } from "../services/web-push.service";
 import { WorkflowAssignmentService } from "../services/workflow-assignment.service";
 import { WorkflowNotificationService } from "../services/workflow-notification.service";
@@ -68,6 +69,7 @@ export class WorkflowController {
     private readonly webPushService: WebPushService,
     private readonly stepConfigService: WorkflowStepConfigService,
     private readonly backgroundStepService: BackgroundStepService,
+    private readonly requisitionService: RequisitionService,
   ) {}
 
   @Post("job-cards/:id/documents")
@@ -485,5 +487,32 @@ export class WorkflowController {
   @ApiOperation({ summary: "Pending background steps for current user" })
   async pendingBackgroundSteps(@Req() req: any) {
     return this.backgroundStepService.pendingForUser(req.user.id, req.user.companyId);
+  }
+
+  @Post("job-cards/:id/stock-decision/place-requisition")
+  @ApiOperation({ summary: "Place a requisition for coating materials" })
+  async placeRequisition(@Req() req: any, @Param("id") id: number) {
+    await this.requisitionService.createFromJobCard(req.user.companyId, id, req.user.name);
+    await this.backgroundStepService.completeStep(
+      req.user.companyId,
+      id,
+      "requisition",
+      req.user,
+      "Requisition placed via stock decision",
+    );
+    return { success: true };
+  }
+
+  @Post("job-cards/:id/stock-decision/use-current-stock")
+  @ApiOperation({ summary: "Use current stock and skip requisition steps" })
+  async useCurrentStock(@Req() req: any, @Param("id") id: number) {
+    await this.backgroundStepService.completeMultipleSteps(
+      req.user.companyId,
+      id,
+      ["requisition", "req_auth", "order_placement"],
+      req.user,
+      "Using current stock — requisition not required",
+    );
+    return { success: true };
   }
 }

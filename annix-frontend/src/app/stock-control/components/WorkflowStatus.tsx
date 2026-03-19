@@ -54,6 +54,7 @@ const resolveStepState = (
   approvalByStep: Record<string, JobCardApproval>,
   allSteps: ForegroundStep[],
   bgByTrigger: Record<string, BackgroundStepStatus[]>,
+  bgKeySet: Set<string>,
 ): StepState => {
   const approval = approvalByStep[stepKey];
 
@@ -63,7 +64,7 @@ const resolveStepState = (
     if (approval?.status === "rejected") return "rejected";
     if (index > 0) {
       const prevKey = allSteps[index - 1].key;
-      const prevBgTasks = bgByTrigger[prevKey] || [];
+      const prevBgTasks = resolveBgChainFlat(prevKey, bgByTrigger, bgKeySet);
       const prevBgIncomplete =
         prevBgTasks.length > 0 && prevBgTasks.some((bg) => bg.completedAt === null);
       if (prevBgIncomplete) return "pending";
@@ -72,6 +73,18 @@ const resolveStepState = (
   } else {
     return "pending";
   }
+};
+
+const resolveBgChainFlat = (
+  trigger: string,
+  bgByTrigger: Record<string, BackgroundStepStatus[]>,
+  bgKeySet: Set<string>,
+): BackgroundStepStatus[] => {
+  const direct = bgByTrigger[trigger] || [];
+  return direct.reduce<BackgroundStepStatus[]>((chain, bg) => {
+    const rest = bgKeySet.has(bg.stepKey) ? resolveBgChainFlat(bg.stepKey, bgByTrigger, bgKeySet) : [];
+    return [...chain, bg, ...rest];
+  }, []);
 };
 
 const buildApprovalMap = (approvals: JobCardApproval[]): Record<string, JobCardApproval> =>
@@ -300,6 +313,11 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
     Record<string, { left: number; right: number }>
   >({});
 
+  const bgKeySet = useMemo(
+    () => new Set(backgroundSteps.map((bg) => bg.stepKey)),
+    [backgroundSteps],
+  );
+
   const allBranches = useMemo(
     () => collectBranches(allSteps, backgroundSteps, bgByTrigger),
     [allSteps, backgroundSteps, bgByTrigger],
@@ -511,6 +529,7 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
             approvalByStep,
             allSteps,
             bgByTrigger,
+            bgKeySet,
           );
           const approval = approvalByStep[step.key];
           const isFirst = index === 0;
@@ -542,7 +561,9 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
                 {!isFirst &&
                   (() => {
                     const prevStepKey = allSteps[index - 1]?.key;
-                    const prevBgTasks = prevStepKey ? bgByTrigger[prevStepKey] || [] : [];
+                    const prevBgTasks = prevStepKey
+                      ? resolveBgChainFlat(prevStepKey, bgByTrigger, bgKeySet)
+                      : [];
                     const prevBgAllComplete =
                       prevBgTasks.length === 0 ||
                       prevBgTasks.every((bg) => bg.completedAt !== null);
@@ -628,7 +649,7 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
 
                 {!isLast &&
                   (() => {
-                    const thisBgTasks = bgByTrigger[step.key] || [];
+                    const thisBgTasks = resolveBgChainFlat(step.key, bgByTrigger, bgKeySet);
                     const thisBgAllComplete =
                       thisBgTasks.length === 0 ||
                       thisBgTasks.every((bg) => bg.completedAt !== null);
@@ -809,6 +830,11 @@ function MobileTransitMap(props: MobileTransitMapProps) {
     onSetHoveredRejection,
   } = props;
 
+  const bgKeySet = useMemo(
+    () => new Set(backgroundSteps.map((bg) => bg.stepKey)),
+    [backgroundSteps],
+  );
+
   const allBranches = useMemo(
     () => collectBranches(allSteps, backgroundSteps, bgByTrigger),
     [allSteps, backgroundSteps, bgByTrigger],
@@ -902,6 +928,7 @@ function MobileTransitMap(props: MobileTransitMapProps) {
           approvalByStep,
           allSteps,
           bgByTrigger,
+          bgKeySet,
         );
         const approval = approvalByStep[step.key];
         const isLast = index === allSteps.length - 1;
@@ -941,7 +968,7 @@ function MobileTransitMap(props: MobileTransitMapProps) {
 
                 {!isLast &&
                   (() => {
-                    const thisBgTasks = bgByTrigger[step.key] || [];
+                    const thisBgTasks = resolveBgChainFlat(step.key, bgByTrigger, bgKeySet);
                     const thisBgAllComplete =
                       thisBgTasks.length === 0 ||
                       thisBgTasks.every((bg) => bg.completedAt !== null);

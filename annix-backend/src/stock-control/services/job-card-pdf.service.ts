@@ -343,7 +343,41 @@ export class JobCardPdfService {
     y += 5;
 
     doc.font("Helvetica").fontSize(8);
-    coatingAnalysis.coats.forEach((coat) => {
+
+    const combinedCoats = coatingAnalysis.coats.reduce<
+      Array<{
+        product: string;
+        minDftUm: number;
+        maxDftUm: number;
+        coverageM2PerLiter: number;
+        litersRequired: number;
+      }>
+    >((acc, coat) => {
+      const existing = acc.find(
+        (c) =>
+          c.product === coat.product &&
+          c.minDftUm === coat.minDftUm &&
+          c.maxDftUm === coat.maxDftUm &&
+          c.coverageM2PerLiter === coat.coverageM2PerLiter,
+      );
+      if (existing) {
+        return acc.map((c) =>
+          c === existing ? { ...c, litersRequired: c.litersRequired + coat.litersRequired } : c,
+        );
+      }
+      return [
+        ...acc,
+        {
+          product: coat.product,
+          minDftUm: coat.minDftUm,
+          maxDftUm: coat.maxDftUm,
+          coverageM2PerLiter: coat.coverageM2PerLiter,
+          litersRequired: coat.litersRequired,
+        },
+      ];
+    }, []);
+
+    combinedCoats.forEach((coat) => {
       const dftRange =
         coat.minDftUm === coat.maxDftUm
           ? String(coat.minDftUm)

@@ -27,6 +27,10 @@ interface CoatingAnalysisTabProps {
   isAdmin: boolean;
   sourceFileUrl: string | null;
   lineItems: JobCardLineItem[];
+  showStockDecision: boolean;
+  onPlaceRequisition: () => void;
+  onUseCurrentStock: () => void;
+  isProcessingDecision: boolean;
 }
 
 interface ExtractionCorrection {
@@ -458,6 +462,45 @@ export function CoatingAnalysisTab(props: CoatingAnalysisTabProps) {
                         </div>
                       ))}
                     </div>
+                    {props.showStockDecision && (() => {
+                      const allSufficient = deduped.every(
+                        (item) => item.stockItemId !== null && item.sufficient,
+                      );
+                      return (
+                        <div className="mt-4 pt-3 border-t border-gray-100" id="stock-decision">
+                          <h5 className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">
+                            Stock Decision
+                          </h5>
+                          <div className="flex flex-wrap gap-3">
+                            <button
+                              onClick={props.onPlaceRequisition}
+                              disabled={props.isProcessingDecision}
+                              className="px-4 py-2 text-sm font-medium rounded-md bg-amber-600 text-white hover:bg-amber-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+                            >
+                              {props.isProcessingDecision ? "Processing..." : "Place Requisition"}
+                            </button>
+                            <button
+                              onClick={props.onUseCurrentStock}
+                              disabled={props.isProcessingDecision || !allSufficient}
+                              title={
+                                allSufficient
+                                  ? "Reserve current stock for this job"
+                                  : "Insufficient stock — place a requisition instead"
+                              }
+                              className="px-4 py-2 text-sm font-medium rounded-md bg-green-600 text-white hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+                            >
+                              {props.isProcessingDecision ? "Processing..." : "Use Current Stock"}
+                            </button>
+                          </div>
+                          {!allSufficient && (
+                            <p className="text-xs text-amber-600 mt-2">
+                              Some products are short or not in inventory — place a requisition to
+                              order stock.
+                            </p>
+                          )}
+                        </div>
+                      );
+                    })()}
                   </div>
                 );
               })()}

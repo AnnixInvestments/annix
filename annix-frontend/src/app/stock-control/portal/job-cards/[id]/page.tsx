@@ -474,7 +474,23 @@ export default function JobCardDetailPage() {
     if (currentIdx <= 0) return false;
     const prevStepKey = fgSteps[currentIdx - 1].key;
     const bgSteps = workflowStatus.backgroundSteps || [];
-    const prevBgTasks = bgSteps.filter((bg) => bg.triggerAfterStep === prevStepKey);
+    const fgKeySet = new Set(fgSteps.map((s) => s.key));
+    const bgKeySet = new Set(bgSteps.map((bg) => bg.stepKey));
+    const bgByTrigger = bgSteps.reduce<Record<string, BackgroundStepStatus[]>>((acc, bg) => {
+      const raw = bg.triggerAfterStep;
+      const isFgTrigger = raw !== null && fgKeySet.has(raw);
+      const isBgChain = raw !== null && bgKeySet.has(raw);
+      const trigger = isFgTrigger || isBgChain ? raw : fgSteps[0]?.key || "";
+      return { ...acc, [trigger]: [...(acc[trigger] || []), bg] };
+    }, {});
+    const resolveChain = (trigger: string): BackgroundStepStatus[] => {
+      const direct = bgByTrigger[trigger] || [];
+      return direct.reduce<BackgroundStepStatus[]>((chain, bg) => {
+        const rest = bgKeySet.has(bg.stepKey) ? resolveChain(bg.stepKey) : [];
+        return [...chain, bg, ...rest];
+      }, []);
+    };
+    const prevBgTasks = resolveChain(prevStepKey);
     return prevBgTasks.length > 0 && prevBgTasks.some((bg) => bg.completedAt === null);
   }, [workflowStatus, currentStep]);
 
@@ -487,6 +503,43 @@ export default function JobCardDetailPage() {
   const receptionIsPending = useMemo(() => {
     return userPendingBgSteps.some(isReceptionStep);
   }, [userPendingBgSteps, isReceptionStep]);
+
+  const isRequisitionStep = useCallback(
+    (bg: BackgroundStepStatus) =>
+      bg.stepKey === "requisition" || bg.label?.toLowerCase() === "requisition",
+    [],
+  );
+
+  const requisitionIsPending = useMemo(
+    () => userPendingBgSteps.some(isRequisitionStep),
+    [userPendingBgSteps, isRequisitionStep],
+  );
+
+  const [isProcessingDecision, setIsProcessingDecision] = useState(false);
+
+  const handlePlaceRequisition = async () => {
+    try {
+      setIsProcessingDecision(true);
+      await stockControlApiClient.placeRequisitionDecision(jobId);
+      fetchData();
+    } catch (err) {
+      setError(err instanceof Error ? err : new Error("Failed to place requisition"));
+    } finally {
+      setIsProcessingDecision(false);
+    }
+  };
+
+  const handleUseCurrentStock = async () => {
+    try {
+      setIsProcessingDecision(true);
+      await stockControlApiClient.useCurrentStockDecision(jobId);
+      fetchData();
+    } catch (err) {
+      setError(err instanceof Error ? err : new Error("Failed to use current stock"));
+    } finally {
+      setIsProcessingDecision(false);
+    }
+  };
 
   const { activeTab, visitedTabs, handleTabChange, visibleTabs } = useJobCardTabs(tabDefinitions);
 
@@ -766,6 +819,14 @@ export default function JobCardDetailPage() {
                         </svg>
                         {isDownloadingQr ? "Generating..." : "Print JC"}
                       </button>
+                    ) : isRequisitionStep(bg) ? (
+                      <button
+                        key={bg.stepKey}
+                        onClick={() => handleTabChange("coating")}
+                        className="px-3 py-1.5 text-xs font-medium rounded-md bg-teal-600 text-white hover:bg-teal-700 transition-colors"
+                      >
+                        Stock Assessment
+                      </button>
                     ) : (
                       <button
                         key={bg.stepKey}
@@ -1027,6 +1088,10 @@ export default function JobCardDetailPage() {
               isAdmin={userRole === "admin"}
               sourceFileUrl={jobCard?.sourceFilePath || null}
               lineItems={jobCard?.lineItems || []}
+              showStockDecision={requisitionIsPending}
+              onPlaceRequisition={handlePlaceRequisition}
+              onUseCurrentStock={handleUseCurrentStock}
+              isProcessingDecision={isProcessingDecision}
             />
           </TabPanel>
 
