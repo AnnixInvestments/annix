@@ -1,10 +1,11 @@
-import { Injectable, Logger, NotFoundException } from "@nestjs/common";
+import { Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { InjectRepository } from "@nestjs/typeorm";
 import PDFDocument from "pdfkit";
 import * as QRCode from "qrcode";
 import { ILike, MoreThan, Repository } from "typeorm";
 import { formatDateTime, now } from "../../lib/datetime";
+import { IStorageService, STORAGE_SERVICE } from "../../storage/storage.interface";
 import { JobCardCoatingAnalysis } from "../entities/coating-analysis.entity";
 import type { RubberPlanManualRoll } from "../entities/job-card.entity";
 import { JobCard } from "../entities/job-card.entity";
@@ -39,6 +40,8 @@ export class JobCardPdfService {
     private readonly stockItemRepo: Repository<StockItem>,
     private readonly configService: ConfigService,
     private readonly stepConfigService: WorkflowStepConfigService,
+    @Inject(STORAGE_SERVICE)
+    private readonly storageService: IStorageService,
   ) {}
 
   async generatePrintableJobCard(
@@ -102,6 +105,7 @@ export class JobCardPdfService {
     stepConfigs: { key: string; label: string }[] = [],
   ): Promise<Buffer> {
     const rubberAllocationResult = await this.prepareRubberAllocation(jobCard);
+    const signatureBuffers = await this.fetchSignatureBuffers(approvals);
 
     return new Promise((resolve, reject) => {
       const doc = new PDFDocument({ size: "A4", margin: 50, bufferPages: true });
@@ -132,11 +136,49 @@ export class JobCardPdfService {
         totalPipeQty,
       );
       currentY = this.drawAllocations(doc, jobCard, currentY);
-      currentY = this.drawSignatureBoxes(doc, approvals, currentY, stepConfigs);
+      currentY = this.drawSignatureBoxes(doc, approvals, currentY, stepConfigs, signatureBuffers);
       this.drawFooter(doc);
 
       doc.end();
     });
+  }
+
+  private async fetchSignatureBuffers(
+    approvals: JobCardApproval[],
+  ): Promise<Map<string, Buffer>> {
+    const bufferMap = new Map<string, Buffer>();
+    const approvedWithSignatures = approvals.filter(
+      (a) => a.status === ApprovalStatus.APPROVED && a.signatureUrl,
+    );
+
+    await Promise.all(
+      approvedWithSignatures.map(async (approval) => {
+        try {
+          const storagePath =
+            approval.signatureUrl!.includes("X-Amz-Signature") ||
+            approval.signatureUrl!.startsWith("http")
+              ? this.extractS3Key(approval.signatureUrl!)
+              : approval.signatureUrl!;
+          const imageBuffer = await this.storageService.download(storagePath);
+          bufferMap.set(approval.step, imageBuffer);
+        } catch (err) {
+          this.logger.warn(
+            `Failed to fetch signature for step ${approval.step}: ${err instanceof Error ? err.message : err}`,
+          );
+        }
+      }),
+    );
+
+    return bufferMap;
+  }
+
+  private extractS3Key(url: string): string {
+    try {
+      const parsed = new URL(url);
+      return decodeURIComponent(parsed.pathname.replace(/^\/[^/]+\//, ""));
+    } catch {
+      return url;
+    }
   }
 
   private drawHeader(
@@ -160,7 +202,7 @@ export class JobCardPdfService {
       doc
         .fontSize(10)
         .font("Helvetica")
-        .text(`JC: ${jobCard.jcNumber}`, 400, 80, { align: "right" });
+        .text(`JT: ${jobCard.jcNumber}`, 400, 80, { align: "right" });
     }
 
     doc.moveTo(50, 100).lineTo(545, 100).stroke();
@@ -1117,6 +1159,7 @@ export class JobCardPdfService {
     approvals: JobCardApproval[],
     startY: number,
     stepConfigs: { key: string; label: string }[] = [],
+    signatureBuffers: Map<string, Buffer> = new Map(),
   ): number {
     const steps =
       stepConfigs.length > 0
@@ -1183,11 +1226,20 @@ export class JobCardPdfService {
           .fontSize(6)
           .fillColor("#666666")
           .text(formatDateTime(approval.approvedAt), x + 4, y + 28, { width: boxWidth - 8 });
-        if (approval.signatureUrl) {
-          doc
-            .fontSize(6)
-            .fillColor("#2563EB")
-            .text("[Signed]", x + 4, y + 38, { width: boxWidth - 8 });
+        const sigBuffer = signatureBuffers.get(step);
+        if (sigBuffer) {
+          try {
+            doc.image(sigBuffer, x + 4, y + 36, {
+              width: Math.min(boxWidth - 8, 60),
+              height: 12,
+              fit: [Math.min(boxWidth - 8, 60), 12],
+            });
+          } catch {
+            doc
+              .fontSize(6)
+              .fillColor("#2563EB")
+              .text("[Signed]", x + 4, y + 38, { width: boxWidth - 8 });
+          }
         }
         doc.fillColor("black");
       }

@@ -516,14 +516,17 @@ export default function JobCardDetailPage() {
   );
 
   const [isProcessingDecision, setIsProcessingDecision] = useState(false);
+  const [decisionError, setDecisionError] = useState<string | null>(null);
 
   const handlePlaceRequisition = async () => {
     try {
       setIsProcessingDecision(true);
+      setDecisionError(null);
       await stockControlApiClient.placeRequisitionDecision(jobId);
       fetchData();
     } catch (err) {
-      setError(err instanceof Error ? err : new Error("Failed to place requisition"));
+      const message = err instanceof Error ? err.message : "Failed to place requisition";
+      setDecisionError(message);
     } finally {
       setIsProcessingDecision(false);
     }
@@ -532,10 +535,12 @@ export default function JobCardDetailPage() {
   const handleUseCurrentStock = async () => {
     try {
       setIsProcessingDecision(true);
+      setDecisionError(null);
       await stockControlApiClient.useCurrentStockDecision(jobId);
       fetchData();
     } catch (err) {
-      setError(err instanceof Error ? err : new Error("Failed to use current stock"));
+      const message = err instanceof Error ? err.message : "Failed to use current stock";
+      setDecisionError(message);
     } finally {
       setIsProcessingDecision(false);
     }
@@ -1092,6 +1097,7 @@ export default function JobCardDetailPage() {
               onPlaceRequisition={handlePlaceRequisition}
               onUseCurrentStock={handleUseCurrentStock}
               isProcessingDecision={isProcessingDecision}
+              decisionError={decisionError}
             />
           </TabPanel>
 

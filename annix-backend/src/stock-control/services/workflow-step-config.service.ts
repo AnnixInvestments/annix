@@ -151,6 +151,17 @@ export class WorkflowStepConfigService {
   }
 
   async backgroundSteps(companyId: number): Promise<WorkflowStepConfig[]> {
+    const existing = await this.repo.find({
+      where: { companyId, isBackground: true },
+      order: { sortOrder: "ASC", createdAt: "ASC" },
+    });
+
+    if (existing.length > 0) {
+      return existing;
+    }
+
+    await this.seedDefaults(companyId);
+
     return this.repo.find({
       where: { companyId, isBackground: true },
       order: { sortOrder: "ASC", createdAt: "ASC" },
