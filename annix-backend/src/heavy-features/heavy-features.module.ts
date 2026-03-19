@@ -17,9 +17,7 @@ import { ThermalModule } from "../thermal/thermal.module";
     RubberLiningModule,
     StockControlModule,
     ...(process.env.DISABLE_ANNIX_REP === "true" ? [] : [AnnixRepModule]),
-    ...(process.env.DISABLE_CV_ASSISTANT === "true"
-      ? []
-      : [CvAssistantModule]),
+    ...(process.env.DISABLE_CV_ASSISTANT === "true" ? [] : [CvAssistantModule]),
     AdminModule,
     PumpProductModule,
     PumpOrderModule,
@@ -33,9 +31,7 @@ import { ThermalModule } from "../thermal/thermal.module";
     RubberLiningModule,
     StockControlModule,
     ...(process.env.DISABLE_ANNIX_REP === "true" ? [] : [AnnixRepModule]),
-    ...(process.env.DISABLE_CV_ASSISTANT === "true"
-      ? []
-      : [CvAssistantModule]),
+    ...(process.env.DISABLE_CV_ASSISTANT === "true" ? [] : [CvAssistantModule]),
     AdminModule,
     PumpProductModule,
     PumpOrderModule,

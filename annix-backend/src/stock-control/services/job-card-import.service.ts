@@ -856,9 +856,7 @@ export class JobCardImportService {
   private findLineItemsEndRow(grid: string[][], startRow: number, aiEndRow: number): number {
     const itemSectionStarts = grid.reduce<number[]>((acc, row, r) => {
       const firstCell = (row[0] || "").trim();
-      return JobCardImportService.ITEM_HEADER_PATTERN.test(firstCell)
-        ? [...acc, r]
-        : acc;
+      return JobCardImportService.ITEM_HEADER_PATTERN.test(firstCell) ? [...acc, r] : acc;
     }, []);
 
     if (itemSectionStarts.length <= 1) {

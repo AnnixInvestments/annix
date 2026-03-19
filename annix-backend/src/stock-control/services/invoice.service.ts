@@ -187,10 +187,7 @@ export class InvoiceService {
 
       return await this.extractionService.extractFromImage(invoiceId, imageBase64, mediaType);
     } catch (err) {
-      this.logger.error(
-        `Re-extract failed for invoice ${invoiceId}: ${err.message}`,
-        err.stack,
-      );
+      this.logger.error(`Re-extract failed for invoice ${invoiceId}: ${err.message}`, err.stack);
       throw err;
     }
   }

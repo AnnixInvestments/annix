@@ -87,7 +87,12 @@ export class JobCardsController {
   ) {
     const pageNum = Math.max(1, Number(page) || 1);
     const limitNum = Math.min(100, Math.max(1, Number(limit) || 50));
-    const jobCards = await this.jobCardService.findAll(req.user.companyId, status, pageNum, limitNum);
+    const jobCards = await this.jobCardService.findAll(
+      req.user.companyId,
+      status,
+      pageNum,
+      limitNum,
+    );
     const effectiveStatuses = await this.workflowService.effectiveWorkflowStatuses(
       req.user.companyId,
       jobCards.map((jc) => ({ id: jc.id, workflowStatus: jc.workflowStatus })),

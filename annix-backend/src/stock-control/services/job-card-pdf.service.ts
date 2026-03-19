@@ -143,9 +143,7 @@ export class JobCardPdfService {
     });
   }
 
-  private async fetchSignatureBuffers(
-    approvals: JobCardApproval[],
-  ): Promise<Map<string, Buffer>> {
+  private async fetchSignatureBuffers(approvals: JobCardApproval[]): Promise<Map<string, Buffer>> {
     const bufferMap = new Map<string, Buffer>();
     const approvedWithSignatures = approvals.filter(
       (a) => a.status === ApprovalStatus.APPROVED && a.signatureUrl,

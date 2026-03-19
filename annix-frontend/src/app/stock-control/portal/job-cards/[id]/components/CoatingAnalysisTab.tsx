@@ -495,9 +495,7 @@ export function CoatingAnalysisTab(props: CoatingAnalysisTabProps) {
                               </button>
                             </div>
                             {props.decisionError && (
-                              <p className="text-xs text-red-600 mt-2">
-                                {props.decisionError}
-                              </p>
+                              <p className="text-xs text-red-600 mt-2">{props.decisionError}</p>
                             )}
                             {!allSufficient && (
                               <p className="text-xs text-amber-600 mt-2">

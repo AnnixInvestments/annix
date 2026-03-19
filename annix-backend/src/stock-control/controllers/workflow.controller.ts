@@ -543,9 +543,7 @@ export class WorkflowController {
 
   private async resolveRequisitionStep(companyId: number): Promise<string | null> {
     const bgSteps = await this.stepConfigService.backgroundSteps(companyId);
-    const match = bgSteps.find(
-      (s) => s.key === "requisition" || s.key === "requisition_sent",
-    );
+    const match = bgSteps.find((s) => s.key === "requisition" || s.key === "requisition_sent");
     return match ? match.key : null;
   }
 }

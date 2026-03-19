@@ -56,9 +56,6 @@ export function correctLineItemsEndRow(
   return rows.length > 0 ? Math.max(...rows, currentEndRow) : currentEndRow;
 }
 
-export function validItemRows(
-  grid: string[][],
-  startRow: number,
-): Set<number> {
+export function validItemRows(grid: string[][], startRow: number): Set<number> {
   return new Set(itemSectionRanges(grid, startRow));
 }

@@ -3,12 +3,12 @@ import { MigrationInterface, QueryRunner } from "typeorm";
 export class FixLegacyWorkflowStatuses1807000000056 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
     const companies = await queryRunner.query(
-      `SELECT DISTINCT company_id FROM workflow_step_configs`,
+      "SELECT DISTINCT company_id FROM workflow_step_configs",
     );
 
     for (const { company_id: companyId } of companies) {
       const fgSteps: Array<{ key: string; sort_order: number }> = await queryRunner.query(
-        `SELECT key, sort_order FROM workflow_step_configs WHERE company_id = $1 AND is_background = false ORDER BY sort_order`,
+        "SELECT key, sort_order FROM workflow_step_configs WHERE company_id = $1 AND is_background = false ORDER BY sort_order",
         [companyId],
       );
 
