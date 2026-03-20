@@ -29,6 +29,8 @@ export default function RequisitionDetailPage() {
   const completeStep = searchParams.get("completeStep");
   const reqId = Number(params.id);
   const queryClient = useQueryClient();
+  const isOrderPlacement = completeStep ? completeStep.includes("order_placement") : false;
+  const readOnly = isOrderPlacement;
 
   const [editingItemId, setEditingItemId] = useState<number | null>(null);
   const [editPackSize, setEditPackSize] = useState<number>(20);
@@ -131,7 +133,7 @@ export default function RequisitionDetailPage() {
 
   const reqNumberValue = (itemId: number, dbValue: string | null): string => {
     const pending = pendingReqNumber.get(itemId);
-    return pending !== undefined ? pending : (dbValue ?? "");
+    return pending !== undefined ? pending : (dbValue || "");
   };
 
   const handleSaveRow = async (itemId: number) => {
@@ -216,8 +218,8 @@ export default function RequisitionDetailPage() {
       litresRequired: Number(item.litresRequired).toFixed(1),
       packSizeLitres: `${Number(item.packSizeLitres).toFixed(0)}L`,
       packsToOrder: item.packsToOrder,
-      reorderQty: item.reorderQty ?? "-",
-      reqNumber: item.reqNumber ?? "-",
+      reorderQty: item.reorderQty != null ? item.reorderQty : "-",
+      reqNumber: item.reqNumber || "-",
       stockMatch: item.stockItem ? item.stockItem.name : "Not in inventory",
     }));
 
@@ -376,9 +378,11 @@ export default function RequisitionDetailPage() {
               )}
               {isAccepting
                 ? "Completing..."
-                : completeStep
-                  ? "Authorise & Return to Job Card"
-                  : "Accept & Return to Job Card"}
+                : isOrderPlacement
+                  ? "Confirm Order & Return to Job Card"
+                  : completeStep
+                    ? "Authorise & Return to Job Card"
+                    : "Accept & Return to Job Card"}
             </button>
           )}
           <div className="relative" ref={exportMenuRef}>
@@ -551,12 +555,14 @@ export default function RequisitionDetailPage() {
                 >
                   Stock Match
                 </th>
+                {!readOnly && (
                 <th
                   scope="col"
                   className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider"
                 >
                   Save
                 </th>
+                )}
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
@@ -567,7 +573,7 @@ export default function RequisitionDetailPage() {
                   </td>
                   {requisition.source === "reorder" ? (
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-semibold text-gray-900">
-                      {item.quantityRequired ?? "-"}
+                      {item.quantityRequired != null ? item.quantityRequired : "-"}
                     </td>
                   ) : (
                     <>
@@ -582,7 +588,11 @@ export default function RequisitionDetailPage() {
                         {Number(item.litresRequired).toFixed(1)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-right">
-                        {editingItemId === item.id ? (
+                        {readOnly ? (
+                          <span className="text-gray-900">
+                            {Number(item.packSizeLitres).toFixed(0)}L
+                          </span>
+                        ) : editingItemId === item.id ? (
                           <div className="flex items-center justify-end space-x-2">
                             <input
                               type="number"
@@ -650,26 +660,36 @@ export default function RequisitionDetailPage() {
                     </>
                   )}
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-right">
-                    <input
-                      type="number"
-                      min={0}
-                      step={1}
-                      value={reorderQtyValue(item.id, item.reorderQty)}
-                      onChange={(e) => handleReorderQtyChange(item.id, e.target.value)}
-                      placeholder="-"
-                      className="w-20 rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm text-right"
-                      disabled={isSaving}
-                    />
+                    {readOnly ? (
+                      <span className="font-semibold text-gray-900">
+                        {item.reorderQty != null ? item.reorderQty : "-"}
+                      </span>
+                    ) : (
+                      <input
+                        type="number"
+                        min={0}
+                        step={1}
+                        value={reorderQtyValue(item.id, item.reorderQty)}
+                        onChange={(e) => handleReorderQtyChange(item.id, e.target.value)}
+                        placeholder="-"
+                        className="w-20 rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm text-right"
+                        disabled={isSaving}
+                      />
+                    )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm">
-                    <input
-                      type="text"
-                      value={reqNumberValue(item.id, item.reqNumber)}
-                      onChange={(e) => handleReqNumberChange(item.id, e.target.value)}
-                      placeholder="-"
-                      className="w-28 rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm"
-                      disabled={isSaving}
-                    />
+                    {readOnly ? (
+                      <span className="text-gray-900">{item.reqNumber || "-"}</span>
+                    ) : (
+                      <input
+                        type="text"
+                        value={reqNumberValue(item.id, item.reqNumber)}
+                        onChange={(e) => handleReqNumberChange(item.id, e.target.value)}
+                        placeholder="-"
+                        className="w-28 rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm"
+                        disabled={isSaving}
+                      />
+                    )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm">
                     {item.stockItem ? (
@@ -678,6 +698,7 @@ export default function RequisitionDetailPage() {
                       <span className="text-amber-600 italic">Not in inventory</span>
                     )}
                   </td>
+                  {!readOnly && (
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-center">
                     {savedRows.has(item.id) ? (
                       <span className="inline-flex items-center text-green-600 text-xs font-medium">
@@ -706,6 +727,7 @@ export default function RequisitionDetailPage() {
                       </button>
                     )}
                   </td>
+                  )}
                 </tr>
               ))}
             </tbody>

@@ -517,6 +517,13 @@ export default function JobCardDetailPage() {
     [],
   );
 
+  const isOrderPlacementStep = useCallback(
+    (bg: BackgroundStepStatus) =>
+      bg.stepKey === "custom_order_placement" ||
+      bg.label?.toLowerCase().includes("order placement"),
+    [],
+  );
+
   const requisitionIsPending = useMemo(
     () => userPendingBgSteps.some(isRequisitionStep),
     [userPendingBgSteps, isRequisitionStep],
@@ -846,7 +853,7 @@ export default function JobCardDetailPage() {
                       >
                         Stock Assessment
                       </button>
-                    ) : isReqAuthStep(bg) && requisition ? (
+                    ) : (isReqAuthStep(bg) || isOrderPlacementStep(bg)) && requisition ? (
                       <button
                         key={bg.stepKey}
                         onClick={() =>
