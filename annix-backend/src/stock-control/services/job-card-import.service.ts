@@ -145,9 +145,7 @@ function jtBaseNumber(jtNo: string): string {
 }
 
 function dominantJtBase(row: JobCardImportRow): string | null {
-  const jtNumbers = (row.lineItems || [])
-    .map((li) => (li.jtNo || "").trim())
-    .filter(Boolean);
+  const jtNumbers = (row.lineItems || []).map((li) => (li.jtNo || "").trim()).filter(Boolean);
 
   if (jtNumbers.length === 0) return null;
 
@@ -223,9 +221,7 @@ function mergeRowsByJtNumber(rows: JobCardImportRow[]): JobCardImportRow[] {
 function mergeIntoSingleRow(group: JobCardImportRow[]): JobCardImportRow {
   const base = group[0];
   const allLineItems = group.flatMap((r) => r.lineItems || []);
-  const allNotes = group
-    .map((r) => (r.notes || "").trim())
-    .filter(Boolean);
+  const allNotes = group.map((r) => (r.notes || "").trim()).filter(Boolean);
   const uniqueSpecs = allNotes.reduce<string[]>((acc, note) => {
     const normalised = normalizeSpec(note);
     if (acc.some((existing) => normalizeSpec(existing) === normalised)) {
@@ -257,9 +253,7 @@ function deduplicateSpecs(specs: string[], allRows: JobCardImportRow[]): string 
     return specs.join("\n");
   }
 
-  const allNotes = allRows
-    .map((r) => (r.notes || "").trim())
-    .filter(Boolean);
+  const allNotes = allRows.map((r) => (r.notes || "").trim()).filter(Boolean);
   const unique = allNotes.reduce<string[]>((acc, note) => {
     const normalised = normalizeSpec(note);
     return acc.some((n) => normalizeSpec(n) === normalised) ? acc : [...acc, note];

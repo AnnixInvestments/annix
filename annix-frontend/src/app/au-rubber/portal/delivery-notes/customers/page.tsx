@@ -15,6 +15,7 @@ import {
 } from "@/app/au-rubber/components/TableComponents";
 import { useTablePreferences } from "@/app/au-rubber/hooks/useTablePreferences";
 import { useToast } from "@/app/components/Toast";
+import { useAuRubberBranding } from "@/app/context/AuRubberBrandingContext";
 import {
   type AnalyzeCustomerDnsResult,
   auRubberApiClient,
@@ -25,6 +26,7 @@ import {
   type RubberDeliveryNoteDto,
 } from "@/app/lib/api/auRubberApi";
 import { formatDateZA } from "@/app/lib/datetime";
+import NixProcessingPopup from "@/app/lib/nix/components/NixProcessingPopup";
 import { useAuRubberCompanies, useAuRubberDeliveryNotes } from "@/app/lib/query/hooks";
 
 type SortColumn =
@@ -40,6 +42,10 @@ type SortColumn =
 export default function CustomerDeliveryNotesPage() {
   const router = useRouter();
   const { showToast } = useToast();
+  const { branding } = useAuRubberBranding();
+  const [analyzeProgress, setAnalyzeProgress] = useState(0);
+  const [analyzeStatus, setAnalyzeStatus] = useState("");
+  const [analyzeDetail, setAnalyzeDetail] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [filterType, setFilterType] = useState<DeliveryNoteType | "">("");
   const [filterStatus, setFilterStatus] = useState<DeliveryNoteStatus | "">("");
@@ -169,26 +175,67 @@ export default function CustomerDeliveryNotesPage() {
   }, [searchQuery, filterType, filterStatus, pageSize]);
 
   const handleFilesSelected = async (files: File[]) => {
-    console.log("[CustomerDN] handleFilesSelected called with", files.length, "files");
     if (files.length === 0) return;
 
     setIsAnalyzing(true);
     setAnalysisFiles(files);
+    setAnalyzeProgress(5);
+    setAnalyzeStatus(`Uploading ${files.length} file${files.length !== 1 ? "s" : ""}...`);
+    setAnalyzeDetail("Preparing files for analysis...");
+
+    const progressSteps = [
+      {
+        pct: 15,
+        status: "Nix is analysing your delivery notes...",
+        detail: "Reading document pages...",
+      },
+      {
+        pct: 30,
+        status: "Identifying customers...",
+        detail: "Matching customer names to known companies...",
+      },
+      {
+        pct: 50,
+        status: "Extracting delivery note data...",
+        detail: "Reading roll numbers, weights, and dimensions...",
+      },
+      {
+        pct: 70,
+        status: "Processing line items...",
+        detail: "Grouping items by delivery note number...",
+      },
+    ];
+
+    let stepIndex = 0;
+    const progressInterval = setInterval(() => {
+      if (stepIndex < progressSteps.length) {
+        const step = progressSteps[stepIndex];
+        setAnalyzeProgress(step.pct);
+        setAnalyzeStatus(step.status);
+        setAnalyzeDetail(step.detail);
+        stepIndex += 1;
+      }
+    }, 3000);
 
     try {
-      showToast("Analyzing files with AI...", "info");
-      console.log("[CustomerDN] Calling analyzeCustomerDeliveryNotes API...");
       const result = await auRubberApiClient.analyzeCustomerDeliveryNotes(files);
-      console.log("[CustomerDN] Analysis result:", result);
+      clearInterval(progressInterval);
+      setAnalyzeProgress(90);
+      setAnalyzeStatus("Analysis complete!");
+      setAnalyzeDetail(`Found ${result.groups.length} delivery note(s)`);
+      await new Promise((resolve) => setTimeout(resolve, 800));
       setAnalysisResult(result);
       showToast(`Found ${result.groups.length} delivery note(s)`, "success");
     } catch (err) {
-      console.error("[CustomerDN] Analysis failed:", err);
+      clearInterval(progressInterval);
       showToast(err instanceof Error ? err.message : "Failed to analyze files", "error");
       setAnalysisResult(null);
       setAnalysisFiles([]);
     } finally {
       setIsAnalyzing(false);
+      setAnalyzeProgress(0);
+      setAnalyzeStatus("");
+      setAnalyzeDetail("");
     }
   };
 

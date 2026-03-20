@@ -1214,7 +1214,20 @@ ${truncatedText}`;
             const customerResult =
               await this.cocExtractionService.extractCustomerDeliveryNoteFromImages(pdfBuffer);
 
-            const allRolls = customerResult.deliveryNotes.flatMap((dn, dnIdx) =>
+            const supplierDns = customerResult.deliveryNotes.filter((dn) => {
+              const supplier = (dn.supplierName || "").toLowerCase();
+              const isCdn = supplier.includes("au industrie") || supplier.includes("au industries");
+              if (isCdn) {
+                this.logger.log(
+                  `[SupplierDN] Filtering out customer DN "${dn.deliveryNoteNumber}" (supplier: ${dn.supplierName}) from supplier extraction`,
+                );
+              }
+              return !isCdn;
+            });
+            const dnsToProcess =
+              supplierDns.length > 0 ? supplierDns : customerResult.deliveryNotes;
+
+            const allRolls = dnsToProcess.flatMap((dn, dnIdx) =>
               (dn.lineItems || [])
                 .filter((item) => item != null && typeof item === "object")
                 .map((item) => ({
@@ -1236,9 +1249,9 @@ ${truncatedText}`;
 
             const podPageNumbers = this.resolvePodPageNumbersByOrder(
               customerResult.podPages,
-              customerResult.deliveryNotes,
+              dnsToProcess,
             );
-            const dnMetadata = customerResult.deliveryNotes[0];
+            const dnMetadata = dnsToProcess[0];
             const dnNumber = dnMetadata?.deliveryNoteNumber || null;
             if (dnNumber && podPageNumbers[dnNumber]) {
               await this.deliveryNoteService.setPodPageNumbers(
@@ -2168,12 +2181,28 @@ ${truncatedText}`;
             this.logger.log(`Using OCR-based extraction for ${file.originalname}`);
             const extraction =
               await this.cocExtractionService.extractCustomerDeliveryNoteFromImages(file.buffer);
-            const notes = extraction.deliveryNotes as Array<Record<string, unknown>>;
+            const allNotes = extraction.deliveryNotes as Array<Record<string, unknown>>;
+
+            const cdnNotes = allNotes.filter((note) => {
+              const supplier = ((note.supplierName as string) || "").toLowerCase();
+              const isSupplierDn =
+                supplier.includes("s&n") ||
+                supplier.includes("s & n") ||
+                supplier.includes("impilo") ||
+                supplier.includes("calendered products");
+              if (isSupplierDn) {
+                this.logger.log(
+                  `[CustomerDN] Filtering out supplier DN "${note.deliveryNoteNumber}" (supplier: ${note.supplierName}) from customer analysis`,
+                );
+              }
+              return !isSupplierDn;
+            });
+
             this.logger.log(
-              `Extracted ${notes.length} customer DN(s) and ${extraction.podPages.length} POD page(s) from ${file.originalname} via OCR`,
+              `Extracted ${allNotes.length} DN(s) from ${file.originalname}, kept ${cdnNotes.length} customer DN(s) (filtered ${allNotes.length - cdnNotes.length} supplier DN(s)), ${extraction.podPages.length} POD page(s)`,
             );
             return {
-              deliveryNotesFromFile: notes.length > 0 ? notes : [{}],
+              deliveryNotesFromFile: cdnNotes.length > 0 ? cdnNotes : [{}],
               podPagesFromFile: extraction.podPages,
               newErrors: [],
             };
