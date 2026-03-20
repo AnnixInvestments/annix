@@ -3,6 +3,7 @@ import { Test, TestingModule } from "@nestjs/testing";
 import { getRepositoryToken } from "@nestjs/typeorm";
 import { DataSource } from "typeorm";
 import { AuditService } from "../../audit/audit.service";
+import { JobCardCoatingAnalysis } from "../entities/coating-analysis.entity";
 import { IssuanceBatchRecord } from "../entities/issuance-batch-record.entity";
 import { JobCard } from "../entities/job-card.entity";
 import { JobCardDataBook } from "../entities/job-card-data-book.entity";
@@ -13,6 +14,7 @@ import { StockItem } from "../entities/stock-item.entity";
 import { MovementType, ReferenceType, StockMovement } from "../entities/stock-movement.entity";
 import { SupplierCertificate } from "../entities/supplier-certificate.entity";
 import { IssuanceService } from "./issuance.service";
+import { WorkflowNotificationService } from "./workflow-notification.service";
 
 describe("IssuanceService", () => {
   let service: IssuanceService;
@@ -65,6 +67,14 @@ describe("IssuanceService", () => {
     save: jest.fn().mockImplementation((entity) => Promise.resolve(entity)),
   };
 
+  const mockCoatingAnalysisRepo = {
+    findOne: jest.fn().mockResolvedValue(null),
+  };
+
+  const mockNotificationService = {
+    notifyOverAllocationApproval: jest.fn().mockResolvedValue(undefined),
+  };
+
   const mockQueryRunnerManager = {
     find: jest.fn().mockResolvedValue([]),
     findOne: jest.fn(),
@@ -104,8 +114,10 @@ describe("IssuanceService", () => {
         { provide: getRepositoryToken(IssuanceBatchRecord), useValue: mockBatchRecordRepo },
         { provide: getRepositoryToken(SupplierCertificate), useValue: mockCertRepo },
         { provide: getRepositoryToken(JobCardDataBook), useValue: mockDataBookRepo },
+        { provide: getRepositoryToken(JobCardCoatingAnalysis), useValue: mockCoatingAnalysisRepo },
         { provide: DataSource, useValue: mockDataSource },
         { provide: AuditService, useValue: mockAuditService },
+        { provide: WorkflowNotificationService, useValue: mockNotificationService },
       ],
     }).compile();
 

@@ -20,8 +20,6 @@ import { ApprovalModal } from "@/app/stock-control/components/ApprovalModal";
 import { JobCardNextAction } from "@/app/stock-control/components/NextActionBanner";
 import { WorkflowStatus } from "@/app/stock-control/components/WorkflowStatus";
 import { useConfirm } from "@/app/stock-control/hooks/useConfirm";
-import { AllocationsTab } from "./components/AllocationsTab";
-import { StockIssuesTab } from "./components/StockIssuesTab";
 import { CoatingAnalysisTab } from "./components/CoatingAnalysisTab";
 import { DetailsTab } from "./components/DetailsTab";
 import DispatchTab from "./components/DispatchTab";
@@ -36,6 +34,7 @@ import { LineItemsTab } from "./components/LineItemsTab";
 import { QualityTab } from "./components/QualityTab";
 import { RequisitionTab } from "./components/RequisitionTab";
 import { RubberAllocationGuard } from "./components/RubberAllocation";
+import { StockIssuesTab } from "./components/StockIssuesTab";
 import { useJobCardCoating } from "./hooks/useJobCardCoating";
 import { useJobCardDocuments } from "./hooks/useJobCardDocuments";
 import { useJobCardJobFiles } from "./hooks/useJobCardJobFiles";
@@ -375,7 +374,10 @@ export default function JobCardDetailPage() {
       {
         id: "stock-issues",
         label: "Stock Issues",
-        badge: allocations.filter((a) => !a.undone).length > 0 ? allocations.filter((a) => !a.undone).length : null,
+        badge:
+          allocations.filter((a) => !a.undone).length > 0
+            ? allocations.filter((a) => !a.undone).length
+            : null,
       },
       { id: "quality", label: "Quality", hidden: !profile?.qcEnabled },
       {
@@ -531,8 +533,7 @@ export default function JobCardDetailPage() {
 
   const isStockAllocStep = useCallback(
     (bg: BackgroundStepStatus) =>
-      bg.stepKey === "stock_allocation" ||
-      bg.label?.toLowerCase().includes("stock alloc"),
+      bg.stepKey === "stock_allocation" || bg.label?.toLowerCase().includes("stock alloc"),
     [],
   );
 
@@ -883,9 +884,7 @@ export default function JobCardDetailPage() {
                       <div key={bg.stepKey} className="flex flex-wrap gap-2">
                         <button
                           onClick={() =>
-                            router.push(
-                              `/stock-control/portal/issue-stock?jobCardId=${jobId}`,
-                            )
+                            router.push(`/stock-control/portal/issue-stock?jobCardId=${jobId}`)
                           }
                           className="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-md bg-teal-600 text-white hover:bg-teal-700 transition-colors"
                         >
@@ -1200,11 +1199,7 @@ export default function JobCardDetailPage() {
             activeTab={activeTab}
             visited={visitedTabs.has("stock-issues")}
           >
-            <StockIssuesTab
-              jobId={jobId}
-              allocations={allocations}
-              onRefresh={fetchData}
-            />
+            <StockIssuesTab jobId={jobId} allocations={allocations} onRefresh={fetchData} />
           </TabPanel>
 
           <TabPanel tabId="quality" activeTab={activeTab} visited={visitedTabs.has("quality")}>

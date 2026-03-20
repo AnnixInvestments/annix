@@ -65,7 +65,9 @@ export function StockIssuesTab(props: StockIssuesTabProps) {
               d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
             />
           </svg>
-          <p className="mt-2 text-sm text-gray-500">No stock has been issued to this job card yet</p>
+          <p className="mt-2 text-sm text-gray-500">
+            No stock has been issued to this job card yet
+          </p>
         </div>
       ) : (
         <div className="overflow-x-auto">
@@ -189,9 +191,7 @@ export function StockIssuesTab(props: StockIssuesTabProps) {
                     <td className="px-4 py-2 text-sm text-right text-gray-400 line-through">
                       {alloc.quantityUsed}
                     </td>
-                    <td className="px-4 py-2 text-sm text-gray-400">
-                      {alloc.undoneByName || "-"}
-                    </td>
+                    <td className="px-4 py-2 text-sm text-gray-400">{alloc.undoneByName || "-"}</td>
                     <td className="px-4 py-2 text-sm text-gray-400">
                       {alloc.undoneAt ? formatDateZA(alloc.undoneAt) : "-"}
                     </td>

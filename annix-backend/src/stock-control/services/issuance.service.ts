@@ -1,9 +1,10 @@
 import { BadRequestException, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { DataSource, In, MoreThanOrEqual, Repository } from "typeorm";
+import { DataSource, In, IsNull, MoreThanOrEqual, Repository } from "typeorm";
 import { AuditService } from "../../audit/audit.service";
 import { AuditAction } from "../../audit/entities/audit-log.entity";
 import { now } from "../../lib/datetime";
+import { CoatDetail, JobCardCoatingAnalysis } from "../entities/coating-analysis.entity";
 import { IssuanceBatchRecord } from "../entities/issuance-batch-record.entity";
 import { JobCard } from "../entities/job-card.entity";
 import { JobCardDataBook } from "../entities/job-card-data-book.entity";
@@ -13,6 +14,7 @@ import { StockIssuance } from "../entities/stock-issuance.entity";
 import { StockItem } from "../entities/stock-item.entity";
 import { MovementType, ReferenceType, StockMovement } from "../entities/stock-movement.entity";
 import { SupplierCertificate } from "../entities/supplier-certificate.entity";
+import { WorkflowNotificationService } from "./workflow-notification.service";
 
 interface UserContext {
   id: number;
@@ -87,8 +89,11 @@ export class IssuanceService {
     private readonly certRepo: Repository<SupplierCertificate>,
     @InjectRepository(JobCardDataBook)
     private readonly dataBookRepo: Repository<JobCardDataBook>,
+    @InjectRepository(JobCardCoatingAnalysis)
+    private readonly coatingAnalysisRepo: Repository<JobCardCoatingAnalysis>,
     private readonly dataSource: DataSource,
     private readonly auditService: AuditService,
+    private readonly notificationService: WorkflowNotificationService,
   ) {}
 
   async parseAndValidateQr(companyId: number, rawQr: string): Promise<ScanResult> {
@@ -302,6 +307,30 @@ export class IssuanceService {
         );
       }
 
+      if (jobCard) {
+        const limitCheck = await this.checkCoatingAnalysisLimit(
+          companyId,
+          dto.jobCardId!,
+          stockItem,
+          dto.quantity,
+        );
+
+        if (limitCheck.requiresApproval) {
+          await queryRunner.rollbackTransaction();
+          this.sendOverAllocationNotification(
+            companyId,
+            dto.jobCardId!,
+            stockItem.name,
+            dto.quantity,
+            limitCheck.allowedLitres ?? 0,
+            limitCheck.alreadyAllocated,
+          );
+          throw new BadRequestException(
+            `Stock limit reached for ${stockItem.name}. Authorized: ${limitCheck.allowedLitres}L, Already issued: ${limitCheck.alreadyAllocated}L, Requested: ${dto.quantity}L. Admin Manager has been notified for authorization.`,
+          );
+        }
+      }
+
       const issuance = queryRunner.manager.create(StockIssuance, {
         companyId,
         stockItemId: dto.stockItemId,
@@ -485,6 +514,36 @@ export class IssuanceService {
               },
             ],
           };
+        }
+
+        if (jobCard) {
+          const limitCheck = await this.checkCoatingAnalysisLimit(
+            companyId,
+            dto.jobCardId!,
+            stockItem,
+            item.quantity,
+          );
+
+          if (limitCheck.requiresApproval) {
+            this.sendOverAllocationNotification(
+              companyId,
+              dto.jobCardId!,
+              stockItem.name,
+              item.quantity,
+              limitCheck.allowedLitres ?? 0,
+              limitCheck.alreadyAllocated,
+            );
+            return {
+              ...acc,
+              errors: [
+                ...acc.errors,
+                {
+                  stockItemId: item.stockItemId,
+                  message: `Stock limit reached for ${stockItem.name}. Authorized: ${limitCheck.allowedLitres}L, Already issued: ${limitCheck.alreadyAllocated}L, Requested: ${item.quantity}L. Admin Manager has been notified.`,
+                },
+              ],
+            };
+          }
         }
 
         const issuance = queryRunner.manager.create(StockIssuance, {
@@ -795,5 +854,91 @@ export class IssuanceService {
       await this.dataBookRepo.save(dataBook);
       this.logger.log(`Data book marked stale for job card ${jobCardId}`);
     }
+  }
+
+  private async checkCoatingAnalysisLimit(
+    companyId: number,
+    jobCardId: number,
+    stockItem: StockItem,
+    quantityRequested: number,
+  ): Promise<{
+    requiresApproval: boolean;
+    allowedLitres: number | null;
+    alreadyAllocated: number;
+  }> {
+    const coatingAnalysis = await this.coatingAnalysisRepo.findOne({
+      where: { jobCardId, companyId },
+    });
+
+    if (!coatingAnalysis || !coatingAnalysis.coats || coatingAnalysis.coats.length === 0) {
+      return { requiresApproval: false, allowedLitres: null, alreadyAllocated: 0 };
+    }
+
+    const matchingCoat = this.fuzzyMatchCoat(stockItem.name, coatingAnalysis.coats);
+    if (!matchingCoat) {
+      return { requiresApproval: false, allowedLitres: null, alreadyAllocated: 0 };
+    }
+
+    const existingAllocations = await this.allocationRepo.find({
+      where: {
+        jobCardId,
+        stockItemId: stockItem.id,
+        companyId,
+        undone: false,
+        rejectedAt: IsNull(),
+      },
+    });
+
+    const alreadyAllocated = existingAllocations.reduce(
+      (sum, alloc) => sum + Number(alloc.quantityUsed),
+      0,
+    );
+    const totalAfterAllocation = alreadyAllocated + quantityRequested;
+    const allowedLitres = matchingCoat.litersRequired;
+
+    if (totalAfterAllocation > allowedLitres) {
+      return { requiresApproval: true, allowedLitres, alreadyAllocated };
+    }
+
+    return { requiresApproval: false, allowedLitres, alreadyAllocated };
+  }
+
+  private fuzzyMatchCoat(stockItemName: string, coats: CoatDetail[]): CoatDetail | null {
+    const normalised = stockItemName.toLowerCase().replace(/\s+/g, " ").trim();
+    const words = normalised.split(" ");
+
+    const scored = coats
+      .map((coat) => {
+        const coatName = coat.product.toLowerCase().replace(/\s+/g, " ").trim();
+        const matchingWords = words.filter((word) => coatName.includes(word));
+        return { coat, score: matchingWords.length / words.length };
+      })
+      .filter((entry) => entry.score >= 0.4)
+      .sort((a, b) => b.score - a.score);
+
+    return scored.length > 0 ? scored[0].coat : null;
+  }
+
+  private sendOverAllocationNotification(
+    companyId: number,
+    jobCardId: number,
+    productName: string,
+    quantityRequested: number,
+    allowedLitres: number,
+    alreadyAllocated: number,
+  ): void {
+    this.notificationService
+      .notifyOverAllocationApproval(
+        companyId,
+        jobCardId,
+        0,
+        productName,
+        quantityRequested,
+        allowedLitres,
+        alreadyAllocated,
+      )
+      .catch((err) =>
+        this.logger.error(`Failed to send over-allocation notification: ${err.message}`),
+      );
   }
 }

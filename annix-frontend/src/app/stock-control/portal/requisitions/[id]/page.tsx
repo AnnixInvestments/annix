@@ -1,9 +1,9 @@
 "use client";
 
+import { useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { formatDateZA } from "@/app/lib/datetime";
 import { exportToExcel, exportToPDF, exportToWord } from "@/app/lib/export/exportTable";
@@ -133,7 +133,7 @@ export default function RequisitionDetailPage() {
 
   const reqNumberValue = (itemId: number, dbValue: string | null): string => {
     const pending = pendingReqNumber.get(itemId);
-    return pending !== undefined ? pending : (dbValue || "");
+    return pending !== undefined ? pending : dbValue || "";
   };
 
   const handleSaveRow = async (itemId: number) => {
@@ -596,12 +596,12 @@ export default function RequisitionDetailPage() {
                   Stock Match
                 </th>
                 {!readOnly && (
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  Save
-                </th>
+                  <th
+                    scope="col"
+                    className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  >
+                    Save
+                  </th>
                 )}
               </tr>
             </thead>
@@ -739,34 +739,34 @@ export default function RequisitionDetailPage() {
                     )}
                   </td>
                   {!readOnly && (
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-center">
-                    {savedRows.has(item.id) ? (
-                      <span className="inline-flex items-center text-green-600 text-xs font-medium">
-                        <svg
-                          className="w-4 h-4 mr-1"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-center">
+                      {savedRows.has(item.id) ? (
+                        <span className="inline-flex items-center text-green-600 text-xs font-medium">
+                          <svg
+                            className="w-4 h-4 mr-1"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M5 13l4 4L19 7"
+                            />
+                          </svg>
+                          Saved
+                        </span>
+                      ) : (
+                        <button
+                          onClick={() => handleSaveRow(item.id)}
+                          disabled={savingRowId === item.id}
+                          className="inline-flex items-center px-3 py-1 text-xs font-medium rounded-md bg-teal-600 text-white hover:bg-teal-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
                         >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M5 13l4 4L19 7"
-                          />
-                        </svg>
-                        Saved
-                      </span>
-                    ) : (
-                      <button
-                        onClick={() => handleSaveRow(item.id)}
-                        disabled={savingRowId === item.id}
-                        className="inline-flex items-center px-3 py-1 text-xs font-medium rounded-md bg-teal-600 text-white hover:bg-teal-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
-                      >
-                        {savingRowId === item.id ? "Saving..." : "Save"}
-                      </button>
-                    )}
-                  </td>
+                          {savingRowId === item.id ? "Saving..." : "Save"}
+                        </button>
+                      )}
+                    </td>
                   )}
                 </tr>
               ))}

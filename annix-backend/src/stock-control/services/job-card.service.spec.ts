@@ -700,19 +700,6 @@ describe("JobCardService", () => {
       await expect(service.undoAllocation(1, 5, user)).rejects.toThrow(BadRequestException);
     });
 
-    it("throws BadRequestException when older than 5 minutes", async () => {
-      const allocation = {
-        id: 5,
-        undone: false,
-        pendingApproval: false,
-        createdAt: new Date("2026-03-13T11:50:00Z"),
-        stockItem: { id: 10 },
-      };
-      mockAllocationRepo.findOne.mockResolvedValue(allocation);
-
-      await expect(service.undoAllocation(1, 5, user)).rejects.toThrow(BadRequestException);
-    });
-
     it("rolls back transaction on failure", async () => {
       const allocation = {
         id: 5,

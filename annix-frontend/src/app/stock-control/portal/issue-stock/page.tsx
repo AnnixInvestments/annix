@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
 import type {
   BatchIssuanceDto,
@@ -247,8 +247,7 @@ export default function IssueStockPage() {
     if (!search) return jobCardList;
     return jobCardList.filter(
       (jc) =>
-        jc.jobNumber.toLowerCase().includes(search) ||
-        jc.jobName.toLowerCase().includes(search),
+        jc.jobNumber.toLowerCase().includes(search) || jc.jobName.toLowerCase().includes(search),
     );
   }, [jobCardList, jobCardSearch]);
 
@@ -577,7 +576,10 @@ export default function IssueStockPage() {
 
       if (result.errors.length > 0) {
         setError(`Some items failed: ${result.errors.map((e) => e.message).join(", ")}`);
-        setTimeout(() => window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" }), 100);
+        setTimeout(
+          () => window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" }),
+          100,
+        );
       }
 
       if (result.created > 0) {
@@ -609,7 +611,10 @@ export default function IssueStockPage() {
         setSuccessMessage(
           `Issued ${result.created} item(s) (${itemSummary}) from ${issuer.name} to ${recipient.name}`,
         );
-        setTimeout(() => window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" }), 100);
+        setTimeout(
+          () => window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" }),
+          100,
+        );
 
         stockControlApiClient
           .recentIssuances()
@@ -793,8 +798,18 @@ export default function IssueStockPage() {
       <div className="space-y-6">
         {jobCard && preloadJobCardId && (
           <div className="bg-teal-50 border border-teal-200 rounded-lg px-4 py-3 flex items-center gap-3">
-            <svg className="w-5 h-5 text-teal-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            <svg
+              className="w-5 h-5 text-teal-600 flex-shrink-0"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+              />
             </svg>
             <div>
               <p className="text-sm font-medium text-teal-900">
@@ -1644,9 +1659,7 @@ export default function IssueStockPage() {
                       onClick={() => setShowJobCardDropdown(!showJobCardDropdown)}
                       className="text-sm text-teal-600 hover:text-teal-800 font-medium"
                     >
-                      {showJobCardDropdown
-                        ? "Hide job card list"
-                        : "Select job card from list"}
+                      {showJobCardDropdown ? "Hide job card list" : "Select job card from list"}
                     </button>
 
                     {showJobCardDropdown && (
@@ -1683,13 +1696,25 @@ export default function IssueStockPage() {
                               >
                                 <div className="flex-shrink-0">
                                   <div className="h-8 w-8 rounded-full bg-teal-100 flex items-center justify-center">
-                                    <svg className="w-4 h-4 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                    <svg
+                                      className="w-4 h-4 text-teal-600"
+                                      fill="none"
+                                      stroke="currentColor"
+                                      viewBox="0 0 24 24"
+                                    >
+                                      <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth={2}
+                                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                                      />
                                     </svg>
                                   </div>
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                  <p className="text-sm font-medium text-gray-900">{jc.jobNumber}</p>
+                                  <p className="text-sm font-medium text-gray-900">
+                                    {jc.jobNumber}
+                                  </p>
                                   <p className="text-xs text-gray-500 truncate">{jc.jobName}</p>
                                 </div>
                               </button>
