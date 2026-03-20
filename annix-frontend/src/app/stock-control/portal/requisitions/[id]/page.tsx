@@ -655,7 +655,6 @@ export default function RequisitionDetailPage() {
                       step={1}
                       value={reorderQtyValue(item.id, item.reorderQty)}
                       onChange={(e) => handleReorderQtyChange(item.id, e.target.value)}
-                      onBlur={() => handleReorderQtyBlur(item.id)}
                       placeholder="-"
                       className="w-20 rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm text-right"
                       disabled={isSaving}
@@ -666,7 +665,6 @@ export default function RequisitionDetailPage() {
                       type="text"
                       value={reqNumberValue(item.id, item.reqNumber)}
                       onChange={(e) => handleReqNumberChange(item.id, e.target.value)}
-                      onBlur={() => handleReqNumberBlur(item.id)}
                       placeholder="-"
                       className="w-28 rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm"
                       disabled={isSaving}

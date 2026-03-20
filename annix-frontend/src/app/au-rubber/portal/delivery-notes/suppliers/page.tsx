@@ -4,7 +4,6 @@ import { Link2, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { Breadcrumb } from "@/app/au-rubber/components/Breadcrumb";
-import { useAuRubberBranding } from "@/app/context/AuRubberBrandingContext";
 import { FileDropZone } from "@/app/au-rubber/components/FileDropZone";
 import {
   Pagination,
@@ -14,6 +13,7 @@ import {
 } from "@/app/au-rubber/components/TableComponents";
 import { useTablePreferences } from "@/app/au-rubber/hooks/useTablePreferences";
 import { useToast } from "@/app/components/Toast";
+import { useAuRubberBranding } from "@/app/context/AuRubberBrandingContext";
 import {
   auRubberApiClient,
   type DeliveryNoteStatus,
@@ -195,9 +195,21 @@ export default function SupplierDeliveryNotesPage() {
       setUploadDetail("Preparing files for analysis...");
 
       const progressSteps = [
-        { pct: 15, status: "NIX is analysing your delivery notes...", detail: "Detecting suppliers from document content..." },
-        { pct: 30, status: "Identifying suppliers...", detail: "Matching documents to known supplier formats..." },
-        { pct: 45, status: "Extracting delivery note data...", detail: "Reading roll numbers, weights, and dimensions..." },
+        {
+          pct: 15,
+          status: "NIX is analysing your delivery notes...",
+          detail: "Detecting suppliers from document content...",
+        },
+        {
+          pct: 30,
+          status: "Identifying suppliers...",
+          detail: "Matching documents to known supplier formats...",
+        },
+        {
+          pct: 45,
+          status: "Extracting delivery note data...",
+          detail: "Reading roll numbers, weights, and dimensions...",
+        },
         { pct: 60, status: "Processing pages...", detail: "Extracting data from each page..." },
         { pct: 75, status: "Almost done...", detail: "Finalising extraction results..." },
       ];

@@ -902,8 +902,7 @@ export class RubberDeliveryNoteService {
     }
 
     const fuzzyMatch = suppliers.find(
-      (c) =>
-        c.name.toLowerCase().includes(nameLower) || nameLower.includes(c.name.toLowerCase()),
+      (c) => c.name.toLowerCase().includes(nameLower) || nameLower.includes(c.name.toLowerCase()),
     );
     if (fuzzyMatch) {
       this.logger.log(
