@@ -348,10 +348,8 @@ export class RubberInboundEmailController {
       throw new BadRequestException("No files uploaded");
     }
 
-    const supplierCompanyId = parseInt(body.supplierCompanyId, 10);
-    if (Number.isNaN(supplierCompanyId)) {
-      throw new BadRequestException("Invalid supplierCompanyId");
-    }
+    const rawSupplierId = body.supplierCompanyId ? parseInt(body.supplierCompanyId, 10) : NaN;
+    const supplierCompanyId = Number.isNaN(rawSupplierId) ? undefined : rawSupplierId;
 
     const deliveryNoteType =
       (body.deliveryNoteType as DeliveryNoteType) || DeliveryNoteType.COMPOUND;
@@ -359,7 +357,7 @@ export class RubberInboundEmailController {
     const createdBy = user?.email || "upload";
 
     this.logger.log(
-      `Uploading ${files.length} delivery note files for company ${supplierCompanyId}`,
+      `Uploading ${files.length} delivery note files${supplierCompanyId ? ` for company ${supplierCompanyId}` : " (auto-detect supplier)"}`,
     );
 
     const result = await this.inboundEmailService.uploadFiles(

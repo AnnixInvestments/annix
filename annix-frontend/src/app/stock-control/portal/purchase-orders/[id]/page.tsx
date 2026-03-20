@@ -654,7 +654,9 @@ export default function CpoDetailPage() {
                       {version.items.map((item, itemIdx) => (
                         <tr key={itemIdx} className="text-gray-600">
                           <td className="py-0.5 font-mono">{item.itemCode || "-"}</td>
-                          <td className="py-0.5 max-w-xs truncate">{item.itemDescription || "-"}</td>
+                          <td className="py-0.5 max-w-xs truncate">
+                            {item.itemDescription || "-"}
+                          </td>
                           <td className="py-0.5 text-right">{item.quantityOrdered}</td>
                           <td className="py-0.5 text-right">{item.quantityFulfilled}</td>
                         </tr>

@@ -261,8 +261,7 @@ export default function InvoiceDetailPage() {
     setIsSavingItem(true);
     try {
       const currentItem = invoice?.items?.find((i) => i.id === itemId);
-      const stockItemChanged =
-        editStockItemId !== (currentItem?.stockItemId || null);
+      const stockItemChanged = editStockItemId !== (currentItem?.stockItemId || null);
 
       await stockControlApiClient.updateInvoiceItem(invoiceId, itemId, {
         quantity: Number(editValues.quantity),
@@ -272,11 +271,7 @@ export default function InvoiceDetailPage() {
       });
 
       if (stockItemChanged && editStockItemId) {
-        await stockControlApiClient.manualMatchInvoiceItem(
-          invoiceId,
-          itemId,
-          editStockItemId,
-        );
+        await stockControlApiClient.manualMatchInvoiceItem(invoiceId, itemId, editStockItemId);
       }
 
       setEditingItemId(null);
@@ -600,10 +595,7 @@ export default function InvoiceDetailPage() {
                         </td>
                         <td className="px-4 py-4 text-sm text-gray-900">
                           {isEditing ? (
-                            <div
-                              className="relative"
-                              onClick={(e) => e.stopPropagation()}
-                            >
+                            <div className="relative" onClick={(e) => e.stopPropagation()}>
                               <input
                                 type="text"
                                 placeholder="Search stock items..."
@@ -613,7 +605,8 @@ export default function InvoiceDetailPage() {
                               />
                               {editStockItemId && (
                                 <div className="mt-1 text-xs text-teal-700">
-                                  {stockItems.find((s) => s.id === editStockItemId)?.name || "Selected"}
+                                  {stockItems.find((s) => s.id === editStockItemId)?.name ||
+                                    "Selected"}
                                 </div>
                               )}
                               {stockSearchQuery.length >= 2 && (

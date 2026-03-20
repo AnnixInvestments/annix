@@ -513,8 +513,7 @@ export default function JobCardDetailPage() {
 
   const isReqAuthStep = useCallback(
     (bg: BackgroundStepStatus) =>
-      bg.stepKey === "custom_req_auth" ||
-      bg.label?.toLowerCase().includes("req auth"),
+      bg.stepKey === "custom_req_auth" || bg.label?.toLowerCase().includes("req auth"),
     [],
   );
 

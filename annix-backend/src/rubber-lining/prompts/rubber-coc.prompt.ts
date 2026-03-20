@@ -433,9 +433,14 @@ FORMAT 3 - S&N RUBBER DELIVERY NOTE (calendered products):
 - PRODUCT CODE field describes compound and dimensions: "AU-C50NBRSC (6mm x 800mm x 12.5M)"
   Parse as: compoundCode="AU-C50NBRSC", thicknessMm=6, widthMm=800, lengthM=12.5
 - Table has THREE column groups repeated across the page: PROD DATE | RUN No | ROLL No | QUANTITY
-- CRITICAL: Each row is ONE physical roll. "ROLL No" is the roll number (simple integers: 1, 2, 3, 4).
-  "QUANTITY" is the WEIGHT IN KG (e.g., 72, 69, 74), NOT a count. Set actualWeightKg from this, quantity=1.
-- ALL dimensions come from the PRODUCT CODE field, not the table
+- CRITICAL COLUMN IDENTIFICATION:
+  - "ROLL No" column: Contains SMALL sequential integers (1, 2, 3, 4, 5, 6, 7, 8). These are ALWAYS single-digit or low double-digit numbers (1-20 range). Use these as the rollNumber.
+  - "QUANTITY" column: Contains the WEIGHT IN KG (e.g., 68, 71, 72, 74). These are ALWAYS larger numbers (typically 50-300 range). Use these as actualWeightKg, and set quantity=1.
+  - DO NOT confuse these columns! If you read a "rollNumber" > 20, you are likely reading the QUANTITY (weight) column instead of the ROLL No column.
+  - "RUN No" column: Production run number (e.g., 1-4, 7-12). This is metadata only.
+  - "PROD DATE" column: Production date. This is metadata only.
+- ALL dimensions (thicknessMm, widthMm, lengthM) come ONLY from the PRODUCT CODE field, NOT from the table
+- You MUST extract ALL rows with data across all three column groups — do not skip any rolls
 - Each page is typically a SEPARATE delivery note with its own DN number
 
 CUSTOMER REFERENCE / PO NUMBER EXTRACTION - CRITICAL:
@@ -585,20 +590,30 @@ The main table has THREE groups of columns repeated across the page:
 └───────────┴────────┴─────────┴──────────┘
 CRITICAL PARSING RULES FOR S&N RUBBER:
 - Each filled ROW in any column group is ONE physical roll
-- "ROLL No" contains the roll's sequential number (simple integers like 1, 2, 3, 4, 5, 6, 7, 8)
-  These are the actual roll numbers to extract as rollNumber (as strings: "1", "2", etc.)
-- "QUANTITY" contains the WEIGHT IN KG for that roll (e.g., 72, 69, 74, 71)
-  This goes into actualWeightKg, NOT into quantity. Set quantity=1 for each row.
-- "RUN No" and "PROD DATE" are production metadata
-- ALL dimensions (thicknessMm, widthMm, lengthM) come from the PRODUCT CODE field, NOT from the table
+- COLUMN IDENTIFICATION (do NOT confuse these columns):
+  - "ROLL No" column: Contains SMALL sequential integers (1, 2, 3, 4, 5, 6, 7, 8).
+    These are ALWAYS in the 1-20 range. Extract these as rollNumber (as strings: "1", "2", etc.)
+  - "QUANTITY" column: Contains the WEIGHT IN KG for that roll (e.g., 68, 71, 72, 74).
+    These are ALWAYS larger numbers (typically 50-300 range).
+    This goes into actualWeightKg, NOT into quantity. Set quantity=1 for each row.
+  - VALIDATION: If a rollNumber value is > 20, you have likely misread the QUANTITY (weight) column as ROLL No.
+    Go back and re-read the columns. Roll numbers are small (1-20), weights are large (50-300).
+  - "RUN No" column: Production run number (e.g., 1-4, 7-12). This is metadata only — do not confuse with roll numbers.
+  - "PROD DATE" column: Production date. This is metadata only.
+- ALL dimensions (thicknessMm, widthMm, lengthM) come ONLY from the PRODUCT CODE field, NOT from the table
 - The table may be partially filled — only extract rows that have data
-- Read ALL three column groups across the page (left, middle, right) — rolls may span across groups
+- You MUST extract ALL rows with data across all three column groups (left, middle, right) — do not skip any rolls
 - Each PAGE is typically a SEPARATE delivery note with its own DN number
 - The document may appear rotated/landscape — still extract all data
 
 Example: Page with DN No: 3053, Customer O/No.: 189, Date: 12-03-2026
   Product Code: AU-C50NBRSC (6mm x 800mm x 12.5M)
-  Table rows: Roll 1 = 72kg, Roll 2 = 69kg, Roll 3 = 74kg, Roll 4 = 71kg
+  Table has columns: PROD DATE | RUN No | ROLL No | QUANTITY
+  Data rows:
+    Row 1: PROD DATE=03/26 | RUN No=1-4 | ROLL No=1 | QUANTITY=72   → rollNumber="1", actualWeightKg=72
+    Row 2: PROD DATE=      | RUN No=    | ROLL No=2 | QUANTITY=69   → rollNumber="2", actualWeightKg=69
+    Row 3: PROD DATE=      | RUN No=    | ROLL No=3 | QUANTITY=74   → rollNumber="3", actualWeightKg=74
+    Row 4: PROD DATE=      | RUN No=    | ROLL No=4 | QUANTITY=71   → rollNumber="4", actualWeightKg=71
   → ONE deliveryNote with deliveryNoteNumber="3053", customerReference="189", 4 lineItems each with
     thicknessMm=6, widthMm=800, lengthM=12.5, quantity=1, and their respective rollNumber and actualWeightKg.
 

@@ -682,8 +682,18 @@ export default function RequisitionDetailPage() {
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-center">
                     {savedRows.has(item.id) ? (
                       <span className="inline-flex items-center text-green-600 text-xs font-medium">
-                        <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        <svg
+                          className="w-4 h-4 mr-1"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M5 13l4 4L19 7"
+                          />
                         </svg>
                         Saved
                       </span>

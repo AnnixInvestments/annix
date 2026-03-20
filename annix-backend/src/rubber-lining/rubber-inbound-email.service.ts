@@ -1107,19 +1107,24 @@ ${truncatedText}`;
         Promise.resolve([] as number[]),
       );
     } else {
-      const subPath = `au-rubber/delivery-notes/${metadata.supplierCompanyId || "unknown"}`;
+      const dnType = metadata.deliveryNoteType || DeliveryNoteType.COMPOUND;
 
       result.deliveryNoteIds = await files.reduce(
         async (accPromise, file) => {
           const acc = await accPromise;
+
+          const supplierCompanyId = metadata.supplierCompanyId
+            ? metadata.supplierCompanyId
+            : await this.detectSupplierFromPdf(file.buffer, file.originalname);
+
+          const subPath = `au-rubber/delivery-notes/${supplierCompanyId}`;
           const storageResult = await this.storageService.upload(file, subPath);
 
           const dnNumber = metadata.deliveryNoteNumber || `DN-${nowMillis()}`;
-          const dnType = metadata.deliveryNoteType || DeliveryNoteType.COMPOUND;
           const dn = await this.deliveryNoteService.createDeliveryNote(
             {
               deliveryNoteType: dnType,
-              supplierCompanyId: metadata.supplierCompanyId as number,
+              supplierCompanyId,
               documentPath: storageResult.path,
               deliveryNoteNumber: dnNumber,
               deliveryDate: metadata.deliveryDate,
@@ -1529,6 +1534,66 @@ ${truncatedText}`;
     );
 
     return { cocIds: [...dataResult.cocIds, ...graphCocIds] };
+  }
+
+  private async detectSupplierFromPdf(pdfBuffer: Buffer, filename: string): Promise<number> {
+    const pdfText = await this.extractTextFromPdf(pdfBuffer);
+    const pdfTextLower = pdfText.toLowerCase();
+
+    const companies = await this.companyRepository.find();
+
+    if (
+      pdfTextLower.includes("s&n") ||
+      pdfTextLower.includes("s & n") ||
+      pdfTextLower.includes("sandrubber") ||
+      pdfTextLower.includes("calendered products")
+    ) {
+      const snCompany = companies.find(
+        (c) => c.name.toLowerCase().includes("s&n") || c.name.toLowerCase().includes("s & n"),
+      );
+      if (snCompany) {
+        this.logger.log(`Auto-detected supplier: ${snCompany.name} (from PDF content)`);
+        return snCompany.id;
+      }
+    }
+
+    if (
+      pdfTextLower.includes("impilo") ||
+      filename.toLowerCase().includes("impilo") ||
+      filename.toLowerCase().startsWith("imp-")
+    ) {
+      const impiloCompany = companies.find((c) => c.name.toLowerCase().includes("impilo"));
+      if (impiloCompany) {
+        this.logger.log(`Auto-detected supplier: ${impiloCompany.name} (from PDF content)`);
+        return impiloCompany.id;
+      }
+    }
+
+    if (pdfTextLower.includes("au industries") || pdfTextLower.includes("au-industrie")) {
+      const auCompany = companies.find((c) => c.name.toLowerCase().includes("au industrie"));
+      if (auCompany) {
+        this.logger.log(`Auto-detected supplier: ${auCompany.name} (from PDF content)`);
+        return auCompany.id;
+      }
+    }
+
+    const aiResult = await this.identifySupplierWithAi(pdfText, filename);
+    if (aiResult?.companyId) {
+      this.logger.log(
+        `AI-detected supplier: company ${aiResult.companyId} (from AI classification)`,
+      );
+      return aiResult.companyId;
+    }
+
+    const firstSupplier = companies.find((c) => String(c.companyType) === "SUPPLIER");
+    if (firstSupplier) {
+      this.logger.warn(
+        `Could not detect supplier for ${filename}, defaulting to ${firstSupplier.name}`,
+      );
+      return firstSupplier.id;
+    }
+
+    throw new Error(`Cannot determine supplier for file ${filename} and no suppliers exist`);
   }
 
   private async identifySupplierWithAi(

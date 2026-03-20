@@ -420,7 +420,9 @@ export class RubberCocExtractionService {
     this.logger.log(`Customer delivery note extracted in ${processingTimeMs}ms`);
 
     const rawData = response.data as unknown as ExtractedCustomerDeliveryNotesResult;
-    const deliveryNotes = rawData?.deliveryNotes || [];
+    const deliveryNotes = (rawData?.deliveryNotes || []).map((dn) =>
+      this.sanitizeSnRubberColumnConfusion(dn),
+    );
     const podPages = rawData?.podPages || [];
 
     this.logger.log(
@@ -466,7 +468,9 @@ export class RubberCocExtractionService {
     this.logger.log(`Customer delivery note extracted via OCR in ${processingTimeMs}ms`);
 
     const rawData = response.data as unknown as ExtractedCustomerDeliveryNotesResult;
-    const deliveryNotes = rawData?.deliveryNotes || [];
+    const deliveryNotes = (rawData?.deliveryNotes || []).map((dn) =>
+      this.sanitizeSnRubberColumnConfusion(dn),
+    );
     const podPages = rawData?.podPages || [];
 
     this.logger.log(
@@ -578,6 +582,37 @@ export class RubberCocExtractionService {
     } else {
       return this.extractCalendererCoc(pdfText);
     }
+  }
+
+  private sanitizeSnRubberColumnConfusion(
+    dn: ExtractedCustomerDeliveryNoteData,
+  ): ExtractedCustomerDeliveryNoteData {
+    const items = dn.lineItems || [];
+    if (items.length === 0) return dn;
+
+    const allRollNumbersLookLikeWeights = items.every((item) => {
+      const rollNum = Number(item.rollNumber);
+      return !Number.isNaN(rollNum) && rollNum > 20;
+    });
+    const allWeightsMissing = items.every(
+      (item) => !item.actualWeightKg || item.actualWeightKg === 0,
+    );
+
+    if (allRollNumbersLookLikeWeights && allWeightsMissing) {
+      this.logger.warn(
+        `S&N Rubber column confusion detected for DN ${dn.deliveryNoteNumber}: roll numbers (${items.map((i) => i.rollNumber).join(", ")}) look like weights. Auto-correcting.`,
+      );
+      return {
+        ...dn,
+        lineItems: items.map((item, idx) => ({
+          ...item,
+          actualWeightKg: Number(item.rollNumber),
+          rollNumber: String(idx + 1),
+        })),
+      };
+    }
+
+    return dn;
   }
 
   private async callGemini(

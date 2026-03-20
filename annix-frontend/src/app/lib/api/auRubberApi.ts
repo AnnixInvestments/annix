@@ -2215,14 +2215,14 @@ class AuRubberApiClient {
     files: File[],
     data: {
       deliveryNoteType: DeliveryNoteType;
-      supplierCompanyId: number;
+      supplierCompanyId?: number;
       deliveryNoteNumber?: string;
       deliveryDate?: string;
     },
   ): Promise<RubberDeliveryNoteDto[]> {
     return this.requestWithFiles("/rubber-lining/portal/delivery-notes/upload", files, {
       deliveryNoteType: data.deliveryNoteType,
-      supplierCompanyId: data.supplierCompanyId,
+      ...(data.supplierCompanyId ? { supplierCompanyId: data.supplierCompanyId } : {}),
       deliveryNoteNumber: data.deliveryNoteNumber,
       deliveryDate: data.deliveryDate,
     });

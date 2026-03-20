@@ -1010,7 +1010,14 @@ export class CpoService {
   private async archiveAndOverwriteCpo(
     existing: CustomerPurchaseOrder,
     row: JobCardImportRow,
-    validLineItems: { itemCode?: string; itemDescription?: string; itemNo?: string; quantity?: string; jtNo?: string; m2?: number }[],
+    validLineItems: {
+      itemCode?: string;
+      itemDescription?: string;
+      itemNo?: string;
+      quantity?: string;
+      jtNo?: string;
+      m2?: number;
+    }[],
     totalQuantity: number,
     customFields: Record<string, string> | null,
     companyId: number,
@@ -1078,9 +1085,7 @@ export class CpoService {
       this.logger.error(`Failed post-creation tasks for CPO ${saved.cpoNumber}: ${msg}`);
     });
 
-    this.logger.log(
-      `Archived and overwrote CPO ${existing.cpoNumber} as v${saved.versionNumber}`,
-    );
+    this.logger.log(`Archived and overwrote CPO ${existing.cpoNumber} as v${saved.versionNumber}`);
 
     return saved.id;
   }
