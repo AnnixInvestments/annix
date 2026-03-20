@@ -130,6 +130,168 @@ function mergeNoteRowsIntoItems(items: LineItemImportRow[]): LineItemImportRow[]
   return result;
 }
 
+function normalizeSpec(text: string): string {
+  return text.replace(/\s+/g, " ").trim().toLowerCase();
+}
+
+function jtBaseNumber(jtNo: string): string {
+  const cleaned = jtNo.trim().toUpperCase();
+  const match = cleaned.match(/^(JT\d+)/i);
+  if (match) {
+    return match[1];
+  }
+  const parts = cleaned.split("-");
+  return parts[0];
+}
+
+function dominantJtBase(row: JobCardImportRow): string | null {
+  const jtNumbers = (row.lineItems || [])
+    .map((li) => (li.jtNo || "").trim())
+    .filter(Boolean);
+
+  if (jtNumbers.length === 0) return null;
+
+  const bases = jtNumbers.map(jtBaseNumber);
+  const counts = bases.reduce<Record<string, number>>(
+    (acc, base) => ({ ...acc, [base]: (acc[base] || 0) + 1 }),
+    {},
+  );
+
+  return Object.entries(counts).reduce(
+    (best, [base, count]) => (count > best.count ? { base, count } : best),
+    { base: bases[0], count: 0 },
+  ).base;
+}
+
+function mergeRowsByJtNumber(rows: JobCardImportRow[]): JobCardImportRow[] {
+  if (rows.length <= 1) return rows;
+
+  const hasSameJcNumber = rows.every(
+    (r) =>
+      r.jcNumber &&
+      rows[0].jcNumber &&
+      r.jcNumber.trim().toUpperCase() === rows[0].jcNumber.trim().toUpperCase(),
+  );
+
+  if (!hasSameJcNumber) return rows;
+
+  const allLineItems = rows.flatMap((r) => r.lineItems || []);
+  const jtBases = allLineItems
+    .map((li) => (li.jtNo || "").trim())
+    .filter(Boolean)
+    .map(jtBaseNumber);
+  const uniqueJtBases = [...new Set(jtBases)];
+
+  if (uniqueJtBases.length <= 1) {
+    return [mergeIntoSingleRow(rows)];
+  }
+
+  const itemsByJtBase = allLineItems.reduce<Record<string, LineItemImportRow[]>>((acc, li) => {
+    const jt = (li.jtNo || "").trim();
+    const base = jt ? jtBaseNumber(jt) : "__none";
+    return { ...acc, [base]: [...(acc[base] || []), li] };
+  }, {});
+
+  const notesByJtBase = rows.reduce<Record<string, string[]>>((acc, row) => {
+    const rowNotes = (row.notes || "").trim();
+    if (!rowNotes) return acc;
+
+    const base = dominantJtBase(row) || "__none";
+    const existing = acc[base] || [];
+    const normalised = normalizeSpec(rowNotes);
+    const alreadyHas = existing.some((n) => normalizeSpec(n) === normalised);
+    return alreadyHas ? acc : { ...acc, [base]: [...existing, rowNotes] };
+  }, {});
+
+  return uniqueJtBases.map((jtBase) => {
+    const base = rows[0];
+    const items = itemsByJtBase[jtBase] || [];
+    const specs = notesByJtBase[jtBase] || notesByJtBase["__none"] || [];
+    const noJtItems = itemsByJtBase["__none"] || [];
+
+    return {
+      ...base,
+      jcNumber: base.jcNumber || undefined,
+      lineItems: [...items, ...noJtItems],
+      notes: deduplicateSpecs(specs, rows) || undefined,
+      pageNumber: undefined,
+      reference: jtBase,
+    };
+  });
+}
+
+function mergeIntoSingleRow(group: JobCardImportRow[]): JobCardImportRow {
+  const base = group[0];
+  const allLineItems = group.flatMap((r) => r.lineItems || []);
+  const allNotes = group
+    .map((r) => (r.notes || "").trim())
+    .filter(Boolean);
+  const uniqueSpecs = allNotes.reduce<string[]>((acc, note) => {
+    const normalised = normalizeSpec(note);
+    if (acc.some((existing) => normalizeSpec(existing) === normalised)) {
+      return acc;
+    }
+    return [...acc, note];
+  }, []);
+
+  if (uniqueSpecs.length <= 1) {
+    return {
+      ...base,
+      lineItems: allLineItems,
+      notes: uniqueSpecs[0] || undefined,
+      pageNumber: undefined,
+    };
+  }
+
+  const specGrouped = groupItemsBySpec(group, uniqueSpecs);
+  return {
+    ...base,
+    lineItems: specGrouped.lineItems,
+    notes: specGrouped.notes,
+    pageNumber: undefined,
+  };
+}
+
+function deduplicateSpecs(specs: string[], allRows: JobCardImportRow[]): string | null {
+  if (specs.length > 0) {
+    return specs.join("\n");
+  }
+
+  const allNotes = allRows
+    .map((r) => (r.notes || "").trim())
+    .filter(Boolean);
+  const unique = allNotes.reduce<string[]>((acc, note) => {
+    const normalised = normalizeSpec(note);
+    return acc.some((n) => normalizeSpec(n) === normalised) ? acc : [...acc, note];
+  }, []);
+
+  return unique.length > 0 ? unique[0] : null;
+}
+
+function groupItemsBySpec(
+  group: JobCardImportRow[],
+  uniqueSpecs: string[],
+): { lineItems: LineItemImportRow[]; notes: string } {
+  const specBuckets = uniqueSpecs.map((spec) => {
+    const normalised = normalizeSpec(spec);
+    const matchingItems = group
+      .filter((r) => normalizeSpec(r.notes || "") === normalised)
+      .flatMap((r) => r.lineItems || []);
+    return { spec, items: matchingItems };
+  });
+
+  const orderedItems = specBuckets.flatMap((bucket) =>
+    bucket.items.map((item) => ({
+      ...item,
+      notes: item.notes ? `${item.notes}\n${bucket.spec}` : bucket.spec,
+    })),
+  );
+
+  const combinedNotes = uniqueSpecs.join("\n---\n");
+
+  return { lineItems: orderedItems, notes: combinedNotes };
+}
+
 const SAGE_NOISE_PATTERNS: RegExp[] = [
   /^Date\s+Date\s+Date$/i,
   /Sage\s*200\s*Evolution\s*\(Registered\s*to\b[^)]*\)\s*\d{4}\/\d{2}\/\d{2}\s*\d{2}:\d{2}:\d{2}/i,
@@ -1206,8 +1368,10 @@ export class JobCardImportService {
   }
 
   async importJobCards(companyId: number, rows: JobCardImportRow[]): Promise<JobCardImportResult> {
+    const mergedRows = mergeRowsByJtNumber(rows);
+
     const result: JobCardImportResult = {
-      totalRows: rows.length,
+      totalRows: mergedRows.length,
       created: 0,
       updated: 0,
       skipped: 0,
@@ -1216,7 +1380,7 @@ export class JobCardImportService {
       deliveryMatches: [],
     };
 
-    return rows.reduce(async (accPromise, row, i) => {
+    return mergedRows.reduce(async (accPromise, row, i) => {
       const acc = await accPromise;
 
       if (!row.jobNumber || !row.jobName) {
