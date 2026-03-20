@@ -3,10 +3,12 @@
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { formatDateZA } from "@/app/lib/datetime";
 import { exportToExcel, exportToPDF, exportToWord } from "@/app/lib/export/exportTable";
 import { useRequisitionDetail, useUpdateRequisitionItem } from "@/app/lib/query/hooks";
+import { stockControlKeys } from "@/app/lib/query/keys";
 
 function statusBadgeColor(status: string): string {
   const colors: Record<string, string> = {
@@ -26,6 +28,7 @@ export default function RequisitionDetailPage() {
   const fromJobCard = searchParams.get("fromJobCard");
   const completeStep = searchParams.get("completeStep");
   const reqId = Number(params.id);
+  const queryClient = useQueryClient();
 
   const [editingItemId, setEditingItemId] = useState<number | null>(null);
   const [editPackSize, setEditPackSize] = useState<number>(20);
@@ -131,7 +134,7 @@ export default function RequisitionDetailPage() {
     return pending !== undefined ? pending : (dbValue ?? "");
   };
 
-  const handleSaveRow = (itemId: number) => {
+  const handleSaveRow = async (itemId: number) => {
     if (!requisition) return;
     const item = requisition.items.find((i) => i.id === itemId);
     if (!item) return;
@@ -165,36 +168,34 @@ export default function RequisitionDetailPage() {
       return;
     }
 
-    updateItem.mutate(
-      { itemId, data: payload },
-      {
-        onSuccess: () => {
-          setPendingReorderQty((prev) => {
-            const next = new Map(prev);
-            next.delete(itemId);
-            return next;
-          });
-          setPendingReqNumber((prev) => {
-            const next = new Map(prev);
-            next.delete(itemId);
-            return next;
-          });
-          setSavingRowId(null);
-          setSavedRows((prev) => new Set(prev).add(itemId));
-          setTimeout(() => {
-            setSavedRows((prev) => {
-              const next = new Set(prev);
-              next.delete(itemId);
-              return next;
-            });
-          }, 2000);
-        },
-        onError: (err) => {
-          setSavingRowId(null);
-          setError(err instanceof Error ? err.message : "Failed to save");
-        },
-      },
-    );
+    try {
+      await stockControlApiClient.updateRequisitionItem(reqId, itemId, payload as any);
+      await queryClient.invalidateQueries({
+        queryKey: stockControlKeys.requisitions.detail(reqId),
+      });
+      setPendingReorderQty((prev) => {
+        const next = new Map(prev);
+        next.delete(itemId);
+        return next;
+      });
+      setPendingReqNumber((prev) => {
+        const next = new Map(prev);
+        next.delete(itemId);
+        return next;
+      });
+      setSavingRowId(null);
+      setSavedRows((prev) => new Set(prev).add(itemId));
+      setTimeout(() => {
+        setSavedRows((prev) => {
+          const next = new Set(prev);
+          next.delete(itemId);
+          return next;
+        });
+      }, 2000);
+    } catch (err) {
+      setSavingRowId(null);
+      setError(err instanceof Error ? err.message : "Failed to save");
+    }
   };
 
   const exportColumns = [
