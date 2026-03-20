@@ -361,16 +361,9 @@ export default function JobCardDetailPage() {
         label: "Details",
         badge: validLineItemCount > 0 ? validLineItemCount : null,
       },
-      {
-        id: "job-files",
-        label: "Job Files",
-        badge: jobFilesHook.jobFiles.length > 0 ? jobFilesHook.jobFiles.length : null,
-      },
       { id: "coating", label: "Coating Analysis" },
-      {
-        id: "rubber-analysis",
-        label: "Rubber Analysis",
-      },
+      { id: "rubber-analysis", label: "Rubber Analysis" },
+      { id: "requisition", label: "Requisition" },
       {
         id: "stock-issues",
         label: "Stock Issues",
@@ -385,7 +378,11 @@ export default function JobCardDetailPage() {
         label: "Dispatch",
         hidden: status === "draft" && currentStatus !== "dispatched",
       },
-      { id: "requisition", label: "Requisition" },
+      {
+        id: "job-files",
+        label: "Job Files",
+        badge: jobFilesHook.jobFiles.length > 0 ? jobFilesHook.jobFiles.length : null,
+      },
     ];
   }, [jobCard, validLineItemCount, allocations.length, currentStatus]);
 
