@@ -250,7 +250,7 @@ export default function RequisitionDetailPage() {
     setShowExportMenu(false);
   };
 
-  const handleAcceptAndReturn = async () => {
+  const completeStepAndReturn = async () => {
     if (!fromJobCard || !requisition) return;
     try {
       setIsAccepting(true);
@@ -268,6 +268,23 @@ export default function RequisitionDetailPage() {
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to complete requisition step");
       setIsAccepting(false);
+    }
+  };
+
+  const handlePrintAndReturn = () => {
+    window.print();
+    const onAfterPrint = () => {
+      window.removeEventListener("afterprint", onAfterPrint);
+      completeStepAndReturn();
+    };
+    window.addEventListener("afterprint", onAfterPrint);
+  };
+
+  const handleAcceptAndReturn = () => {
+    if (isOrderPlacement) {
+      handlePrintAndReturn();
+    } else {
+      completeStepAndReturn();
     }
   };
 
@@ -304,7 +321,21 @@ export default function RequisitionDetailPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 print:space-y-2">
+      <style jsx global>{`
+        @media print {
+          @page { size: A4 portrait; margin: 10mm; }
+          body { font-size: 10px !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+          .print-compact-table th,
+          .print-compact-table td { padding: 4px 8px !important; font-size: 9px !important; }
+          .print-compact-details dt,
+          .print-compact-details dd { font-size: 10px !important; }
+          .print-compact-details { gap: 4px 16px !important; }
+          .print-hide-col-stock { display: none !important; }
+          h1 { font-size: 16px !important; }
+          h3 { font-size: 12px !important; }
+        }
+      `}</style>
       {error && (
         <div className="rounded-md bg-red-50 p-3 text-sm text-red-700">
           {error}
@@ -318,7 +349,7 @@ export default function RequisitionDetailPage() {
         <div className="flex items-center space-x-4">
           <Link
             href="/stock-control/portal/requisitions"
-            className="text-gray-500 hover:text-gray-700"
+            className="text-gray-500 hover:text-gray-700 print:hidden"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
@@ -357,7 +388,7 @@ export default function RequisitionDetailPage() {
             ) : null}
           </div>
         </div>
-        <div className="flex items-center space-x-3">
+        <div className="flex items-center space-x-3 print:hidden">
           {fromJobCard && (
             <button
               onClick={handleAcceptAndReturn}
@@ -366,6 +397,15 @@ export default function RequisitionDetailPage() {
             >
               {isAccepting ? (
                 <div className="w-4 h-4 mr-2 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              ) : isOrderPlacement ? (
+                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"
+                  />
+                </svg>
               ) : (
                 <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path
@@ -379,7 +419,7 @@ export default function RequisitionDetailPage() {
               {isAccepting
                 ? "Completing..."
                 : isOrderPlacement
-                  ? "Confirm Order & Return to Job Card"
+                  ? "Print & Return to Job Card"
                   : completeStep
                     ? "Authorise & Return to Job Card"
                     : "Accept & Return to Job Card"}
@@ -457,12 +497,12 @@ export default function RequisitionDetailPage() {
         </div>
       </div>
 
-      <div className="bg-white shadow rounded-lg overflow-x-auto">
-        <div className="px-4 py-5 sm:px-6 border-b border-gray-200">
+      <div className="bg-white shadow rounded-lg overflow-x-auto print:shadow-none print:rounded-none">
+        <div className="px-4 py-5 sm:px-6 border-b border-gray-200 print:px-2 print:py-2">
           <h3 className="text-lg leading-6 font-medium text-gray-900">Details</h3>
         </div>
-        <div className="px-4 py-5 sm:px-6">
-          <dl className="grid grid-cols-2 gap-x-4 gap-y-6">
+        <div className="px-4 py-5 sm:px-6 print:px-2 print:py-2">
+          <dl className="grid grid-cols-2 gap-x-4 gap-y-6 print-compact-details">
             <div>
               <dt className="text-sm font-medium text-gray-500">Created By</dt>
               <dd className="mt-1 text-sm text-gray-900">{requisition.createdBy || "-"}</dd>
@@ -483,8 +523,8 @@ export default function RequisitionDetailPage() {
         </div>
       </div>
 
-      <div className="bg-white shadow rounded-lg overflow-x-auto">
-        <div className="px-4 py-5 sm:px-6 border-b border-gray-200 flex items-center justify-between">
+      <div className="bg-white shadow rounded-lg overflow-x-auto print:shadow-none print:rounded-none">
+        <div className="px-4 py-5 sm:px-6 border-b border-gray-200 flex items-center justify-between print:px-2 print:py-2">
           <h3 className="text-lg leading-6 font-medium text-gray-900">Requisition Items</h3>
           <span className="text-sm text-gray-500">{requisition.items.length} item(s)</span>
         </div>
@@ -493,7 +533,7 @@ export default function RequisitionDetailPage() {
             <h3 className="text-sm font-medium text-gray-900">No items</h3>
           </div>
         ) : (
-          <table className="min-w-full divide-y divide-gray-200">
+          <table className="min-w-full divide-y divide-gray-200 print-compact-table">
             <thead className="bg-gray-50">
               <tr>
                 <th
@@ -551,7 +591,7 @@ export default function RequisitionDetailPage() {
                 </th>
                 <th
                   scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider print-hide-col-stock"
                 >
                   Stock Match
                 </th>
@@ -691,7 +731,7 @@ export default function RequisitionDetailPage() {
                       />
                     )}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm print-hide-col-stock">
                     {item.stockItem ? (
                       <span className="text-gray-700">{item.stockItem.name}</span>
                     ) : (

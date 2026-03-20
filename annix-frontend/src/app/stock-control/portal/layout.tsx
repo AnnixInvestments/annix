@@ -20,7 +20,7 @@ function MainContent({ children }: { children: React.ReactNode }) {
 
   return (
     <main
-      className="flex-1 overflow-y-auto px-4 py-3 sm:p-6 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:pb-[max(1.5rem,env(safe-area-inset-bottom))]"
+      className="flex-1 overflow-y-auto px-4 py-3 sm:p-6 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:pb-[max(1.5rem,env(safe-area-inset-bottom))] print:overflow-visible print:p-0"
       style={
         heroImageUrl
           ? {
@@ -35,7 +35,9 @@ function MainContent({ children }: { children: React.ReactNode }) {
       <div
         className={`w-full ${heroImageUrl ? "bg-white/95 rounded-lg p-4 sm:p-6 shadow-sm backdrop-blur-sm" : ""}`}
       >
-        <HubBreadcrumb />
+        <div className="print:hidden">
+          <HubBreadcrumb />
+        </div>
         {children}
       </div>
     </main>
@@ -84,12 +86,16 @@ function PortalContent({ children }: { children: React.ReactNode }) {
       <StockControlRbacProvider>
         <ViewAsProvider>
           <GlossaryProvider>
-            <div className="flex flex-col h-screen bg-gray-50">
-              <StockControlHeader />
+            <div className="flex flex-col h-screen bg-gray-50 print:h-auto print:bg-white">
+              <div className="print:hidden">
+                <StockControlHeader />
+              </div>
               <PageAccessGuard>
                 <MainContent>{children}</MainContent>
               </PageAccessGuard>
-              <ChatPanel />
+              <div className="print:hidden">
+                <ChatPanel />
+              </div>
             </div>
           </GlossaryProvider>
         </ViewAsProvider>
