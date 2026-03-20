@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
 import type {
   BatchIssuanceDto,
@@ -132,6 +133,8 @@ import { staffInitials } from "../../lib/formatting";
 
 export default function IssueStockPage() {
   const { profile } = useStockControlAuth();
+  const searchParams = useSearchParams();
+  const preloadJobCardId = searchParams.get("jobCardId");
   const [currentStep, setCurrentStep] = useState<Step>("issuer");
   const [scanInput, setScanInput] = useState("");
   const [isScanning, setIsScanning] = useState(false);
@@ -198,6 +201,15 @@ export default function IssueStockPage() {
       .then(setRecentIssuances)
       .catch(() => setRecentIssuances([]));
   }, []);
+
+  useEffect(() => {
+    if (preloadJobCardId && !jobCard) {
+      stockControlApiClient
+        .jobCardById(Number(preloadJobCardId))
+        .then((jc) => setJobCard(jc))
+        .catch(() => setError("Could not load job card from URL"));
+    }
+  }, [preloadJobCardId]);
 
   useEffect(() => {
     if (
@@ -432,7 +444,11 @@ export default function IssueStockPage() {
       setError("Please add at least one item");
       return;
     }
-    setCurrentStep("job_card");
+    if (jobCard) {
+      setCurrentStep("confirm");
+    } else {
+      setCurrentStep("job_card");
+    }
     setError(null);
   };
 
@@ -723,6 +739,18 @@ export default function IssueStockPage() {
       )}
 
       <div className="space-y-6">
+        {jobCard && preloadJobCardId && (
+          <div className="bg-teal-50 border border-teal-200 rounded-lg px-4 py-3 flex items-center gap-3">
+            <svg className="w-5 h-5 text-teal-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            <div>
+              <p className="text-sm font-medium text-teal-900">
+                Issuing for Job Card: {jobCard.jobNumber} - {jobCard.jobName}
+              </p>
+            </div>
+          </div>
+        )}
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-bold text-gray-900">Issue Stock</h1>
           <div className="flex items-center gap-3">

@@ -524,6 +524,15 @@ export default function JobCardDetailPage() {
     [],
   );
 
+  const isStockAllocStep = useCallback(
+    (bg: BackgroundStepStatus) =>
+      bg.stepKey === "stock_allocation" ||
+      bg.label?.toLowerCase().includes("stock alloc"),
+    [],
+  );
+
+  const hasAllocations = allocations.length > 0;
+
   const requisitionIsPending = useMemo(
     () => userPendingBgSteps.some(isRequisitionStep),
     [userPendingBgSteps, isRequisitionStep],
@@ -865,6 +874,43 @@ export default function JobCardDetailPage() {
                       >
                         View Requisition
                       </button>
+                    ) : isStockAllocStep(bg) ? (
+                      <div key={bg.stepKey} className="flex flex-wrap gap-2">
+                        <button
+                          onClick={() =>
+                            router.push(
+                              `/stock-control/portal/issue-stock?jobCardId=${jobId}`,
+                            )
+                          }
+                          className="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-md bg-teal-600 text-white hover:bg-teal-700 transition-colors"
+                        >
+                          <svg
+                            className="w-4 h-4 mr-1"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
+                            />
+                          </svg>
+                          Issue Stock
+                        </button>
+                        {hasAllocations && (
+                          <button
+                            onClick={() => handleCompleteBackgroundStep(bg.stepKey)}
+                            disabled={completingStepKey === bg.stepKey}
+                            className="px-3 py-1.5 text-xs font-medium rounded-md bg-amber-600 text-white hover:bg-amber-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+                          >
+                            {completingStepKey === bg.stepKey
+                              ? "..."
+                              : bg.actionLabel || `Complete ${bg.label}`}
+                          </button>
+                        )}
+                      </div>
                     ) : (
                       <button
                         key={bg.stepKey}
