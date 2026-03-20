@@ -63,6 +63,7 @@ import { JobCardJobFile } from "./entities/job-card-job-file.entity";
 import { JobCardLineItem } from "./entities/job-card-line-item.entity";
 import { JobCardVersion } from "./entities/job-card-version.entity";
 import { PushSubscription } from "./entities/push-subscription.entity";
+import { QaReviewDecision } from "./entities/qa-review-decision.entity";
 import { Requisition } from "./entities/requisition.entity";
 import { RequisitionItem } from "./entities/requisition-item.entity";
 import { RubberDimensionOverride } from "./entities/rubber-dimension-override.entity";
@@ -133,6 +134,7 @@ import { M2CalculationService } from "./services/m2-calculation.service";
 import { MovementService } from "./services/movement.service";
 import { PriceHistoryService } from "./services/price-history.service";
 import { PublicBrandingService } from "./services/public-branding.service";
+import { QaProcessService } from "./services/qa-process.service";
 import { QrCodeService } from "./services/qr-code.service";
 import { RbacConfigService } from "./services/rbac-config.service";
 import { ReportsService } from "./services/reports.service";
@@ -208,6 +210,7 @@ import { WorkflowStepConfigService } from "./services/workflow-step-config.servi
       JobCardBackgroundCompletion,
       JobCardExtractionCorrection,
       JobCardJobFile,
+      QaReviewDecision,
     ]),
     EmailModule,
     JwtModule.registerAsync({
@@ -311,6 +314,7 @@ import { WorkflowStepConfigService } from "./services/workflow-step-config.servi
     ChatService,
     WorkflowStepConfigService,
     BackgroundStepService,
+    QaProcessService,
     ScEmailClassifierService,
     ScEmailRouterService,
     ScEmailRegistrationService,

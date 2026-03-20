@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, Circle, Clock, RefreshCw, X } from "lucide-react";
+import { Check, Circle, Clock, Minus, RefreshCw, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { BackgroundStepStatus, JobCardApproval } from "@/app/lib/api/stockControlApi";
 import { formatDateLongZA } from "@/app/lib/datetime";
@@ -234,8 +234,11 @@ const bgNodeState = (
   fgIndex: number,
   currentStepIndex: number,
   branchBgSteps: BackgroundStepStatus[],
-): "completed" | "active" | "pending" => {
-  if (bg.completedAt !== null) return "completed";
+): "completed" | "skipped" | "active" | "pending" => {
+  if (bg.completedAt !== null) {
+    if (bg.completionType === "skipped") return "skipped";
+    return "completed";
+  }
   if (fgIndex < currentStepIndex) {
     const firstIncomplete = branchBgSteps.find((b) => b.completedAt === null);
     if (firstIncomplete && firstIncomplete.stepKey === bg.stepKey) return "active";
@@ -249,6 +252,7 @@ interface BranchSegment {
   triggerFgIdx: number;
   nextFgIdx: number;
   bgSteps: BackgroundStepStatus[];
+  branchColor: string | null;
 }
 
 const collectBranches = (
@@ -270,13 +274,54 @@ const collectBranches = (
     const chain = resolveBgChain(step.key);
     if (chain.length > 0) {
       const nextFgIdx = index + 1 < allSteps.length ? index + 1 : index;
+      const firstWithColor = chain.find((bg) => bg.branchColor);
       return [
         ...branches,
-        { triggerFgKey: step.key, triggerFgIdx: index, nextFgIdx, bgSteps: chain },
+        {
+          triggerFgKey: step.key,
+          triggerFgIdx: index,
+          nextFgIdx,
+          bgSteps: chain,
+          branchColor: firstWithColor?.branchColor || null,
+        },
       ];
     }
     return branches;
   }, []);
+};
+
+const bgNodeClasses = (
+  state: "completed" | "skipped" | "active" | "pending",
+  branchColor: string | null,
+): { circle: string; icon: React.ReactNode; label: string } => {
+  const isBlue = branchColor === "#3b82f6";
+
+  if (state === "skipped") {
+    return {
+      circle: "bg-gray-300",
+      icon: <Minus className="h-2.5 w-2.5 text-white" />,
+      label: "text-gray-400",
+    };
+  }
+  if (state === "completed") {
+    return {
+      circle: isBlue ? "bg-blue-500" : "bg-amber-500",
+      icon: <Check className="h-2.5 w-2.5 text-white" />,
+      label: isBlue ? "text-blue-700" : "text-amber-700",
+    };
+  }
+  if (state === "active") {
+    return {
+      circle: "bg-red-100 border-2 border-red-500 animate-pulse",
+      icon: <Clock className="h-2.5 w-2.5 text-red-600" />,
+      label: "text-red-600",
+    };
+  }
+  return {
+    circle: "bg-gray-100 border-2 border-gray-300",
+    icon: <Circle className="h-2 w-2 text-gray-400" />,
+    label: "text-gray-400",
+  };
 };
 
 interface DesktopTransitMapProps {
@@ -407,8 +452,9 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
 
         const branchActive = branch.triggerFgIdx < currentStepIndex;
         const allComplete = branch.bgSteps.every((bg) => bg.completedAt !== null);
-        const strokeColor = branchActive ? "#f59e0b" : "#d1d5db";
-        const mergeColor = branchActive && allComplete ? "#f59e0b" : "#d1d5db";
+        const activeColor = branch.branchColor || "#f59e0b";
+        const strokeColor = branchActive ? activeColor : "#d1d5db";
+        const mergeColor = branchActive && allComplete ? activeColor : "#d1d5db";
 
         const sRect = startNode.getBoundingClientRect();
         const fbRect = firstBg.getBoundingClientRect();
@@ -447,7 +493,7 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
           const pRect = prevEl.getBoundingClientRect();
           const cRect = currEl.getBoundingClientRect();
           const prevCompleted = branch.bgSteps[bgIdx - 1].completedAt !== null;
-          const lineColor = branchActive && prevCompleted ? "#f59e0b" : "#d1d5db";
+          const lineColor = branchActive && prevCompleted ? activeColor : "#d1d5db";
 
           paths.push({
             key: `bg-line-${bg.stepKey}`,
@@ -755,8 +801,10 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
                     currentStepIndex,
                     branch.bgSteps,
                   );
+                  const classes = bgNodeClasses(state, branch.branchColor);
                   const bgAssigned = assignedNameForStep(bg.stepKey, stepAssignments);
-                  const bgDisplayName = state === "completed" ? bg.completedByName : bgAssigned;
+                  const bgDisplayName =
+                    state === "completed" || state === "skipped" ? bg.completedByName : bgAssigned;
 
                   return (
                     <div key={bg.stepKey} className="flex-1 flex flex-col items-center">
@@ -764,31 +812,17 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
                         ref={(el) => {
                           bgNodeRefs.current[bg.stepKey] = el;
                         }}
-                        className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 z-20 ${
-                          state === "completed"
-                            ? "bg-amber-500"
-                            : state === "active"
-                              ? "bg-red-100 border-2 border-red-500 animate-pulse"
-                              : "bg-gray-100 border-2 border-gray-300"
-                        }`}
+                        className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 z-20 ${classes.circle}`}
                       >
-                        {state === "completed" && <Check className="h-2.5 w-2.5 text-white" />}
-                        {state === "active" && <Clock className="h-2.5 w-2.5 text-red-600" />}
-                        {state === "pending" && <Circle className="h-2 w-2 text-gray-400" />}
+                        {classes.icon}
                       </div>
 
                       <p
-                        className={`mt-0.5 text-[9px] font-medium whitespace-nowrap ${
-                          state === "completed"
-                            ? "text-amber-700"
-                            : state === "active"
-                              ? "text-red-600"
-                              : "text-gray-400"
-                        }`}
+                        className={`mt-0.5 text-[9px] font-medium whitespace-nowrap ${classes.label}`}
                       >
-                        {bg.label}
+                        {state === "skipped" ? "Skipped" : bg.label}
                       </p>
-                      {bgDisplayName && (
+                      {bgDisplayName && state !== "skipped" && (
                         <p className="text-[8px] text-gray-400 truncate max-w-[60px]">
                           {bgDisplayName}
                         </p>
@@ -1051,7 +1085,11 @@ function MobileTransitMap(props: MobileTransitMapProps) {
                   />
                 </div>
 
-                <div className="ml-1 pl-3 border-l-2 border-dashed border-amber-300 py-1 flex-1 min-w-0">
+                <div
+                  className={`ml-1 pl-3 border-l-2 border-dashed py-1 flex-1 min-w-0 ${
+                    branch.branchColor === "#3b82f6" ? "border-blue-300" : "border-amber-300"
+                  }`}
+                >
                   <div className="flex flex-wrap gap-x-4 gap-y-1.5">
                     {branch.bgSteps.map((bg) => {
                       const bgState = bgNodeState(
@@ -1060,40 +1098,27 @@ function MobileTransitMap(props: MobileTransitMapProps) {
                         currentStepIndex,
                         branch.bgSteps,
                       );
+                      const mClasses = bgNodeClasses(bgState, branch.branchColor);
                       const bgAssigned = assignedNameForStep(bg.stepKey, stepAssignments);
                       const bgDisplayName =
-                        bgState === "completed" ? bg.completedByName : bgAssigned;
+                        bgState === "completed" || bgState === "skipped"
+                          ? bg.completedByName
+                          : bgAssigned;
 
                       return (
                         <div key={bg.stepKey} className="flex items-center gap-1.5">
                           <div
-                            className={`w-4 h-4 rounded-full flex items-center justify-center flex-shrink-0 ${
-                              bgState === "completed"
-                                ? "bg-amber-500"
-                                : bgState === "active"
-                                  ? "bg-red-100 border-2 border-red-500 animate-pulse"
-                                  : "bg-gray-100 border border-gray-300"
-                            }`}
+                            className={`w-4 h-4 rounded-full flex items-center justify-center flex-shrink-0 ${mClasses.circle}`}
                           >
-                            {bgState === "completed" && <Check className="h-2 w-2 text-white" />}
-                            {bgState === "active" && <Clock className="h-2 w-2 text-red-600" />}
-                            {bgState === "pending" && (
-                              <Circle className="h-1.5 w-1.5 text-gray-400" />
-                            )}
+                            {mClasses.icon}
                           </div>
                           <div className="min-w-0">
                             <p
-                              className={`text-[10px] font-medium leading-tight ${
-                                bgState === "completed"
-                                  ? "text-amber-700"
-                                  : bgState === "active"
-                                    ? "text-red-600"
-                                    : "text-gray-400"
-                              }`}
+                              className={`text-[10px] font-medium leading-tight ${mClasses.label}`}
                             >
-                              {bg.label}
+                              {bgState === "skipped" ? `${bg.label} (Skipped)` : bg.label}
                             </p>
-                            {bgDisplayName && (
+                            {bgDisplayName && bgState !== "skipped" && (
                               <p className="text-[9px] text-gray-400 leading-tight">
                                 {bgDisplayName}
                               </p>
@@ -1157,6 +1182,8 @@ export function WorkflowStepper(props: WorkflowStepperProps) {
             completedByName: null,
             notes: null,
             actionLabel: null,
+            completionType: null,
+            branchColor: null,
           }),
           triggerAfterStep: null,
           completedAt: docUploadFromBg?.completedAt || docUploadApproval?.approvedAt || null,

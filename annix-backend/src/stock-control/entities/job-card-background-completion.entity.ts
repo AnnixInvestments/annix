@@ -50,6 +50,9 @@ export class JobCardBackgroundCompletion {
   @Column({ type: "text", nullable: true })
   notes: string | null;
 
+  @Column({ name: "completion_type", type: "varchar", length: 20, default: "manual" })
+  completionType: string;
+
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;
 }

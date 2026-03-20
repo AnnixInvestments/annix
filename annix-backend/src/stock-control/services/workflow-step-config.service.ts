@@ -10,6 +10,7 @@ const DEFAULT_STEPS: ReadonlyArray<{
   isBackground: boolean;
   triggerAfterStep: string | null;
   actionLabel: string | null;
+  branchColor: string | null;
 }> = [
   {
     key: "admin_approval",
@@ -18,6 +19,7 @@ const DEFAULT_STEPS: ReadonlyArray<{
     isBackground: false,
     triggerAfterStep: null,
     actionLabel: "Accept JC",
+    branchColor: null,
   },
   {
     key: "manager_approval",
@@ -26,6 +28,7 @@ const DEFAULT_STEPS: ReadonlyArray<{
     isBackground: false,
     triggerAfterStep: null,
     actionLabel: "Release to Factory",
+    branchColor: null,
   },
   {
     key: "quality_check",
@@ -34,6 +37,7 @@ const DEFAULT_STEPS: ReadonlyArray<{
     isBackground: false,
     triggerAfterStep: null,
     actionLabel: "Quality Approved",
+    branchColor: null,
   },
   {
     key: "dispatched",
@@ -42,6 +46,7 @@ const DEFAULT_STEPS: ReadonlyArray<{
     isBackground: false,
     triggerAfterStep: null,
     actionLabel: "Dispatched",
+    branchColor: null,
   },
   {
     key: "document_upload",
@@ -50,6 +55,7 @@ const DEFAULT_STEPS: ReadonlyArray<{
     isBackground: true,
     triggerAfterStep: "admin_approval",
     actionLabel: "Accept Draft",
+    branchColor: null,
   },
   {
     key: "stock_allocation",
@@ -58,6 +64,7 @@ const DEFAULT_STEPS: ReadonlyArray<{
     isBackground: true,
     triggerAfterStep: "admin_approval",
     actionLabel: "Complete Stock Alloc",
+    branchColor: null,
   },
   {
     key: "reception",
@@ -66,6 +73,7 @@ const DEFAULT_STEPS: ReadonlyArray<{
     isBackground: true,
     triggerAfterStep: "admin_approval",
     actionLabel: "Print JC",
+    branchColor: null,
   },
   {
     key: "requisition",
@@ -74,6 +82,7 @@ const DEFAULT_STEPS: ReadonlyArray<{
     isBackground: true,
     triggerAfterStep: "manager_approval",
     actionLabel: "Req Sent",
+    branchColor: null,
   },
   {
     key: "req_auth",
@@ -82,6 +91,7 @@ const DEFAULT_STEPS: ReadonlyArray<{
     isBackground: true,
     triggerAfterStep: "manager_approval",
     actionLabel: "Req Auth",
+    branchColor: null,
   },
   {
     key: "order_placement",
@@ -90,38 +100,124 @@ const DEFAULT_STEPS: ReadonlyArray<{
     isBackground: true,
     triggerAfterStep: "manager_approval",
     actionLabel: "Order Placed",
+    branchColor: null,
   },
   {
-    key: "ready",
-    label: "Ready",
+    key: "qa_check",
+    label: "QA Check",
     sortOrder: 7,
     isBackground: true,
     triggerAfterStep: "quality_check",
-    actionLabel: "Ready",
+    actionLabel: "QA Checked",
+    branchColor: "#3b82f6",
+  },
+  {
+    key: "qc_rubber_batch_certs",
+    label: "Rubber Certs",
+    sortOrder: 8,
+    isBackground: true,
+    triggerAfterStep: "quality_check",
+    actionLabel: "Rubber Certs Done",
+    branchColor: null,
+  },
+  {
+    key: "qc_paint_batch_certs",
+    label: "Paint Certs",
+    sortOrder: 9,
+    isBackground: true,
+    triggerAfterStep: "quality_check",
+    actionLabel: "Paint Certs Done",
+    branchColor: null,
+  },
+  {
+    key: "qa_review",
+    label: "QA Review",
+    sortOrder: 10,
+    isBackground: true,
+    triggerAfterStep: "quality_check",
+    actionLabel: "QA Reviewed",
+    branchColor: null,
+  },
+  {
+    key: "qc_rubber_repairs",
+    label: "Rubber Repairs",
+    sortOrder: 11,
+    isBackground: true,
+    triggerAfterStep: "quality_check",
+    actionLabel: "Rubber Repaired",
+    branchColor: null,
+  },
+  {
+    key: "qc_paint_repairs",
+    label: "Paint Repairs",
+    sortOrder: 12,
+    isBackground: true,
+    triggerAfterStep: "quality_check",
+    actionLabel: "Paint Repaired",
+    branchColor: null,
+  },
+  {
+    key: "qa_final_check",
+    label: "QA Final",
+    sortOrder: 13,
+    isBackground: true,
+    triggerAfterStep: "quality_check",
+    actionLabel: "Final Check Done",
+    branchColor: null,
+  },
+  {
+    key: "book_3rd_party_inspections",
+    label: "3rd Party Insp",
+    sortOrder: 14,
+    isBackground: true,
+    triggerAfterStep: "quality_check",
+    actionLabel: "Inspections Booked",
+    branchColor: null,
+  },
+  {
+    key: "compile_data_book",
+    label: "Data Book",
+    sortOrder: 15,
+    isBackground: true,
+    triggerAfterStep: "quality_check",
+    actionLabel: "Data Book Compiled",
+    branchColor: null,
+  },
+  {
+    key: "qa_release",
+    label: "QA Release",
+    sortOrder: 16,
+    isBackground: true,
+    triggerAfterStep: "quality_check",
+    actionLabel: "QA Released",
+    branchColor: null,
   },
   {
     key: "contact_customer_collection",
     label: "Contact Customer",
-    sortOrder: 8,
+    sortOrder: 17,
     isBackground: true,
     triggerAfterStep: "dispatched",
     actionLabel: "Customer Called",
+    branchColor: null,
   },
   {
     key: "job_file_review",
     label: "Job File Review",
-    sortOrder: 9,
+    sortOrder: 18,
     isBackground: true,
     triggerAfterStep: "dispatched",
     actionLabel: null,
+    branchColor: null,
   },
   {
     key: "file_sign_off",
     label: "File Sign Off",
-    sortOrder: 10,
+    sortOrder: 19,
     isBackground: true,
     triggerAfterStep: "dispatched",
     actionLabel: "File Sign Off",
+    branchColor: null,
   },
 ];
 
@@ -189,6 +285,7 @@ export class WorkflowStepConfigService {
         isBackground: step.isBackground,
         triggerAfterStep: step.triggerAfterStep,
         actionLabel: step.actionLabel,
+        branchColor: step.branchColor,
       }),
     );
 

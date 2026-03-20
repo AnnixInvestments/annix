@@ -14,6 +14,7 @@ import {
   DOCUMENT_VERSION_STATUS_LABELS,
   DocumentVersionStatus,
 } from "./entities/document-version.types";
+import { RubberCocBatchCorrection } from "./entities/rubber-coc-batch-correction.entity";
 import { RubberCompany } from "./entities/rubber-company.entity";
 import { BatchPassFailStatus, RubberCompoundBatch } from "./entities/rubber-compound-batch.entity";
 import { RubberCompoundStock } from "./entities/rubber-compound-stock.entity";
@@ -27,7 +28,6 @@ import { RubberAuCocReadinessService } from "./rubber-au-coc-readiness.service";
 import { RubberDeliveryNoteService } from "./rubber-delivery-note.service";
 import { RubberDocumentVersioningService } from "./rubber-document-versioning.service";
 import { DEFAULT_SUPPLIER_NAMES } from "./rubber-lining.constants";
-import { RubberCocBatchCorrection } from "./entities/rubber-coc-batch-correction.entity";
 import { RubberQualityTrackingService } from "./rubber-quality-tracking.service";
 
 const COC_TYPE_LABELS: Record<SupplierCocType, string> = {
@@ -642,7 +642,11 @@ export class RubberCocService {
       { field: "rheometerTc90", dtoKey: "rheometerTc90" },
     ];
 
-    const corrections: Array<{ fieldName: string; originalValue: string | null; correctedValue: string }> = [];
+    const corrections: Array<{
+      fieldName: string;
+      originalValue: string | null;
+      correctedValue: string;
+    }> = [];
 
     if (dto.batchNumber !== undefined && dto.batchNumber !== batch.batchNumber) {
       corrections.push({

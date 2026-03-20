@@ -297,10 +297,7 @@ proto.completeBackgroundStep = async function (jobCardId, stepKey, notes) {
 };
 
 proto.uploadReadyPhoto = async function (jobCardId, file) {
-  return this.uploadFile(
-    `/stock-control/workflow/job-cards/${jobCardId}/ready-photo`,
-    file,
-  );
+  return this.uploadFile(`/stock-control/workflow/job-cards/${jobCardId}/ready-photo`, file);
 };
 
 proto.pendingBackgroundSteps = async function () {

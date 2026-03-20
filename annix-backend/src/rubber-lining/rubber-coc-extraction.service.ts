@@ -189,7 +189,10 @@ export class RubberCocExtractionService {
     return match ? match[1] : compoundCode;
   }
 
-  async extractCompounderCoc(pdfText: string, correctionHints?: string | null): Promise<{
+  async extractCompounderCoc(
+    pdfText: string,
+    correctionHints?: string | null,
+  ): Promise<{
     data: ExtractedCocData;
     tokensUsed?: number;
     processingTimeMs: number;
@@ -236,7 +239,10 @@ export class RubberCocExtractionService {
     };
   }
 
-  async extractCalendererCoc(pdfText: string, correctionHints?: string | null): Promise<{
+  async extractCalendererCoc(
+    pdfText: string,
+    correctionHints?: string | null,
+  ): Promise<{
     data: ExtractedCocData;
     tokensUsed?: number;
     processingTimeMs: number;
@@ -283,7 +289,10 @@ export class RubberCocExtractionService {
     };
   }
 
-  async extractCalenderRollCoc(pdfText: string, correctionHints?: string | null): Promise<{
+  async extractCalenderRollCoc(
+    pdfText: string,
+    correctionHints?: string | null,
+  ): Promise<{
     data: ExtractedCocData;
     tokensUsed?: number;
     processingTimeMs: number;

@@ -1392,6 +1392,28 @@ export interface BackgroundStepStatus {
   completedByName: string | null;
   notes: string | null;
   actionLabel: string | null;
+  completionType: string | null;
+  branchColor: string | null;
+}
+
+export interface QaReviewDecision {
+  id: number;
+  companyId: number;
+  jobCardId: number;
+  cycleNumber: number;
+  rubberApplicable: boolean;
+  paintApplicable: boolean;
+  rubberAccepted: boolean | null;
+  paintAccepted: boolean | null;
+  reviewedById: number | null;
+  reviewedByName: string | null;
+  reviewedAt: string;
+  notes: string | null;
+}
+
+export interface QaApplicability {
+  hasRubber: boolean;
+  hasPaint: boolean;
 }
 
 export interface PendingBackgroundStep {
@@ -1450,6 +1472,8 @@ export interface WorkflowStatus {
     completedByName: string | null;
     notes: string | null;
     actionLabel: string | null;
+    completionType: string | null;
+    branchColor: string | null;
   }>;
   actionCompletions: JobCardActionCompletion[];
 }

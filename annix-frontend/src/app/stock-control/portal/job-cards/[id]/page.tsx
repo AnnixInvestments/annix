@@ -481,7 +481,7 @@ export default function JobCardDetailPage() {
     const currentIdx = fgSteps.findIndex((s) => s.key === currentStep);
     if (currentIdx <= 0) return false;
     const prevStepKey = fgSteps[currentIdx - 1].key;
-    const bgSteps = workflowStatus.backgroundSteps || [];
+    const bgSteps: BackgroundStepStatus[] = workflowStatus.backgroundSteps || [];
     const fgKeySet = new Set(fgSteps.map((s) => s.key));
     const bgKeySet = new Set(bgSteps.map((bg) => bg.stepKey));
     const bgByTrigger = bgSteps.reduce<Record<string, BackgroundStepStatus[]>>((acc, bg) => {
@@ -538,8 +538,7 @@ export default function JobCardDetailPage() {
   );
 
   const isReadyStep = useCallback(
-    (bg: BackgroundStepStatus) =>
-      bg.stepKey === "ready" || bg.label?.toLowerCase() === "ready",
+    (bg: BackgroundStepStatus) => bg.stepKey === "ready" || bg.label?.toLowerCase() === "ready",
     [],
   );
 
@@ -547,15 +546,79 @@ export default function JobCardDetailPage() {
     () =>
       jobFilesHook.jobFiles.some(
         (f) =>
-          f.mimeType === "image/jpeg" ||
-          f.mimeType === "image/png" ||
-          f.mimeType === "image/jpg",
+          f.mimeType === "image/jpeg" || f.mimeType === "image/png" || f.mimeType === "image/jpg",
       ),
     [jobFilesHook.jobFiles],
   );
 
   const readyPhotoInputRef = useRef<HTMLInputElement>(null);
+  const readyPhotoVideoRef = useRef<HTMLVideoElement>(null);
+  const readyPhotoCanvasRef = useRef<HTMLCanvasElement>(null);
   const [isUploadingReadyPhoto, setIsUploadingReadyPhoto] = useState(false);
+  const [showReadyPhotoModal, setShowReadyPhotoModal] = useState(false);
+  const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
+  const [cameraError, setCameraError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (cameraStream && readyPhotoVideoRef.current) {
+      readyPhotoVideoRef.current.srcObject = cameraStream;
+    }
+  }, [cameraStream]);
+
+  const stopCamera = useCallback(() => {
+    if (cameraStream) {
+      cameraStream.getTracks().forEach((t) => t.stop());
+      setCameraStream(null);
+    }
+    setCameraError(null);
+  }, [cameraStream]);
+
+  const closeReadyPhotoModal = useCallback(() => {
+    stopCamera();
+    setShowReadyPhotoModal(false);
+  }, [stopCamera]);
+
+  const startCamera = useCallback(async () => {
+    setCameraError(null);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "environment" },
+      });
+      setCameraStream(stream);
+      if (readyPhotoVideoRef.current) {
+        readyPhotoVideoRef.current.srcObject = stream;
+      }
+    } catch {
+      setCameraError("Could not access camera. Use 'Upload from Device' instead.");
+    }
+  }, []);
+
+  const handleCameraCapture = useCallback(async () => {
+    const video = readyPhotoVideoRef.current;
+    const canvas = readyPhotoCanvasRef.current;
+    if (!video || !canvas) return;
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    ctx.drawImage(video, 0, 0);
+    const blob = await new Promise<Blob | null>((resolve) =>
+      canvas.toBlob(resolve, "image/jpeg", 0.85),
+    );
+    if (!blob) return;
+    const file = new File([blob], `ready-photo-${Date.now()}.jpg`, { type: "image/jpeg" });
+    try {
+      setIsUploadingReadyPhoto(true);
+      await stockControlApiClient.uploadReadyPhoto(jobId, file);
+      await jobFilesHook.loadJobFiles();
+      closeReadyPhotoModal();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Failed to upload photo";
+      alert(msg);
+    } finally {
+      setIsUploadingReadyPhoto(false);
+    }
+  }, [jobId, jobFilesHook.loadJobFiles, closeReadyPhotoModal]);
 
   const handleReadyPhotoSelected = useCallback(
     async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -565,6 +628,7 @@ export default function JobCardDetailPage() {
         setIsUploadingReadyPhoto(true);
         await stockControlApiClient.uploadReadyPhoto(jobId, file);
         await jobFilesHook.loadJobFiles();
+        closeReadyPhotoModal();
       } catch (err) {
         const msg = err instanceof Error ? err.message : "Failed to upload photo";
         alert(msg);
@@ -575,7 +639,7 @@ export default function JobCardDetailPage() {
         }
       }
     },
-    [jobId, jobFilesHook.loadJobFiles],
+    [jobId, jobFilesHook.loadJobFiles, closeReadyPhotoModal],
   );
 
   const hasAllocations = allocations.some((a) => !a.undone);
@@ -662,10 +726,110 @@ export default function JobCardDetailPage() {
         ref={readyPhotoInputRef}
         type="file"
         accept="image/*"
-        capture="environment"
         className="hidden"
         onChange={handleReadyPhotoSelected}
       />
+      <canvas ref={readyPhotoCanvasRef} className="hidden" />
+      {showReadyPhotoModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-lg mx-4">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+              <h3 className="text-lg font-semibold text-gray-900">Photo of Completed Item(s)</h3>
+              <button onClick={closeReadyPhotoModal} className="text-gray-400 hover:text-gray-600">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              {cameraStream ? (
+                <div className="space-y-3">
+                  <video
+                    ref={readyPhotoVideoRef}
+                    autoPlay
+                    playsInline
+                    muted
+                    className="w-full rounded-lg bg-black"
+                  />
+                  <div className="flex gap-3">
+                    <button
+                      onClick={handleCameraCapture}
+                      disabled={isUploadingReadyPhoto}
+                      className="flex-1 inline-flex items-center justify-center px-4 py-3 text-sm font-medium rounded-md bg-green-600 text-white hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+                    >
+                      {isUploadingReadyPhoto ? "Uploading..." : "Capture Photo"}
+                    </button>
+                    <button
+                      onClick={stopCamera}
+                      className="px-4 py-3 text-sm font-medium rounded-md bg-gray-200 text-gray-700 hover:bg-gray-300 transition-colors"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {cameraError && (
+                    <p className="text-sm text-red-600 bg-red-50 rounded-md px-3 py-2">
+                      {cameraError}
+                    </p>
+                  )}
+                  <button
+                    onClick={startCamera}
+                    className="w-full inline-flex items-center justify-center px-4 py-4 text-sm font-medium rounded-lg border-2 border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors"
+                  >
+                    <svg
+                      className="w-6 h-6 mr-3"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"
+                      />
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"
+                      />
+                    </svg>
+                    Take Photo with Camera
+                  </button>
+                  <button
+                    onClick={() => readyPhotoInputRef.current?.click()}
+                    disabled={isUploadingReadyPhoto}
+                    className="w-full inline-flex items-center justify-center px-4 py-4 text-sm font-medium rounded-lg border-2 border-gray-200 bg-gray-50 text-gray-700 hover:bg-gray-100 disabled:bg-gray-200 disabled:cursor-not-allowed transition-colors"
+                  >
+                    <svg
+                      className="w-6 h-6 mr-3"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                      />
+                    </svg>
+                    {isUploadingReadyPhoto ? "Uploading..." : "Upload from Device"}
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div className="flex items-center space-x-4 min-w-0">
           <Link
@@ -968,7 +1132,7 @@ export default function JobCardDetailPage() {
                       <div key={bg.stepKey} className="flex flex-wrap gap-2">
                         {!hasReadyPhoto ? (
                           <button
-                            onClick={() => readyPhotoInputRef.current?.click()}
+                            onClick={() => setShowReadyPhotoModal(true)}
                             disabled={isUploadingReadyPhoto}
                             className="inline-flex items-center px-4 py-2 text-sm font-medium rounded-md bg-blue-600 text-white hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
                           >
@@ -991,9 +1155,7 @@ export default function JobCardDetailPage() {
                                 d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"
                               />
                             </svg>
-                            {isUploadingReadyPhoto
-                              ? "Uploading..."
-                              : "Upload / Take Photo"}
+                            {isUploadingReadyPhoto ? "Uploading..." : "Upload / Take Photo"}
                           </button>
                         ) : (
                           <button
@@ -1001,9 +1163,7 @@ export default function JobCardDetailPage() {
                             disabled={completingStepKey === bg.stepKey}
                             className="px-4 py-2 text-sm font-medium rounded-md bg-amber-600 text-white hover:bg-amber-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
                           >
-                            {completingStepKey === bg.stepKey
-                              ? "..."
-                              : "Complete Ready"}
+                            {completingStepKey === bg.stepKey ? "..." : "Complete Ready"}
                           </button>
                         )}
                       </div>

@@ -192,3 +192,20 @@ export class UpdateStepActionLabelDto {
   @MaxLength(100)
   actionLabel: string | null;
 }
+
+export class SubmitQaReviewDto {
+  @ApiPropertyOptional({ description: "Whether rubber coating is accepted" })
+  @IsOptional()
+  @IsBoolean()
+  rubberAccepted?: boolean | null;
+
+  @ApiPropertyOptional({ description: "Whether paint coating is accepted" })
+  @IsOptional()
+  @IsBoolean()
+  paintAccepted?: boolean | null;
+
+  @ApiPropertyOptional({ description: "Review notes" })
+  @IsOptional()
+  @IsString()
+  notes?: string;
+}

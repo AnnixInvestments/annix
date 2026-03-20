@@ -15,8 +15,9 @@ import {
   NotificationActionType,
   WorkflowNotification,
 } from "../entities/workflow-notification.entity";
-import { JobFileService } from "./job-file.service";
 import { JobCardWorkflowService } from "./job-card-workflow.service";
+import { JobFileService } from "./job-file.service";
+import { QaProcessService } from "./qa-process.service";
 import { WorkflowNotificationService } from "./workflow-notification.service";
 import { WorkflowStepConfigService } from "./workflow-step-config.service";
 
@@ -42,6 +43,7 @@ export class BackgroundStepService {
     @Inject(forwardRef(() => JobCardWorkflowService))
     private readonly workflowService: JobCardWorkflowService,
     private readonly jobFileService: JobFileService,
+    private readonly qaProcessService: QaProcessService,
   ) {}
 
   async completeStep(
@@ -87,11 +89,11 @@ export class BackgroundStepService {
       }
     }
 
-    if (stepKey === "ready") {
+    if (stepKey === "qa_release") {
       const hasPhotos = await this.jobFileService.hasImageFiles(companyId, jobCardId);
       if (!hasPhotos) {
         throw new BadRequestException(
-          "A photo of the completed item(s) must be uploaded before marking as Ready",
+          "A photo of the completed item(s) must be uploaded before QA Release",
         );
       }
     }
@@ -115,6 +117,21 @@ export class BackgroundStepService {
       stepConfig.label,
       { id: user.id, name: user.name },
     );
+
+    if (stepKey === "qa_check") {
+      await this.qaProcessService.autoSkipInapplicableSteps(companyId, jobCardId, user);
+    }
+
+    if (stepKey === "qc_rubber_repairs" || stepKey === "qc_paint_repairs") {
+      const didReset = await this.qaProcessService.resetReviewAfterRepairs(companyId, jobCardId);
+      if (didReset) {
+        this.logger.log(`QA review reset after repairs completed for job card ${jobCardId}`);
+      }
+    }
+
+    if (stepKey === "compile_data_book") {
+      await this.qaProcessService.autoCompileDataBook(companyId, jobCardId, user);
+    }
 
     if (stepConfig.triggerAfterStep) {
       const siblings = await this.stepConfigService.backgroundStepsForTrigger(
@@ -222,6 +239,9 @@ export class BackgroundStepService {
       completedAt: string | null;
       completedByName: string | null;
       notes: string | null;
+      completionType: string | null;
+      branchColor: string | null;
+      actionLabel: string | null;
     }>
   > {
     const bgSteps = await this.stepConfigService.backgroundSteps(companyId);
@@ -243,6 +263,9 @@ export class BackgroundStepService {
         completedAt: completion?.completedAt?.toISOString() ?? null,
         completedByName: completion?.completedByName ?? null,
         notes: completion?.notes ?? null,
+        completionType: completion?.completionType ?? null,
+        branchColor: step.branchColor ?? null,
+        actionLabel: step.actionLabel ?? null,
       };
     });
   }

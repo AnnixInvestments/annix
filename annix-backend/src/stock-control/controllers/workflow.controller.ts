@@ -29,6 +29,7 @@ import {
   ReorderStepConfigsDto,
   ScanDispatchItemDto,
   ScanQrDto,
+  SubmitQaReviewDto,
   ToggleStepBackgroundDto,
   UpdateNotificationRecipientsDto,
   UpdateStepActionLabelDto,
@@ -46,9 +47,10 @@ import {
 } from "../guards/stock-control-role.guard";
 import { BackgroundStepService } from "../services/background-step.service";
 import { DispatchService } from "../services/dispatch.service";
-import { JobFileService } from "../services/job-file.service";
 import { JobCardPdfService } from "../services/job-card-pdf.service";
 import { JobCardWorkflowService } from "../services/job-card-workflow.service";
+import { JobFileService } from "../services/job-file.service";
+import { QaProcessService } from "../services/qa-process.service";
 import { RequisitionService } from "../services/requisition.service";
 import { WebPushService } from "../services/web-push.service";
 import { WorkflowAssignmentService } from "../services/workflow-assignment.service";
@@ -70,6 +72,7 @@ export class WorkflowController {
     private readonly webPushService: WebPushService,
     private readonly stepConfigService: WorkflowStepConfigService,
     private readonly backgroundStepService: BackgroundStepService,
+    private readonly qaProcessService: QaProcessService,
     private readonly requisitionService: RequisitionService,
     private readonly jobFileService: JobFileService,
   ) {}
@@ -566,5 +569,43 @@ export class WorkflowController {
       "Using current stock — requisition not required",
     );
     return { success: true };
+  }
+
+  @Get("job-cards/:id/qa-applicability")
+  @ApiOperation({ summary: "Check rubber/paint applicability for QA review" })
+  async qaApplicability(@Req() req: any, @Param("id") id: number) {
+    return this.qaProcessService.applicability(req.user.companyId, id);
+  }
+
+  @Post("job-cards/:id/qa-review")
+  @ApiOperation({ summary: "Submit QA review decision (accept/reject rubber & paint)" })
+  async submitQaReview(@Req() req: any, @Param("id") id: number, @Body() dto: SubmitQaReviewDto) {
+    const decision = await this.qaProcessService.submitReview(
+      req.user.companyId,
+      id,
+      {
+        rubberAccepted: dto.rubberAccepted ?? null,
+        paintAccepted: dto.paintAccepted ?? null,
+        notes: dto.notes ?? null,
+      },
+      req.user,
+    );
+
+    await this.backgroundStepService.completeStep(
+      req.user.companyId,
+      id,
+      "qa_review",
+      req.user,
+      dto.notes,
+    );
+
+    return { success: true, decision };
+  }
+
+  @Get("job-cards/:id/qa-review/latest")
+  @ApiOperation({ summary: "Latest QA review decision for a job card" })
+  async latestQaReview(@Req() req: any, @Param("id") id: number) {
+    const decision = await this.qaProcessService.latestDecisionForJobCard(req.user.companyId, id);
+    return decision ?? null;
   }
 }

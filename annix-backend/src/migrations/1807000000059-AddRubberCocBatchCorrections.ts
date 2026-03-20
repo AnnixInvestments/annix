@@ -30,6 +30,6 @@ export class AddRubberCocBatchCorrections1807000000059 implements MigrationInter
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`DROP TABLE IF EXISTS rubber_coc_batch_corrections`);
+    await queryRunner.query("DROP TABLE IF EXISTS rubber_coc_batch_corrections");
   }
 }

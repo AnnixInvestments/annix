@@ -15,6 +15,7 @@ import {
 } from "./entities/rubber-application.entity";
 import { RubberAuCoc } from "./entities/rubber-au-coc.entity";
 import { RubberAuCocItem } from "./entities/rubber-au-coc-item.entity";
+import { RubberCocBatchCorrection } from "./entities/rubber-coc-batch-correction.entity";
 import { RubberCompany } from "./entities/rubber-company.entity";
 import { RubberCompoundBatch } from "./entities/rubber-compound-batch.entity";
 import { RubberCompoundMovement } from "./entities/rubber-compound-movement.entity";
@@ -43,7 +44,6 @@ import { RubberStockLocation } from "./entities/rubber-stock-location.entity";
 import { RubberSupplierCoc } from "./entities/rubber-supplier-coc.entity";
 import { RubberTaxInvoice } from "./entities/rubber-tax-invoice.entity";
 import { RubberTaxInvoiceCorrection } from "./entities/rubber-tax-invoice-correction.entity";
-import { RubberCocBatchCorrection } from "./entities/rubber-coc-batch-correction.entity";
 import { RubberType } from "./entities/rubber-type.entity";
 import { AuRubberAccessGuard } from "./guards/au-rubber-access.guard";
 import { RubberAdminController } from "./rubber-admin.controller";
