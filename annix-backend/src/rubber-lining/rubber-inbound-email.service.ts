@@ -1959,8 +1959,9 @@ ${truncatedText}`;
   }
 
   private autoExtractCoc(cocId: number, cocType: SupplierCocType, pdfText: string): void {
-    this.cocExtractionService
-      .extractByType(cocType, pdfText)
+    this.cocService
+      .correctionHintsForCoc(cocId)
+      .then((hints) => this.cocExtractionService.extractByType(cocType, pdfText, hints))
       .then(async (result) => {
         if (result?.data) {
           await this.cocService.setExtractedData(cocId, result.data);

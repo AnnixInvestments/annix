@@ -166,7 +166,7 @@ export default function SupplierCocDetailPage() {
         elongationPercent: parseNum(editBatchFields.elongationPercent),
         tearStrengthKnM: parseNum(editBatchFields.tearStrengthKnM),
       });
-      showToast("Batch updated", "success");
+      showToast("Batch updated - Nix will learn from this correction", "success");
       setEditingBatchId(null);
       fetchData();
     } catch (err) {

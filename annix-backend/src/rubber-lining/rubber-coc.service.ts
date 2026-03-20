@@ -27,6 +27,7 @@ import { RubberAuCocReadinessService } from "./rubber-au-coc-readiness.service";
 import { RubberDeliveryNoteService } from "./rubber-delivery-note.service";
 import { RubberDocumentVersioningService } from "./rubber-document-versioning.service";
 import { DEFAULT_SUPPLIER_NAMES } from "./rubber-lining.constants";
+import { RubberCocBatchCorrection } from "./entities/rubber-coc-batch-correction.entity";
 import { RubberQualityTrackingService } from "./rubber-quality-tracking.service";
 
 const COC_TYPE_LABELS: Record<SupplierCocType, string> = {
@@ -60,6 +61,8 @@ export class RubberCocService {
     private companyRepository: Repository<RubberCompany>,
     @InjectRepository(RubberCompoundStock)
     private compoundStockRepository: Repository<RubberCompoundStock>,
+    @InjectRepository(RubberCocBatchCorrection)
+    private batchCorrectionRepository: Repository<RubberCocBatchCorrection>,
     @Inject(forwardRef(() => RubberQualityTrackingService))
     private qualityTrackingService: RubberQualityTrackingService,
     private auCocReadinessService: RubberAuCocReadinessService,
@@ -623,6 +626,46 @@ export class RubberCocService {
       throw new BadRequestException("Compound batch not found");
     }
 
+    const numericFields: Array<{
+      field: string;
+      dtoKey: keyof import("./dto/rubber-coc.dto").UpdateCompoundBatchDto;
+    }> = [
+      { field: "shoreAHardness", dtoKey: "shoreAHardness" },
+      { field: "specificGravity", dtoKey: "specificGravity" },
+      { field: "reboundPercent", dtoKey: "reboundPercent" },
+      { field: "tearStrengthKnM", dtoKey: "tearStrengthKnM" },
+      { field: "tensileStrengthMpa", dtoKey: "tensileStrengthMpa" },
+      { field: "elongationPercent", dtoKey: "elongationPercent" },
+      { field: "rheometerSMin", dtoKey: "rheometerSMin" },
+      { field: "rheometerSMax", dtoKey: "rheometerSMax" },
+      { field: "rheometerTs2", dtoKey: "rheometerTs2" },
+      { field: "rheometerTc90", dtoKey: "rheometerTc90" },
+    ];
+
+    const corrections: Array<{ fieldName: string; originalValue: string | null; correctedValue: string }> = [];
+
+    if (dto.batchNumber !== undefined && dto.batchNumber !== batch.batchNumber) {
+      corrections.push({
+        fieldName: "batchNumber",
+        originalValue: batch.batchNumber,
+        correctedValue: dto.batchNumber,
+      });
+    }
+
+    numericFields.forEach(({ field, dtoKey }) => {
+      const newVal = dto[dtoKey];
+      if (newVal !== undefined) {
+        const oldVal = (batch as unknown as Record<string, unknown>)[field] as number | null;
+        if (String(oldVal ?? "") !== String(newVal ?? "")) {
+          corrections.push({
+            fieldName: field,
+            originalValue: oldVal !== null && oldVal !== undefined ? String(oldVal) : null,
+            correctedValue: newVal !== null && newVal !== undefined ? String(newVal) : "",
+          });
+        }
+      }
+    });
+
     if (dto.batchNumber !== undefined) batch.batchNumber = dto.batchNumber;
     if (dto.shoreAHardness !== undefined) batch.shoreAHardness = dto.shoreAHardness;
     if (dto.specificGravity !== undefined) batch.specificGravity = dto.specificGravity;
@@ -637,7 +680,95 @@ export class RubberCocService {
     if (dto.passFailStatus !== undefined) batch.passFailStatus = dto.passFailStatus;
 
     await this.compoundBatchRepository.save(batch);
+
+    if (corrections.length > 0) {
+      this.saveBatchCorrections(batch, corrections);
+    }
+
     return this.mapCompoundBatchToDto(batch);
+  }
+
+  private saveBatchCorrections(
+    batch: RubberCompoundBatch,
+    corrections: Array<{ fieldName: string; originalValue: string | null; correctedValue: string }>,
+  ): void {
+    this.supplierCocRepository
+      .findOne({
+        where: { id: batch.supplierCocId },
+        relations: ["supplierCompany"],
+      })
+      .then((coc) => {
+        const supplierName = coc?.supplierCompany?.name ?? null;
+        const compoundCode = coc?.compoundCode ?? null;
+
+        const entities = corrections.map((c) =>
+          this.batchCorrectionRepository.create({
+            supplierCocId: batch.supplierCocId,
+            compoundBatchId: batch.id,
+            supplierName,
+            compoundCode,
+            batchNumber: batch.batchNumber,
+            fieldName: c.fieldName,
+            originalValue: c.originalValue,
+            correctedValue: c.correctedValue,
+          }),
+        );
+
+        return this.batchCorrectionRepository.save(entities);
+      })
+      .then((saved) => {
+        this.logger.log(
+          `Saved ${saved.length} batch correction(s) for batch ${batch.batchNumber} on CoC ${batch.supplierCocId}`,
+        );
+      })
+      .catch((err) => {
+        this.logger.error(`Failed to save batch corrections: ${err.message}`);
+      });
+  }
+
+  async correctionHintsForSupplier(
+    supplierName: string | null,
+    compoundCode: string | null,
+  ): Promise<string | null> {
+    const query = this.batchCorrectionRepository
+      .createQueryBuilder("c")
+      .orderBy("c.created_at", "DESC")
+      .take(30);
+
+    if (supplierName) {
+      query.andWhere("c.supplier_name = :supplierName", { supplierName });
+    }
+    if (compoundCode) {
+      query.andWhere("c.compound_code = :compoundCode", { compoundCode });
+    }
+
+    const corrections = await query.getMany();
+    if (corrections.length === 0) return null;
+
+    const hints = corrections.map(
+      (c) =>
+        `- Batch ${c.batchNumber}, field "${c.fieldName}": AI extracted "${c.originalValue ?? "empty"}" but correct value is "${c.correctedValue}"`,
+    );
+
+    return [
+      "PREVIOUS USER CORRECTIONS FOR THIS SUPPLIER (learn from these patterns):",
+      ...hints,
+      "",
+      "Apply these correction patterns when extracting batch data. Pay special attention to column alignment and values that were previously misread.",
+    ].join("\n");
+  }
+
+  async correctionHintsForCoc(cocId: number): Promise<string | null> {
+    const coc = await this.supplierCocRepository.findOne({
+      where: { id: cocId },
+      relations: ["supplierCompany"],
+    });
+    if (!coc) return null;
+
+    return this.correctionHintsForSupplier(
+      coc.supplierCompany?.name ?? null,
+      coc.compoundCode ?? null,
+    );
   }
 
   async deleteCompoundBatch(id: number): Promise<void> {

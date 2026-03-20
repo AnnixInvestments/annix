@@ -189,7 +189,7 @@ export class RubberCocExtractionService {
     return match ? match[1] : compoundCode;
   }
 
-  async extractCompounderCoc(pdfText: string): Promise<{
+  async extractCompounderCoc(pdfText: string, correctionHints?: string | null): Promise<{
     data: ExtractedCocData;
     tokensUsed?: number;
     processingTimeMs: number;
@@ -201,8 +201,12 @@ export class RubberCocExtractionService {
       throw new Error("GEMINI_API_KEY not configured");
     }
 
+    const systemPrompt = correctionHints
+      ? `${COMPOUNDER_COC_SYSTEM_PROMPT}\n\n${correctionHints}`
+      : COMPOUNDER_COC_SYSTEM_PROMPT;
+
     const response = await this.callGemini(
-      COMPOUNDER_COC_SYSTEM_PROMPT,
+      systemPrompt,
       compounderCocExtractionPrompt(pdfText),
       "compounder-coc-extraction",
     );
@@ -232,7 +236,7 @@ export class RubberCocExtractionService {
     };
   }
 
-  async extractCalendererCoc(pdfText: string): Promise<{
+  async extractCalendererCoc(pdfText: string, correctionHints?: string | null): Promise<{
     data: ExtractedCocData;
     tokensUsed?: number;
     processingTimeMs: number;
@@ -244,8 +248,12 @@ export class RubberCocExtractionService {
       throw new Error("GEMINI_API_KEY not configured");
     }
 
+    const calendererPrompt = correctionHints
+      ? `${CALENDARER_COC_SYSTEM_PROMPT}\n\n${correctionHints}`
+      : CALENDARER_COC_SYSTEM_PROMPT;
+
     const response = await this.callGemini(
-      CALENDARER_COC_SYSTEM_PROMPT,
+      calendererPrompt,
       calendererCocExtractionPrompt(pdfText),
       "calenderer-coc-extraction",
     );
@@ -275,7 +283,7 @@ export class RubberCocExtractionService {
     };
   }
 
-  async extractCalenderRollCoc(pdfText: string): Promise<{
+  async extractCalenderRollCoc(pdfText: string, correctionHints?: string | null): Promise<{
     data: ExtractedCocData;
     tokensUsed?: number;
     processingTimeMs: number;
@@ -287,8 +295,12 @@ export class RubberCocExtractionService {
       throw new Error("GEMINI_API_KEY not configured");
     }
 
+    const calenderRollPrompt = correctionHints
+      ? `${CALENDER_ROLL_COC_SYSTEM_PROMPT}\n\n${correctionHints}`
+      : CALENDER_ROLL_COC_SYSTEM_PROMPT;
+
     const response = await this.callGemini(
-      CALENDER_ROLL_COC_SYSTEM_PROMPT,
+      calenderRollPrompt,
       calenderRollCocExtractionPrompt(pdfText),
       "calender-roll-coc-extraction",
     );
@@ -570,17 +582,18 @@ export class RubberCocExtractionService {
   async extractByType(
     cocType: SupplierCocType,
     pdfText: string,
+    correctionHints?: string | null,
   ): Promise<{
     data: ExtractedCocData;
     tokensUsed?: number;
     processingTimeMs: number;
   }> {
     if (cocType === SupplierCocType.COMPOUNDER) {
-      return this.extractCompounderCoc(pdfText);
+      return this.extractCompounderCoc(pdfText, correctionHints);
     } else if (cocType === SupplierCocType.CALENDER_ROLL) {
-      return this.extractCalenderRollCoc(pdfText);
+      return this.extractCalenderRollCoc(pdfText, correctionHints);
     } else {
-      return this.extractCalendererCoc(pdfText);
+      return this.extractCalendererCoc(pdfText, correctionHints);
     }
   }
 
