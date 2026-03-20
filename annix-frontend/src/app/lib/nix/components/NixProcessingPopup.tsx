@@ -9,10 +9,21 @@ interface NixProcessingPopupProps {
   progress: number;
   statusMessage: string;
   estimatedTimeRemaining?: number;
+  detailMessage?: string;
+  headerContent?: React.ReactNode;
+  headerColor?: string;
 }
 
 export default function NixProcessingPopup(props: NixProcessingPopupProps) {
-  const { isVisible, progress, statusMessage, estimatedTimeRemaining } = props;
+  const {
+    isVisible,
+    progress,
+    statusMessage,
+    estimatedTimeRemaining,
+    detailMessage,
+    headerContent,
+    headerColor,
+  } = props;
   const [dots, setDots] = useState("");
 
   useEffect(() => {
@@ -46,9 +57,9 @@ export default function NixProcessingPopup(props: NixProcessingPopupProps) {
       <div className="relative bg-white rounded-xl shadow-2xl max-w-xl w-full overflow-hidden animate-in fade-in zoom-in duration-300">
         <div
           className="px-4 py-3 flex items-center justify-center flex-shrink-0"
-          style={{ backgroundColor: "#323288" }}
+          style={{ backgroundColor: headerColor || "#323288" }}
         >
-          <AmixLogo size="md" showText useSignatureFont />
+          {headerContent || <AmixLogo size="md" showText useSignatureFont />}
         </div>
 
         <div className="px-6 py-6">
@@ -120,7 +131,7 @@ export default function NixProcessingPopup(props: NixProcessingPopupProps) {
                 d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
               />
             </svg>
-            <span>Extracting pipe specifications and items...</span>
+            <span>{detailMessage || "Extracting pipe specifications and items..."}</span>
           </div>
         </div>
 

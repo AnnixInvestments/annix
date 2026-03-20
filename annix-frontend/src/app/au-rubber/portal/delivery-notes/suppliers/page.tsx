@@ -4,6 +4,7 @@ import { Link2, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { Breadcrumb } from "@/app/au-rubber/components/Breadcrumb";
+import { useAuRubberBranding } from "@/app/context/AuRubberBrandingContext";
 import { FileDropZone } from "@/app/au-rubber/components/FileDropZone";
 import {
   Pagination,
@@ -36,6 +37,7 @@ type SortColumn =
 
 export default function SupplierDeliveryNotesPage() {
   const { showToast } = useToast();
+  const { branding } = useAuRubberBranding();
   const [searchQuery, setSearchQuery] = useState("");
   const [filterType, setFilterType] = useState<DeliveryNoteType | "">("");
   const [filterStatus, setFilterStatus] = useState<DeliveryNoteStatus | "">("");
@@ -64,6 +66,7 @@ export default function SupplierDeliveryNotesPage() {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadStatus, setUploadStatus] = useState("");
+  const [uploadDetail, setUploadDetail] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const customerCompanies = allCompanies.filter((c) => c.companyType === "CUSTOMER");
   const [isAutoLinking, setIsAutoLinking] = useState(false);
@@ -189,20 +192,41 @@ export default function SupplierDeliveryNotesPage() {
       setIsUploading(true);
       setUploadProgress(5);
       setUploadStatus(`Uploading ${files.length} file${files.length !== 1 ? "s" : ""}...`);
+      setUploadDetail("Preparing files for analysis...");
 
-      setUploadProgress(15);
-      setUploadStatus("NIX is analysing your delivery notes...");
+      const progressSteps = [
+        { pct: 15, status: "NIX is analysing your delivery notes...", detail: "Detecting suppliers from document content..." },
+        { pct: 30, status: "Identifying suppliers...", detail: "Matching documents to known supplier formats..." },
+        { pct: 45, status: "Extracting delivery note data...", detail: "Reading roll numbers, weights, and dimensions..." },
+        { pct: 60, status: "Processing pages...", detail: "Extracting data from each page..." },
+        { pct: 75, status: "Almost done...", detail: "Finalising extraction results..." },
+      ];
+
+      let stepIndex = 0;
+      const progressInterval = setInterval(() => {
+        if (stepIndex < progressSteps.length) {
+          const step = progressSteps[stepIndex];
+          setUploadProgress(step.pct);
+          setUploadStatus(step.status);
+          setUploadDetail(step.detail);
+          stepIndex += 1;
+        }
+      }, 3000);
 
       await auRubberApiClient.uploadDeliveryNoteWithFiles(files, {
         deliveryNoteType: "ROLL" as DeliveryNoteType,
       });
 
-      setUploadProgress(90);
-      setUploadStatus("Detecting suppliers and extracting data...");
+      clearInterval(progressInterval);
 
-      await new Promise((resolve) => setTimeout(resolve, 1500));
+      setUploadProgress(90);
+      setUploadStatus("Upload complete!");
+      setUploadDetail("NIX is extracting data in the background...");
+
+      await new Promise((resolve) => setTimeout(resolve, 1000));
       setUploadProgress(100);
       setUploadStatus("Complete!");
+      setUploadDetail("All files processed successfully.");
 
       await new Promise((resolve) => setTimeout(resolve, 800));
       showToast(
@@ -216,6 +240,7 @@ export default function SupplierDeliveryNotesPage() {
       setIsUploading(false);
       setUploadProgress(0);
       setUploadStatus("");
+      setUploadDetail("");
     }
   };
 
@@ -685,6 +710,13 @@ export default function SupplierDeliveryNotesPage() {
         isVisible={isUploading}
         progress={uploadProgress}
         statusMessage={uploadStatus}
+        detailMessage={uploadDetail}
+        headerColor={branding.primaryColor}
+        headerContent={
+          branding.logoUrl ? (
+            <img src={branding.logoUrl} alt="Company logo" className="h-8 object-contain" />
+          ) : null
+        }
       />
     </div>
   );

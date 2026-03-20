@@ -456,6 +456,7 @@ Return a JSON object with this structure:
       "customerReference": string or null (PO/reference/order number),
       "deliveryDate": string or null (ISO format YYYY-MM-DD),
       "customerName": string or null (the recipient company name),
+      "supplierName": string or null (the supplier/sender company name, e.g., "S&N Rubber", "Impilo Industries", "AU Industries"),
       "sourcePages": [number] (1-based PDF page numbers where this DN appears, e.g., [1] or [1, 2] for multi-page DNs),
       "lineItems": [
         {
@@ -644,6 +645,7 @@ Return a JSON object with this structure:
       "customerReference": string or null (PO/reference/order number),
       "deliveryDate": string or null (ISO format YYYY-MM-DD),
       "customerName": string or null (the customer/recipient company),
+      "supplierName": string or null (the supplier/sender company name, e.g., "S&N Rubber", "Impilo Industries", "AU Industries"),
       "sourcePages": [number] (1-based PDF page numbers where this DN appears, e.g., [1] or [1, 2] for multi-page DNs),
       "lineItems": [
         {

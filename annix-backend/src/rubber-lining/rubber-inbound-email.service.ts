@@ -1229,6 +1229,7 @@ ${truncatedText}`;
                   deliveryDate: dn.deliveryDate ?? null,
                   customerName: dn.customerName ?? null,
                   customerReference: dn.customerReference ?? null,
+                  supplierName: dn.supplierName ?? null,
                   pageNumber: dnIdx + 1,
                 })),
             );
@@ -1251,6 +1252,7 @@ ${truncatedText}`;
               deliveryDate: dnMetadata?.deliveryDate ?? null,
               customerName: dnMetadata?.customerName ?? null,
               customerReference: dnMetadata?.customerReference ?? null,
+              supplierName: dnMetadata?.supplierName ?? null,
               rolls: allRolls,
             };
           } else {

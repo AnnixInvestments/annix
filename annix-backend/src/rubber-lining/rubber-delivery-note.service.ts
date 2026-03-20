@@ -754,18 +754,30 @@ export class RubberDeliveryNoteService {
         return new Map(map).set(dnNumber, [...existing, roll]);
       }, new Map<string, typeof extractedData.rolls>());
 
+    const suppliers = await this.companyRepository.find({
+      where: { companyType: CompanyType.SUPPLIER },
+    });
+
     if (rollsByDnNumber.size <= 1) {
       const extractedDnNumber =
         extractedData.deliveryNoteNumber || Array.from(rollsByDnNumber.keys())[0];
       if (extractedDnNumber) {
         note.deliveryNoteNumber = extractedDnNumber;
       }
+
+      const singleRolls = Array.from(rollsByDnNumber.values())[0] || [];
+      const resolvedSupplierId = this.resolveSupplierFromRolls(
+        singleRolls,
+        suppliers,
+        note.supplierCompanyId,
+      );
+      note.supplierCompanyId = resolvedSupplierId;
       note.status = DeliveryNoteStatus.EXTRACTED;
 
       const existingActive = extractedDnNumber
         ? await this.versioningService.existingActiveDeliveryNote(
             extractedDnNumber,
-            note.supplierCompanyId,
+            resolvedSupplierId,
           )
         : null;
       if (existingActive && existingActive.id !== note.id) {
@@ -794,14 +806,21 @@ export class RubberDeliveryNoteService {
           rolls,
         };
 
+        const resolvedSupplierId = this.resolveSupplierFromRolls(
+          rolls,
+          suppliers,
+          note.supplierCompanyId,
+        );
+
         const existingActive = await this.versioningService.existingActiveDeliveryNote(
           dnNumber,
-          note.supplierCompanyId,
+          resolvedSupplierId,
         );
 
         if (index === 0) {
           note.deliveryNoteNumber = dnNumber;
           note.deliveryDate = deliveryDate ? (deliveryDate as unknown as Date) : note.deliveryDate;
+          note.supplierCompanyId = resolvedSupplierId;
           note.status = DeliveryNoteStatus.EXTRACTED;
           note.extractedData = rollExtractedData;
           if (existingActive && existingActive.id !== note.id) {
@@ -829,7 +848,7 @@ export class RubberDeliveryNoteService {
           deliveryNoteNumber: dnNumber,
           deliveryDate: deliveryDate ? (deliveryDate as unknown as Date) : null,
           customerReference: note.customerReference,
-          supplierCompanyId: note.supplierCompanyId,
+          supplierCompanyId: resolvedSupplierId,
           documentPath: note.documentPath,
           status: DeliveryNoteStatus.EXTRACTED,
           createdBy: note.createdBy,
@@ -842,6 +861,58 @@ export class RubberDeliveryNoteService {
     );
 
     return { deliveryNoteIds };
+  }
+
+  private resolveSupplierFromRolls(
+    rolls: { supplierName?: string | null }[],
+    suppliers: RubberCompany[],
+    fallbackSupplierId: number,
+  ): number {
+    const supplierName = rolls.find((r) => r.supplierName)?.supplierName;
+    if (!supplierName) return fallbackSupplierId;
+
+    const nameLower = supplierName.toLowerCase();
+
+    const SUPPLIER_PATTERNS: { pattern: (s: string) => boolean; match: (c: string) => boolean }[] =
+      [
+        {
+          pattern: (s) =>
+            s.includes("s&n") || s.includes("s & n") || s.includes("calendered products"),
+          match: (c) => c.includes("s&n") || c.includes("s & n"),
+        },
+        {
+          pattern: (s) => s.includes("impilo"),
+          match: (c) => c.includes("impilo"),
+        },
+        {
+          pattern: (s) => s.includes("au industrie"),
+          match: (c) => c.includes("au industrie"),
+        },
+      ];
+
+    const matched = SUPPLIER_PATTERNS.find((p) => p.pattern(nameLower));
+    if (matched) {
+      const company = suppliers.find((c) => matched.match(c.name.toLowerCase()));
+      if (company) {
+        this.logger.log(
+          `Resolved supplier from extraction: "${supplierName}" → ${company.name} (#${company.id})`,
+        );
+        return company.id;
+      }
+    }
+
+    const fuzzyMatch = suppliers.find(
+      (c) =>
+        c.name.toLowerCase().includes(nameLower) || nameLower.includes(c.name.toLowerCase()),
+    );
+    if (fuzzyMatch) {
+      this.logger.log(
+        `Fuzzy-matched supplier from extraction: "${supplierName}" → ${fuzzyMatch.name} (#${fuzzyMatch.id})`,
+      );
+      return fuzzyMatch.id;
+    }
+
+    return fallbackSupplierId;
   }
 
   private async auCocMapByDeliveryNoteIds(

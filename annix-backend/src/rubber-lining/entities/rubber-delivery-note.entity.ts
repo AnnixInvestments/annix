@@ -35,6 +35,7 @@ export interface ExtractedDeliveryNoteRoll {
   deliveryDate?: string | null;
   customerName?: string | null;
   customerReference?: string | null;
+  supplierName?: string | null;
   pageNumber?: number;
   specificGravity?: number | null;
 }
@@ -73,6 +74,7 @@ export interface ExtractedCustomerDeliveryNoteData {
   customerReference?: string;
   deliveryDate?: string;
   customerName?: string;
+  supplierName?: string;
   pageInfo?: { currentPage?: number; totalPages?: number };
   sourcePages?: number[];
   lineItems?: ExtractedCustomerDeliveryNoteLineItem[];
