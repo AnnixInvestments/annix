@@ -21,6 +21,7 @@ import { JobCardNextAction } from "@/app/stock-control/components/NextActionBann
 import { WorkflowStatus } from "@/app/stock-control/components/WorkflowStatus";
 import { useConfirm } from "@/app/stock-control/hooks/useConfirm";
 import { AllocationsTab } from "./components/AllocationsTab";
+import { StockIssuesTab } from "./components/StockIssuesTab";
 import { CoatingAnalysisTab } from "./components/CoatingAnalysisTab";
 import { DetailsTab } from "./components/DetailsTab";
 import DispatchTab from "./components/DispatchTab";
@@ -370,7 +371,11 @@ export default function JobCardDetailPage() {
       {
         id: "rubber-analysis",
         label: "Rubber Analysis",
-        badge: allocations.length > 0 ? allocations.length : null,
+      },
+      {
+        id: "stock-issues",
+        label: "Stock Issues",
+        badge: allocations.filter((a) => !a.undone).length > 0 ? allocations.filter((a) => !a.undone).length : null,
       },
       { id: "quality", label: "Quality", hidden: !profile?.qcEnabled },
       {
@@ -531,7 +536,7 @@ export default function JobCardDetailPage() {
     [],
   );
 
-  const hasAllocations = allocations.length > 0;
+  const hasAllocations = allocations.some((a) => !a.undone);
 
   const requisitionIsPending = useMemo(
     () => userPendingBgSteps.some(isRequisitionStep),
@@ -1187,28 +1192,19 @@ export default function JobCardDetailPage() {
           >
             <div className="space-y-6">
               <RubberAllocationGuard jobCard={jobCard} />
-              <AllocationsTab
-                jobCard={jobCard}
-                jobId={jobId}
-                allocations={allocations}
-                userRole={userRole}
-                onAllocate={openAllocateModal}
-                showAllocateModal={showAllocateModal}
-                onCloseAllocateModal={() => setShowAllocateModal(false)}
-                allocateForm={allocateForm}
-                onAllocateFormChange={setAllocateForm}
-                isAllocating={isAllocating}
-                onSubmitAllocate={handleAllocate}
-                stockItems={stockItems}
-                activeStaff={activeStaff}
-                capturedFile={capturedFile}
-                onCapturedFileChange={setCapturedFile}
-                approvingAllocationId={approvingAllocationId}
-                rejectingAllocationId={rejectingAllocationId}
-                onApproveAllocation={handleApproveAllocation}
-                onRejectAllocation={handleRejectAllocation}
-              />
             </div>
+          </TabPanel>
+
+          <TabPanel
+            tabId="stock-issues"
+            activeTab={activeTab}
+            visited={visitedTabs.has("stock-issues")}
+          >
+            <StockIssuesTab
+              jobId={jobId}
+              allocations={allocations}
+              onRefresh={fetchData}
+            />
           </TabPanel>
 
           <TabPanel tabId="quality" activeTab={activeTab} visited={visitedTabs.has("quality")}>

@@ -412,6 +412,9 @@ export interface StockAllocation {
   approvedAt: string | null;
   rejectedAt: string | null;
   rejectionReason: string | null;
+  undone: boolean;
+  undoneAt: string | null;
+  undoneByName: string | null;
 }
 
 export interface CoatDetail {

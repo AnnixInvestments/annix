@@ -77,6 +77,7 @@ declare module "./base" {
       allocationId: number,
       reason: string,
     ): Promise<StockAllocation>;
+    undoAllocation(jobCardId: number, allocationId: number): Promise<StockAllocation>;
     uploadJobCardAmendment(jobCardId: number, file: File, notes?: string): Promise<JobCard>;
     jobCardVersionHistory(jobCardId: number): Promise<import("./types").JobCardVersion[]>;
     jobCardVersionById(
@@ -278,6 +279,12 @@ proto.rejectOverAllocation = async function (jobCardId, allocationId, reason) {
   return this.request(`/stock-control/job-cards/${jobCardId}/allocations/${allocationId}/reject`, {
     method: "POST",
     body: JSON.stringify({ reason }),
+  });
+};
+
+proto.undoAllocation = async function (jobCardId, allocationId) {
+  return this.request(`/stock-control/job-cards/${jobCardId}/allocations/${allocationId}/undo`, {
+    method: "POST",
   });
 };
 

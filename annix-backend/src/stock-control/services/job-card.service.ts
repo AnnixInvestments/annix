@@ -492,11 +492,6 @@ export class JobCardService {
       throw new BadRequestException("Cannot undo a pending allocation. Reject it instead.");
     }
 
-    const fiveMinutesAgo = now().minus({ minutes: 5 }).toJSDate();
-    if (allocation.createdAt < fiveMinutesAgo) {
-      throw new BadRequestException("Allocations can only be undone within 5 minutes of creation");
-    }
-
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();

@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
 import type {
   BatchIssuanceDto,
@@ -133,6 +133,7 @@ import { staffInitials } from "../../lib/formatting";
 
 export default function IssueStockPage() {
   const { profile } = useStockControlAuth();
+  const router = useRouter();
   const searchParams = useSearchParams();
   const preloadJobCardId = searchParams.get("jobCardId");
   const [currentStep, setCurrentStep] = useState<Step>("issuer");
@@ -173,6 +174,10 @@ export default function IssueStockPage() {
     {},
   );
   const certCheckTimers = useRef<Record<number, ReturnType<typeof setTimeout>>>({});
+  const [showJobCardDropdown, setShowJobCardDropdown] = useState(false);
+  const [jobCardList, setJobCardList] = useState<JobCard[]>([]);
+  const [jobCardSearch, setJobCardSearch] = useState("");
+  const [isLoadingJobCards, setIsLoadingJobCards] = useState(false);
 
   useEffect(() => {
     setQuickIssueMode(localStorage.getItem(QUICK_ISSUE_KEY) === "true");
@@ -209,7 +214,7 @@ export default function IssueStockPage() {
         .then((jc) => setJobCard(jc))
         .catch(() => setError("Could not load job card from URL"));
     }
-  }, [preloadJobCardId]);
+  }, [preloadJobCardId, jobCard]);
 
   useEffect(() => {
     if (
@@ -225,6 +230,27 @@ export default function IssueStockPage() {
         .finally(() => setIsLoadingStaff(false));
     }
   }, [currentStep]);
+
+  useEffect(() => {
+    if (showJobCardDropdown && jobCardList.length === 0 && !isLoadingJobCards) {
+      setIsLoadingJobCards(true);
+      stockControlApiClient
+        .jobCards("active")
+        .then(setJobCardList)
+        .catch(() => setJobCardList([]))
+        .finally(() => setIsLoadingJobCards(false));
+    }
+  }, [showJobCardDropdown]);
+
+  const filteredJobCards = useMemo(() => {
+    const search = jobCardSearch.toLowerCase().trim();
+    if (!search) return jobCardList;
+    return jobCardList.filter(
+      (jc) =>
+        jc.jobNumber.toLowerCase().includes(search) ||
+        jc.jobName.toLowerCase().includes(search),
+    );
+  }, [jobCardList, jobCardSearch]);
 
   const fetchRecentBatches = useCallback(
     async (stockItemIds: number[]) => {
@@ -469,9 +495,15 @@ export default function IssueStockPage() {
       setItems([]);
     } else if (currentStep === "job_card") {
       setCurrentStep("stock_items");
-      setJobCard(null);
+      if (!preloadJobCardId) {
+        setJobCard(null);
+      }
     } else if (currentStep === "confirm") {
-      setCurrentStep("job_card");
+      if (preloadJobCardId) {
+        setCurrentStep("stock_items");
+      } else {
+        setCurrentStep("job_card");
+      }
     }
     setError(null);
     setScanInput("");
@@ -479,7 +511,9 @@ export default function IssueStockPage() {
 
   const startNextIssuance = useCallback(() => {
     setItems([]);
-    setJobCard(null);
+    if (!preloadJobCardId) {
+      setJobCard(null);
+    }
     setNotes("");
     setError(null);
     setSuccessMessage(null);
@@ -502,7 +536,18 @@ export default function IssueStockPage() {
   }, [batchMode, quickIssueMode, linkedStaff, issuer, recipient]);
 
   const handleConfirm = async () => {
-    if (!issuer || !recipient || items.length === 0) return;
+    if (!issuer) {
+      setError("No issuer selected. Please go back and select an issuer.");
+      return;
+    }
+    if (!recipient) {
+      setError("No recipient selected. Please go back and select a recipient.");
+      return;
+    }
+    if (items.length === 0) {
+      setError("No items to issue. Please go back and add stock items.");
+      return;
+    }
 
     const invalidItems = items.filter(
       (item) => item.quantity > item.stockItem.quantity || item.quantity <= 0,
@@ -532,6 +577,7 @@ export default function IssueStockPage() {
 
       if (result.errors.length > 0) {
         setError(`Some items failed: ${result.errors.map((e) => e.message).join(", ")}`);
+        setTimeout(() => window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" }), 100);
       }
 
       if (result.created > 0) {
@@ -563,11 +609,17 @@ export default function IssueStockPage() {
         setSuccessMessage(
           `Issued ${result.created} item(s) (${itemSummary}) from ${issuer.name} to ${recipient.name}`,
         );
+        setTimeout(() => window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" }), 100);
 
         stockControlApiClient
           .recentIssuances()
           .then(setRecentIssuances)
           .catch(() => {});
+
+        if (preloadJobCardId) {
+          router.push(`/stock-control/portal/job-cards/${preloadJobCardId}`);
+          return;
+        }
 
         if (batchMode) {
           setItems([]);
@@ -1223,6 +1275,18 @@ export default function IssueStockPage() {
                 </div>
               </div>
 
+              {error && (
+                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md text-sm">
+                  {error}
+                </div>
+              )}
+
+              {successMessage && (
+                <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-md text-sm">
+                  {successMessage}
+                </div>
+              )}
+
               <div className="flex justify-between pt-4 border-t">
                 <button
                   onClick={handleBack}
@@ -1573,6 +1637,69 @@ export default function IssueStockPage() {
                     )}
                   </button>
                 </div>
+
+                {currentStep === "job_card" && (
+                  <div className="mt-4">
+                    <button
+                      onClick={() => setShowJobCardDropdown(!showJobCardDropdown)}
+                      className="text-sm text-teal-600 hover:text-teal-800 font-medium"
+                    >
+                      {showJobCardDropdown
+                        ? "Hide job card list"
+                        : "Select job card from list"}
+                    </button>
+
+                    {showJobCardDropdown && (
+                      <div className="mt-3 border border-gray-200 rounded-lg overflow-hidden">
+                        <div className="p-2 border-b border-gray-100">
+                          <input
+                            type="text"
+                            value={jobCardSearch}
+                            onChange={(e) => setJobCardSearch(e.target.value)}
+                            placeholder="Search by job number or name..."
+                            className="w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 text-sm py-2"
+                          />
+                        </div>
+                        <div className="max-h-[280px] overflow-y-auto">
+                          {isLoadingJobCards ? (
+                            <div className="p-4 text-center text-sm text-gray-500">
+                              Loading job cards...
+                            </div>
+                          ) : filteredJobCards.length === 0 ? (
+                            <div className="p-4 text-center text-sm text-gray-500">
+                              No active job cards found
+                            </div>
+                          ) : (
+                            filteredJobCards.map((jc) => (
+                              <button
+                                key={jc.id}
+                                onClick={() => {
+                                  setJobCard(jc);
+                                  setShowJobCardDropdown(false);
+                                  setJobCardSearch("");
+                                  setCurrentStep("confirm");
+                                }}
+                                className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-gray-50 border-b border-gray-50 last:border-b-0 text-left"
+                              >
+                                <div className="flex-shrink-0">
+                                  <div className="h-8 w-8 rounded-full bg-teal-100 flex items-center justify-center">
+                                    <svg className="w-4 h-4 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                    </svg>
+                                  </div>
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-sm font-medium text-gray-900">{jc.jobNumber}</p>
+                                  <p className="text-xs text-gray-500 truncate">{jc.jobName}</p>
+                                </div>
+                              </button>
+                            ))
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {(currentStep === "issuer" || currentStep === "recipient") && (
                   <div className="mt-4">
