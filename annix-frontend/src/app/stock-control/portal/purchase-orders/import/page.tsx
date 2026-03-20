@@ -318,6 +318,12 @@ export default function CpoImportPage() {
               <span className="text-2xl font-bold text-teal-600">{importResult.created}</span>
               <p className="text-gray-500">Created</p>
             </div>
+            {importResult.updated > 0 && (
+              <div>
+                <span className="text-2xl font-bold text-blue-600">{importResult.updated}</span>
+                <p className="text-gray-500">Updated</p>
+              </div>
+            )}
             <div>
               <span className="text-2xl font-bold text-gray-400">{importResult.skipped}</span>
               <p className="text-gray-500">Skipped</p>

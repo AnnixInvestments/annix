@@ -179,7 +179,14 @@ export default function CpoDetailPage() {
             <span>/</span>
             <span className="text-gray-900">{cpo.cpoNumber}</span>
           </div>
-          <h1 className="text-2xl font-bold text-gray-900">{cpo.cpoNumber}</h1>
+          <div className="flex items-center space-x-2">
+            <h1 className="text-2xl font-bold text-gray-900">{cpo.cpoNumber}</h1>
+            {(cpo.versionNumber || 1) > 1 && (
+              <span className="px-2 py-0.5 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
+                v{cpo.versionNumber}
+              </span>
+            )}
+          </div>
         </div>
         <div className="flex items-center space-x-3">
           <span
@@ -608,6 +615,58 @@ export default function CpoDetailPage() {
           </div>
         )}
       </div>
+
+      {cpo.previousVersions && cpo.previousVersions.length > 0 && (
+        <div className="bg-white rounded-lg shadow overflow-hidden">
+          <div className="px-6 py-4 border-b border-gray-200">
+            <h2 className="text-lg font-medium text-gray-900">
+              Previous Versions ({cpo.previousVersions.length})
+            </h2>
+          </div>
+          <div className="divide-y divide-gray-200">
+            {[...cpo.previousVersions].reverse().map((version, idx) => (
+              <div key={idx} className="px-6 py-4">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-semibold text-gray-900">
+                    Version {version.versionNumber}
+                  </span>
+                  <span className="text-xs text-gray-500">
+                    Archived {formatDateZA(version.archivedAt)}
+                  </span>
+                </div>
+                <div className="text-xs text-gray-500 mb-2">
+                  {version.totalItems} item{version.totalItems !== 1 ? "s" : ""}, total qty:{" "}
+                  {version.totalQuantity}
+                  {version.customerName ? ` | ${version.customerName}` : ""}
+                  {version.poNumber ? ` | PO: ${version.poNumber}` : ""}
+                </div>
+                {version.items.length > 0 && (
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="text-gray-500">
+                        <th className="text-left py-1 font-medium">Item Code</th>
+                        <th className="text-left py-1 font-medium">Description</th>
+                        <th className="text-right py-1 font-medium">Ordered</th>
+                        <th className="text-right py-1 font-medium">Fulfilled</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {version.items.map((item, itemIdx) => (
+                        <tr key={itemIdx} className="text-gray-600">
+                          <td className="py-0.5 font-mono">{item.itemCode || "-"}</td>
+                          <td className="py-0.5 max-w-xs truncate">{item.itemDescription || "-"}</td>
+                          <td className="py-0.5 text-right">{item.quantityOrdered}</td>
+                          <td className="py-0.5 text-right">{item.quantityFulfilled}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="text-xs text-gray-400">
         Created {formatDateZA(cpo.createdAt)}

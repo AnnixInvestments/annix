@@ -1722,6 +1722,25 @@ export interface CustomerPurchaseOrderItem {
   createdAt: string;
 }
 
+export interface CpoPreviousVersion {
+  versionNumber: number;
+  archivedAt: string;
+  jobName: string | null;
+  customerName: string | null;
+  poNumber: string | null;
+  totalItems: number;
+  totalQuantity: number;
+  items: {
+    itemCode: string | null;
+    itemDescription: string | null;
+    itemNo: string | null;
+    quantityOrdered: number;
+    quantityFulfilled: number;
+    jtNo: string | null;
+    m2: number | null;
+  }[];
+}
+
 export interface CustomerPurchaseOrder {
   id: number;
   companyId: number;
@@ -1740,6 +1759,8 @@ export interface CustomerPurchaseOrder {
   totalItems: number;
   totalQuantity: number;
   fulfilledQuantity: number;
+  versionNumber: number;
+  previousVersions: CpoPreviousVersion[];
   sourceFilePath: string | null;
   sourceFileName: string | null;
   createdBy: string | null;
@@ -1792,6 +1813,7 @@ export interface GlobalSearchResponse {
 export interface CpoImportResult {
   totalRows: number;
   created: number;
+  updated: number;
   skipped: number;
   errors: { row: number; message: string }[];
   createdCpoIds: number[];

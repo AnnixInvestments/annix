@@ -2,13 +2,17 @@ import { forwardRef, Inject, Injectable, Logger, NotFoundException } from "@nest
 import { Cron, CronExpression } from "@nestjs/schedule";
 import { InjectRepository } from "@nestjs/typeorm";
 import { IsNull, LessThanOrEqual, Repository } from "typeorm";
-import { fromJSDate, now } from "../../lib/datetime";
+import { fromJSDate, now, nowISO } from "../../lib/datetime";
 import {
   CalloffStatus,
   CalloffType,
   CpoCalloffRecord,
 } from "../entities/cpo-calloff-record.entity";
-import { CpoStatus, CustomerPurchaseOrder } from "../entities/customer-purchase-order.entity";
+import {
+  CpoPreviousVersion,
+  CpoStatus,
+  CustomerPurchaseOrder,
+} from "../entities/customer-purchase-order.entity";
 import { CustomerPurchaseOrderItem } from "../entities/customer-purchase-order-item.entity";
 import { DeliveryNote } from "../entities/delivery-note.entity";
 import { JobCard } from "../entities/job-card.entity";
@@ -30,6 +34,7 @@ export interface CpoMatchResult {
 export interface CpoImportResult {
   totalRows: number;
   created: number;
+  updated: number;
   skipped: number;
   errors: { row: number; message: string }[];
   createdCpoIds: number[];
@@ -99,6 +104,7 @@ export class CpoService {
     const result: CpoImportResult = {
       totalRows: rows.length,
       created: 0,
+      updated: 0,
       skipped: 0,
       errors: [],
       createdCpoIds: [],
@@ -119,15 +125,8 @@ export class CpoService {
 
         const existing = await this.cpoRepo.findOne({
           where: { cpoNumber, companyId },
+          relations: ["items"],
         });
-
-        if (existing) {
-          return {
-            ...acc,
-            skipped: acc.skipped + 1,
-            errors: [...acc.errors, { row: i + 1, message: `CPO ${cpoNumber} already exists` }],
-          };
-        }
 
         const validLineItems = (row.lineItems || []).filter(isValidLineItem);
         const totalQuantity = validLineItems.reduce((sum, li) => {
@@ -137,6 +136,24 @@ export class CpoService {
 
         const customFields =
           row.customFields && Object.keys(row.customFields).length > 0 ? row.customFields : null;
+
+        if (existing) {
+          const updatedId = await this.archiveAndOverwriteCpo(
+            existing,
+            row,
+            validLineItems,
+            totalQuantity,
+            customFields,
+            companyId,
+            createdBy,
+          );
+
+          return {
+            ...acc,
+            updated: acc.updated + 1,
+            createdCpoIds: [...acc.createdCpoIds, updatedId],
+          };
+        }
 
         const cpo = this.cpoRepo.create({
           companyId,
@@ -988,6 +1005,84 @@ export class CpoService {
     return [headers, ...rows]
       .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(","))
       .join("\n");
+  }
+
+  private async archiveAndOverwriteCpo(
+    existing: CustomerPurchaseOrder,
+    row: JobCardImportRow,
+    validLineItems: { itemCode?: string; itemDescription?: string; itemNo?: string; quantity?: string; jtNo?: string; m2?: number }[],
+    totalQuantity: number,
+    customFields: Record<string, string> | null,
+    companyId: number,
+    createdBy: string | null,
+  ): Promise<number> {
+    const versionSnapshot: CpoPreviousVersion = {
+      versionNumber: existing.versionNumber,
+      archivedAt: nowISO(),
+      jobName: existing.jobName,
+      customerName: existing.customerName,
+      poNumber: existing.poNumber,
+      totalItems: existing.totalItems,
+      totalQuantity: Number(existing.totalQuantity),
+      items: (existing.items || []).map((item) => ({
+        itemCode: item.itemCode,
+        itemDescription: item.itemDescription,
+        itemNo: item.itemNo,
+        quantityOrdered: Number(item.quantityOrdered),
+        quantityFulfilled: Number(item.quantityFulfilled),
+        jtNo: item.jtNo,
+        m2: item.m2 !== null ? Number(item.m2) : null,
+      })),
+    };
+
+    existing.previousVersions = [...(existing.previousVersions || []), versionSnapshot];
+    existing.versionNumber = existing.versionNumber + 1;
+    existing.jobName = row.jobName || null;
+    existing.customerName = row.customerName || null;
+    existing.poNumber = row.poNumber || null;
+    existing.siteLocation = row.siteLocation || null;
+    existing.contactPerson = row.contactPerson || null;
+    existing.dueDate = row.dueDate || null;
+    existing.notes = row.notes || null;
+    existing.reference = row.reference || null;
+    existing.customFields = customFields;
+    existing.totalItems = validLineItems.length;
+    existing.totalQuantity = totalQuantity;
+    existing.fulfilledQuantity = 0;
+    existing.status = CpoStatus.ACTIVE;
+
+    const saved = await this.cpoRepo.save(existing);
+
+    await this.cpoItemRepo.delete({ cpoId: saved.id });
+
+    if (validLineItems.length > 0) {
+      const itemEntities = validLineItems.map((li, idx) =>
+        this.cpoItemRepo.create({
+          cpoId: saved.id,
+          companyId,
+          itemCode: li.itemCode || null,
+          itemDescription: li.itemDescription || null,
+          itemNo: li.itemNo || null,
+          quantityOrdered: li.quantity ? parseFloat(li.quantity) : 0,
+          quantityFulfilled: 0,
+          jtNo: li.jtNo || null,
+          m2: li.m2 ?? null,
+          sortOrder: idx,
+        }),
+      );
+      await this.cpoItemRepo.save(itemEntities);
+    }
+
+    this.initialiseCpoCoatingAndRequisition(companyId, saved, createdBy).catch((err) => {
+      const msg = err instanceof Error ? err.message : "Unknown error";
+      this.logger.error(`Failed post-creation tasks for CPO ${saved.cpoNumber}: ${msg}`);
+    });
+
+    this.logger.log(
+      `Archived and overwrote CPO ${existing.cpoNumber} as v${saved.versionNumber}`,
+    );
+
+    return saved.id;
   }
 
   private inferCalloffTypeFromSupplier(normalisedName: string): CalloffType | null {

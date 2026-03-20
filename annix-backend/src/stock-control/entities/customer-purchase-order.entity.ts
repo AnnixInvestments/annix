@@ -11,6 +11,25 @@ import {
 import { CustomerPurchaseOrderItem } from "./customer-purchase-order-item.entity";
 import { StockControlCompany } from "./stock-control-company.entity";
 
+export interface CpoPreviousVersion {
+  versionNumber: number;
+  archivedAt: string;
+  jobName: string | null;
+  customerName: string | null;
+  poNumber: string | null;
+  totalItems: number;
+  totalQuantity: number;
+  items: {
+    itemCode: string | null;
+    itemDescription: string | null;
+    itemNo: string | null;
+    quantityOrdered: number;
+    quantityFulfilled: number;
+    jtNo: string | null;
+    m2: number | null;
+  }[];
+}
+
 export enum CpoStatus {
   ACTIVE = "active",
   FULFILLED = "fulfilled",
@@ -79,6 +98,12 @@ export class CustomerPurchaseOrder {
 
   @Column({ name: "source_file_name", type: "varchar", length: 255, nullable: true })
   sourceFileName: string | null;
+
+  @Column({ name: "version_number", type: "integer", default: 1 })
+  versionNumber: number;
+
+  @Column({ name: "previous_versions", type: "jsonb", default: "[]" })
+  previousVersions: CpoPreviousVersion[];
 
   @Column({ name: "created_by", type: "varchar", length: 255, nullable: true })
   createdBy: string | null;
