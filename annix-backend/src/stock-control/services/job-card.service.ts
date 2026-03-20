@@ -369,7 +369,7 @@ export class JobCardService {
       }
 
       const stockItem = await queryRunner.manager.findOne(StockItem, {
-        where: { id: allocation.stockItem.id, companyId },
+        where: { id: allocation.stockItemId, companyId },
         lock: { mode: "pessimistic_write" },
       });
 
@@ -498,7 +498,7 @@ export class JobCardService {
 
     try {
       const stockItem = await queryRunner.manager.findOne(StockItem, {
-        where: { id: allocation.stockItem.id, companyId },
+        where: { id: allocation.stockItemId, companyId },
         lock: { mode: "pessimistic_write" },
       });
 
@@ -506,7 +506,7 @@ export class JobCardService {
         throw new NotFoundException("Stock item not found");
       }
 
-      stockItem.quantity = Number(stockItem.quantity) + allocation.quantityUsed;
+      stockItem.quantity = Number(stockItem.quantity) + Number(allocation.quantityUsed);
       await queryRunner.manager.save(StockItem, stockItem);
 
       allocation.undone = true;
@@ -533,7 +533,7 @@ export class JobCardService {
           entityType: "stock_allocation",
           entityId: allocation.id,
           action: AuditAction.DELETE,
-          oldValues: { stockItemId: allocation.stockItem.id, quantity: allocation.quantityUsed },
+          oldValues: { stockItemId: allocation.stockItemId, quantity: allocation.quantityUsed },
           newValues: { undoneBy: user.name },
         })
         .catch((err) => this.logger.error(`Audit log failed: ${err.message}`, err.stack));
