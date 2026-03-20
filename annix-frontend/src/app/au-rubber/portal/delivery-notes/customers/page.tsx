@@ -872,18 +872,18 @@ export default function CustomerDeliveryNotesPage() {
         </div>
       )}
 
-      {isAnalyzing && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/10">
-          <div className="bg-white/95 rounded-lg p-8 flex flex-col items-center shadow-2xl">
-            <Loader2 className="h-12 w-12 text-blue-500 animate-spin mb-4" />
-            <p className="text-lg font-medium text-gray-900">Analyzing delivery notes...</p>
-            <p className="text-sm text-gray-500 mt-1">
-              AI is extracting data from {analysisFiles.length} file
-              {analysisFiles.length > 1 ? "s" : ""}
-            </p>
-          </div>
-        </div>
-      )}
+      <NixProcessingPopup
+        isVisible={isAnalyzing}
+        progress={analyzeProgress}
+        statusMessage={analyzeStatus}
+        detailMessage={analyzeDetail}
+        headerColor={branding?.primaryColor || undefined}
+        headerContent={
+          branding?.logoUrl ? (
+            <img src={branding.logoUrl} alt="Company Logo" className="h-10 object-contain" />
+          ) : undefined
+        }
+      />
 
       {analysisResult && (
         <CustomerDnAnalysisModal
