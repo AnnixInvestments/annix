@@ -35,6 +35,8 @@ export default function RequisitionDetailPage() {
   const [pendingReqNumber, setPendingReqNumber] = useState<Map<number, string>>(new Map());
   const [error, setError] = useState<string | null>(null);
   const [isAccepting, setIsAccepting] = useState(false);
+  const [savingRowId, setSavingRowId] = useState<number | null>(null);
+  const [savedRows, setSavedRows] = useState<Set<number>>(new Set());
 
   const { data: requisition, isLoading, error: fetchError } = useRequisitionDetail(reqId);
   const updateItem = useUpdateRequisitionItem(reqId);
@@ -127,6 +129,72 @@ export default function RequisitionDetailPage() {
   const reqNumberValue = (itemId: number, dbValue: string | null): string => {
     const pending = pendingReqNumber.get(itemId);
     return pending !== undefined ? pending : (dbValue ?? "");
+  };
+
+  const handleSaveRow = (itemId: number) => {
+    if (!requisition) return;
+    const item = requisition.items.find((i) => i.id === itemId);
+    if (!item) return;
+
+    setSavingRowId(itemId);
+    setError(null);
+
+    const reorderVal = pendingReorderQty.get(itemId);
+    const reqNumVal = pendingReqNumber.get(itemId);
+
+    const payload: Record<string, unknown> = {};
+
+    if (reorderVal !== undefined) {
+      payload.reorderQty = reorderVal === "" ? null : parseInt(reorderVal, 10);
+    }
+
+    if (reqNumVal !== undefined) {
+      payload.reqNumber = reqNumVal === "" ? null : reqNumVal;
+    }
+
+    if (Object.keys(payload).length === 0) {
+      setSavingRowId(null);
+      setSavedRows((prev) => new Set(prev).add(itemId));
+      setTimeout(() => {
+        setSavedRows((prev) => {
+          const next = new Set(prev);
+          next.delete(itemId);
+          return next;
+        });
+      }, 2000);
+      return;
+    }
+
+    updateItem.mutate(
+      { itemId, data: payload },
+      {
+        onSuccess: () => {
+          setPendingReorderQty((prev) => {
+            const next = new Map(prev);
+            next.delete(itemId);
+            return next;
+          });
+          setPendingReqNumber((prev) => {
+            const next = new Map(prev);
+            next.delete(itemId);
+            return next;
+          });
+          setSavingRowId(null);
+          setSavedRows((prev) => new Set(prev).add(itemId));
+          setTimeout(() => {
+            setSavedRows((prev) => {
+              const next = new Set(prev);
+              next.delete(itemId);
+              return next;
+            });
+          }, 2000);
+        },
+        onError: (err) => {
+          setSavingRowId(null);
+          setError(err instanceof Error ? err.message : "Failed to save");
+        },
+      },
+    );
   };
 
   const exportColumns = [
@@ -482,6 +550,12 @@ export default function RequisitionDetailPage() {
                 >
                   Stock Match
                 </th>
+                <th
+                  scope="col"
+                  className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
+                  Save
+                </th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
@@ -603,6 +677,24 @@ export default function RequisitionDetailPage() {
                       <span className="text-gray-700">{item.stockItem.name}</span>
                     ) : (
                       <span className="text-amber-600 italic">Not in inventory</span>
+                    )}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-center">
+                    {savedRows.has(item.id) ? (
+                      <span className="inline-flex items-center text-green-600 text-xs font-medium">
+                        <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                        Saved
+                      </span>
+                    ) : (
+                      <button
+                        onClick={() => handleSaveRow(item.id)}
+                        disabled={savingRowId === item.id}
+                        className="inline-flex items-center px-3 py-1 text-xs font-medium rounded-md bg-teal-600 text-white hover:bg-teal-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+                      >
+                        {savingRowId === item.id ? "Saving..." : "Save"}
+                      </button>
                     )}
                   </td>
                 </tr>

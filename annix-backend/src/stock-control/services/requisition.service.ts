@@ -231,6 +231,9 @@ export class RequisitionService {
 
     if (data.reorderQty !== undefined) {
       item.reorderQty = data.reorderQty;
+      if (data.reorderQty !== null && data.reorderQty > 0) {
+        item.packsToOrder = data.reorderQty;
+      }
     }
 
     if (data.reqNumber !== undefined) {
