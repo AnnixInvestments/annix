@@ -24,6 +24,7 @@ export default function RequisitionDetailPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const fromJobCard = searchParams.get("fromJobCard");
+  const completeStep = searchParams.get("completeStep");
   const reqId = Number(params.id);
 
   const [editingItemId, setEditingItemId] = useState<number | null>(null);
@@ -183,7 +184,15 @@ export default function RequisitionDetailPage() {
     try {
       setIsAccepting(true);
       setError(null);
-      await stockControlApiClient.completeRequisitionStep(Number(fromJobCard));
+      if (completeStep) {
+        await stockControlApiClient.completeBackgroundStep(
+          Number(fromJobCard),
+          completeStep,
+          "Requisition reviewed and accepted",
+        );
+      } else {
+        await stockControlApiClient.completeRequisitionStep(Number(fromJobCard));
+      }
       router.push(`/stock-control/portal/job-cards/${fromJobCard}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to complete requisition step");
@@ -296,7 +305,11 @@ export default function RequisitionDetailPage() {
                   />
                 </svg>
               )}
-              {isAccepting ? "Completing..." : "Accept & Return to Job Card"}
+              {isAccepting
+                ? "Completing..."
+                : completeStep
+                  ? "Authorise & Return to Job Card"
+                  : "Accept & Return to Job Card"}
             </button>
           )}
           <div className="relative" ref={exportMenuRef}>

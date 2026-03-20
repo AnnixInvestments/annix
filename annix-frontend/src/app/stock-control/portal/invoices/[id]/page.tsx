@@ -236,6 +236,9 @@ export default function InvoiceDetailPage() {
     }
   };
 
+  const [editStockItemId, setEditStockItemId] = useState<number | null>(null);
+  const [stockSearchQuery, setStockSearchQuery] = useState("");
+
   const startEditing = (item: import("@/app/lib/api/stockControlApi").SupplierInvoiceItem) => {
     const uType = item["unitType"];
     const sItem = item["stockItem"];
@@ -246,6 +249,8 @@ export default function InvoiceDetailPage() {
       unitType: uType || sItem?.unitOfMeasure || "each",
       description: item.extractedDescription || "",
     });
+    setEditStockItemId(item.stockItemId || null);
+    setStockSearchQuery("");
   };
 
   const cancelEditing = () => {
@@ -255,12 +260,25 @@ export default function InvoiceDetailPage() {
   const saveItemEdit = async (itemId: number) => {
     setIsSavingItem(true);
     try {
+      const currentItem = invoice?.items?.find((i) => i.id === itemId);
+      const stockItemChanged =
+        editStockItemId !== (currentItem?.stockItemId || null);
+
       await stockControlApiClient.updateInvoiceItem(invoiceId, itemId, {
         quantity: Number(editValues.quantity),
         unitPrice: Number(editValues.unitPrice),
         unitType: editValues.unitType,
         extractedDescription: editValues.description,
       });
+
+      if (stockItemChanged && editStockItemId) {
+        await stockControlApiClient.manualMatchInvoiceItem(
+          invoiceId,
+          itemId,
+          editStockItemId,
+        );
+      }
+
       setEditingItemId(null);
       await fetchInvoice();
       await fetchPriceSummary();
@@ -580,8 +598,55 @@ export default function InvoiceDetailPage() {
                             </>
                           )}
                         </td>
-                        <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {itemStockItem ? (
+                        <td className="px-4 py-4 text-sm text-gray-900">
+                          {isEditing ? (
+                            <div
+                              className="relative"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <input
+                                type="text"
+                                placeholder="Search stock items..."
+                                value={stockSearchQuery}
+                                onChange={(e) => setStockSearchQuery(e.target.value)}
+                                className="w-full px-2 py-1 text-sm border border-teal-300 rounded focus:ring-1 focus:ring-teal-500 focus:border-teal-500"
+                              />
+                              {editStockItemId && (
+                                <div className="mt-1 text-xs text-teal-700">
+                                  {stockItems.find((s) => s.id === editStockItemId)?.name || "Selected"}
+                                </div>
+                              )}
+                              {stockSearchQuery.length >= 2 && (
+                                <div className="absolute z-50 w-72 mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-48 overflow-y-auto">
+                                  {stockItems
+                                    .filter((s) => {
+                                      const q = stockSearchQuery.toLowerCase();
+                                      return (
+                                        (s.name || "").toLowerCase().includes(q) ||
+                                        (s.sku || "").toLowerCase().includes(q)
+                                      );
+                                    })
+                                    .slice(0, 10)
+                                    .map((s) => (
+                                      <button
+                                        key={s.id}
+                                        type="button"
+                                        onClick={() => {
+                                          setEditStockItemId(s.id);
+                                          setStockSearchQuery("");
+                                        }}
+                                        className={`w-full text-left px-3 py-2 text-sm hover:bg-teal-50 ${editStockItemId === s.id ? "bg-teal-100" : ""}`}
+                                      >
+                                        <div className="font-medium">{s.name}</div>
+                                        {s.sku && (
+                                          <div className="text-xs text-gray-500">{s.sku}</div>
+                                        )}
+                                      </button>
+                                    ))}
+                                </div>
+                              )}
+                            </div>
+                          ) : itemStockItem ? (
                             <div>
                               <div>{itemStockItem.name}</div>
                               <div className="text-xs text-gray-500">{itemStockItem.sku}</div>

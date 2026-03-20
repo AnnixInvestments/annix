@@ -89,7 +89,7 @@ export function StockControlHeader() {
   return (
     <>
       <header
-        className="flex flex-col shadow-md pt-[env(safe-area-inset-top)]"
+        className="flex flex-col shadow-md pt-[env(safe-area-inset-top)] sticky top-0 z-40"
         style={{ backgroundColor: colors.background }}
       >
         <div className="h-14 sm:h-16 flex items-center px-3 sm:px-6">

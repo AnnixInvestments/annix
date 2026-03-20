@@ -511,6 +511,13 @@ export default function JobCardDetailPage() {
     [],
   );
 
+  const isReqAuthStep = useCallback(
+    (bg: BackgroundStepStatus) =>
+      bg.stepKey === "custom_req_auth" ||
+      bg.label?.toLowerCase().includes("req auth"),
+    [],
+  );
+
   const requisitionIsPending = useMemo(
     () => userPendingBgSteps.some(isRequisitionStep),
     [userPendingBgSteps, isRequisitionStep],
@@ -839,6 +846,18 @@ export default function JobCardDetailPage() {
                         className="px-3 py-1.5 text-xs font-medium rounded-md bg-teal-600 text-white hover:bg-teal-700 transition-colors"
                       >
                         Stock Assessment
+                      </button>
+                    ) : isReqAuthStep(bg) && requisition ? (
+                      <button
+                        key={bg.stepKey}
+                        onClick={() =>
+                          router.push(
+                            `/stock-control/portal/requisitions/${requisition.id}?fromJobCard=${jobId}&completeStep=${bg.stepKey}`,
+                          )
+                        }
+                        className="px-3 py-1.5 text-xs font-medium rounded-md bg-teal-600 text-white hover:bg-teal-700 transition-colors"
+                      >
+                        View Requisition
                       </button>
                     ) : (
                       <button

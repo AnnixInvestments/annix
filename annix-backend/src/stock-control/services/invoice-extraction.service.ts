@@ -943,6 +943,7 @@ export class InvoiceExtractionService {
       item.unitType = updates.unitType;
     }
 
+    let descriptionChanged = false;
     if (
       updates.extractedDescription !== undefined &&
       updates.extractedDescription !== item.extractedDescription
@@ -953,6 +954,28 @@ export class InvoiceExtractionService {
         corrected: updates.extractedDescription,
       });
       item.extractedDescription = updates.extractedDescription;
+      descriptionChanged = true;
+    }
+
+    if (descriptionChanged) {
+      const stockItems = await this.stockItemRepo.find({ where: { companyId: item.companyId } });
+      const match = this.fuzzyMatchStockItem(
+        item.extractedDescription || "",
+        item.extractedSku || "",
+        stockItems,
+      );
+
+      if (match) {
+        item.stockItemId = match.stockItem.id;
+        item.matchConfidence = match.confidence;
+        item.matchStatus = InvoiceItemMatchStatus.MANUALLY_MATCHED;
+        item.previousPrice = Number(match.stockItem.costPerUnit) || null;
+      } else {
+        item.stockItemId = null;
+        item.matchConfidence = null;
+        item.matchStatus = InvoiceItemMatchStatus.UNMATCHED;
+        item.previousPrice = null;
+      }
     }
 
     const savedItem = await this.invoiceItemRepo.save(item);
@@ -971,6 +994,55 @@ export class InvoiceExtractionService {
         }),
       );
       await this.correctionRepo.save(correctionEntities);
+    }
+
+    return savedItem;
+  }
+
+  async manualMatchInvoiceItem(
+    invoiceId: number,
+    itemId: number,
+    stockItemId: number,
+    userId: number | null,
+  ): Promise<SupplierInvoiceItem> {
+    const item = await this.invoiceItemRepo.findOne({
+      where: { id: itemId, invoiceId },
+      relations: ["invoice"],
+    });
+
+    if (!item) {
+      throw new Error(`Invoice item ${itemId} not found on invoice ${invoiceId}`);
+    }
+
+    const stockItem = await this.stockItemRepo.findOne({
+      where: { id: stockItemId, companyId: item.companyId },
+    });
+
+    if (!stockItem) {
+      throw new Error(`Stock item ${stockItemId} not found`);
+    }
+
+    const previousStockItemId = item.stockItemId;
+    item.stockItemId = stockItem.id;
+    item.matchStatus = InvoiceItemMatchStatus.MANUALLY_MATCHED;
+    item.matchConfidence = 100;
+    item.previousPrice = Number(stockItem.costPerUnit) || null;
+
+    const savedItem = await this.invoiceItemRepo.save(item);
+
+    if (item.invoice?.supplierName && previousStockItemId !== stockItemId) {
+      await this.correctionRepo.save(
+        this.correctionRepo.create({
+          companyId: item.companyId,
+          supplierName: item.invoice.supplierName,
+          invoiceItemId: item.id,
+          fieldName: "stockItemMatch",
+          originalValue: String(previousStockItemId || "unmatched"),
+          correctedValue: `${stockItem.id}:${stockItem.sku || stockItem.name}`,
+          extractedDescription: item.extractedDescription,
+          correctedBy: userId,
+        }),
+      );
     }
 
     return savedItem;

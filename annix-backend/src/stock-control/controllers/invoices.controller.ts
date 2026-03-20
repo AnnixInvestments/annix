@@ -215,6 +215,19 @@ export class InvoicesController {
     return this.extractionService.updateInvoiceItem(id, itemId, dto, req.user.id);
   }
 
+  @StockControlRoles("accounts", "manager", "admin")
+  @Post(":id/items/:itemId/match")
+  @ApiOperation({ summary: "Manually match an invoice item to a stock item" })
+  async manualMatchItem(
+    @Req() req: any,
+    @Param("id") id: number,
+    @Param("itemId") itemId: number,
+    @Body() dto: { stockItemId: number },
+  ) {
+    await this.invoiceService.findById(req.user.companyId, id);
+    return this.extractionService.manualMatchInvoiceItem(id, itemId, dto.stockItemId, req.user.id);
+  }
+
   @StockControlRoles("manager", "admin")
   @PermissionKey("invoices.delete")
   @Delete(":id")

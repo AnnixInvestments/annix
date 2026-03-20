@@ -51,7 +51,7 @@ export class SupplierInvoiceItem {
   @Column({ name: "extracted_sku", type: "varchar", length: 255, nullable: true })
   extractedSku: string | null;
 
-  @Column({ type: "integer", default: 1 })
+  @Column({ type: "numeric", precision: 12, scale: 2, default: 1 })
   quantity: number;
 
   @Column({ name: "unit_price", type: "numeric", precision: 12, scale: 2, nullable: true })
