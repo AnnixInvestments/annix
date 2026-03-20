@@ -500,6 +500,24 @@ export class WorkflowController {
     return { success: true, requisitionId: requisition?.id ?? null };
   }
 
+  @Post("job-cards/:id/stock-decision/complete-requisition")
+  @ApiOperation({ summary: "Complete the requisition background step after review" })
+  async completeRequisitionStep(@Req() req: any, @Param("id") id: number) {
+    const bgSteps = await this.stepConfigService.backgroundSteps(req.user.companyId);
+    const reqStep = bgSteps.find((s) => s.key === "requisition" || s.key === "requisition_sent");
+    if (!reqStep) {
+      return { success: true, message: "No requisition step configured" };
+    }
+    await this.backgroundStepService.completeStep(
+      req.user.companyId,
+      id,
+      reqStep.key,
+      req.user,
+      "Requisition reviewed and accepted",
+    );
+    return { success: true };
+  }
+
   @Post("job-cards/:id/stock-decision/use-current-stock")
   @ApiOperation({ summary: "Use current stock and skip requisition steps" })
   async useCurrentStock(@Req() req: any, @Param("id") id: number) {
@@ -524,5 +542,4 @@ export class WorkflowController {
     );
     return { success: true };
   }
-
 }

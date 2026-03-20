@@ -526,7 +526,9 @@ export default function JobCardDetailPage() {
       const result = await stockControlApiClient.placeRequisitionDecision(jobId);
       fetchData();
       if (result.requisitionId) {
-        router.push(`/stock-control/portal/requisitions/${result.requisitionId}`);
+        router.push(
+          `/stock-control/portal/requisitions/${result.requisitionId}?fromJobCard=${jobId}`,
+        );
       } else {
         handleTabChange("requisition");
       }

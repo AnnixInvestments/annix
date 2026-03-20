@@ -75,18 +75,32 @@ export class RequisitionService {
 
     const stockAssessmentMap = new Map(analysis.stockAssessment.map((sa) => [sa.product, sa]));
 
-    const items = analysis.coats.map((coat) => {
-      const assessment = stockAssessmentMap.get(coat.product);
-      const litresRequired = coat.litersRequired;
+    const grouped = analysis.coats.reduce((acc, coat) => {
+      const key = `${coat.product}::${coat.area || "external"}`;
+      const existing = acc.get(key);
+      if (existing) {
+        existing.litresRequired += coat.litersRequired;
+      } else {
+        acc.set(key, {
+          product: coat.product,
+          area: coat.area,
+          litresRequired: coat.litersRequired,
+        });
+      }
+      return acc;
+    }, new Map<string, { product: string; area: string; litresRequired: number }>());
+
+    const items = Array.from(grouped.values()).map((group) => {
+      const assessment = stockAssessmentMap.get(group.product);
       const packSizeLitres = DEFAULT_PACK_SIZE;
-      const packsToOrder = Math.ceil(litresRequired / packSizeLitres);
+      const packsToOrder = Math.ceil(group.litresRequired / packSizeLitres);
 
       return this.itemRepo.create({
         requisitionId: saved.id,
         stockItemId: assessment?.stockItemId ?? null,
-        productName: coat.product,
-        area: coat.area,
-        litresRequired,
+        productName: group.product,
+        area: group.area,
+        litresRequired: group.litresRequired,
         packSizeLitres,
         packsToOrder,
         companyId,

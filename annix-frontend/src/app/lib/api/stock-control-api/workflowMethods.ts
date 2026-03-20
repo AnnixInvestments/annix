@@ -100,7 +100,10 @@ declare module "./base" {
     actionCompletions(jobCardId: number): Promise<JobCardActionCompletion[]>;
     archiveUrls(jobCardId: number): Promise<{ url: string; path: string }[]>;
     updateStepActionLabel(key: string, actionLabel: string | null): Promise<{ success: boolean }>;
-    placeRequisitionDecision(jobCardId: number): Promise<{ success: boolean; requisitionId: number | null }>;
+    placeRequisitionDecision(
+      jobCardId: number,
+    ): Promise<{ success: boolean; requisitionId: number | null }>;
+    completeRequisitionStep(jobCardId: number): Promise<{ success: boolean }>;
     useCurrentStockDecision(jobCardId: number): Promise<{ success: boolean }>;
   }
 }
@@ -383,6 +386,13 @@ proto.updateStepActionLabel = async function (key, actionLabel) {
 proto.placeRequisitionDecision = async function (jobCardId) {
   return this.request(
     `/stock-control/workflow/job-cards/${jobCardId}/stock-decision/place-requisition`,
+    { method: "POST" },
+  );
+};
+
+proto.completeRequisitionStep = async function (jobCardId) {
+  return this.request(
+    `/stock-control/workflow/job-cards/${jobCardId}/stock-decision/complete-requisition`,
     { method: "POST" },
   );
 };

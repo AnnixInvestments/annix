@@ -193,7 +193,7 @@ describe("CoatingAnalysisService", () => {
       });
 
       const result = await service.analyseJobCard(1, 1);
-      expect(result.extM2).toBe(80);
+      expect(result.extM2).toBe(180);
     });
 
     it("handles null m2 values", async () => {

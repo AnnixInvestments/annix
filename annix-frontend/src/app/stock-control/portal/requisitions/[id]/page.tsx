@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { formatDateZA } from "@/app/lib/datetime";
 import { exportToExcel, exportToPDF, exportToWord } from "@/app/lib/export/exportTable";
 import { useRequisitionDetail, useUpdateRequisitionItem } from "@/app/lib/query/hooks";
@@ -20,6 +21,9 @@ function statusBadgeColor(status: string): string {
 
 export default function RequisitionDetailPage() {
   const params = useParams();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const fromJobCard = searchParams.get("fromJobCard");
   const reqId = Number(params.id);
 
   const [editingItemId, setEditingItemId] = useState<number | null>(null);
@@ -29,6 +33,7 @@ export default function RequisitionDetailPage() {
   const [pendingReorderQty, setPendingReorderQty] = useState<Map<number, string>>(new Map());
   const [pendingReqNumber, setPendingReqNumber] = useState<Map<number, string>>(new Map());
   const [error, setError] = useState<string | null>(null);
+  const [isAccepting, setIsAccepting] = useState(false);
 
   const { data: requisition, isLoading, error: fetchError } = useRequisitionDetail(reqId);
   const updateItem = useUpdateRequisitionItem(reqId);
@@ -173,6 +178,19 @@ export default function RequisitionDetailPage() {
     setShowExportMenu(false);
   };
 
+  const handleAcceptAndReturn = async () => {
+    if (!fromJobCard || !requisition) return;
+    try {
+      setIsAccepting(true);
+      setError(null);
+      await stockControlApiClient.completeRequisitionStep(Number(fromJobCard));
+      router.push(`/stock-control/portal/job-cards/${fromJobCard}`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to complete requisition step");
+      setIsAccepting(false);
+    }
+  };
+
   const isSaving = updateItem.isPending;
 
   if (isLoading) {
@@ -259,74 +277,97 @@ export default function RequisitionDetailPage() {
             ) : null}
           </div>
         </div>
-        <div className="relative" ref={exportMenuRef}>
-          <button
-            onClick={() => setShowExportMenu(!showExportMenu)}
-            className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500"
-          >
-            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
-              />
-            </svg>
-            Export
-            <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M19 9l-7 7-7-7"
-              />
-            </svg>
-          </button>
-          {showExportMenu && (
-            <div className="absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-10">
-              <div className="py-1">
-                <button
-                  onClick={() => handleExport("excel")}
-                  className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                >
-                  <svg
-                    className="w-4 h-4 mr-3 text-green-600"
-                    fill="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zM6 20V4h7v5h5v11H6z" />
-                  </svg>
-                  Excel (.xlsx)
-                </button>
-                <button
-                  onClick={() => handleExport("word")}
-                  className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                >
-                  <svg
-                    className="w-4 h-4 mr-3 text-blue-600"
-                    fill="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zM6 20V4h7v5h5v11H6z" />
-                  </svg>
-                  Word (.docx)
-                </button>
-                <button
-                  onClick={() => handleExport("pdf")}
-                  className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                >
-                  <svg
-                    className="w-4 h-4 mr-3 text-red-600"
-                    fill="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zM6 20V4h7v5h5v11H6z" />
-                  </svg>
-                  PDF (.pdf)
-                </button>
-              </div>
-            </div>
+        <div className="flex items-center space-x-3">
+          {fromJobCard && (
+            <button
+              onClick={handleAcceptAndReturn}
+              disabled={isAccepting}
+              className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-teal-600 hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500 disabled:opacity-50"
+            >
+              {isAccepting ? (
+                <div className="w-4 h-4 mr-2 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M5 13l4 4L19 7"
+                  />
+                </svg>
+              )}
+              {isAccepting ? "Completing..." : "Accept & Return to Job Card"}
+            </button>
           )}
+          <div className="relative" ref={exportMenuRef}>
+            <button
+              onClick={() => setShowExportMenu(!showExportMenu)}
+              className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500"
+            >
+              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+                />
+              </svg>
+              Export
+              <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M19 9l-7 7-7-7"
+                />
+              </svg>
+            </button>
+            {showExportMenu && (
+              <div className="absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-10">
+                <div className="py-1">
+                  <button
+                    onClick={() => handleExport("excel")}
+                    className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                  >
+                    <svg
+                      className="w-4 h-4 mr-3 text-green-600"
+                      fill="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zM6 20V4h7v5h5v11H6z" />
+                    </svg>
+                    Excel (.xlsx)
+                  </button>
+                  <button
+                    onClick={() => handleExport("word")}
+                    className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                  >
+                    <svg
+                      className="w-4 h-4 mr-3 text-blue-600"
+                      fill="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zM6 20V4h7v5h5v11H6z" />
+                    </svg>
+                    Word (.docx)
+                  </button>
+                  <button
+                    onClick={() => handleExport("pdf")}
+                    className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                  >
+                    <svg
+                      className="w-4 h-4 mr-3 text-red-600"
+                      fill="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zM6 20V4h7v5h5v11H6z" />
+                    </svg>
+                    PDF (.pdf)
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
