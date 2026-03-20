@@ -15,6 +15,7 @@ import {
   NotificationActionType,
   WorkflowNotification,
 } from "../entities/workflow-notification.entity";
+import { JobFileService } from "./job-file.service";
 import { JobCardWorkflowService } from "./job-card-workflow.service";
 import { WorkflowNotificationService } from "./workflow-notification.service";
 import { WorkflowStepConfigService } from "./workflow-step-config.service";
@@ -40,6 +41,7 @@ export class BackgroundStepService {
     private readonly notificationService: WorkflowNotificationService,
     @Inject(forwardRef(() => JobCardWorkflowService))
     private readonly workflowService: JobCardWorkflowService,
+    private readonly jobFileService: JobFileService,
   ) {}
 
   async completeStep(
@@ -82,6 +84,15 @@ export class BackgroundStepService {
             `Cannot complete "${stepConfig.label}" — previous step "${previousStep.label}" must be completed first`,
           );
         }
+      }
+    }
+
+    if (stepKey === "ready") {
+      const hasPhotos = await this.jobFileService.hasImageFiles(companyId, jobCardId);
+      if (!hasPhotos) {
+        throw new BadRequestException(
+          "A photo of the completed item(s) must be uploaded before marking as Ready",
+        );
       }
     }
 

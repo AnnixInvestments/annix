@@ -9,6 +9,7 @@ import type {
   JobCardActionCompletion,
   JobCardApproval,
   JobCardDocument,
+  JobCardJobFile,
   PendingBackgroundStep,
   StepNotificationRecipients,
   UserLocationSummary,
@@ -73,6 +74,7 @@ declare module "./base" {
     backgroundStepConfigs(): Promise<WorkflowStepConfig[]>;
     backgroundStepsForJobCard(jobCardId: number): Promise<BackgroundStepStatus[]>;
     completeBackgroundStep(jobCardId: number, stepKey: string, notes?: string): Promise<void>;
+    uploadReadyPhoto(jobCardId: number, file: File): Promise<JobCardJobFile>;
     pendingBackgroundSteps(): Promise<PendingBackgroundStep[]>;
     workflowAssignments(): Promise<WorkflowStepAssignment[]>;
     eligibleUsersForStep(step: string): Promise<EligibleUser[]>;
@@ -291,6 +293,13 @@ proto.completeBackgroundStep = async function (jobCardId, stepKey, notes) {
       method: "POST",
       body: JSON.stringify({ notes }),
     },
+  );
+};
+
+proto.uploadReadyPhoto = async function (jobCardId, file) {
+  return this.uploadFile(
+    `/stock-control/workflow/job-cards/${jobCardId}/ready-photo`,
+    file,
   );
 };
 

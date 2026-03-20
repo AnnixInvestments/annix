@@ -46,6 +46,7 @@ import {
 } from "../guards/stock-control-role.guard";
 import { BackgroundStepService } from "../services/background-step.service";
 import { DispatchService } from "../services/dispatch.service";
+import { JobFileService } from "../services/job-file.service";
 import { JobCardPdfService } from "../services/job-card-pdf.service";
 import { JobCardWorkflowService } from "../services/job-card-workflow.service";
 import { RequisitionService } from "../services/requisition.service";
@@ -70,6 +71,7 @@ export class WorkflowController {
     private readonly stepConfigService: WorkflowStepConfigService,
     private readonly backgroundStepService: BackgroundStepService,
     private readonly requisitionService: RequisitionService,
+    private readonly jobFileService: JobFileService,
   ) {}
 
   @Post("job-cards/:id/documents")
@@ -480,6 +482,29 @@ export class WorkflowController {
       stepKey,
       req.user,
       dto.notes,
+    );
+  }
+
+  @Post("job-cards/:id/ready-photo")
+  @UseInterceptors(FileInterceptor("file"))
+  @ApiOperation({ summary: "Upload a ready-step photo for a job card" })
+  async uploadReadyPhoto(
+    @Req() req: any,
+    @Param("id") id: number,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    if (!file) {
+      throw new BadRequestException("No file provided");
+    }
+    if (!file.mimetype.startsWith("image/")) {
+      throw new BadRequestException("Only image files are allowed");
+    }
+    return this.jobFileService.uploadFile(
+      req.user.companyId,
+      id,
+      file,
+      req.user.id || null,
+      req.user.name || null,
     );
   }
 

@@ -136,6 +136,17 @@ export class JobFileService {
     return { url };
   }
 
+  async hasImageFiles(companyId: number, jobCardId: number): Promise<boolean> {
+    const count = await this.jobFileRepo.count({
+      where: [
+        { jobCardId, companyId, mimeType: "image/jpeg" },
+        { jobCardId, companyId, mimeType: "image/png" },
+        { jobCardId, companyId, mimeType: "image/jpg" },
+      ],
+    });
+    return count > 0;
+  }
+
   private async analyzeAndNameFile(fileId: number): Promise<void> {
     const file = await this.jobFileRepo.findOne({ where: { id: fileId } });
 
