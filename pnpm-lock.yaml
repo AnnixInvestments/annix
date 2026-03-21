@@ -9,8 +9,8 @@ importers:
   .:
     devDependencies:
       '@annix/claude-swarm':
-        specifier: 0.1.21
-        version: 0.1.21(@types/node@25.3.0)
+        specifier: 0.1.22
+        version: 0.1.22(@types/node@25.3.0)
       '@biomejs/biome':
         specifier: ^2.3.14
         version: 2.3.14
@@ -530,8 +530,8 @@ packages:
     resolution: {integrity: sha512-J4Jarr0SohdrHcb40gTL4wGPCQ952IMWF1G/MSAQfBAPvA9ZKApYhpxcY7PmehVePve+ujpus1dGsJ7dPxz8Kg==}
     engines: {node: ^18.19.1 || ^20.11.1 || >=22.0.0, npm: ^6.11.0 || ^7.5.6 || >=8.0.0, yarn: '>= 1.13.0'}
 
-  '@annix/claude-swarm@0.1.21':
-    resolution: {integrity: sha512-a5jrkBF9mpj4QCsARtDky81S3xBA8qiaJ+9/NUIsCZRXVi5cWD0Se4MQ7snAKBtI5uiODq65qY8PN5JGMSoXXA==}
+  '@annix/claude-swarm@0.1.22':
+    resolution: {integrity: sha512-Prr7CKpwqxfFT5hvQIrA9KN/EjOSbTH9BNOfv63A/KRHLyZkFQeYrqqWCx8ltiiN+ZHqiw2C0m3yyUQa09pvzw==}
     engines: {node: '>=18.0.0'}
     hasBin: true
 
@@ -4194,6 +4194,7 @@ packages:
   basic-ftp@5.1.0:
     resolution: {integrity: sha512-RkaJzeJKDbaDWTIPiJwubyljaEPwpVWkm9Rt5h9Nd6h7tEXTJ3VB4qxdZBioV7JO5yLUaOKwz7vDOzlncUsegw==}
     engines: {node: '>=10.0.0'}
+    deprecated: Security vulnerability fixed in 5.2.0, please upgrade
 
   bcp-47-match@2.0.3:
     resolution: {integrity: sha512-JtTezzbAibu8G0R9op9zb3vcWZd9JF6M0xOYGPn0fNCd7wOpRB1mU2mH9T8gaBGbAAyIIVgB2G7xG0GP98zMAQ==}
@@ -8945,7 +8946,7 @@ snapshots:
     transitivePeerDependencies:
       - chokidar
 
-  '@annix/claude-swarm@0.1.21(@types/node@25.3.0)':
+  '@annix/claude-swarm@0.1.22(@types/node@25.3.0)':
     dependencies:
       '@inquirer/prompts': 8.2.0(@types/node@25.3.0)
       chalk: 5.6.2
