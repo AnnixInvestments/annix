@@ -408,6 +408,18 @@ export class WorkflowController {
     return { success: true };
   }
 
+  @Put("step-configs/:key/branch-color")
+  @StockControlRoles("admin")
+  @ApiOperation({ summary: "Update a workflow step branch color" })
+  async updateStepBranchColor(
+    @Req() req: any,
+    @Param("key") key: string,
+    @Body() dto: { branchColor: string | null },
+  ) {
+    await this.stepConfigService.updateBranchColor(req.user.companyId, key, dto.branchColor);
+    return { success: true };
+  }
+
   @Post("step-configs")
   @StockControlRoles("admin")
   @ApiOperation({ summary: "Add a custom workflow step" })

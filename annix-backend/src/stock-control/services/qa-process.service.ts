@@ -25,15 +25,12 @@ interface QaReviewInput {
 
 const QA_STEP_KEYS = [
   "qa_check",
-  "qc_rubber_batch_certs",
-  "qc_paint_batch_certs",
+  "qc_batch_certs",
   "qa_review",
-  "qc_rubber_repairs",
-  "qc_paint_repairs",
+  "qc_repairs",
   "qa_final_check",
   "book_3rd_party_inspections",
   "compile_data_book",
-  "qa_release",
 ] as const;
 
 @Injectable()
@@ -74,15 +71,8 @@ export class QaProcessService {
 
     const stepsToSkip: string[] = [];
 
-    if (!hasRubber) {
-      stepsToSkip.push("qc_rubber_batch_certs", "qc_rubber_repairs");
-    }
-    if (!hasPaint) {
-      stepsToSkip.push("qc_paint_batch_certs", "qc_paint_repairs");
-    }
-
     if (!hasRubber && !hasPaint) {
-      stepsToSkip.push("qa_review");
+      stepsToSkip.push("qc_batch_certs", "qc_repairs", "qa_review");
     }
 
     const existing = await this.completionRepo.find({
@@ -147,11 +137,8 @@ export class QaProcessService {
     const rubberAccepted = !hasRubber || input.rubberAccepted === true;
     const paintAccepted = !hasPaint || input.paintAccepted === true;
 
-    if (rubberAccepted) {
-      stepsToSkip.push("qc_rubber_repairs");
-    }
-    if (paintAccepted) {
-      stepsToSkip.push("qc_paint_repairs");
+    if (rubberAccepted && paintAccepted) {
+      stepsToSkip.push("qc_repairs");
     }
 
     if (stepsToSkip.length > 0) {
@@ -198,15 +185,11 @@ export class QaProcessService {
       return false;
     }
 
-    const repairStepsNeeded: string[] = [];
-    if (latestDecision.rubberApplicable && latestDecision.rubberAccepted === false) {
-      repairStepsNeeded.push("qc_rubber_repairs");
-    }
-    if (latestDecision.paintApplicable && latestDecision.paintAccepted === false) {
-      repairStepsNeeded.push("qc_paint_repairs");
-    }
+    const needsRepairs =
+      (latestDecision.rubberApplicable && latestDecision.rubberAccepted === false) ||
+      (latestDecision.paintApplicable && latestDecision.paintAccepted === false);
 
-    if (repairStepsNeeded.length === 0) {
+    if (!needsRepairs) {
       return false;
     }
 
@@ -214,9 +197,8 @@ export class QaProcessService {
       where: { jobCardId, companyId },
     });
     const completedKeys = new Set(repairCompletions.map((c) => c.stepKey));
-    const allRepairsDone = repairStepsNeeded.every((key) => completedKeys.has(key));
 
-    if (!allRepairsDone) {
+    if (!completedKeys.has("qc_repairs")) {
       return false;
     }
 
@@ -228,7 +210,6 @@ export class QaProcessService {
       stepKey: "book_3rd_party_inspections",
     });
     await this.completionRepo.delete({ jobCardId, companyId, stepKey: "compile_data_book" });
-    await this.completionRepo.delete({ jobCardId, companyId, stepKey: "qa_release" });
 
     this.logger.log(
       `Reset QA review and downstream steps for job card ${jobCardId} after repairs (cycle ${latestDecision.cycleNumber})`,

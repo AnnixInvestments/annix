@@ -1370,6 +1370,7 @@ export interface WorkflowStepConfig {
   isBackground: boolean;
   triggerAfterStep: string | null;
   actionLabel: string | null;
+  branchColor: string | null;
 }
 
 export interface JobCardActionCompletion {

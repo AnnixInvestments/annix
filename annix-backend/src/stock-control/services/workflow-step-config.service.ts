@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
+import { BadRequestException, Injectable, Logger, NotFoundException } from "@nestjs/common"; // v2
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { WorkflowStepConfig } from "../entities/workflow-step-config.entity";
@@ -112,54 +112,36 @@ const DEFAULT_STEPS: ReadonlyArray<{
     branchColor: "#3b82f6",
   },
   {
-    key: "qc_rubber_batch_certs",
-    label: "Rubber Certs",
+    key: "compile_data_book",
+    label: "Data Book",
     sortOrder: 8,
     isBackground: true,
     triggerAfterStep: "quality_check",
-    actionLabel: "Rubber Certs Done",
-    branchColor: null,
-  },
-  {
-    key: "qc_paint_batch_certs",
-    label: "Paint Certs",
-    sortOrder: 9,
-    isBackground: true,
-    triggerAfterStep: "quality_check",
-    actionLabel: "Paint Certs Done",
+    actionLabel: "Data Book Compiled",
     branchColor: null,
   },
   {
     key: "qa_review",
     label: "QA Review",
-    sortOrder: 10,
+    sortOrder: 9,
     isBackground: true,
     triggerAfterStep: "quality_check",
     actionLabel: "QA Reviewed",
     branchColor: null,
   },
   {
-    key: "qc_rubber_repairs",
-    label: "Rubber Repairs",
-    sortOrder: 11,
+    key: "qc_repairs",
+    label: "Rubber/Paint Repairs",
+    sortOrder: 10,
     isBackground: true,
     triggerAfterStep: "quality_check",
-    actionLabel: "Rubber Repaired",
-    branchColor: null,
-  },
-  {
-    key: "qc_paint_repairs",
-    label: "Paint Repairs",
-    sortOrder: 12,
-    isBackground: true,
-    triggerAfterStep: "quality_check",
-    actionLabel: "Paint Repaired",
+    actionLabel: "Repairs Done",
     branchColor: null,
   },
   {
     key: "qa_final_check",
     label: "QA Final",
-    sortOrder: 13,
+    sortOrder: 11,
     isBackground: true,
     triggerAfterStep: "quality_check",
     actionLabel: "Final Check Done",
@@ -168,28 +150,19 @@ const DEFAULT_STEPS: ReadonlyArray<{
   {
     key: "book_3rd_party_inspections",
     label: "3rd Party Insp",
-    sortOrder: 14,
+    sortOrder: 12,
     isBackground: true,
     triggerAfterStep: "quality_check",
     actionLabel: "Inspections Booked",
     branchColor: null,
   },
   {
-    key: "compile_data_book",
-    label: "Data Book",
-    sortOrder: 15,
+    key: "qc_batch_certs",
+    label: "Rubber/Paint Certs",
+    sortOrder: 13,
     isBackground: true,
     triggerAfterStep: "quality_check",
-    actionLabel: "Data Book Compiled",
-    branchColor: null,
-  },
-  {
-    key: "qa_release",
-    label: "QA Release",
-    sortOrder: 16,
-    isBackground: true,
-    triggerAfterStep: "quality_check",
-    actionLabel: "QA Released",
+    actionLabel: "Certs Done",
     branchColor: null,
   },
   {
@@ -197,7 +170,7 @@ const DEFAULT_STEPS: ReadonlyArray<{
     label: "Contact Customer",
     sortOrder: 17,
     isBackground: true,
-    triggerAfterStep: "dispatched",
+    triggerAfterStep: "quality_check",
     actionLabel: "Customer Called",
     branchColor: null,
   },
@@ -223,6 +196,8 @@ const DEFAULT_STEPS: ReadonlyArray<{
 
 @Injectable()
 export class WorkflowStepConfigService {
+  private readonly logger = new Logger(WorkflowStepConfigService.name);
+
   constructor(
     @InjectRepository(WorkflowStepConfig)
     private readonly repo: Repository<WorkflowStepConfig>,
@@ -312,6 +287,18 @@ export class WorkflowStepConfigService {
 
   async updateLabel(companyId: number, stepKey: string, label: string): Promise<void> {
     const result = await this.repo.update({ companyId, key: stepKey }, { label });
+
+    if (result.affected === 0) {
+      throw new NotFoundException(`Step "${stepKey}" not found for this company`);
+    }
+  }
+
+  async updateBranchColor(
+    companyId: number,
+    stepKey: string,
+    branchColor: string | null,
+  ): Promise<void> {
+    const result = await this.repo.update({ companyId, key: stepKey }, { branchColor });
 
     if (result.affected === 0) {
       throw new NotFoundException(`Step "${stepKey}" not found for this company`);
@@ -425,14 +412,20 @@ export class WorkflowStepConfigService {
 
   async removeStep(companyId: number, stepKey: string): Promise<void> {
     const step = await this.repo.findOne({ where: { companyId, key: stepKey } });
+    this.logger.log(
+      `removeStep: key=${stepKey}, found=${!!step}, isSystem=${step?.isSystem}, isBg=${step?.isBackground}`,
+    );
 
     if (!step) {
       throw new NotFoundException(`Step "${stepKey}" not found for this company`);
     }
 
-    if (step.isSystem) {
-      throw new BadRequestException("Cannot remove a system workflow step");
-    }
+    this.logger.log(`removeStep: proceeding to delete key=${stepKey}`);
+
+    await this.repo.update(
+      { companyId, triggerAfterStep: stepKey },
+      { triggerAfterStep: step.triggerAfterStep },
+    );
 
     await this.repo.remove(step);
   }

@@ -89,11 +89,11 @@ export class BackgroundStepService {
       }
     }
 
-    if (stepKey === "qa_release") {
+    if (stepKey === "compile_data_book") {
       const hasPhotos = await this.jobFileService.hasImageFiles(companyId, jobCardId);
       if (!hasPhotos) {
         throw new BadRequestException(
-          "A photo of the completed item(s) must be uploaded before QA Release",
+          "A photo of the completed item(s) must be uploaded before completing Data Book",
         );
       }
     }
@@ -122,7 +122,7 @@ export class BackgroundStepService {
       await this.qaProcessService.autoSkipInapplicableSteps(companyId, jobCardId, user);
     }
 
-    if (stepKey === "qc_rubber_repairs" || stepKey === "qc_paint_repairs") {
+    if (stepKey === "qc_repairs") {
       const didReset = await this.qaProcessService.resetReviewAfterRepairs(companyId, jobCardId);
       if (didReset) {
         this.logger.log(`QA review reset after repairs completed for job card ${jobCardId}`);

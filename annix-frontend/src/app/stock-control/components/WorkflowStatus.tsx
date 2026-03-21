@@ -253,6 +253,7 @@ interface BranchSegment {
   nextFgIdx: number;
   bgSteps: BackgroundStepStatus[];
   branchColor: string | null;
+  isLoop: boolean;
 }
 
 const collectBranches = (
@@ -261,6 +262,14 @@ const collectBranches = (
   bgByTrigger: Record<string, BackgroundStepStatus[]>,
 ): BranchSegment[] => {
   const bgStepKeySet = new Set(backgroundSteps.map((bg) => bg.stepKey));
+  const bgByKey = new Map(backgroundSteps.map((bg) => [bg.stepKey, bg]));
+
+  const inheritedColor = (bg: BackgroundStepStatus): string | null => {
+    if (bg.branchColor) return bg.branchColor;
+    const parent = bgByKey.get(bg.triggerAfterStep || "");
+    if (parent) return inheritedColor(parent);
+    return null;
+  };
 
   const resolveBgChain = (trigger: string): BackgroundStepStatus[] => {
     const direct = bgByTrigger[trigger] || [];
@@ -271,22 +280,46 @@ const collectBranches = (
   };
 
   return allSteps.reduce<BranchSegment[]>((branches, step, index) => {
-    const chain = resolveBgChain(step.key);
-    if (chain.length > 0) {
-      const nextFgIdx = index + 1 < allSteps.length ? index + 1 : index;
-      const firstWithColor = chain.find((bg) => bg.branchColor);
-      return [
-        ...branches,
-        {
-          triggerFgKey: step.key,
-          triggerFgIdx: index,
-          nextFgIdx,
-          bgSteps: chain,
-          branchColor: firstWithColor?.branchColor || null,
-        },
-      ];
+    const directChildren = bgByTrigger[step.key] || [];
+    if (directChildren.length === 0) return branches;
+
+    const coloredDirect = directChildren.filter((bg) => inheritedColor(bg));
+    const regularDirect = directChildren.filter((bg) => !inheritedColor(bg));
+
+    const result = [...branches];
+
+    if (coloredDirect.length > 0) {
+      const loopChain = coloredDirect.reduce<BackgroundStepStatus[]>((chain, bg) => {
+        const rest = bgStepKeySet.has(bg.stepKey) ? resolveBgChain(bg.stepKey) : [];
+        return [...chain, bg, ...rest];
+      }, []);
+      result.push({
+        triggerFgKey: step.key,
+        triggerFgIdx: index,
+        nextFgIdx: index,
+        bgSteps: loopChain,
+        branchColor: inheritedColor(coloredDirect[0]) || null,
+        isLoop: true,
+      });
     }
-    return branches;
+
+    if (regularDirect.length > 0) {
+      const regularChain = regularDirect.reduce<BackgroundStepStatus[]>((chain, bg) => {
+        const rest = bgStepKeySet.has(bg.stepKey) ? resolveBgChain(bg.stepKey) : [];
+        return [...chain, bg, ...rest];
+      }, []);
+      const nextFgIdx = index + 1 < allSteps.length ? index + 1 : index;
+      result.push({
+        triggerFgKey: step.key,
+        triggerFgIdx: index,
+        nextFgIdx,
+        bgSteps: regularChain,
+        branchColor: null,
+        isLoop: false,
+      });
+    }
+
+    return result;
   }, []);
 };
 
@@ -363,6 +396,17 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
   const [branchPositions, setBranchPositions] = useState<
     Record<string, { left: number; right: number }>
   >({});
+  const [loopBottomPositions, setLoopBottomPositions] = useState<
+    Record<
+      string,
+      {
+        start: Array<{ x: number; y: number }>;
+        end: Array<{ x: number; y: number; originalIdx: number }>;
+        totalSteps: number;
+      }
+    >
+  >({});
+  const loopBottomCount = (totalSteps: number) => (totalSteps >= 5 ? 2 : 0);
 
   const bgKeySet = useMemo(
     () => new Set(backgroundSteps.map((bg) => bg.stepKey)),
@@ -391,11 +435,15 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
     return { docUploadStep: found as BackgroundStepStatus | null, branches: filtered };
   }, [allBranches]);
 
+  const loopBranches = useMemo(() => branches.filter((b) => b.isLoop), [branches]);
+  const belowBranches = useMemo(() => branches.filter((b) => !b.isLoop), [branches]);
+
   const hasBranches = branches.length > 0 || docUploadStep !== null;
+  const hasLoopBranches = loopBranches.length > 0;
 
   const branchLanes = useMemo(() => {
     const laneEnds: number[] = [];
-    return branches.reduce<Record<string, number>>((acc, branch) => {
+    return belowBranches.reduce<Record<string, number>>((acc, branch) => {
       const effectiveStart = branch.triggerFgIdx;
       const effectiveEnd = branch.nextFgIdx;
       const laneIdx = laneEnds.findIndex((end) => end <= effectiveStart);
@@ -408,7 +456,7 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
     }, {});
   }, [branches]);
 
-  const laneCount = branches.length > 0 ? Math.max(...Object.values(branchLanes)) + 1 : 0;
+  const laneCount = belowBranches.length > 0 ? Math.max(...Object.values(branchLanes)) + 1 : 0;
 
   useEffect(() => {
     const container = containerRef.current;
@@ -419,6 +467,14 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
       setContainerSize({ width: rect.width, height: rect.height });
 
       const paths: Array<{ d: string; color: string; key: string }> = [];
+      const loopBottomPos: Record<
+        string,
+        {
+          start: Array<{ x: number; y: number }>;
+          end: Array<{ x: number; y: number; originalIdx: number }>;
+          totalSteps: number;
+        }
+      > = {};
       const r = 14;
 
       if (docUploadStep) {
@@ -442,7 +498,104 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
         }
       }
 
-      branches.forEach((branch) => {
+      loopBranches.forEach((branch) => {
+        const startNode = fgNodeRefs.current[branch.triggerFgIdx];
+        const btmCount = loopBottomCount(branch.bgSteps.length);
+        const topFirstKey = branch.bgSteps[btmCount]?.stepKey;
+        const topLastKey = branch.bgSteps[branch.bgSteps.length - btmCount - 1]?.stepKey;
+        const firstTopBg = topFirstKey ? bgNodeRefs.current[topFirstKey] : null;
+        const lastTopBg = topLastKey ? bgNodeRefs.current[topLastKey] : null;
+
+        if (!startNode || !firstTopBg || !lastTopBg) return;
+
+        const branchActive = branch.triggerFgIdx < currentStepIndex;
+        const allComplete = branch.bgSteps.every((bg) => bg.completedAt !== null);
+        const activeColor = branch.branchColor || "#f59e0b";
+        const strokeColor = branchActive ? activeColor : "#d1d5db";
+        const mergeColor = branchActive && allComplete ? activeColor : "#d1d5db";
+
+        const sRect = startNode.getBoundingClientRect();
+        const ftRect = firstTopBg.getBoundingClientRect();
+        const ltRect = lastTopBg.getBoundingClientRect();
+        const sx = sRect.left + sRect.width / 2 - rect.left;
+        const sy = sRect.top + sRect.height / 2 - rect.top;
+        const fx = ftRect.left + ftRect.width / 2 - rect.left;
+        const fy = ftRect.top + ftRect.height / 2 - rect.top;
+        const lx = ltRect.left + ltRect.width / 2 - rect.left;
+
+        const pad = 14;
+        const topEdge = fy - pad;
+        const bottomEdge = sy - sRect.height / 2 - 6;
+        const rightEdge = sx + 350;
+        const containerNeeded = branch.bgSteps.length * 70;
+        const leftEdge = Math.max(16, rightEdge - containerNeeded);
+
+        paths.push({
+          key: `loop-fork-${branch.triggerFgKey}`,
+          color: strokeColor,
+          d: `M ${sx + r} ${bottomEdge} L ${rightEdge - r} ${bottomEdge} Q ${rightEdge} ${bottomEdge} ${rightEdge} ${bottomEdge - r} L ${rightEdge} ${fy + r} Q ${rightEdge} ${fy} ${rightEdge - r} ${fy} L ${leftEdge + r} ${fy}`,
+        });
+
+        paths.push({
+          key: `loop-merge-${branch.triggerFgKey}`,
+          color: mergeColor,
+          d: `M ${leftEdge + r} ${fy} Q ${leftEdge} ${fy} ${leftEdge} ${fy + r} L ${leftEdge} ${bottomEdge - r} Q ${leftEdge} ${bottomEdge} ${leftEdge + r} ${bottomEdge} L ${sx - r} ${bottomEdge}`,
+        });
+
+        paths.push({
+          key: `loop-connector-left-${branch.triggerFgKey}`,
+          color: strokeColor,
+          d: `M ${sx - r} ${bottomEdge} Q ${sx} ${bottomEdge} ${sx} ${bottomEdge + r} L ${sx} ${sy - r} Q ${sx} ${sy} ${sx + r} ${sy}`,
+        });
+
+        paths.push({
+          key: `loop-connector-right-${branch.triggerFgKey}`,
+          color: strokeColor,
+          d: `M ${sx + r} ${bottomEdge} Q ${sx} ${bottomEdge} ${sx} ${bottomEdge + r} L ${sx} ${sy - r} Q ${sx} ${sy} ${sx - r} ${sy}`,
+        });
+
+        const leftSpan = sx - leftEdge;
+        const startPositions = Array.from({ length: btmCount }, (_, i) => ({
+          x: sx - (leftSpan * (i + 1)) / (btmCount + 1),
+          y: bottomEdge,
+        }));
+        const rightSpan = rightEdge - sx;
+        const totalSteps = branch.bgSteps.length;
+        const endPositions = Array.from({ length: btmCount }, (_, i) => ({
+          x: sx + (rightSpan * (btmCount - i)) / (btmCount + 1),
+          y: bottomEdge,
+          originalIdx: totalSteps - btmCount + i,
+        }));
+        loopBottomPos[branch.triggerFgKey] = {
+          start: startPositions,
+          end: endPositions,
+          totalSteps,
+        };
+
+        branch.bgSteps.forEach((bg, bgIdx) => {
+          const totalBg = branch.bgSteps.length;
+          const btmN = loopBottomCount(totalBg);
+          if (bgIdx <= btmN) return;
+          if (bgIdx >= totalBg - btmN) return;
+          const prevEl = bgNodeRefs.current[branch.bgSteps[bgIdx - 1].stepKey];
+          const currEl = bgNodeRefs.current[bg.stepKey];
+          if (!prevEl || !currEl) return;
+
+          const pRect = prevEl.getBoundingClientRect();
+          const cRect = currEl.getBoundingClientRect();
+          const prevCompleted = branch.bgSteps[bgIdx - 1].completedAt !== null;
+          const lineColor = branchActive && prevCompleted ? activeColor : "#d1d5db";
+
+          paths.push({
+            key: `bg-line-${bg.stepKey}`,
+            color: lineColor,
+            d: `M ${pRect.left + pRect.width / 2 - rect.left} ${pRect.top + pRect.height / 2 - rect.top} L ${cRect.left + cRect.width / 2 - rect.left} ${cRect.top + cRect.height / 2 - rect.top}`,
+          });
+        });
+      });
+      setLoopBottomPositions(loopBottomPos);
+
+      belowBranches.forEach((branch) => {
         const startNode = fgNodeRefs.current[branch.triggerFgIdx];
         const endNode = fgNodeRefs.current[branch.nextFgIdx];
         const firstBg = bgNodeRefs.current[branch.bgSteps[0].stepKey];
@@ -504,7 +657,7 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
       });
 
       const positions: Record<string, { left: number; right: number }> = {};
-      branches.forEach((branch) => {
+      belowBranches.forEach((branch) => {
         const sNode = fgNodeRefs.current[branch.triggerFgIdx];
         const eNode = fgNodeRefs.current[branch.nextFgIdx];
         if (sNode && eNode) {
@@ -514,6 +667,21 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
           positions[branch.triggerFgKey] = {
             left: sR.left + sR.width / 2 - rect.left,
             right: isLastBranch ? 8 : rect.width - (eR.left + eR.width / 2 - rect.left),
+          };
+        }
+      });
+      loopBranches.forEach((branch) => {
+        const sNode = fgNodeRefs.current[branch.triggerFgIdx];
+        if (sNode) {
+          const sR = sNode.getBoundingClientRect();
+          const triggerRight = sR.left + sR.width / 2 - rect.left;
+          const minNodeWidth = 70;
+          const neededWidth = branch.bgSteps.length * minNodeWidth;
+          const rightPad = 350;
+          const leftBound = Math.max(16, triggerRight + rightPad - neededWidth);
+          positions[`loop-${branch.triggerFgKey}`] = {
+            left: leftBound,
+            right: rect.width - triggerRight - rightPad,
           };
         }
       });
@@ -533,12 +701,17 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
       observer.observe(branchContainer);
     }
 
+    const loopContainer = container.querySelector("[data-loop-container]");
+    if (loopContainer) {
+      observer.observe(loopContainer);
+    }
+
     return () => {
       cancelAnimationFrame(frameId);
       clearTimeout(settledId);
       observer.disconnect();
     };
-  }, [branches, docUploadStep, currentStepIndex, allSteps, backgroundSteps]);
+  }, [loopBranches, belowBranches, docUploadStep, currentStepIndex, allSteps, backgroundSteps]);
 
   if (allSteps.length === 0) {
     return <p className="text-sm text-gray-500">No workflow steps configured</p>;
@@ -550,7 +723,10 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
     <div
       ref={containerRef}
       className="relative min-h-[80px]"
-      style={{ paddingLeft: hasDocPre ? "60px" : undefined, paddingTop: "60px" }}
+      style={{
+        paddingLeft: hasDocPre ? "60px" : undefined,
+        paddingTop: hasLoopBranches ? "130px" : "60px",
+      }}
     >
       {svgPaths.length > 0 && (
         <svg
@@ -571,6 +747,148 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
           ))}
         </svg>
       )}
+
+      {loopBranches.map((branch) => {
+        const triggerPos = branchPositions[`loop-${branch.triggerFgKey}`];
+        const bottomData = loopBottomPositions[branch.triggerFgKey];
+        const bottomStartPos = bottomData?.start || [];
+        const bottomEndPos = bottomData?.end || [];
+        const totalBgSteps = bottomData?.totalSteps || branch.bgSteps.length;
+        const containerLeft = triggerPos?.left || 0;
+
+        return (
+          <div
+            key={`loop-${branch.triggerFgKey}`}
+            data-loop-container
+            className="absolute"
+            style={{
+              top: "8px",
+              left: triggerPos ? `${triggerPos.left}px` : "0",
+              right: triggerPos ? `${triggerPos.right}px` : "0",
+            }}
+          >
+            <div className="flex items-start">
+              {branch.bgSteps
+                .slice(loopBottomCount(totalBgSteps), totalBgSteps - loopBottomCount(totalBgSteps))
+                .map((bg) => {
+                  const state = bgNodeState(
+                    bg,
+                    branch.triggerFgIdx,
+                    currentStepIndex,
+                    branch.bgSteps,
+                  );
+                  const classes = bgNodeClasses(state, branch.branchColor);
+                  const bgAssigned = assignedNameForStep(bg.stepKey, stepAssignments);
+                  const bgDisplayName =
+                    state === "completed" || state === "skipped" ? bg.completedByName : bgAssigned;
+
+                  return (
+                    <div key={bg.stepKey} className="flex-1 flex flex-col items-center">
+                      <p
+                        className={`mb-0.5 text-[9px] font-medium whitespace-nowrap ${classes.label}`}
+                      >
+                        {state === "skipped" ? "Skipped" : bg.label}
+                      </p>
+                      {bgDisplayName && state !== "skipped" && (
+                        <p className="text-[8px] text-gray-400 truncate max-w-[60px] mb-0.5">
+                          {bgDisplayName}
+                        </p>
+                      )}
+                      <div
+                        ref={(el) => {
+                          bgNodeRefs.current[bg.stepKey] = el;
+                        }}
+                        className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 z-20 ${classes.circle}`}
+                      >
+                        {classes.icon}
+                      </div>
+                    </div>
+                  );
+                })}
+            </div>
+            {branch.bgSteps.slice(0, loopBottomCount(totalBgSteps)).map((bg, bgIdx) => {
+              const pos = bottomStartPos[bgIdx];
+              if (!pos) return null;
+              const state = bgNodeState(bg, branch.triggerFgIdx, currentStepIndex, branch.bgSteps);
+              const classes = bgNodeClasses(state, branch.branchColor);
+              const bgAssigned = assignedNameForStep(bg.stepKey, stepAssignments);
+              const bgDisplayName =
+                state === "completed" || state === "skipped" ? bg.completedByName : bgAssigned;
+
+              return (
+                <div
+                  key={`bottom-${bg.stepKey}`}
+                  className="absolute"
+                  style={{
+                    left: `${pos.x - containerLeft}px`,
+                    top: `${pos.y - 8 - 10}px`,
+                    transform: "translateX(-50%)",
+                  }}
+                >
+                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 flex flex-col items-center mb-0.5">
+                    <p className={`text-[9px] font-medium whitespace-nowrap ${classes.label}`}>
+                      {state === "skipped" ? "Skipped" : bg.label}
+                    </p>
+                    {bgDisplayName && state !== "skipped" && (
+                      <p className="text-[8px] text-gray-400 truncate max-w-[60px]">
+                        {bgDisplayName}
+                      </p>
+                    )}
+                  </div>
+                  <div
+                    className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 z-20 ${classes.circle}`}
+                  >
+                    {classes.icon}
+                  </div>
+                </div>
+              );
+            })}
+            {loopBottomCount(totalBgSteps) > 0 &&
+              branch.bgSteps.slice(-loopBottomCount(totalBgSteps)).map((bg, bgIdx) => {
+                const pos = bottomEndPos[bgIdx];
+                if (!pos) return null;
+                const state = bgNodeState(
+                  bg,
+                  branch.triggerFgIdx,
+                  currentStepIndex,
+                  branch.bgSteps,
+                );
+                const classes = bgNodeClasses(state, branch.branchColor);
+                const bgAssigned = assignedNameForStep(bg.stepKey, stepAssignments);
+                const bgDisplayName =
+                  state === "completed" || state === "skipped" ? bg.completedByName : bgAssigned;
+
+                return (
+                  <div
+                    key={`bottom-${bg.stepKey}`}
+                    className="absolute"
+                    style={{
+                      left: `${pos.x - containerLeft}px`,
+                      top: `${pos.y - 8 - 10}px`,
+                      transform: "translateX(-50%)",
+                    }}
+                  >
+                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 flex flex-col items-center mb-0.5">
+                      <p className={`text-[9px] font-medium whitespace-nowrap ${classes.label}`}>
+                        {state === "skipped" ? "Skipped" : bg.label}
+                      </p>
+                      {bgDisplayName && state !== "skipped" && (
+                        <p className="text-[8px] text-gray-400 truncate max-w-[60px]">
+                          {bgDisplayName}
+                        </p>
+                      )}
+                    </div>
+                    <div
+                      className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 z-20 ${classes.circle}`}
+                    >
+                      {classes.icon}
+                    </div>
+                  </div>
+                );
+              })}
+          </div>
+        );
+      })}
 
       <div className="flex items-start">
         {allSteps.map((step, index) => {
@@ -593,8 +911,10 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
               ? assignedNameForStep(step.key, stepAssignments)
               : null;
 
+          const hasLoopAbove = loopBranches.some((b) => b.triggerFgKey === step.key);
           const isNarrowFirst = isFirst && hasDocPre;
-          const prevBranch = index > 0 ? branches.find((b) => b.triggerFgIdx === index - 1) : null;
+          const prevBranch =
+            index > 0 ? belowBranches.find((b) => b.triggerFgIdx === index - 1) : null;
           const bgCount = prevBranch ? prevBranch.bgSteps.length : 0;
           const rawGrow = Math.max(1, bgCount);
           const flexGrow = isNarrowFirst
@@ -655,7 +975,7 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
                   <div
                     className="absolute text-center"
                     style={{
-                      bottom: "calc(100% + 4px)",
+                      bottom: hasLoopAbove ? "calc(100% + 20px)" : "calc(100% + 4px)",
                       left: "50%",
                       transform: "translateX(-50%)",
                       whiteSpace: "nowrap",
@@ -721,7 +1041,7 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
           );
         })}
         {(() => {
-          const lastBranch = branches.find((b) => b.triggerFgIdx === allSteps.length - 1);
+          const lastBranch = belowBranches.find((b) => b.triggerFgIdx === allSteps.length - 1);
           const trailingGrow = lastBranch ? Math.max(2, lastBranch.bgSteps.length) : 2;
           return <div style={{ flexGrow: trailingGrow }} />;
         })()}
@@ -774,13 +1094,13 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
           );
         })()}
 
-      {branches.length > 0 && (
+      {belowBranches.length > 0 && (
         <div
           data-branch-container
           className="mt-2 relative"
           style={{ height: `${laneCount * 52}px` }}
         >
-          {branches.map((branch) => {
+          {belowBranches.map((branch) => {
             const pos = branchPositions[branch.triggerFgKey];
             const lane = branchLanes[branch.triggerFgKey] || 0;
 
@@ -897,10 +1217,10 @@ function MobileTransitMap(props: MobileTransitMapProps) {
     return { docUploadStep: found as BackgroundStepStatus | null, branches: filtered };
   }, [allBranches]);
 
-  const branchForStep = useMemo(
+  const branchesForStep = useMemo(
     () =>
-      branches.reduce<Record<string, BranchSegment>>((acc, branch) => {
-        return { ...acc, [branch.triggerFgKey]: branch };
+      branches.reduce<Record<string, BranchSegment[]>>((acc, branch) => {
+        return { ...acc, [branch.triggerFgKey]: [...(acc[branch.triggerFgKey] || []), branch] };
       }, {}),
     [branches],
   );
@@ -973,7 +1293,7 @@ function MobileTransitMap(props: MobileTransitMapProps) {
         const approval = approvalByStep[step.key];
         const isLast = index === allSteps.length - 1;
         const lineCompleted = index < currentStepIndex;
-        const branch = branchForStep[step.key];
+        const stepBranches = branchesForStep[step.key] || [];
 
         const assignedName =
           state === "current" || state === "pending"
@@ -1018,7 +1338,7 @@ function MobileTransitMap(props: MobileTransitMapProps) {
                         className="w-0.5 flex-1 mt-1"
                         style={{
                           backgroundColor: mobileLineGreen ? "#22c55e" : "#e5e7eb",
-                          minHeight: branch ? "8px" : "24px",
+                          minHeight: stepBranches.length > 0 ? "8px" : "24px",
                         }}
                       />
                     );
@@ -1071,8 +1391,12 @@ function MobileTransitMap(props: MobileTransitMapProps) {
               </div>
             </div>
 
-            {branch && (
-              <div className="flex items-stretch" style={{ minHeight: "24px" }}>
+            {stepBranches.map((branch) => (
+              <div
+                key={`mb-${branch.triggerFgKey}-${branch.isLoop ? "loop" : "below"}`}
+                className="flex items-stretch"
+                style={{ minHeight: "24px" }}
+              >
                 <div className="flex flex-col items-center" style={{ width: "32px" }}>
                   <div
                     className="w-0.5 flex-1"
@@ -1130,7 +1454,7 @@ function MobileTransitMap(props: MobileTransitMapProps) {
                   </div>
                 </div>
               </div>
-            )}
+            ))}
           </div>
         );
       })}

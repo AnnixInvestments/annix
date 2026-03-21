@@ -317,6 +317,21 @@ export function WorkflowConfigurationSection({ teamMembers }: WorkflowConfigurat
     }
   };
 
+  const handleUpdateBranchColor = async (key: string, branchColor: string | null) => {
+    setSaving(true);
+    setError("");
+    setSuccess(false);
+    try {
+      await stockControlApiClient.updateStepBranchColor(key, branchColor);
+      await loadData();
+      setSuccess(true);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to update line color");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const handleToggleBackground = async (key: string, toBackground: boolean) => {
     setSaving(true);
     setError("");
@@ -733,24 +748,48 @@ export function WorkflowConfigurationSection({ teamMembers }: WorkflowConfigurat
                   <span className="text-xs text-orange-500">No one assigned</span>
                 )}
               </div>
-              <div className="flex items-center gap-1.5 mt-1" onClick={(e) => e.stopPropagation()}>
-                <span className="text-xs text-gray-400">Follows:</span>
-                <select
-                  value={followsStep}
-                  onChange={(e) => handleUpdateFollows(step.key, e.target.value || null)}
-                  disabled={saving}
-                  className="text-xs border border-gray-200 rounded px-1.5 py-0.5 text-gray-600 focus:ring-teal-500 focus:border-teal-500 bg-white cursor-pointer"
-                >
-                  <option value="">None</option>
-                  {allSteps
-                    .filter((s) => s.key !== step.key)
-                    .map((s) => (
-                      <option key={s.key} value={s.key}>
-                        {s.label}
-                        {s.isBackground ? " (bg)" : ""}
-                      </option>
-                    ))}
-                </select>
+              <div className="flex items-center gap-4 mt-1" onClick={(e) => e.stopPropagation()}>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs text-gray-400">Follows:</span>
+                  <select
+                    value={followsStep}
+                    onChange={(e) => handleUpdateFollows(step.key, e.target.value || null)}
+                    disabled={saving}
+                    className="text-xs border border-gray-200 rounded px-1.5 py-0.5 text-gray-600 focus:ring-teal-500 focus:border-teal-500 bg-white cursor-pointer"
+                  >
+                    <option value="">None</option>
+                    {allSteps
+                      .filter((s) => s.key !== step.key)
+                      .map((s) => (
+                        <option key={s.key} value={s.key}>
+                          {s.label}
+                          {s.isBackground ? " (bg)" : ""}
+                        </option>
+                      ))}
+                  </select>
+                </div>
+                {isBackground && (
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs text-gray-400">Line:</span>
+                    <select
+                      value={step.branchColor || ""}
+                      onChange={(e) => handleUpdateBranchColor(step.key, e.target.value || null)}
+                      disabled={saving}
+                      className="text-xs border border-gray-200 rounded px-1.5 py-0.5 text-gray-600 focus:ring-teal-500 focus:border-teal-500 bg-white cursor-pointer"
+                      style={
+                        step.branchColor
+                          ? { borderColor: step.branchColor, color: step.branchColor }
+                          : undefined
+                      }
+                    >
+                      <option value="">Amber (default)</option>
+                      <option value="#3b82f6">Blue (QA)</option>
+                      <option value="#22c55e">Green</option>
+                      <option value="#a855f7">Purple</option>
+                      <option value="#ef4444">Red</option>
+                    </select>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -799,6 +838,42 @@ export function WorkflowConfigurationSection({ teamMembers }: WorkflowConfigurat
                 )}
               </>
             )}
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleStartEditLabel(step.key, step.label);
+              }}
+              className="text-gray-300 hover:text-teal-600 p-1"
+              title="Rename step"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
+                />
+              </svg>
+            </button>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleRemoveStep(step.key);
+              }}
+              className="text-gray-300 hover:text-red-500 p-1"
+              title="Delete step"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                />
+              </svg>
+            </button>
             <svg
               className={`w-4 h-4 text-gray-400 transition-transform ${isExpanded ? "rotate-180" : ""}`}
               fill="none"
@@ -898,29 +973,7 @@ export function WorkflowConfigurationSection({ teamMembers }: WorkflowConfigurat
                     </button>
                   </>
                 )}
-                {isBackground && (
-                  <button
-                    type="button"
-                    onClick={() => handleToggleBackground(step.key, false)}
-                    className="text-gray-400 hover:text-teal-600 p-1"
-                    title="Move to foreground"
-                  >
-                    <svg
-                      className="w-3.5 h-3.5"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M11 17l-5-5 5-5m6 10l-5-5 5-5"
-                      />
-                    </svg>
-                  </button>
-                )}
-                {!step.isSystem && (
+                {(!step.isSystem || step.isBackground) && (
                   <button
                     type="button"
                     onClick={() => handleRemoveStep(step.key)}
