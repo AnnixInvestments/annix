@@ -416,12 +416,35 @@ export default function JobCardDetailPage() {
       return 0;
     };
 
+    const bgByKey = new Map(backgroundSteps.map((bg) => [bg.stepKey, bg]));
+    const isInColoredBranch = (stepKey: string, visited: Set<string> = new Set()): boolean => {
+      if (visited.has(stepKey)) return false;
+      visited.add(stepKey);
+      const step = bgByKey.get(stepKey);
+      if (!step) return false;
+      if (step.branchColor) return true;
+      const parent = step.triggerAfterStep;
+      if (parent && bgKeySet.has(parent)) return isInColoredBranch(parent, visited);
+      return false;
+    };
+
+    const coloredSteps = backgroundSteps.filter((bg) => isInColoredBranch(bg.stepKey));
+    const hasIncompleteColored = coloredSteps.some((bg) => bg.completedAt === null);
+
     const allActionable = backgroundSteps.filter((bg) => {
       if (bg.completedAt !== null) return false;
 
       const trigger = bg.triggerAfterStep || "__root__";
       const originFgIdx = resolveOriginFgIdx(trigger);
       if (originFgIdx > currentFgIdx) return false;
+
+      if (hasIncompleteColored && !isInColoredBranch(bg.stepKey)) {
+        const originKey = fgKeys[resolveOriginFgIdx(trigger)];
+        const coloredOrigin = coloredSteps.length > 0
+          ? fgKeys[resolveOriginFgIdx(coloredSteps[0].triggerAfterStep || "__root__")]
+          : null;
+        if (originKey === coloredOrigin) return false;
+      }
 
       if (bgKeySet.has(trigger) && !completedKeys.has(trigger)) return false;
 
@@ -497,6 +520,56 @@ export default function JobCardDetailPage() {
     };
     const prevBgTasks = resolveChain(prevStepKey);
     return prevBgTasks.length > 0 && prevBgTasks.some((bg) => bg.completedAt === null);
+  }, [workflowStatus, currentStep]);
+
+  const currentStepBlueBgPending = useMemo(() => {
+    if (!workflowStatus || !currentStep) return false;
+    const bgSteps: BackgroundStepStatus[] = workflowStatus.backgroundSteps || [];
+    const fgSteps = workflowStatus.foregroundSteps || [];
+    const fgKeySet = new Set(fgSteps.map((s) => s.key));
+    const bgKeySet = new Set(bgSteps.map((bg) => bg.stepKey));
+    const bgByTrigger = bgSteps.reduce<Record<string, BackgroundStepStatus[]>>((acc, bg) => {
+      const raw = bg.triggerAfterStep;
+      const isFgTrigger = raw !== null && fgKeySet.has(raw);
+      const isBgChain = raw !== null && bgKeySet.has(raw);
+      const trigger = isFgTrigger || isBgChain ? raw : fgSteps[0]?.key || "";
+      return { ...acc, [trigger]: [...(acc[trigger] || []), bg] };
+    }, {});
+    const resolveChain = (trigger: string): BackgroundStepStatus[] => {
+      const direct = bgByTrigger[trigger] || [];
+      return direct.reduce<BackgroundStepStatus[]>((chain, bg) => {
+        const rest = bgKeySet.has(bg.stepKey) ? resolveChain(bg.stepKey) : [];
+        return [...chain, bg, ...rest];
+      }, []);
+    };
+    const currentBgTasks = resolveChain(currentStep);
+    const blueTasks = currentBgTasks.filter((bg) => bg.branchColor !== null);
+    if (blueTasks.length === 0) return false;
+    return blueTasks.some((bg) => bg.completedAt === null);
+  }, [workflowStatus, currentStep]);
+
+  const hasBlueLineTasks = useMemo(() => {
+    if (!workflowStatus || !currentStep) return false;
+    const bgSteps: BackgroundStepStatus[] = workflowStatus.backgroundSteps || [];
+    const fgSteps = workflowStatus.foregroundSteps || [];
+    const fgKeySet = new Set(fgSteps.map((s) => s.key));
+    const bgKeySet = new Set(bgSteps.map((bg) => bg.stepKey));
+    const bgByTrigger = bgSteps.reduce<Record<string, BackgroundStepStatus[]>>((acc, bg) => {
+      const raw = bg.triggerAfterStep;
+      const isFgTrigger = raw !== null && fgKeySet.has(raw);
+      const isBgChain = raw !== null && bgKeySet.has(raw);
+      const trigger = isFgTrigger || isBgChain ? raw : fgSteps[0]?.key || "";
+      return { ...acc, [trigger]: [...(acc[trigger] || []), bg] };
+    }, {});
+    const resolveChain = (trigger: string): BackgroundStepStatus[] => {
+      const direct = bgByTrigger[trigger] || [];
+      return direct.reduce<BackgroundStepStatus[]>((chain, bg) => {
+        const rest = bgKeySet.has(bg.stepKey) ? resolveChain(bg.stepKey) : [];
+        return [...chain, bg, ...rest];
+      }, []);
+    };
+    const currentBgTasks = resolveChain(currentStep);
+    return currentBgTasks.some((bg) => bg.branchColor !== null);
   }, [workflowStatus, currentStep]);
 
   const isReceptionStep = useCallback(
@@ -992,6 +1065,19 @@ export default function JobCardDetailPage() {
                       {isCompletingFgAction ? "..." : currentStepActionLabel}
                     </button>
                   )}
+                {canApprove &&
+                  currentStep &&
+                  currentStepActionCompleted &&
+                  hasBlueLineTasks &&
+                  !currentStepBlueBgPending &&
+                  !prevStepBgPending && (
+                    <button
+                      onClick={() => openApprovalModal(currentStep)}
+                      className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 font-medium text-sm transition-colors"
+                    >
+                      Quality Release
+                    </button>
+                  )}
               </div>
               {canApprove && currentStep ? (
                 <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
@@ -1005,6 +1091,8 @@ export default function JobCardDetailPage() {
                         Action required at{" "}
                         <span className="font-medium">{currentStep.replace(/_/g, " ")}</span>
                       </>
+                    ) : currentStepBlueBgPending ? (
+                      <>Complete QA tasks before Quality Release</>
                     ) : (
                       <>
                         Awaiting your approval at{" "}
@@ -1038,7 +1126,7 @@ export default function JobCardDetailPage() {
                 </button>
               </div>
             )}
-            {userPendingBgSteps.length > 0 && (!canApprove || prevStepBgPending) && (
+            {userPendingBgSteps.length > 0 && (!canApprove || prevStepBgPending || currentStepBlueBgPending) && (
               <div className="mt-3 pt-3 border-t border-gray-100">
                 <p className="text-xs font-medium text-gray-500 mb-2">
                   Your pending background task
@@ -1186,6 +1274,7 @@ export default function JobCardDetailPage() {
 
       {!specsNeedReview &&
         !prevStepBgPending &&
+        !currentStepBlueBgPending &&
         (currentStepActionCompleted || !currentStepActionLabel) && (
           <JobCardNextAction
             currentStatus={currentStatus}

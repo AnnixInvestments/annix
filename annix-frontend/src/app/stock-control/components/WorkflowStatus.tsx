@@ -406,7 +406,11 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
       }
     >
   >({});
-  const loopBottomCount = (totalSteps: number) => (totalSteps >= 5 ? 2 : 0);
+  const loopBottomCount = (totalSteps: number) => {
+    if (totalSteps >= 7) return 2;
+    if (totalSteps >= 5) return 1;
+    return 0;
+  };
 
   const bgKeySet = useMemo(
     () => new Set(backgroundSteps.map((bg) => bg.stepKey)),
@@ -500,6 +504,7 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
 
       loopBranches.forEach((branch) => {
         const startNode = fgNodeRefs.current[branch.triggerFgIdx];
+        const nextFgNode = fgNodeRefs.current[branch.triggerFgIdx + 1];
         const btmCount = loopBottomCount(branch.bgSteps.length);
         const topFirstKey = branch.bgSteps[btmCount]?.stepKey;
         const topLastKey = branch.bgSteps[branch.bgSteps.length - btmCount - 1]?.stepKey;
@@ -523,11 +528,14 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
         const fy = ftRect.top + ftRect.height / 2 - rect.top;
         const lx = ltRect.left + ltRect.width / 2 - rect.left;
 
-        const pad = 14;
-        const topEdge = fy - pad;
         const bottomEdge = sy - sRect.height / 2 - 6;
-        const rightEdge = sx + 350;
-        const containerNeeded = branch.bgSteps.length * 70;
+        const nextFgX = nextFgNode
+          ? nextFgNode.getBoundingClientRect().left + nextFgNode.getBoundingClientRect().width / 2 - rect.left
+          : rect.width - 20;
+        const nodeSlot = 80;
+        const containerNeeded = branch.bgSteps.length * nodeSlot;
+        const rawRight = sx + containerNeeded * 0.5;
+        const rightEdge = Math.min(rawRight, nextFgX - 30);
         const leftEdge = Math.max(16, rightEdge - containerNeeded);
 
         paths.push({
@@ -672,16 +680,20 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
       });
       loopBranches.forEach((branch) => {
         const sNode = fgNodeRefs.current[branch.triggerFgIdx];
+        const nextFgN = fgNodeRefs.current[branch.triggerFgIdx + 1];
         if (sNode) {
           const sR = sNode.getBoundingClientRect();
-          const triggerRight = sR.left + sR.width / 2 - rect.left;
-          const minNodeWidth = 70;
-          const neededWidth = branch.bgSteps.length * minNodeWidth;
-          const rightPad = 350;
-          const leftBound = Math.max(16, triggerRight + rightPad - neededWidth);
+          const triggerX = sR.left + sR.width / 2 - rect.left;
+          const nextX = nextFgN
+            ? nextFgN.getBoundingClientRect().left + nextFgN.getBoundingClientRect().width / 2 - rect.left
+            : rect.width - 20;
+          const nodeSlot = 80;
+          const needed = branch.bgSteps.length * nodeSlot;
+          const dynRight = Math.min(triggerX + needed * 0.5, nextX - 30);
+          const leftBound = Math.max(16, dynRight - needed);
           positions[`loop-${branch.triggerFgKey}`] = {
             left: leftBound,
-            right: rect.width - triggerRight - rightPad,
+            right: rect.width - dynRight,
           };
         }
       });
@@ -913,9 +925,13 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
 
           const hasLoopAbove = loopBranches.some((b) => b.triggerFgKey === step.key);
           const isNarrowFirst = isFirst && hasDocPre;
-          const prevBranch =
+          const prevBelowBranch =
             index > 0 ? belowBranches.find((b) => b.triggerFgIdx === index - 1) : null;
-          const bgCount = prevBranch ? prevBranch.bgSteps.length : 0;
+          const prevLoopBranch =
+            index > 0 ? loopBranches.find((b) => b.triggerFgIdx === index - 1) : null;
+          const belowCount = prevBelowBranch ? prevBelowBranch.bgSteps.length : 0;
+          const loopCount = prevLoopBranch ? prevLoopBranch.bgSteps.length : 0;
+          const bgCount = Math.max(belowCount, loopCount);
           const rawGrow = Math.max(1, bgCount);
           const flexGrow = isNarrowFirst
             ? 0

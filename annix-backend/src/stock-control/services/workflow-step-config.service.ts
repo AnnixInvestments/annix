@@ -36,7 +36,7 @@ const DEFAULT_STEPS: ReadonlyArray<{
     sortOrder: 3,
     isBackground: false,
     triggerAfterStep: null,
-    actionLabel: "Quality Approved",
+    actionLabel: "Quality Check",
     branchColor: null,
   },
   {
