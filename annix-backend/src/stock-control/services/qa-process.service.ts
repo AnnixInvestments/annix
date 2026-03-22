@@ -175,8 +175,7 @@ export class QaProcessService {
     );
 
     const hasRejection =
-      (hasRubber && input.rubberAccepted === false) ||
-      (hasPaint && input.paintAccepted === false);
+      (hasRubber && input.rubberAccepted === false) || (hasPaint && input.paintAccepted === false);
 
     if (hasRejection && cycleNumber >= 3) {
       this.notificationService

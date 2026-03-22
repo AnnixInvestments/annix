@@ -352,9 +352,7 @@ describe("RbacConfigService", () => {
     it("company A config should not affect company B", async () => {
       mockRepo.find.mockImplementation(({ where: { companyId } }) => {
         if (companyId === 1) {
-          return Promise.resolve([
-            { companyId: 1, navKey: "dashboard", role: "admin" },
-          ]);
+          return Promise.resolve([{ companyId: 1, navKey: "dashboard", role: "admin" }]);
         }
         return Promise.resolve([
           { companyId: 2, navKey: "dashboard", role: "viewer" },
