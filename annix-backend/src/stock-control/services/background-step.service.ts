@@ -71,13 +71,16 @@ export class BackgroundStepService {
     }
 
     if (stepConfig.triggerAfterStep) {
-      const siblings = await this.stepConfigService.backgroundStepsForTrigger(
+      const allSiblings = await this.stepConfigService.backgroundStepsForTrigger(
         companyId,
         stepConfig.triggerAfterStep,
       );
-      const currentIdx = siblings.findIndex((s) => s.key === stepKey);
+      const sameBranchSiblings = allSiblings.filter(
+        (s) => (s.branchColor || null) === (stepConfig.branchColor || null),
+      );
+      const currentIdx = sameBranchSiblings.findIndex((s) => s.key === stepKey);
       if (currentIdx > 0) {
-        const previousStep = siblings[currentIdx - 1];
+        const previousStep = sameBranchSiblings[currentIdx - 1];
         const previousCompletion = await this.completionRepo.findOne({
           where: { jobCardId, stepKey: previousStep.key },
         });
@@ -134,13 +137,16 @@ export class BackgroundStepService {
     }
 
     if (stepConfig.triggerAfterStep) {
-      const siblings = await this.stepConfigService.backgroundStepsForTrigger(
+      const allSiblingsPost = await this.stepConfigService.backgroundStepsForTrigger(
         companyId,
         stepConfig.triggerAfterStep,
       );
-      const currentIdx = siblings.findIndex((s) => s.key === stepKey);
-      if (currentIdx >= 0 && currentIdx + 1 < siblings.length) {
-        const nextStep = siblings[currentIdx + 1];
+      const sameBranchPost = allSiblingsPost.filter(
+        (s) => (s.branchColor || null) === (stepConfig.branchColor || null),
+      );
+      const currentIdx = sameBranchPost.findIndex((s) => s.key === stepKey);
+      if (currentIdx >= 0 && currentIdx + 1 < sameBranchPost.length) {
+        const nextStep = sameBranchPost[currentIdx + 1];
         await this.notificationService.notifyBackgroundStepRequired(
           companyId,
           jobCardId,
@@ -155,7 +161,7 @@ export class BackgroundStepService {
 
       const allCompletions = await this.completionRepo.find({ where: { jobCardId, companyId } });
       const completedKeys = new Set(allCompletions.map((c) => c.stepKey));
-      const allSiblingsComplete = siblings.every((s) => completedKeys.has(s.key));
+      const allSiblingsComplete = allSiblingsPost.every((s) => completedKeys.has(s.key));
 
       if (allSiblingsComplete) {
         this.logger.log(

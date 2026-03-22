@@ -225,7 +225,10 @@ export function DefelskoBatchSection(props: DefelskoBatchSectionProps) {
   };
 
   return (
-    <div className="rounded-lg border border-gray-200 bg-white shadow-sm">
+    <div
+      id="defelsko-batch-section"
+      className="rounded-lg border border-gray-200 bg-white shadow-sm"
+    >
       <div className="flex items-center justify-between border-b border-gray-200 px-5 py-3">
         <h3 className="text-sm font-semibold text-gray-900">Defelsko Batch Numbers</h3>
         <div className="flex items-center gap-2">

@@ -267,13 +267,15 @@ export default function JobCardDetailPage() {
     fetchData();
   };
 
+  const [bgStepError, setBgStepError] = useState<string | null>(null);
   const handleCompleteBackgroundStep = async (stepKey: string) => {
     try {
       setCompletingStepKey(stepKey);
+      setBgStepError(null);
       await stockControlApiClient.completeBackgroundStep(jobId, stepKey);
       fetchData();
     } catch (err) {
-      setError(err instanceof Error ? err : new Error("Failed to complete background step"));
+      setBgStepError(err instanceof Error ? err.message : "Failed to complete background step");
     } finally {
       setCompletingStepKey(null);
     }
@@ -723,6 +725,7 @@ export default function JobCardDetailPage() {
     [userPendingBgSteps, isRequisitionStep],
   );
 
+  const [batchesSaved, setBatchesSaved] = useState(false);
   const [isProcessingDecision, setIsProcessingDecision] = useState(false);
   const [decisionError, setDecisionError] = useState<string | null>(null);
 
@@ -1257,24 +1260,33 @@ export default function JobCardDetailPage() {
                             </button>
                           )}
                         </div>
-                      ) : bg.branchColor ? (
+                      ) : bg.branchColor && !batchesSaved ? (
                         <button
                           key={bg.stepKey}
                           onClick={() => {
                             handleTabChange("quality");
-                            setTimeout(() => {
-                              const qualitySection = document.getElementById("quality-tab-content");
-                              if (qualitySection) {
-                                qualitySection.scrollIntoView({
-                                  behavior: "smooth",
-                                  block: "start",
-                                });
+                            const scrollToBatch = (attempts: number) => {
+                              const el = document.getElementById("defelsko-batch-section");
+                              if (el) {
+                                el.scrollIntoView({ behavior: "smooth", block: "start" });
+                              } else if (attempts > 0) {
+                                setTimeout(() => scrollToBatch(attempts - 1), 150);
                               }
-                            }, 100);
+                            };
+                            setTimeout(() => scrollToBatch(20), 100);
                           }}
                           className="px-3 py-1.5 text-xs font-medium rounded-md bg-blue-600 text-white hover:bg-blue-700 transition-colors"
                         >
                           Input Batches
+                        </button>
+                      ) : bg.branchColor && batchesSaved ? (
+                        <button
+                          key={bg.stepKey}
+                          onClick={() => handleCompleteBackgroundStep(bg.stepKey)}
+                          disabled={completingStepKey === bg.stepKey}
+                          className="px-3 py-1.5 text-xs font-medium rounded-md bg-amber-600 text-white hover:bg-amber-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+                        >
+                          {completingStepKey === bg.stepKey ? "..." : "Batches Completed"}
                         </button>
                       ) : (
                         <button
@@ -1290,6 +1302,17 @@ export default function JobCardDetailPage() {
                       ),
                     )}
                   </div>
+                  {bgStepError && (
+                    <div className="mt-2 rounded-md bg-red-50 p-2 text-xs text-red-700">
+                      {bgStepError}
+                      <button
+                        onClick={() => setBgStepError(null)}
+                        className="ml-2 font-medium underline"
+                      >
+                        Dismiss
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
           </div>
@@ -1571,7 +1594,7 @@ export default function JobCardDetailPage() {
                 onBatchComplete={
                   userPendingBgSteps.some((bg) => bg.branchColor && bg.stepKey === "qc_batch_certs")
                     ? () => {
-                        handleCompleteBackgroundStep("qc_batch_certs");
+                        setBatchesSaved(true);
                         handleTabChange("details");
                         setTimeout(() => {
                           const wfa = document.getElementById("workflow-actions");

@@ -163,7 +163,7 @@ const DEFAULT_STEPS: ReadonlyArray<{
     isBackground: true,
     triggerAfterStep: "quality_check",
     actionLabel: "Certs Done",
-    branchColor: null,
+    branchColor: "#3b82f6",
   },
   {
     key: "contact_customer_collection",
