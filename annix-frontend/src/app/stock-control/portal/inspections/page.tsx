@@ -92,8 +92,18 @@ export default function InspectionCalendarPage() {
             onClick={() => setCurrentMonth(currentMonth.minus({ months: 1 }))}
             className="p-1.5 rounded-md hover:bg-gray-100 transition-colors"
           >
-            <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            <svg
+              className="w-5 h-5 text-gray-600"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M15 19l-7-7 7-7"
+              />
             </svg>
           </button>
           <h2 className="text-lg font-semibold text-gray-900">
@@ -103,7 +113,12 @@ export default function InspectionCalendarPage() {
             onClick={() => setCurrentMonth(currentMonth.plus({ months: 1 }))}
             className="p-1.5 rounded-md hover:bg-gray-100 transition-colors"
           >
-            <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg
+              className="w-5 h-5 text-gray-600"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
             </svg>
           </button>
@@ -140,9 +155,7 @@ export default function InspectionCalendarPage() {
                   >
                     <span
                       className={`inline-flex items-center justify-center w-6 h-6 text-xs rounded-full ${
-                        isToday
-                          ? "bg-teal-600 text-white font-bold"
-                          : "text-gray-700 font-medium"
+                        isToday ? "bg-teal-600 text-white font-bold" : "text-gray-700 font-medium"
                       }`}
                     >
                       {day.date.day}

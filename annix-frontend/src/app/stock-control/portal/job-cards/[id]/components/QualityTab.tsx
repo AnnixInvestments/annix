@@ -42,7 +42,8 @@ interface QualityTabProps {
 }
 
 export function QualityTab(props: QualityTabProps) {
-  const { jobCardId, backgroundSteps, onBatchComplete, onQaReviewSubmitted, onFinalPhotosSaved } = props;
+  const { jobCardId, backgroundSteps, onBatchComplete, onQaReviewSubmitted, onFinalPhotosSaved } =
+    props;
   const [certificates, setCertificates] = useState<SupplierCertificate[]>([]);
   const [calibrationCerts, setCalibrationCerts] = useState<CalibrationCertificate[]>([]);
   const [batchRecords, setBatchRecords] = useState<IssuanceBatchRecord[]>([]);

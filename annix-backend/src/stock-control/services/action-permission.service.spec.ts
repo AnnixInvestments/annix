@@ -2,9 +2,9 @@ import { Test, TestingModule } from "@nestjs/testing";
 import { getRepositoryToken } from "@nestjs/typeorm";
 import { StockControlActionPermission } from "../entities/stock-control-action-permission.entity";
 import {
+  ACTION_PERMISSION_LABELS,
   ActionPermissionService,
   DEFAULT_ACTION_PERMISSIONS,
-  ACTION_PERMISSION_LABELS,
 } from "./action-permission.service";
 
 describe("ActionPermissionService", () => {

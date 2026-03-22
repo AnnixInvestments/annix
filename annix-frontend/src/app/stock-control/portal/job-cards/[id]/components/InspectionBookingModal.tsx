@@ -252,9 +252,7 @@ export function InspectionBookingModal(props: InspectionBookingModalProps) {
 
             {selectedDate && (
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Start Time
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Start Time</label>
                 <div className="grid grid-cols-6 gap-1">
                   {TIME_SLOTS.slice(0, -1).map((slot) => {
                     const isOccupied = occupiedSlots.has(slot);

@@ -36,6 +36,6 @@ export class CreateInspectionBookings1807000000065 implements MigrationInterface
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`DROP TABLE IF EXISTS inspection_bookings`);
+    await queryRunner.query("DROP TABLE IF EXISTS inspection_bookings");
   }
 }

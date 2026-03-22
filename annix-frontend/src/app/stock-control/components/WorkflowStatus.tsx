@@ -614,12 +614,22 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
             d: `M ${sx - r} ${bottomEdge} L ${leftEdge + r} ${bottomEdge} Q ${leftEdge} ${bottomEdge} ${leftEdge} ${bottomEdge - r} L ${leftEdge} ${fy + r} Q ${leftEdge} ${fy} ${leftEdge + r} ${fy} L ${progressTopX} ${fy}`,
           });
 
-          if (progressIdx >= totalSteps - btmCount || allComplete) {
+          if (allComplete) {
             paths.push({
               key: `loop-progress-right-${branch.triggerFgKey}`,
               color: activeColor,
               d: `M ${sx + r} ${bottomEdge} L ${rightEdge - r} ${bottomEdge} Q ${rightEdge} ${bottomEdge} ${rightEdge} ${bottomEdge - r} L ${rightEdge} ${fy + r} Q ${rightEdge} ${fy} ${rightEdge - r} ${fy}`,
             });
+          } else if (progressIdx >= totalSteps - btmCount) {
+            const activeEndBtmIdx = progressIdx - (totalSteps - btmCount);
+            const endPos = endPositions[activeEndBtmIdx];
+            if (endPos) {
+              paths.push({
+                key: `loop-progress-right-${branch.triggerFgKey}`,
+                color: activeColor,
+                d: `M ${rightEdge - r} ${fy} Q ${rightEdge} ${fy} ${rightEdge} ${fy + r} L ${rightEdge} ${bottomEdge - r} Q ${rightEdge} ${bottomEdge} ${rightEdge - r} ${bottomEdge} L ${endPos.x} ${bottomEdge}`,
+              });
+            }
           }
 
           if (allComplete) {

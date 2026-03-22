@@ -15,15 +15,9 @@ declare module "./base" {
       },
     ): Promise<InspectionBooking>;
     inspectionBookingsForJobCard(jobCardId: number): Promise<InspectionBooking[]>;
-    inspectionBookingsForRange(
-      startDate: string,
-      endDate: string,
-    ): Promise<InspectionBooking[]>;
+    inspectionBookingsForRange(startDate: string, endDate: string): Promise<InspectionBooking[]>;
     bookedSlotsForDate(date: string): Promise<InspectionBooking[]>;
-    completeInspection(
-      bookingId: number,
-      notes?: string,
-    ): Promise<InspectionBooking>;
+    completeInspection(bookingId: number, notes?: string): Promise<InspectionBooking>;
     cancelInspection(bookingId: number): Promise<InspectionBooking>;
   }
 }

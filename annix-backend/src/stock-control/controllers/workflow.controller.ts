@@ -49,6 +49,7 @@ import {
 } from "../guards/stock-control-role.guard";
 import { BackgroundStepService } from "../services/background-step.service";
 import { DispatchService } from "../services/dispatch.service";
+import { InspectionBookingService } from "../services/inspection-booking.service";
 import { JobCardPdfService } from "../services/job-card-pdf.service";
 import { JobCardWorkflowService } from "../services/job-card-workflow.service";
 import { JobFileService } from "../services/job-file.service";
@@ -57,7 +58,6 @@ import { RequisitionService } from "../services/requisition.service";
 import { WebPushService } from "../services/web-push.service";
 import { WorkflowAssignmentService } from "../services/workflow-assignment.service";
 import { WorkflowNotificationService } from "../services/workflow-notification.service";
-import { InspectionBookingService } from "../services/inspection-booking.service";
 import { WorkflowStepConfigService } from "../services/workflow-step-config.service";
 
 @ApiTags("Stock Control - Workflow")

@@ -385,11 +385,7 @@ export function QaReviewSection(props: QaReviewSectionProps) {
                   key={photo.id}
                   className="relative w-20 h-20 rounded-md overflow-hidden border border-gray-300 group"
                 >
-                  <img
-                    src={photo.url}
-                    alt={photo.name}
-                    className="w-full h-full object-cover"
-                  />
+                  <img src={photo.url} alt={photo.name} className="w-full h-full object-cover" />
                   <button
                     onClick={() => handleDeleteRepairPhoto(photo.id)}
                     className="absolute top-0.5 right-0.5 w-5 h-5 rounded-full bg-red-600 text-white flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity"
@@ -434,18 +430,14 @@ export function QaReviewSection(props: QaReviewSectionProps) {
             <h3 className="text-sm font-semibold text-gray-900">QA Review</h3>
             <span
               className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                allAccepted
-                  ? "bg-green-100 text-green-800"
-                  : "bg-red-100 text-red-800"
+                allAccepted ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
               }`}
             >
               {allAccepted ? "Accepted" : "Rejected"}
             </span>
           </div>
         </div>
-        <div className="px-5 py-4 space-y-3">
-          {renderDecisionSummary()}
-        </div>
+        <div className="px-5 py-4 space-y-3">{renderDecisionSummary()}</div>
       </div>
     );
   }
@@ -608,20 +600,14 @@ export function QaReviewSection(props: QaReviewSectionProps) {
             />
 
             <div>
-              <p className="text-xs font-medium text-red-800 mb-2">
-                Defect Photos (optional)
-              </p>
+              <p className="text-xs font-medium text-red-800 mb-2">Defect Photos (optional)</p>
               <div className="flex flex-wrap gap-2">
                 {photos.map((photo) => (
                   <div
                     key={photo.id}
                     className="relative w-20 h-20 rounded-md overflow-hidden border border-gray-300 group"
                   >
-                    <img
-                      src={photo.url}
-                      alt={photo.name}
-                      className="w-full h-full object-cover"
-                    />
+                    <img src={photo.url} alt={photo.name} className="w-full h-full object-cover" />
                     <button
                       onClick={() => handleDeletePhoto(photo.id)}
                       className="absolute top-0.5 right-0.5 w-5 h-5 rounded-full bg-red-600 text-white flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity"

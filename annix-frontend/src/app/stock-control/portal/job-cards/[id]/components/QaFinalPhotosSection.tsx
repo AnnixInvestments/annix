@@ -35,8 +35,8 @@ export function QaFinalPhotosSection(props: QaFinalPhotosSectionProps) {
   const loadPhotos = useCallback(async () => {
     try {
       const files = await stockControlApiClient.jobCardJobFiles(jobCardId);
-      const imageFiles = (files || []).filter((f) =>
-        f.mimeType.startsWith("image/") && f.fileType === "final_photo",
+      const imageFiles = (files || []).filter(
+        (f) => f.mimeType.startsWith("image/") && f.fileType === "final_photo",
       );
       const photosWithUrls = await Promise.all(
         imageFiles.map(async (f) => {
@@ -117,7 +117,10 @@ export function QaFinalPhotosSection(props: QaFinalPhotosSectionProps) {
   };
 
   return (
-    <div id="qa-final-photos-section" className="rounded-lg border border-teal-200 bg-white shadow-sm">
+    <div
+      id="qa-final-photos-section"
+      className="rounded-lg border border-teal-200 bg-white shadow-sm"
+    >
       <div className="border-b border-teal-200 bg-teal-50 px-5 py-3">
         <h3 className="text-sm font-semibold text-teal-900">Final Job Photos</h3>
         <p className="text-xs text-teal-700 mt-0.5">
@@ -221,9 +224,7 @@ export function QaFinalPhotosSection(props: QaFinalPhotosSectionProps) {
           >
             {isSaving ? "Saving..." : "Save Photos"}
           </button>
-          {saveSuccess && (
-            <span className="text-xs text-green-600 font-medium">Saved</span>
-          )}
+          {saveSuccess && <span className="text-xs text-green-600 font-medium">Saved</span>}
           {isSaved && !saveSuccess && (
             <span className="text-xs text-gray-500">Photos confirmed</span>
           )}
