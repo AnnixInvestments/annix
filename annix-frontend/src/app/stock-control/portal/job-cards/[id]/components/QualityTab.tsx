@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import type {
+  BackgroundStepStatus,
   CalibrationCertificate,
   CoatingAnalysis,
   DataBookCompleteness,
@@ -33,12 +34,13 @@ type QcFormType = "shore-hardness" | "dft" | "blast-profile" | "dust-debris" | "
 
 interface QualityTabProps {
   jobCardId: number;
+  backgroundSteps: BackgroundStepStatus[];
   onBatchComplete: (() => void) | null;
   onQaReviewSubmitted: (() => void) | null;
 }
 
 export function QualityTab(props: QualityTabProps) {
-  const { jobCardId, onBatchComplete, onQaReviewSubmitted } = props;
+  const { jobCardId, backgroundSteps, onBatchComplete, onQaReviewSubmitted } = props;
   const [certificates, setCertificates] = useState<SupplierCertificate[]>([]);
   const [calibrationCerts, setCalibrationCerts] = useState<CalibrationCertificate[]>([]);
   const [batchRecords, setBatchRecords] = useState<IssuanceBatchRecord[]>([]);
@@ -209,6 +211,7 @@ export function QualityTab(props: QualityTabProps) {
 
       <QaReviewSection
         jobCardId={jobCardId}
+        backgroundSteps={backgroundSteps}
         onReviewSubmitted={onQaReviewSubmitted || (() => {})}
       />
 

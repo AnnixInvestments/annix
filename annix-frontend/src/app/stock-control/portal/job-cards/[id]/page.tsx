@@ -1619,6 +1619,7 @@ export default function JobCardDetailPage() {
             <div id="quality-tab-content">
               <QualityTab
                 jobCardId={jobId}
+                backgroundSteps={backgroundSteps}
                 onBatchComplete={
                   userPendingBgSteps.some((bg) => bg.branchColor && bg.stepKey === "qc_batch_certs")
                     ? () => {

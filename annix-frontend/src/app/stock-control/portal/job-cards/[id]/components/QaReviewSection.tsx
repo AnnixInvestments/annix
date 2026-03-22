@@ -1,12 +1,17 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { QaApplicability, QaReviewDecision } from "@/app/lib/api/stockControlApi";
+import type {
+  BackgroundStepStatus,
+  QaApplicability,
+  QaReviewDecision,
+} from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { formatDateZA } from "@/app/lib/datetime";
 
 interface QaReviewSectionProps {
   jobCardId: number;
+  backgroundSteps: BackgroundStepStatus[];
   onReviewSubmitted: () => void;
 }
 
@@ -19,7 +24,7 @@ interface PhotoEntry {
 }
 
 export function QaReviewSection(props: QaReviewSectionProps) {
-  const { jobCardId, onReviewSubmitted } = props;
+  const { jobCardId, backgroundSteps, onReviewSubmitted } = props;
 
   const [reviewState, setReviewState] = useState<ReviewState>("loading");
   const [applicability, setApplicability] = useState<QaApplicability | null>(null);
@@ -35,6 +40,11 @@ export function QaReviewSection(props: QaReviewSectionProps) {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const qaReviewStep = backgroundSteps.find(
+    (bg) => bg.stepKey === "qa_review" || bg.label?.toLowerCase() === "qa review",
+  );
+  const stepIsPending = qaReviewStep ? qaReviewStep.completedAt === null : true;
+
   const loadData = useCallback(async () => {
     try {
       const [applicRes, decisionRes] = await Promise.all([
@@ -43,21 +53,23 @@ export function QaReviewSection(props: QaReviewSectionProps) {
       ]);
       setApplicability(applicRes);
       setLatestDecision(decisionRes);
-
-      if (decisionRes) {
-        setReviewState("submitted");
-      } else {
-        setReviewState("form");
-      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load QA review data");
-      setReviewState("form");
     }
   }, [jobCardId]);
 
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  useEffect(() => {
+    if (applicability === null) return;
+    if (latestDecision && !stepIsPending) {
+      setReviewState("submitted");
+    } else {
+      setReviewState("form");
+    }
+  }, [applicability, latestDecision, stepIsPending]);
 
   const hasRejection =
     (applicability?.hasRubber && rubberAccepted === false) ||
@@ -72,7 +84,7 @@ export function QaReviewSection(props: QaReviewSectionProps) {
     try {
       setIsUploading(true);
       setError(null);
-      const result = await stockControlApiClient.uploadQaReviewPhoto(jobCardId, file);
+      const result = await stockControlApiClient.uploadReadyPhoto(jobCardId, file);
       setPhotos((prev) => [
         ...prev,
         { id: result.id, url: result.filePath, name: result.originalFilename },
