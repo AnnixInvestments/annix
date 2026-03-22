@@ -239,7 +239,9 @@ const bgNodeState = (
     if (bg.completionType === "skipped") return "skipped";
     return "completed";
   }
-  if (fgIndex < currentStepIndex) {
+  const hasColoredBranch = branchBgSteps.some((b) => b.branchColor !== null);
+  const branchReached = hasColoredBranch ? fgIndex <= currentStepIndex : fgIndex < currentStepIndex;
+  if (branchReached) {
     const firstIncomplete = branchBgSteps.find((b) => b.completedAt === null);
     if (firstIncomplete && firstIncomplete.stepKey === bg.stepKey) return "active";
     return "pending";
@@ -513,7 +515,10 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
 
         if (!startNode || !firstTopBg || !lastTopBg) return;
 
-        const branchActive = branch.triggerFgIdx < currentStepIndex;
+        const isColoredBranch = branch.branchColor !== null;
+        const branchActive = isColoredBranch
+          ? branch.triggerFgIdx <= currentStepIndex
+          : branch.triggerFgIdx < currentStepIndex;
         const allComplete = branch.bgSteps.every((bg) => bg.completedAt !== null);
         const activeColor = branch.branchColor || "#f59e0b";
         const strokeColor = branchActive ? activeColor : "#d1d5db";
@@ -530,7 +535,9 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
 
         const bottomEdge = sy - sRect.height / 2 - 6;
         const nextFgX = nextFgNode
-          ? nextFgNode.getBoundingClientRect().left + nextFgNode.getBoundingClientRect().width / 2 - rect.left
+          ? nextFgNode.getBoundingClientRect().left +
+            nextFgNode.getBoundingClientRect().width / 2 -
+            rect.left
           : rect.width - 20;
         const nodeSlot = 80;
         const containerNeeded = branch.bgSteps.length * nodeSlot;
@@ -538,27 +545,29 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
         const rightEdge = Math.min(rawRight, nextFgX - 30);
         const leftEdge = Math.max(16, rightEdge - containerNeeded);
 
+        const grayBase = "#d1d5db";
+
         paths.push({
           key: `loop-fork-${branch.triggerFgKey}`,
-          color: strokeColor,
+          color: grayBase,
           d: `M ${sx + r} ${bottomEdge} L ${rightEdge - r} ${bottomEdge} Q ${rightEdge} ${bottomEdge} ${rightEdge} ${bottomEdge - r} L ${rightEdge} ${fy + r} Q ${rightEdge} ${fy} ${rightEdge - r} ${fy} L ${leftEdge + r} ${fy}`,
         });
 
         paths.push({
           key: `loop-merge-${branch.triggerFgKey}`,
-          color: mergeColor,
+          color: grayBase,
           d: `M ${leftEdge + r} ${fy} Q ${leftEdge} ${fy} ${leftEdge} ${fy + r} L ${leftEdge} ${bottomEdge - r} Q ${leftEdge} ${bottomEdge} ${leftEdge + r} ${bottomEdge} L ${sx - r} ${bottomEdge}`,
         });
 
         paths.push({
           key: `loop-connector-left-${branch.triggerFgKey}`,
-          color: strokeColor,
+          color: grayBase,
           d: `M ${sx - r} ${bottomEdge} Q ${sx} ${bottomEdge} ${sx} ${bottomEdge + r} L ${sx} ${sy - r} Q ${sx} ${sy} ${sx + r} ${sy}`,
         });
 
         paths.push({
           key: `loop-connector-right-${branch.triggerFgKey}`,
-          color: strokeColor,
+          color: grayBase,
           d: `M ${sx + r} ${bottomEdge} Q ${sx} ${bottomEdge} ${sx} ${bottomEdge + r} L ${sx} ${sy - r} Q ${sx} ${sy} ${sx - r} ${sy}`,
         });
 
@@ -579,6 +588,58 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
           end: endPositions,
           totalSteps,
         };
+
+        if (branchActive) {
+          const firstIncompleteIdx = branch.bgSteps.findIndex((b) => b.completedAt === null);
+          const progressIdx =
+            firstIncompleteIdx === -1 ? branch.bgSteps.length : firstIncompleteIdx;
+
+          paths.push({
+            key: `loop-progress-entry-${branch.triggerFgKey}`,
+            color: activeColor,
+            d: `M ${sx - r} ${bottomEdge} Q ${sx} ${bottomEdge} ${sx} ${bottomEdge + r} L ${sx} ${sy - r} Q ${sx} ${sy} ${sx - r} ${sy}`,
+          });
+
+          if (progressIdx < btmCount) {
+            const targetX = startPositions[progressIdx]?.x || sx;
+            paths.push({
+              key: `loop-progress-bottom-${branch.triggerFgKey}`,
+              color: activeColor,
+              d: `M ${sx - r} ${bottomEdge} L ${targetX} ${bottomEdge}`,
+            });
+          } else if (progressIdx === btmCount) {
+            paths.push({
+              key: `loop-progress-bottom-left-${branch.triggerFgKey}`,
+              color: activeColor,
+              d: `M ${sx - r} ${bottomEdge} Q ${leftEdge} ${bottomEdge} ${leftEdge} ${bottomEdge - r}`,
+            });
+          } else if (progressIdx <= totalSteps - btmCount) {
+            paths.push({
+              key: `loop-progress-left-${branch.triggerFgKey}`,
+              color: activeColor,
+              d: `M ${sx - r} ${bottomEdge} Q ${leftEdge} ${bottomEdge} ${leftEdge} ${bottomEdge - r} L ${leftEdge} ${fy + r} Q ${leftEdge} ${fy} ${leftEdge + r} ${fy}`,
+            });
+          } else {
+            paths.push({
+              key: `loop-progress-left-${branch.triggerFgKey}`,
+              color: activeColor,
+              d: `M ${sx - r} ${bottomEdge} Q ${leftEdge} ${bottomEdge} ${leftEdge} ${bottomEdge - r} L ${leftEdge} ${fy + r} Q ${leftEdge} ${fy} ${leftEdge + r} ${fy}`,
+            });
+            paths.push({
+              key: `loop-progress-right-${branch.triggerFgKey}`,
+              color: activeColor,
+              d: `M ${sx + r} ${bottomEdge} Q ${rightEdge} ${bottomEdge} ${rightEdge} ${bottomEdge - r} L ${rightEdge} ${fy + r} Q ${rightEdge} ${fy} ${rightEdge - r} ${fy}`,
+            });
+          }
+
+          if (allComplete) {
+            paths.push({
+              key: `loop-progress-exit-${branch.triggerFgKey}`,
+              color: activeColor,
+              d: `M ${sx + r} ${bottomEdge} Q ${sx} ${bottomEdge} ${sx} ${bottomEdge + r} L ${sx} ${sy - r} Q ${sx} ${sy} ${sx - r} ${sy}`,
+            });
+          }
+        }
 
         branch.bgSteps.forEach((bg, bgIdx) => {
           const totalBg = branch.bgSteps.length;
@@ -611,7 +672,10 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
 
         if (!startNode || !endNode || !firstBg || !lastBg) return;
 
-        const branchActive = branch.triggerFgIdx < currentStepIndex;
+        const isColoredBranch = branch.branchColor !== null;
+        const branchActive = isColoredBranch
+          ? branch.triggerFgIdx <= currentStepIndex
+          : branch.triggerFgIdx < currentStepIndex;
         const allComplete = branch.bgSteps.every((bg) => bg.completedAt !== null);
         const activeColor = branch.branchColor || "#f59e0b";
         const strokeColor = branchActive ? activeColor : "#d1d5db";
@@ -685,7 +749,9 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
           const sR = sNode.getBoundingClientRect();
           const triggerX = sR.left + sR.width / 2 - rect.left;
           const nextX = nextFgN
-            ? nextFgN.getBoundingClientRect().left + nextFgN.getBoundingClientRect().width / 2 - rect.left
+            ? nextFgN.getBoundingClientRect().left +
+              nextFgN.getBoundingClientRect().width / 2 -
+              rect.left
             : rect.width - 20;
           const nodeSlot = 80;
           const needed = branch.bgSteps.length * nodeSlot;

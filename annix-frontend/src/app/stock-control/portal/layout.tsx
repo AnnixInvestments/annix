@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import React, { Suspense, useEffect } from "react";
+import React, { Suspense, useEffect, useLayoutEffect } from "react";
 import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
 import { ChatPanel } from "../components/ChatPanel";
 import { HubBreadcrumb } from "../components/HubBreadcrumb";
@@ -80,7 +80,19 @@ function PageAccessGuard({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+function useHideOuterScrollbar() {
+  useLayoutEffect(() => {
+    const html = document.documentElement;
+    html.style.overflow = "hidden";
+    return () => {
+      html.style.overflow = "";
+    };
+  }, []);
+}
+
 function PortalContent({ children }: { children: React.ReactNode }) {
+  useHideOuterScrollbar();
+
   return (
     <StockControlBrandingProvider>
       <StockControlRbacProvider>

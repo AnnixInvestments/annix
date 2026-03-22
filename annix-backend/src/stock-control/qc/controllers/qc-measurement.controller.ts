@@ -383,4 +383,22 @@ export class QcMeasurementController {
     await this.qcService.deleteItemsRelease(req.user.companyId, id);
     return { deleted: true };
   }
+
+  // ── Defelsko Batches ──────────────────────────────────────────────
+
+  @Get("defelsko-batches")
+  @ApiOperation({ summary: "Defelsko batch numbers for a job card" })
+  async defelskoBatchesList(@Req() req: any, @Param("jobCardId") jobCardId: number) {
+    return this.qcService.defelskoBatchesForJobCard(req.user.companyId, jobCardId);
+  }
+
+  @Post("defelsko-batches")
+  @ApiOperation({ summary: "Save defelsko batch numbers (upsert)" })
+  async saveDefelskoBatches(
+    @Req() req: any,
+    @Param("jobCardId") jobCardId: number,
+    @Body() body: any,
+  ) {
+    return this.qcService.saveDefelskoBatches(req.user.companyId, jobCardId, body, req.user);
+  }
 }

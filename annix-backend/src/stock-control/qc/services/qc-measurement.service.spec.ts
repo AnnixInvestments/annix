@@ -3,6 +3,7 @@ import { Test, TestingModule } from "@nestjs/testing";
 import { getRepositoryToken } from "@nestjs/typeorm";
 import { QcBlastProfile } from "../entities/qc-blast-profile.entity";
 import { QcControlPlan } from "../entities/qc-control-plan.entity";
+import { QcDefelskoBatch } from "../entities/qc-defelsko-batch.entity";
 import { QcDftReading } from "../entities/qc-dft-reading.entity";
 import { QcDustDebrisTest } from "../entities/qc-dust-debris-test.entity";
 import { ItemReleaseResult, QcItemsRelease } from "../entities/qc-items-release.entity";
@@ -41,6 +42,7 @@ describe("QcMeasurementService", () => {
   const controlPlanRepo = mockRepo();
   const releaseCertRepo = mockRepo();
   const itemsReleaseRepo = mockRepo();
+  const defelskoBatchRepo = mockRepo();
   const mockWorkItemProvider = {
     lineItemsForWorkItem: jest.fn().mockResolvedValue([]),
   };
@@ -57,6 +59,7 @@ describe("QcMeasurementService", () => {
         { provide: getRepositoryToken(QcControlPlan), useValue: controlPlanRepo },
         { provide: getRepositoryToken(QcReleaseCertificate), useValue: releaseCertRepo },
         { provide: getRepositoryToken(QcItemsRelease), useValue: itemsReleaseRepo },
+        { provide: getRepositoryToken(QcDefelskoBatch), useValue: defelskoBatchRepo },
         { provide: WORK_ITEM_PROVIDER, useValue: mockWorkItemProvider },
       ],
     }).compile();

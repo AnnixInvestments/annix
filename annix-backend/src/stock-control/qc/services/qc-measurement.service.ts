@@ -3,6 +3,7 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { QcBlastProfile } from "../entities/qc-blast-profile.entity";
 import { QcControlPlan } from "../entities/qc-control-plan.entity";
+import { QcDefelskoBatch } from "../entities/qc-defelsko-batch.entity";
 import { QcDftReading } from "../entities/qc-dft-reading.entity";
 import { QcDustDebrisTest } from "../entities/qc-dust-debris-test.entity";
 import {
@@ -52,6 +53,8 @@ export class QcMeasurementService {
     private readonly releaseCertRepo: Repository<QcReleaseCertificate>,
     @InjectRepository(QcItemsRelease)
     private readonly itemsReleaseRepo: Repository<QcItemsRelease>,
+    @InjectRepository(QcDefelskoBatch)
+    private readonly defelskoBatchRepo: Repository<QcDefelskoBatch>,
     @Inject(WORK_ITEM_PROVIDER)
     private readonly workItemProvider: IWorkItemProvider,
   ) {}
@@ -513,6 +516,65 @@ export class QcMeasurementService {
       controlPlans,
       releaseCertificates,
     };
+  }
+
+  // ── Defelsko Batches ───────────────────────────────────────────────
+
+  async defelskoBatchesForJobCard(
+    companyId: number,
+    jobCardId: number,
+  ): Promise<QcDefelskoBatch[]> {
+    return this.defelskoBatchRepo.find({
+      where: { companyId, jobCardId },
+      order: { category: "ASC", fieldKey: "ASC" },
+    });
+  }
+
+  async saveDefelskoBatches(
+    companyId: number,
+    jobCardId: number,
+    data: {
+      batches: Array<{
+        fieldKey: string;
+        category: string;
+        label: string;
+        batchNumber: string | null;
+        notApplicable: boolean;
+      }>;
+    },
+    user: UserContext,
+  ): Promise<QcDefelskoBatch[]> {
+    const results = await Promise.all(
+      data.batches.map(async (entry) => {
+        const existing = await this.defelskoBatchRepo.findOne({
+          where: { companyId, jobCardId, fieldKey: entry.fieldKey },
+        });
+
+        if (existing) {
+          existing.batchNumber = entry.batchNumber;
+          existing.notApplicable = entry.notApplicable;
+          existing.label = entry.label;
+          existing.category = entry.category;
+          return this.defelskoBatchRepo.save(existing);
+        }
+
+        return this.defelskoBatchRepo.save(
+          this.defelskoBatchRepo.create({
+            companyId,
+            jobCardId,
+            fieldKey: entry.fieldKey,
+            category: entry.category,
+            label: entry.label,
+            batchNumber: entry.batchNumber,
+            notApplicable: entry.notApplicable,
+            capturedByName: user.name,
+            capturedById: user.id,
+          }),
+        );
+      }),
+    );
+
+    return results;
   }
 
   // ── Helpers ────────────────────────────────────────────────────────

@@ -440,18 +440,22 @@ export default function JobCardDetailPage() {
 
       if (hasIncompleteColored && !isInColoredBranch(bg.stepKey)) {
         const originKey = fgKeys[resolveOriginFgIdx(trigger)];
-        const coloredOrigin = coloredSteps.length > 0
-          ? fgKeys[resolveOriginFgIdx(coloredSteps[0].triggerAfterStep || "__root__")]
-          : null;
+        const coloredOrigin =
+          coloredSteps.length > 0
+            ? fgKeys[resolveOriginFgIdx(coloredSteps[0].triggerAfterStep || "__root__")]
+            : null;
         if (originKey === coloredOrigin) return false;
       }
 
       if (bgKeySet.has(trigger) && !completedKeys.has(trigger)) return false;
 
-      const siblings = triggerGroups[trigger] || [];
-      const myIdx = siblings.findIndex((s) => s.stepKey === bg.stepKey);
+      const allSiblings = triggerGroups[trigger] || [];
+      const sameBranchSiblings = allSiblings.filter(
+        (s) => (s.branchColor || null) === (bg.branchColor || null),
+      );
+      const myIdx = sameBranchSiblings.findIndex((s) => s.stepKey === bg.stepKey);
       if (myIdx > 0) {
-        const prevSibling = siblings[myIdx - 1];
+        const prevSibling = sameBranchSiblings[myIdx - 1];
         if (!completedKeys.has(prevSibling.stepKey)) return false;
       }
 
@@ -1024,7 +1028,7 @@ export default function JobCardDetailPage() {
             backgroundSteps={backgroundSteps}
             currentUserName={user?.name || null}
           />
-          <div className="bg-white rounded-lg border border-gray-200 p-4">
+          <div id="workflow-actions" className="bg-white rounded-lg border border-gray-200 p-4">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
               <div className="flex items-center gap-3">
                 <h3 className="text-sm font-semibold text-gray-900">Workflow Actions</h3>
@@ -1126,68 +1130,26 @@ export default function JobCardDetailPage() {
                 </button>
               </div>
             )}
-            {userPendingBgSteps.length > 0 && (!canApprove || prevStepBgPending || currentStepBlueBgPending) && (
-              <div className="mt-3 pt-3 border-t border-gray-100">
-                <p className="text-xs font-medium text-gray-500 mb-2">
-                  Your pending background task
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  {userPendingBgSteps.map((bg) =>
-                    isReceptionStep(bg) ? (
-                      <button
-                        key={bg.stepKey}
-                        onClick={async () => {
-                          await handlePrintQr();
-                          handleCompleteBackgroundStep(bg.stepKey);
-                        }}
-                        disabled={isDownloadingQr || completingStepKey === bg.stepKey}
-                        className="inline-flex items-center px-4 py-2 text-sm font-medium rounded-md bg-amber-600 text-white hover:bg-amber-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
-                      >
-                        <svg
-                          className="w-4 h-4 mr-2"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"
-                          />
-                        </svg>
-                        {isDownloadingQr ? "Generating..." : "Print JC"}
-                      </button>
-                    ) : isRequisitionStep(bg) ? (
-                      <button
-                        key={bg.stepKey}
-                        onClick={() => handleTabChange("coating")}
-                        className="px-3 py-1.5 text-xs font-medium rounded-md bg-teal-600 text-white hover:bg-teal-700 transition-colors"
-                      >
-                        Stock Assessment
-                      </button>
-                    ) : (isReqAuthStep(bg) || isOrderPlacementStep(bg)) && requisition ? (
-                      <button
-                        key={bg.stepKey}
-                        onClick={() =>
-                          router.push(
-                            `/stock-control/portal/requisitions/${requisition.id}?fromJobCard=${jobId}&completeStep=${bg.stepKey}`,
-                          )
-                        }
-                        className="px-3 py-1.5 text-xs font-medium rounded-md bg-teal-600 text-white hover:bg-teal-700 transition-colors"
-                      >
-                        View Requisition
-                      </button>
-                    ) : isStockAllocStep(bg) ? (
-                      <div key={bg.stepKey} className="flex flex-wrap gap-2">
+            {userPendingBgSteps.length > 0 &&
+              (!canApprove || prevStepBgPending || currentStepBlueBgPending) && (
+                <div className="mt-3 pt-3 border-t border-gray-100">
+                  <p className="text-xs font-medium text-gray-500 mb-2">
+                    Your pending background task
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {userPendingBgSteps.map((bg) =>
+                      isReceptionStep(bg) ? (
                         <button
-                          onClick={() =>
-                            router.push(`/stock-control/portal/issue-stock?jobCardId=${jobId}`)
-                          }
-                          className="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-md bg-teal-600 text-white hover:bg-teal-700 transition-colors"
+                          key={bg.stepKey}
+                          onClick={async () => {
+                            await handlePrintQr();
+                            handleCompleteBackgroundStep(bg.stepKey);
+                          }}
+                          disabled={isDownloadingQr || completingStepKey === bg.stepKey}
+                          className="inline-flex items-center px-4 py-2 text-sm font-medium rounded-md bg-amber-600 text-white hover:bg-amber-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
                         >
                           <svg
-                            className="w-4 h-4 mr-1"
+                            className="w-4 h-4 mr-2"
                             fill="none"
                             stroke="currentColor"
                             viewBox="0 0 24 24"
@@ -1196,33 +1158,41 @@ export default function JobCardDetailPage() {
                               strokeLinecap="round"
                               strokeLinejoin="round"
                               strokeWidth={2}
-                              d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
+                              d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"
                             />
                           </svg>
-                          Issue Stock
+                          {isDownloadingQr ? "Generating..." : "Print JC"}
                         </button>
-                        {hasAllocations && (
+                      ) : isRequisitionStep(bg) ? (
+                        <button
+                          key={bg.stepKey}
+                          onClick={() => handleTabChange("coating")}
+                          className="px-3 py-1.5 text-xs font-medium rounded-md bg-teal-600 text-white hover:bg-teal-700 transition-colors"
+                        >
+                          Stock Assessment
+                        </button>
+                      ) : (isReqAuthStep(bg) || isOrderPlacementStep(bg)) && requisition ? (
+                        <button
+                          key={bg.stepKey}
+                          onClick={() =>
+                            router.push(
+                              `/stock-control/portal/requisitions/${requisition.id}?fromJobCard=${jobId}&completeStep=${bg.stepKey}`,
+                            )
+                          }
+                          className="px-3 py-1.5 text-xs font-medium rounded-md bg-teal-600 text-white hover:bg-teal-700 transition-colors"
+                        >
+                          View Requisition
+                        </button>
+                      ) : isStockAllocStep(bg) ? (
+                        <div key={bg.stepKey} className="flex flex-wrap gap-2">
                           <button
-                            onClick={() => handleCompleteBackgroundStep(bg.stepKey)}
-                            disabled={completingStepKey === bg.stepKey}
-                            className="px-3 py-1.5 text-xs font-medium rounded-md bg-amber-600 text-white hover:bg-amber-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
-                          >
-                            {completingStepKey === bg.stepKey
-                              ? "..."
-                              : bg.actionLabel || `Complete ${bg.label}`}
-                          </button>
-                        )}
-                      </div>
-                    ) : isReadyStep(bg) ? (
-                      <div key={bg.stepKey} className="flex flex-wrap gap-2">
-                        {!hasReadyPhoto ? (
-                          <button
-                            onClick={() => setShowReadyPhotoModal(true)}
-                            disabled={isUploadingReadyPhoto}
-                            className="inline-flex items-center px-4 py-2 text-sm font-medium rounded-md bg-blue-600 text-white hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+                            onClick={() =>
+                              router.push(`/stock-control/portal/issue-stock?jobCardId=${jobId}`)
+                            }
+                            className="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-md bg-teal-600 text-white hover:bg-teal-700 transition-colors"
                           >
                             <svg
-                              className="w-4 h-4 mr-2"
+                              className="w-4 h-4 mr-1"
                               fill="none"
                               stroke="currentColor"
                               viewBox="0 0 24 24"
@@ -1231,43 +1201,97 @@ export default function JobCardDetailPage() {
                                 strokeLinecap="round"
                                 strokeLinejoin="round"
                                 strokeWidth={2}
-                                d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"
-                              />
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"
+                                d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
                               />
                             </svg>
-                            {isUploadingReadyPhoto ? "Uploading..." : "Upload / Take Photo"}
+                            Issue Stock
                           </button>
-                        ) : (
-                          <button
-                            onClick={() => handleCompleteBackgroundStep(bg.stepKey)}
-                            disabled={completingStepKey === bg.stepKey}
-                            className="px-4 py-2 text-sm font-medium rounded-md bg-amber-600 text-white hover:bg-amber-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
-                          >
-                            {completingStepKey === bg.stepKey ? "..." : "Complete Ready"}
-                          </button>
-                        )}
-                      </div>
-                    ) : (
-                      <button
-                        key={bg.stepKey}
-                        onClick={() => handleCompleteBackgroundStep(bg.stepKey)}
-                        disabled={completingStepKey === bg.stepKey}
-                        className="px-3 py-1.5 text-xs font-medium rounded-md bg-amber-600 text-white hover:bg-amber-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
-                      >
-                        {completingStepKey === bg.stepKey
-                          ? "..."
-                          : bg.actionLabel || `Complete ${bg.label}`}
-                      </button>
-                    ),
-                  )}
+                          {hasAllocations && (
+                            <button
+                              onClick={() => handleCompleteBackgroundStep(bg.stepKey)}
+                              disabled={completingStepKey === bg.stepKey}
+                              className="px-3 py-1.5 text-xs font-medium rounded-md bg-amber-600 text-white hover:bg-amber-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+                            >
+                              {completingStepKey === bg.stepKey
+                                ? "..."
+                                : bg.actionLabel || `Complete ${bg.label}`}
+                            </button>
+                          )}
+                        </div>
+                      ) : isReadyStep(bg) ? (
+                        <div key={bg.stepKey} className="flex flex-wrap gap-2">
+                          {!hasReadyPhoto ? (
+                            <button
+                              onClick={() => setShowReadyPhotoModal(true)}
+                              disabled={isUploadingReadyPhoto}
+                              className="inline-flex items-center px-4 py-2 text-sm font-medium rounded-md bg-blue-600 text-white hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+                            >
+                              <svg
+                                className="w-4 h-4 mr-2"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"
+                                />
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"
+                                />
+                              </svg>
+                              {isUploadingReadyPhoto ? "Uploading..." : "Upload / Take Photo"}
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => handleCompleteBackgroundStep(bg.stepKey)}
+                              disabled={completingStepKey === bg.stepKey}
+                              className="px-4 py-2 text-sm font-medium rounded-md bg-amber-600 text-white hover:bg-amber-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+                            >
+                              {completingStepKey === bg.stepKey ? "..." : "Complete Ready"}
+                            </button>
+                          )}
+                        </div>
+                      ) : bg.branchColor ? (
+                        <button
+                          key={bg.stepKey}
+                          onClick={() => {
+                            handleTabChange("quality");
+                            setTimeout(() => {
+                              const qualitySection = document.getElementById("quality-tab-content");
+                              if (qualitySection) {
+                                qualitySection.scrollIntoView({
+                                  behavior: "smooth",
+                                  block: "start",
+                                });
+                              }
+                            }, 100);
+                          }}
+                          className="px-3 py-1.5 text-xs font-medium rounded-md bg-blue-600 text-white hover:bg-blue-700 transition-colors"
+                        >
+                          Input Batches
+                        </button>
+                      ) : (
+                        <button
+                          key={bg.stepKey}
+                          onClick={() => handleCompleteBackgroundStep(bg.stepKey)}
+                          disabled={completingStepKey === bg.stepKey}
+                          className="px-3 py-1.5 text-xs font-medium rounded-md bg-amber-600 text-white hover:bg-amber-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+                        >
+                          {completingStepKey === bg.stepKey
+                            ? "..."
+                            : bg.actionLabel || `Complete ${bg.label}`}
+                        </button>
+                      ),
+                    )}
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
           </div>
         </div>
       )}
@@ -1541,7 +1565,25 @@ export default function JobCardDetailPage() {
           </TabPanel>
 
           <TabPanel tabId="quality" activeTab={activeTab} visited={visitedTabs.has("quality")}>
-            <QualityTab jobCardId={jobId} />
+            <div id="quality-tab-content">
+              <QualityTab
+                jobCardId={jobId}
+                onBatchComplete={
+                  userPendingBgSteps.some((bg) => bg.branchColor && bg.stepKey === "qc_batch_certs")
+                    ? () => {
+                        handleCompleteBackgroundStep("qc_batch_certs");
+                        handleTabChange("details");
+                        setTimeout(() => {
+                          const wfa = document.getElementById("workflow-actions");
+                          if (wfa) {
+                            wfa.scrollIntoView({ behavior: "smooth", block: "start" });
+                          }
+                        }, 200);
+                      }
+                    : null
+                }
+              />
+            </div>
           </TabPanel>
 
           <TabPanel tabId="dispatch" activeTab={activeTab} visited={visitedTabs.has("dispatch")}>

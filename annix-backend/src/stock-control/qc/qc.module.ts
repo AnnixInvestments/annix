@@ -23,6 +23,7 @@ import { CalibrationCertificate } from "./entities/calibration-certificate.entit
 import { PositectorDevice } from "./entities/positector-device.entity";
 import { QcBlastProfile } from "./entities/qc-blast-profile.entity";
 import { QcControlPlan } from "./entities/qc-control-plan.entity";
+import { QcDefelskoBatch } from "./entities/qc-defelsko-batch.entity";
 import { QcDftReading } from "./entities/qc-dft-reading.entity";
 import { QcDustDebrisTest } from "./entities/qc-dust-debris-test.entity";
 import { QcItemsRelease } from "./entities/qc-items-release.entity";
@@ -46,6 +47,7 @@ import { WORK_ITEM_PROVIDER } from "./work-item-provider.interface";
       PushSubscription,
       QcBlastProfile,
       QcControlPlan,
+      QcDefelskoBatch,
       QcDftReading,
       QcDustDebrisTest,
       QcItemsRelease,

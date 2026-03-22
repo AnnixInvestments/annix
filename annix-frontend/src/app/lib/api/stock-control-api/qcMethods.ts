@@ -2,6 +2,7 @@ import { StockControlApiClient } from "./base";
 import type {
   QcBlastProfileRecord,
   QcControlPlanRecord,
+  QcDefelskoBatchRecord,
   QcDftReadingRecord,
   QcDustDebrisRecord,
   QcItemsReleaseRecord,
@@ -97,6 +98,19 @@ declare module "./base" {
       data: Partial<QcItemsReleaseRecord>,
     ): Promise<QcItemsReleaseRecord>;
     deleteItemsRelease(jobCardId: number, id: number): Promise<void>;
+    defelskoBatchesForJobCard(jobCardId: number): Promise<QcDefelskoBatchRecord[]>;
+    saveDefelskoBatches(
+      jobCardId: number,
+      data: {
+        batches: Array<{
+          fieldKey: string;
+          category: string;
+          label: string;
+          batchNumber: string | null;
+          notApplicable: boolean;
+        }>;
+      },
+    ): Promise<QcDefelskoBatchRecord[]>;
   }
 }
 
@@ -305,5 +319,17 @@ proto.updateItemsRelease = async function (jobCardId, id, data) {
 proto.deleteItemsRelease = async function (jobCardId, id) {
   return this.request(`/stock-control/job-cards/${jobCardId}/qc/items-releases/${id}`, {
     method: "DELETE",
+  });
+};
+
+proto.defelskoBatchesForJobCard = async function (jobCardId) {
+  return this.request(`/stock-control/job-cards/${jobCardId}/qc/defelsko-batches`);
+};
+
+proto.saveDefelskoBatches = async function (jobCardId, data) {
+  return this.request(`/stock-control/job-cards/${jobCardId}/qc/defelsko-batches`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
   });
 };

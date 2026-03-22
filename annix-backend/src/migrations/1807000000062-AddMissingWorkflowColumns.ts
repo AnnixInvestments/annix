@@ -19,8 +19,10 @@ export class AddMissingWorkflowColumns1807000000062 implements MigrationInterfac
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`ALTER TABLE workflow_step_configs DROP COLUMN IF EXISTS action_label`);
-    await queryRunner.query(`ALTER TABLE workflow_step_configs DROP COLUMN IF EXISTS branch_color`);
-    await queryRunner.query(`ALTER TABLE job_card_background_completions DROP COLUMN IF EXISTS completion_type`);
+    await queryRunner.query("ALTER TABLE workflow_step_configs DROP COLUMN IF EXISTS action_label");
+    await queryRunner.query("ALTER TABLE workflow_step_configs DROP COLUMN IF EXISTS branch_color");
+    await queryRunner.query(
+      "ALTER TABLE job_card_background_completions DROP COLUMN IF EXISTS completion_type",
+    );
   }
 }

@@ -736,6 +736,21 @@ export interface QcPullTestRecord {
   updatedAt: string;
 }
 
+export interface QcDefelskoBatchRecord {
+  id: number;
+  companyId: number;
+  jobCardId: number;
+  category: string;
+  fieldKey: string;
+  label: string;
+  batchNumber: string | null;
+  notApplicable: boolean;
+  capturedByName: string;
+  capturedById: number | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export type QcCheckResult = "pass" | "fail";
 
 export interface QcBlastingCheck {

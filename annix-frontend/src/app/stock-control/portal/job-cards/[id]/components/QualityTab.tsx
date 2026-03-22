@@ -19,6 +19,7 @@ import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { formatDateZA, fromISO, now } from "@/app/lib/datetime";
 import BlastProfileForm from "./BlastProfileForm";
 import { DataBookCompletenessPanel } from "./DataBookCompletenessPanel";
+import { DefelskoBatchSection } from "./DefelskoBatchSection";
 import DftReadingForm from "./DftReadingForm";
 import DustDebrisForm from "./DustDebrisForm";
 import { ItemsReleaseSection } from "./ItemsReleaseSection";
@@ -31,9 +32,11 @@ type QcFormType = "shore-hardness" | "dft" | "blast-profile" | "dust-debris" | "
 
 interface QualityTabProps {
   jobCardId: number;
+  onBatchComplete: (() => void) | null;
 }
 
-export function QualityTab({ jobCardId }: QualityTabProps) {
+export function QualityTab(props: QualityTabProps) {
+  const { jobCardId, onBatchComplete } = props;
   const [certificates, setCertificates] = useState<SupplierCertificate[]>([]);
   const [calibrationCerts, setCalibrationCerts] = useState<CalibrationCertificate[]>([]);
   const [batchRecords, setBatchRecords] = useState<IssuanceBatchRecord[]>([]);
@@ -192,6 +195,12 @@ export function QualityTab({ jobCardId }: QualityTabProps) {
         isCompiling={isCompiling}
         onCompile={handleCompile}
         onDownload={handleDownload}
+      />
+
+      <DefelskoBatchSection
+        jobCardId={jobCardId}
+        coatingAnalysis={coatingAnalysis}
+        onComplete={onBatchComplete}
       />
 
       <div className="rounded-lg border border-gray-200 bg-white shadow-sm">

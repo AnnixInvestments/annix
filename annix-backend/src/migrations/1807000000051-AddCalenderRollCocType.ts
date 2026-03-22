@@ -2,10 +2,12 @@ import { MigrationInterface, QueryRunner } from "typeorm";
 
 export class AddCalenderRollCocType1807000000051 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
+    await queryRunner.commitTransaction();
     await queryRunner.query(`
       ALTER TYPE "supplier_coc_type_enum"
       ADD VALUE IF NOT EXISTS 'CALENDER_ROLL'
     `);
+    await queryRunner.startTransaction();
 
     await queryRunner.query(`
       ALTER TABLE rubber_supplier_cocs

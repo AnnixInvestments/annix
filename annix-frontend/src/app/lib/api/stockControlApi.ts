@@ -98,6 +98,7 @@ export type {
   QcCheckResult,
   QcControlPlanRecord,
   QcCureCycleRecord,
+  QcDefelskoBatchRecord,
   QcDftReadingEntry,
   QcDftReadingRecord,
   QcDustDebrisRecord,
