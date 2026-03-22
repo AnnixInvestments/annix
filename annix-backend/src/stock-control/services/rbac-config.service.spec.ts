@@ -203,4 +203,170 @@ describe("RbacConfigService", () => {
       });
     });
   });
+
+  // ── Viewer role visibility scenarios ────────────────────────────────
+
+  describe("viewer role — nav visibility", () => {
+    it("viewer should see dashboard by default", async () => {
+      mockRepo.find.mockResolvedValue([]);
+      const result = await service.navConfig(1);
+      expect(result.dashboard).toContain("viewer");
+    });
+
+    it("viewer should see job-cards by default", async () => {
+      mockRepo.find.mockResolvedValue([]);
+      const result = await service.navConfig(1);
+      expect(result["job-cards"]).toContain("viewer");
+    });
+
+    it("viewer should see deliveries by default", async () => {
+      mockRepo.find.mockResolvedValue([]);
+      const result = await service.navConfig(1);
+      expect(result.deliveries).toContain("viewer");
+    });
+
+    it("viewer should NOT see issue-stock by default", async () => {
+      mockRepo.find.mockResolvedValue([]);
+      const result = await service.navConfig(1);
+      expect(result["issue-stock"]).not.toContain("viewer");
+    });
+
+    it("viewer should NOT see reports by default", async () => {
+      mockRepo.find.mockResolvedValue([]);
+      const result = await service.navConfig(1);
+      expect(result.reports).not.toContain("viewer");
+    });
+
+    it("viewer should NOT see settings even if stored config says so", async () => {
+      mockRepo.find.mockResolvedValue([
+        { companyId: 1, navKey: "settings", role: "viewer" },
+        { companyId: 1, navKey: "settings", role: "admin" },
+      ]);
+
+      const result = await service.navConfig(1);
+      expect(result.settings).not.toContain("viewer");
+      expect(result.settings).toEqual(["admin"]);
+    });
+  });
+
+  // ── Admin restricts viewer visibility ───────────────────────────────
+
+  describe("admin restricting viewer access", () => {
+    it("admin can remove viewer from dashboard", async () => {
+      mockRepo.find.mockResolvedValue([]);
+
+      await service.updateNavConfig(1, {
+        dashboard: ["storeman", "accounts", "manager", "admin"],
+      });
+
+      const savedEntities = mockManager.save.mock.calls[0][0];
+      const dashboardRoles = savedEntities
+        .filter((e: any) => e.navKey === "dashboard")
+        .map((e: any) => e.role);
+
+      expect(dashboardRoles).not.toContain("viewer");
+      expect(dashboardRoles).toContain("admin");
+    });
+
+    it("admin can remove viewer from job-cards", async () => {
+      mockRepo.find.mockResolvedValue([]);
+
+      await service.updateNavConfig(1, {
+        "job-cards": ["manager", "admin"],
+      });
+
+      const savedEntities = mockManager.save.mock.calls[0][0];
+      const roles = savedEntities
+        .filter((e: any) => e.navKey === "job-cards")
+        .map((e: any) => e.role);
+
+      expect(roles).not.toContain("viewer");
+    });
+
+    it("admin can grant viewer access to reports (non-default)", async () => {
+      mockRepo.find.mockResolvedValue([]);
+
+      await service.updateNavConfig(1, {
+        reports: ["viewer", "manager", "admin"],
+      });
+
+      const savedEntities = mockManager.save.mock.calls[0][0];
+      const roles = savedEntities
+        .filter((e: any) => e.navKey === "reports")
+        .map((e: any) => e.role);
+
+      expect(roles).toContain("viewer");
+    });
+
+    it("admin can grant viewer access to issue-stock (non-default)", async () => {
+      mockRepo.find.mockResolvedValue([]);
+
+      await service.updateNavConfig(1, {
+        "issue-stock": ["viewer", "storeman", "manager", "admin"],
+      });
+
+      const savedEntities = mockManager.save.mock.calls[0][0];
+      const roles = savedEntities
+        .filter((e: any) => e.navKey === "issue-stock")
+        .map((e: any) => e.role);
+
+      expect(roles).toContain("viewer");
+    });
+
+    it("stored config with viewer removed from all pages is respected", async () => {
+      mockRepo.find.mockResolvedValue([
+        { companyId: 1, navKey: "dashboard", role: "admin" },
+        { companyId: 1, navKey: "dashboard", role: "manager" },
+        { companyId: 1, navKey: "inventory", role: "admin" },
+        { companyId: 1, navKey: "inventory", role: "manager" },
+        { companyId: 1, navKey: "job-cards", role: "admin" },
+        { companyId: 1, navKey: "job-cards", role: "manager" },
+      ]);
+
+      const result = await service.navConfig(1);
+
+      expect(result.dashboard).not.toContain("viewer");
+      expect(result.inventory).not.toContain("viewer");
+      expect(result["job-cards"]).not.toContain("viewer");
+    });
+
+    it("stored config with viewer added to restricted pages is respected", async () => {
+      mockRepo.find.mockResolvedValue([
+        { companyId: 1, navKey: "reports", role: "viewer" },
+        { companyId: 1, navKey: "reports", role: "manager" },
+        { companyId: 1, navKey: "reports", role: "admin" },
+        { companyId: 1, navKey: "issue-stock", role: "viewer" },
+        { companyId: 1, navKey: "issue-stock", role: "admin" },
+      ]);
+
+      const result = await service.navConfig(1);
+
+      expect(result.reports).toContain("viewer");
+      expect(result["issue-stock"]).toContain("viewer");
+    });
+  });
+
+  // ── Multi-company isolation ─────────────────────────────────────────
+
+  describe("multi-company isolation", () => {
+    it("company A config should not affect company B", async () => {
+      mockRepo.find.mockImplementation(({ where: { companyId } }) => {
+        if (companyId === 1) {
+          return Promise.resolve([
+            { companyId: 1, navKey: "dashboard", role: "admin" },
+          ]);
+        }
+        return Promise.resolve([
+          { companyId: 2, navKey: "dashboard", role: "viewer" },
+          { companyId: 2, navKey: "dashboard", role: "admin" },
+        ]);
+      });
+
+      const configA = await service.navConfig(1);
+      const configB = await service.navConfig(2);
+
+      expect(configA.dashboard).not.toContain("viewer");
+      expect(configB.dashboard).toContain("viewer");
+    });
+  });
 });
