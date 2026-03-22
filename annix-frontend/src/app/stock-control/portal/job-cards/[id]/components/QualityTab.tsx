@@ -24,6 +24,7 @@ import DftReadingForm from "./DftReadingForm";
 import DustDebrisForm from "./DustDebrisForm";
 import { ItemsReleaseSection } from "./ItemsReleaseSection";
 import { PullTestForm } from "./PullTestForm";
+import { QaReviewSection } from "./QaReviewSection";
 import { QcpSection } from "./QcpSection";
 import { QcReleaseCertificateSection } from "./QcReleaseCertificateSection";
 import { ShoreHardnessForm } from "./ShoreHardnessForm";
@@ -33,10 +34,11 @@ type QcFormType = "shore-hardness" | "dft" | "blast-profile" | "dust-debris" | "
 interface QualityTabProps {
   jobCardId: number;
   onBatchComplete: (() => void) | null;
+  onQaReviewSubmitted: (() => void) | null;
 }
 
 export function QualityTab(props: QualityTabProps) {
-  const { jobCardId, onBatchComplete } = props;
+  const { jobCardId, onBatchComplete, onQaReviewSubmitted } = props;
   const [certificates, setCertificates] = useState<SupplierCertificate[]>([]);
   const [calibrationCerts, setCalibrationCerts] = useState<CalibrationCertificate[]>([]);
   const [batchRecords, setBatchRecords] = useState<IssuanceBatchRecord[]>([]);
@@ -204,6 +206,11 @@ export function QualityTab(props: QualityTabProps) {
           onComplete={onBatchComplete}
         />
       )}
+
+      <QaReviewSection
+        jobCardId={jobCardId}
+        onReviewSubmitted={onQaReviewSubmitted || (() => {})}
+      />
 
       {isLoading ? (
         <div className="py-12 text-center text-gray-500">Loading quality data...</div>

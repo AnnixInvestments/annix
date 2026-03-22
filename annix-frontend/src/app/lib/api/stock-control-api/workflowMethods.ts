@@ -11,6 +11,8 @@ import type {
   JobCardDocument,
   JobCardJobFile,
   PendingBackgroundStep,
+  QaApplicability,
+  QaReviewDecision,
   StepNotificationRecipients,
   UserLocationSummary,
   WorkflowNotification,
@@ -108,6 +110,17 @@ declare module "./base" {
     ): Promise<{ success: boolean; requisitionId: number | null }>;
     completeRequisitionStep(jobCardId: number): Promise<{ success: boolean }>;
     useCurrentStockDecision(jobCardId: number): Promise<{ success: boolean }>;
+    qaApplicability(jobCardId: number): Promise<QaApplicability>;
+    submitQaReview(
+      jobCardId: number,
+      data: {
+        rubberAccepted?: boolean | null;
+        paintAccepted?: boolean | null;
+        notes?: string | null;
+      },
+    ): Promise<{ success: boolean; decision: QaReviewDecision }>;
+    latestQaReview(jobCardId: number): Promise<QaReviewDecision | null>;
+    uploadQaReviewPhoto(jobCardId: number, file: File): Promise<JobCardJobFile>;
   }
 }
 
@@ -419,4 +432,23 @@ proto.useCurrentStockDecision = async function (jobCardId) {
     `/stock-control/workflow/job-cards/${jobCardId}/stock-decision/use-current-stock`,
     { method: "POST" },
   );
+};
+
+proto.qaApplicability = async function (jobCardId) {
+  return this.request(`/stock-control/workflow/job-cards/${jobCardId}/qa-applicability`);
+};
+
+proto.submitQaReview = async function (jobCardId, data) {
+  return this.request(`/stock-control/workflow/job-cards/${jobCardId}/qa-review`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+};
+
+proto.latestQaReview = async function (jobCardId) {
+  return this.request(`/stock-control/workflow/job-cards/${jobCardId}/qa-review/latest`);
+};
+
+proto.uploadQaReviewPhoto = async function (jobCardId, file) {
+  return this.uploadFile(`/stock-control/workflow/job-cards/${jobCardId}/qa-review/photos`, file);
 };

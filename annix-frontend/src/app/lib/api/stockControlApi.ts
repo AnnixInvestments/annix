@@ -92,6 +92,8 @@ export type {
   PositectorStreamingSession,
   PriceChangeSummary,
   ProcessedBrandingResult,
+  QaApplicability,
+  QaReviewDecision,
   QcBlastingCheck,
   QcBlastProfileEntry,
   QcBlastProfileRecord,

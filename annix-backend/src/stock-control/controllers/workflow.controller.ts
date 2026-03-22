@@ -620,4 +620,27 @@ export class WorkflowController {
     const decision = await this.qaProcessService.latestDecisionForJobCard(req.user.companyId, id);
     return decision ?? null;
   }
+
+  @Post("job-cards/:id/qa-review/photos")
+  @UseInterceptors(FileInterceptor("file"))
+  @ApiOperation({ summary: "Upload a defect photo for QA review" })
+  async uploadQaReviewPhoto(
+    @Req() req: any,
+    @Param("id") id: number,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    if (!file) {
+      throw new BadRequestException("No file provided");
+    }
+    if (!file.mimetype.startsWith("image/")) {
+      throw new BadRequestException("Only image files are allowed");
+    }
+    return this.jobFileService.uploadFile(
+      req.user.companyId,
+      id,
+      file,
+      req.user.id || null,
+      req.user.name || null,
+    );
+  }
 }

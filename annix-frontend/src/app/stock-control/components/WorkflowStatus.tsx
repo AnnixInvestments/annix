@@ -515,10 +515,7 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
 
         if (!startNode || !firstTopBg || !lastTopBg) return;
 
-        const isColoredBranch = branch.branchColor !== null;
-        const branchActive = isColoredBranch
-          ? branch.triggerFgIdx <= currentStepIndex
-          : branch.triggerFgIdx < currentStepIndex;
+        const branchActive = branch.triggerFgIdx <= currentStepIndex;
         const allComplete = branch.bgSteps.every((bg) => bg.completedAt !== null);
         const activeColor = branch.branchColor || "#f59e0b";
         const strokeColor = branchActive ? activeColor : "#d1d5db";
@@ -600,35 +597,28 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
             d: `M ${sx - r} ${bottomEdge} Q ${sx} ${bottomEdge} ${sx} ${bottomEdge + r} L ${sx} ${sy - r} Q ${sx} ${sy} ${sx - r} ${sy}`,
           });
 
-          if (progressIdx < btmCount) {
-            const targetX = startPositions[progressIdx]?.x || sx;
-            paths.push({
-              key: `loop-progress-bottom-${branch.triggerFgKey}`,
-              color: activeColor,
-              d: `M ${sx - r} ${bottomEdge} L ${targetX} ${bottomEdge}`,
-            });
-          } else if (progressIdx === btmCount) {
-            paths.push({
-              key: `loop-progress-bottom-left-${branch.triggerFgKey}`,
-              color: activeColor,
-              d: `M ${sx - r} ${bottomEdge} Q ${leftEdge} ${bottomEdge} ${leftEdge} ${bottomEdge - r}`,
-            });
-          } else if (progressIdx <= totalSteps - btmCount) {
-            paths.push({
-              key: `loop-progress-left-${branch.triggerFgKey}`,
-              color: activeColor,
-              d: `M ${sx - r} ${bottomEdge} Q ${leftEdge} ${bottomEdge} ${leftEdge} ${bottomEdge - r} L ${leftEdge} ${fy + r} Q ${leftEdge} ${fy} ${leftEdge + r} ${fy}`,
-            });
-          } else {
-            paths.push({
-              key: `loop-progress-left-${branch.triggerFgKey}`,
-              color: activeColor,
-              d: `M ${sx - r} ${bottomEdge} Q ${leftEdge} ${bottomEdge} ${leftEdge} ${bottomEdge - r} L ${leftEdge} ${fy + r} Q ${leftEdge} ${fy} ${leftEdge + r} ${fy}`,
-            });
+          const activeTopIdx = branch.bgSteps.findIndex(
+            (b, i) => i >= btmCount && i < totalSteps - btmCount && b.completedAt === null,
+          );
+          const progressTopEl =
+            activeTopIdx >= 0 ? bgNodeRefs.current[branch.bgSteps[activeTopIdx].stepKey] : null;
+          const progressTopX = progressTopEl
+            ? progressTopEl.getBoundingClientRect().left +
+              progressTopEl.getBoundingClientRect().width / 2 -
+              rect.left
+            : leftEdge + r;
+
+          paths.push({
+            key: `loop-progress-left-${branch.triggerFgKey}`,
+            color: activeColor,
+            d: `M ${sx - r} ${bottomEdge} L ${leftEdge + r} ${bottomEdge} Q ${leftEdge} ${bottomEdge} ${leftEdge} ${bottomEdge - r} L ${leftEdge} ${fy + r} Q ${leftEdge} ${fy} ${leftEdge + r} ${fy} L ${progressTopX} ${fy}`,
+          });
+
+          if (progressIdx > totalSteps - btmCount || allComplete) {
             paths.push({
               key: `loop-progress-right-${branch.triggerFgKey}`,
               color: activeColor,
-              d: `M ${sx + r} ${bottomEdge} Q ${rightEdge} ${bottomEdge} ${rightEdge} ${bottomEdge - r} L ${rightEdge} ${fy + r} Q ${rightEdge} ${fy} ${rightEdge - r} ${fy}`,
+              d: `M ${sx + r} ${bottomEdge} L ${rightEdge - r} ${bottomEdge} Q ${rightEdge} ${bottomEdge} ${rightEdge} ${bottomEdge - r} L ${rightEdge} ${fy + r} Q ${rightEdge} ${fy} ${rightEdge - r} ${fy}`,
             });
           }
 
@@ -808,7 +798,7 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
     >
       {svgPaths.length > 0 && (
         <svg
-          className="absolute inset-0 pointer-events-none z-20"
+          className="absolute inset-0 pointer-events-none z-10"
           width={containerSize.width}
           height={containerSize.height}
           style={{ overflow: "visible" }}
@@ -838,7 +828,7 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
           <div
             key={`loop-${branch.triggerFgKey}`}
             data-loop-container
-            className="absolute"
+            className="absolute z-20"
             style={{
               top: "8px",
               left: triggerPos ? `${triggerPos.left}px` : "0",

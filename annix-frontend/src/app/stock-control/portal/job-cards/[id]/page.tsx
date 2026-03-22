@@ -618,6 +618,12 @@ export default function JobCardDetailPage() {
     [],
   );
 
+  const isQaReviewStep = useCallback(
+    (bg: BackgroundStepStatus) =>
+      bg.stepKey === "qa_review" || bg.label?.toLowerCase() === "qa review",
+    [],
+  );
+
   const hasReadyPhoto = useMemo(
     () =>
       jobFilesHook.jobFiles.some(
@@ -725,7 +731,10 @@ export default function JobCardDetailPage() {
     [userPendingBgSteps, isRequisitionStep],
   );
 
-  const [batchesSaved, setBatchesSaved] = useState(false);
+  const [batchesSavedLocal, setBatchesSaved] = useState(false);
+  const batchesSaved =
+    batchesSavedLocal ||
+    backgroundSteps.some((bg) => bg.stepKey === "qc_batch_certs" && bg.completedAt !== null);
   const [isProcessingDecision, setIsProcessingDecision] = useState(false);
   const [decisionError, setDecisionError] = useState<string | null>(null);
 
@@ -1260,6 +1269,25 @@ export default function JobCardDetailPage() {
                             </button>
                           )}
                         </div>
+                      ) : isQaReviewStep(bg) ? (
+                        <button
+                          key={bg.stepKey}
+                          onClick={() => {
+                            handleTabChange("quality");
+                            const scrollToReview = (attempts: number) => {
+                              const el = document.getElementById("qa-review-section");
+                              if (el) {
+                                el.scrollIntoView({ behavior: "smooth", block: "start" });
+                              } else if (attempts > 0) {
+                                setTimeout(() => scrollToReview(attempts - 1), 150);
+                              }
+                            };
+                            setTimeout(() => scrollToReview(20), 100);
+                          }}
+                          className="px-3 py-1.5 text-xs font-medium rounded-md bg-teal-600 text-white hover:bg-teal-700 transition-colors"
+                        >
+                          QA Review
+                        </button>
                       ) : bg.branchColor && !batchesSaved ? (
                         <button
                           key={bg.stepKey}
@@ -1605,6 +1633,16 @@ export default function JobCardDetailPage() {
                       }
                     : null
                 }
+                onQaReviewSubmitted={() => {
+                  fetchData();
+                  handleTabChange("details");
+                  setTimeout(() => {
+                    const wfa = document.getElementById("workflow-actions");
+                    if (wfa) {
+                      wfa.scrollIntoView({ behavior: "smooth", block: "start" });
+                    }
+                  }, 200);
+                }}
               />
             </div>
           </TabPanel>
