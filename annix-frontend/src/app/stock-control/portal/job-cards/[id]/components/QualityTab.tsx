@@ -25,6 +25,7 @@ import DftReadingForm from "./DftReadingForm";
 import DustDebrisForm from "./DustDebrisForm";
 import { ItemsReleaseSection } from "./ItemsReleaseSection";
 import { PullTestForm } from "./PullTestForm";
+import { QaFinalPhotosSection } from "./QaFinalPhotosSection";
 import { QaReviewSection } from "./QaReviewSection";
 import { QcpSection } from "./QcpSection";
 import { QcReleaseCertificateSection } from "./QcReleaseCertificateSection";
@@ -37,10 +38,11 @@ interface QualityTabProps {
   backgroundSteps: BackgroundStepStatus[];
   onBatchComplete: (() => void) | null;
   onQaReviewSubmitted: (() => void) | null;
+  onFinalPhotosSaved: (() => void) | null;
 }
 
 export function QualityTab(props: QualityTabProps) {
-  const { jobCardId, backgroundSteps, onBatchComplete, onQaReviewSubmitted } = props;
+  const { jobCardId, backgroundSteps, onBatchComplete, onQaReviewSubmitted, onFinalPhotosSaved } = props;
   const [certificates, setCertificates] = useState<SupplierCertificate[]>([]);
   const [calibrationCerts, setCalibrationCerts] = useState<CalibrationCertificate[]>([]);
   const [batchRecords, setBatchRecords] = useState<IssuanceBatchRecord[]>([]);
@@ -215,17 +217,25 @@ export function QualityTab(props: QualityTabProps) {
         onReviewSubmitted={onQaReviewSubmitted || (() => {})}
       />
 
+      <QaFinalPhotosSection
+        jobCardId={jobCardId}
+        backgroundSteps={backgroundSteps}
+        onPhotosSaved={onFinalPhotosSaved || (() => {})}
+      />
+
       {isLoading ? (
         <div className="py-12 text-center text-gray-500">Loading quality data...</div>
       ) : (
         <>
-          <DataBookCompletenessPanel
-            completeness={completeness}
-            dataBookStatus={dataBookStatus}
-            isCompiling={isCompiling}
-            onCompile={handleCompile}
-            onDownload={handleDownload}
-          />
+          <div id="data-book-section">
+            <DataBookCompletenessPanel
+              completeness={completeness}
+              dataBookStatus={dataBookStatus}
+              isCompiling={isCompiling}
+              onCompile={handleCompile}
+              onDownload={handleDownload}
+            />
+          </div>
 
           <div className="rounded-lg border border-gray-200 bg-white shadow-sm">
             <div className="flex items-center justify-between border-b border-gray-200 px-5 py-3">

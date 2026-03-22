@@ -606,7 +606,7 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
             ? progressTopEl.getBoundingClientRect().left +
               progressTopEl.getBoundingClientRect().width / 2 -
               rect.left
-            : leftEdge + r;
+            : rightEdge - r;
 
           paths.push({
             key: `loop-progress-left-${branch.triggerFgKey}`,
@@ -614,7 +614,7 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
             d: `M ${sx - r} ${bottomEdge} L ${leftEdge + r} ${bottomEdge} Q ${leftEdge} ${bottomEdge} ${leftEdge} ${bottomEdge - r} L ${leftEdge} ${fy + r} Q ${leftEdge} ${fy} ${leftEdge + r} ${fy} L ${progressTopX} ${fy}`,
           });
 
-          if (progressIdx > totalSteps - btmCount || allComplete) {
+          if (progressIdx >= totalSteps - btmCount || allComplete) {
             paths.push({
               key: `loop-progress-right-${branch.triggerFgKey}`,
               color: activeColor,
@@ -642,8 +642,10 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
 
           const pRect = prevEl.getBoundingClientRect();
           const cRect = currEl.getBoundingClientRect();
-          const prevCompleted = branch.bgSteps[bgIdx - 1].completedAt !== null;
-          const lineColor = branchActive && prevCompleted ? activeColor : "#d1d5db";
+          const allPriorComplete = branch.bgSteps
+            .slice(0, bgIdx)
+            .every((b) => b.completedAt !== null);
+          const lineColor = branchActive && allPriorComplete ? activeColor : "#d1d5db";
 
           paths.push({
             key: `bg-line-${bg.stepKey}`,

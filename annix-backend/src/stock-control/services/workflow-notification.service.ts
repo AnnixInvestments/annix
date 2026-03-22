@@ -1217,4 +1217,121 @@ export class WorkflowNotificationService {
       html,
     });
   }
+
+  async notifyQaRejectionEscalation(
+    companyId: number,
+    jobCardId: number,
+    cycleNumber: number,
+    notes: string | null,
+    sender?: SenderInfo,
+  ): Promise<void> {
+    const jobCard = await this.jobCardRepo.findOne({
+      where: { id: jobCardId, companyId },
+    });
+
+    if (!jobCard) {
+      this.logger.warn(`Job card ${jobCardId} not found for QA rejection escalation`);
+      return;
+    }
+
+    const managers = await this.userRepo.find({
+      where: [
+        { companyId, role: StockControlRole.MANAGER },
+        { companyId, role: StockControlRole.ADMIN },
+      ],
+    });
+
+    if (managers.length === 0) {
+      this.logger.warn(`No managers found for QA rejection escalation (company ${companyId})`);
+      return;
+    }
+
+    const frontendUrl = this.configService.get<string>("FRONTEND_URL") || "http://localhost:3000";
+    const actionUrl = `${frontendUrl}/stock-control/portal/job-cards/${jobCardId}#quality`;
+    const title = `QA Rejection Escalation: ${jobCard.jobNumber} — ${jobCard.jobName}`;
+    const message = `QA review has been rejected ${cycleNumber} time(s) for ${jobCard.jobNumber} (${jobCard.jobName}).${notes ? ` Latest reason: ${notes}` : ""}`;
+
+    const notifications = managers.map((user) =>
+      this.notificationRepo.create({
+        companyId,
+        userId: user.id,
+        jobCardId,
+        title,
+        message,
+        actionType: NotificationActionType.QA_REJECTION_ESCALATION,
+        actionUrl,
+        senderId: sender?.id ?? null,
+        senderName: sender?.name ?? null,
+      }),
+    );
+
+    await this.notificationRepo.save(notifications);
+    this.webPushService
+      .sendToUsers(
+        managers.map((u) => u.id),
+        {
+          title,
+          body: message,
+          tag: `qa-escalation-${jobCardId}-cycle-${cycleNumber}`,
+          data: { url: actionUrl },
+        },
+      )
+      .catch((err) => this.logger.warn(`Push notification failed: ${err.message}`));
+
+    this.logger.log(
+      `Created ${notifications.length} QA rejection escalation notifications for job card ${jobCardId} (cycle ${cycleNumber})`,
+    );
+
+    await Promise.all(
+      managers.map((user) =>
+        this.sendQaEscalationEmail(
+          companyId,
+          user.email,
+          user.name,
+          jobCard.jobNumber,
+          jobCard.jobName,
+          cycleNumber,
+          notes,
+          actionUrl,
+        ),
+      ),
+    );
+  }
+
+  private async sendQaEscalationEmail(
+    companyId: number,
+    email: string,
+    recipientName: string,
+    jobNumber: string,
+    jobName: string,
+    cycleNumber: number,
+    notes: string | null,
+    actionUrl: string,
+  ): Promise<boolean> {
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <title>QA Rejection Escalation - Stock Control</title>
+      </head>
+      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+        <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+          <h1 style="color: #dc2626;">QA Rejection Escalation</h1>
+          <p>Hi ${recipientName},</p>
+          <p>Job card <strong>${jobNumber}</strong> (${jobName}) has been rejected by QA review <strong>${cycleNumber} time(s)</strong>.</p>
+          ${notes ? `<div style="background: #fef2f2; border-left: 4px solid #dc2626; padding: 12px 16px; margin: 16px 0;"><strong>Latest rejection reason:</strong><br>${notes}</div>` : ""}
+          <p>This item requires management attention as it has been rejected ${cycleNumber >= 3 ? "3 or more" : "multiple"} times during quality review.</p>
+          <p><a href="${actionUrl}" style="display: inline-block; background: #dc2626; color: #fff; padding: 10px 20px; text-decoration: none; border-radius: 4px;">View Job Card</a></p>
+        </div>
+      </body>
+      </html>
+    `;
+
+    return this.companyEmailService.sendEmail(companyId, {
+      to: email,
+      subject: `QA Rejection Escalation: ${jobNumber} — Rejected ${cycleNumber} time(s)`,
+      html,
+    });
+  }
 }

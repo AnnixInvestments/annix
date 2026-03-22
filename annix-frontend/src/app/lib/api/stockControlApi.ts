@@ -57,6 +57,7 @@ export type {
   InboundEmailConfigResponse,
   InboundEmailConfigUpdate,
   InboundEmailStats,
+  InspectionBooking,
   InterventionType,
   InventoryColumnMapping,
   InvitationValidation,

@@ -209,3 +209,39 @@ export class SubmitQaReviewDto {
   @IsString()
   notes?: string;
 }
+
+export class CreateInspectionBookingDto {
+  @ApiProperty({ description: "Date of inspection (YYYY-MM-DD)" })
+  @IsString()
+  inspectionDate: string;
+
+  @ApiProperty({ description: "Start time (HH:mm)" })
+  @IsString()
+  startTime: string;
+
+  @ApiProperty({ description: "End time (HH:mm)" })
+  @IsString()
+  endTime: string;
+
+  @ApiProperty({ description: "Inspector email address" })
+  @IsString()
+  @IsEmail()
+  inspectorEmail: string;
+
+  @ApiPropertyOptional({ description: "Inspector name" })
+  @IsOptional()
+  @IsString()
+  inspectorName?: string;
+
+  @ApiPropertyOptional({ description: "Booking notes" })
+  @IsOptional()
+  @IsString()
+  notes?: string;
+}
+
+export class CompleteInspectionDto {
+  @ApiPropertyOptional({ description: "Completion notes" })
+  @IsOptional()
+  @IsString()
+  notes?: string;
+}

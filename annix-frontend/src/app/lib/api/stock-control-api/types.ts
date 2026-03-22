@@ -2091,3 +2091,23 @@ export interface AnalyzedDeliveryNoteResult {
   tokensUsed?: number;
   processingTimeMs: number;
 }
+
+export interface InspectionBooking {
+  id: number;
+  companyId: number;
+  jobCardId: number;
+  inspectionDate: string;
+  startTime: string;
+  endTime: string;
+  inspectorEmail: string;
+  inspectorName: string | null;
+  notes: string | null;
+  status: "booked" | "completed" | "cancelled";
+  bookedByName: string | null;
+  completedAt: string | null;
+  completedByName: string | null;
+  createdAt: string;
+  updatedAt: string;
+  jobNumber?: string;
+  jobName?: string;
+}

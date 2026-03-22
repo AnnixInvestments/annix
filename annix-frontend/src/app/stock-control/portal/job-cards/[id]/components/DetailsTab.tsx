@@ -124,29 +124,25 @@ export function DetailsTab({
           <h3 className="text-lg leading-6 font-medium text-gray-900">Job Card Details</h3>
         </div>
         <div className="px-4 py-3 sm:px-6">
-          <dl className="grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-3">
+          <dl className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-x-4 gap-y-2">
             <div>
-              <dt className="text-sm font-medium text-gray-500">Job Number</dt>
+              <dt className="text-xs font-medium text-gray-500">Job Number</dt>
               <dd className="text-sm text-gray-900">{jobCard.jobNumber}</dd>
             </div>
             <div>
-              <dt className="text-sm font-medium text-gray-500">JC Number</dt>
+              <dt className="text-xs font-medium text-gray-500">JC Number</dt>
               <dd className="text-sm text-gray-900">{jobCard.jcNumber || "-"}</dd>
             </div>
             <div>
-              <dt className="text-sm font-medium text-gray-500">Page Number</dt>
+              <dt className="text-xs font-medium text-gray-500">Page Number</dt>
               <dd className="text-sm text-gray-900">{jobCard.pageNumber || "-"}</dd>
             </div>
             <div>
-              <dt className="text-sm font-medium text-gray-500">Job Name</dt>
+              <dt className="text-xs font-medium text-gray-500">Job Name</dt>
               <dd className="text-sm text-gray-900">{jobCard.jobName}</dd>
             </div>
             <div>
-              <dt className="text-sm font-medium text-gray-500">Customer</dt>
-              <dd className="text-sm text-gray-900">{jobCard.customerName || "-"}</dd>
-            </div>
-            <div>
-              <dt className="text-sm font-medium text-gray-500">Status</dt>
+              <dt className="text-xs font-medium text-gray-500">Status</dt>
               <dd>
                 <span
                   className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusBadgeColor(jobCard.status)}`}
@@ -156,59 +152,65 @@ export function DetailsTab({
               </dd>
             </div>
             <div>
-              <dt className="text-sm font-medium text-gray-500">Created</dt>
+              <dt className="text-xs font-medium text-gray-500">Customer</dt>
+              <dd className="text-sm text-gray-900 truncate" title={jobCard.customerName || "-"}>
+                {jobCard.customerName || "-"}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-xs font-medium text-gray-500">Created</dt>
               <dd className="text-sm text-gray-900">{formatDateZA(jobCard.createdAt)}</dd>
             </div>
             <div>
-              <dt className="text-sm font-medium text-gray-500">Last Updated</dt>
+              <dt className="text-xs font-medium text-gray-500">Last Updated</dt>
               <dd className="text-sm text-gray-900">{formatDateZA(jobCard.updatedAt)}</dd>
             </div>
             {jobCard.description && (
-              <div className="col-span-2 sm:col-span-4">
-                <dt className="text-sm font-medium text-gray-500">Description</dt>
+              <div className="col-span-2">
+                <dt className="text-xs font-medium text-gray-500">Description</dt>
                 <dd className="text-sm text-gray-900">{jobCard.description}</dd>
               </div>
             )}
             {jobCard.poNumber && (
               <div>
-                <dt className="text-sm font-medium text-gray-500">PO Number</dt>
+                <dt className="text-xs font-medium text-gray-500">PO Number</dt>
                 <dd className="text-sm text-gray-900">{jobCard.poNumber}</dd>
+              </div>
+            )}
+            {jobCard.reference && (
+              <div>
+                <dt className="text-xs font-medium text-gray-500">Reference</dt>
+                <dd className="text-sm text-gray-900">{jobCard.reference}</dd>
               </div>
             )}
             {jobCard.siteLocation && (
               <div>
-                <dt className="text-sm font-medium text-gray-500">Site / Location</dt>
+                <dt className="text-xs font-medium text-gray-500">Site / Location</dt>
                 <dd className="text-sm text-gray-900">{jobCard.siteLocation}</dd>
               </div>
             )}
             {jobCard.contactPerson && (
               <div>
-                <dt className="text-sm font-medium text-gray-500">Contact Person</dt>
+                <dt className="text-xs font-medium text-gray-500">Contact Person</dt>
                 <dd className="text-sm text-gray-900">{jobCard.contactPerson}</dd>
               </div>
             )}
             {jobCard.dueDate && (
               <div>
-                <dt className="text-sm font-medium text-gray-500">Due Date</dt>
+                <dt className="text-xs font-medium text-gray-500">Due Date</dt>
                 <dd className="text-sm text-gray-900">{jobCard.dueDate}</dd>
               </div>
             )}
-            {jobCard.reference && (
-              <div>
-                <dt className="text-sm font-medium text-gray-500">Reference</dt>
-                <dd className="text-sm text-gray-900">{jobCard.reference}</dd>
-              </div>
-            )}
-            <div className="col-span-2 sm:col-span-4">
-              <dt className="text-sm font-medium text-gray-500 mb-1">
+            <div className="col-span-2 sm:col-span-4 lg:col-span-6">
+              <dt className="text-xs font-medium text-gray-500 mb-1">
                 Specifications (AI Extracted)
               </dt>
               {canEditNotes ? (
-                <div className="space-y-2">
+                <div className="space-y-1">
                   <textarea
                     value={editedNotes}
                     onChange={(e) => handleNotesChange(e.target.value)}
-                    rows={5}
+                    rows={2}
                     placeholder="No specifications extracted yet. Click Re-extract to pull from line item notes."
                     className="block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm"
                   />

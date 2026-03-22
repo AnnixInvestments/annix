@@ -5,6 +5,7 @@ import { now } from "../../lib/datetime";
 import { JobCardCoatingAnalysis } from "../entities/coating-analysis.entity";
 import { JobCardBackgroundCompletion } from "../entities/job-card-background-completion.entity";
 import { QaReviewDecision } from "../entities/qa-review-decision.entity";
+import { WorkflowNotificationService } from "./workflow-notification.service";
 
 interface UserContext {
   id: number;
@@ -44,6 +45,7 @@ export class QaProcessService {
     private readonly completionRepo: Repository<JobCardBackgroundCompletion>,
     @InjectRepository(QaReviewDecision)
     private readonly reviewRepo: Repository<QaReviewDecision>,
+    private readonly notificationService: WorkflowNotificationService,
   ) {}
 
   async applicability(companyId: number, jobCardId: number): Promise<QaApplicability> {
@@ -172,6 +174,23 @@ export class QaProcessService {
       `QA review submitted for job card ${jobCardId} by ${user.name} (cycle ${cycleNumber}): rubber=${input.rubberAccepted}, paint=${input.paintAccepted}`,
     );
 
+    const hasRejection =
+      (hasRubber && input.rubberAccepted === false) ||
+      (hasPaint && input.paintAccepted === false);
+
+    if (hasRejection && cycleNumber >= 3) {
+      this.notificationService
+        .notifyQaRejectionEscalation(companyId, jobCardId, cycleNumber, input.notes, {
+          id: user.id,
+          name: user.name,
+        })
+        .catch((err) =>
+          this.logger.warn(
+            `Failed to send QA rejection escalation for job card ${jobCardId}: ${err.message}`,
+          ),
+        );
+    }
+
     return saved;
   }
 
@@ -202,6 +221,7 @@ export class QaProcessService {
       return false;
     }
 
+    await this.completionRepo.delete({ jobCardId, companyId, stepKey: "qc_repairs" });
     await this.completionRepo.delete({ jobCardId, companyId, stepKey: "qa_review" });
     await this.completionRepo.delete({ jobCardId, companyId, stepKey: "qa_final_check" });
     await this.completionRepo.delete({

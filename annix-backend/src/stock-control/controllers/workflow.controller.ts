@@ -23,6 +23,8 @@ import {
   ApproveWorkflowStepDto,
   CompleteActionDto,
   CompleteBackgroundStepDto,
+  CompleteInspectionDto,
+  CreateInspectionBookingDto,
   PushSubscribeDto,
   PushUnsubscribeDto,
   RejectWorkflowStepDto,
@@ -55,6 +57,7 @@ import { RequisitionService } from "../services/requisition.service";
 import { WebPushService } from "../services/web-push.service";
 import { WorkflowAssignmentService } from "../services/workflow-assignment.service";
 import { WorkflowNotificationService } from "../services/workflow-notification.service";
+import { InspectionBookingService } from "../services/inspection-booking.service";
 import { WorkflowStepConfigService } from "../services/workflow-step-config.service";
 
 @ApiTags("Stock Control - Workflow")
@@ -75,6 +78,7 @@ export class WorkflowController {
     private readonly qaProcessService: QaProcessService,
     private readonly requisitionService: RequisitionService,
     private readonly jobFileService: JobFileService,
+    private readonly inspectionBookingService: InspectionBookingService,
   ) {}
 
   @Post("job-cards/:id/documents")
@@ -642,5 +646,84 @@ export class WorkflowController {
       req.user.id || null,
       req.user.name || null,
     );
+  }
+
+  @Post("job-cards/:id/inspection-bookings")
+  @ApiOperation({ summary: "Create an inspection booking for a job card" })
+  async createInspectionBooking(
+    @Req() req: any,
+    @Param("id") id: number,
+    @Body() dto: CreateInspectionBookingDto,
+  ) {
+    return this.inspectionBookingService.createBooking(
+      req.user.companyId,
+      id,
+      {
+        inspectionDate: dto.inspectionDate,
+        startTime: dto.startTime,
+        endTime: dto.endTime,
+        inspectorEmail: dto.inspectorEmail,
+        inspectorName: dto.inspectorName || null,
+        notes: dto.notes || null,
+      },
+      req.user,
+    );
+  }
+
+  @Get("job-cards/:id/inspection-bookings")
+  @ApiOperation({ summary: "List inspection bookings for a job card" })
+  async inspectionBookingsForJobCard(@Req() req: any, @Param("id") id: number) {
+    return this.inspectionBookingService.bookingsForJobCard(req.user.companyId, id);
+  }
+
+  @Get("inspection-bookings")
+  @ApiOperation({ summary: "List inspection bookings for a date range" })
+  async inspectionBookingsForRange(
+    @Req() req: any,
+    @Query("startDate") startDate: string,
+    @Query("endDate") endDate: string,
+  ) {
+    return this.inspectionBookingService.bookingsForDateRange(
+      req.user.companyId,
+      startDate,
+      endDate,
+    );
+  }
+
+  @Get("inspection-bookings/date/:date/slots")
+  @ApiOperation({ summary: "List booked slots for a specific date" })
+  async bookedSlotsForDate(@Req() req: any, @Param("date") date: string) {
+    return this.inspectionBookingService.bookedSlotsForDate(req.user.companyId, date);
+  }
+
+  @Post("inspection-bookings/:bookingId/complete")
+  @ApiOperation({ summary: "Mark an inspection as completed" })
+  async completeInspection(
+    @Req() req: any,
+    @Param("bookingId") bookingId: number,
+    @Body() dto: CompleteInspectionDto,
+  ) {
+    const result = await this.inspectionBookingService.completeInspection(
+      req.user.companyId,
+      bookingId,
+      req.user,
+      dto.notes || null,
+    );
+
+    await this.backgroundStepService.completeStep(
+      req.user.companyId,
+      result.jobCardId,
+      "book_3rd_party_inspections",
+      req.user,
+      `Inspection completed on ${result.inspectionDate}`,
+    );
+
+    return result;
+  }
+
+  @Post("inspection-bookings/:bookingId/cancel")
+  @ApiOperation({ summary: "Cancel an inspection booking" })
+  async cancelInspection(@Req() req: any, @Param("bookingId") bookingId: number) {
+    return this.inspectionBookingService.cancelBooking(req.user.companyId, bookingId, req.user);
   }
 }
