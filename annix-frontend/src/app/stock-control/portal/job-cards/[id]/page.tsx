@@ -23,6 +23,7 @@ import { useConfirm } from "@/app/stock-control/hooks/useConfirm";
 import { CoatingAnalysisTab } from "./components/CoatingAnalysisTab";
 import { DetailsTab } from "./components/DetailsTab";
 import DispatchTab from "./components/DispatchTab";
+import { DocumentUploadGate } from "./components/DocumentUploadGate";
 import { InspectionBookingModal } from "./components/InspectionBookingModal";
 import {
   JobCardTabs,
@@ -33,6 +34,7 @@ import {
 import { JobFileTab } from "./components/JobFileTab";
 import { LineItemsTab } from "./components/LineItemsTab";
 import { QualityTab } from "./components/QualityTab";
+import { ReconciliationTab } from "./components/ReconciliationTab";
 import { RequisitionTab } from "./components/RequisitionTab";
 import { RubberAllocationGuard } from "./components/RubberAllocation";
 import { StockIssuesTab } from "./components/StockIssuesTab";
@@ -130,7 +132,9 @@ export default function JobCardDetailPage() {
       stockControlApiClient.jobCardById(jobId).then((data) => setJobCard(data)),
       stockControlApiClient.workflowStatus(jobId).then((data) => setWorkflowStatus(data)),
       stockControlApiClient.approvalHistory(jobId).then((data) => setApprovals(data)),
-      stockControlApiClient.backgroundStepsForJobCard(jobId).then((data) => setBackgroundSteps(data)),
+      stockControlApiClient
+        .backgroundStepsForJobCard(jobId)
+        .then((data) => setBackgroundSteps(data)),
     ]).catch((err) => {
       console.error("Failed to refresh workflow state:", err);
     });
@@ -398,6 +402,7 @@ export default function JobCardDetailPage() {
         label: "Dispatch",
         hidden: status === "draft" && currentStatus !== "dispatched",
       },
+      { id: "reconciliation", label: "Tracking" },
       {
         id: "job-files",
         label: "Job Files",
@@ -674,7 +679,10 @@ export default function JobCardDetailPage() {
     [],
   );
 
-  const isDataBookStep = useCallback((bg: BackgroundStepStatus) => bg.stepKey === "compile_data_book", []);
+  const isDataBookStep = useCallback(
+    (bg: BackgroundStepStatus) => bg.stepKey === "compile_data_book",
+    [],
+  );
 
   const hasReadyPhoto = useMemo(
     () =>
@@ -1443,6 +1451,13 @@ export default function JobCardDetailPage() {
         />
       )}
 
+      {backgroundSteps.some(
+        (bg) => bg.stepKey === "upload_source_documents" && bg.completedAt === null,
+      ) &&
+        backgroundSteps.some((bg) => bg.stepKey === "reception" && bg.completedAt !== null) && (
+          <DocumentUploadGate jobCardId={jobId} onGateSatisfied={() => refreshWorkflowState()} />
+        )}
+
       {!specsNeedReview &&
         !prevStepBgPending &&
         !currentStepBlueBgPending &&
@@ -1745,6 +1760,14 @@ export default function JobCardDetailPage() {
                 }}
               />
             </div>
+          </TabPanel>
+
+          <TabPanel
+            tabId="reconciliation"
+            activeTab={activeTab}
+            visited={visitedTabs.has("reconciliation")}
+          >
+            <ReconciliationTab jobCardId={jobId} />
           </TabPanel>
 
           <TabPanel tabId="dispatch" activeTab={activeTab} visited={visitedTabs.has("dispatch")}>

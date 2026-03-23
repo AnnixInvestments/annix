@@ -119,7 +119,8 @@ export function ReleaseDocumentGenerator(props: ReleaseDocumentGeneratorProps) {
         )}
 
         <p className="mb-3 text-sm text-teal-800">
-          Select line items to include in the release documents. Both the Items Release (QD_PLS_09) and Release Certificate (QD_PLS_10) will be auto-generated with QC measurement data.
+          Select line items to include in the release documents. Both the Items Release (QD_PLS_09)
+          and Release Certificate (QD_PLS_10) will be auto-generated with QC measurement data.
         </p>
 
         {isLoading ? (

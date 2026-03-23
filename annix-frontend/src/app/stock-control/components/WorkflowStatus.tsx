@@ -525,8 +525,7 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
           : [];
         const prevAmberComplete =
           prevAmberBg.length === 0 || prevAmberBg.every((bg) => bg.completedAt !== null);
-        const branchActive =
-          branch.triggerFgIdx <= currentStepIndex && prevAmberComplete;
+        const branchActive = branch.triggerFgIdx <= currentStepIndex && prevAmberComplete;
         const allComplete = branch.bgSteps.every((bg) => bg.completedAt !== null);
         const activeColor = branch.branchColor || "#f59e0b";
         const strokeColor = branchActive ? activeColor : "#d1d5db";
@@ -693,8 +692,7 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
             )
           : [];
         const prevBelowAmberComplete =
-          prevBelowAmberBg.length === 0 ||
-          prevBelowAmberBg.every((bg) => bg.completedAt !== null);
+          prevBelowAmberBg.length === 0 || prevBelowAmberBg.every((bg) => bg.completedAt !== null);
         const branchActive = isColoredBranch
           ? branch.triggerFgIdx <= currentStepIndex && prevBelowAmberComplete
           : branch.triggerFgIdx < currentStepIndex;
@@ -857,13 +855,10 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
         const containerLeft = triggerPos?.left || 0;
         const prevLoopFgKey = allSteps[branch.triggerFgIdx - 1]?.key;
         const prevLoopAmberBg = prevLoopFgKey
-          ? resolveBgChainFlat(prevLoopFgKey, bgByTrigger, bgKeySet).filter(
-              (bg) => !bg.branchColor,
-            )
+          ? resolveBgChainFlat(prevLoopFgKey, bgByTrigger, bgKeySet).filter((bg) => !bg.branchColor)
           : [];
         const prevLoopAmberComplete =
-          prevLoopAmberBg.length === 0 ||
-          prevLoopAmberBg.every((bg) => bg.completedAt !== null);
+          prevLoopAmberBg.length === 0 || prevLoopAmberBg.every((bg) => bg.completedAt !== null);
 
         return (
           <div
@@ -919,7 +914,13 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
             {branch.bgSteps.slice(0, loopBottomCount(totalBgSteps)).map((bg, bgIdx) => {
               const pos = bottomStartPos[bgIdx];
               if (!pos) return null;
-              const state = bgNodeState(bg, branch.triggerFgIdx, currentStepIndex, branch.bgSteps, prevLoopAmberComplete);
+              const state = bgNodeState(
+                bg,
+                branch.triggerFgIdx,
+                currentStepIndex,
+                branch.bgSteps,
+                prevLoopAmberComplete,
+              );
               const classes = bgNodeClasses(state, branch.branchColor);
               const bgAssigned = assignedNameForStep(bg.stepKey, stepAssignments);
               const bgDisplayName =
@@ -1518,69 +1519,69 @@ function MobileTransitMap(props: MobileTransitMapProps) {
                 prevMobileAmberBg.every((bg) => bg.completedAt !== null);
 
               return (
-              <div
-                key={`mb-${branch.triggerFgKey}-${branch.isLoop ? "loop" : "below"}`}
-                className="flex items-stretch"
-                style={{ minHeight: "24px" }}
-              >
-                <div className="flex flex-col items-center" style={{ width: "32px" }}>
-                  <div
-                    className="w-0.5 flex-1"
-                    style={{
-                      backgroundColor:
-                        lineCompleted && branch.bgSteps.every((bg) => bg.completedAt !== null)
-                          ? "#22c55e"
-                          : "#e5e7eb",
-                    }}
-                  />
-                </div>
-
                 <div
-                  className={`ml-1 pl-3 border-l-2 border-dashed py-1 flex-1 min-w-0 ${
-                    branch.branchColor === "#3b82f6" ? "border-blue-300" : "border-amber-300"
-                  }`}
+                  key={`mb-${branch.triggerFgKey}-${branch.isLoop ? "loop" : "below"}`}
+                  className="flex items-stretch"
+                  style={{ minHeight: "24px" }}
                 >
-                  <div className="flex flex-wrap gap-x-4 gap-y-1.5">
-                    {branch.bgSteps.map((bg) => {
-                      const bgState = bgNodeState(
-                        bg,
-                        branch.triggerFgIdx,
-                        currentStepIndex,
-                        branch.bgSteps,
-                        prevMobileAmberComplete,
-                      );
-                      const mClasses = bgNodeClasses(bgState, branch.branchColor);
-                      const bgAssigned = assignedNameForStep(bg.stepKey, stepAssignments);
-                      const bgDisplayName =
-                        bgState === "completed" || bgState === "skipped"
-                          ? bg.completedByName
-                          : bgAssigned;
+                  <div className="flex flex-col items-center" style={{ width: "32px" }}>
+                    <div
+                      className="w-0.5 flex-1"
+                      style={{
+                        backgroundColor:
+                          lineCompleted && branch.bgSteps.every((bg) => bg.completedAt !== null)
+                            ? "#22c55e"
+                            : "#e5e7eb",
+                      }}
+                    />
+                  </div>
 
-                      return (
-                        <div key={bg.stepKey} className="flex items-center gap-1.5">
-                          <div
-                            className={`w-4 h-4 rounded-full flex items-center justify-center flex-shrink-0 ${mClasses.circle}`}
-                          >
-                            {mClasses.icon}
-                          </div>
-                          <div className="min-w-0">
-                            <p
-                              className={`text-[10px] font-medium leading-tight ${mClasses.label}`}
+                  <div
+                    className={`ml-1 pl-3 border-l-2 border-dashed py-1 flex-1 min-w-0 ${
+                      branch.branchColor === "#3b82f6" ? "border-blue-300" : "border-amber-300"
+                    }`}
+                  >
+                    <div className="flex flex-wrap gap-x-4 gap-y-1.5">
+                      {branch.bgSteps.map((bg) => {
+                        const bgState = bgNodeState(
+                          bg,
+                          branch.triggerFgIdx,
+                          currentStepIndex,
+                          branch.bgSteps,
+                          prevMobileAmberComplete,
+                        );
+                        const mClasses = bgNodeClasses(bgState, branch.branchColor);
+                        const bgAssigned = assignedNameForStep(bg.stepKey, stepAssignments);
+                        const bgDisplayName =
+                          bgState === "completed" || bgState === "skipped"
+                            ? bg.completedByName
+                            : bgAssigned;
+
+                        return (
+                          <div key={bg.stepKey} className="flex items-center gap-1.5">
+                            <div
+                              className={`w-4 h-4 rounded-full flex items-center justify-center flex-shrink-0 ${mClasses.circle}`}
                             >
-                              {bgState === "skipped" ? `${bg.label} (Skipped)` : bg.label}
-                            </p>
-                            {bgDisplayName && bgState !== "skipped" && (
-                              <p className="text-[9px] text-gray-400 leading-tight">
-                                {bgDisplayName}
+                              {mClasses.icon}
+                            </div>
+                            <div className="min-w-0">
+                              <p
+                                className={`text-[10px] font-medium leading-tight ${mClasses.label}`}
+                              >
+                                {bgState === "skipped" ? `${bg.label} (Skipped)` : bg.label}
                               </p>
-                            )}
+                              {bgDisplayName && bgState !== "skipped" && (
+                                <p className="text-[9px] text-gray-400 leading-tight">
+                                  {bgDisplayName}
+                                </p>
+                              )}
+                            </div>
                           </div>
-                        </div>
-                      );
-                    })}
+                        );
+                      })}
+                    </div>
                   </div>
                 </div>
-              </div>
               );
             })}
           </div>

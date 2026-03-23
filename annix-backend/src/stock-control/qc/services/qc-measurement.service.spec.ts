@@ -1,6 +1,9 @@
 import { NotFoundException } from "@nestjs/common";
 import { Test, TestingModule } from "@nestjs/testing";
 import { getRepositoryToken } from "@nestjs/typeorm";
+import { JobCardCoatingAnalysis } from "../../entities/coating-analysis.entity";
+import { JobCard } from "../../entities/job-card.entity";
+import { StockControlCompany } from "../../entities/stock-control-company.entity";
 import { QcBlastProfile } from "../entities/qc-blast-profile.entity";
 import { QcControlPlan } from "../entities/qc-control-plan.entity";
 import { QcDefelskoBatch } from "../entities/qc-defelsko-batch.entity";
@@ -43,6 +46,9 @@ describe("QcMeasurementService", () => {
   const releaseCertRepo = mockRepo();
   const itemsReleaseRepo = mockRepo();
   const defelskoBatchRepo = mockRepo();
+  const jobCardRepo = mockRepo();
+  const coatingRepo = mockRepo();
+  const companyRepo = mockRepo();
   const mockWorkItemProvider = {
     lineItemsForWorkItem: jest.fn().mockResolvedValue([]),
   };
@@ -60,6 +66,9 @@ describe("QcMeasurementService", () => {
         { provide: getRepositoryToken(QcReleaseCertificate), useValue: releaseCertRepo },
         { provide: getRepositoryToken(QcItemsRelease), useValue: itemsReleaseRepo },
         { provide: getRepositoryToken(QcDefelskoBatch), useValue: defelskoBatchRepo },
+        { provide: getRepositoryToken(JobCard), useValue: jobCardRepo },
+        { provide: getRepositoryToken(JobCardCoatingAnalysis), useValue: coatingRepo },
+        { provide: getRepositoryToken(StockControlCompany), useValue: companyRepo },
         { provide: WORK_ITEM_PROVIDER, useValue: mockWorkItemProvider },
       ],
     }).compile();

@@ -28,6 +28,7 @@ import { JobCardsController } from "./controllers/job-cards.controller";
 import { MovementsController } from "./controllers/movements.controller";
 import { PublicBrandingController } from "./controllers/public-branding.controller";
 import { QrCodeController } from "./controllers/qr-code.controller";
+import { ReconciliationController } from "./controllers/reconciliation.controller";
 import { ReportsController } from "./controllers/reports.controller";
 import { RequisitionsController } from "./controllers/requisitions.controller";
 import { SearchController } from "./controllers/search.controller";
@@ -65,6 +66,9 @@ import { JobCardLineItem } from "./entities/job-card-line-item.entity";
 import { JobCardVersion } from "./entities/job-card-version.entity";
 import { PushSubscription } from "./entities/push-subscription.entity";
 import { QaReviewDecision } from "./entities/qa-review-decision.entity";
+import { ReconciliationDocument } from "./entities/reconciliation-document.entity";
+import { ReconciliationEvent } from "./entities/reconciliation-event.entity";
+import { ReconciliationItem } from "./entities/reconciliation-item.entity";
 import { Requisition } from "./entities/requisition.entity";
 import { RequisitionItem } from "./entities/requisition-item.entity";
 import { RubberDimensionOverride } from "./entities/rubber-dimension-override.entity";
@@ -139,6 +143,9 @@ import { PublicBrandingService } from "./services/public-branding.service";
 import { QaProcessService } from "./services/qa-process.service";
 import { QrCodeService } from "./services/qr-code.service";
 import { RbacConfigService } from "./services/rbac-config.service";
+import { ReconciliationService } from "./services/reconciliation.service";
+import { ReconciliationDocumentService } from "./services/reconciliation-document.service";
+import { ReconciliationExtractionService } from "./services/reconciliation-extraction.service";
 import { ReportsService } from "./services/reports.service";
 import { RequisitionService } from "./services/requisition.service";
 import { SageInvoiceAdapterService } from "./services/sage-invoice-adapter.service";
@@ -214,6 +221,9 @@ import { WorkflowStepConfigService } from "./services/workflow-step-config.servi
       JobCardJobFile,
       QaReviewDecision,
       InspectionBooking,
+      ReconciliationDocument,
+      ReconciliationItem,
+      ReconciliationEvent,
     ]),
     EmailModule,
     JwtModule.registerAsync({
@@ -263,6 +273,7 @@ import { WorkflowStepConfigService } from "./services/workflow-step-config.servi
     GlossaryController,
     CertificateController,
     ChatController,
+    ReconciliationController,
   ],
   providers: [
     StockControlAuthGuard,
@@ -323,6 +334,9 @@ import { WorkflowStepConfigService } from "./services/workflow-step-config.servi
     ScEmailRouterService,
     ScEmailRegistrationService,
     JobFileService,
+    ReconciliationDocumentService,
+    ReconciliationExtractionService,
+    ReconciliationService,
   ],
 })
 export class StockControlModule {}

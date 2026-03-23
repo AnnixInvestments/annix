@@ -259,10 +259,7 @@ export class QcMeasurementController {
   @StockControlRoles("manager", "admin")
   @PermissionKey("qc.measurements")
   @ApiOperation({ summary: "Auto-generate control plans from coating analysis" })
-  async autoGenerateControlPlans(
-    @Req() req: any,
-    @Param("jobCardId") jobCardId: number,
-  ) {
+  async autoGenerateControlPlans(@Req() req: any, @Param("jobCardId") jobCardId: number) {
     return this.qcService.autoGenerateControlPlans(req.user.companyId, jobCardId, req.user);
   }
 

@@ -13,6 +13,7 @@ describe("RequisitionService", () => {
   const mockRequisitionRepo = {
     findOne: jest.fn(),
     find: jest.fn(),
+    count: jest.fn().mockResolvedValue(0),
     create: jest.fn().mockImplementation((data) => ({ ...data })),
     save: jest.fn().mockImplementation((entity) => Promise.resolve({ id: 1, ...entity })),
   };
@@ -96,6 +97,7 @@ describe("RequisitionService", () => {
     it("creates requisition with REQ-{jobNumber} format", async () => {
       mockRequisitionRepo.findOne
         .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce(null)
         .mockResolvedValueOnce({ id: 1, items: [] });
       mockAnalysisRepo.findOne.mockResolvedValue({
         coats: [{ product: "Paint", litersRequired: 10, area: "external" }],
@@ -116,6 +118,7 @@ describe("RequisitionService", () => {
     it("creates one item per coat", async () => {
       mockRequisitionRepo.findOne
         .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce(null)
         .mockResolvedValueOnce({ id: 1, items: [] });
       mockAnalysisRepo.findOne.mockResolvedValue({
         coats: [
@@ -135,6 +138,7 @@ describe("RequisitionService", () => {
   describe("pack size calculations", () => {
     function setupForPackSize(litres: number) {
       mockRequisitionRepo.findOne
+        .mockResolvedValueOnce(null)
         .mockResolvedValueOnce(null)
         .mockResolvedValueOnce({ id: 1, items: [] });
       mockAnalysisRepo.findOne.mockResolvedValue({
@@ -218,6 +222,7 @@ describe("RequisitionService", () => {
       });
       mockRequisitionRepo.findOne
         .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce(null)
         .mockResolvedValueOnce({ id: 1, items: [] });
 
       await service.createReorderRequisition(1, 1);
@@ -236,6 +241,7 @@ describe("RequisitionService", () => {
         minStockLevel: 20,
       });
       mockRequisitionRepo.findOne
+        .mockResolvedValueOnce(null)
         .mockResolvedValueOnce(null)
         .mockResolvedValueOnce({ id: 1, items: [] });
 

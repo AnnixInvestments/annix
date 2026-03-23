@@ -1,11 +1,17 @@
 import { Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
-import { JobCard } from "../../entities/job-card.entity";
 import { JobCardCoatingAnalysis } from "../../entities/coating-analysis.entity";
+import { JobCard } from "../../entities/job-card.entity";
 import { StockControlCompany } from "../../entities/stock-control-company.entity";
 import { QcBlastProfile } from "../entities/qc-blast-profile.entity";
-import { QcControlPlan, QcpPlanType, type QcpActivity, type PartySignOff, type QcpApprovalSignature } from "../entities/qc-control-plan.entity";
+import {
+  type PartySignOff,
+  QcControlPlan,
+  type QcpActivity,
+  type QcpApprovalSignature,
+  QcpPlanType,
+} from "../entities/qc-control-plan.entity";
 import { QcDefelskoBatch } from "../entities/qc-defelsko-batch.entity";
 import { QcDftReading } from "../entities/qc-dft-reading.entity";
 import { QcDustDebrisTest } from "../entities/qc-dust-debris-test.entity";
@@ -413,7 +419,11 @@ export class QcMeasurementService {
       { party: "Client", name: null, signatureUrl: null, date: null },
     ];
 
-    const buildActivity = (opNum: number, description: string, spec: string | null): QcpActivity => ({
+    const buildActivity = (
+      opNum: number,
+      description: string,
+      spec: string | null,
+    ): QcpActivity => ({
       operationNumber: opNum,
       description,
       specification: spec,
@@ -427,18 +437,32 @@ export class QcMeasurementService {
     const paintExternalActivities = (externalCoats: any[]): QcpActivity[] => {
       const activities: QcpActivity[] = [
         buildActivity(1, "Receive & inspect items", null),
-        buildActivity(2, "Surface preparation - Abrasive blasting to SA 2.5", coating?.surfacePrep || null),
+        buildActivity(
+          2,
+          "Surface preparation - Abrasive blasting to SA 2.5",
+          coating?.surfacePrep || null,
+        ),
         buildActivity(3, "Dust and debris assessment", null),
       ];
 
       let opNum = 4;
       externalCoats.forEach((coat: any, idx: number) => {
-        const dftSpec = coat.minDftUm && coat.maxDftUm
-          ? `${coat.minDftUm}-${coat.maxDftUm} µm`
-          : null;
-        const label = idx === 0 ? "primer" : idx === externalCoats.length - 1 ? "final/topcoat" : "intermediate";
+        const dftSpec =
+          coat.minDftUm && coat.maxDftUm ? `${coat.minDftUm}-${coat.maxDftUm} µm` : null;
+        const label =
+          idx === 0
+            ? "primer"
+            : idx === externalCoats.length - 1
+              ? "final/topcoat"
+              : "intermediate";
         activities.push(buildActivity(opNum++, `Apply ${label} - ${coat.product || "TBC"}`, null));
-        activities.push(buildActivity(opNum++, `${label === "primer" ? "Primer" : label === "final/topcoat" ? "Final" : "Intermediate"} DFT measurement`, dftSpec));
+        activities.push(
+          buildActivity(
+            opNum++,
+            `${label === "primer" ? "Primer" : label === "final/topcoat" ? "Final" : "Intermediate"} DFT measurement`,
+            dftSpec,
+          ),
+        );
       });
 
       if (externalCoats.length === 0) {
@@ -456,18 +480,23 @@ export class QcMeasurementService {
     const paintInternalActivities = (internalCoats: any[]): QcpActivity[] => {
       const activities: QcpActivity[] = [
         buildActivity(1, "Receive & inspect items", null),
-        buildActivity(2, "Surface preparation - Abrasive blasting to SA 2.5", coating?.surfacePrep || null),
+        buildActivity(
+          2,
+          "Surface preparation - Abrasive blasting to SA 2.5",
+          coating?.surfacePrep || null,
+        ),
         buildActivity(3, "Dust and debris assessment", null),
       ];
 
       let opNum = 4;
       internalCoats.forEach((coat: any, idx: number) => {
-        const dftSpec = coat.minDftUm && coat.maxDftUm
-          ? `${coat.minDftUm}-${coat.maxDftUm} µm`
-          : null;
+        const dftSpec =
+          coat.minDftUm && coat.maxDftUm ? `${coat.minDftUm}-${coat.maxDftUm} µm` : null;
         const label = idx === 0 ? "internal primer" : "internal lining";
         activities.push(buildActivity(opNum++, `Apply ${label} - ${coat.product || "TBC"}`, null));
-        activities.push(buildActivity(opNum++, `${idx === 0 ? "Primer" : "Final"} DFT measurement`, dftSpec));
+        activities.push(
+          buildActivity(opNum++, `${idx === 0 ? "Primer" : "Final"} DFT measurement`, dftSpec),
+        );
       });
 
       if (internalCoats.length === 0) {
@@ -509,7 +538,9 @@ export class QcMeasurementService {
       return paintExternalActivities([]);
     };
 
-    const companyPrefix = company?.name ? company.name.split(" ")[0].toUpperCase().slice(0, 3) : "QCP";
+    const companyPrefix = company?.name
+      ? company.name.split(" ")[0].toUpperCase().slice(0, 3)
+      : "QCP";
 
     const created = await Promise.all(
       toCreate.map((planType) => {
@@ -761,7 +792,8 @@ export class QcMeasurementService {
       shoreHardness: shoreHardnessRecord?.averages?.overall ?? null,
       sparkTest: null,
       sparkTestVoltagePerMm: null,
-      inspectorName: shoreHardnessRecord?.capturedByName || dustDebrisRecord?.capturedByName || null,
+      inspectorName:
+        shoreHardnessRecord?.capturedByName || dustDebrisRecord?.capturedByName || null,
     };
 
     const releaseCertificate = await this.releaseCertRepo.save(
