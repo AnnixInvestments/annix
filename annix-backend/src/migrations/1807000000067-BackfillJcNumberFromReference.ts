@@ -6,14 +6,14 @@ export class BackfillJcNumberFromReference1807000000067 implements MigrationInte
       UPDATE job_cards
       SET jc_number = UPPER(
         COALESCE(
-          (regexp_match(source_file_name, '^(JC\d+)', 'i'))[1],
-          (regexp_match(reference, '^(JC\d+)', 'i'))[1]
+          (regexp_match(source_file_name, '^(JC\\d+)', 'i'))[1],
+          (regexp_match(reference, '^(JC\\d+)', 'i'))[1]
         )
       )
       WHERE (jc_number IS NULL OR jc_number = jt_dn_number)
         AND (
-          source_file_name ~* '^JC\d+'
-          OR reference ~* '^JC\d+'
+          source_file_name ~* '^JC\\d+'
+          OR reference ~* '^JC\\d+'
         )
     `);
   }
@@ -22,7 +22,7 @@ export class BackfillJcNumberFromReference1807000000067 implements MigrationInte
     await queryRunner.query(`
       UPDATE job_cards
       SET jc_number = NULL
-      WHERE jc_number ~* '^JC\d+'
+      WHERE jc_number ~* '^JC\\d+'
     `);
   }
 }

@@ -15,6 +15,69 @@ export class ItemIdentificationService {
     private readonly aiChatService: AiChatService,
   ) {}
 
+  async identifyForIssuance(
+    companyId: number,
+    imageBase64: string,
+    mediaType: "image/jpeg" | "image/png" | "image/gif" | "image/webp",
+  ): Promise<{
+    productName: string | null;
+    batchNumber: string | null;
+    confidence: number;
+    analysis: string;
+    matchingStockItems: IdentifyItemResponse["matchingStockItems"];
+  }> {
+    const systemPrompt = `You are an expert at reading product labels and packaging in industrial/commercial settings.
+Your job is to extract the product name and batch/lot number from photos of items being issued from a store.
+
+Respond in JSON format:
+{
+  "productName": "the product name as shown on the label",
+  "batchNumber": "the batch number, lot number, or serial number visible on the label",
+  "confidence": 0.0-1.0,
+  "analysis": "brief description of what you see"
+}
+
+Rules:
+- Look for batch numbers, lot numbers, serial numbers, manufacture dates that serve as batch identifiers
+- The product name should match what is printed on the label/packaging
+- If you cannot find a batch number, set it to null
+- If you cannot identify the product, set productName to null
+- Be precise with numbers and characters — do not guess`;
+
+    try {
+      const { content: response } = await this.aiChatService.chatWithImage(
+        imageBase64,
+        mediaType,
+        "Please identify the product name and batch/lot number from this photo of a stock item.",
+        systemPrompt,
+      );
+
+      const jsonMatch = response.match(/\{[\s\S]*\}/);
+      const parsed: Record<string, unknown> = jsonMatch ? JSON.parse(jsonMatch[0]) : {};
+      const productName = (parsed.productName as string) || null;
+      const batchNumber = (parsed.batchNumber as string) || null;
+      const confidence = (parsed.confidence as number) || 0;
+      const analysis = (parsed.analysis as string) || "";
+
+      const matchingStockItems = productName
+        ? await this.findMatchingStockItems(companyId, [
+            {
+              name: productName,
+              category: "",
+              description: "",
+              confidence,
+              suggestedSku: "",
+            },
+          ])
+        : [];
+
+      return { productName, batchNumber, confidence, analysis, matchingStockItems };
+    } catch (error) {
+      this.logger.error(`Issuance photo identification failed: ${error.message}`);
+      throw error;
+    }
+  }
+
   async identifyFromPhoto(
     companyId: number,
     imageBase64: string,

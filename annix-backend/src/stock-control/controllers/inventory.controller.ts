@@ -135,6 +135,21 @@ export class InventoryController {
     return this.inventoryService.uploadPhoto(req.user.companyId, id, file);
   }
 
+  @Post("identify-issuance-photo")
+  @UseInterceptors(FileInterceptor("file"))
+  @ApiOperation({
+    summary: "Identify product name and batch number from a photo for stock issuance",
+  })
+  async identifyForIssuance(@Req() req: any, @UploadedFile() file: Express.Multer.File) {
+    const base64 = file.buffer.toString("base64");
+    const mediaType = file.mimetype as "image/jpeg" | "image/png" | "image/gif" | "image/webp";
+    return this.itemIdentificationService.identifyForIssuance(
+      req.user.companyId,
+      base64,
+      mediaType,
+    );
+  }
+
   @Post("identify-photo")
   @UseInterceptors(FileInterceptor("file"))
   @ApiOperation({ summary: "Identify items from a photo using AI" })

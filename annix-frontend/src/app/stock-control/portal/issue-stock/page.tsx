@@ -180,6 +180,24 @@ export default function IssueStockPage() {
   const [jobCardSearch, setJobCardSearch] = useState("");
   const [isLoadingJobCards, setIsLoadingJobCards] = useState(false);
   const [jobCardAllocations, setJobCardAllocations] = useState<StockAllocation[]>([]);
+  const [showPhotoCapture, setShowPhotoCapture] = useState(false);
+  const [isAnalyzingPhoto, setIsAnalyzingPhoto] = useState(false);
+  const [photoResult, setPhotoResult] = useState<{
+    productName: string | null;
+    batchNumber: string | null;
+    confidence: number;
+    analysis: string;
+    matchingStockItems: {
+      id: number;
+      sku: string;
+      name: string;
+      category: string | null;
+      similarity: number;
+    }[];
+  } | null>(null);
+  const [editedProductName, setEditedProductName] = useState("");
+  const [editedBatchNumber, setEditedBatchNumber] = useState("");
+  const photoInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     setQuickIssueMode(localStorage.getItem(QUICK_ISSUE_KEY) === "true");
@@ -245,7 +263,11 @@ export default function IssueStockPage() {
   }, [jobCard?.id]);
 
   useEffect(() => {
-    if ((showJobCardDropdown || currentStep === "job_card") && jobCardList.length === 0 && !isLoadingJobCards) {
+    if (
+      (showJobCardDropdown || currentStep === "job_card") &&
+      jobCardList.length === 0 &&
+      !isLoadingJobCards
+    ) {
       setIsLoadingJobCards(true);
       stockControlApiClient
         .jobCards("active")
@@ -332,6 +354,64 @@ export default function IssueStockPage() {
     setItems([...items, { stockItem, quantity: 1, batchNumber: "" }]);
     triggerHaptic();
     playSuccessSound();
+  };
+
+  const handlePhotoCapture = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      setIsAnalyzingPhoto(true);
+      setShowPhotoCapture(true);
+      setPhotoResult(null);
+      setError(null);
+
+      const result = await stockControlApiClient.identifyForIssuance(file);
+      setPhotoResult(result);
+      setEditedProductName(result.productName || "");
+      setEditedBatchNumber(result.batchNumber || "");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to analyze photo");
+      setShowPhotoCapture(false);
+    } finally {
+      setIsAnalyzingPhoto(false);
+      if (photoInputRef.current) {
+        photoInputRef.current.value = "";
+      }
+    }
+  };
+
+  const handleAcceptPhotoResult = async () => {
+    if (!photoResult) return;
+
+    const matchedItem = photoResult.matchingStockItems[0];
+    if (matchedItem) {
+      try {
+        const stockItem = await stockControlApiClient.stockItemById(matchedItem.id);
+        const alreadyAdded = items.some((i) => i.stockItem.id === stockItem.id);
+        if (alreadyAdded) {
+          const existingIndex = items.findIndex((i) => i.stockItem.id === stockItem.id);
+          if (editedBatchNumber && existingIndex >= 0) {
+            handleUpdateBatchNumber(existingIndex, editedBatchNumber);
+          }
+          setError(`${stockItem.name} already in list — batch number updated`);
+        } else if (stockItem.quantity <= 0) {
+          setError(`${stockItem.name} has no available stock`);
+        } else {
+          setItems([...items, { stockItem, quantity: 1, batchNumber: editedBatchNumber }]);
+          triggerHaptic();
+          playSuccessSound();
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to load stock item");
+      }
+    } else {
+      setError(
+        `No matching stock item found for "${editedProductName}". Try scanning QR or browsing manually.`,
+      );
+    }
+    setShowPhotoCapture(false);
+    setPhotoResult(null);
   };
 
   const currentStepIndex = STEPS.findIndex((s) => s.key === currentStep);
@@ -1341,19 +1421,13 @@ export default function IssueStockPage() {
                     </p>
                     <div className="space-y-1">
                       {jobCardAllocations.map((alloc) => (
-                        <div
-                          key={alloc.id}
-                          className="flex items-center justify-between text-xs"
-                        >
+                        <div key={alloc.id} className="flex items-center justify-between text-xs">
                           <span className="text-blue-800">
                             {alloc.stockItem?.name || "Unknown Item"}{" "}
-                            <span className="text-blue-500">
-                              ({alloc.stockItem?.sku || "-"})
-                            </span>
+                            <span className="text-blue-500">({alloc.stockItem?.sku || "-"})</span>
                           </span>
                           <span className="font-medium text-blue-900">
-                            Allocated: {alloc.quantityUsed}{" "}
-                            {alloc.stockItem?.unitOfMeasure || ""}
+                            Allocated: {alloc.quantityUsed} {alloc.stockItem?.unitOfMeasure || ""}
                           </span>
                         </div>
                       ))}
@@ -1386,34 +1460,33 @@ export default function IssueStockPage() {
                   </div>
                 )}
 
-                {jobCard && jobCard.lineItems && jobCard.lineItems.length > 0 && jobCardAllocations.length === 0 && (
-                  <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-3">
-                    <p className="text-sm font-semibold text-amber-900 mb-2">
-                      Suggested items from {jobCard.jobNumber}
-                    </p>
-                    <p className="text-xs text-amber-700 mb-2">
-                      No stock allocations found. These line items are on the job card:
-                    </p>
-                    <div className="space-y-1">
-                      {jobCard.lineItems.map((li) => (
-                        <div
-                          key={li.id}
-                          className="flex items-center justify-between text-xs"
-                        >
-                          <span className="text-amber-800">
-                            {li.itemDescription || "Unknown"}{" "}
-                            {li.itemCode && (
-                              <span className="text-amber-500">({li.itemCode})</span>
-                            )}
-                          </span>
-                          <span className="font-medium text-amber-900">
-                            Qty: {li.quantity || "-"}
-                          </span>
-                        </div>
-                      ))}
+                {jobCard?.lineItems &&
+                  jobCard.lineItems.length > 0 &&
+                  jobCardAllocations.length === 0 && (
+                    <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-3">
+                      <p className="text-sm font-semibold text-amber-900 mb-2">
+                        Suggested items from {jobCard.jobNumber}
+                      </p>
+                      <p className="text-xs text-amber-700 mb-2">
+                        No stock allocations found. These line items are on the job card:
+                      </p>
+                      <div className="space-y-1">
+                        {jobCard.lineItems.map((li) => (
+                          <div key={li.id} className="flex items-center justify-between text-xs">
+                            <span className="text-amber-800">
+                              {li.itemDescription || "Unknown"}{" "}
+                              {li.itemCode && (
+                                <span className="text-amber-500">({li.itemCode})</span>
+                              )}
+                            </span>
+                            <span className="font-medium text-amber-900">
+                              Qty: {li.quantity || "-"}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                )}
+                  )}
 
                 {items.length > 0 && (
                   <div className="mb-4 space-y-3">
@@ -1555,6 +1628,44 @@ export default function IssueStockPage() {
                     </svg>
                   </button>
                   <button
+                    onClick={() => photoInputRef.current?.click()}
+                    disabled={isAnalyzingPhoto}
+                    className="px-4 py-3 text-sm font-medium text-white bg-amber-600 border border-transparent rounded-md hover:bg-amber-700 disabled:opacity-50"
+                    title="Photo identify item"
+                  >
+                    {isAnalyzingPhoto ? (
+                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white" />
+                    ) : (
+                      <svg
+                        className="w-6 h-6"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                        />
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                        />
+                      </svg>
+                    )}
+                  </button>
+                  <input
+                    ref={photoInputRef}
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    onChange={handlePhotoCapture}
+                    className="hidden"
+                  />
+                  <button
                     onClick={handleScan}
                     disabled={isScanning || !scanInput.trim()}
                     className="px-6 py-3 text-sm font-medium text-white bg-teal-600 border border-transparent rounded-md hover:bg-teal-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
@@ -1566,6 +1677,104 @@ export default function IssueStockPage() {
                     )}
                   </button>
                 </div>
+
+                {showPhotoCapture && photoResult && (
+                  <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <h4 className="text-sm font-semibold text-amber-900 flex items-center gap-2">
+                        <svg
+                          className="w-5 h-5"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"
+                          />
+                        </svg>
+                        Nix Analysis
+                        <span className="text-xs font-normal text-amber-600">
+                          ({Math.round(photoResult.confidence * 100)}% confident)
+                        </span>
+                      </h4>
+                      <button
+                        onClick={() => {
+                          setShowPhotoCapture(false);
+                          setPhotoResult(null);
+                        }}
+                        className="text-amber-600 hover:text-amber-800"
+                      >
+                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                          <path
+                            fillRule="evenodd"
+                            d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                            clipRule="evenodd"
+                          />
+                        </svg>
+                      </button>
+                    </div>
+
+                    <p className="text-xs text-amber-700 mb-3">{photoResult.analysis}</p>
+
+                    <div className="space-y-2">
+                      <div>
+                        <label className="block text-xs font-medium text-amber-800 mb-1">
+                          Product Name
+                        </label>
+                        <input
+                          type="text"
+                          value={editedProductName}
+                          onChange={(e) => setEditedProductName(e.target.value)}
+                          className="w-full rounded-md border-amber-300 shadow-sm focus:border-amber-500 focus:ring-amber-500 text-sm py-1.5"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-amber-800 mb-1">
+                          Batch / Lot Number
+                        </label>
+                        <input
+                          type="text"
+                          value={editedBatchNumber}
+                          onChange={(e) => setEditedBatchNumber(e.target.value)}
+                          className="w-full rounded-md border-amber-300 shadow-sm focus:border-amber-500 focus:ring-amber-500 text-sm py-1.5"
+                        />
+                      </div>
+                    </div>
+
+                    {photoResult.matchingStockItems.length > 0 && (
+                      <div className="mt-3">
+                        <p className="text-xs font-medium text-amber-800 mb-1">
+                          Matched stock item: {photoResult.matchingStockItems[0].name}
+                          <span className="text-amber-600 ml-1">
+                            (SKU: {photoResult.matchingStockItems[0].sku})
+                          </span>
+                        </p>
+                      </div>
+                    )}
+
+                    <div className="mt-3 flex justify-end gap-2">
+                      <button
+                        onClick={() => {
+                          setShowPhotoCapture(false);
+                          setPhotoResult(null);
+                        }}
+                        className="px-3 py-1.5 text-sm font-medium text-amber-700 bg-white border border-amber-300 rounded-md hover:bg-amber-50"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={handleAcceptPhotoResult}
+                        disabled={photoResult.matchingStockItems.length === 0}
+                        className="px-4 py-1.5 text-sm font-medium text-white bg-amber-600 rounded-md hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        Accept & Add Item
+                      </button>
+                    </div>
+                  </div>
+                )}
 
                 <div className="flex items-center gap-3 my-4">
                   <div className="flex-1 h-px bg-gray-200" />

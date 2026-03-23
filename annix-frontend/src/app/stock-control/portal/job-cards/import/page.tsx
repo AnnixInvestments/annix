@@ -1039,8 +1039,8 @@ export default function JobCardImportPage() {
         documentNumber && /^JC\d+$/i.test(documentNumber) ? documentNumber.toUpperCase() : null;
       const rowsWithM2 = mappedRows.map((row, rowIdx) => ({
         ...row,
-        jcNumber: row.jcNumber || jcFromFilename || null,
-        reference: row.reference || documentNumber || null,
+        jcNumber: row.jcNumber || jcFromFilename || undefined,
+        reference: row.reference || documentNumber || undefined,
         lineItems: row.lineItems?.map((li, liIdx) => {
           const manualKey = `${rowIdx}-${liIdx}`;
           const manualVal = manualM2[manualKey];

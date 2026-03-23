@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import type { StockAllocation } from "@/app/lib/api/stockControlApi";
+import { useCallback, useEffect, useState } from "react";
+import type { IssuanceBatchRecord, StockAllocation } from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { formatDateZA } from "@/app/lib/datetime";
 
@@ -15,6 +15,26 @@ export function StockIssuesTab(props: StockIssuesTabProps) {
   const { jobId, allocations, onRefresh } = props;
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [batchRecords, setBatchRecords] = useState<IssuanceBatchRecord[]>([]);
+
+  const fetchBatchRecords = useCallback(async () => {
+    try {
+      const records = await stockControlApiClient.batchRecordsForJobCard(jobId);
+      setBatchRecords(Array.isArray(records) ? records : []);
+    } catch {
+      setBatchRecords([]);
+    }
+  }, [jobId]);
+
+  useEffect(() => {
+    fetchBatchRecords();
+  }, [fetchBatchRecords]);
+
+  const batchForStockItem = (stockItem: StockAllocation["stockItem"]): string | null => {
+    if (!stockItem) return null;
+    const record = batchRecords.find((r) => r.stockItemId === stockItem.id);
+    return record?.batchNumber || null;
+  };
 
   const activeAllocations = allocations.filter((a) => !a.undone);
   const undoneAllocations = allocations.filter((a) => a.undone);
@@ -25,6 +45,7 @@ export function StockIssuesTab(props: StockIssuesTabProps) {
       setError(null);
       await stockControlApiClient.undoAllocation(jobId, allocationId);
       onRefresh();
+      fetchBatchRecords();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to delete allocation");
     } finally {
@@ -84,6 +105,9 @@ export function StockIssuesTab(props: StockIssuesTabProps) {
                   Qty Issued
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Batch #
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Issued To
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -111,6 +135,9 @@ export function StockIssuesTab(props: StockIssuesTabProps) {
                   </td>
                   <td className="px-4 py-3 text-sm text-right font-semibold text-gray-900 whitespace-nowrap">
                     {alloc.quantityUsed}
+                  </td>
+                  <td className="px-4 py-3 text-sm text-gray-600 whitespace-nowrap font-mono">
+                    {batchForStockItem(alloc.stockItem) || <span className="text-gray-300">-</span>}
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-600 whitespace-nowrap">
                     {alloc.staffMember ? alloc.staffMember.name : "-"}

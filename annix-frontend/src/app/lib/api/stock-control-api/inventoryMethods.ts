@@ -36,6 +36,19 @@ declare module "./base" {
       }[];
       rawAnalysis: string;
     }>;
+    identifyForIssuance(file: File): Promise<{
+      productName: string | null;
+      batchNumber: string | null;
+      confidence: number;
+      analysis: string;
+      matchingStockItems: {
+        id: number;
+        sku: string;
+        name: string;
+        category: string | null;
+        similarity: number;
+      }[];
+    }>;
     lowStockAlerts(): Promise<StockItem[]>;
     categories(): Promise<string[]>;
     stockItemsGrouped(
@@ -111,6 +124,10 @@ proto.identifyFromPhoto = async function (file, context) {
     file,
     context ? { context } : undefined,
   );
+};
+
+proto.identifyForIssuance = async function (file) {
+  return this.uploadFile("/stock-control/inventory/identify-issuance-photo", file);
 };
 
 proto.lowStockAlerts = async function () {
