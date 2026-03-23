@@ -15,7 +15,13 @@ import {
   ReleaseLineItem,
 } from "../entities/qc-items-release.entity";
 import { QcPullTest } from "../entities/qc-pull-test.entity";
-import { QcReleaseCertificate } from "../entities/qc-release-certificate.entity";
+import {
+  type BlastingCheck,
+  type FinalInspection,
+  type PaintingCheck,
+  QcCheckResult,
+  QcReleaseCertificate,
+} from "../entities/qc-release-certificate.entity";
 import { QcShoreHardness } from "../entities/qc-shore-hardness.entity";
 import { type IWorkItemProvider, WORK_ITEM_PROVIDER } from "../work-item-provider.interface";
 
@@ -673,6 +679,106 @@ export class QcMeasurementService {
     });
 
     return this.itemsReleaseRepo.save(record);
+  }
+
+  async autoGenerateReleaseDocuments(
+    companyId: number,
+    jobCardId: number,
+    selectedItemIndices: number[],
+    user: UserContext,
+  ): Promise<{ itemsRelease: QcItemsRelease; releaseCertificate: QcReleaseCertificate }> {
+    const lineItems = await this.workItemProvider.lineItemsForWorkItem(companyId, jobCardId);
+
+    if (lineItems.length === 0) {
+      throw new NotFoundException(`Work item #${jobCardId} not found or has no line items`);
+    }
+
+    const selectedItems: ReleaseLineItem[] = lineItems
+      .filter((_li, idx) => selectedItemIndices.includes(idx))
+      .map((li) => ({
+        itemCode: li.itemCode,
+        description: li.description,
+        jtNumber: li.jtNumber,
+        rubberSpec: null,
+        paintingSpec: null,
+        quantity: li.quantity,
+        result: ItemReleaseResult.PASS,
+      }));
+
+    if (selectedItems.length === 0) {
+      throw new NotFoundException("No line items matched the selected indices");
+    }
+
+    const totalQuantity = selectedItems.reduce((sum, item) => sum + item.quantity, 0);
+
+    const itemsRelease = await this.itemsReleaseRepo.save(
+      this.itemsReleaseRepo.create({
+        companyId,
+        jobCardId,
+        items: selectedItems,
+        totalQuantity,
+        createdByName: user.name,
+        createdById: user.id,
+        plsSignOff: { name: null, date: null, signatureUrl: null },
+        mpsSignOff: { name: null, date: null, signatureUrl: null },
+        clientSignOff: { name: null, date: null, signatureUrl: null },
+      }),
+    );
+
+    const qcData = await this.allMeasurementsForJobCard(companyId, jobCardId);
+
+    const blastProfile = qcData.blastProfiles[0] || null;
+    const blastingCheck: BlastingCheck | null = blastProfile
+      ? {
+          blastProfileBatchNo: blastProfile.abrasiveBatchNumber,
+          contaminationFree: QcCheckResult.PASS,
+          sa25Grade: QcCheckResult.PASS,
+          inspectorName: blastProfile.capturedByName,
+        }
+      : null;
+
+    const paintingChecks: PaintingCheck[] = qcData.dftReadings.map((dft) => {
+      const inSpec =
+        dft.averageMicrons !== null &&
+        dft.averageMicrons >= dft.specMinMicrons &&
+        dft.averageMicrons <= dft.specMaxMicrons;
+      return {
+        coat: dft.coatType as "primer" | "intermediate" | "final",
+        batchNumber: dft.batchNumber,
+        dftMicrons: dft.averageMicrons,
+        result: inSpec ? QcCheckResult.PASS : QcCheckResult.FAIL,
+        inspectorName: dft.capturedByName,
+      };
+    });
+
+    const shoreHardnessRecord = qcData.shoreHardness[0] || null;
+    const dustDebrisRecord = qcData.dustDebrisTests[0] || null;
+
+    const finalInspection: FinalInspection = {
+      linedAsPerDrawing: null,
+      visualInspection: dustDebrisRecord ? QcCheckResult.PASS : null,
+      testPlate: null,
+      shoreHardness: shoreHardnessRecord?.averages?.overall ?? null,
+      sparkTest: null,
+      sparkTestVoltagePerMm: null,
+      inspectorName: shoreHardnessRecord?.capturedByName || dustDebrisRecord?.capturedByName || null,
+    };
+
+    const releaseCertificate = await this.releaseCertRepo.save(
+      this.releaseCertRepo.create({
+        companyId,
+        jobCardId,
+        blastingCheck,
+        paintingChecks,
+        finalInspection,
+        solutionsUsed: [],
+        cureCycles: [],
+        capturedByName: user.name,
+        capturedById: user.id,
+      }),
+    );
+
+    return { itemsRelease, releaseCertificate };
   }
 
   // ── Aggregate ──────────────────────────────────────────────────────

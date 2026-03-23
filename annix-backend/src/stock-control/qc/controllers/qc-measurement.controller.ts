@@ -378,6 +378,23 @@ export class QcMeasurementController {
     return this.qcService.autoPopulateItemsRelease(req.user.companyId, jobCardId, req.user);
   }
 
+  @Post("release-documents/auto-generate")
+  @StockControlRoles("manager", "admin")
+  @PermissionKey("qc.measurements")
+  @ApiOperation({ summary: "Auto-generate items release + release certificate from QC data" })
+  async autoGenerateReleaseDocuments(
+    @Req() req: any,
+    @Param("jobCardId") jobCardId: number,
+    @Body() body: { selectedItemIndices: number[] },
+  ) {
+    return this.qcService.autoGenerateReleaseDocuments(
+      req.user.companyId,
+      jobCardId,
+      body.selectedItemIndices,
+      req.user,
+    );
+  }
+
   @Patch("items-releases/:id")
   @StockControlRoles("manager", "admin")
   @PermissionKey("qc.measurements")

@@ -917,6 +917,11 @@ export interface QcItemsReleaseRecord {
   updatedAt: string;
 }
 
+export interface QcReleaseDocumentsResult {
+  itemsRelease: QcItemsReleaseRecord;
+  releaseCertificate: QcReleaseCertificateRecord;
+}
+
 export interface CalibrationCertificate {
   id: number;
   companyId: number;
@@ -2110,4 +2115,100 @@ export interface InspectionBooking {
   updatedAt: string;
   jobNumber?: string;
   jobName?: string;
+}
+
+export type ReconciliationDocCategory =
+  | "jt_dn"
+  | "sales_order"
+  | "cpo"
+  | "drawing"
+  | "polymer_dn"
+  | "mps_dn";
+
+export type ExtractionStatus = "pending" | "processing" | "completed" | "failed";
+
+export type ReconciliationStatusType = "pending" | "partial" | "complete" | "discrepancy";
+
+export type ReconciliationEventType = "qa_release" | "polymer_dn" | "mps_dn" | "manual_adjustment";
+
+export interface ExtractedLineItem {
+  itemDescription: string;
+  itemCode: string | null;
+  quantity: number;
+  referenceNumber: string | null;
+}
+
+export interface ReconciliationDocumentRecord {
+  id: number;
+  companyId: number;
+  jobCardId: number;
+  documentCategory: ReconciliationDocCategory;
+  filePath: string;
+  originalFilename: string;
+  mimeType: string | null;
+  fileSizeBytes: number | null;
+  uploadedById: number | null;
+  uploadedByName: string | null;
+  extractionStatus: ExtractionStatus;
+  extractedItems: ExtractedLineItem[] | null;
+  extractionError: string | null;
+  extractedAt: string | null;
+  createdAt: string;
+}
+
+export interface ReconciliationEventRecord {
+  id: number;
+  reconciliationItemId: number;
+  companyId: number;
+  eventType: ReconciliationEventType;
+  quantity: number;
+  referenceNumber: string | null;
+  performedByName: string;
+  performedById: number | null;
+  notes: string | null;
+  createdAt: string;
+}
+
+export interface ReconciliationItemRecord {
+  id: number;
+  companyId: number;
+  jobCardId: number;
+  itemDescription: string;
+  itemCode: string | null;
+  sourceDocumentId: number | null;
+  sourceType: "cpo" | "jt_dn" | "manual";
+  quantityOrdered: number;
+  quantityReleased: number;
+  quantityShipped: number;
+  quantityMps: number;
+  reconciliationStatus: ReconciliationStatusType;
+  notes: string | null;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+  events: ReconciliationEventRecord[];
+}
+
+export interface ReconciliationGateStatus {
+  satisfied: boolean;
+  documents: Array<{
+    category: ReconciliationDocCategory;
+    required: boolean;
+    uploaded: boolean;
+    documentId: number | null;
+    filename: string | null;
+    extractionStatus: ExtractionStatus | null;
+  }>;
+}
+
+export interface ReconciliationSummary {
+  totalItems: number;
+  totalOrdered: number;
+  totalReleased: number;
+  totalShipped: number;
+  totalMps: number;
+  pending: number;
+  partial: number;
+  complete: number;
+  discrepancy: number;
 }

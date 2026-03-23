@@ -9,6 +9,7 @@ import type {
   QcMeasurementsAggregate,
   QcPullTestRecord,
   QcReleaseCertificateRecord,
+  QcReleaseDocumentsResult,
   QcShoreHardnessRecord,
 } from "./types";
 
@@ -89,6 +90,10 @@ declare module "./base" {
     deleteControlPlan(jobCardId: number, id: number): Promise<void>;
     itemsReleasesForJobCard(jobCardId: number): Promise<QcItemsReleaseRecord[]>;
     autoPopulateItemsRelease(jobCardId: number): Promise<QcItemsReleaseRecord>;
+    autoGenerateReleaseDocuments(
+      jobCardId: number,
+      selectedItemIndices: number[],
+    ): Promise<QcReleaseDocumentsResult>;
     createItemsRelease(
       jobCardId: number,
       data: Partial<QcItemsReleaseRecord>,
@@ -304,6 +309,14 @@ proto.itemsReleasesForJobCard = async function (jobCardId) {
 proto.autoPopulateItemsRelease = async function (jobCardId) {
   return this.request(`/stock-control/job-cards/${jobCardId}/qc/items-releases/auto-populate`, {
     method: "POST",
+  });
+};
+
+proto.autoGenerateReleaseDocuments = async function (jobCardId, selectedItemIndices) {
+  return this.request(`/stock-control/job-cards/${jobCardId}/qc/release-documents/auto-generate`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ selectedItemIndices }),
   });
 };
 

@@ -29,6 +29,7 @@ import { QaFinalPhotosSection } from "./QaFinalPhotosSection";
 import { QaReviewSection } from "./QaReviewSection";
 import { QcpSection } from "./QcpSection";
 import { QcReleaseCertificateSection } from "./QcReleaseCertificateSection";
+import { ReleaseDocumentGenerator } from "./ReleaseDocumentGenerator";
 import { ShoreHardnessForm } from "./ShoreHardnessForm";
 
 type QcFormType = "shore-hardness" | "dft" | "blast-profile" | "dust-debris" | "pull-test" | null;
@@ -505,6 +506,12 @@ export function QualityTab(props: QualityTabProps) {
               </div>
             )}
           </div>
+
+          <ReleaseDocumentGenerator
+            jobCardId={jobCardId}
+            backgroundSteps={backgroundSteps}
+            onGenerated={fetchQualityData}
+          />
 
           <QcReleaseCertificateSection jobCardId={jobCardId} />
 
