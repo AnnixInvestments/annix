@@ -14,10 +14,7 @@ interface ReleaseDocumentGeneratorProps {
   onGenerated: () => void;
 }
 
-const releasedQuantityForItem = (
-  releases: QcItemsReleaseRecord[],
-  itemCode: string,
-): number => {
+const releasedQuantityForItem = (releases: QcItemsReleaseRecord[], itemCode: string): number => {
   return releases.reduce((total, release) => {
     const matchingItems = release.items.filter((ri) => ri.itemCode === itemCode);
     return total + matchingItems.reduce((sum, ri) => sum + (ri.quantity || 0), 0);
@@ -79,10 +76,13 @@ export function ReleaseDocumentGenerator(props: ReleaseDocumentGeneratorProps) {
   }, [isVisible, fetchData]);
 
   useEffect(() => {
-    const initialQuantities = lineItems.reduce((acc, li, idx) => {
-      const info = remainingByIndex[idx];
-      return { ...acc, [idx]: info ? info.remaining : (li.quantity || 0) };
-    }, {} as Record<number, number>);
+    const initialQuantities = lineItems.reduce(
+      (acc, li, idx) => {
+        const info = remainingByIndex[idx];
+        return { ...acc, [idx]: info ? info.remaining : li.quantity || 0 };
+      },
+      {} as Record<number, number>,
+    );
     setReleaseQuantities(initialQuantities);
     setSelectedIndices(new Set());
   }, [lineItems, remainingByIndex]);
@@ -91,10 +91,12 @@ export function ReleaseDocumentGenerator(props: ReleaseDocumentGeneratorProps) {
     return null;
   }
 
-  const allFullyReleased = lineItems.length > 0 && lineItems.every((_li, idx) => {
-    const info = remainingByIndex[idx];
-    return info ? info.remaining <= 0 : false;
-  });
+  const allFullyReleased =
+    lineItems.length > 0 &&
+    lineItems.every((_li, idx) => {
+      const info = remainingByIndex[idx];
+      return info ? info.remaining <= 0 : false;
+    });
 
   const handleToggle = (idx: number) => {
     const info = remainingByIndex[idx];
@@ -334,8 +336,7 @@ export function ReleaseDocumentGenerator(props: ReleaseDocumentGeneratorProps) {
                 {lineItems.filter((_li, idx) => (remainingByIndex[idx]?.remaining || 0) > 0).length}{" "}
                 available items selected
                 {Array.from(selectedIndices).some(
-                  (idx) =>
-                    (releaseQuantities[idx] || 0) < (remainingByIndex[idx]?.remaining || 0),
+                  (idx) => (releaseQuantities[idx] || 0) < (remainingByIndex[idx]?.remaining || 0),
                 ) && (
                   <span className="ml-2 text-xs text-amber-600 font-medium">(partial release)</span>
                 )}

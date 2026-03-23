@@ -16,7 +16,7 @@ export class AddJobCardSupersededBy1807000000068 implements MigrationInterface {
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`DROP INDEX IF EXISTS idx_job_cards_superseded_by`);
-    await queryRunner.query(`ALTER TABLE job_cards DROP COLUMN IF EXISTS superseded_by_id`);
+    await queryRunner.query("DROP INDEX IF EXISTS idx_job_cards_superseded_by");
+    await queryRunner.query("ALTER TABLE job_cards DROP COLUMN IF EXISTS superseded_by_id");
   }
 }

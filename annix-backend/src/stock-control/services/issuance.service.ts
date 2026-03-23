@@ -861,9 +861,7 @@ export class IssuanceService {
 
     if (matchingCert && jobCardId && !matchingCert.jobCardId) {
       await this.certRepo.update(matchingCert.id, { jobCardId });
-      this.logger.log(
-        `Linked certificate ${matchingCert.id} to job card ${jobCardId}`,
-      );
+      this.logger.log(`Linked certificate ${matchingCert.id} to job card ${jobCardId}`);
     }
 
     if (matchingCert && !matchingCert.stockItemId) {

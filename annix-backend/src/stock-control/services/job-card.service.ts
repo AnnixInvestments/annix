@@ -7,13 +7,13 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { DataSource, IsNull, Not, Repository } from "typeorm";
+import { DataSource, IsNull, Repository } from "typeorm";
 import { AuditService } from "../../audit/audit.service";
 import { AuditAction } from "../../audit/entities/audit-log.entity";
 import { now } from "../../lib/datetime";
 import { IStorageService, STORAGE_SERVICE } from "../../storage/storage.interface";
 import { JobCardCoatingAnalysis } from "../entities/coating-analysis.entity";
-import { JobCard, JobCardStatus } from "../entities/job-card.entity";
+import { JobCard } from "../entities/job-card.entity";
 import { JobCardJobFile } from "../entities/job-card-job-file.entity";
 import { StockAllocation } from "../entities/stock-allocation.entity";
 import { StockItem } from "../entities/stock-item.entity";
@@ -567,9 +567,7 @@ export class JobCardService {
     return this.allocationRepo.save(allocation);
   }
 
-  async deduplicateJobCards(
-    companyId: number,
-  ): Promise<{ merged: number; groups: number }> {
+  async deduplicateJobCards(companyId: number): Promise<{ merged: number; groups: number }> {
     const allCards = await this.jobCardRepo.find({
       where: { companyId, supersededById: IsNull() },
       order: { createdAt: "DESC" },
@@ -630,9 +628,7 @@ export class JobCardService {
         await this.jobCardRepo.save(loser);
         mergedCount++;
 
-        this.logger.log(
-          `Job card #${loser.id} (${loser.jobNumber}) superseded by #${winner.id}`,
-        );
+        this.logger.log(`Job card #${loser.id} (${loser.jobNumber}) superseded by #${winner.id}`);
       }
     }
 
