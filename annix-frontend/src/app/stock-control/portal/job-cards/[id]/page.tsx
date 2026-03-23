@@ -124,6 +124,18 @@ export default function JobCardDetailPage() {
     }
   }, [jobId]);
 
+  const refreshWorkflowState = useCallback(() => {
+    if (document.hidden) return;
+    Promise.all([
+      stockControlApiClient.jobCardById(jobId).then((data) => setJobCard(data)),
+      stockControlApiClient.workflowStatus(jobId).then((data) => setWorkflowStatus(data)),
+      stockControlApiClient.approvalHistory(jobId).then((data) => setApprovals(data)),
+      stockControlApiClient.backgroundStepsForJobCard(jobId).then((data) => setBackgroundSteps(data)),
+    ]).catch((err) => {
+      console.error("Failed to refresh workflow state:", err);
+    });
+  }, [jobId]);
+
   const documents = useJobCardDocuments(jobId, fetchData, confirm);
   const coating = useJobCardCoating(jobId);
   const jobFilesHook = useJobCardJobFiles(jobId, confirm);
@@ -134,6 +146,11 @@ export default function JobCardDetailPage() {
     coating.loadCoatingAnalysis();
     jobFilesHook.loadJobFiles();
   }, [fetchData, documents.loadDocuments, coating.loadCoatingAnalysis, jobFilesHook.loadJobFiles]);
+
+  useEffect(() => {
+    const interval = setInterval(refreshWorkflowState, 15000);
+    return () => clearInterval(interval);
+  }, [refreshWorkflowState]);
 
   const fetchStockItems = async () => {
     try {
@@ -657,7 +674,7 @@ export default function JobCardDetailPage() {
     [],
   );
 
-  const isDataBookStep = useCallback((bg: BackgroundStepStatus) => bg.stepKey === "data_book", []);
+  const isDataBookStep = useCallback((bg: BackgroundStepStatus) => bg.stepKey === "compile_data_book", []);
 
   const hasReadyPhoto = useMemo(
     () =>
@@ -987,7 +1004,7 @@ export default function JobCardDetailPage() {
             <div className="flex items-center space-x-3 flex-wrap">
               <h1 className="text-xl font-bold text-gray-900 whitespace-nowrap">
                 {jobCard.jobNumber}
-                {jobCard.jtDnNumber ? ` - ${jobCard.jtDnNumber}` : null}
+                {jobCard.jcNumber ? ` - ${jobCard.jcNumber}` : null}
               </h1>
               {jobCard.versionNumber && jobCard.versionNumber > 1 && (
                 <span className="px-2 py-0.5 text-xs font-semibold rounded-full bg-purple-100 text-purple-800">
@@ -1024,7 +1041,7 @@ export default function JobCardDetailPage() {
             <p className="mt-1 text-sm text-gray-500">{jobCard.jobName}</p>
           </div>
         </div>
-        {workflowStatus && currentStatus !== "draft" && (
+        {workflowStatus && workflowStatus.jobCardStatus !== "draft" && (
           <div
             id="workflow-actions"
             className="flex-1 min-w-0 rounded-lg border border-gray-200 bg-white px-3 py-2"
@@ -1415,7 +1432,7 @@ export default function JobCardDetailPage() {
         </div>
       )}
 
-      {workflowStatus && currentStatus !== "draft" && (
+      {workflowStatus && workflowStatus.jobCardStatus !== "draft" && (
         <WorkflowStatus
           currentStatus={currentStatus!}
           approvals={approvals}

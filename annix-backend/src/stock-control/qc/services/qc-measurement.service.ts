@@ -1,8 +1,11 @@
 import { Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
+import { JobCard } from "../../entities/job-card.entity";
+import { JobCardCoatingAnalysis } from "../../entities/coating-analysis.entity";
+import { StockControlCompany } from "../../entities/stock-control-company.entity";
 import { QcBlastProfile } from "../entities/qc-blast-profile.entity";
-import { QcControlPlan } from "../entities/qc-control-plan.entity";
+import { QcControlPlan, QcpPlanType, type QcpActivity, type PartySignOff, type QcpApprovalSignature } from "../entities/qc-control-plan.entity";
 import { QcDefelskoBatch } from "../entities/qc-defelsko-batch.entity";
 import { QcDftReading } from "../entities/qc-dft-reading.entity";
 import { QcDustDebrisTest } from "../entities/qc-dust-debris-test.entity";
@@ -55,6 +58,12 @@ export class QcMeasurementService {
     private readonly itemsReleaseRepo: Repository<QcItemsRelease>,
     @InjectRepository(QcDefelskoBatch)
     private readonly defelskoBatchRepo: Repository<QcDefelskoBatch>,
+    @InjectRepository(JobCard)
+    private readonly jobCardRepo: Repository<JobCard>,
+    @InjectRepository(JobCardCoatingAnalysis)
+    private readonly coatingRepo: Repository<JobCardCoatingAnalysis>,
+    @InjectRepository(StockControlCompany)
+    private readonly companyRepo: Repository<StockControlCompany>,
     @Inject(WORK_ITEM_PROVIDER)
     private readonly workItemProvider: IWorkItemProvider,
   ) {}
@@ -334,6 +343,197 @@ export class QcMeasurementService {
   async deleteControlPlan(companyId: number, id: number): Promise<void> {
     const record = await this.findOrFail(this.controlPlanRepo, companyId, id, "Control plan");
     await this.controlPlanRepo.remove(record);
+  }
+
+  async autoGenerateControlPlans(
+    companyId: number,
+    jobCardId: number,
+    user: UserContext,
+  ): Promise<QcControlPlan[]> {
+    const [jobCard, coating, company] = await Promise.all([
+      this.jobCardRepo.findOne({
+        where: { id: jobCardId, companyId },
+        relations: ["lineItems"],
+      }),
+      this.coatingRepo.findOne({ where: { jobCardId, companyId } }),
+      this.companyRepo.findOne({ where: { id: companyId } }),
+    ]);
+
+    if (!jobCard) {
+      throw new NotFoundException(`Job card ${jobCardId} not found`);
+    }
+
+    const existing = await this.controlPlanRepo.find({
+      where: { companyId, jobCardId },
+    });
+
+    const coats = Array.isArray(coating?.coats) ? coating.coats : [];
+    const hasRubber = coating?.hasInternalLining === true;
+    const hasPaint = coats.length > 0;
+    const hasExternalPaint = coats.some((c: any) => c.area === "external");
+    const hasInternalPaint = coats.some((c: any) => c.area === "internal");
+
+    const planTypes: QcpPlanType[] = [];
+    if (hasExternalPaint) planTypes.push(QcpPlanType.PAINT_EXTERNAL);
+    if (hasInternalPaint) planTypes.push(QcpPlanType.PAINT_INTERNAL);
+    if (hasRubber) planTypes.push(QcpPlanType.RUBBER);
+    if (!hasPaint && !hasRubber) planTypes.push(QcpPlanType.PAINT_EXTERNAL);
+
+    const existingTypes = new Set(existing.map((e) => e.planType));
+    const toCreate = planTypes.filter((t) => !existingTypes.has(t));
+
+    if (toCreate.length === 0) {
+      return existing;
+    }
+
+    const customerName = jobCard.customerName || null;
+    const orderNumber = jobCard.poNumber || null;
+    const jobName = `${jobCard.jobNumber} - ${jobCard.jobName || ""}`.trim();
+    const itemDescriptions = (jobCard.lineItems || [])
+      .map((li: any) => li.itemDescription)
+      .filter(Boolean)
+      .join("; ");
+
+    const emptySignOff = (): PartySignOff => ({
+      interventionType: null,
+      name: null,
+      signatureUrl: null,
+      date: null,
+    });
+
+    const defaultApprovals = (): QcpApprovalSignature[] => [
+      { party: "PLS", name: null, signatureUrl: null, date: null },
+      { party: "MPS", name: null, signatureUrl: null, date: null },
+      { party: "Client", name: null, signatureUrl: null, date: null },
+    ];
+
+    const buildActivity = (opNum: number, description: string, spec: string | null): QcpActivity => ({
+      operationNumber: opNum,
+      description,
+      specification: spec,
+      procedureRequired: null,
+      pls: emptySignOff(),
+      mps: emptySignOff(),
+      client: emptySignOff(),
+      remarks: null,
+    });
+
+    const paintExternalActivities = (externalCoats: any[]): QcpActivity[] => {
+      const activities: QcpActivity[] = [
+        buildActivity(1, "Receive & inspect items", null),
+        buildActivity(2, "Surface preparation - Abrasive blasting to SA 2.5", coating?.surfacePrep || null),
+        buildActivity(3, "Dust and debris assessment", null),
+      ];
+
+      let opNum = 4;
+      externalCoats.forEach((coat: any, idx: number) => {
+        const dftSpec = coat.minDftUm && coat.maxDftUm
+          ? `${coat.minDftUm}-${coat.maxDftUm} µm`
+          : null;
+        const label = idx === 0 ? "primer" : idx === externalCoats.length - 1 ? "final/topcoat" : "intermediate";
+        activities.push(buildActivity(opNum++, `Apply ${label} - ${coat.product || "TBC"}`, null));
+        activities.push(buildActivity(opNum++, `${label === "primer" ? "Primer" : label === "final/topcoat" ? "Final" : "Intermediate"} DFT measurement`, dftSpec));
+      });
+
+      if (externalCoats.length === 0) {
+        activities.push(buildActivity(opNum++, "Apply primer coat", null));
+        activities.push(buildActivity(opNum++, "Primer DFT measurement", null));
+        activities.push(buildActivity(opNum++, "Apply final/topcoat", null));
+        activities.push(buildActivity(opNum++, "Final DFT measurement", null));
+      }
+
+      activities.push(buildActivity(opNum++, "Visual inspection", null));
+      activities.push(buildActivity(opNum++, "Final release", null));
+      return activities;
+    };
+
+    const paintInternalActivities = (internalCoats: any[]): QcpActivity[] => {
+      const activities: QcpActivity[] = [
+        buildActivity(1, "Receive & inspect items", null),
+        buildActivity(2, "Surface preparation - Abrasive blasting to SA 2.5", coating?.surfacePrep || null),
+        buildActivity(3, "Dust and debris assessment", null),
+      ];
+
+      let opNum = 4;
+      internalCoats.forEach((coat: any, idx: number) => {
+        const dftSpec = coat.minDftUm && coat.maxDftUm
+          ? `${coat.minDftUm}-${coat.maxDftUm} µm`
+          : null;
+        const label = idx === 0 ? "internal primer" : "internal lining";
+        activities.push(buildActivity(opNum++, `Apply ${label} - ${coat.product || "TBC"}`, null));
+        activities.push(buildActivity(opNum++, `${idx === 0 ? "Primer" : "Final"} DFT measurement`, dftSpec));
+      });
+
+      if (internalCoats.length === 0) {
+        activities.push(buildActivity(opNum++, "Apply internal primer coat", null));
+        activities.push(buildActivity(opNum++, "Primer DFT measurement", null));
+        activities.push(buildActivity(opNum++, "Apply internal lining coat", null));
+        activities.push(buildActivity(opNum++, "Final DFT measurement", null));
+      }
+
+      activities.push(buildActivity(opNum++, "Visual inspection", null));
+      activities.push(buildActivity(opNum++, "Final release", null));
+      return activities;
+    };
+
+    const rubberActivities = (): QcpActivity[] => [
+      buildActivity(1, "Receive & inspect items", null),
+      buildActivity(2, "Surface preparation - Abrasive blasting to SA 2.5", "SA 3"),
+      buildActivity(3, "Contamination check", null),
+      buildActivity(4, "Apply bonding solution/adhesive", null),
+      buildActivity(5, "Apply rubber lining as per drawing", null),
+      buildActivity(6, "Visual inspection - pre-cure", null),
+      buildActivity(7, "Autoclave curing", null),
+      buildActivity(8, "Shore hardness test", null),
+      buildActivity(9, "Spark test", null),
+      buildActivity(10, "Visual inspection - post-cure", null),
+      buildActivity(11, "Final release", null),
+    ];
+
+    const activitiesForType = (planType: QcpPlanType): QcpActivity[] => {
+      if (planType === QcpPlanType.PAINT_EXTERNAL) {
+        return paintExternalActivities(coats.filter((c: any) => c.area === "external"));
+      }
+      if (planType === QcpPlanType.PAINT_INTERNAL) {
+        return paintInternalActivities(coats.filter((c: any) => c.area === "internal"));
+      }
+      if (planType === QcpPlanType.RUBBER) {
+        return rubberActivities();
+      }
+      return paintExternalActivities([]);
+    };
+
+    const companyPrefix = company?.name ? company.name.split(" ")[0].toUpperCase().slice(0, 3) : "QCP";
+
+    const created = await Promise.all(
+      toCreate.map((planType) => {
+        const qcpNumber = `${companyPrefix}-${jobCard.jobNumber}-${planType.toUpperCase().replace("_", "-")}`;
+        const record = this.controlPlanRepo.create({
+          companyId,
+          jobCardId,
+          planType,
+          qcpNumber,
+          documentRef: null,
+          revision: "01",
+          customerName,
+          orderNumber,
+          jobName,
+          specification: coating?.rawNotes || null,
+          itemDescription: itemDescriptions || null,
+          activities: activitiesForType(planType),
+          approvalSignatures: defaultApprovals(),
+          createdByName: user.name,
+          createdById: user.id,
+        });
+        return this.controlPlanRepo.save(record);
+      }),
+    );
+
+    this.logger.log(
+      `Auto-generated ${created.length} QCP(s) for job card ${jobCardId}: ${toCreate.join(", ")}`,
+    );
+
+    return [...existing, ...created];
   }
 
   // ── Release Certificates ───────────────────────────────────────────

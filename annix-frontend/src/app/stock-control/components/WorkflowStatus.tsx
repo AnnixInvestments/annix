@@ -234,13 +234,17 @@ const bgNodeState = (
   fgIndex: number,
   currentStepIndex: number,
   branchBgSteps: BackgroundStepStatus[],
+  prevAmberComplete?: boolean,
 ): "completed" | "skipped" | "active" | "pending" => {
   if (bg.completedAt !== null) {
     if (bg.completionType === "skipped") return "skipped";
     return "completed";
   }
   const hasColoredBranch = branchBgSteps.some((b) => b.branchColor !== null);
-  const branchReached = hasColoredBranch ? fgIndex <= currentStepIndex : fgIndex < currentStepIndex;
+  const amberOk = prevAmberComplete !== false;
+  const branchReached = hasColoredBranch
+    ? fgIndex <= currentStepIndex && amberOk
+    : fgIndex < currentStepIndex;
   if (branchReached) {
     const firstIncomplete = branchBgSteps.find((b) => b.completedAt === null);
     if (firstIncomplete && firstIncomplete.stepKey === bg.stepKey) return "active";
@@ -515,7 +519,14 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
 
         if (!startNode || !firstTopBg || !lastTopBg) return;
 
-        const branchActive = branch.triggerFgIdx <= currentStepIndex;
+        const prevFgKey = allSteps[branch.triggerFgIdx - 1]?.key;
+        const prevAmberBg = prevFgKey
+          ? resolveBgChainFlat(prevFgKey, bgByTrigger, bgKeySet).filter((bg) => !bg.branchColor)
+          : [];
+        const prevAmberComplete =
+          prevAmberBg.length === 0 || prevAmberBg.every((bg) => bg.completedAt !== null);
+        const branchActive =
+          branch.triggerFgIdx <= currentStepIndex && prevAmberComplete;
         const allComplete = branch.bgSteps.every((bg) => bg.completedAt !== null);
         const activeColor = branch.branchColor || "#f59e0b";
         const strokeColor = branchActive ? activeColor : "#d1d5db";
@@ -675,8 +686,17 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
         if (!startNode || !endNode || !firstBg || !lastBg) return;
 
         const isColoredBranch = branch.branchColor !== null;
+        const prevBelowFgKey = allSteps[branch.triggerFgIdx - 1]?.key;
+        const prevBelowAmberBg = prevBelowFgKey
+          ? resolveBgChainFlat(prevBelowFgKey, bgByTrigger, bgKeySet).filter(
+              (bg) => !bg.branchColor,
+            )
+          : [];
+        const prevBelowAmberComplete =
+          prevBelowAmberBg.length === 0 ||
+          prevBelowAmberBg.every((bg) => bg.completedAt !== null);
         const branchActive = isColoredBranch
-          ? branch.triggerFgIdx <= currentStepIndex
+          ? branch.triggerFgIdx <= currentStepIndex && prevBelowAmberComplete
           : branch.triggerFgIdx < currentStepIndex;
         const allComplete = branch.bgSteps.every((bg) => bg.completedAt !== null);
         const activeColor = branch.branchColor || "#f59e0b";
@@ -835,6 +855,15 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
         const bottomEndPos = bottomData?.end || [];
         const totalBgSteps = bottomData?.totalSteps || branch.bgSteps.length;
         const containerLeft = triggerPos?.left || 0;
+        const prevLoopFgKey = allSteps[branch.triggerFgIdx - 1]?.key;
+        const prevLoopAmberBg = prevLoopFgKey
+          ? resolveBgChainFlat(prevLoopFgKey, bgByTrigger, bgKeySet).filter(
+              (bg) => !bg.branchColor,
+            )
+          : [];
+        const prevLoopAmberComplete =
+          prevLoopAmberBg.length === 0 ||
+          prevLoopAmberBg.every((bg) => bg.completedAt !== null);
 
         return (
           <div
@@ -856,6 +885,7 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
                     branch.triggerFgIdx,
                     currentStepIndex,
                     branch.bgSteps,
+                    prevLoopAmberComplete,
                   );
                   const classes = bgNodeClasses(state, branch.branchColor);
                   const bgAssigned = assignedNameForStep(bg.stepKey, stepAssignments);
@@ -889,7 +919,7 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
             {branch.bgSteps.slice(0, loopBottomCount(totalBgSteps)).map((bg, bgIdx) => {
               const pos = bottomStartPos[bgIdx];
               if (!pos) return null;
-              const state = bgNodeState(bg, branch.triggerFgIdx, currentStepIndex, branch.bgSteps);
+              const state = bgNodeState(bg, branch.triggerFgIdx, currentStepIndex, branch.bgSteps, prevLoopAmberComplete);
               const classes = bgNodeClasses(state, branch.branchColor);
               const bgAssigned = assignedNameForStep(bg.stepKey, stepAssignments);
               const bgDisplayName =
@@ -932,6 +962,7 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
                   branch.triggerFgIdx,
                   currentStepIndex,
                   branch.bgSteps,
+                  prevLoopAmberComplete,
                 );
                 const classes = bgNodeClasses(state, branch.branchColor);
                 const bgAssigned = assignedNameForStep(bg.stepKey, stepAssignments);
@@ -1475,7 +1506,18 @@ function MobileTransitMap(props: MobileTransitMapProps) {
               </div>
             </div>
 
-            {stepBranches.map((branch) => (
+            {stepBranches.map((branch) => {
+              const prevMobileFgKey = allSteps[branch.triggerFgIdx - 1]?.key;
+              const prevMobileAmberBg = prevMobileFgKey
+                ? resolveBgChainFlat(prevMobileFgKey, bgByTrigger, bgKeySet).filter(
+                    (bg) => !bg.branchColor,
+                  )
+                : [];
+              const prevMobileAmberComplete =
+                prevMobileAmberBg.length === 0 ||
+                prevMobileAmberBg.every((bg) => bg.completedAt !== null);
+
+              return (
               <div
                 key={`mb-${branch.triggerFgKey}-${branch.isLoop ? "loop" : "below"}`}
                 className="flex items-stretch"
@@ -1505,6 +1547,7 @@ function MobileTransitMap(props: MobileTransitMapProps) {
                         branch.triggerFgIdx,
                         currentStepIndex,
                         branch.bgSteps,
+                        prevMobileAmberComplete,
                       );
                       const mClasses = bgNodeClasses(bgState, branch.branchColor);
                       const bgAssigned = assignedNameForStep(bg.stepKey, stepAssignments);
@@ -1538,7 +1581,8 @@ function MobileTransitMap(props: MobileTransitMapProps) {
                   </div>
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         );
       })}

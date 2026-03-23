@@ -76,6 +76,7 @@ export function QcpSection({ jobCardId }: QcpSectionProps) {
   const [editingPlan, setEditingPlan] = useState<QcControlPlanRecord | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [expandedId, setExpandedId] = useState<number | null>(null);
+  const [isAutoGenerating, setIsAutoGenerating] = useState(false);
 
   const fetchPlans = useCallback(async () => {
     try {
@@ -117,6 +118,19 @@ export function QcpSection({ jobCardId }: QcpSectionProps) {
     setViewMode("edit");
   };
 
+  const handleAutoGenerate = async () => {
+    try {
+      setIsAutoGenerating(true);
+      setError(null);
+      await stockControlApiClient.autoGenerateControlPlans(jobCardId);
+      fetchPlans();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to auto-generate QCPs");
+    } finally {
+      setIsAutoGenerating(false);
+    }
+  };
+
   if (viewMode === "create" || viewMode === "edit") {
     return (
       <div className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
@@ -142,16 +156,26 @@ export function QcpSection({ jobCardId }: QcpSectionProps) {
             <span className="ml-2 text-xs font-normal text-gray-500">({plans.length})</span>
           )}
         </h3>
-        <button
-          type="button"
-          onClick={() => {
-            setEditingPlan(null);
-            setViewMode("create");
-          }}
-          className="rounded-md bg-teal-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-teal-700"
-        >
-          + New QCP
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={handleAutoGenerate}
+            disabled={isAutoGenerating}
+            className="rounded-md bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+          >
+            {isAutoGenerating ? "Generating..." : "Auto-Generate"}
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setEditingPlan(null);
+              setViewMode("create");
+            }}
+            className="rounded-md bg-teal-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-teal-700"
+          >
+            + New QCP
+          </button>
+        </div>
       </div>
 
       {error && (

@@ -508,6 +508,18 @@ export class JobCardWorkflowService {
       }),
     ]);
 
+    if (
+      jobCard.status === JobCardStatus.ACTIVE &&
+      jobCard.workflowStatus === WORKFLOW_STATUS_DRAFT &&
+      fgConfigs.length > 0
+    ) {
+      jobCard.workflowStatus = fgConfigs[0].key;
+      await this.jobCardRepo.save(jobCard);
+      this.logger.warn(
+        `Auto-repaired workflow status for active job card ${jobCardId}: draft -> ${fgConfigs[0].key}`,
+      );
+    }
+
     const currentStep = this.currentFgStep(jobCard.workflowStatus, fgConfigs);
 
     const stepAssignments = allAssignments.reduce(

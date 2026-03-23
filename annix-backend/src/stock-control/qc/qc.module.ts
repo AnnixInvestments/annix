@@ -6,6 +6,7 @@ import { StorageModule } from "../../storage/storage.module";
 import { JobCard } from "../entities/job-card.entity";
 import { PushSubscription } from "../entities/push-subscription.entity";
 import { StockControlActionPermission } from "../entities/stock-control-action-permission.entity";
+import { JobCardCoatingAnalysis } from "../entities/coating-analysis.entity";
 import { StockControlCompany } from "../entities/stock-control-company.entity";
 import { StockControlUser } from "../entities/stock-control-user.entity";
 import { WorkflowNotification } from "../entities/workflow-notification.entity";
@@ -43,6 +44,7 @@ import { WORK_ITEM_PROVIDER } from "./work-item-provider.interface";
     TypeOrmModule.forFeature([
       CalibrationCertificate,
       JobCard,
+      JobCardCoatingAnalysis,
       PositectorDevice,
       PushSubscription,
       QcBlastProfile,

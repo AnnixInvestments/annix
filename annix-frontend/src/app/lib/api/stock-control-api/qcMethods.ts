@@ -75,6 +75,7 @@ declare module "./base" {
     ): Promise<QcReleaseCertificateRecord>;
     deleteReleaseCertificate(jobCardId: number, id: number): Promise<void>;
     controlPlansForJobCard(jobCardId: number): Promise<QcControlPlanRecord[]>;
+    autoGenerateControlPlans(jobCardId: number): Promise<QcControlPlanRecord[]>;
     controlPlanById(jobCardId: number, id: number): Promise<QcControlPlanRecord>;
     createControlPlan(
       jobCardId: number,
@@ -262,6 +263,12 @@ proto.deleteReleaseCertificate = async function (jobCardId, id) {
 
 proto.controlPlansForJobCard = async function (jobCardId) {
   return this.request(`/stock-control/job-cards/${jobCardId}/qc/control-plans`);
+};
+
+proto.autoGenerateControlPlans = async function (jobCardId) {
+  return this.request(`/stock-control/job-cards/${jobCardId}/qc/control-plans/auto-generate`, {
+    method: "POST",
+  });
 };
 
 proto.controlPlanById = async function (jobCardId, id) {
