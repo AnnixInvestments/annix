@@ -151,6 +151,41 @@ export class StockControlApiClient {
     return JSON.parse(text) as T;
   }
 
+  async requestBlob(endpoint: string, options: RequestInit = {}): Promise<Blob> {
+    const url = `${this.baseURL}${endpoint}`;
+
+    const config: RequestInit = {
+      ...options,
+      headers: {
+        ...this.headers(),
+        ...(options.headers as Record<string, string>),
+      },
+    };
+
+    const response = await fetch(url, config);
+
+    if (response.status === 401 && this.refreshToken) {
+      const refreshed = await this.refreshAccessToken();
+      if (refreshed) {
+        config.headers = {
+          ...this.headers(),
+          ...(options.headers as Record<string, string>),
+        };
+        const retryResponse = await fetch(url, config);
+        if (!retryResponse.ok) {
+          throw new Error(`PDF download failed (${retryResponse.status})`);
+        }
+        return retryResponse.blob();
+      }
+    }
+
+    if (!response.ok) {
+      throw new Error(`PDF download failed (${response.status})`);
+    }
+
+    return response.blob();
+  }
+
   async uploadFile<T>(
     endpoint: string,
     file: File,

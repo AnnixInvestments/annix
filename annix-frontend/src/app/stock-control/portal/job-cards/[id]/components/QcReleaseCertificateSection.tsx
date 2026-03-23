@@ -166,7 +166,7 @@ export function QcReleaseCertificateSection({ jobCardId }: QcReleaseCertificateS
                 {sectionStatusBadge(overallStatus(cert))}
                 <div>
                   <span className="text-sm font-medium text-gray-900">
-                    {cert.certificateNumber ?? `Certificate #${cert.id}`}
+                    {cert.certificateNumber || `Certificate #${cert.id}`}
                   </span>
                   <div className="flex items-center gap-2 text-xs text-gray-500">
                     {cert.certificateDate && <span>{formatDateZA(cert.certificateDate)}</span>}
@@ -184,6 +184,15 @@ export function QcReleaseCertificateSection({ jobCardId }: QcReleaseCertificateS
                 </div>
               </div>
               <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() =>
+                    stockControlApiClient.openReleaseCertificatePdf(jobCardId, cert.id)
+                  }
+                  className="text-sm text-blue-600 hover:text-blue-800"
+                >
+                  PDF
+                </button>
                 <button
                   type="button"
                   onClick={() => handleEdit(cert)}

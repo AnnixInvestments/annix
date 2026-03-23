@@ -215,7 +215,7 @@ export function QcpSection({ jobCardId }: QcpSectionProps) {
                     </span>
                     <div>
                       <span className="text-sm font-medium text-gray-900">
-                        {plan.qcpNumber ?? `QCP #${plan.id}`}
+                        {plan.qcpNumber || `QCP #${plan.id}`}
                       </span>
                       {plan.specification && (
                         <span className="ml-2 text-xs text-gray-500">{plan.specification}</span>
@@ -237,6 +237,16 @@ export function QcpSection({ jobCardId }: QcpSectionProps) {
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        stockControlApiClient.openControlPlanPdf(jobCardId, plan.id);
+                      }}
+                      className="text-sm text-blue-600 hover:text-blue-800"
+                    >
+                      PDF
+                    </button>
                     <button
                       type="button"
                       onClick={(e) => {
@@ -266,13 +276,13 @@ export function QcpSection({ jobCardId }: QcpSectionProps) {
                   <div className="border-t border-gray-100 bg-gray-50 px-5 py-3">
                     <div className="mb-3 grid grid-cols-4 gap-3 text-xs text-gray-600">
                       <div>
-                        <span className="font-medium">Customer:</span> {plan.customerName ?? "-"}
+                        <span className="font-medium">Customer:</span> {plan.customerName || "-"}
                       </div>
                       <div>
-                        <span className="font-medium">Order:</span> {plan.orderNumber ?? "-"}
+                        <span className="font-medium">Order:</span> {plan.orderNumber || "-"}
                       </div>
                       <div>
-                        <span className="font-medium">Revision:</span> {plan.revision ?? "-"}
+                        <span className="font-medium">Revision:</span> {plan.revision || "-"}
                       </div>
                       <div>
                         <span className="font-medium">Interventions:</span>{" "}

@@ -17,6 +17,7 @@ export function ReleaseDocumentGenerator(props: ReleaseDocumentGeneratorProps) {
 
   const [lineItems, setLineItems] = useState<JobCardLineItem[]>([]);
   const [selectedIndices, setSelectedIndices] = useState<Set<number>>(new Set());
+  const [releaseQuantities, setReleaseQuantities] = useState<Record<number, number>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -29,7 +30,15 @@ export function ReleaseDocumentGenerator(props: ReleaseDocumentGeneratorProps) {
     try {
       setIsLoading(true);
       const jobCard = await stockControlApiClient.jobCardById(jobCardId);
-      setLineItems(jobCard.lineItems || []);
+      const validItems = (jobCard.lineItems || []).filter(
+        (li) => !li.itemCode?.startsWith("Sage ") && !li.itemDescription?.startsWith("Sage "),
+      );
+      setLineItems(validItems);
+      const initialQuantities = validItems.reduce(
+        (acc, li, idx) => ({ ...acc, [idx]: li.quantity || 0 }),
+        {} as Record<number, number>,
+      );
+      setReleaseQuantities(initialQuantities);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load line items");
     } finally {
@@ -47,14 +56,6 @@ export function ReleaseDocumentGenerator(props: ReleaseDocumentGeneratorProps) {
     return null;
   }
 
-  const handleToggleAll = () => {
-    if (selectedIndices.size === lineItems.length) {
-      setSelectedIndices(new Set());
-    } else {
-      setSelectedIndices(new Set(lineItems.map((_li, idx) => idx)));
-    }
-  };
-
   const handleToggle = (idx: number) => {
     const next = new Set(selectedIndices);
     if (next.has(idx)) {
@@ -65,10 +66,30 @@ export function ReleaseDocumentGenerator(props: ReleaseDocumentGeneratorProps) {
     setSelectedIndices(next);
   };
 
+  const handleQuantityChange = (idx: number, value: string) => {
+    const parsed = Number.parseFloat(value);
+    const maxQty = lineItems[idx]?.quantity || 0;
+    if (Number.isNaN(parsed) || parsed < 0) {
+      setReleaseQuantities({ ...releaseQuantities, [idx]: 0 });
+    } else if (parsed > maxQty) {
+      setReleaseQuantities({ ...releaseQuantities, [idx]: maxQty });
+    } else {
+      setReleaseQuantities({ ...releaseQuantities, [idx]: parsed });
+    }
+  };
+
   const handleGenerate = async () => {
     if (selectedIndices.size === 0) {
       return;
     }
+
+    const quantityOverrides = Array.from(selectedIndices).reduce(
+      (acc, idx) => ({
+        ...acc,
+        [idx]: releaseQuantities[idx] || lineItems[idx]?.quantity || 0,
+      }),
+      {} as Record<number, number>,
+    );
 
     try {
       setIsGenerating(true);
@@ -77,6 +98,7 @@ export function ReleaseDocumentGenerator(props: ReleaseDocumentGeneratorProps) {
       await stockControlApiClient.autoGenerateReleaseDocuments(
         jobCardId,
         Array.from(selectedIndices),
+        quantityOverrides,
       );
       setSuccess("Release documents generated successfully");
       setSelectedIndices(new Set());
@@ -87,8 +109,6 @@ export function ReleaseDocumentGenerator(props: ReleaseDocumentGeneratorProps) {
       setIsGenerating(false);
     }
   };
-
-  const allSelected = lineItems.length > 0 && selectedIndices.size === lineItems.length;
 
   return (
     <div className="rounded-lg border border-teal-200 bg-teal-50 shadow-sm">
@@ -121,6 +141,7 @@ export function ReleaseDocumentGenerator(props: ReleaseDocumentGeneratorProps) {
         <p className="mb-3 text-sm text-teal-800">
           Select line items to include in the release documents. Both the Items Release (QD_PLS_09)
           and Release Certificate (QD_PLS_10) will be auto-generated with QC measurement data.
+          Adjust quantities for partial releases.
         </p>
 
         {isLoading ? (
@@ -133,14 +154,7 @@ export function ReleaseDocumentGenerator(props: ReleaseDocumentGeneratorProps) {
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-3 py-2 text-left">
-                      <input
-                        type="checkbox"
-                        checked={allSelected}
-                        onChange={handleToggleAll}
-                        className="h-4 w-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500"
-                      />
-                    </th>
+                    <th className="w-10 px-3 py-2" />
                     <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">
                       Item Code
                     </th>
@@ -151,40 +165,64 @@ export function ReleaseDocumentGenerator(props: ReleaseDocumentGeneratorProps) {
                       JT No
                     </th>
                     <th className="px-3 py-2 text-right text-xs font-medium uppercase text-gray-500">
-                      Qty
+                      Total Qty
+                    </th>
+                    <th className="px-3 py-2 text-right text-xs font-medium uppercase text-gray-500">
+                      Release Qty
                     </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
-                  {lineItems.map((li, idx) => (
-                    <tr
-                      key={li.id}
-                      className={`cursor-pointer hover:bg-gray-50 ${selectedIndices.has(idx) ? "bg-teal-50" : ""}`}
-                      onClick={() => handleToggle(idx)}
-                    >
-                      <td className="px-3 py-2">
-                        <input
-                          type="checkbox"
-                          checked={selectedIndices.has(idx)}
-                          onChange={() => handleToggle(idx)}
-                          onClick={(e) => e.stopPropagation()}
-                          className="h-4 w-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500"
-                        />
-                      </td>
-                      <td className="whitespace-nowrap px-3 py-2 text-sm font-medium text-gray-900">
-                        {li.itemCode || "-"}
-                      </td>
-                      <td className="px-3 py-2 text-sm text-gray-600">
-                        {li.itemDescription || "-"}
-                      </td>
-                      <td className="whitespace-nowrap px-3 py-2 text-sm text-gray-500">
-                        {li.jtNo || "-"}
-                      </td>
-                      <td className="whitespace-nowrap px-3 py-2 text-right text-sm text-gray-600">
-                        {li.quantity || "-"}
-                      </td>
-                    </tr>
-                  ))}
+                  {lineItems.map((li, idx) => {
+                    const isSelected = selectedIndices.has(idx);
+                    const releaseQty = releaseQuantities[idx] || 0;
+                    const isPartial = isSelected && releaseQty < (li.quantity || 0);
+                    return (
+                      <tr
+                        key={li.id}
+                        className={`cursor-pointer hover:bg-gray-50 ${isSelected ? "bg-teal-50" : ""}`}
+                        onClick={() => handleToggle(idx)}
+                      >
+                        <td className="px-3 py-2">
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => handleToggle(idx)}
+                            onClick={(e) => e.stopPropagation()}
+                            className="h-4 w-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500"
+                          />
+                        </td>
+                        <td className="whitespace-nowrap px-3 py-2 text-sm font-medium text-gray-900">
+                          {li.itemCode || "-"}
+                        </td>
+                        <td className="px-3 py-2 text-sm text-gray-600">
+                          {li.itemDescription || "-"}
+                        </td>
+                        <td className="whitespace-nowrap px-3 py-2 text-sm text-gray-500">
+                          {li.jtNo || "-"}
+                        </td>
+                        <td className="whitespace-nowrap px-3 py-2 text-right text-sm text-gray-600">
+                          {li.quantity || "-"}
+                        </td>
+                        <td className="whitespace-nowrap px-3 py-2 text-right">
+                          {isSelected ? (
+                            <input
+                              type="number"
+                              value={releaseQty}
+                              onChange={(e) => handleQuantityChange(idx, e.target.value)}
+                              onClick={(e) => e.stopPropagation()}
+                              min={0}
+                              max={li.quantity || 0}
+                              step="any"
+                              className={`w-20 rounded border px-2 py-1 text-right text-sm ${isPartial ? "border-amber-400 bg-amber-50 text-amber-800" : "border-gray-300 text-gray-900"}`}
+                            />
+                          ) : (
+                            <span className="text-sm text-gray-400">-</span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -192,6 +230,11 @@ export function ReleaseDocumentGenerator(props: ReleaseDocumentGeneratorProps) {
             <div className="mt-3 flex items-center justify-between">
               <span className="text-sm text-teal-700">
                 {selectedIndices.size} of {lineItems.length} items selected
+                {Array.from(selectedIndices).some(
+                  (idx) => (releaseQuantities[idx] || 0) < (lineItems[idx]?.quantity || 0),
+                ) && (
+                  <span className="ml-2 text-xs text-amber-600 font-medium">(partial release)</span>
+                )}
               </span>
               <button
                 onClick={handleGenerate}

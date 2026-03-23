@@ -14,6 +14,7 @@ import { StockControlAuthGuard } from "../guards/stock-control-auth.guard";
 import { StockControlRoleGuard } from "../guards/stock-control-role.guard";
 import { ActionPermissionService } from "../services/action-permission.service";
 import { CompanyEmailService } from "../services/company-email.service";
+import { DataBookPdfService } from "../services/data-book-pdf.service";
 import { JobCardWorkItemProvider } from "../services/job-card-work-item-provider";
 import { WebPushService } from "../services/web-push.service";
 import { CalibrationCertificateController } from "./controllers/calibration-certificate.controller";
@@ -84,6 +85,7 @@ import { WORK_ITEM_PROVIDER } from "./work-item-provider.interface";
     QcEnabledGuard,
     CalibrationCertificateService,
     CompanyEmailService,
+    DataBookPdfService,
     QcMeasurementService,
     PositectorService,
     PositectorImportService,

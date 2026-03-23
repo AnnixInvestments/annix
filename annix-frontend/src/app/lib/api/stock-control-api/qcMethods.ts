@@ -93,6 +93,7 @@ declare module "./base" {
     autoGenerateReleaseDocuments(
       jobCardId: number,
       selectedItemIndices: number[],
+      quantityOverrides?: Record<number, number>,
     ): Promise<QcReleaseDocumentsResult>;
     createItemsRelease(
       jobCardId: number,
@@ -104,6 +105,9 @@ declare module "./base" {
       data: Partial<QcItemsReleaseRecord>,
     ): Promise<QcItemsReleaseRecord>;
     deleteItemsRelease(jobCardId: number, id: number): Promise<void>;
+    openReleaseCertificatePdf(jobCardId: number, id: number): Promise<void>;
+    openItemsReleasePdf(jobCardId: number, id: number): Promise<void>;
+    openControlPlanPdf(jobCardId: number, id: number): Promise<void>;
     defelskoBatchesForJobCard(jobCardId: number): Promise<QcDefelskoBatchRecord[]>;
     saveDefelskoBatches(
       jobCardId: number,
@@ -312,11 +316,15 @@ proto.autoPopulateItemsRelease = async function (jobCardId) {
   });
 };
 
-proto.autoGenerateReleaseDocuments = async function (jobCardId, selectedItemIndices) {
+proto.autoGenerateReleaseDocuments = async function (
+  jobCardId,
+  selectedItemIndices,
+  quantityOverrides,
+) {
   return this.request(`/stock-control/job-cards/${jobCardId}/qc/release-documents/auto-generate`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ selectedItemIndices }),
+    body: JSON.stringify({ selectedItemIndices, quantityOverrides }),
   });
 };
 
@@ -340,6 +348,30 @@ proto.deleteItemsRelease = async function (jobCardId, id) {
   return this.request(`/stock-control/job-cards/${jobCardId}/qc/items-releases/${id}`, {
     method: "DELETE",
   });
+};
+
+proto.openReleaseCertificatePdf = async function (jobCardId, id) {
+  const blob = await this.requestBlob(
+    `/stock-control/job-cards/${jobCardId}/qc/release-certificates/${id}/pdf`,
+  );
+  const url = URL.createObjectURL(blob);
+  window.open(url, "_blank");
+};
+
+proto.openItemsReleasePdf = async function (jobCardId, id) {
+  const blob = await this.requestBlob(
+    `/stock-control/job-cards/${jobCardId}/qc/items-releases/${id}/pdf`,
+  );
+  const url = URL.createObjectURL(blob);
+  window.open(url, "_blank");
+};
+
+proto.openControlPlanPdf = async function (jobCardId, id) {
+  const blob = await this.requestBlob(
+    `/stock-control/job-cards/${jobCardId}/qc/control-plans/${id}/pdf`,
+  );
+  const url = URL.createObjectURL(blob);
+  window.open(url, "_blank");
 };
 
 proto.defelskoBatchesForJobCard = async function (jobCardId) {

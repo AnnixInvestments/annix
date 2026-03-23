@@ -6,6 +6,7 @@ import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
 import type {
   BatchIssuanceDto,
   BatchIssuanceResult,
+  CoatingAnalysis,
   IssuanceScanResult,
   JobCard,
   StaffMember,
@@ -180,6 +181,7 @@ export default function IssueStockPage() {
   const [jobCardSearch, setJobCardSearch] = useState("");
   const [isLoadingJobCards, setIsLoadingJobCards] = useState(false);
   const [jobCardAllocations, setJobCardAllocations] = useState<StockAllocation[]>([]);
+  const [coatingAnalysis, setCoatingAnalysis] = useState<CoatingAnalysis | null>(null);
   const [showPhotoCapture, setShowPhotoCapture] = useState(false);
   const [isAnalyzingPhoto, setIsAnalyzingPhoto] = useState(false);
   const [photoResult, setPhotoResult] = useState<{
@@ -257,8 +259,13 @@ export default function IssueStockPage() {
         .jobCardAllocations(jobCard.id)
         .then(setJobCardAllocations)
         .catch(() => setJobCardAllocations([]));
+      stockControlApiClient
+        .jobCardCoatingAnalysis(jobCard.id)
+        .then(setCoatingAnalysis)
+        .catch(() => setCoatingAnalysis(null));
     } else {
       setJobCardAllocations([]);
+      setCoatingAnalysis(null);
     }
   }, [jobCard?.id]);
 
@@ -271,8 +278,13 @@ export default function IssueStockPage() {
       setIsLoadingJobCards(true);
       stockControlApiClient
         .jobCards("active")
-        .then(setJobCardList)
-        .catch(() => setJobCardList([]))
+        .then((data) => {
+          setJobCardList(Array.isArray(data) ? data : []);
+        })
+        .catch((err) => {
+          console.error("Failed to load job cards:", err);
+          setJobCardList([]);
+        })
         .finally(() => setIsLoadingJobCards(false));
     }
   }, [showJobCardDropdown, currentStep]);
@@ -1460,31 +1472,79 @@ export default function IssueStockPage() {
                   </div>
                 )}
 
-                {jobCard?.lineItems &&
-                  jobCard.lineItems.length > 0 &&
-                  jobCardAllocations.length === 0 && (
-                    <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-3">
-                      <p className="text-sm font-semibold text-amber-900 mb-2">
-                        Suggested items from {jobCard.jobNumber}
+                {jobCard &&
+                  jobCardAllocations.length === 0 &&
+                  coatingAnalysis?.stockAssessment &&
+                  coatingAnalysis.stockAssessment.length > 0 && (
+                    <div className="mb-4 rounded-lg border border-blue-200 bg-blue-50 p-3">
+                      <p className="text-sm font-semibold text-blue-900 mb-2">
+                        Paint Requirements — {jobCard.jobNumber}
                       </p>
-                      <p className="text-xs text-amber-700 mb-2">
-                        No stock allocations found. These line items are on the job card:
-                      </p>
-                      <div className="space-y-1">
-                        {jobCard.lineItems.map((li) => (
-                          <div key={li.id} className="flex items-center justify-between text-xs">
-                            <span className="text-amber-800">
-                              {li.itemDescription || "Unknown"}{" "}
-                              {li.itemCode && (
-                                <span className="text-amber-500">({li.itemCode})</span>
-                              )}
+                      <div className="space-y-1.5">
+                        {coatingAnalysis.stockAssessment.map((item) => (
+                          <div
+                            key={item.product}
+                            className="flex items-center justify-between text-xs"
+                          >
+                            <span className="font-medium text-blue-800">
+                              {item.stockItemName || item.product}
                             </span>
-                            <span className="font-medium text-amber-900">
-                              Qty: {li.quantity || "-"}
+                            <span className={item.sufficient ? "text-green-700" : "text-red-600"}>
+                              {item.required} {item.unit} required
+                              {item.stockItemId
+                                ? ` — ${item.currentStock} ${item.unit} in stock`
+                                : " — no stock match"}
                             </span>
                           </div>
                         ))}
                       </div>
+                      {coatingAnalysis.stockAssessment.some((item) => item.stockItemId) && (
+                        <button
+                          onClick={async () => {
+                            const paintItems = await Promise.all(
+                              coatingAnalysis.stockAssessment
+                                .filter(
+                                  (item) =>
+                                    item.stockItemId &&
+                                    !items.some((i) => i.stockItem.id === item.stockItemId),
+                                )
+                                .map(async (item) => {
+                                  const stockItem = await stockControlApiClient.stockItemById(
+                                    item.stockItemId as number,
+                                  );
+                                  return {
+                                    stockItem,
+                                    quantity: item.required,
+                                    batchNumber: "",
+                                  };
+                                }),
+                            );
+                            if (paintItems.length > 0) {
+                              setItems([...items, ...paintItems]);
+                              triggerHaptic();
+                              playSuccessSound();
+                            }
+                          }}
+                          className="mt-2 text-xs font-medium text-blue-700 hover:text-blue-900 underline"
+                        >
+                          Add paint items to issuance
+                        </button>
+                      )}
+                    </div>
+                  )}
+
+                {jobCard &&
+                  jobCardAllocations.length === 0 &&
+                  (!coatingAnalysis?.stockAssessment ||
+                    coatingAnalysis.stockAssessment.length === 0) && (
+                    <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-3">
+                      <p className="text-sm font-semibold text-amber-900 mb-2">
+                        Job Card {jobCard.jobNumber} — No stock allocations found
+                      </p>
+                      <p className="text-xs text-amber-700">
+                        This job card has no stock allocations yet. Allocate stock to this job card
+                        from the job card details page to track issuance quantities.
+                      </p>
                     </div>
                   )}
 
@@ -1660,8 +1720,7 @@ export default function IssueStockPage() {
                   <input
                     ref={photoInputRef}
                     type="file"
-                    accept="image/*"
-                    capture="environment"
+                    accept="image/jpeg,image/png,image/webp"
                     onChange={handlePhotoCapture}
                     className="hidden"
                   />

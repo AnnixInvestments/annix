@@ -717,6 +717,7 @@ export class QcMeasurementService {
     jobCardId: number,
     selectedItemIndices: number[],
     user: UserContext,
+    quantityOverrides?: Record<string, number>,
   ): Promise<{ itemsRelease: QcItemsRelease; releaseCertificate: QcReleaseCertificate }> {
     const lineItems = await this.workItemProvider.lineItemsForWorkItem(companyId, jobCardId);
 
@@ -726,15 +727,19 @@ export class QcMeasurementService {
 
     const selectedItems: ReleaseLineItem[] = lineItems
       .filter((_li, idx) => selectedItemIndices.includes(idx))
-      .map((li) => ({
-        itemCode: li.itemCode,
-        description: li.description,
-        jtNumber: li.jtNumber,
-        rubberSpec: null,
-        paintingSpec: null,
-        quantity: li.quantity,
-        result: ItemReleaseResult.PASS,
-      }));
+      .map((li, _mapIdx, _arr) => {
+        const originalIdx = lineItems.indexOf(li);
+        const overrideQty = quantityOverrides ? quantityOverrides[String(originalIdx)] : null;
+        return {
+          itemCode: li.itemCode,
+          description: li.description,
+          jtNumber: li.jtNumber,
+          rubberSpec: null,
+          paintingSpec: null,
+          quantity: overrideQty !== null && overrideQty !== undefined ? overrideQty : li.quantity,
+          result: ItemReleaseResult.PASS,
+        };
+      });
 
     if (selectedItems.length === 0) {
       throw new NotFoundException("No line items matched the selected indices");

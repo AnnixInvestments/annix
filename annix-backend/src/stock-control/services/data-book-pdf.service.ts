@@ -164,6 +164,127 @@ export class DataBookPdfService {
     private readonly companyRepo: Repository<StockControlCompany>,
   ) {}
 
+  async generateReleaseCertificatePdf(
+    companyId: number,
+    jobCardId: number,
+    certificateId: number,
+  ): Promise<Buffer | null> {
+    const [jobCard, company, certificate] = await Promise.all([
+      this.jobCardRepo.findOne({ where: { id: jobCardId, companyId }, relations: ["lineItems"] }),
+      this.companyRepo.findOne({ where: { id: companyId } }),
+      this.releaseCertRepo.findOne({ where: { id: certificateId, companyId, jobCardId } }),
+    ]);
+
+    if (!jobCard || !certificate) {
+      return null;
+    }
+
+    const ctx: DataBookContext = {
+      jobCard,
+      company,
+      shoreHardness: [],
+      primerDft: [],
+      finalDft: [],
+      blastProfiles: [],
+      dustDebrisTests: [],
+      pullTests: [],
+      controlPlans: [],
+      releaseCertificates: [certificate],
+      itemsReleases: [],
+    };
+
+    return this.renderStandaloneDocument(ctx, (doc, tocEntries) => {
+      this.renderReleaseCertificate(doc, ctx, certificate, tocEntries);
+    });
+  }
+
+  async generateItemsReleasePdf(
+    companyId: number,
+    jobCardId: number,
+    releaseId: number,
+  ): Promise<Buffer | null> {
+    const [jobCard, company, release] = await Promise.all([
+      this.jobCardRepo.findOne({ where: { id: jobCardId, companyId }, relations: ["lineItems"] }),
+      this.companyRepo.findOne({ where: { id: companyId } }),
+      this.itemsReleaseRepo.findOne({ where: { id: releaseId, companyId, jobCardId } }),
+    ]);
+
+    if (!jobCard || !release) {
+      return null;
+    }
+
+    const ctx: DataBookContext = {
+      jobCard,
+      company,
+      shoreHardness: [],
+      primerDft: [],
+      finalDft: [],
+      blastProfiles: [],
+      dustDebrisTests: [],
+      pullTests: [],
+      controlPlans: [],
+      releaseCertificates: [],
+      itemsReleases: [release],
+    };
+
+    return this.renderStandaloneDocument(ctx, (doc, tocEntries) => {
+      this.renderItemsRelease(doc, ctx, release, tocEntries);
+    });
+  }
+
+  async generateControlPlanPdf(
+    companyId: number,
+    jobCardId: number,
+    planId: number,
+  ): Promise<Buffer | null> {
+    const [jobCard, company, plan] = await Promise.all([
+      this.jobCardRepo.findOne({ where: { id: jobCardId, companyId }, relations: ["lineItems"] }),
+      this.companyRepo.findOne({ where: { id: companyId } }),
+      this.controlPlanRepo.findOne({ where: { id: planId, companyId, jobCardId } }),
+    ]);
+
+    if (!jobCard || !plan) {
+      return null;
+    }
+
+    const ctx: DataBookContext = {
+      jobCard,
+      company,
+      shoreHardness: [],
+      primerDft: [],
+      finalDft: [],
+      blastProfiles: [],
+      dustDebrisTests: [],
+      pullTests: [],
+      controlPlans: [plan],
+      releaseCertificates: [],
+      itemsReleases: [],
+    };
+
+    return this.renderStandaloneDocument(ctx, (doc, tocEntries) => {
+      this.renderControlPlan(doc, ctx, plan, tocEntries);
+    });
+  }
+
+  private async renderStandaloneDocument(
+    ctx: DataBookContext,
+    renderFn: (doc: PDFDoc, tocEntries: TocEntry[]) => void,
+  ): Promise<Buffer> {
+    const doc = new PDFDocument({ size: "A4", margin: A4.margin, bufferPages: true });
+    const chunks: Buffer[] = [];
+    doc.on("data", (chunk: Buffer) => chunks.push(chunk));
+
+    const done = new Promise<Buffer>((resolve) => {
+      doc.on("end", () => resolve(Buffer.concat(chunks)));
+    });
+
+    const tocEntries: TocEntry[] = [];
+    renderFn(doc, tocEntries);
+    this.renderPageFooters(doc, ctx);
+    doc.end();
+    return done;
+  }
+
   async generateStructuredSections(companyId: number, jobCardId: number): Promise<Buffer | null> {
     const [
       jobCard,

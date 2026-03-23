@@ -42,7 +42,7 @@ export class CertificateController {
   ) {}
 
   @Post()
-  @StockControlRoles("manager", "admin")
+  @StockControlRoles("viewer", "storeman", "manager", "admin")
   @PermissionKey("certificates.upload")
   @UseInterceptors(FileInterceptor("file"))
   @ApiOperation({ summary: "Upload a supplier certificate (COA/COC)" })

@@ -4,19 +4,23 @@ import {
   Delete,
   Get,
   Logger,
+  NotFoundException,
   Param,
   Patch,
   Post,
   Req,
+  Res,
   UseGuards,
 } from "@nestjs/common";
 import { ApiOperation, ApiTags } from "@nestjs/swagger";
+import type { Response } from "express";
 import { StockControlAuthGuard } from "../../guards/stock-control-auth.guard";
 import {
   PermissionKey,
   StockControlRoleGuard,
   StockControlRoles,
 } from "../../guards/stock-control-role.guard";
+import { DataBookPdfService } from "../../services/data-book-pdf.service";
 import { QcEnabledGuard } from "../guards/qc-enabled.guard";
 import { QcMeasurementService } from "../services/qc-measurement.service";
 
@@ -26,7 +30,10 @@ import { QcMeasurementService } from "../services/qc-measurement.service";
 export class QcMeasurementController {
   private readonly logger = new Logger(QcMeasurementController.name);
 
-  constructor(private readonly qcService: QcMeasurementService) {}
+  constructor(
+    private readonly qcService: QcMeasurementService,
+    private readonly dataBookPdfService: DataBookPdfService,
+  ) {}
 
   // ── Aggregate ──────────────────────────────────────────────────────
 
@@ -263,6 +270,33 @@ export class QcMeasurementController {
     return this.qcService.autoGenerateControlPlans(req.user.companyId, jobCardId, req.user);
   }
 
+  @Get("control-plans/:id/pdf")
+  @PermissionKey("qc.measurements")
+  @ApiOperation({ summary: "Download control plan as PDF" })
+  async downloadControlPlanPdf(
+    @Req() req: any,
+    @Res() res: Response,
+    @Param("jobCardId") jobCardId: number,
+    @Param("id") id: number,
+  ) {
+    const buffer = await this.dataBookPdfService.generateControlPlanPdf(
+      req.user.companyId,
+      jobCardId,
+      id,
+    );
+
+    if (!buffer) {
+      throw new NotFoundException("Control plan not found");
+    }
+
+    res.set({
+      "Content-Type": "application/pdf",
+      "Content-Disposition": `inline; filename="QCP_${id}.pdf"`,
+      "Content-Length": buffer.length.toString(),
+    });
+    res.end(buffer);
+  }
+
   @Get("control-plans/:id")
   @ApiOperation({ summary: "Single control plan" })
   async controlPlanById(@Req() req: any, @Param("id") id: number) {
@@ -304,6 +338,33 @@ export class QcMeasurementController {
   @ApiOperation({ summary: "Release certificates for a job card" })
   async releaseCertificatesList(@Req() req: any, @Param("jobCardId") jobCardId: number) {
     return this.qcService.releaseCertificatesForJobCard(req.user.companyId, jobCardId);
+  }
+
+  @Get("release-certificates/:id/pdf")
+  @PermissionKey("qc.measurements")
+  @ApiOperation({ summary: "Download release certificate as PDF" })
+  async downloadReleaseCertificatePdf(
+    @Req() req: any,
+    @Res() res: Response,
+    @Param("jobCardId") jobCardId: number,
+    @Param("id") id: number,
+  ) {
+    const buffer = await this.dataBookPdfService.generateReleaseCertificatePdf(
+      req.user.companyId,
+      jobCardId,
+      id,
+    );
+
+    if (!buffer) {
+      throw new NotFoundException("Release certificate not found");
+    }
+
+    res.set({
+      "Content-Type": "application/pdf",
+      "Content-Disposition": `inline; filename="QD_PLS_10_Release_Certificate_${id}.pdf"`,
+      "Content-Length": buffer.length.toString(),
+    });
+    res.end(buffer);
   }
 
   @Get("release-certificates/:id")
@@ -349,6 +410,33 @@ export class QcMeasurementController {
     return this.qcService.itemsReleasesForJobCard(req.user.companyId, jobCardId);
   }
 
+  @Get("items-releases/:id/pdf")
+  @PermissionKey("qc.measurements")
+  @ApiOperation({ summary: "Download items release as PDF" })
+  async downloadItemsReleasePdf(
+    @Req() req: any,
+    @Res() res: Response,
+    @Param("jobCardId") jobCardId: number,
+    @Param("id") id: number,
+  ) {
+    const buffer = await this.dataBookPdfService.generateItemsReleasePdf(
+      req.user.companyId,
+      jobCardId,
+      id,
+    );
+
+    if (!buffer) {
+      throw new NotFoundException("Items release not found");
+    }
+
+    res.set({
+      "Content-Type": "application/pdf",
+      "Content-Disposition": `inline; filename="QD_PLS_09_Items_Release_${id}.pdf"`,
+      "Content-Length": buffer.length.toString(),
+    });
+    res.end(buffer);
+  }
+
   @Get("items-releases/:id")
   @ApiOperation({ summary: "Single items release" })
   async itemsReleaseById(@Req() req: any, @Param("id") id: number) {
@@ -382,13 +470,14 @@ export class QcMeasurementController {
   async autoGenerateReleaseDocuments(
     @Req() req: any,
     @Param("jobCardId") jobCardId: number,
-    @Body() body: { selectedItemIndices: number[] },
+    @Body() body: { selectedItemIndices: number[]; quantityOverrides?: Record<string, number> },
   ) {
     return this.qcService.autoGenerateReleaseDocuments(
       req.user.companyId,
       jobCardId,
       body.selectedItemIndices,
       req.user,
+      body.quantityOverrides,
     );
   }
 
