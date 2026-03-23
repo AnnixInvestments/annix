@@ -107,6 +107,7 @@ declare module "./base" {
     ): Promise<{ success: boolean }>;
     downloadJobCardQrPdf(id: number): Promise<void>;
     bulkReanalyseJobCards(): Promise<{ processed: number; failed: number }>;
+    deduplicateJobCards(): Promise<{ merged: number; groups: number }>;
     jobCardCorrections(jobCardId: number): Promise<
       {
         id: number;
@@ -417,6 +418,10 @@ proto.downloadJobCardQrPdf = async function (id) {
 
 proto.bulkReanalyseJobCards = async function () {
   return this.request("/stock-control/job-cards/bulk-reanalyse", { method: "POST" });
+};
+
+proto.deduplicateJobCards = async function () {
+  return this.request("/stock-control/job-cards/deduplicate", { method: "POST" });
 };
 
 proto.jobCardCorrections = async function (jobCardId) {

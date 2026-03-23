@@ -2,16 +2,18 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { formatDateZA } from "@/app/lib/datetime";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   useCreateJobCard,
   useDataBookStatuses,
   useDeleteJobCard,
   useJobCards,
 } from "@/app/lib/query/hooks";
+import { stockControlKeys } from "@/app/lib/query/keys";
 import { ConfirmDialog } from "../../components/ConfirmDialog";
 import { HelpTooltip } from "../../components/HelpTooltip";
 import { StatusBadge } from "../../components/StatusBadge";
@@ -52,11 +54,31 @@ export default function JobCardsPage() {
   const [bulkResult, setBulkResult] = useState<{ processed: number; failed: number } | null>(null);
   const modalFileInputRef = useRef<HTMLInputElement>(null);
 
+  const queryClient = useQueryClient();
   const { data: jobCards = [], isLoading, error } = useJobCards(activeTab);
   const jobCardIds = useMemo(() => jobCards.map((jc) => jc.id), [jobCards]);
   const { data: dataBookStatuses = {} } = useDataBookStatuses(jobCardIds);
   const createJobCard = useCreateJobCard();
   const deleteJobCard = useDeleteJobCard();
+  const dedupRanRef = useRef(false);
+  const [isDeduplicating, setIsDeduplicating] = useState(false);
+  const [dedupResult, setDedupResult] = useState<{ merged: number; groups: number } | null>(null);
+
+  useEffect(() => {
+    if (dedupRanRef.current || !isAdmin) return;
+    dedupRanRef.current = true;
+    setIsDeduplicating(true);
+    stockControlApiClient
+      .deduplicateJobCards()
+      .then((result) => {
+        if (result.merged > 0) {
+          setDedupResult(result);
+          queryClient.invalidateQueries({ queryKey: stockControlKeys.jobCards.all });
+        }
+      })
+      .catch(() => {})
+      .finally(() => setIsDeduplicating(false));
+  }, [isAdmin, queryClient]);
 
   const navigateWithFile = (file: File) => {
     setPendingImportFile(file);
@@ -304,6 +326,21 @@ export default function JobCardsPage() {
           <button
             onClick={() => setBulkResult(null)}
             className="text-purple-600 hover:text-purple-800 text-sm"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
+
+      {dedupResult && dedupResult.merged > 0 && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 flex items-center justify-between">
+          <span className="text-sm text-blue-800">
+            Deduplication: {dedupResult.merged} duplicate job card(s) merged across{" "}
+            {dedupResult.groups} group(s). Previous versions saved to Job Files.
+          </span>
+          <button
+            onClick={() => setDedupResult(null)}
+            className="text-blue-600 hover:text-blue-800 text-sm"
           >
             Dismiss
           </button>

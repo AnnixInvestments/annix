@@ -160,6 +160,13 @@ export class JobCard {
   @Column({ name: "jt_dn_number", type: "varchar", length: 500, nullable: true })
   jtDnNumber: string | null;
 
+  @Column({ name: "superseded_by_id", nullable: true })
+  supersededById: number | null;
+
+  @ManyToOne(() => JobCard, { nullable: true, onDelete: "SET NULL" })
+  @JoinColumn({ name: "superseded_by_id" })
+  supersededBy: JobCard | null;
+
   @Column({ name: "workflow_ceiling", type: "varchar", length: 50, nullable: true })
   workflowCeiling: string | null;
 

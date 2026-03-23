@@ -139,6 +139,13 @@ export class JobCardsController {
     return this.coatingAnalysisService.bulkReanalyse(req.user.companyId);
   }
 
+  @Post("deduplicate")
+  @StockControlRoles("manager", "admin")
+  @ApiOperation({ summary: "Merge duplicate job cards (same P/JC/JT numbers)" })
+  async deduplicateJobCards(@Req() req: any) {
+    return this.jobCardService.deduplicateJobCards(req.user.companyId);
+  }
+
   @Get(":id")
   @ApiOperation({ summary: "Job card by ID" })
   async findById(@Req() req: any, @Param("id") id: number) {

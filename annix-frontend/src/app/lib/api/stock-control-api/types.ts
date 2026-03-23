@@ -323,6 +323,7 @@ export interface JobCard {
   isCpoCalloff: boolean;
   parentJobCardId: number | null;
   jtDnNumber: string | null;
+  supersededById: number | null;
   workflowCeiling: string | null;
   effectiveWorkflowStatus?: string;
   allocations?: StockAllocation[];

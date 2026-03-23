@@ -7,13 +7,14 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { DataSource, IsNull, Repository } from "typeorm";
+import { DataSource, IsNull, Not, Repository } from "typeorm";
 import { AuditService } from "../../audit/audit.service";
 import { AuditAction } from "../../audit/entities/audit-log.entity";
 import { now } from "../../lib/datetime";
 import { IStorageService, STORAGE_SERVICE } from "../../storage/storage.interface";
 import { JobCardCoatingAnalysis } from "../entities/coating-analysis.entity";
-import { JobCard } from "../entities/job-card.entity";
+import { JobCard, JobCardStatus } from "../entities/job-card.entity";
+import { JobCardJobFile } from "../entities/job-card-job-file.entity";
 import { StockAllocation } from "../entities/stock-allocation.entity";
 import { StockItem } from "../entities/stock-item.entity";
 import { MovementType, ReferenceType, StockMovement } from "../entities/stock-movement.entity";
@@ -35,6 +36,8 @@ export class JobCardService {
     private readonly movementRepo: Repository<StockMovement>,
     @InjectRepository(JobCardCoatingAnalysis)
     private readonly coatingAnalysisRepo: Repository<JobCardCoatingAnalysis>,
+    @InjectRepository(JobCardJobFile)
+    private readonly jobFileRepo: Repository<JobCardJobFile>,
     @Inject(STORAGE_SERVICE)
     private readonly storageService: IStorageService,
     @Inject(forwardRef(() => RequisitionService))
@@ -56,7 +59,7 @@ export class JobCardService {
     page: number = 1,
     limit: number = 50,
   ): Promise<JobCard[]> {
-    const where: Record<string, unknown> = { companyId };
+    const where: Record<string, unknown> = { companyId, supersededById: IsNull() };
     if (status) {
       where.status = status;
     }
@@ -562,5 +565,81 @@ export class JobCardService {
     const result = await this.storageService.upload(file, "stock-control/allocations");
     allocation.photoUrl = result.url;
     return this.allocationRepo.save(allocation);
+  }
+
+  async deduplicateJobCards(
+    companyId: number,
+  ): Promise<{ merged: number; groups: number }> {
+    const allCards = await this.jobCardRepo.find({
+      where: { companyId, supersededById: IsNull() },
+      order: { createdAt: "DESC" },
+    });
+
+    const groups = new Map<string, JobCard[]>();
+    allCards.forEach((jc) => {
+      const pNum = (jc.jobNumber || "").trim().toLowerCase();
+      const jcNum = (jc.jcNumber || "").trim().toLowerCase();
+      const jtNum = (jc.jtDnNumber || "").trim().toLowerCase();
+
+      if (!pNum || !jcNum || !jtNum) return;
+
+      const key = `${pNum}|${jcNum}|${jtNum}`;
+      const existing = groups.get(key) || [];
+      groups.set(key, [...existing, jc]);
+    });
+
+    let mergedCount = 0;
+    let groupCount = 0;
+
+    const duplicateGroups = Array.from(groups.entries()).filter(
+      ([_key, cards]) => cards.length > 1,
+    );
+
+    for (const [_key, cards] of duplicateGroups) {
+      groupCount++;
+
+      const winner = cards[0];
+
+      const losers = cards.slice(1);
+
+      for (const loser of losers) {
+        const versionLabel = `V${loser.versionNumber} - ${loser.jobNumber}`;
+
+        if (loser.sourceFilePath) {
+          try {
+            const jobFile = this.jobFileRepo.create({
+              jobCardId: winner.id,
+              companyId,
+              filePath: loser.sourceFilePath,
+              originalFilename: loser.sourceFileName || `${versionLabel}.pdf`,
+              aiGeneratedName: `Previous Version (${versionLabel})`,
+              fileType: "pdf",
+              mimeType: "application/pdf",
+              fileSizeBytes: 0,
+              uploadedByName: "System (deduplication)",
+            });
+            await this.jobFileRepo.save(jobFile);
+          } catch (err) {
+            this.logger.warn(
+              `Failed to archive source file for JC #${loser.id}: ${err instanceof Error ? err.message : err}`,
+            );
+          }
+        }
+
+        loser.supersededById = winner.id;
+        await this.jobCardRepo.save(loser);
+        mergedCount++;
+
+        this.logger.log(
+          `Job card #${loser.id} (${loser.jobNumber}) superseded by #${winner.id}`,
+        );
+      }
+    }
+
+    this.logger.log(
+      `Deduplication complete: ${mergedCount} job cards merged across ${groupCount} groups`,
+    );
+
+    return { merged: mergedCount, groups: groupCount };
   }
 }
