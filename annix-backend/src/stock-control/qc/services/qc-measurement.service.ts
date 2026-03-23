@@ -1,4 +1,4 @@
-import { Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
+import { BadRequestException, Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { JobCardCoatingAnalysis } from "../../entities/coating-analysis.entity";
@@ -725,18 +725,41 @@ export class QcMeasurementService {
       throw new NotFoundException(`Work item #${jobCardId} not found or has no line items`);
     }
 
+    const existingReleases = await this.itemsReleasesForJobCard(companyId, jobCardId);
+
+    const alreadyReleasedByItemCode = existingReleases.reduce(
+      (acc, release) => {
+        return release.items.reduce((inner, ri) => {
+          const current = inner[ri.itemCode] || 0;
+          return { ...inner, [ri.itemCode]: current + (ri.quantity || 0) };
+        }, acc);
+      },
+      {} as Record<string, number>,
+    );
+
     const selectedItems: ReleaseLineItem[] = lineItems
       .filter((_li, idx) => selectedItemIndices.includes(idx))
       .map((li, _mapIdx, _arr) => {
         const originalIdx = lineItems.indexOf(li);
         const overrideQty = quantityOverrides ? quantityOverrides[String(originalIdx)] : null;
+        const requestedQty =
+          overrideQty !== null && overrideQty !== undefined ? overrideQty : li.quantity;
+        const alreadyReleased = alreadyReleasedByItemCode[li.itemCode] || 0;
+        const remaining = Math.max(0, li.quantity - alreadyReleased);
+
+        if (requestedQty > remaining) {
+          throw new BadRequestException(
+            `Cannot release ${requestedQty} of "${li.itemCode}" — only ${remaining} remaining (${alreadyReleased} already released of ${li.quantity} total)`,
+          );
+        }
+
         return {
           itemCode: li.itemCode,
           description: li.description,
           jtNumber: li.jtNumber,
           rubberSpec: null,
           paintingSpec: null,
-          quantity: overrideQty !== null && overrideQty !== undefined ? overrideQty : li.quantity,
+          quantity: requestedQty,
           result: ItemReleaseResult.PASS,
         };
       });

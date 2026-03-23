@@ -1,7 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import type { BackgroundStepStatus, JobCardLineItem } from "@/app/lib/api/stockControlApi";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import type {
+  BackgroundStepStatus,
+  JobCardLineItem,
+  QcItemsReleaseRecord,
+} from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 
 interface ReleaseDocumentGeneratorProps {
@@ -10,12 +14,23 @@ interface ReleaseDocumentGeneratorProps {
   onGenerated: () => void;
 }
 
+const releasedQuantityForItem = (
+  releases: QcItemsReleaseRecord[],
+  itemCode: string,
+): number => {
+  return releases.reduce((total, release) => {
+    const matchingItems = release.items.filter((ri) => ri.itemCode === itemCode);
+    return total + matchingItems.reduce((sum, ri) => sum + (ri.quantity || 0), 0);
+  }, 0);
+};
+
 export function ReleaseDocumentGenerator(props: ReleaseDocumentGeneratorProps) {
   const jobCardId = props.jobCardId;
   const backgroundSteps = props.backgroundSteps;
   const onGenerated = props.onGenerated;
 
   const [lineItems, setLineItems] = useState<JobCardLineItem[]>([]);
+  const [existingReleases, setExistingReleases] = useState<QcItemsReleaseRecord[]>([]);
   const [selectedIndices, setSelectedIndices] = useState<Set<number>>(new Set());
   const [releaseQuantities, setReleaseQuantities] = useState<Record<number, number>>({});
   const [isLoading, setIsLoading] = useState(true);
@@ -26,19 +41,30 @@ export function ReleaseDocumentGenerator(props: ReleaseDocumentGeneratorProps) {
   const qaFinalStep = backgroundSteps.find((bg) => bg.stepKey === "qa_final_check");
   const isVisible = qaFinalStep && qaFinalStep.completedAt === null;
 
-  const fetchLineItems = useCallback(async () => {
+  const remainingByIndex = useMemo(() => {
+    return lineItems.reduce(
+      (acc, li, idx) => {
+        const totalQty = li.quantity || 0;
+        const alreadyReleased = releasedQuantityForItem(existingReleases, li.itemCode || "");
+        const remaining = Math.max(0, totalQty - alreadyReleased);
+        return { ...acc, [idx]: { totalQty, alreadyReleased, remaining } };
+      },
+      {} as Record<number, { totalQty: number; alreadyReleased: number; remaining: number }>,
+    );
+  }, [lineItems, existingReleases]);
+
+  const fetchData = useCallback(async () => {
     try {
       setIsLoading(true);
-      const jobCard = await stockControlApiClient.jobCardById(jobCardId);
+      const [jobCard, releases] = await Promise.all([
+        stockControlApiClient.jobCardById(jobCardId),
+        stockControlApiClient.itemsReleasesForJobCard(jobCardId),
+      ]);
       const validItems = (jobCard.lineItems || []).filter(
         (li) => !li.itemCode?.startsWith("Sage ") && !li.itemDescription?.startsWith("Sage "),
       );
       setLineItems(validItems);
-      const initialQuantities = validItems.reduce(
-        (acc, li, idx) => ({ ...acc, [idx]: li.quantity || 0 }),
-        {} as Record<number, number>,
-      );
-      setReleaseQuantities(initialQuantities);
+      setExistingReleases(Array.isArray(releases) ? releases : []);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load line items");
     } finally {
@@ -48,15 +74,31 @@ export function ReleaseDocumentGenerator(props: ReleaseDocumentGeneratorProps) {
 
   useEffect(() => {
     if (isVisible) {
-      fetchLineItems();
+      fetchData();
     }
-  }, [isVisible, fetchLineItems]);
+  }, [isVisible, fetchData]);
+
+  useEffect(() => {
+    const initialQuantities = lineItems.reduce((acc, li, idx) => {
+      const info = remainingByIndex[idx];
+      return { ...acc, [idx]: info ? info.remaining : (li.quantity || 0) };
+    }, {} as Record<number, number>);
+    setReleaseQuantities(initialQuantities);
+    setSelectedIndices(new Set());
+  }, [lineItems, remainingByIndex]);
 
   if (!isVisible) {
     return null;
   }
 
+  const allFullyReleased = lineItems.length > 0 && lineItems.every((_li, idx) => {
+    const info = remainingByIndex[idx];
+    return info ? info.remaining <= 0 : false;
+  });
+
   const handleToggle = (idx: number) => {
+    const info = remainingByIndex[idx];
+    if (info && info.remaining <= 0) return;
     const next = new Set(selectedIndices);
     if (next.has(idx)) {
       next.delete(idx);
@@ -68,7 +110,8 @@ export function ReleaseDocumentGenerator(props: ReleaseDocumentGeneratorProps) {
 
   const handleQuantityChange = (idx: number, value: string) => {
     const parsed = Number.parseFloat(value);
-    const maxQty = lineItems[idx]?.quantity || 0;
+    const info = remainingByIndex[idx];
+    const maxQty = info ? info.remaining : 0;
     if (Number.isNaN(parsed) || parsed < 0) {
       setReleaseQuantities({ ...releaseQuantities, [idx]: 0 });
     } else if (parsed > maxQty) {
@@ -83,10 +126,18 @@ export function ReleaseDocumentGenerator(props: ReleaseDocumentGeneratorProps) {
       return;
     }
 
+    const hasZeroQty = Array.from(selectedIndices).some(
+      (idx) => (releaseQuantities[idx] || 0) <= 0,
+    );
+    if (hasZeroQty) {
+      setError("All selected items must have a release quantity greater than 0");
+      return;
+    }
+
     const quantityOverrides = Array.from(selectedIndices).reduce(
       (acc, idx) => ({
         ...acc,
-        [idx]: releaseQuantities[idx] || lineItems[idx]?.quantity || 0,
+        [idx]: releaseQuantities[idx] || 0,
       }),
       {} as Record<number, number>,
     );
@@ -103,6 +154,8 @@ export function ReleaseDocumentGenerator(props: ReleaseDocumentGeneratorProps) {
       setSuccess("Release documents generated successfully");
       setSelectedIndices(new Set());
       onGenerated();
+      const releases = await stockControlApiClient.itemsReleasesForJobCard(jobCardId);
+      setExistingReleases(Array.isArray(releases) ? releases : []);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to generate release documents");
     } finally {
@@ -148,6 +201,15 @@ export function ReleaseDocumentGenerator(props: ReleaseDocumentGeneratorProps) {
           <div className="py-4 text-center text-sm text-gray-500">Loading line items...</div>
         ) : lineItems.length === 0 ? (
           <div className="py-4 text-center text-sm text-gray-500">No line items found</div>
+        ) : allFullyReleased ? (
+          <div className="rounded-md bg-green-50 border border-green-200 p-4 text-center">
+            <p className="text-sm font-medium text-green-800">
+              All line items have been fully released
+            </p>
+            <p className="mt-1 text-xs text-green-600">
+              {existingReleases.length} release(s) generated covering all quantities
+            </p>
+          </div>
         ) : (
           <>
             <div className="overflow-x-auto rounded-md border border-teal-200 bg-white">
@@ -168,28 +230,47 @@ export function ReleaseDocumentGenerator(props: ReleaseDocumentGeneratorProps) {
                       Total Qty
                     </th>
                     <th className="px-3 py-2 text-right text-xs font-medium uppercase text-gray-500">
+                      Released
+                    </th>
+                    <th className="px-3 py-2 text-right text-xs font-medium uppercase text-gray-500">
+                      Remaining
+                    </th>
+                    <th className="px-3 py-2 text-right text-xs font-medium uppercase text-gray-500">
                       Release Qty
                     </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
                   {lineItems.map((li, idx) => {
+                    const info = remainingByIndex[idx] || {
+                      totalQty: 0,
+                      alreadyReleased: 0,
+                      remaining: 0,
+                    };
+                    const isFullyReleased = info.remaining <= 0;
                     const isSelected = selectedIndices.has(idx);
                     const releaseQty = releaseQuantities[idx] || 0;
-                    const isPartial = isSelected && releaseQty < (li.quantity || 0);
+                    const isPartial = isSelected && releaseQty < info.remaining;
                     return (
                       <tr
                         key={li.id}
-                        className={`cursor-pointer hover:bg-gray-50 ${isSelected ? "bg-teal-50" : ""}`}
+                        className={
+                          isFullyReleased
+                            ? "bg-gray-50 opacity-50"
+                            : isSelected
+                              ? "cursor-pointer bg-teal-50 hover:bg-gray-50"
+                              : "cursor-pointer hover:bg-gray-50"
+                        }
                         onClick={() => handleToggle(idx)}
                       >
                         <td className="px-3 py-2">
                           <input
                             type="checkbox"
                             checked={isSelected}
+                            disabled={isFullyReleased}
                             onChange={() => handleToggle(idx)}
                             onClick={(e) => e.stopPropagation()}
-                            className="h-4 w-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500"
+                            className="h-4 w-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500 disabled:opacity-50"
                           />
                         </td>
                         <td className="whitespace-nowrap px-3 py-2 text-sm font-medium text-gray-900">
@@ -202,17 +283,37 @@ export function ReleaseDocumentGenerator(props: ReleaseDocumentGeneratorProps) {
                           {li.jtNo || "-"}
                         </td>
                         <td className="whitespace-nowrap px-3 py-2 text-right text-sm text-gray-600">
-                          {li.quantity || "-"}
+                          {info.totalQty || "-"}
+                        </td>
+                        <td className="whitespace-nowrap px-3 py-2 text-right text-sm">
+                          {info.alreadyReleased > 0 ? (
+                            <span className="font-medium text-blue-600">
+                              {info.alreadyReleased}
+                            </span>
+                          ) : (
+                            <span className="text-gray-400">0</span>
+                          )}
+                        </td>
+                        <td className="whitespace-nowrap px-3 py-2 text-right text-sm">
+                          {isFullyReleased ? (
+                            <span className="inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
+                              Done
+                            </span>
+                          ) : (
+                            <span className="font-medium text-gray-900">{info.remaining}</span>
+                          )}
                         </td>
                         <td className="whitespace-nowrap px-3 py-2 text-right">
-                          {isSelected ? (
+                          {isFullyReleased ? (
+                            <span className="text-sm text-gray-400">-</span>
+                          ) : isSelected ? (
                             <input
                               type="number"
                               value={releaseQty}
                               onChange={(e) => handleQuantityChange(idx, e.target.value)}
                               onClick={(e) => e.stopPropagation()}
                               min={0}
-                              max={li.quantity || 0}
+                              max={info.remaining}
                               step="any"
                               className={`w-20 rounded border px-2 py-1 text-right text-sm ${isPartial ? "border-amber-400 bg-amber-50 text-amber-800" : "border-gray-300 text-gray-900"}`}
                             />
@@ -229,9 +330,12 @@ export function ReleaseDocumentGenerator(props: ReleaseDocumentGeneratorProps) {
 
             <div className="mt-3 flex items-center justify-between">
               <span className="text-sm text-teal-700">
-                {selectedIndices.size} of {lineItems.length} items selected
+                {selectedIndices.size} of{" "}
+                {lineItems.filter((_li, idx) => (remainingByIndex[idx]?.remaining || 0) > 0).length}{" "}
+                available items selected
                 {Array.from(selectedIndices).some(
-                  (idx) => (releaseQuantities[idx] || 0) < (lineItems[idx]?.quantity || 0),
+                  (idx) =>
+                    (releaseQuantities[idx] || 0) < (remainingByIndex[idx]?.remaining || 0),
                 ) && (
                   <span className="ml-2 text-xs text-amber-600 font-medium">(partial release)</span>
                 )}
