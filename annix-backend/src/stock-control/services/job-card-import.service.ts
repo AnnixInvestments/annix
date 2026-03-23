@@ -1177,7 +1177,7 @@ export class JobCardImportService {
 
     const deliveryJc = this.jobCardRepo.create({
       jobNumber: parentJobCard.jobNumber,
-      jcNumber: jtDnNumber,
+      jcNumber: parentJobCard.jcNumber || null,
       pageNumber: row.pageNumber || null,
       jobName: row.jobName || parentJobCard.jobName,
       customerName: row.customerName || parentJobCard.customerName,

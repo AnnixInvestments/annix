@@ -260,7 +260,10 @@ export default function IssueStockPage() {
     if (!search) return jobCardList;
     return jobCardList.filter(
       (jc) =>
-        jc.jobNumber.toLowerCase().includes(search) || jc.jobName.toLowerCase().includes(search),
+        jc.jobNumber.toLowerCase().includes(search) ||
+        jc.jobName.toLowerCase().includes(search) ||
+        (jc.jcNumber || "").toLowerCase().includes(search) ||
+        (jc.jtDnNumber || "").toLowerCase().includes(search),
     );
   }, [jobCardList, jobCardSearch]);
 
@@ -1770,7 +1773,7 @@ export default function IssueStockPage() {
                             type="text"
                             value={jobCardSearch}
                             onChange={(e) => setJobCardSearch(e.target.value)}
-                            placeholder="Search by job number or name..."
+                            placeholder="Search by job, JC, JT number or name..."
                             className="w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 text-sm py-2"
                           />
                         </div>
@@ -1820,6 +1823,16 @@ export default function IssueStockPage() {
                                 <div className="flex-1 min-w-0">
                                   <p className="text-sm font-medium text-gray-900">
                                     {jc.jobNumber}
+                                    {jc.jcNumber && jc.jcNumber !== jc.jtDnNumber && (
+                                      <span className="ml-1 font-normal text-gray-500">
+                                        — {jc.jcNumber}
+                                      </span>
+                                    )}
+                                    {jc.jtDnNumber && (
+                                      <span className="ml-1 font-normal text-gray-500">
+                                        — {jc.jtDnNumber}
+                                      </span>
+                                    )}
                                   </p>
                                   <p className="text-xs text-gray-500 truncate">{jc.jobName}</p>
                                 </div>

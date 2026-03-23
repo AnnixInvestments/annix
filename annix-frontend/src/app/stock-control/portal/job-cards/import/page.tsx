@@ -1035,8 +1035,11 @@ export default function JobCardImportPage() {
     try {
       setIsConfirming(true);
       setError(null);
+      const jcFromFilename =
+        documentNumber && /^JC\d+$/i.test(documentNumber) ? documentNumber.toUpperCase() : null;
       const rowsWithM2 = mappedRows.map((row, rowIdx) => ({
         ...row,
+        jcNumber: row.jcNumber || jcFromFilename || null,
         reference: row.reference || documentNumber || null,
         lineItems: row.lineItems?.map((li, liIdx) => {
           const manualKey = `${rowIdx}-${liIdx}`;
