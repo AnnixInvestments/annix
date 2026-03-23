@@ -1,6 +1,6 @@
 import { Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { Equal, Not, Repository } from "typeorm";
+import { Equal, Like, Not, Repository } from "typeorm";
 import { JobCardCoatingAnalysis } from "../entities/coating-analysis.entity";
 import { JobCard } from "../entities/job-card.entity";
 import { Requisition, RequisitionSource, RequisitionStatus } from "../entities/requisition.entity";
@@ -64,8 +64,11 @@ export class RequisitionService {
       return null;
     }
 
+    const baseReqNumber = `REQ-${jobCard.jobNumber}`;
+    const requisitionNumber = await this.nextRequisitionNumber(companyId, baseReqNumber);
+
     const requisition = this.requisitionRepo.create({
-      requisitionNumber: `REQ-${jobCard.jobNumber}`,
+      requisitionNumber,
       jobCardId,
       companyId,
       status: RequisitionStatus.PENDING,
@@ -148,8 +151,11 @@ export class RequisitionService {
 
     const deficit = stockItem.minStockLevel - stockItem.quantity;
 
+    const baseReorderNumber = `REORDER-${stockItem.sku}`;
+    const reorderNumber = await this.nextRequisitionNumber(companyId, baseReorderNumber);
+
     const requisition = this.requisitionRepo.create({
-      requisitionNumber: `REORDER-${stockItem.sku}`,
+      requisitionNumber: reorderNumber,
       jobCardId: null,
       source: RequisitionSource.REORDER,
       companyId,
@@ -296,5 +302,21 @@ export class RequisitionService {
     }
 
     await this.requisitionRepo.save(requisition);
+  }
+
+  private async nextRequisitionNumber(companyId: number, base: string): Promise<string> {
+    const conflict = await this.requisitionRepo.findOne({
+      where: { companyId, requisitionNumber: base },
+    });
+
+    if (!conflict) {
+      return base;
+    }
+
+    const count = await this.requisitionRepo.count({
+      where: { companyId, requisitionNumber: Like(`${base}%`) },
+    });
+
+    return `${base}-${count}`;
   }
 }
