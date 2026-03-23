@@ -6,6 +6,7 @@ import { AuditService } from "../../audit/audit.service";
 import { STORAGE_SERVICE } from "../../storage/storage.interface";
 import { JobCardCoatingAnalysis } from "../entities/coating-analysis.entity";
 import { JobCard } from "../entities/job-card.entity";
+import { JobCardJobFile } from "../entities/job-card-job-file.entity";
 import { StockAllocation } from "../entities/stock-allocation.entity";
 import { StockItem } from "../entities/stock-item.entity";
 import { MovementType, ReferenceType, StockMovement } from "../entities/stock-movement.entity";
@@ -95,6 +96,10 @@ describe("JobCardService", () => {
         { provide: getRepositoryToken(StockItem), useValue: mockStockItemRepo },
         { provide: getRepositoryToken(StockMovement), useValue: mockMovementRepo },
         { provide: getRepositoryToken(JobCardCoatingAnalysis), useValue: mockCoatingAnalysisRepo },
+        {
+          provide: getRepositoryToken(JobCardJobFile),
+          useValue: { find: jest.fn().mockResolvedValue([]) },
+        },
         { provide: STORAGE_SERVICE, useValue: mockStorageService },
         { provide: RequisitionService, useValue: mockRequisitionService },
         { provide: WorkflowNotificationService, useValue: mockNotificationService },
@@ -132,7 +137,7 @@ describe("JobCardService", () => {
       expect(result).toEqual(cards);
       expect(mockJobCardRepo.find).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: { companyId: 1 },
+          where: expect.objectContaining({ companyId: 1 }),
           order: { createdAt: "DESC" },
           take: 50,
           skip: 0,
@@ -146,7 +151,7 @@ describe("JobCardService", () => {
       await service.findAll(1, "active");
       expect(mockJobCardRepo.find).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: { companyId: 1, status: "active" },
+          where: expect.objectContaining({ companyId: 1, status: "active" }),
         }),
       );
     });
