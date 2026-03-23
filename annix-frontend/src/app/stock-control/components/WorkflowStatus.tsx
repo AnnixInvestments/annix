@@ -525,7 +525,7 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
           : [];
         const prevAmberComplete =
           prevAmberBg.length === 0 || prevAmberBg.every((bg) => bg.completedAt !== null);
-        const branchActive = branch.triggerFgIdx < currentStepIndex && prevAmberComplete;
+        const branchActive = branch.triggerFgIdx <= currentStepIndex && prevAmberComplete;
         const allComplete = branch.bgSteps.every((bg) => bg.completedAt !== null);
         const activeColor = branch.branchColor || "#f59e0b";
         const strokeColor = branchActive ? activeColor : "#d1d5db";
@@ -892,7 +892,7 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
                       <p
                         className={`mb-0.5 text-[9px] font-medium whitespace-nowrap ${classes.label}`}
                       >
-                        {state === "skipped" ? "Skipped" : bg.label}
+                        {bg.label}
                       </p>
                       {bgDisplayName && state !== "skipped" && (
                         <p className="text-[8px] text-gray-400 truncate max-w-[60px] mb-0.5">
@@ -938,7 +938,7 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
                 >
                   <div className="absolute bottom-full left-1/2 -translate-x-1/2 flex flex-col items-center mb-0.5">
                     <p className={`text-[9px] font-medium whitespace-nowrap ${classes.label}`}>
-                      {state === "skipped" ? "Skipped" : bg.label}
+                      {bg.label}
                     </p>
                     {bgDisplayName && state !== "skipped" && (
                       <p className="text-[8px] text-gray-400 truncate max-w-[60px]">
@@ -982,7 +982,7 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
                   >
                     <div className="absolute bottom-full left-1/2 -translate-x-1/2 flex flex-col items-center mb-0.5">
                       <p className={`text-[9px] font-medium whitespace-nowrap ${classes.label}`}>
-                        {state === "skipped" ? "Skipped" : bg.label}
+                        {bg.label}
                       </p>
                       {bgDisplayName && state !== "skipped" && (
                         <p className="text-[8px] text-gray-400 truncate max-w-[60px]">
@@ -1256,7 +1256,7 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
                       <p
                         className={`mt-0.5 text-[9px] font-medium whitespace-nowrap ${classes.label}`}
                       >
-                        {state === "skipped" ? "Skipped" : bg.label}
+                        {bg.label}
                       </p>
                       {bgDisplayName && state !== "skipped" && (
                         <p className="text-[8px] text-gray-400 truncate max-w-[60px]">

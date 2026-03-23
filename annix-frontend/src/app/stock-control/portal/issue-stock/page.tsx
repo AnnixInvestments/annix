@@ -9,6 +9,7 @@ import type {
   IssuanceScanResult,
   JobCard,
   StaffMember,
+  StockAllocation,
   StockIssuance,
   StockItem,
   SupplierCertificate,
@@ -56,8 +57,8 @@ const UNDO_WINDOW_MS = 5 * 60 * 1000;
 const STEPS: { key: Step; label: string }[] = [
   { key: "issuer", label: "Issuer" },
   { key: "recipient", label: "Recipient" },
-  { key: "stock_items", label: "Items" },
   { key: "job_card", label: "Job Card" },
+  { key: "stock_items", label: "Items" },
   { key: "confirm", label: "Confirm" },
 ];
 
@@ -178,6 +179,7 @@ export default function IssueStockPage() {
   const [jobCardList, setJobCardList] = useState<JobCard[]>([]);
   const [jobCardSearch, setJobCardSearch] = useState("");
   const [isLoadingJobCards, setIsLoadingJobCards] = useState(false);
+  const [jobCardAllocations, setJobCardAllocations] = useState<StockAllocation[]>([]);
 
   useEffect(() => {
     setQuickIssueMode(localStorage.getItem(QUICK_ISSUE_KEY) === "true");
@@ -232,7 +234,18 @@ export default function IssueStockPage() {
   }, [currentStep]);
 
   useEffect(() => {
-    if (showJobCardDropdown && jobCardList.length === 0 && !isLoadingJobCards) {
+    if (jobCard) {
+      stockControlApiClient
+        .jobCardAllocations(jobCard.id)
+        .then(setJobCardAllocations)
+        .catch(() => setJobCardAllocations([]));
+    } else {
+      setJobCardAllocations([]);
+    }
+  }, [jobCard?.id]);
+
+  useEffect(() => {
+    if ((showJobCardDropdown || currentStep === "job_card") && jobCardList.length === 0 && !isLoadingJobCards) {
       setIsLoadingJobCards(true);
       stockControlApiClient
         .jobCards("active")
@@ -240,7 +253,7 @@ export default function IssueStockPage() {
         .catch(() => setJobCardList([]))
         .finally(() => setIsLoadingJobCards(false));
     }
-  }, [showJobCardDropdown]);
+  }, [showJobCardDropdown, currentStep]);
 
   const filteredJobCards = useMemo(() => {
     const search = jobCardSearch.toLowerCase().trim();
@@ -371,7 +384,7 @@ export default function IssueStockPage() {
           return;
         }
         setRecipient(staffData);
-        setCurrentStep("stock_items");
+        setCurrentStep("job_card");
       } else if (currentStep === "stock_items") {
         if (result.type !== "stock_item") {
           setError("Please scan a stock item QR code");
@@ -390,7 +403,7 @@ export default function IssueStockPage() {
           return;
         }
         setJobCard(result.data as JobCard);
-        setCurrentStep("confirm");
+        setCurrentStep("stock_items");
       }
 
       setScanInput("");
@@ -417,7 +430,7 @@ export default function IssueStockPage() {
         return;
       }
       setRecipient(staff);
-      setCurrentStep("stock_items");
+      setCurrentStep("job_card");
     }
 
     setScanInput("");
@@ -464,22 +477,18 @@ export default function IssueStockPage() {
     }
   };
 
-  const handleContinueToJobCard = () => {
+  const handleContinueToConfirm = () => {
     if (items.length === 0) {
       setError("Please add at least one item");
       return;
     }
-    if (jobCard) {
-      setCurrentStep("confirm");
-    } else {
-      setCurrentStep("job_card");
-    }
+    setCurrentStep("confirm");
     setError(null);
   };
 
   const handleSkipJobCard = () => {
     setJobCard(null);
-    setCurrentStep("confirm");
+    setCurrentStep("stock_items");
   };
 
   const handleBack = () => {
@@ -489,20 +498,16 @@ export default function IssueStockPage() {
       }
       setCurrentStep("issuer");
       setRecipient(null);
-    } else if (currentStep === "stock_items") {
-      setCurrentStep("recipient");
-      setItems([]);
     } else if (currentStep === "job_card") {
-      setCurrentStep("stock_items");
+      setCurrentStep("recipient");
       if (!preloadJobCardId) {
         setJobCard(null);
       }
+    } else if (currentStep === "stock_items") {
+      setCurrentStep("job_card");
+      setItems([]);
     } else if (currentStep === "confirm") {
-      if (preloadJobCardId) {
-        setCurrentStep("stock_items");
-      } else {
-        setCurrentStep("job_card");
-      }
+      setCurrentStep("stock_items");
     }
     setError(null);
     setScanInput("");
@@ -520,7 +525,7 @@ export default function IssueStockPage() {
 
     if (batchMode && issuer) {
       if (recipient) {
-        setCurrentStep("stock_items");
+        setCurrentStep("job_card");
       } else {
         setCurrentStep("recipient");
       }
@@ -630,7 +635,7 @@ export default function IssueStockPage() {
           setItems([]);
           setJobCard(null);
           setNotes("");
-          setCurrentStep("stock_items");
+          setCurrentStep("job_card");
         }
       }
     } catch (err) {
@@ -1035,7 +1040,7 @@ export default function IssueStockPage() {
                       try {
                         const staff = await stockControlApiClient.staffMemberById(fav.recipientId);
                         setRecipient(staff);
-                        setCurrentStep("stock_items");
+                        setCurrentStep("job_card");
                         triggerHaptic();
                       } catch {
                         setError("Staff member no longer available");
@@ -1326,6 +1331,87 @@ export default function IssueStockPage() {
                   Scan the QR code on each stock item to add it to the issuance
                 </p>
 
+                {jobCard && jobCardAllocations.length > 0 && (
+                  <div className="mb-4 rounded-lg border border-blue-200 bg-blue-50 p-3">
+                    <p className="text-sm font-semibold text-blue-900 mb-2">
+                      Allocated to {jobCard.jobNumber} — {jobCard.jobName}
+                    </p>
+                    <div className="space-y-1">
+                      {jobCardAllocations.map((alloc) => (
+                        <div
+                          key={alloc.id}
+                          className="flex items-center justify-between text-xs"
+                        >
+                          <span className="text-blue-800">
+                            {alloc.stockItem?.name || "Unknown Item"}{" "}
+                            <span className="text-blue-500">
+                              ({alloc.stockItem?.sku || "-"})
+                            </span>
+                          </span>
+                          <span className="font-medium text-blue-900">
+                            Allocated: {alloc.quantityUsed}{" "}
+                            {alloc.stockItem?.unitOfMeasure || ""}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                    {jobCardAllocations.some(
+                      (alloc) =>
+                        alloc.stockItem &&
+                        !items.some((i) => i.stockItem.id === alloc.stockItem?.id),
+                    ) && (
+                      <button
+                        onClick={() => {
+                          const newItems = jobCardAllocations
+                            .filter(
+                              (alloc) =>
+                                alloc.stockItem &&
+                                !items.some((i) => i.stockItem.id === alloc.stockItem?.id),
+                            )
+                            .map((alloc) => ({
+                              stockItem: alloc.stockItem as StockItem,
+                              quantity: alloc.quantityUsed,
+                              batchNumber: "",
+                            }));
+                          setItems([...items, ...newItems]);
+                        }}
+                        className="mt-2 text-xs font-medium text-blue-700 hover:text-blue-900 underline"
+                      >
+                        Add all allocated items to issuance
+                      </button>
+                    )}
+                  </div>
+                )}
+
+                {jobCard && jobCard.lineItems && jobCard.lineItems.length > 0 && jobCardAllocations.length === 0 && (
+                  <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-3">
+                    <p className="text-sm font-semibold text-amber-900 mb-2">
+                      Suggested items from {jobCard.jobNumber}
+                    </p>
+                    <p className="text-xs text-amber-700 mb-2">
+                      No stock allocations found. These line items are on the job card:
+                    </p>
+                    <div className="space-y-1">
+                      {jobCard.lineItems.map((li) => (
+                        <div
+                          key={li.id}
+                          className="flex items-center justify-between text-xs"
+                        >
+                          <span className="text-amber-800">
+                            {li.itemDescription || "Unknown"}{" "}
+                            {li.itemCode && (
+                              <span className="text-amber-500">({li.itemCode})</span>
+                            )}
+                          </span>
+                          <span className="font-medium text-amber-900">
+                            Qty: {li.quantity || "-"}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 {items.length > 0 && (
                   <div className="mb-4 space-y-3">
                     <p className="text-sm font-medium text-gray-700">
@@ -1333,6 +1419,12 @@ export default function IssueStockPage() {
                     </p>
                     {items.map((item, index) => {
                       const batchSuggestions = recentBatchesMap[item.stockItem.id] ?? [];
+                      const allocation = jobCardAllocations.find(
+                        (a) => a.stockItem?.id === item.stockItem.id,
+                      );
+                      const overAllocated = allocation
+                        ? item.quantity > allocation.quantityUsed
+                        : false;
                       return (
                         <div
                           key={item.stockItem.id}
@@ -1346,6 +1438,15 @@ export default function IssueStockPage() {
                               SKU: {item.stockItem.sku} | Available: {item.stockItem.quantity}{" "}
                               {item.stockItem.unitOfMeasure}
                             </p>
+                            {allocation && (
+                              <p
+                                className={`text-xs font-medium mt-0.5 ${overAllocated ? "text-red-600" : "text-blue-600"}`}
+                              >
+                                JC Allocated: {allocation.quantityUsed}{" "}
+                                {item.stockItem.unitOfMeasure}
+                                {overAllocated && " — exceeds allocation!"}
+                              </p>
+                            )}
                           </div>
                           <div className="flex items-center gap-2">
                             <label className="text-xs text-gray-500">Qty:</label>
@@ -1584,7 +1685,7 @@ export default function IssueStockPage() {
                   Back
                 </button>
                 <button
-                  onClick={handleContinueToJobCard}
+                  onClick={handleContinueToConfirm}
                   disabled={items.length === 0}
                   className="px-6 py-3 text-sm font-medium text-white bg-teal-600 border border-transparent rounded-md hover:bg-teal-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
                 >
@@ -1686,11 +1787,16 @@ export default function IssueStockPage() {
                             filteredJobCards.map((jc) => (
                               <button
                                 key={jc.id}
-                                onClick={() => {
-                                  setJobCard(jc);
+                                onClick={async () => {
                                   setShowJobCardDropdown(false);
                                   setJobCardSearch("");
-                                  setCurrentStep("confirm");
+                                  try {
+                                    const fullJc = await stockControlApiClient.jobCardById(jc.id);
+                                    setJobCard(fullJc);
+                                  } catch {
+                                    setJobCard(jc);
+                                  }
+                                  setCurrentStep("stock_items");
                                 }}
                                 className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-gray-50 border-b border-gray-50 last:border-b-0 text-left"
                               >
