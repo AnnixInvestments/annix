@@ -1,12 +1,65 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import type { CoatingAnalysis, QcDefelskoBatchRecord } from "@/app/lib/api/stockControlApi";
+import type {
+  CoatingAnalysis,
+  IssuanceBatchRecord,
+  QcDefelskoBatchRecord,
+} from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
+
+const PAINT_CATEGORY_PATTERN = /paint|primer|coat|epoxy|polyurethane|topcoat|finish/i;
+const RUBBER_CATEGORY_PATTERN = /rubber|lining|liner|ebonite|neoprene|butyl|natural/i;
+const ABRASIVE_CATEGORY_PATTERN = /abrasive|grit|garnet|sand|blast|steel\s*shot/i;
+
+const matchIssuanceBatch = (
+  records: IssuanceBatchRecord[],
+  field: BatchField,
+  coatingAnalysis: CoatingAnalysis | null,
+): string => {
+  if (records.length === 0) return "";
+
+  if (field.fieldKey === "paint_blast_profile" || field.fieldKey === "rubber_blast_profile") {
+    const abrasiveRecord = records.find(
+      (r) => r.stockItem?.name && ABRASIVE_CATEGORY_PATTERN.test(r.stockItem.name),
+    );
+    return abrasiveRecord?.batchNumber || "";
+  }
+
+  if (field.fieldKey === "rubber_shore_hardness") {
+    const rubberRecord = records.find(
+      (r) => r.stockItem?.name && RUBBER_CATEGORY_PATTERN.test(r.stockItem.name),
+    );
+    return rubberRecord?.batchNumber || "";
+  }
+
+  if (field.fieldKey.startsWith("paint_dft_")) {
+    const coatIndex = Number.parseInt(field.fieldKey.replace("paint_dft_", ""), 10);
+    const coat = coatingAnalysis?.coats?.[coatIndex];
+    if (coat) {
+      const productLower = coat.product.toLowerCase();
+      const paintRecords = records.filter(
+        (r) => r.stockItem?.name && PAINT_CATEGORY_PATTERN.test(r.stockItem.name),
+      );
+      const match =
+        paintRecords.find((r) => r.stockItem?.name?.toLowerCase().includes(productLower)) ||
+        paintRecords.find((r) => productLower.includes(r.stockItem?.name?.toLowerCase() || "")) ||
+        paintRecords[coatIndex];
+      return match?.batchNumber || "";
+    }
+    const paintRecords = records.filter(
+      (r) => r.stockItem?.name && PAINT_CATEGORY_PATTERN.test(r.stockItem.name),
+    );
+    return paintRecords[coatIndex]?.batchNumber || "";
+  }
+
+  return "";
+};
 
 interface DefelskoBatchSectionProps {
   jobCardId: number;
   coatingAnalysis: CoatingAnalysis | null;
+  batchRecords: IssuanceBatchRecord[];
   onComplete: (() => void) | null;
 }
 
@@ -23,7 +76,7 @@ interface BatchState {
 }
 
 export function DefelskoBatchSection(props: DefelskoBatchSectionProps) {
-  const { jobCardId, coatingAnalysis, onComplete } = props;
+  const { jobCardId, coatingAnalysis, batchRecords, onComplete } = props;
   const [savedBatches, setSavedBatches] = useState<QcDefelskoBatchRecord[]>([]);
   const [batchValues, setBatchValues] = useState<Record<string, BatchState>>({});
   const [isSaving, setIsSaving] = useState(false);
@@ -87,8 +140,12 @@ export function DefelskoBatchSection(props: DefelskoBatchSectionProps) {
       const initialValues: Record<string, BatchState> = {};
       allFields.forEach((f) => {
         const saved = batches.find((b) => b.fieldKey === f.fieldKey);
+        const issuanceDefault =
+          !saved?.batchNumber && !saved?.notApplicable
+            ? matchIssuanceBatch(batchRecords, f, coatingAnalysis)
+            : "";
         initialValues[f.fieldKey] = {
-          batchNumber: saved?.batchNumber || "",
+          batchNumber: saved?.batchNumber || issuanceDefault,
           notApplicable: saved?.notApplicable || false,
         };
       });
@@ -96,13 +153,16 @@ export function DefelskoBatchSection(props: DefelskoBatchSectionProps) {
     } catch {
       const initialValues: Record<string, BatchState> = {};
       allFields.forEach((f) => {
-        initialValues[f.fieldKey] = { batchNumber: "", notApplicable: false };
+        initialValues[f.fieldKey] = {
+          batchNumber: matchIssuanceBatch(batchRecords, f, coatingAnalysis),
+          notApplicable: false,
+        };
       });
       setBatchValues(initialValues);
     } finally {
       setIsLoading(false);
     }
-  }, [jobCardId, allFields]);
+  }, [jobCardId, allFields, batchRecords, coatingAnalysis]);
 
   useEffect(() => {
     fetchBatches();

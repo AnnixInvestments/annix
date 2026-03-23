@@ -209,6 +209,7 @@ export function QualityTab(props: QualityTabProps) {
         <DefelskoBatchSection
           jobCardId={jobCardId}
           coatingAnalysis={coatingAnalysis}
+          batchRecords={batchRecords}
           onComplete={onBatchComplete}
         />
       )}
