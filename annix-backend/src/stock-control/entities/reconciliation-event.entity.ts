@@ -24,10 +24,10 @@ export class ReconciliationEvent {
   @JoinColumn({ name: "reconciliation_item_id" })
   reconciliationItem: ReconciliationItem;
 
-  @Column({ name: "reconciliation_item_id" })
+  @Column({ name: "reconciliation_item_id", type: "integer" })
   reconciliationItemId: number;
 
-  @Column({ name: "company_id" })
+  @Column({ name: "company_id", type: "integer" })
   companyId: number;
 
   @Column({ name: "event_type", type: "varchar", length: 30 })
@@ -42,7 +42,7 @@ export class ReconciliationEvent {
   @Column({ name: "performed_by_name", type: "varchar", length: 255 })
   performedByName: string;
 
-  @Column({ name: "performed_by_id", nullable: true })
+  @Column({ name: "performed_by_id", type: "integer", nullable: true })
   performedById: number | null;
 
   @Column({ type: "text", nullable: true })

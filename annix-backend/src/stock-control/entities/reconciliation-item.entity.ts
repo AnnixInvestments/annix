@@ -31,10 +31,10 @@ export class ReconciliationItem {
   @JoinColumn({ name: "company_id" })
   company: StockControlCompany;
 
-  @Column({ name: "company_id" })
+  @Column({ name: "company_id", type: "integer" })
   companyId: number;
 
-  @Column({ name: "job_card_id" })
+  @Column({ name: "job_card_id", type: "integer" })
   jobCardId: number;
 
   @Column({ name: "item_description", type: "text" })
@@ -43,7 +43,7 @@ export class ReconciliationItem {
   @Column({ name: "item_code", type: "varchar", length: 500, nullable: true })
   itemCode: string | null;
 
-  @Column({ name: "source_document_id", nullable: true })
+  @Column({ name: "source_document_id", type: "integer", nullable: true })
   sourceDocumentId: number | null;
 
   @Column({ name: "source_type", type: "varchar", length: 20 })

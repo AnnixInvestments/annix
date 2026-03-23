@@ -40,10 +40,10 @@ export class ReconciliationDocument {
   @JoinColumn({ name: "company_id" })
   company: StockControlCompany;
 
-  @Column({ name: "company_id" })
+  @Column({ name: "company_id", type: "integer" })
   companyId: number;
 
-  @Column({ name: "job_card_id" })
+  @Column({ name: "job_card_id", type: "integer" })
   jobCardId: number;
 
   @Column({ name: "document_category", type: "varchar", length: 50 })
@@ -61,7 +61,7 @@ export class ReconciliationDocument {
   @Column({ name: "file_size_bytes", type: "integer", nullable: true })
   fileSizeBytes: number | null;
 
-  @Column({ name: "uploaded_by_id", nullable: true })
+  @Column({ name: "uploaded_by_id", type: "integer", nullable: true })
   uploadedById: number | null;
 
   @Column({ name: "uploaded_by_name", type: "varchar", length: 255, nullable: true })
