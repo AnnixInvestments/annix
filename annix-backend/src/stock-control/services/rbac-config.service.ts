@@ -5,15 +5,15 @@ import { StockControlRbacConfig } from "../entities/stock-control-rbac-config.en
 import { ActionPermissionService } from "./action-permission.service";
 
 const DEFAULT_NAV_CONFIG: Record<string, string[]> = {
-  dashboard: ["viewer", "storeman", "accounts", "manager", "admin"],
-  inventory: ["viewer", "storeman", "accounts", "manager", "admin"],
-  "job-cards": ["viewer", "storeman", "accounts", "manager", "admin"],
-  staff: ["viewer", "storeman", "accounts", "manager", "admin"],
-  deliveries: ["viewer", "storeman", "accounts", "manager", "admin"],
+  dashboard: ["viewer", "quality", "storeman", "accounts", "manager", "admin"],
+  inventory: ["viewer", "quality", "storeman", "accounts", "manager", "admin"],
+  "job-cards": ["viewer", "quality", "storeman", "accounts", "manager", "admin"],
+  staff: ["viewer", "quality", "storeman", "accounts", "manager", "admin"],
+  deliveries: ["viewer", "quality", "storeman", "accounts", "manager", "admin"],
   "issue-stock": ["storeman", "manager", "admin"],
-  requisitions: ["viewer", "storeman", "accounts", "manager", "admin"],
-  "purchase-orders": ["viewer", "storeman", "accounts", "manager", "admin"],
-  notifications: ["viewer", "storeman", "accounts", "manager", "admin"],
+  requisitions: ["viewer", "quality", "storeman", "accounts", "manager", "admin"],
+  "purchase-orders": ["viewer", "quality", "storeman", "accounts", "manager", "admin"],
+  notifications: ["viewer", "quality", "storeman", "accounts", "manager", "admin"],
   reports: ["manager", "admin"],
   settings: ["admin"],
 };

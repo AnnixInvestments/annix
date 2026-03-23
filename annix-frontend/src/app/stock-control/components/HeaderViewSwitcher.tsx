@@ -5,6 +5,7 @@ import { useViewAs } from "../context/ViewAsContext";
 
 const ROLE_OPTIONS: { key: string; label: string }[] = [
   { key: "viewer", label: "Viewer" },
+  { key: "quality", label: "Quality" },
   { key: "storeman", label: "Storeman" },
   { key: "accounts", label: "Accounts" },
   { key: "manager", label: "Manager" },

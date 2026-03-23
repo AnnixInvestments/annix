@@ -24,7 +24,7 @@ export const ALL_NAV_ITEMS: NavItemDef[] = [
     key: "dashboard",
     href: "/stock-control/portal/dashboard",
     label: "Dashboard",
-    defaultRoles: ["viewer", "storeman", "accounts", "manager", "admin"],
+    defaultRoles: ["viewer", "quality", "storeman", "accounts", "manager", "admin"],
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path
@@ -40,7 +40,7 @@ export const ALL_NAV_ITEMS: NavItemDef[] = [
     key: "inventory-stock",
     href: "/stock-control/portal/inventory",
     label: "Stock",
-    defaultRoles: ["viewer", "storeman", "accounts", "manager", "admin"],
+    defaultRoles: ["viewer", "quality", "storeman", "accounts", "manager", "admin"],
     group: "Inventory",
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -108,7 +108,7 @@ export const ALL_NAV_ITEMS: NavItemDef[] = [
     key: "job-cards",
     href: "/stock-control/portal/job-cards",
     label: "Job Cards",
-    defaultRoles: ["viewer", "storeman", "accounts", "manager", "admin"],
+    defaultRoles: ["viewer", "quality", "storeman", "accounts", "manager", "admin"],
     group: "Customer",
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -125,7 +125,7 @@ export const ALL_NAV_ITEMS: NavItemDef[] = [
     key: "customer-deliveries",
     href: "/stock-control/portal/customer-deliveries",
     label: "Delivery Notes",
-    defaultRoles: ["viewer", "storeman", "accounts", "manager", "admin"],
+    defaultRoles: ["viewer", "quality", "storeman", "accounts", "manager", "admin"],
     group: "Customer",
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -142,7 +142,7 @@ export const ALL_NAV_ITEMS: NavItemDef[] = [
     key: "purchase-orders",
     href: "/stock-control/portal/purchase-orders",
     label: "Purchase Orders",
-    defaultRoles: ["viewer", "storeman", "accounts", "manager", "admin"],
+    defaultRoles: ["viewer", "quality", "storeman", "accounts", "manager", "admin"],
     group: "Customer",
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -159,7 +159,7 @@ export const ALL_NAV_ITEMS: NavItemDef[] = [
     key: "staff",
     href: "/stock-control/portal/staff",
     label: "Staff",
-    defaultRoles: ["viewer", "storeman", "accounts", "manager", "admin"],
+    defaultRoles: ["viewer", "quality", "storeman", "accounts", "manager", "admin"],
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path
@@ -175,7 +175,7 @@ export const ALL_NAV_ITEMS: NavItemDef[] = [
     key: "deliveries",
     href: "/stock-control/portal/deliveries",
     label: "Deliveries",
-    defaultRoles: ["viewer", "storeman", "accounts", "manager", "admin"],
+    defaultRoles: ["viewer", "quality", "storeman", "accounts", "manager", "admin"],
     group: "Supplier",
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -208,7 +208,7 @@ export const ALL_NAV_ITEMS: NavItemDef[] = [
     key: "requisitions",
     href: "/stock-control/portal/requisitions",
     label: "Requisitions",
-    defaultRoles: ["viewer", "storeman", "accounts", "manager", "admin"],
+    defaultRoles: ["viewer", "quality", "storeman", "accounts", "manager", "admin"],
     group: "Supplier",
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -242,7 +242,7 @@ export const ALL_NAV_ITEMS: NavItemDef[] = [
     key: "notifications",
     href: "/stock-control/portal/notifications",
     label: "Notifications",
-    defaultRoles: ["viewer", "storeman", "accounts", "manager", "admin"],
+    defaultRoles: ["viewer", "quality", "storeman", "accounts", "manager", "admin"],
     group: "hidden",
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -259,7 +259,7 @@ export const ALL_NAV_ITEMS: NavItemDef[] = [
     key: "certificates",
     href: "/stock-control/portal/quality/certificates",
     label: "Certificates",
-    defaultRoles: ["manager", "admin"],
+    defaultRoles: ["quality", "manager", "admin"],
     group: "Quality",
     requiresQc: true,
     icon: (
@@ -277,7 +277,7 @@ export const ALL_NAV_ITEMS: NavItemDef[] = [
     key: "calibration",
     href: "/stock-control/portal/quality/calibration",
     label: "Calibration",
-    defaultRoles: ["manager", "admin"],
+    defaultRoles: ["quality", "manager", "admin"],
     group: "Quality",
     requiresQc: true,
     icon: (
@@ -295,7 +295,7 @@ export const ALL_NAV_ITEMS: NavItemDef[] = [
     key: "positector",
     href: "/stock-control/portal/quality/positector",
     label: "PosiTector",
-    defaultRoles: ["manager", "admin"],
+    defaultRoles: ["quality", "manager", "admin"],
     group: "Quality",
     requiresQc: true,
     icon: (
@@ -313,7 +313,7 @@ export const ALL_NAV_ITEMS: NavItemDef[] = [
     key: "positector-upload",
     href: "/stock-control/portal/quality/positector/upload",
     label: "File Upload",
-    defaultRoles: ["manager", "admin"],
+    defaultRoles: ["quality", "manager", "admin"],
     group: "Quality",
     requiresQc: true,
     icon: (
@@ -331,7 +331,7 @@ export const ALL_NAV_ITEMS: NavItemDef[] = [
     key: "positector-live",
     href: "/stock-control/portal/quality/positector/live",
     label: "Live Streaming",
-    defaultRoles: ["manager", "admin"],
+    defaultRoles: ["quality", "manager", "admin"],
     group: "Quality",
     requiresQc: true,
     icon: (
@@ -349,7 +349,7 @@ export const ALL_NAV_ITEMS: NavItemDef[] = [
     key: "positector-ble",
     href: "/stock-control/portal/quality/positector/ble",
     label: "Bluetooth",
-    defaultRoles: ["manager", "admin"],
+    defaultRoles: ["quality", "manager", "admin"],
     group: "Quality",
     requiresQc: true,
     icon: (
@@ -367,7 +367,7 @@ export const ALL_NAV_ITEMS: NavItemDef[] = [
     key: "data-books",
     href: "/stock-control/portal/quality/data-books",
     label: "Data Books",
-    defaultRoles: ["manager", "admin"],
+    defaultRoles: ["quality", "manager", "admin"],
     group: "Quality",
     requiresQc: true,
     icon: (
@@ -385,7 +385,7 @@ export const ALL_NAV_ITEMS: NavItemDef[] = [
     key: "batch-lookup",
     href: "/stock-control/portal/quality/batch-lookup",
     label: "Batch Lookup",
-    defaultRoles: ["manager", "admin"],
+    defaultRoles: ["quality", "manager", "admin"],
     group: "Quality",
     requiresQc: true,
     icon: (
@@ -437,7 +437,7 @@ export const ALL_NAV_ITEMS: NavItemDef[] = [
     key: "glossary",
     href: "/stock-control/portal/glossary",
     label: "Glossary",
-    defaultRoles: ["viewer", "storeman", "accounts", "manager", "admin"],
+    defaultRoles: ["viewer", "quality", "storeman", "accounts", "manager", "admin"],
     group: "Admin",
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -476,4 +476,4 @@ export const ALL_NAV_ITEMS: NavItemDef[] = [
   },
 ];
 
-export const ALL_ROLES = ["viewer", "storeman", "accounts", "manager", "admin"] as const;
+export const ALL_ROLES = ["viewer", "quality", "storeman", "accounts", "manager", "admin"] as const;

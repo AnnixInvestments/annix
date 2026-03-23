@@ -5,10 +5,11 @@ import { StockControlCompanyRole } from "../entities/stock-control-company-role.
 
 const DEFAULT_ROLES = [
   { key: "viewer", label: "Viewer", sortOrder: 0 },
-  { key: "storeman", label: "Storeman", sortOrder: 1 },
-  { key: "accounts", label: "Accounts", sortOrder: 2 },
-  { key: "manager", label: "Manager", sortOrder: 3 },
-  { key: "admin", label: "Admin", sortOrder: 4 },
+  { key: "quality", label: "Quality", sortOrder: 1 },
+  { key: "storeman", label: "Storeman", sortOrder: 2 },
+  { key: "accounts", label: "Accounts", sortOrder: 3 },
+  { key: "manager", label: "Manager", sortOrder: 4 },
+  { key: "admin", label: "Admin", sortOrder: 5 },
 ];
 
 export interface CompanyRoleDto {

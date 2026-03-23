@@ -5,7 +5,7 @@ import { StockControlAuthGuard } from "../guards/stock-control-auth.guard";
 import { CpoService } from "../services/cpo.service";
 import { DashboardService } from "../services/dashboard.service";
 
-const ROLE_HIERARCHY = ["viewer", "storeman", "accounts", "manager", "admin"];
+const ROLE_HIERARCHY = ["viewer", "quality", "storeman", "accounts", "manager", "admin"];
 
 @ApiTags("Stock Control - Dashboard")
 @Controller("stock-control/dashboard")

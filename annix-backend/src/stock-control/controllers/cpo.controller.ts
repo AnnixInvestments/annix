@@ -43,7 +43,7 @@ export class CpoController {
   ) {}
 
   @Get()
-  @StockControlRoles("viewer", "storeman", "accounts", "manager", "admin")
+  @StockControlRoles("viewer", "quality", "storeman", "accounts", "manager", "admin")
   @ApiOperation({ summary: "List all CPOs for the company" })
   async findAll(
     @Req() req: any,
@@ -130,7 +130,7 @@ export class CpoController {
   }
 
   @Get(":id")
-  @StockControlRoles("viewer", "storeman", "accounts", "manager", "admin")
+  @StockControlRoles("viewer", "quality", "storeman", "accounts", "manager", "admin")
   @ApiOperation({ summary: "Get a CPO by ID" })
   async findById(@Req() req: any, @Param("id", ParseIntPipe) id: number) {
     return this.cpoService.findById(req.user.companyId, id);
@@ -147,21 +147,21 @@ export class CpoController {
   }
 
   @Get(":id/calloff-records")
-  @StockControlRoles("viewer", "storeman", "accounts", "manager", "admin")
+  @StockControlRoles("viewer", "quality", "storeman", "accounts", "manager", "admin")
   @ApiOperation({ summary: "List call-off records for a CPO" })
   async calloffRecords(@Req() req: any, @Param("id", ParseIntPipe) id: number) {
     return this.cpoService.calloffRecordsForCpo(req.user.companyId, id);
   }
 
   @Get(":id/delivery-history")
-  @StockControlRoles("viewer", "storeman", "accounts", "manager", "admin")
+  @StockControlRoles("viewer", "quality", "storeman", "accounts", "manager", "admin")
   @ApiOperation({ summary: "Delivery history with JT breakdown and running totals" })
   async deliveryHistory(@Req() req: any, @Param("id", ParseIntPipe) id: number) {
     return this.cpoService.deliveryHistoryForCpo(req.user.companyId, id);
   }
 
   @Get(":id/overdue-records")
-  @StockControlRoles("viewer", "storeman", "accounts", "manager", "admin")
+  @StockControlRoles("viewer", "quality", "storeman", "accounts", "manager", "admin")
   @ApiOperation({ summary: "List overdue (uninvoiced 21+ days) call-off records for a CPO" })
   async overdueRecords(@Req() req: any, @Param("id", ParseIntPipe) id: number) {
     return this.cpoService.overdueCalloffRecordsForCpo(req.user.companyId, id);

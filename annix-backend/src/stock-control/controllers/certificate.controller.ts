@@ -42,7 +42,7 @@ export class CertificateController {
   ) {}
 
   @Post()
-  @StockControlRoles("viewer", "storeman", "manager", "admin")
+  @StockControlRoles("quality", "storeman", "manager", "admin")
   @PermissionKey("certificates.upload")
   @UseInterceptors(FileInterceptor("file"))
   @ApiOperation({ summary: "Upload a supplier certificate (COA/COC)" })
@@ -129,7 +129,7 @@ export class CertificateController {
   }
 
   @Post("job-card/:jobCardId/data-book")
-  @StockControlRoles("manager", "admin")
+  @StockControlRoles("quality", "manager", "admin")
   @ApiOperation({ summary: "Compile data book for a job card" })
   async compileDataBook(
     @Req() req: any,
@@ -172,7 +172,7 @@ export class CertificateController {
   }
 
   @Post("analyze")
-  @StockControlRoles("manager", "admin")
+  @StockControlRoles("quality", "manager", "admin")
   @UseInterceptors(FileInterceptor("file"))
   @ApiOperation({
     summary: "Analyze a multi-page PDF/image to identify individual COC/COA certificates",
@@ -199,7 +199,7 @@ export class CertificateController {
   }
 
   @Delete(":id")
-  @StockControlRoles("manager", "admin")
+  @StockControlRoles("quality", "manager", "admin")
   @PermissionKey("certificates.delete")
   @ApiOperation({ summary: "Delete a certificate" })
   async deleteCertificate(@Req() req: any, @Param("id") id: number) {

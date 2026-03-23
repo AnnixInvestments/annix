@@ -17,7 +17,7 @@ const ViewAsContext = createContext<ViewAsContextValue>({
   isPreviewActive: false,
 });
 
-const ROLE_HIERARCHY = ["viewer", "storeman", "accounts", "manager", "admin"];
+const ROLE_HIERARCHY = ["viewer", "quality", "storeman", "accounts", "manager", "admin"];
 
 export function ViewAsProvider(props: { children: React.ReactNode }) {
   const { children } = props;
