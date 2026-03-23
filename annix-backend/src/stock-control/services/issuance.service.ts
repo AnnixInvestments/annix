@@ -812,6 +812,41 @@ export class IssuanceService {
     });
   }
 
+  private normalizeBatch(batch: string): string {
+    return batch.replace(/[^a-zA-Z0-9]/g, "").toLowerCase();
+  }
+
+  private async findMatchingCertificate(
+    companyId: number,
+    batchNumber: string,
+  ): Promise<SupplierCertificate | null> {
+    const exactMatch = await this.certRepo.findOne({
+      where: { companyId, batchNumber },
+    });
+
+    if (exactMatch) {
+      return exactMatch;
+    }
+
+    const normalizedInput = this.normalizeBatch(batchNumber);
+    if (normalizedInput.length < 4) {
+      return null;
+    }
+
+    const candidates = await this.certRepo.find({ where: { companyId } });
+    const match = candidates.find(
+      (cert) => this.normalizeBatch(cert.batchNumber) === normalizedInput,
+    );
+
+    if (match) {
+      this.logger.log(
+        `Fuzzy batch match: issuance="${batchNumber}" matched cert="${match.batchNumber}" (id=${match.id})`,
+      );
+    }
+
+    return match || null;
+  }
+
   private async createBatchRecord(
     companyId: number,
     issuanceId: number,
@@ -822,9 +857,18 @@ export class IssuanceService {
   ): Promise<void> {
     const trimmedBatch = batchNumber.trim();
 
-    const matchingCert = await this.certRepo.findOne({
-      where: { companyId, batchNumber: trimmedBatch },
-    });
+    const matchingCert = await this.findMatchingCertificate(companyId, trimmedBatch);
+
+    if (matchingCert && jobCardId && !matchingCert.jobCardId) {
+      await this.certRepo.update(matchingCert.id, { jobCardId });
+      this.logger.log(
+        `Linked certificate ${matchingCert.id} to job card ${jobCardId}`,
+      );
+    }
+
+    if (matchingCert && !matchingCert.stockItemId) {
+      await this.certRepo.update(matchingCert.id, { stockItemId });
+    }
 
     const batchRecord = this.batchRecordRepo.create({
       companyId,
@@ -833,13 +877,13 @@ export class IssuanceService {
       jobCardId,
       batchNumber: trimmedBatch,
       quantity,
-      supplierCertificateId: matchingCert?.id ?? null,
+      supplierCertificateId: matchingCert?.id || null,
     });
 
     await this.batchRecordRepo.save(batchRecord);
 
     this.logger.log(
-      `Batch record created: batch=${trimmedBatch} issuance=${issuanceId} cert=${matchingCert?.id ?? "none"}`,
+      `Batch record created: batch=${trimmedBatch} issuance=${issuanceId} cert=${matchingCert?.id || "none"}`,
     );
   }
 
