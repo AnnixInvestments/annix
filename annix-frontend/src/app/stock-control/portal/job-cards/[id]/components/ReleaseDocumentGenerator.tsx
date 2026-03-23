@@ -181,7 +181,7 @@ export function ReleaseDocumentGenerator(props: ReleaseDocumentGeneratorProps) {
                         {li.jtNo || "-"}
                       </td>
                       <td className="whitespace-nowrap px-3 py-2 text-right text-sm text-gray-600">
-                        {li.quantity ?? "-"}
+                        {li.quantity || "-"}
                       </td>
                     </tr>
                   ))}

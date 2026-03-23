@@ -525,7 +525,7 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
           : [];
         const prevAmberComplete =
           prevAmberBg.length === 0 || prevAmberBg.every((bg) => bg.completedAt !== null);
-        const branchActive = branch.triggerFgIdx <= currentStepIndex && prevAmberComplete;
+        const branchActive = branch.triggerFgIdx < currentStepIndex && prevAmberComplete;
         const allComplete = branch.bgSteps.every((bg) => bg.completedAt !== null);
         const activeColor = branch.branchColor || "#f59e0b";
         const strokeColor = branchActive ? activeColor : "#d1d5db";
@@ -694,7 +694,7 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
         const prevBelowAmberComplete =
           prevBelowAmberBg.length === 0 || prevBelowAmberBg.every((bg) => bg.completedAt !== null);
         const branchActive = isColoredBranch
-          ? branch.triggerFgIdx <= currentStepIndex && prevBelowAmberComplete
+          ? branch.triggerFgIdx < currentStepIndex && prevBelowAmberComplete
           : branch.triggerFgIdx < currentStepIndex;
         const allComplete = branch.bgSteps.every((bg) => bg.completedAt !== null);
         const activeColor = branch.branchColor || "#f59e0b";
