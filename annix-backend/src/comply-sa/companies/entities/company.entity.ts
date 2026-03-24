@@ -12,6 +12,7 @@ import { ComplySaComplianceStatus } from "../../compliance/entities/compliance-s
 import { ComplySaDocument } from "../../comply-documents/entities/document.entity";
 import { ComplySaSageConnection } from "../../comply-integrations/sage/sage-connection.entity";
 import { ComplySaNotification } from "../../comply-notifications/entities/notification.entity";
+import { encryptionTransformer } from "../../lib/encryption";
 import { ComplySaSubscription } from "../../subscriptions/entities/subscription.entity";
 import { ComplySaUser } from "./user.entity";
 
@@ -77,19 +78,43 @@ export class ComplySaCompany {
   @Column({ name: "compliance_areas", type: "jsonb", nullable: true })
   complianceAreas!: string[] | null;
 
-  @Column({ name: "id_number", type: "varchar", length: 20, nullable: true })
+  @Column({
+    name: "id_number",
+    type: "varchar",
+    length: 255,
+    nullable: true,
+    transformer: encryptionTransformer,
+  })
   idNumber!: string | null;
 
-  @Column({ name: "passport_number", type: "varchar", length: 50, nullable: true })
+  @Column({
+    name: "passport_number",
+    type: "varchar",
+    length: 255,
+    nullable: true,
+    transformer: encryptionTransformer,
+  })
   passportNumber!: string | null;
 
   @Column({ name: "passport_country", type: "varchar", length: 100, nullable: true })
   passportCountry!: string | null;
 
-  @Column({ name: "sars_tax_reference", type: "varchar", length: 30, nullable: true })
+  @Column({
+    name: "sars_tax_reference",
+    type: "varchar",
+    length: 255,
+    nullable: true,
+    transformer: encryptionTransformer,
+  })
   sarsTaxReference!: string | null;
 
-  @Column({ name: "date_of_birth", type: "varchar", length: 20, nullable: true })
+  @Column({
+    name: "date_of_birth",
+    type: "varchar",
+    length: 255,
+    nullable: true,
+    transformer: encryptionTransformer,
+  })
   dateOfBirth!: string | null;
 
   @Column({ type: "varchar", length: 20, nullable: true })

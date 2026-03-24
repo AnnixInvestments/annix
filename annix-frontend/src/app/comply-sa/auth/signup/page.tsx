@@ -1053,7 +1053,7 @@ export default function SignupPage() {
                             }
                             aria-invalid={!!fieldErrors.idNumber}
                             className={fieldClass(!!fieldErrors.idNumber)}
-                            placeholder="8501015800087"
+                            placeholder="YYMMDD NNNNNNN"
                           />
                           {fieldErrors.idNumber && (
                             <p className="text-red-400 text-xs mt-1">{fieldErrors.idNumber}</p>

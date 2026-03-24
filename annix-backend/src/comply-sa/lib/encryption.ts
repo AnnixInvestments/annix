@@ -23,6 +23,29 @@ export function decryptPhone(encrypted: string, key: string): string {
   return Buffer.concat([decipher.update(ciphertext), decipher.final()]).toString("utf8");
 }
 
+export const encryptionTransformer: ValueTransformer = {
+  to(value: string | null): string | null {
+    if (value === null) {
+      return null;
+    }
+    const key = process.env.COMPLY_SA_ENCRYPTION_KEY;
+    if (!key) {
+      return value;
+    }
+    return encryptPhone(value, key);
+  },
+  from(value: string | null): string | null {
+    if (value === null) {
+      return null;
+    }
+    const key = process.env.COMPLY_SA_ENCRYPTION_KEY;
+    if (!key) {
+      return value;
+    }
+    return decryptPhone(value, key);
+  },
+};
+
 export const phoneEncryptionTransformer: ValueTransformer = {
   to(value: string | null): string | null {
     if (value === null) {
