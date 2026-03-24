@@ -16,6 +16,7 @@ export const AppDataSource = new DataSource({
   entities: [path.join(srcDirectory, "**/*.entity{.ts,.js}")],
   migrations: [path.join(srcDirectory, "migrations/*{.ts,.js}")],
   synchronize: false,
+  migrationsTransactionMode: "each",
   logging: process.env.NODE_ENV !== "production",
   ssl: process.env.DATABASE_SSL === "true" ? { rejectUnauthorized: false } : false,
   extra: {

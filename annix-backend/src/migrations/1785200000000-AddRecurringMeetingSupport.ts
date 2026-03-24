@@ -1,7 +1,7 @@
 import { MigrationInterface, QueryRunner } from "typeorm";
 
-export class AddRecurringMeetingSupport1772000000000 implements MigrationInterface {
-  name = "AddRecurringMeetingSupport1772000000000";
+export class AddRecurringMeetingSupport1785200000000 implements MigrationInterface {
+  name = "AddRecurringMeetingSupport1785200000000";
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`

@@ -1,7 +1,7 @@
 import { MigrationInterface, QueryRunner } from "typeorm";
 
-export class AddMissingStockControlIndexes1770300000001 implements MigrationInterface {
-  name = "AddMissingStockControlIndexes1770300000001";
+export class AddMissingStockControlIndexes1793400000000 implements MigrationInterface {
+  name = "AddMissingStockControlIndexes1793400000000";
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(

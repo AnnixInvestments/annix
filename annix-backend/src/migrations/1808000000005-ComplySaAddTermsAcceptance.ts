@@ -7,6 +7,11 @@ export class ComplySaAddTermsAcceptance1808000000005 implements MigrationInterfa
       ADD COLUMN IF NOT EXISTS "terms_accepted_at" TIMESTAMP,
       ADD COLUMN IF NOT EXISTS "terms_version" VARCHAR(20)
     `);
+
+    await queryRunner.query(`
+      ALTER TABLE "comply_sa_compliance_requirements"
+      ALTER COLUMN "frequency" TYPE VARCHAR(30)
+    `);
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
