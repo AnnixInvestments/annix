@@ -20,8 +20,12 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      await login(email, password);
-      router.push("/comply-sa/dashboard");
+      const result = await login(email, password);
+      if (result.termsOutdated) {
+        router.push("/comply-sa/auth/accept-terms");
+      } else {
+        router.push("/comply-sa/dashboard");
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Login failed");
     } finally {

@@ -89,6 +89,17 @@ const STEP_LABELS = ["Account Basics", "Entity Details", "Industry & Focus"];
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+function dobFromSaId(id: string): string | null {
+  if (id.length < 6) {
+    return null;
+  }
+  const yy = parseInt(id.substring(0, 2), 10);
+  const mm = id.substring(2, 4);
+  const dd = id.substring(4, 6);
+  const century = yy >= 0 && yy <= 30 ? "20" : "19";
+  return `${century}${id.substring(0, 2)}-${mm}-${dd}`;
+}
+
 const PASSWORD_RULES = [
   { test: (p: string) => p.length >= 8, label: "At least 8 characters" },
   { test: (p: string) => /[A-Z]/.test(p), label: "One uppercase letter" },
@@ -672,7 +683,7 @@ export default function SignupPage() {
           errs.passportCountry = "Country is required";
         }
       }
-      if (!form.dateOfBirth) {
+      if (form.usePassport && !form.dateOfBirth) {
         errs.dateOfBirth = "Date of birth is required";
       }
       if (!form.phone.trim()) {
@@ -747,7 +758,7 @@ export default function SignupPage() {
       passportNumber: form.usePassport ? form.passportNumber || null : null,
       passportCountry: form.usePassport ? form.passportCountry || null : null,
       sarsTaxReference: form.sarsTaxReference || null,
-      dateOfBirth: form.dateOfBirth || null,
+      dateOfBirth: !form.usePassport ? dobFromSaId(form.idNumber) : form.dateOfBirth || null,
       phone: form.phone || null,
       trustName: form.trustName || null,
       trustRegistrationNumber: form.trustRegistrationNumber || null,
@@ -1218,25 +1229,36 @@ export default function SignupPage() {
                       />
                     </div>
 
-                    <div>
-                      <label
-                        htmlFor="dateOfBirth"
-                        className="block text-sm font-medium text-slate-300 mb-1.5"
-                      >
-                        Date of Birth
-                      </label>
-                      <input
-                        id="dateOfBirth"
-                        type="date"
-                        value={form.dateOfBirth}
-                        onChange={(e) => updateField("dateOfBirth", e.target.value)}
-                        aria-invalid={!!fieldErrors.dateOfBirth}
-                        className={fieldClass(!!fieldErrors.dateOfBirth)}
-                      />
-                      {fieldErrors.dateOfBirth && (
-                        <p className="text-red-400 text-xs mt-1">{fieldErrors.dateOfBirth}</p>
-                      )}
-                    </div>
+                    {!form.usePassport && form.idNumber.length >= 6 && (
+                      <p className="text-xs text-slate-400">
+                        Date of birth (derived from ID):{" "}
+                        <span className="text-teal-400 font-medium">
+                          {dobFromSaId(form.idNumber) || "\u2014"}
+                        </span>
+                      </p>
+                    )}
+
+                    {form.usePassport && (
+                      <div>
+                        <label
+                          htmlFor="dateOfBirth"
+                          className="block text-sm font-medium text-slate-300 mb-1.5"
+                        >
+                          Date of Birth
+                        </label>
+                        <input
+                          id="dateOfBirth"
+                          type="date"
+                          value={form.dateOfBirth}
+                          onChange={(e) => updateField("dateOfBirth", e.target.value)}
+                          aria-invalid={!!fieldErrors.dateOfBirth}
+                          className={fieldClass(!!fieldErrors.dateOfBirth)}
+                        />
+                        {fieldErrors.dateOfBirth && (
+                          <p className="text-red-400 text-xs mt-1">{fieldErrors.dateOfBirth}</p>
+                        )}
+                      </div>
+                    )}
 
                     <div>
                       <label

@@ -43,7 +43,11 @@ export class ComplySaAuthController {
   async login(@Body() dto: ComplySaLoginDto, @Res({ passthrough: true }) response: Response) {
     const result = await this.authService.login(dto);
     this.setTokenCookie(response, result.access_token);
-    return { user: result.user, emailVerified: result.emailVerified };
+    return {
+      user: result.user,
+      emailVerified: result.emailVerified,
+      termsOutdated: result.termsOutdated,
+    };
   }
 
   @Post("logout")
@@ -75,6 +79,14 @@ export class ComplySaAuthController {
   @Throttle({ default: { ttl: 60000, limit: 5 } })
   async resetPassword(@Body() dto: ComplySaResetPasswordDto) {
     return this.authService.resetPassword(dto.token, dto.password);
+  }
+
+  @ApiBearerAuth()
+  @UseGuards(ComplySaJwtAuthGuard)
+  @Post("accept-terms")
+  @Throttle({ default: { ttl: 60000, limit: 10 } })
+  async acceptTerms(@Req() req: { user: { id: number } }) {
+    return this.authService.acceptCurrentTerms(req.user.id);
   }
 
   @ApiBearerAuth()

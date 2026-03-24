@@ -18,6 +18,7 @@ import { ComplySaLoginDto } from "./dto/login.dto";
 import { ComplySaSignupDto } from "./dto/signup.dto";
 
 const PASSWORD_RESET_EXPIRY_HOURS = 1;
+const CURRENT_TERMS_VERSION = "1.0";
 
 @Injectable()
 export class ComplySaAuthService {
@@ -92,7 +93,7 @@ export class ComplySaAuthService {
       emailVerified: false,
       emailVerificationToken: verificationToken,
       termsAcceptedAt: now().toJSDate(),
-      termsVersion: "1.0",
+      termsVersion: CURRENT_TERMS_VERSION,
     });
     const savedUser = await this.usersRepository.save(user);
 
@@ -157,7 +158,12 @@ export class ComplySaAuthService {
 
   async login(
     dto: ComplySaLoginDto,
-  ): Promise<{ access_token: string; user: Partial<ComplySaUser>; emailVerified: boolean }> {
+  ): Promise<{
+    access_token: string;
+    user: Partial<ComplySaUser>;
+    emailVerified: boolean;
+    termsOutdated: boolean;
+  }> {
     const user = await this.usersRepository.findOne({
       where: { email: dto.email },
       relations: ["company"],
@@ -173,6 +179,8 @@ export class ComplySaAuthService {
       throw new UnauthorizedException("Invalid credentials");
     }
 
+    const termsOutdated = user.termsVersion !== CURRENT_TERMS_VERSION;
+
     const token = this.jwtService.sign({
       sub: user.id,
       email: user.email,
@@ -183,6 +191,7 @@ export class ComplySaAuthService {
       access_token: token,
       user: { id: user.id, name: user.name, email: user.email, role: user.role },
       emailVerified: user.emailVerified,
+      termsOutdated,
     };
   }
 
@@ -263,6 +272,24 @@ export class ComplySaAuthService {
         companyId: user.companyId,
       },
     };
+  }
+
+  async acceptCurrentTerms(userId: number): Promise<{ accepted: boolean }> {
+    const user = await this.usersRepository.findOne({
+      where: { id: userId },
+    });
+
+    if (user === null) {
+      throw new UnauthorizedException("User not found");
+    }
+
+    user.termsAcceptedAt = now().toJSDate();
+    user.termsVersion = CURRENT_TERMS_VERSION;
+    await this.usersRepository.save(user);
+
+    this.logger.log(`User ${user.email} accepted terms version ${CURRENT_TERMS_VERSION}`);
+
+    return { accepted: true };
   }
 
   async validateUser(userId: number): Promise<ComplySaUser | null> {

@@ -7,6 +7,7 @@ import { ComplySaCompaniesModule } from "../companies/companies.module";
 import { ComplySaUser } from "../companies/entities/user.entity";
 import { ComplySaAuthController } from "./auth.controller";
 import { ComplySaAuthService } from "./auth.service";
+import { ComplySaDataRetentionService } from "./data-retention.service";
 import { ComplySaCompanyScopeGuard } from "./guards/company-scope.guard";
 import { ComplySaJwtStrategy } from "./strategies/jwt.strategy";
 
@@ -25,7 +26,12 @@ import { ComplySaJwtStrategy } from "./strategies/jwt.strategy";
     }),
   ],
   controllers: [ComplySaAuthController],
-  providers: [ComplySaAuthService, ComplySaJwtStrategy, ComplySaCompanyScopeGuard],
+  providers: [
+    ComplySaAuthService,
+    ComplySaDataRetentionService,
+    ComplySaJwtStrategy,
+    ComplySaCompanyScopeGuard,
+  ],
   exports: [ComplySaAuthService, JwtModule, ComplySaCompanyScopeGuard, TypeOrmModule],
 })
 export class ComplySaAuthModule {}

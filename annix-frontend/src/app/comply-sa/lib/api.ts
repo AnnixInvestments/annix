@@ -52,7 +52,7 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
 export function login(
   email: string,
   password: string,
-): Promise<{ user: Record<string, unknown>; emailVerified: boolean }> {
+): Promise<{ user: Record<string, unknown>; emailVerified: boolean; termsOutdated: boolean }> {
   return request("/auth/login", {
     method: "POST",
     body: JSON.stringify({ email, password }),
