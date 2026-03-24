@@ -23,7 +23,7 @@ export class ComplySaComplianceRequirement {
   @Column({ name: "applicable_conditions", type: "jsonb", nullable: true })
   applicableConditions!: Record<string, unknown> | null;
 
-  @Column({ type: "varchar", length: 20 })
+  @Column({ type: "varchar", length: 30 })
   frequency!: string;
 
   @Column({ name: "deadline_rule", type: "jsonb", nullable: true })

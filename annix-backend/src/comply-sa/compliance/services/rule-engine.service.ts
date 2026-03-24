@@ -44,6 +44,11 @@ const CONDITION_EVALUATORS: ConditionCheck[] = [
     key: "imports_exports",
     evaluate: (company, value) => company.importsExports === (value as boolean),
   },
+  {
+    key: "industry_in",
+    evaluate: (company, value) =>
+      company.industry !== null && (value as string[]).includes(company.industry),
+  },
 ];
 
 @Injectable()

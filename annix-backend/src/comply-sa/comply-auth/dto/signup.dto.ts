@@ -1,4 +1,4 @@
-import { IsEmail, IsOptional, IsString, MinLength } from "class-validator";
+import { IsBoolean, IsEmail, IsOptional, IsString, MinLength } from "class-validator";
 
 export class ComplySaSignupDto {
   @IsEmail()
@@ -16,4 +16,7 @@ export class ComplySaSignupDto {
   @IsString()
   @IsOptional()
   registrationNumber?: string;
+
+  @IsBoolean()
+  termsAccepted!: boolean;
 }

@@ -1,13 +1,9 @@
 import { type NextRequest, NextResponse } from "next/server";
 
-const REMOTE_BACKEND = process.env.NEXT_PUBLIC_API_URL;
-
-function isRemoteProxy(): boolean {
-  return !!REMOTE_BACKEND && REMOTE_BACKEND.startsWith("http");
-}
+const REMOTE_BACKEND = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4001";
 
 async function proxyRequest(request: NextRequest) {
-  if (!isRemoteProxy() || !REMOTE_BACKEND) {
+  if (!REMOTE_BACKEND) {
     return NextResponse.json({ error: "Proxy not configured" }, { status: 502 });
   }
 
@@ -22,6 +18,10 @@ async function proxyRequest(request: NextRequest) {
   const auth = request.headers.get("authorization");
   if (auth) {
     forwardHeaders["authorization"] = auth;
+  }
+  const cookie = request.headers.get("cookie");
+  if (cookie) {
+    forwardHeaders["cookie"] = cookie;
   }
 
   const body =

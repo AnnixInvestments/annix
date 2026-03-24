@@ -48,6 +48,12 @@ export class ComplySaUser {
   @JoinColumn({ name: "company_id" })
   company!: ComplySaCompany;
 
+  @Column({ name: "terms_accepted_at", type: "timestamp", nullable: true })
+  termsAcceptedAt!: Date | null;
+
+  @Column({ name: "terms_version", type: "varchar", length: 20, nullable: true })
+  termsVersion!: string | null;
+
   @CreateDateColumn({ name: "created_at" })
   createdAt!: Date;
 }

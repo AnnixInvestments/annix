@@ -1,7 +1,7 @@
 const BASE_URL =
   typeof window !== "undefined"
     ? "/api/comply-sa"
-    : `${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3100"}/api/comply-sa`;
+    : `${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4001"}/api/comply-sa`;
 
 function buildFetchInit(opts: RequestInit): RequestInit {
   return {
@@ -65,6 +65,7 @@ export function signup(data: {
   password: string;
   companyName: string;
   registrationNumber?: string | null;
+  termsAccepted: boolean;
 }): Promise<{ user: Record<string, unknown> }> {
   return request("/auth/signup", {
     method: "POST",

@@ -35,6 +35,12 @@ export class ComplySaAuthService {
   async signup(
     dto: ComplySaSignupDto,
   ): Promise<{ access_token: string; user: Partial<ComplySaUser> }> {
+    if (!dto.termsAccepted) {
+      throw new BadRequestException(
+        "You must accept the Terms and Conditions to create an account",
+      );
+    }
+
     const existingUser = await this.usersRepository.findOne({
       where: { email: dto.email },
     });
@@ -60,6 +66,8 @@ export class ComplySaAuthService {
       role: "owner",
       emailVerified: false,
       emailVerificationToken: verificationToken,
+      termsAcceptedAt: now().toJSDate(),
+      termsVersion: "1.0",
     });
     const savedUser = await this.usersRepository.save(user);
 
