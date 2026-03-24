@@ -618,7 +618,8 @@ export class WorkflowNotificationService {
 
     const today = DateTime.now();
     const assignments = await this.assignmentService.assignmentsForStep(companyId, step);
-    const primaryAssignment = assignments.find((a) => a.isPrimary);
+    const primaryAssignment =
+      assignments.find((a) => a.isPrimary) || (assignments.length === 1 ? assignments[0] : null);
 
     if (!primaryAssignment) {
       return users;

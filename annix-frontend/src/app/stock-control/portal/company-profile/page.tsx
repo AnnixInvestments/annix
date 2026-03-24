@@ -136,6 +136,7 @@ export default function CompanyProfilePage() {
   const [structuralSteelLossFactorPct, setStructuralSteelLossFactorPct] = useState(30);
   const [qcEnabled, setQcEnabled] = useState(true);
   const [messagingEnabled, setMessagingEnabled] = useState(false);
+  const [workflowEnabled, setWorkflowEnabled] = useState(true);
   const [staffLeaveEnabled, setStaffLeaveEnabled] = useState(false);
   const [featuresSaving, setFeaturesSaving] = useState(false);
   const [featuresSuccess, setFeaturesSuccess] = useState(false);
@@ -216,6 +217,10 @@ export default function CompanyProfilePage() {
 
     if (profile?.messagingEnabled !== undefined) {
       setMessagingEnabled(profile.messagingEnabled);
+    }
+
+    if (profile?.workflowEnabled !== undefined) {
+      setWorkflowEnabled(profile.workflowEnabled);
     }
 
     if (profile?.staffLeaveEnabled !== undefined) {
@@ -300,6 +305,7 @@ export default function CompanyProfilePage() {
       await stockControlApiClient.updateCompanyDetails({
         qcEnabled,
         messagingEnabled,
+        workflowEnabled,
         staffLeaveEnabled,
       });
       setFeaturesSuccess(true);
@@ -782,6 +788,31 @@ export default function CompanyProfilePage() {
               <span
                 className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
                   messagingEnabled ? "translate-x-5" : "translate-x-0"
+                }`}
+              />
+            </button>
+          </label>
+
+          <label className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-700">Workflow Configuration</p>
+              <p className="text-xs text-gray-500 mt-0.5">
+                Custom workflow steps, background tasks, approvals, and multi-phase actions for job
+                card processing
+              </p>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={workflowEnabled}
+              onClick={() => setWorkflowEnabled(!workflowEnabled)}
+              className={`relative inline-flex h-6 w-11 flex-shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 ${
+                workflowEnabled ? "bg-teal-600" : "bg-gray-200"
+              }`}
+            >
+              <span
+                className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                  workflowEnabled ? "translate-x-5" : "translate-x-0"
                 }`}
               />
             </button>

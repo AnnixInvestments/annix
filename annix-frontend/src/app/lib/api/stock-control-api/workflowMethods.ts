@@ -74,6 +74,10 @@ declare module "./base" {
     ): Promise<WorkflowStepConfig>;
     updateStepFollows(key: string, triggerAfterStep: string | null): Promise<WorkflowStepConfig>;
     updateStepBranchColor(key: string, branchColor: string | null): Promise<{ success: boolean }>;
+    updatePhaseActionLabels(
+      key: string,
+      phaseActionLabels: Record<string, string> | null,
+    ): Promise<{ success: boolean }>;
     backgroundStepConfigs(): Promise<WorkflowStepConfig[]>;
     backgroundStepsForJobCard(jobCardId: number): Promise<BackgroundStepStatus[]>;
     completeBackgroundStep(jobCardId: number, stepKey: string, notes?: string): Promise<void>;
@@ -299,6 +303,16 @@ proto.updateStepBranchColor = async function (key, branchColor) {
     {
       method: "PUT",
       body: JSON.stringify({ branchColor }),
+    },
+  );
+};
+
+proto.updatePhaseActionLabels = async function (key, phaseActionLabels) {
+  return this.request(
+    `/stock-control/workflow/step-configs/${encodeURIComponent(key)}/phase-labels`,
+    {
+      method: "PUT",
+      body: JSON.stringify({ phaseActionLabels }),
     },
   );
 };

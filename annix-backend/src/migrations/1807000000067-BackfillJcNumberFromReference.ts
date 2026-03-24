@@ -16,6 +16,15 @@ export class BackfillJcNumberFromReference1807000000067 implements MigrationInte
           OR reference ~* '^JC\\d+'
         )
     `);
+
+    await queryRunner.query(`
+      UPDATE job_cards child
+      SET jc_number = parent.jc_number
+      FROM job_cards parent
+      WHERE child.parent_job_card_id = parent.id
+        AND child.jc_number = child.jt_dn_number
+        AND parent.jc_number IS NOT NULL
+    `);
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {

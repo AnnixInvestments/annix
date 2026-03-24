@@ -37,6 +37,11 @@ export function WorkflowConfigurationSection({ teamMembers }: WorkflowConfigurat
   const [newStepLabel, setNewStepLabel] = useState("");
   const [newStepIsBackground, setNewStepIsBackground] = useState(false);
   const [newStepTriggerAfter, setNewStepTriggerAfter] = useState("");
+  const [newStepLineType, setNewStepLineType] = useState<"connect" | "loop">("connect");
+
+  const [editingPhaseLabelsKey, setEditingPhaseLabelsKey] = useState<string | null>(null);
+  const [editingPhase1Label, setEditingPhase1Label] = useState("");
+  const [editingPhase2Label, setEditingPhase2Label] = useState("");
 
   const [editingNotifyStep, setEditingNotifyStep] = useState<string | null>(null);
   const [selectedEmail, setSelectedEmail] = useState("");
@@ -211,7 +216,8 @@ export function WorkflowConfigurationSection({ teamMembers }: WorkflowConfigurat
   const handleSetSecondary = async (userId: number | null, step: string) => {
     const assignment = assignmentsByStep[step];
     const currentIds = assignment?.userIds || [];
-    const currentPrimary = assignment?.primaryUserId || null;
+    const currentPrimary =
+      assignment?.primaryUserId || (currentIds.length === 1 ? currentIds[0] : null);
 
     setSaving(true);
     setError("");
@@ -331,16 +337,20 @@ export function WorkflowConfigurationSection({ teamMembers }: WorkflowConfigurat
     setSaving(true);
     setError("");
     try {
-      await stockControlApiClient.addWorkflowStep({
+      const newStep = await stockControlApiClient.addWorkflowStep({
         label: newStepLabel.trim(),
         afterStepKey: afterKey,
         isBackground: newStepIsBackground,
         triggerAfterStep: newStepIsBackground ? newStepTriggerAfter : undefined,
       });
+      if (newStepIsBackground && newStepLineType === "loop") {
+        await stockControlApiClient.updateStepBranchColor(newStep.key, "#3b82f6");
+      }
       setShowAddStep(false);
       setAddAfterStepKey(null);
       setNewStepLabel("");
       setNewStepIsBackground(false);
+      setNewStepLineType("connect");
       setNewStepTriggerAfter("");
       await loadData();
       setSuccess(true);
@@ -361,6 +371,41 @@ export function WorkflowConfigurationSection({ teamMembers }: WorkflowConfigurat
       setSuccess(true);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to update line color");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const fgStepHasMultiPhase = useCallback(
+    (fgKey: string) => {
+      const bgForStep = backgroundSteps.filter((bg) => bg.triggerAfterStep === fgKey);
+      const hasColored = bgForStep.some((bg) => bg.branchColor !== null);
+      const hasNull = bgForStep.some((bg) => bg.branchColor === null);
+      return hasColored && hasNull;
+    },
+    [backgroundSteps],
+  );
+
+  const handleStartEditPhaseLabels = (key: string, current: Record<string, string> | null) => {
+    setEditingPhaseLabelsKey(key);
+    setEditingPhase1Label(current?.["1"] || "");
+    setEditingPhase2Label(current?.["2"] || "");
+  };
+
+  const handleSavePhaseLabels = async () => {
+    if (!editingPhaseLabelsKey) return;
+    setSaving(true);
+    setError("");
+    try {
+      const p1 = editingPhase1Label.trim();
+      const p2 = editingPhase2Label.trim();
+      const labels = p1 || p2 ? { "1": p1 || "Phase 1", "2": p2 || "Phase 2" } : null;
+      await stockControlApiClient.updatePhaseActionLabels(editingPhaseLabelsKey, labels);
+      setEditingPhaseLabelsKey(null);
+      await loadData();
+      setSuccess(true);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to update phase labels");
     } finally {
       setSaving(false);
     }
@@ -452,6 +497,7 @@ export function WorkflowConfigurationSection({ teamMembers }: WorkflowConfigurat
     setAddAfterStepKey(afterKey);
     setNewStepLabel("");
     setNewStepIsBackground(false);
+    setNewStepLineType("connect");
     setNewStepTriggerAfter("");
     setShowAddStep(true);
   };
@@ -459,7 +505,8 @@ export function WorkflowConfigurationSection({ teamMembers }: WorkflowConfigurat
   const renderUserChips = (stepKey: string) => {
     const assignment = assignmentsByStep[stepKey];
     const assignedUsers = assignment?.users || [];
-    const primaryId = assignment?.primaryUserId || null;
+    const primaryId =
+      assignment?.primaryUserId || (assignedUsers.length === 1 ? assignedUsers[0].id : null);
     const secondaryId = assignment?.secondaryUserId || null;
 
     return (
@@ -679,7 +726,9 @@ export function WorkflowConfigurationSection({ teamMembers }: WorkflowConfigurat
     const isExpanded = expandedStep === step.key;
     const assignment = assignmentsByStep[step.key];
     const assignedCount = assignment?.userIds?.length || 0;
-    const primaryUser = assignment?.users?.find((u) => u.id === assignment.primaryUserId);
+    const effectivePrimaryId =
+      assignment?.primaryUserId || (assignedCount === 1 && assignment?.userIds?.[0]) || null;
+    const primaryUser = assignment?.users?.find((u) => u.id === effectivePrimaryId);
     const secondaryUser = assignment?.secondaryUserId
       ? matrixUsers.find((u) => u.id === assignment.secondaryUserId)
       : null;
@@ -1126,6 +1175,135 @@ export function WorkflowConfigurationSection({ teamMembers }: WorkflowConfigurat
               )}
             </div>
 
+            {fgStepHasMultiPhase(step.key) && (
+              <div className="mt-3 pt-3 border-t border-gray-100">
+                <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+                  Phase Action Labels
+                </span>
+                {editingPhaseLabelsKey === step.key ? (
+                  <div className="mt-1.5 space-y-1.5">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-gray-500 w-16">Phase 1:</span>
+                      <input
+                        type="text"
+                        value={editingPhase1Label}
+                        onChange={(e) => setEditingPhase1Label(e.target.value)}
+                        placeholder="e.g. Quality Check"
+                        className="px-2 py-1 text-sm border border-teal-400 rounded focus:ring-1 focus:ring-teal-500 flex-1 max-w-xs"
+                      />
+                      <span className="text-xs text-gray-400">
+                        (
+                        {backgroundSteps
+                          .filter(
+                            (bg) => bg.triggerAfterStep === step.key && bg.branchColor !== null,
+                          )
+                          .map((bg) => bg.label)
+                          .join(", ") || "colored bg steps"}
+                        )
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-gray-500 w-16">Phase 2:</span>
+                      <input
+                        type="text"
+                        value={editingPhase2Label}
+                        onChange={(e) => setEditingPhase2Label(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") handleSavePhaseLabels();
+                          if (e.key === "Escape") setEditingPhaseLabelsKey(null);
+                        }}
+                        placeholder="e.g. Quality Release"
+                        className="px-2 py-1 text-sm border border-teal-400 rounded focus:ring-1 focus:ring-teal-500 flex-1 max-w-xs"
+                      />
+                      <span className="text-xs text-gray-400">
+                        (
+                        {backgroundSteps
+                          .filter(
+                            (bg) => bg.triggerAfterStep === step.key && bg.branchColor === null,
+                          )
+                          .map((bg) => bg.label)
+                          .join(", ") || "default bg steps"}
+                        )
+                      </span>
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={handleSavePhaseLabels}
+                        disabled={saving}
+                        className="text-xs text-teal-600 hover:text-teal-800 disabled:text-gray-400"
+                      >
+                        Save
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setEditingPhaseLabelsKey(null)}
+                        className="text-xs text-gray-400 hover:text-gray-600"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="mt-1.5 space-y-1">
+                    {[1, 2].map((phase) => {
+                      const phaseStr = String(phase);
+                      const phaseBgSteps =
+                        phase === 1
+                          ? backgroundSteps.filter(
+                              (bg) => bg.triggerAfterStep === step.key && bg.branchColor !== null,
+                            )
+                          : backgroundSteps.filter(
+                              (bg) => bg.triggerAfterStep === step.key && bg.branchColor === null,
+                            );
+                      const phaseAssignedNames = phaseBgSteps
+                        .map((bg) => {
+                          const assignment = assignmentsByStep[bg.key];
+                          const primary = assignment?.users?.find(
+                            (u) => u.id === assignment?.primaryUserId,
+                          );
+                          return primary?.name || null;
+                        })
+                        .filter((n): n is string => n !== null);
+                      const uniqueNames = [...new Set(phaseAssignedNames)];
+
+                      return (
+                        <div key={phase} className="flex items-center gap-2">
+                          <span className="text-xs text-gray-500 w-12">Phase {phaseStr}:</span>
+                          <span className="text-sm text-gray-700">
+                            {step.phaseActionLabels?.[phaseStr] || (
+                              <span className="text-gray-400 italic">Auto</span>
+                            )}
+                          </span>
+                          {uniqueNames.length > 0 && (
+                            <div className="flex gap-1">
+                              {uniqueNames.map((name) => (
+                                <span
+                                  key={name}
+                                  className="text-xs bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded"
+                                >
+                                  {name}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                    <button
+                      type="button"
+                      onClick={() =>
+                        handleStartEditPhaseLabels(step.key, step.phaseActionLabels || null)
+                      }
+                      className="text-xs text-gray-400 hover:text-teal-600"
+                    >
+                      Edit
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
             {renderNotificationSection(step.key)}
           </div>
         )}
@@ -1188,6 +1366,7 @@ export function WorkflowConfigurationSection({ teamMembers }: WorkflowConfigurat
             onClick={() => {
               setShowAddStep(false);
               setNewStepIsBackground(false);
+              setNewStepLineType("connect");
             }}
             className="text-gray-400 hover:text-gray-600"
           >
@@ -1246,6 +1425,19 @@ export function WorkflowConfigurationSection({ teamMembers }: WorkflowConfigurat
                 </select>
               </div>
             )}
+            {newStepIsBackground && (
+              <div className="flex-1">
+                <label className="block text-xs font-medium text-gray-600 mb-1">Line Type</label>
+                <select
+                  value={newStepLineType}
+                  onChange={(e) => setNewStepLineType(e.target.value as "connect" | "loop")}
+                  className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-md focus:ring-teal-500 focus:border-teal-500"
+                >
+                  <option value="connect">Connect (to next step)</option>
+                  <option value="loop">Loop (back to same step)</option>
+                </select>
+              </div>
+            )}
             <button
               type="button"
               onClick={handleAddStep}
@@ -1299,6 +1491,7 @@ export function WorkflowConfigurationSection({ teamMembers }: WorkflowConfigurat
               setShowAddStep(!showAddStep);
               setNewStepLabel("");
               setNewStepIsBackground(false);
+              setNewStepLineType("connect");
               setNewStepTriggerAfter("");
             }}
             className="text-xs font-medium text-teal-600 hover:text-teal-700 flex items-center gap-1"

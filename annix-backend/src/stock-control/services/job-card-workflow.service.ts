@@ -147,6 +147,21 @@ export class JobCardWorkflowService {
 
     await this.validateUserIsAssigned(user, currentStep.key);
 
+    const phases = await this.stepConfigService.phasesForFgStep(companyId, currentStep.key);
+    if (phases.length > 1) {
+      const phase1Keys = phases[0].bgStepKeys;
+      const completions = await this.bgCompletionRepo.find({
+        where: { jobCardId, companyId },
+      });
+      const completedKeys = new Set(completions.map((c) => c.stepKey));
+      const phase1Incomplete = phase1Keys.filter((key) => !completedKeys.has(key));
+      if (phase1Incomplete.length > 0) {
+        throw new BadRequestException(
+          `Phase 1 background steps must be completed before approval: ${phase1Incomplete.join(", ")}`,
+        );
+      }
+    }
+
     const actionCompletion = await this.actionCompletionRepo.findOne({
       where: { jobCardId, stepKey: currentStep.key, actionType: "primary" },
     });
@@ -313,6 +328,31 @@ export class JobCardWorkflowService {
 
     const saved = await this.actionCompletionRepo.save(completion);
 
+    if (actionType === "primary" && !stepConfig.isBackground) {
+      const phases = await this.stepConfigService.phasesForFgStep(companyId, stepKey);
+      if (phases.length > 1) {
+        const phase1 = phases[0];
+        const bgSteps = await this.stepConfigService.backgroundStepsForTrigger(companyId, stepKey);
+        const coloredSteps = bgSteps.filter((s) => phase1.bgStepKeys.includes(s.key));
+        const firstPerBranch = this.stepConfigService.firstStepPerBranch(coloredSteps);
+
+        await Promise.all(
+          firstPerBranch.map((step) =>
+            this.notificationService.notifyBackgroundStepRequired(
+              companyId,
+              jobCardId,
+              step.key,
+              step.label,
+              { id: user.id, name: user.name },
+            ),
+          ),
+        );
+        this.logger.log(
+          `Phase 1 bg steps triggered for step "${stepKey}" on job card ${jobCardId}: [${firstPerBranch.map((s) => s.key).join(", ")}]`,
+        );
+      }
+    }
+
     this.logger.log(
       `Action "${actionType}" completed for step "${stepKey}" on job card ${jobCardId} by ${user.name}`,
     );
@@ -363,12 +403,33 @@ export class JobCardWorkflowService {
     completedStepKey: string,
     sender: { id: number; name: string },
   ): Promise<void> {
+    const phases = await this.stepConfigService.phasesForFgStep(companyId, completedStepKey);
     const bgSteps = await this.stepConfigService.backgroundStepsForTrigger(
       companyId,
       completedStepKey,
     );
 
-    if (bgSteps.length > 0) {
+    if (bgSteps.length === 0) {
+      return;
+    }
+
+    if (phases.length > 1) {
+      const phase2 = phases[1];
+      const nullColoredSteps = bgSteps.filter((s) => phase2.bgStepKeys.includes(s.key));
+      const firstPerBranch = this.stepConfigService.firstStepPerBranch(nullColoredSteps);
+
+      await Promise.all(
+        firstPerBranch.map((step) =>
+          this.notificationService.notifyBackgroundStepRequired(
+            companyId,
+            jobCardId,
+            step.key,
+            step.label,
+            sender,
+          ),
+        ),
+      );
+    } else {
       const firstStep = bgSteps[0];
       await this.notificationService.notifyBackgroundStepRequired(
         companyId,
@@ -495,6 +556,13 @@ export class JobCardWorkflowService {
       completedAt: string;
       metadata: Record<string, unknown> | null;
     }>;
+    phaseInfo: Record<
+      string,
+      {
+        phases: Array<{ phase: number; actionLabel: string; bgStepKeys: string[] }>;
+        currentPhase: number;
+      }
+    > | null;
   }> {
     const jobCard = await this.jobCardForWorkflow(companyId, jobCardId);
 
@@ -568,6 +636,8 @@ export class JobCardWorkflowService {
           })()
         : true;
 
+    const phaseInfo = await this.buildPhaseInfo(companyId, fgConfigs, bgStepConfigs, actions);
+
     return {
       currentStatus: jobCard.workflowStatus,
       currentStep: currentStep?.key ?? null,
@@ -579,6 +649,7 @@ export class JobCardWorkflowService {
       foregroundSteps,
       backgroundSteps,
       actionCompletions,
+      phaseInfo,
     };
   }
 
@@ -886,6 +957,62 @@ export class JobCardWorkflowService {
     }
 
     return WORKFLOW_STATUS_FILE_CLOSED;
+  }
+
+  private async buildPhaseInfo(
+    companyId: number,
+    fgConfigs: WorkflowStepConfig[],
+    bgStepConfigs: WorkflowStepConfig[],
+    actions: JobCardActionCompletion[],
+  ): Promise<Record<
+    string,
+    {
+      phases: Array<{ phase: number; actionLabel: string; bgStepKeys: string[] }>;
+      currentPhase: number;
+    }
+  > | null> {
+    const entries = await Promise.all(
+      fgConfigs.map(async (fg) => {
+        const phases = await this.stepConfigService.phasesForFgStep(companyId, fg.key);
+        if (phases.length <= 1) {
+          return null;
+        }
+
+        const fgConfig = await this.stepConfigService.fgStepConfig(companyId, fg.key);
+        const labels = fgConfig?.phaseActionLabels || {};
+
+        const hasPrimaryAction = actions.some(
+          (a) => a.stepKey === fg.key && a.actionType === "primary",
+        );
+        const currentPhase = hasPrimaryAction ? 2 : 1;
+
+        const phaseData = phases.map((p) => ({
+          phase: p.phase,
+          actionLabel:
+            labels[String(p.phase)] ||
+            (p.phase === 1 ? fg.actionLabel || fg.label : `${fg.label} Release`),
+          bgStepKeys: p.bgStepKeys,
+        }));
+
+        return [fg.key, { phases: phaseData, currentPhase }] as const;
+      }),
+    );
+
+    const validEntries = entries.filter((e) => e !== null);
+
+    if (validEntries.length === 0) {
+      return null;
+    }
+
+    return validEntries.reduce<
+      Record<
+        string,
+        {
+          phases: Array<{ phase: number; actionLabel: string; bgStepKeys: string[] }>;
+          currentPhase: number;
+        }
+      >
+    >((acc, entry) => ({ ...acc, [entry[0]]: entry[1] }), {});
   }
 
   private async archiveJobCardDocuments(

@@ -47,6 +47,9 @@ export class WorkflowStepConfig {
   @Column({ name: "branch_color", type: "varchar", length: 20, nullable: true })
   branchColor: string | null;
 
+  @Column({ name: "phase_action_labels", type: "jsonb", nullable: true, default: null })
+  phaseActionLabels: Record<string, string> | null;
+
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;
 

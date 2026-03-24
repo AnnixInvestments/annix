@@ -199,13 +199,14 @@ const url = await this.storageService.presignedUrl(filePath, 3600);
 - **Never use `EnterWorktree` in `@annix/claude-swarm` worktrees**: If `@annix/claude-swarm` has already placed this session in a worktree (branch starts with `claude/`), never use the `EnterWorktree` tool — just work directly on the current branch. `@annix/claude-swarm` manages the worktree lifecycle; creating a nested worktree puts commits on the wrong branch.
 
 ### Commit Process
-1. Stage changes with `git add`
-2. Show the user what will be committed (`git status`)
-3. Propose a commit message
-4. **ASK**: "May I commit with this message?"
-5. Wait for explicit "yes" before running `git commit`
-6. Only push to remote when user explicitly approves
-7. **NEVER auto-push**: After committing, do NOT push unless the user explicitly says "push" in their message. "commit and push" means both; "commit" means commit only. After resolving merge conflicts, rebasing, or amending, do NOT push — wait for user instruction. When in doubt, ask.
+1. **Run Biome before staging**: Always run `npx biome check --write --unsafe` on all files you are about to commit. The pre-push hook runs biome on the full source tree and will reject the push if any committed file doesn't match biome's formatting. Running biome first ensures the committed version is already clean.
+2. Stage changes with `git add`
+3. Show the user what will be committed (`git status`)
+4. Propose a commit message
+5. **ASK**: "May I commit with this message?"
+6. Wait for explicit "yes" before running `git commit`
+7. Only push to remote when user explicitly approves
+8. **NEVER auto-push**: After committing, do NOT push unless the user explicitly says "push" in their message. "commit and push" means both; "commit" means commit only. After resolving merge conflicts, rebasing, or amending, do NOT push — wait for user instruction. When in doubt, ask.
 
 ### Commit Standards
 - **Complete features only**: Each commit should represent a complete, logical feature - not intermediate iterations

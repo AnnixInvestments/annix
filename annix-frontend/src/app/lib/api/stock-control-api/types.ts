@@ -43,6 +43,7 @@ export interface StockControlUserProfile {
   qcEnabled: boolean;
   messagingEnabled: boolean;
   staffLeaveEnabled: boolean;
+  workflowEnabled: boolean;
   linkedStaffId: number | null;
   createdAt: string;
   companyUpdatedAt: string | null;
@@ -103,6 +104,7 @@ export interface CompanyDetailsUpdate {
   qcEnabled?: boolean;
   messagingEnabled?: boolean;
   staffLeaveEnabled?: boolean;
+  workflowEnabled?: boolean;
 }
 
 export interface SmtpConfigResponse {
@@ -1447,6 +1449,7 @@ export interface WorkflowStepConfig {
   triggerAfterStep: string | null;
   actionLabel: string | null;
   branchColor: string | null;
+  phaseActionLabels: Record<string, string> | null;
 }
 
 export interface JobCardActionCompletion {
@@ -1554,6 +1557,13 @@ export interface WorkflowStatus {
     branchColor: string | null;
   }>;
   actionCompletions: JobCardActionCompletion[];
+  phaseInfo: Record<
+    string,
+    {
+      phases: Array<{ phase: number; actionLabel: string; bgStepKeys: string[] }>;
+      currentPhase: number;
+    }
+  > | null;
 }
 
 export interface DispatchScan {

@@ -26,7 +26,7 @@ import { WorkflowConfigurationSection } from "./WorkflowConfigurationSection";
 
 export default function StockControlSettingsPage() {
   const router = useRouter();
-  const { user } = useStockControlAuth();
+  const { user, profile } = useStockControlAuth();
 
   const isAdmin = user?.role === "admin";
   const { data: companyRoles = [], isLoading: companyRolesLoading } = useCompanyRoles();
@@ -60,7 +60,9 @@ export default function StockControlSettingsPage() {
 
       <DepartmentsLocationsSection onLocationsLoaded={setLocations} />
 
-      <WorkflowConfigurationSection teamMembers={teamMembers} />
+      {profile?.workflowEnabled === true && (
+        <WorkflowConfigurationSection teamMembers={teamMembers} />
+      )}
       <QaWorkflowSection teamMembers={teamMembers} />
       <UserLocationAssignmentsSection locations={locations} teamMembers={teamMembers} />
       <InboundEmailConfigSection />

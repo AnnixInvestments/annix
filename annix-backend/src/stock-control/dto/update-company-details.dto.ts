@@ -89,4 +89,8 @@ export class UpdateCompanyDetailsDto {
   @IsOptional()
   @IsBoolean()
   staffLeaveEnabled?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  workflowEnabled?: boolean;
 }

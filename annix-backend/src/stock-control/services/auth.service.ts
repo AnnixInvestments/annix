@@ -344,6 +344,7 @@ export class StockControlAuthService {
       qcEnabled: user.company?.qcEnabled ?? false,
       messagingEnabled: user.company?.messagingEnabled ?? false,
       staffLeaveEnabled: user.company?.staffLeaveEnabled ?? false,
+      workflowEnabled: user.company?.workflowEnabled ?? true,
       linkedStaffId: user.linkedStaffId ?? null,
       createdAt: user.createdAt,
       companyUpdatedAt: user.company?.updatedAt ?? null,
@@ -462,6 +463,7 @@ export class StockControlAuthService {
     if (dto.qcEnabled != null) company.qcEnabled = dto.qcEnabled;
     if (dto.messagingEnabled != null) company.messagingEnabled = dto.messagingEnabled;
     if (dto.staffLeaveEnabled != null) company.staffLeaveEnabled = dto.staffLeaveEnabled;
+    if (dto.workflowEnabled != null) company.workflowEnabled = dto.workflowEnabled;
 
     await this.companyRepo.save(company);
 

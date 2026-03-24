@@ -3,6 +3,12 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { WorkflowStepConfig } from "../entities/workflow-step-config.entity";
 
+interface PhaseGroup {
+  phase: number;
+  branchColor: string | null;
+  bgStepKeys: string[];
+}
+
 const DEFAULT_STEPS: ReadonlyArray<{
   key: string;
   label: string;
@@ -11,6 +17,7 @@ const DEFAULT_STEPS: ReadonlyArray<{
   triggerAfterStep: string | null;
   actionLabel: string | null;
   branchColor: string | null;
+  phaseActionLabels: Record<string, string> | null;
 }> = [
   {
     key: "admin_approval",
@@ -20,6 +27,7 @@ const DEFAULT_STEPS: ReadonlyArray<{
     triggerAfterStep: null,
     actionLabel: "Accept JC",
     branchColor: null,
+    phaseActionLabels: null,
   },
   {
     key: "manager_approval",
@@ -29,6 +37,7 @@ const DEFAULT_STEPS: ReadonlyArray<{
     triggerAfterStep: null,
     actionLabel: "Release to Factory",
     branchColor: null,
+    phaseActionLabels: null,
   },
   {
     key: "quality_check",
@@ -38,6 +47,7 @@ const DEFAULT_STEPS: ReadonlyArray<{
     triggerAfterStep: null,
     actionLabel: "Quality Check",
     branchColor: null,
+    phaseActionLabels: { "1": "Quality Check", "2": "Quality Release" },
   },
   {
     key: "dispatched",
@@ -47,6 +57,7 @@ const DEFAULT_STEPS: ReadonlyArray<{
     triggerAfterStep: null,
     actionLabel: "Dispatched",
     branchColor: null,
+    phaseActionLabels: null,
   },
   {
     key: "document_upload",
@@ -56,6 +67,7 @@ const DEFAULT_STEPS: ReadonlyArray<{
     triggerAfterStep: "admin_approval",
     actionLabel: "Accept Draft",
     branchColor: null,
+    phaseActionLabels: null,
   },
   {
     key: "stock_allocation",
@@ -65,6 +77,7 @@ const DEFAULT_STEPS: ReadonlyArray<{
     triggerAfterStep: "admin_approval",
     actionLabel: "Complete Stock Alloc",
     branchColor: null,
+    phaseActionLabels: null,
   },
   {
     key: "reception",
@@ -74,6 +87,7 @@ const DEFAULT_STEPS: ReadonlyArray<{
     triggerAfterStep: "admin_approval",
     actionLabel: "Print JC",
     branchColor: null,
+    phaseActionLabels: null,
   },
   {
     key: "upload_source_documents",
@@ -83,6 +97,7 @@ const DEFAULT_STEPS: ReadonlyArray<{
     triggerAfterStep: "admin_approval",
     actionLabel: "Docs Uploaded",
     branchColor: null,
+    phaseActionLabels: null,
   },
   {
     key: "requisition",
@@ -92,6 +107,7 @@ const DEFAULT_STEPS: ReadonlyArray<{
     triggerAfterStep: "manager_approval",
     actionLabel: "Req Sent",
     branchColor: null,
+    phaseActionLabels: null,
   },
   {
     key: "req_auth",
@@ -101,6 +117,7 @@ const DEFAULT_STEPS: ReadonlyArray<{
     triggerAfterStep: "manager_approval",
     actionLabel: "Req Auth",
     branchColor: null,
+    phaseActionLabels: null,
   },
   {
     key: "order_placement",
@@ -110,6 +127,7 @@ const DEFAULT_STEPS: ReadonlyArray<{
     triggerAfterStep: "manager_approval",
     actionLabel: "Order Placed",
     branchColor: null,
+    phaseActionLabels: null,
   },
   {
     key: "qa_check",
@@ -119,6 +137,7 @@ const DEFAULT_STEPS: ReadonlyArray<{
     triggerAfterStep: "quality_check",
     actionLabel: "QA Checked",
     branchColor: "#3b82f6",
+    phaseActionLabels: null,
   },
   {
     key: "compile_data_book",
@@ -128,6 +147,7 @@ const DEFAULT_STEPS: ReadonlyArray<{
     triggerAfterStep: "quality_check",
     actionLabel: "Data Book Compiled",
     branchColor: null,
+    phaseActionLabels: null,
   },
   {
     key: "qa_review",
@@ -137,6 +157,7 @@ const DEFAULT_STEPS: ReadonlyArray<{
     triggerAfterStep: "quality_check",
     actionLabel: "QA Reviewed",
     branchColor: null,
+    phaseActionLabels: null,
   },
   {
     key: "qc_repairs",
@@ -146,6 +167,7 @@ const DEFAULT_STEPS: ReadonlyArray<{
     triggerAfterStep: "quality_check",
     actionLabel: "Repairs Done",
     branchColor: null,
+    phaseActionLabels: null,
   },
   {
     key: "qa_final_check",
@@ -155,6 +177,7 @@ const DEFAULT_STEPS: ReadonlyArray<{
     triggerAfterStep: "quality_check",
     actionLabel: "Final Check Done",
     branchColor: null,
+    phaseActionLabels: null,
   },
   {
     key: "book_3rd_party_inspections",
@@ -164,6 +187,7 @@ const DEFAULT_STEPS: ReadonlyArray<{
     triggerAfterStep: "quality_check",
     actionLabel: "Inspections Booked",
     branchColor: null,
+    phaseActionLabels: null,
   },
   {
     key: "qc_batch_certs",
@@ -173,6 +197,7 @@ const DEFAULT_STEPS: ReadonlyArray<{
     triggerAfterStep: "quality_check",
     actionLabel: "Certs Done",
     branchColor: "#3b82f6",
+    phaseActionLabels: null,
   },
   {
     key: "contact_customer_collection",
@@ -182,6 +207,7 @@ const DEFAULT_STEPS: ReadonlyArray<{
     triggerAfterStep: "quality_check",
     actionLabel: "Customer Called",
     branchColor: null,
+    phaseActionLabels: null,
   },
   {
     key: "job_file_review",
@@ -191,6 +217,7 @@ const DEFAULT_STEPS: ReadonlyArray<{
     triggerAfterStep: "dispatched",
     actionLabel: null,
     branchColor: null,
+    phaseActionLabels: null,
   },
   {
     key: "file_sign_off",
@@ -200,6 +227,7 @@ const DEFAULT_STEPS: ReadonlyArray<{
     triggerAfterStep: "dispatched",
     actionLabel: "File Sign Off",
     branchColor: null,
+    phaseActionLabels: null,
   },
 ];
 
@@ -270,6 +298,7 @@ export class WorkflowStepConfigService {
         triggerAfterStep: step.triggerAfterStep,
         actionLabel: step.actionLabel,
         branchColor: step.branchColor,
+        phaseActionLabels: step.phaseActionLabels,
       }),
     );
 
@@ -479,6 +508,61 @@ export class WorkflowStepConfigService {
     await Promise.all(
       updates.map((update) => this.repo.update({ id: update.id }, { sortOrder: update.sortOrder })),
     );
+  }
+
+  async phasesForFgStep(companyId: number, fgStepKey: string): Promise<PhaseGroup[]> {
+    const bgSteps = await this.backgroundStepsForTrigger(companyId, fgStepKey);
+
+    if (bgSteps.length === 0) {
+      return [];
+    }
+
+    const hasColored = bgSteps.some((s) => s.branchColor !== null);
+    const hasNull = bgSteps.some((s) => s.branchColor === null);
+
+    if (!hasColored || !hasNull) {
+      return [{ phase: 1, branchColor: null, bgStepKeys: bgSteps.map((s) => s.key) }];
+    }
+
+    const coloredKeys = bgSteps.filter((s) => s.branchColor !== null).map((s) => s.key);
+    const nullKeys = bgSteps.filter((s) => s.branchColor === null).map((s) => s.key);
+
+    return [
+      {
+        phase: 1,
+        branchColor: bgSteps.find((s) => s.branchColor !== null)?.branchColor || null,
+        bgStepKeys: coloredKeys,
+      },
+      { phase: 2, branchColor: null, bgStepKeys: nullKeys },
+    ];
+  }
+
+  firstStepPerBranch(steps: WorkflowStepConfig[]): WorkflowStepConfig[] {
+    const seen = new Set<string | null>();
+    return steps.reduce<WorkflowStepConfig[]>((acc, step) => {
+      const color = step.branchColor || null;
+      if (seen.has(color)) {
+        return acc;
+      }
+      seen.add(color);
+      return [...acc, step];
+    }, []);
+  }
+
+  async updatePhaseActionLabels(
+    companyId: number,
+    stepKey: string,
+    phaseActionLabels: Record<string, string> | null,
+  ): Promise<void> {
+    const result = await this.repo.update({ companyId, key: stepKey }, { phaseActionLabels });
+
+    if (result.affected === 0) {
+      throw new NotFoundException(`Step "${stepKey}" not found for this company`);
+    }
+  }
+
+  async fgStepConfig(companyId: number, stepKey: string): Promise<WorkflowStepConfig | null> {
+    return this.repo.findOne({ where: { companyId, key: stepKey, isBackground: false } });
   }
 
   private generateKey(label: string): string {

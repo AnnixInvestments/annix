@@ -513,18 +513,63 @@ export default function JobCardDetailPage() {
     });
   }, [workflowStatus, backgroundSteps, currentStatus, user?.name]);
 
-  const currentStepActionCompleted = useMemo(() => {
-    if (!workflowStatus || !currentStep) return false;
-    const completions = workflowStatus.actionCompletions || [];
-    return completions.some((ac) => ac.stepKey === currentStep && ac.actionType === "primary");
-  }, [workflowStatus, currentStep]);
+  const currentStepPhaseInfo = useMemo(() => {
+    if (!workflowStatus || !currentStep) {
+      return {
+        isMultiPhase: false,
+        currentPhase: 1,
+        phase1ActionLabel: null as string | null,
+        phase2ActionLabel: null as string | null,
+        phase1Complete: false,
+        phase1ActionDone: false,
+        actionLabel: null as string | null,
+      };
+    }
 
-  const currentStepActionLabel = useMemo(() => {
-    if (!workflowStatus || !currentStep) return null;
+    const completions = workflowStatus.actionCompletions || [];
+    const phase1ActionDone = completions.some(
+      (ac) => ac.stepKey === currentStep && ac.actionType === "primary",
+    );
+
     const fgSteps = workflowStatus.foregroundSteps || [];
     const stepConfig = fgSteps.find((s) => s.key === currentStep);
-    return stepConfig?.actionLabel || null;
+    const actionLabel = stepConfig?.actionLabel || null;
+
+    const phaseEntry = workflowStatus.phaseInfo?.[currentStep];
+    if (!phaseEntry || phaseEntry.phases.length <= 1) {
+      return {
+        isMultiPhase: false,
+        currentPhase: 1,
+        phase1ActionLabel: null,
+        phase2ActionLabel: null,
+        phase1Complete: false,
+        phase1ActionDone: phase1ActionDone,
+        actionLabel,
+      };
+    }
+
+    const bgSteps: BackgroundStepStatus[] = workflowStatus.backgroundSteps || [];
+    const phase1Keys = new Set(phaseEntry.phases[0].bgStepKeys);
+    const phase1BgSteps = bgSteps.filter((bg) => phase1Keys.has(bg.stepKey));
+    const phase1Complete =
+      phase1BgSteps.length > 0 && phase1BgSteps.every((bg) => bg.completedAt !== null);
+
+    return {
+      isMultiPhase: true,
+      currentPhase: phaseEntry.currentPhase,
+      phase1ActionLabel: phaseEntry.phases[0].actionLabel,
+      phase2ActionLabel: phaseEntry.phases[1].actionLabel,
+      phase1Complete,
+      phase1ActionDone: phase1ActionDone,
+      actionLabel,
+    };
   }, [workflowStatus, currentStep]);
+
+  const currentStepActionCompleted = currentStepPhaseInfo.phase1ActionDone;
+
+  const currentStepActionLabel = currentStepPhaseInfo.isMultiPhase
+    ? currentStepPhaseInfo.phase1ActionLabel
+    : currentStepPhaseInfo.actionLabel;
 
   const specsNeedReview = useMemo(() => {
     if (!currentStep || currentStep !== "manager_approval") return false;
@@ -561,55 +606,10 @@ export default function JobCardDetailPage() {
     return prevBgTasks.length > 0 && prevBgTasks.some((bg) => bg.completedAt === null);
   }, [workflowStatus, currentStep]);
 
-  const currentStepBlueBgPending = useMemo(() => {
-    if (!workflowStatus || !currentStep) return false;
-    const bgSteps: BackgroundStepStatus[] = workflowStatus.backgroundSteps || [];
-    const fgSteps = workflowStatus.foregroundSteps || [];
-    const fgKeySet = new Set(fgSteps.map((s) => s.key));
-    const bgKeySet = new Set(bgSteps.map((bg) => bg.stepKey));
-    const bgByTrigger = bgSteps.reduce<Record<string, BackgroundStepStatus[]>>((acc, bg) => {
-      const raw = bg.triggerAfterStep;
-      const isFgTrigger = raw !== null && fgKeySet.has(raw);
-      const isBgChain = raw !== null && bgKeySet.has(raw);
-      const trigger = isFgTrigger || isBgChain ? raw : fgSteps[0]?.key || "";
-      return { ...acc, [trigger]: [...(acc[trigger] || []), bg] };
-    }, {});
-    const resolveChain = (trigger: string): BackgroundStepStatus[] => {
-      const direct = bgByTrigger[trigger] || [];
-      return direct.reduce<BackgroundStepStatus[]>((chain, bg) => {
-        const rest = bgKeySet.has(bg.stepKey) ? resolveChain(bg.stepKey) : [];
-        return [...chain, bg, ...rest];
-      }, []);
-    };
-    const currentBgTasks = resolveChain(currentStep);
-    const blueTasks = currentBgTasks.filter((bg) => bg.branchColor !== null);
-    if (blueTasks.length === 0) return false;
-    return blueTasks.some((bg) => bg.completedAt === null);
-  }, [workflowStatus, currentStep]);
+  const currentStepBlueBgPending =
+    currentStepPhaseInfo.isMultiPhase && !currentStepPhaseInfo.phase1Complete;
 
-  const hasBlueLineTasks = useMemo(() => {
-    if (!workflowStatus || !currentStep) return false;
-    const bgSteps: BackgroundStepStatus[] = workflowStatus.backgroundSteps || [];
-    const fgSteps = workflowStatus.foregroundSteps || [];
-    const fgKeySet = new Set(fgSteps.map((s) => s.key));
-    const bgKeySet = new Set(bgSteps.map((bg) => bg.stepKey));
-    const bgByTrigger = bgSteps.reduce<Record<string, BackgroundStepStatus[]>>((acc, bg) => {
-      const raw = bg.triggerAfterStep;
-      const isFgTrigger = raw !== null && fgKeySet.has(raw);
-      const isBgChain = raw !== null && bgKeySet.has(raw);
-      const trigger = isFgTrigger || isBgChain ? raw : fgSteps[0]?.key || "";
-      return { ...acc, [trigger]: [...(acc[trigger] || []), bg] };
-    }, {});
-    const resolveChain = (trigger: string): BackgroundStepStatus[] => {
-      const direct = bgByTrigger[trigger] || [];
-      return direct.reduce<BackgroundStepStatus[]>((chain, bg) => {
-        const rest = bgKeySet.has(bg.stepKey) ? resolveChain(bg.stepKey) : [];
-        return [...chain, bg, ...rest];
-      }, []);
-    };
-    const currentBgTasks = resolveChain(currentStep);
-    return currentBgTasks.some((bg) => bg.branchColor !== null);
-  }, [workflowStatus, currentStep]);
+  const hasBlueLineTasks = currentStepPhaseInfo.isMultiPhase;
 
   const isReceptionStep = useCallback(
     (bg: BackgroundStepStatus) =>
@@ -1131,7 +1131,7 @@ export default function JobCardDetailPage() {
                     onClick={() => openApprovalModal(currentStep)}
                     className="px-3 py-1.5 bg-green-600 text-white rounded-md hover:bg-green-700 font-medium text-xs transition-colors"
                   >
-                    Quality Release
+                    {currentStepPhaseInfo.phase2ActionLabel || "Release"}
                   </button>
                 )}
               {workflowStatus.jobCardStatus !== "active" && (

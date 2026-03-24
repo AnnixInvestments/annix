@@ -425,6 +425,22 @@ export class WorkflowController {
     return { success: true };
   }
 
+  @Put("step-configs/:key/phase-labels")
+  @StockControlRoles("admin")
+  @ApiOperation({ summary: "Update phase action labels for a workflow step" })
+  async updateStepPhaseLabels(
+    @Req() req: any,
+    @Param("key") key: string,
+    @Body() dto: { phaseActionLabels: Record<string, string> | null },
+  ) {
+    await this.stepConfigService.updatePhaseActionLabels(
+      req.user.companyId,
+      key,
+      dto.phaseActionLabels,
+    );
+    return { success: true };
+  }
+
   @Post("step-configs")
   @StockControlRoles("admin")
   @ApiOperation({ summary: "Add a custom workflow step" })
