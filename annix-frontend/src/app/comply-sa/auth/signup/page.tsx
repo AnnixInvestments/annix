@@ -459,11 +459,9 @@ function TermsAndConditions(props: { onScrolledToBottom: () => void }) {
       <h4 className="text-sm font-semibold text-teal-400 pt-1">15. ECTA Disclosure (Section 43)</h4>
       <p>
         Full name: Annix Investments (Pty) Ltd | Legal status: Private company (Pty Ltd) |
-        Registration: 2018/472188/07 | Physical address: 171 Garsfontein Road, Ashlea Gardens,
-        Pretoria, Gauteng, 0081, South Africa | Telephone: +27 12 004 0162 | Website:{" "}
-        <span className="text-teal-400">comply-sa.annix.co.za</span> | Email:{" "}
-        <span className="text-teal-400">support@annix.co.za</span> | Information Officer:{" "}
-        <span className="text-teal-400">privacy@annix.co.za</span>
+        Registration: 2018/472188/07 | Physical address: [TO BE CONFIRMED] | Telephone: [TO BE
+        CONFIRMED] | Website: <span className="text-teal-400">comply-sa.annix.co.za</span> | Email:
+        [TO BE CONFIRMED] | Information Officer: [TO BE CONFIRMED]
       </p>
 
       <h4 className="text-sm font-semibold text-teal-400 pt-1">16. Entire Agreement</h4>

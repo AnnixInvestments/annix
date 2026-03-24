@@ -40,21 +40,23 @@ export default function PrivacyPolicyPage() {
                 </tr>
                 <tr>
                   <td className="py-2 text-slate-400">Physical address</td>
-                  <td className="py-2">
-                    171 Garsfontein Road, Ashlea Gardens, Pretoria, Gauteng, 0081, South Africa
-                  </td>
+                  <td className="py-2 text-amber-400">[TO BE CONFIRMED]</td>
+                </tr>
+                <tr>
+                  <td className="py-2 text-slate-400">Telephone</td>
+                  <td className="py-2 text-amber-400">[TO BE CONFIRMED]</td>
                 </tr>
                 <tr>
                   <td className="py-2 text-slate-400">Information Officer</td>
-                  <td className="py-2">Nicolette Botha</td>
+                  <td className="py-2 text-amber-400">[TO BE CONFIRMED]</td>
                 </tr>
                 <tr>
                   <td className="py-2 text-slate-400">Information Officer email</td>
-                  <td className="py-2 text-teal-400">privacy@annix.co.za</td>
+                  <td className="py-2 text-amber-400">[TO BE CONFIRMED]</td>
                 </tr>
                 <tr>
                   <td className="py-2 text-slate-400">General enquiries</td>
-                  <td className="py-2 text-teal-400">support@annix.co.za</td>
+                  <td className="py-2 text-amber-400">[TO BE CONFIRMED]</td>
                 </tr>
               </tbody>
             </table>
