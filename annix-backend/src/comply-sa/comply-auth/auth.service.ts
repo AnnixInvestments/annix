@@ -49,9 +49,34 @@ export class ComplySaAuthService {
       throw new ConflictException("An account with this email already exists");
     }
 
+    const entityType = dto.entityType ?? "company";
+
+    const entityNameMap: Record<string, string> = {
+      individual: dto.name,
+      trust: dto.trustName || dto.name,
+      company: dto.companyName || dto.name,
+    };
+    const companyName = entityNameMap[entityType] || dto.name;
+
     const company = this.companiesRepository.create({
-      name: dto.companyName,
+      name: companyName,
+      entityType,
       registrationNumber: dto.registrationNumber ?? null,
+      industry: dto.industrySector ?? null,
+      province: dto.province ?? null,
+      complianceAreas: dto.complianceAreas ?? null,
+      idNumber: dto.idNumber ?? null,
+      passportNumber: dto.passportNumber ?? null,
+      passportCountry: dto.passportCountry ?? null,
+      sarsTaxReference: dto.sarsTaxReference ?? null,
+      dateOfBirth: dto.dateOfBirth ?? null,
+      phone: dto.phone ?? null,
+      trustRegistrationNumber: dto.trustRegistrationNumber ?? null,
+      mastersOffice: dto.mastersOffice ?? null,
+      trusteeCount: dto.trusteeCount ?? null,
+      employeeCountRange: dto.employeeCountRange ?? null,
+      businessAddress: dto.businessAddress ?? null,
+      profileComplete: dto.profileComplete ?? false,
     });
     const savedCompany = await this.companiesRepository.save(company);
 

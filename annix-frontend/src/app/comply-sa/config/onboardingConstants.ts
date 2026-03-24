@@ -161,3 +161,37 @@ export const WIZARD_DOCUMENTS = [
     description: "Privacy policy compliant with the Protection of Personal Information Act",
   },
 ];
+
+export const COMPLIANCE_AREAS = [
+  "Tax & SARS Compliance",
+  "B-BBEE & Transformation",
+  "POPIA (Data Protection)",
+  "Employment & Labour Law (UIF, COIDA, BCEA)",
+  "Health & Safety (OHSA)",
+  "Anti-Money Laundering (FICA)",
+  "Environmental Regulations (NEMA)",
+  "Industry-Specific Licensing (e.g. FSCA, ICASA, etc.)",
+  "Trust / Fiduciary Duties",
+];
+
+export const MASTERS_OFFICES = [
+  "Bloemfontein",
+  "Cape Town",
+  "Durban",
+  "Grahamstown (Makhanda)",
+  "Johannesburg",
+  "Kimberley",
+  "Mmabatho",
+  "Pietermaritzburg",
+  "Polokwane",
+  "Port Elizabeth (Gqeberha)",
+  "Pretoria",
+  "Thohoyandou",
+];
+
+export const EMPLOYEE_COUNT_RANGES = [
+  { label: "1\u201310 employees", value: "1-10" },
+  { label: "11\u201350 employees", value: "11-50" },
+  { label: "51\u2013250 employees", value: "51-250" },
+  { label: "251+ employees", value: "251+" },
+];

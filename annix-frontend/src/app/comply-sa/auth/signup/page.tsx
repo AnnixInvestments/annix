@@ -1,10 +1,184 @@
 "use client";
 
-import { Eye, EyeOff, Shield, UserPlus } from "lucide-react";
+import {
+  Building2,
+  CheckCircle2,
+  ChevronRight,
+  Eye,
+  EyeOff,
+  HelpCircle,
+  Shield,
+  User,
+  X,
+} from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useRef, useState } from "react";
+import {
+  COMPLIANCE_AREAS,
+  EMPLOYEE_COUNT_RANGES,
+  INDUSTRIES,
+  MASTERS_OFFICES,
+  PROVINCES,
+} from "@/app/comply-sa/config/onboardingConstants";
 import { signup } from "@/app/comply-sa/lib/api";
+
+type EntityType = "individual" | "company" | "trust";
+
+interface FormData {
+  name: string;
+  email: string;
+  password: string;
+  confirmPassword: string;
+  termsAccepted: boolean;
+  entityType: EntityType | null;
+  idNumber: string;
+  usePassport: boolean;
+  passportNumber: string;
+  passportCountry: string;
+  sarsTaxReference: string;
+  dateOfBirth: string;
+  phone: string;
+  companyName: string;
+  registrationNumber: string;
+  employeeCountRange: string;
+  businessAddress: string;
+  province: string;
+  trustName: string;
+  trustRegistrationNumber: string;
+  mastersOffice: string;
+  trusteeCount: string;
+  industrySector: string;
+  otherIndustry: string;
+  complianceAreas: string[];
+}
+
+const INITIAL_FORM: FormData = {
+  name: "",
+  email: "",
+  password: "",
+  confirmPassword: "",
+  termsAccepted: false,
+  entityType: null,
+  idNumber: "",
+  usePassport: false,
+  passportNumber: "",
+  passportCountry: "",
+  sarsTaxReference: "",
+  dateOfBirth: "",
+  phone: "",
+  companyName: "",
+  registrationNumber: "",
+  employeeCountRange: "",
+  businessAddress: "",
+  province: "",
+  trustName: "",
+  trustRegistrationNumber: "",
+  mastersOffice: "",
+  trusteeCount: "",
+  industrySector: "",
+  otherIndustry: "",
+  complianceAreas: [],
+};
+
+const STEP_LABELS = ["Account Basics", "Entity Details", "Industry & Focus"];
+
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function validateSaIdNumber(id: string): string | null {
+  if (!/^\d{13}$/.test(id)) {
+    return "Must be exactly 13 digits";
+  }
+
+  const month = parseInt(id.substring(2, 4), 10);
+  const day = parseInt(id.substring(4, 6), 10);
+
+  if (month < 1 || month > 12) {
+    return "Invalid month in ID number";
+  } else if (day < 1 || day > 31) {
+    return "Invalid day in ID number";
+  } else {
+    const digits = id.split("").map(Number);
+    const reversed = [...digits].reverse();
+    const total = reversed.reduce((sum, digit, i) => {
+      if (i % 2 === 1) {
+        const doubled = digit * 2;
+        return sum + (doubled > 9 ? doubled - 9 : doubled);
+      }
+      return sum + digit;
+    }, 0);
+
+    if (total % 10 !== 0) {
+      return "Invalid ID number (checksum failed)";
+    } else {
+      return null;
+    }
+  }
+}
+
+function fieldClass(hasError: boolean): string {
+  const base =
+    "w-full bg-slate-900 border rounded-lg px-4 py-2.5 text-white placeholder-slate-500 focus:outline-none transition-colors";
+  return hasError
+    ? `${base} border-red-500 focus:border-red-400`
+    : `${base} border-slate-600 focus:border-teal-500`;
+}
+
+function Tooltip(props: { text: string }) {
+  return (
+    <span className="group relative ml-1.5 inline-flex align-middle">
+      <HelpCircle className="h-3.5 w-3.5 text-slate-500 hover:text-teal-400 cursor-help" />
+      <span className="invisible group-hover:visible absolute z-50 bottom-full left-1/2 -translate-x-1/2 mb-2 w-56 rounded-lg bg-slate-700 px-3 py-2 text-xs text-slate-200 shadow-lg pointer-events-none">
+        {props.text}
+      </span>
+    </span>
+  );
+}
+
+function ProgressBar(props: { currentStep: number }) {
+  const steps = STEP_LABELS.map((label, index) => ({
+    label,
+    num: index + 1,
+    active: index + 1 === props.currentStep,
+    completed: index + 1 < props.currentStep,
+  }));
+
+  return (
+    <div className="mb-8">
+      <div className="flex items-center">
+        {steps.map((step, index) => (
+          <Fragment key={step.label}>
+            <div className="flex flex-col items-center shrink-0">
+              <div
+                className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
+                  step.completed
+                    ? "bg-teal-500 text-white"
+                    : step.active
+                      ? "border-2 border-teal-500 bg-teal-500/10 text-teal-400"
+                      : "bg-slate-700 text-slate-500"
+                }`}
+              >
+                {step.completed ? <CheckCircle2 className="h-4 w-4" /> : step.num}
+              </div>
+              <span
+                className={`text-[10px] mt-1 whitespace-nowrap ${
+                  step.active || step.completed ? "text-teal-400 font-medium" : "text-slate-500"
+                }`}
+              >
+                {step.label}
+              </span>
+            </div>
+            {index < steps.length - 1 && (
+              <div
+                className={`flex-1 h-0.5 mx-3 mb-4 ${step.completed ? "bg-teal-500" : "bg-slate-700"}`}
+              />
+            )}
+          </Fragment>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 function TermsAndConditions(props: { onScrolledToBottom: () => void }) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -20,7 +194,7 @@ function TermsAndConditions(props: { onScrolledToBottom: () => void }) {
     <div
       ref={containerRef}
       onScroll={handleScroll}
-      className="h-64 overflow-y-auto bg-slate-950 border border-slate-600 rounded-lg p-4 text-xs text-slate-300 leading-relaxed space-y-3 scrollbar-thin"
+      className="h-48 overflow-y-auto bg-slate-950 border border-slate-600 rounded-lg p-4 text-xs text-slate-300 leading-relaxed space-y-3 scrollbar-thin"
     >
       <h3 className="text-sm font-bold text-white">Terms and Conditions</h3>
       <p className="text-slate-400">Version 1.0 &mdash; Effective Date: 24 March 2026</p>
@@ -275,199 +449,1102 @@ function TermsAndConditions(props: { onScrolledToBottom: () => void }) {
   );
 }
 
+function WhyInfoModal(props: { onClose: () => void }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
+      <div className="bg-slate-800 border border-slate-700 rounded-xl p-6 max-w-md w-full relative">
+        <button
+          type="button"
+          onClick={props.onClose}
+          className="absolute top-4 right-4 text-slate-400 hover:text-white"
+        >
+          <X className="h-5 w-5" />
+        </button>
+        <h3 className="text-lg font-bold text-white mb-3">Why Do We Need This Information?</h3>
+        <div className="text-sm text-slate-300 space-y-3">
+          <p>
+            Under the Protection of Personal Information Act (POPIA), we are committed to
+            transparency about how your data is used.
+          </p>
+          <p>We collect entity details, industry, and compliance preferences to:</p>
+          <ul className="list-disc pl-5 space-y-1 text-slate-400">
+            <li>
+              Generate your personalised compliance dashboard with only the rules and deadlines that
+              apply to you
+            </li>
+            <li>Calculate accurate tax obligations, B-BBEE levels, and regulatory requirements</li>
+            <li>Send timely reminders before deadlines approach</li>
+            <li>Surface industry-specific licensing and regulatory updates</li>
+          </ul>
+          <p className="text-slate-500 text-xs">
+            Your data is encrypted in transit and at rest and is never shared with third parties for
+            marketing. Contact <span className="text-teal-400">privacy@annix.co.za</span> to
+            exercise your POPIA rights.
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SuccessModal(props: {
+  entityType: EntityType | null;
+  industry: string;
+  onContinue: () => void;
+}) {
+  const entityLabel =
+    props.entityType === "individual"
+      ? "Individual profile"
+      : props.entityType === "trust"
+        ? "Trust"
+        : "Company";
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
+      <div className="bg-slate-800 border border-slate-700 rounded-xl p-8 max-w-md w-full text-center">
+        <div className="w-16 h-16 bg-teal-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+          <CheckCircle2 className="h-8 w-8 text-teal-400" />
+        </div>
+        <h2 className="text-xl font-bold text-white mb-2">Welcome to Comply SA!</h2>
+        <p className="text-slate-300 text-sm mb-4">
+          Your personalised South African compliance dashboard is ready. Based on your{" "}
+          <strong className="text-teal-400">{entityLabel}</strong> in the{" "}
+          <strong className="text-teal-400">{props.industry || "selected"}</strong> sector, here are
+          your top 3 urgent actions:
+        </p>
+        <div className="text-left bg-slate-900 rounded-lg p-4 mb-6 space-y-3">
+          {[
+            "Set up your SARS eFiling profile and link your tax reference",
+            "Upload your B-BBEE certificate or sworn affidavit",
+            "Complete your POPIA compliance self-assessment",
+          ].map((action, i) => (
+            <div key={action} className="flex items-start gap-3">
+              <span className="bg-teal-500/20 text-teal-400 text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center shrink-0">
+                {i + 1}
+              </span>
+              <span className="text-sm text-slate-300">{action}</span>
+            </div>
+          ))}
+        </div>
+        <button
+          type="button"
+          onClick={props.onContinue}
+          className="w-full bg-teal-500 hover:bg-teal-600 text-white font-medium py-2.5 rounded-lg transition-colors"
+        >
+          Continue to Dashboard
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function SignupPage() {
   const router = useRouter();
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [companyName, setCompanyName] = useState("");
-  const [registrationNumber, setRegistrationNumber] = useState("");
+  const formRef = useRef<HTMLDivElement>(null);
+  const [currentStep, setCurrentStep] = useState(1);
+  const [form, setForm] = useState<FormData>(INITIAL_FORM);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [hasScrolledTerms, setHasScrolledTerms] = useState(false);
-  const [termsAccepted, setTermsAccepted] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [showWhyModal, setShowWhyModal] = useState(false);
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, [currentStep]);
 
   const handleScrolledToBottom = useCallback(() => {
     setHasScrolledTerms(true);
   }, []);
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
+  const updateField = useCallback((field: keyof FormData, value: FormData[keyof FormData]) => {
+    setForm((prev) => ({ ...prev, [field]: value }));
+    setFieldErrors((prev) => {
+      const updated = { ...prev };
+      delete updated[field];
+      return updated;
+    });
     setError(null);
+  }, []);
 
-    if (!termsAccepted) {
-      setError("You must accept the Terms and Conditions to create an account");
-      return;
+  function handleEntityTypeChange(type: EntityType) {
+    setForm((prev) => ({
+      ...prev,
+      entityType: type,
+      complianceAreas:
+        type === "trust" && !prev.complianceAreas.includes("Trust / Fiduciary Duties")
+          ? [...prev.complianceAreas, "Trust / Fiduciary Duties"]
+          : prev.complianceAreas,
+    }));
+    setFieldErrors({});
+  }
+
+  function toggleComplianceArea(area: string) {
+    setForm((prev) => ({
+      ...prev,
+      complianceAreas: prev.complianceAreas.includes(area)
+        ? prev.complianceAreas.filter((a) => a !== area)
+        : [...prev.complianceAreas, area],
+    }));
+  }
+
+  function validateStep1(): Record<string, string> {
+    const errs: Record<string, string> = {};
+    if (!form.name.trim()) {
+      errs.name = "Full name is required";
+    }
+    if (!form.email.trim()) {
+      errs.email = "Email is required";
+    } else if (!EMAIL_REGEX.test(form.email)) {
+      errs.email = "Please enter a valid email address";
+    }
+    if (!form.password) {
+      errs.password = "Password is required";
+    } else if (form.password.length < 8) {
+      errs.password = "Password must be at least 8 characters";
+    }
+    if (!form.confirmPassword) {
+      errs.confirmPassword = "Please confirm your password";
+    } else if (form.password !== form.confirmPassword) {
+      errs.confirmPassword = "Passwords do not match";
+    }
+    if (!form.termsAccepted) {
+      errs.termsAccepted = "You must accept the Terms and Conditions";
+    }
+    return errs;
+  }
+
+  function validateStep2(): Record<string, string> {
+    const errs: Record<string, string> = {};
+
+    if (form.entityType === null) {
+      errs.entityType = "Please select an entity type";
+    } else if (form.entityType === "individual") {
+      if (!form.usePassport) {
+        if (!form.idNumber.trim()) {
+          errs.idNumber = "SA ID Number is required";
+        } else {
+          const idError = validateSaIdNumber(form.idNumber);
+          if (idError !== null) {
+            errs.idNumber = idError;
+          }
+        }
+      } else {
+        if (!form.passportNumber.trim()) {
+          errs.passportNumber = "Passport number is required";
+        }
+        if (!form.passportCountry.trim()) {
+          errs.passportCountry = "Country is required";
+        }
+      }
+      if (!form.dateOfBirth) {
+        errs.dateOfBirth = "Date of birth is required";
+      }
+      if (!form.phone.trim()) {
+        errs.phone = "Mobile phone number is required";
+      }
+    } else if (form.entityType === "company") {
+      if (!form.companyName.trim()) {
+        errs.companyName = "Company name is required";
+      }
+      if (!form.employeeCountRange) {
+        errs.employeeCountRange = "Number of employees is required";
+      }
+    } else if (form.entityType === "trust") {
+      if (!form.trustName.trim()) {
+        errs.trustName = "Trust name is required";
+      }
+      if (!form.trustRegistrationNumber.trim()) {
+        errs.trustRegistrationNumber = "Trust registration number is required";
+      }
+      if (!form.mastersOffice) {
+        errs.mastersOffice = "Master\u2019s Office is required";
+      }
+      if (!form.trusteeCount.trim()) {
+        errs.trusteeCount = "Number of trustees is required";
+      } else if (parseInt(form.trusteeCount, 10) < 1) {
+        errs.trusteeCount = "Must have at least 1 trustee";
+      }
     }
 
-    setLoading(true);
+    return errs;
+  }
 
-    try {
-      await signup({
-        name,
-        email,
-        password,
-        companyName,
-        registrationNumber: registrationNumber || null,
-        termsAccepted,
-      });
-      router.push("/comply-sa/onboarding");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Signup failed");
-    } finally {
-      setLoading(false);
+  function validateStep3(): Record<string, string> {
+    const errs: Record<string, string> = {};
+    if (!form.industrySector) {
+      errs.industrySector = "Please select an industry";
+    } else if (form.industrySector === "Other" && !form.otherIndustry.trim()) {
+      errs.otherIndustry = "Please specify your industry";
+    }
+    if (form.complianceAreas.length === 0) {
+      errs.complianceAreas = "Please select at least one compliance area";
+    }
+    return errs;
+  }
+
+  function handleNext() {
+    const errs = currentStep === 1 ? validateStep1() : validateStep2();
+    if (Object.keys(errs).length > 0) {
+      setFieldErrors(errs);
+    } else {
+      setFieldErrors({});
+      setCurrentStep((s) => s + 1);
+    }
+  }
+
+  function handleBack() {
+    setFieldErrors({});
+    setCurrentStep((s) => s - 1);
+  }
+
+  function buildPayload(profileComplete: boolean) {
+    const industry = form.industrySector === "Other" ? form.otherIndustry : form.industrySector;
+    return {
+      name: form.name,
+      email: form.email,
+      password: form.password,
+      termsAccepted: form.termsAccepted,
+      entityType: form.entityType,
+      companyName: form.companyName || null,
+      registrationNumber: form.registrationNumber || null,
+      idNumber: !form.usePassport ? form.idNumber || null : null,
+      passportNumber: form.usePassport ? form.passportNumber || null : null,
+      passportCountry: form.usePassport ? form.passportCountry || null : null,
+      sarsTaxReference: form.sarsTaxReference || null,
+      dateOfBirth: form.dateOfBirth || null,
+      phone: form.phone || null,
+      trustName: form.trustName || null,
+      trustRegistrationNumber: form.trustRegistrationNumber || null,
+      mastersOffice: form.mastersOffice || null,
+      trusteeCount: form.trusteeCount ? parseInt(form.trusteeCount, 10) : null,
+      employeeCountRange: form.employeeCountRange || null,
+      businessAddress: form.businessAddress || null,
+      province: form.province || null,
+      industrySector: industry || null,
+      complianceAreas: form.complianceAreas.length > 0 ? form.complianceAreas : null,
+      profileComplete,
+    };
+  }
+
+  async function handleSubmit() {
+    const errs = validateStep3();
+    if (Object.keys(errs).length > 0) {
+      setFieldErrors(errs);
+    } else {
+      setError(null);
+      setLoading(true);
+      try {
+        await signup(buildPayload(true));
+        setShowSuccessModal(true);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Signup failed");
+      } finally {
+        setLoading(false);
+      }
+    }
+  }
+
+  async function handleSaveAndContinue() {
+    const step1Errs = validateStep1();
+    if (Object.keys(step1Errs).length > 0) {
+      setCurrentStep(1);
+      setFieldErrors(step1Errs);
+    } else {
+      setError(null);
+      setLoading(true);
+      try {
+        await signup(buildPayload(false));
+        router.push("/comply-sa/onboarding");
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Signup failed");
+      } finally {
+        setLoading(false);
+      }
     }
   }
 
   return (
     <div className="min-h-screen bg-slate-900 flex items-center justify-center px-4 py-12">
-      <div className="w-full max-w-md">
-        <div className="text-center mb-8">
-          <Link href="/comply-sa" className="inline-flex items-center gap-2">
+      <div className="w-full max-w-xl" ref={formRef}>
+        <div className="text-center mb-6">
+          <Link href="/comply-sa" className="inline-flex items-center gap-2 mb-4">
             <Shield className="h-8 w-8 text-teal-400" />
             <span className="text-xl font-bold text-white">Comply SA</span>
           </Link>
+          <h1 className="text-2xl font-bold text-white">
+            Start Your South African Compliance Journey
+          </h1>
+          <p className="text-slate-400 text-sm mt-2 max-w-md mx-auto">
+            Tell us who you are so we can show you the exact rules, deadlines, and checklists that
+            apply to your company, trust, or personal situation.
+          </p>
         </div>
 
-        <div className="bg-slate-800 border border-slate-700 rounded-xl p-8">
-          <h1 className="text-2xl font-bold text-white mb-6 text-center">Create Your Account</h1>
+        <ProgressBar currentStep={currentStep} />
 
+        <div className="bg-slate-800 border border-slate-700 rounded-xl p-6 sm:p-8">
           {error && (
-            <div className="bg-red-500/10 border border-red-500/30 text-red-400 rounded-lg px-4 py-3 mb-6 text-sm">
+            <div
+              role="alert"
+              className="bg-red-500/10 border border-red-500/30 text-red-400 rounded-lg px-4 py-3 mb-6 text-sm"
+            >
               {error}
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-5">
-            <div>
-              <label className="block text-sm font-medium text-slate-300 mb-1.5">Full Name</label>
-              <input
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                required
-                className="w-full bg-slate-900 border border-slate-600 rounded-lg px-4 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:border-teal-500 transition-colors"
-                placeholder="John Smith"
-              />
-            </div>
+          <form
+            noValidate
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (currentStep < 3) {
+                handleNext();
+              } else {
+                handleSubmit();
+              }
+            }}
+          >
+            {currentStep === 1 && (
+              <div className="space-y-5">
+                <div>
+                  <label htmlFor="name" className="block text-sm font-medium text-slate-300 mb-1.5">
+                    Full Name
+                  </label>
+                  <input
+                    id="name"
+                    type="text"
+                    value={form.name}
+                    onChange={(e) => updateField("name", e.target.value)}
+                    aria-invalid={!!fieldErrors.name}
+                    className={fieldClass(!!fieldErrors.name)}
+                    placeholder="John Smith"
+                  />
+                  {fieldErrors.name && (
+                    <p className="text-red-400 text-xs mt-1">{fieldErrors.name}</p>
+                  )}
+                </div>
 
-            <div>
-              <label className="block text-sm font-medium text-slate-300 mb-1.5">Email</label>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                className="w-full bg-slate-900 border border-slate-600 rounded-lg px-4 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:border-teal-500 transition-colors"
-                placeholder="you@company.co.za"
-              />
-            </div>
+                <div>
+                  <label
+                    htmlFor="email"
+                    className="block text-sm font-medium text-slate-300 mb-1.5"
+                  >
+                    Email
+                  </label>
+                  <input
+                    id="email"
+                    type="email"
+                    value={form.email}
+                    onChange={(e) => updateField("email", e.target.value)}
+                    aria-invalid={!!fieldErrors.email}
+                    className={fieldClass(!!fieldErrors.email)}
+                    placeholder="you@company.co.za"
+                  />
+                  {fieldErrors.email && (
+                    <p className="text-red-400 text-xs mt-1">{fieldErrors.email}</p>
+                  )}
+                </div>
 
-            <div>
-              <label className="block text-sm font-medium text-slate-300 mb-1.5">Password</label>
-              <div className="relative">
-                <input
-                  type={showPassword ? "text" : "password"}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  minLength={8}
-                  className="w-full bg-slate-900 border border-slate-600 rounded-lg px-4 py-2.5 pr-11 text-white placeholder-slate-500 focus:outline-none focus:border-teal-500 transition-colors"
-                  placeholder="At least 8 characters"
-                />
+                <div>
+                  <label
+                    htmlFor="password"
+                    className="block text-sm font-medium text-slate-300 mb-1.5"
+                  >
+                    Password
+                  </label>
+                  <div className="relative">
+                    <input
+                      id="password"
+                      type={showPassword ? "text" : "password"}
+                      value={form.password}
+                      onChange={(e) => updateField("password", e.target.value)}
+                      aria-invalid={!!fieldErrors.password}
+                      className={`${fieldClass(!!fieldErrors.password)} pr-11`}
+                      placeholder="At least 8 characters"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword((prev) => !prev)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 transition-colors"
+                      tabIndex={-1}
+                    >
+                      {showPassword ? (
+                        <EyeOff className="h-4.5 w-4.5" />
+                      ) : (
+                        <Eye className="h-4.5 w-4.5" />
+                      )}
+                    </button>
+                  </div>
+                  {fieldErrors.password && (
+                    <p className="text-red-400 text-xs mt-1">{fieldErrors.password}</p>
+                  )}
+                </div>
+
+                <div>
+                  <label
+                    htmlFor="confirmPassword"
+                    className="block text-sm font-medium text-slate-300 mb-1.5"
+                  >
+                    Confirm Password
+                  </label>
+                  <div className="relative">
+                    <input
+                      id="confirmPassword"
+                      type={showConfirmPassword ? "text" : "password"}
+                      value={form.confirmPassword}
+                      onChange={(e) => updateField("confirmPassword", e.target.value)}
+                      aria-invalid={!!fieldErrors.confirmPassword}
+                      className={`${fieldClass(!!fieldErrors.confirmPassword)} pr-11`}
+                      placeholder="Re-enter your password"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPassword((prev) => !prev)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 transition-colors"
+                      tabIndex={-1}
+                    >
+                      {showConfirmPassword ? (
+                        <EyeOff className="h-4.5 w-4.5" />
+                      ) : (
+                        <Eye className="h-4.5 w-4.5" />
+                      )}
+                    </button>
+                  </div>
+                  {fieldErrors.confirmPassword && (
+                    <p className="text-red-400 text-xs mt-1">{fieldErrors.confirmPassword}</p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-300 mb-1.5">
+                    Terms and Conditions
+                  </label>
+                  <TermsAndConditions onScrolledToBottom={handleScrolledToBottom} />
+                  <label
+                    className={`flex items-start gap-2.5 mt-3 cursor-pointer ${!hasScrolledTerms ? "opacity-50 pointer-events-none" : ""}`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={form.termsAccepted}
+                      onChange={(e) => updateField("termsAccepted", e.target.checked)}
+                      disabled={!hasScrolledTerms}
+                      className="mt-0.5 h-4 w-4 rounded border-slate-600 bg-slate-900 text-teal-500 focus:ring-teal-500 focus:ring-offset-0 accent-teal-500"
+                    />
+                    <span className="text-xs text-slate-300 leading-relaxed">
+                      I agree to the{" "}
+                      <strong className="text-teal-400">Terms of Service and Privacy Policy</strong>{" "}
+                      (POPIA compliant)
+                    </span>
+                  </label>
+                  {!hasScrolledTerms && (
+                    <p className="text-[11px] text-slate-500 mt-1.5">
+                      Please scroll through the full Terms and Conditions above to continue.
+                    </p>
+                  )}
+                  {fieldErrors.termsAccepted && (
+                    <p className="text-red-400 text-xs mt-1">{fieldErrors.termsAccepted}</p>
+                  )}
+                  <p className="text-[11px] text-slate-500 mt-2">
+                    We process your information in line with the Protection of Personal Information
+                    Act (POPIA) to deliver accurate compliance guidance only.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {currentStep === 2 && (
+              <div className="space-y-6">
+                <div>
+                  <h2 className="text-lg font-semibold text-white mb-1">Select Your Entity Type</h2>
+                  <p className="text-sm text-slate-400 mb-4">
+                    Choose the type that best describes your registration.
+                  </p>
+                  {fieldErrors.entityType && (
+                    <p className="text-red-400 text-xs mb-3">{fieldErrors.entityType}</p>
+                  )}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    {(
+                      [
+                        {
+                          type: "individual" as EntityType,
+                          icon: User,
+                          label: "Individual",
+                        },
+                        {
+                          type: "company" as EntityType,
+                          icon: Building2,
+                          label: "Company / CC / Pty Ltd",
+                        },
+                        { type: "trust" as EntityType, icon: Shield, label: "Trust" },
+                      ] as const
+                    ).map((opt) => {
+                      const Icon = opt.icon;
+                      const selected = form.entityType === opt.type;
+                      return (
+                        <button
+                          key={opt.type}
+                          type="button"
+                          onClick={() => handleEntityTypeChange(opt.type)}
+                          className={`p-4 border rounded-xl text-center transition-all ${
+                            selected
+                              ? "border-teal-500 bg-teal-500/10 ring-1 ring-teal-500/30"
+                              : "border-slate-600 bg-slate-900 hover:border-slate-500"
+                          }`}
+                        >
+                          <Icon
+                            className={`h-8 w-8 mx-auto mb-2 ${selected ? "text-teal-400" : "text-slate-400"}`}
+                          />
+                          <span
+                            className={`text-sm font-medium ${selected ? "text-teal-400" : "text-slate-300"}`}
+                          >
+                            {opt.label}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {form.entityType === "individual" && (
+                  <div className="space-y-4 pt-2 border-t border-slate-700">
+                    <div>
+                      <div className="flex items-center gap-4 mb-3">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="idType"
+                            checked={!form.usePassport}
+                            onChange={() => updateField("usePassport", false)}
+                            className="accent-teal-500"
+                          />
+                          <span className="text-sm text-slate-300">SA ID Number</span>
+                        </label>
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="idType"
+                            checked={form.usePassport}
+                            onChange={() => updateField("usePassport", true)}
+                            className="accent-teal-500"
+                          />
+                          <span className="text-sm text-slate-300">Passport Number</span>
+                        </label>
+                      </div>
+
+                      {!form.usePassport ? (
+                        <div>
+                          <label
+                            htmlFor="idNumber"
+                            className="block text-sm font-medium text-slate-300 mb-1.5"
+                          >
+                            South African ID Number
+                            <Tooltip text="Used to pre-fill tax and labour compliance requirements" />
+                          </label>
+                          <input
+                            id="idNumber"
+                            type="text"
+                            maxLength={13}
+                            value={form.idNumber}
+                            onChange={(e) =>
+                              updateField("idNumber", e.target.value.replace(/\D/g, ""))
+                            }
+                            aria-invalid={!!fieldErrors.idNumber}
+                            className={fieldClass(!!fieldErrors.idNumber)}
+                            placeholder="8501015800087"
+                          />
+                          {fieldErrors.idNumber && (
+                            <p className="text-red-400 text-xs mt-1">{fieldErrors.idNumber}</p>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="space-y-4">
+                          <div>
+                            <label
+                              htmlFor="passportNumber"
+                              className="block text-sm font-medium text-slate-300 mb-1.5"
+                            >
+                              Passport Number
+                            </label>
+                            <input
+                              id="passportNumber"
+                              type="text"
+                              value={form.passportNumber}
+                              onChange={(e) => updateField("passportNumber", e.target.value)}
+                              aria-invalid={!!fieldErrors.passportNumber}
+                              className={fieldClass(!!fieldErrors.passportNumber)}
+                              placeholder="A12345678"
+                            />
+                            {fieldErrors.passportNumber && (
+                              <p className="text-red-400 text-xs mt-1">
+                                {fieldErrors.passportNumber}
+                              </p>
+                            )}
+                          </div>
+                          <div>
+                            <label
+                              htmlFor="passportCountry"
+                              className="block text-sm font-medium text-slate-300 mb-1.5"
+                            >
+                              Country of Issue
+                            </label>
+                            <input
+                              id="passportCountry"
+                              type="text"
+                              value={form.passportCountry}
+                              onChange={(e) => updateField("passportCountry", e.target.value)}
+                              aria-invalid={!!fieldErrors.passportCountry}
+                              className={fieldClass(!!fieldErrors.passportCountry)}
+                              placeholder="South Africa"
+                            />
+                            {fieldErrors.passportCountry && (
+                              <p className="text-red-400 text-xs mt-1">
+                                {fieldErrors.passportCountry}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    <div>
+                      <label
+                        htmlFor="sarsTaxReference"
+                        className="block text-sm font-medium text-slate-300 mb-1.5"
+                      >
+                        SARS Tax Reference Number{" "}
+                        <span className="text-slate-500">(optional but recommended)</span>
+                      </label>
+                      <input
+                        id="sarsTaxReference"
+                        type="text"
+                        value={form.sarsTaxReference}
+                        onChange={(e) => updateField("sarsTaxReference", e.target.value)}
+                        className={fieldClass(false)}
+                        placeholder="1234567890"
+                      />
+                    </div>
+
+                    <div>
+                      <label
+                        htmlFor="dateOfBirth"
+                        className="block text-sm font-medium text-slate-300 mb-1.5"
+                      >
+                        Date of Birth
+                      </label>
+                      <input
+                        id="dateOfBirth"
+                        type="date"
+                        value={form.dateOfBirth}
+                        onChange={(e) => updateField("dateOfBirth", e.target.value)}
+                        aria-invalid={!!fieldErrors.dateOfBirth}
+                        className={fieldClass(!!fieldErrors.dateOfBirth)}
+                      />
+                      {fieldErrors.dateOfBirth && (
+                        <p className="text-red-400 text-xs mt-1">{fieldErrors.dateOfBirth}</p>
+                      )}
+                    </div>
+
+                    <div>
+                      <label
+                        htmlFor="phone"
+                        className="block text-sm font-medium text-slate-300 mb-1.5"
+                      >
+                        Mobile Phone Number
+                      </label>
+                      <input
+                        id="phone"
+                        type="tel"
+                        value={form.phone}
+                        onChange={(e) => updateField("phone", e.target.value)}
+                        aria-invalid={!!fieldErrors.phone}
+                        className={fieldClass(!!fieldErrors.phone)}
+                        placeholder="082 123 4567"
+                      />
+                      {fieldErrors.phone && (
+                        <p className="text-red-400 text-xs mt-1">{fieldErrors.phone}</p>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {form.entityType === "company" && (
+                  <div className="space-y-4 pt-2 border-t border-slate-700">
+                    <div>
+                      <label
+                        htmlFor="companyName"
+                        className="block text-sm font-medium text-slate-300 mb-1.5"
+                      >
+                        Legal Company Name
+                      </label>
+                      <input
+                        id="companyName"
+                        type="text"
+                        value={form.companyName}
+                        onChange={(e) => updateField("companyName", e.target.value)}
+                        aria-invalid={!!fieldErrors.companyName}
+                        className={fieldClass(!!fieldErrors.companyName)}
+                        placeholder="Acme Pty Ltd"
+                      />
+                      {fieldErrors.companyName && (
+                        <p className="text-red-400 text-xs mt-1">{fieldErrors.companyName}</p>
+                      )}
+                    </div>
+
+                    <div>
+                      <label
+                        htmlFor="registrationNumber"
+                        className="block text-sm font-medium text-slate-300 mb-1.5"
+                      >
+                        CIPC Registration Number <span className="text-slate-500">(optional)</span>
+                      </label>
+                      <div className="flex gap-2">
+                        <input
+                          id="registrationNumber"
+                          type="text"
+                          value={form.registrationNumber}
+                          onChange={(e) => updateField("registrationNumber", e.target.value)}
+                          className={`${fieldClass(false)} flex-1`}
+                          placeholder="2024/123456/07"
+                        />
+                        <button
+                          type="button"
+                          className="px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-xs text-slate-400 hover:text-teal-400 hover:border-teal-500 transition-colors whitespace-nowrap"
+                          title="Coming soon"
+                        >
+                          Verify with CIPC
+                        </button>
+                      </div>
+                      <p className="text-[11px] text-slate-500 mt-1">Format: YYYY/NNNNNN/NN</p>
+                    </div>
+
+                    <div>
+                      <label
+                        htmlFor="employeeCountRange"
+                        className="block text-sm font-medium text-slate-300 mb-1.5"
+                      >
+                        Number of Employees
+                      </label>
+                      <select
+                        id="employeeCountRange"
+                        value={form.employeeCountRange}
+                        onChange={(e) => updateField("employeeCountRange", e.target.value)}
+                        aria-invalid={!!fieldErrors.employeeCountRange}
+                        className={fieldClass(!!fieldErrors.employeeCountRange)}
+                      >
+                        <option value="">Select range...</option>
+                        {EMPLOYEE_COUNT_RANGES.map((range) => (
+                          <option key={range.value} value={range.value}>
+                            {range.label}
+                          </option>
+                        ))}
+                      </select>
+                      {fieldErrors.employeeCountRange && (
+                        <p className="text-red-400 text-xs mt-1">
+                          {fieldErrors.employeeCountRange}
+                        </p>
+                      )}
+                    </div>
+
+                    <div>
+                      <label
+                        htmlFor="businessAddress"
+                        className="block text-sm font-medium text-slate-300 mb-1.5"
+                      >
+                        Registered Business Address{" "}
+                        <span className="text-slate-500">(optional)</span>
+                      </label>
+                      <input
+                        id="businessAddress"
+                        type="text"
+                        value={form.businessAddress}
+                        onChange={(e) => updateField("businessAddress", e.target.value)}
+                        className={fieldClass(false)}
+                        placeholder="123 Main Street, Sandton"
+                      />
+                    </div>
+
+                    <div>
+                      <label
+                        htmlFor="province"
+                        className="block text-sm font-medium text-slate-300 mb-1.5"
+                      >
+                        Province <span className="text-slate-500">(optional)</span>
+                      </label>
+                      <select
+                        id="province"
+                        value={form.province}
+                        onChange={(e) => updateField("province", e.target.value)}
+                        className={fieldClass(false)}
+                      >
+                        <option value="">Select province...</option>
+                        {PROVINCES.map((p) => (
+                          <option key={p} value={p}>
+                            {p}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                )}
+
+                {form.entityType === "trust" && (
+                  <div className="space-y-4 pt-2 border-t border-slate-700">
+                    <div>
+                      <label
+                        htmlFor="trustName"
+                        className="block text-sm font-medium text-slate-300 mb-1.5"
+                      >
+                        Trust Name
+                      </label>
+                      <input
+                        id="trustName"
+                        type="text"
+                        value={form.trustName}
+                        onChange={(e) => updateField("trustName", e.target.value)}
+                        aria-invalid={!!fieldErrors.trustName}
+                        className={fieldClass(!!fieldErrors.trustName)}
+                        placeholder="Smith Family Trust"
+                      />
+                      {fieldErrors.trustName && (
+                        <p className="text-red-400 text-xs mt-1">{fieldErrors.trustName}</p>
+                      )}
+                    </div>
+
+                    <div>
+                      <label
+                        htmlFor="trustRegistrationNumber"
+                        className="block text-sm font-medium text-slate-300 mb-1.5"
+                      >
+                        Trust Registration Number
+                        <Tooltip text="This lets us surface trust-specific fiduciary duties, tax filings, and deed requirements" />
+                      </label>
+                      <input
+                        id="trustRegistrationNumber"
+                        type="text"
+                        value={form.trustRegistrationNumber}
+                        onChange={(e) => updateField("trustRegistrationNumber", e.target.value)}
+                        aria-invalid={!!fieldErrors.trustRegistrationNumber}
+                        className={fieldClass(!!fieldErrors.trustRegistrationNumber)}
+                        placeholder="IT 1234/2024"
+                      />
+                      <p className="text-[11px] text-slate-500 mt-1">
+                        Format: IT NNNN/YYYY or NT NNNN/YYYY
+                      </p>
+                      {fieldErrors.trustRegistrationNumber && (
+                        <p className="text-red-400 text-xs mt-1">
+                          {fieldErrors.trustRegistrationNumber}
+                        </p>
+                      )}
+                    </div>
+
+                    <div>
+                      <label
+                        htmlFor="mastersOffice"
+                        className="block text-sm font-medium text-slate-300 mb-1.5"
+                      >
+                        Master&apos;s Office Where Registered
+                      </label>
+                      <select
+                        id="mastersOffice"
+                        value={form.mastersOffice}
+                        onChange={(e) => updateField("mastersOffice", e.target.value)}
+                        aria-invalid={!!fieldErrors.mastersOffice}
+                        className={fieldClass(!!fieldErrors.mastersOffice)}
+                      >
+                        <option value="">Select office...</option>
+                        {MASTERS_OFFICES.map((office) => (
+                          <option key={office} value={office}>
+                            {office}
+                          </option>
+                        ))}
+                      </select>
+                      {fieldErrors.mastersOffice && (
+                        <p className="text-red-400 text-xs mt-1">{fieldErrors.mastersOffice}</p>
+                      )}
+                    </div>
+
+                    <div>
+                      <label
+                        htmlFor="trusteeCount"
+                        className="block text-sm font-medium text-slate-300 mb-1.5"
+                      >
+                        Number of Trustees
+                      </label>
+                      <input
+                        id="trusteeCount"
+                        type="number"
+                        min={1}
+                        value={form.trusteeCount}
+                        onChange={(e) => updateField("trusteeCount", e.target.value)}
+                        aria-invalid={!!fieldErrors.trusteeCount}
+                        className={fieldClass(!!fieldErrors.trusteeCount)}
+                        placeholder="3"
+                      />
+                      {fieldErrors.trusteeCount && (
+                        <p className="text-red-400 text-xs mt-1">{fieldErrors.trusteeCount}</p>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {currentStep === 3 && (
+              <div className="space-y-6">
+                <div>
+                  <label
+                    htmlFor="industrySector"
+                    className="block text-sm font-medium text-slate-300 mb-1.5"
+                  >
+                    Industry Sector
+                  </label>
+                  <select
+                    id="industrySector"
+                    value={form.industrySector}
+                    onChange={(e) => updateField("industrySector", e.target.value)}
+                    aria-invalid={!!fieldErrors.industrySector}
+                    className={fieldClass(!!fieldErrors.industrySector)}
+                  >
+                    <option value="">Select your industry...</option>
+                    {INDUSTRIES.map((ind) => (
+                      <option key={ind} value={ind}>
+                        {ind}
+                      </option>
+                    ))}
+                    <option value="Other">Other (please specify)</option>
+                  </select>
+                  {fieldErrors.industrySector && (
+                    <p className="text-red-400 text-xs mt-1">{fieldErrors.industrySector}</p>
+                  )}
+                </div>
+
+                {form.industrySector === "Other" && (
+                  <div>
+                    <label
+                      htmlFor="otherIndustry"
+                      className="block text-sm font-medium text-slate-300 mb-1.5"
+                    >
+                      Specify Your Industry
+                    </label>
+                    <input
+                      id="otherIndustry"
+                      type="text"
+                      value={form.otherIndustry}
+                      onChange={(e) => updateField("otherIndustry", e.target.value)}
+                      aria-invalid={!!fieldErrors.otherIndustry}
+                      className={fieldClass(!!fieldErrors.otherIndustry)}
+                      placeholder="e.g. Renewable Energy"
+                    />
+                    {fieldErrors.otherIndustry && (
+                      <p className="text-red-400 text-xs mt-1">{fieldErrors.otherIndustry}</p>
+                    )}
+                  </div>
+                )}
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-300 mb-1.5">
+                    Compliance Areas of Interest
+                    <Tooltip text="Select what matters to you — we will generate your personalised compliance dashboard immediately after registration." />
+                  </label>
+                  {fieldErrors.complianceAreas && (
+                    <p className="text-red-400 text-xs mb-2">{fieldErrors.complianceAreas}</p>
+                  )}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {COMPLIANCE_AREAS.map((area) => (
+                      <label
+                        key={area}
+                        className="flex items-start gap-2.5 p-2.5 rounded-lg border border-slate-700 hover:border-slate-600 cursor-pointer transition-colors"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={form.complianceAreas.includes(area)}
+                          onChange={() => toggleComplianceArea(area)}
+                          className="mt-0.5 h-4 w-4 rounded border-slate-600 bg-slate-900 text-teal-500 accent-teal-500"
+                        />
+                        <span className="text-xs text-slate-300 leading-relaxed">{area}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <div className="flex items-center gap-3 mt-8">
+              {currentStep > 1 && (
                 <button
                   type="button"
-                  onClick={() => setShowPassword((prev) => !prev)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 transition-colors"
+                  onClick={handleBack}
+                  className="px-5 py-2.5 border border-slate-600 text-slate-300 rounded-lg hover:border-slate-500 hover:text-white transition-colors text-sm"
                 >
-                  {showPassword ? (
-                    <EyeOff className="h-4.5 w-4.5" />
-                  ) : (
-                    <Eye className="h-4.5 w-4.5" />
-                  )}
+                  Back
                 </button>
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-slate-300 mb-1.5">
-                Company Name
-              </label>
-              <input
-                type="text"
-                value={companyName}
-                onChange={(e) => setCompanyName(e.target.value)}
-                required
-                className="w-full bg-slate-900 border border-slate-600 rounded-lg px-4 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:border-teal-500 transition-colors"
-                placeholder="Acme Pty Ltd"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-slate-300 mb-1.5">
-                CIPC Registration Number <span className="text-slate-500">(optional)</span>
-              </label>
-              <input
-                type="text"
-                value={registrationNumber}
-                onChange={(e) => setRegistrationNumber(e.target.value)}
-                className="w-full bg-slate-900 border border-slate-600 rounded-lg px-4 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:border-teal-500 transition-colors"
-                placeholder="2024/123456/07"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-slate-300 mb-1.5">
-                Terms and Conditions
-              </label>
-              <TermsAndConditions onScrolledToBottom={handleScrolledToBottom} />
-
-              <label
-                className={`flex items-start gap-2.5 mt-3 cursor-pointer ${!hasScrolledTerms ? "opacity-50 pointer-events-none" : ""}`}
-              >
-                <input
-                  type="checkbox"
-                  checked={termsAccepted}
-                  onChange={(e) => setTermsAccepted(e.target.checked)}
-                  disabled={!hasScrolledTerms}
-                  className="mt-0.5 h-4 w-4 rounded border-slate-600 bg-slate-900 text-teal-500 focus:ring-teal-500 focus:ring-offset-0 accent-teal-500"
-                />
-                <span className="text-xs text-slate-300 leading-relaxed">
-                  I have read and agree to the{" "}
-                  <strong className="text-teal-400">Terms and Conditions</strong>, including the
-                  limitation of liability, non-reliance, and privacy provisions.
-                </span>
-              </label>
-
-              {!hasScrolledTerms && (
-                <p className="text-[11px] text-slate-500 mt-1.5">
-                  Please scroll through the full Terms and Conditions above to continue.
-                </p>
+              )}
+              <div className="flex-1" />
+              {currentStep < 3 ? (
+                <button
+                  type="submit"
+                  className="px-8 py-2.5 bg-teal-500 hover:bg-teal-600 text-white font-medium rounded-lg transition-colors text-sm flex items-center gap-2"
+                >
+                  Next
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+              ) : (
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="px-6 py-2.5 bg-teal-500 hover:bg-teal-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium rounded-lg transition-colors text-sm"
+                >
+                  {loading ? "Creating account..." : "Create Account & Get My Compliance Checklist"}
+                </button>
               )}
             </div>
 
-            <button
-              type="submit"
-              disabled={loading || !termsAccepted}
-              className="w-full bg-teal-500 hover:bg-teal-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium py-2.5 rounded-lg transition-colors flex items-center justify-center gap-2"
-            >
-              <UserPlus className="h-4 w-4" />
-              {loading ? "Creating account..." : "Create Account"}
-            </button>
+            {currentStep > 1 && (
+              <div className="text-center mt-4">
+                <button
+                  type="button"
+                  onClick={handleSaveAndContinue}
+                  disabled={loading}
+                  className="text-sm text-slate-400 hover:text-teal-400 underline disabled:opacity-50"
+                >
+                  Save & Continue Later
+                </button>
+              </div>
+            )}
           </form>
 
-          <p className="text-center text-sm text-slate-400 mt-6">
-            Already have an account?{" "}
-            <Link
-              href="/comply-sa/auth/login"
-              className="text-teal-400 hover:text-teal-300 font-medium"
+          <div className="flex items-center justify-between mt-6 pt-4 border-t border-slate-700">
+            <p className="text-sm text-slate-400">
+              Already have an account?{" "}
+              <Link
+                href="/comply-sa/auth/login"
+                className="text-teal-400 hover:text-teal-300 font-medium"
+              >
+                Sign in
+              </Link>
+            </p>
+            <button
+              type="button"
+              onClick={() => setShowWhyModal(true)}
+              className="text-xs text-slate-500 hover:text-teal-400 underline"
             >
-              Sign in
-            </Link>
-          </p>
+              Why do we need this info?
+            </button>
+          </div>
         </div>
       </div>
+
+      {showSuccessModal && (
+        <SuccessModal
+          entityType={form.entityType}
+          industry={form.industrySector === "Other" ? form.otherIndustry : form.industrySector}
+          onContinue={() => router.push("/comply-sa/onboarding")}
+        />
+      )}
+      {showWhyModal && <WhyInfoModal onClose={() => setShowWhyModal(false)} />}
     </div>
   );
 }

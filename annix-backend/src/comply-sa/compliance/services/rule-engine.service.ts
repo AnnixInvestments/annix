@@ -49,6 +49,14 @@ const CONDITION_EVALUATORS: ConditionCheck[] = [
     evaluate: (company, value) =>
       company.industry !== null && (value as string[]).includes(company.industry),
   },
+  {
+    key: "entity_type",
+    evaluate: (company, value) => company.entityType === (value as string),
+  },
+  {
+    key: "entity_type_in",
+    evaluate: (company, value) => (value as string[]).includes(company.entityType),
+  },
 ];
 
 @Injectable()

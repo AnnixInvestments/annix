@@ -63,9 +63,26 @@ export function signup(data: {
   name: string;
   email: string;
   password: string;
-  companyName: string;
-  registrationNumber?: string | null;
   termsAccepted: boolean;
+  entityType?: string | null;
+  companyName?: string | null;
+  registrationNumber?: string | null;
+  idNumber?: string | null;
+  passportNumber?: string | null;
+  passportCountry?: string | null;
+  sarsTaxReference?: string | null;
+  dateOfBirth?: string | null;
+  phone?: string | null;
+  trustName?: string | null;
+  trustRegistrationNumber?: string | null;
+  mastersOffice?: string | null;
+  trusteeCount?: number | null;
+  employeeCountRange?: string | null;
+  businessAddress?: string | null;
+  province?: string | null;
+  industrySector?: string | null;
+  complianceAreas?: string[] | null;
+  profileComplete?: boolean;
 }): Promise<{ user: Record<string, unknown> }> {
   return request("/auth/signup", {
     method: "POST",

@@ -1,4 +1,12 @@
-import { IsBoolean, IsEmail, IsOptional, IsString, MinLength } from "class-validator";
+import {
+  IsArray,
+  IsBoolean,
+  IsEmail,
+  IsInt,
+  IsOptional,
+  IsString,
+  MinLength,
+} from "class-validator";
 
 export class ComplySaSignupDto {
   @IsEmail()
@@ -10,13 +18,82 @@ export class ComplySaSignupDto {
   @IsString()
   name!: string;
 
+  @IsBoolean()
+  termsAccepted!: boolean;
+
   @IsString()
-  companyName!: string;
+  @IsOptional()
+  entityType?: string;
+
+  @IsString()
+  @IsOptional()
+  companyName?: string;
 
   @IsString()
   @IsOptional()
   registrationNumber?: string;
 
+  @IsString()
+  @IsOptional()
+  idNumber?: string;
+
+  @IsString()
+  @IsOptional()
+  passportNumber?: string;
+
+  @IsString()
+  @IsOptional()
+  passportCountry?: string;
+
+  @IsString()
+  @IsOptional()
+  sarsTaxReference?: string;
+
+  @IsString()
+  @IsOptional()
+  dateOfBirth?: string;
+
+  @IsString()
+  @IsOptional()
+  phone?: string;
+
+  @IsString()
+  @IsOptional()
+  trustName?: string;
+
+  @IsString()
+  @IsOptional()
+  trustRegistrationNumber?: string;
+
+  @IsString()
+  @IsOptional()
+  mastersOffice?: string;
+
+  @IsInt()
+  @IsOptional()
+  trusteeCount?: number;
+
+  @IsString()
+  @IsOptional()
+  employeeCountRange?: string;
+
+  @IsString()
+  @IsOptional()
+  businessAddress?: string;
+
+  @IsString()
+  @IsOptional()
+  province?: string;
+
+  @IsString()
+  @IsOptional()
+  industrySector?: string;
+
+  @IsArray()
+  @IsOptional()
+  complianceAreas?: string[];
+
   @IsBoolean()
-  termsAccepted!: boolean;
+  @IsOptional()
+  profileComplete?: boolean;
 }

@@ -71,6 +71,48 @@ export class ComplySaCompany {
   @Column({ type: "varchar", length: 100, nullable: true })
   municipality!: string | null;
 
+  @Column({ name: "entity_type", type: "varchar", length: 20, default: "company" })
+  entityType!: string;
+
+  @Column({ name: "compliance_areas", type: "jsonb", nullable: true })
+  complianceAreas!: string[] | null;
+
+  @Column({ name: "id_number", type: "varchar", length: 20, nullable: true })
+  idNumber!: string | null;
+
+  @Column({ name: "passport_number", type: "varchar", length: 50, nullable: true })
+  passportNumber!: string | null;
+
+  @Column({ name: "passport_country", type: "varchar", length: 100, nullable: true })
+  passportCountry!: string | null;
+
+  @Column({ name: "sars_tax_reference", type: "varchar", length: 30, nullable: true })
+  sarsTaxReference!: string | null;
+
+  @Column({ name: "date_of_birth", type: "varchar", length: 20, nullable: true })
+  dateOfBirth!: string | null;
+
+  @Column({ type: "varchar", length: 20, nullable: true })
+  phone!: string | null;
+
+  @Column({ name: "trust_registration_number", type: "varchar", length: 50, nullable: true })
+  trustRegistrationNumber!: string | null;
+
+  @Column({ name: "masters_office", type: "varchar", length: 100, nullable: true })
+  mastersOffice!: string | null;
+
+  @Column({ name: "trustee_count", type: "int", nullable: true })
+  trusteeCount!: number | null;
+
+  @Column({ name: "employee_count_range", type: "varchar", length: 20, nullable: true })
+  employeeCountRange!: string | null;
+
+  @Column({ name: "profile_complete", type: "boolean", default: false })
+  profileComplete!: boolean;
+
+  @Column({ name: "business_address", type: "text", nullable: true })
+  businessAddress!: string | null;
+
   @Column({ name: "subscription_tier", type: "varchar", length: 20, default: "free" })
   subscriptionTier!: string;
 
