@@ -156,9 +156,7 @@ export class ComplySaAuthService {
     return { sent: true };
   }
 
-  async login(
-    dto: ComplySaLoginDto,
-  ): Promise<{
+  async login(dto: ComplySaLoginDto): Promise<{
     access_token: string;
     user: Partial<ComplySaUser>;
     emailVerified: boolean;
