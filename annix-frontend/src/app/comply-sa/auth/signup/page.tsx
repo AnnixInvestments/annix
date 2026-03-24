@@ -268,9 +268,9 @@ function TermsAndConditions(props: { onScrolledToBottom: () => void }) {
         3. AI-Generated Content Disclaimer
       </h4>
       <p>
-        The AI-powered compliance Q&A feature utilises artificial intelligence technology (including
-        third-party AI providers) to generate responses. AI-generated responses are produced
-        algorithmically and{" "}
+        The AI-powered compliance Q&A feature utilises artificial intelligence technology, including
+        Google Gemini, to generate responses. AI-generated responses are produced algorithmically
+        and{" "}
         <strong className="text-white">
           may contain inaccuracies, omissions, outdated information, or misleading content
         </strong>
@@ -280,8 +280,9 @@ function TermsAndConditions(props: { onScrolledToBottom: () => void }) {
       </p>
       <p>
         You must independently verify all AI-generated information before relying on it for any
-        compliance, tax, or legal purpose. User queries submitted to the AI feature may be processed
-        by third-party AI service providers subject to their respective privacy policies.
+        compliance, tax, or legal purpose. User queries submitted to the AI feature are processed by
+        Google (Gemini) and may be subject to Google&apos;s privacy policy and data processing
+        terms.
       </p>
 
       <h4 className="text-sm font-semibold text-teal-400 pt-1">4. Limitation of Liability</h4>
@@ -292,8 +293,9 @@ function TermsAndConditions(props: { onScrolledToBottom: () => void }) {
       <p>
         (a) The total aggregate liability of Annix arising out of or in connection with your use of
         the Service, whether in contract, delict (tort), strict liability, or otherwise, shall not
-        exceed the total fees paid by you for the Service during the twelve (12) month period
-        immediately preceding the event giving rise to such liability.
+        exceed the greater of (i) the total fees paid by you for the Service during the twelve (12)
+        month period immediately preceding the event giving rise to such liability, or (ii) R500
+        (five hundred Rand).
       </p>
       <p>
         (b) In no event shall Annix, its directors, officers, employees, or agents be liable for any
@@ -369,10 +371,12 @@ function TermsAndConditions(props: { onScrolledToBottom: () => void }) {
         CPA.
       </p>
       <p>
-        In accordance with Section 16 of the CPA and Section 44 of the Electronic Communications and
-        Transactions Act 25 of 2002 (&quot;ECTA&quot;), you may cancel your subscription within 5
-        (five) business days of creating your account without reason or penalty by contacting us at{" "}
-        <span className="text-teal-400">support@annix.co.za</span>.
+        In accordance with Section 44 of the Electronic Communications and Transactions Act 25 of
+        2002 (&quot;ECTA&quot;), you may cancel your subscription within 7 (seven) working days of
+        creating your account without reason or penalty by contacting us at{" "}
+        <span className="text-teal-400">support@annix.co.za</span>. Where direct marketing applies,
+        Section 16 of the CPA provides a further 5 (five) business day cooling-off period from the
+        date of the relevant transaction.
       </p>
 
       <h4 className="text-sm font-semibold text-teal-400 pt-1">8. Subscription and Payment</h4>
@@ -419,14 +423,19 @@ function TermsAndConditions(props: { onScrolledToBottom: () => void }) {
         your account before the amendment takes effect.
       </p>
 
-      <h4 className="text-sm font-semibold text-teal-400 pt-1">
-        13. Governing Law and Jurisdiction
-      </h4>
+      <h4 className="text-sm font-semibold text-teal-400 pt-1">13. Dispute Resolution</h4>
       <p>
         These Terms shall be governed by and construed in accordance with the laws of the Republic
-        of South Africa. The parties submit to the exclusive jurisdiction of the High Court of South
-        Africa, Gauteng Division, Pretoria, for any disputes arising from or in connection with
-        these Terms.
+        of South Africa. The parties agree to first attempt to resolve any dispute arising from or
+        in connection with these Terms through good-faith negotiation. If the dispute is not
+        resolved within 20 business days, either party may refer it to mediation administered by the
+        Arbitration Foundation of Southern Africa (AFSA). If mediation fails, the dispute may be
+        referred to the High Court of South Africa, Gauteng Division, Pretoria.
+      </p>
+      <p>
+        Nothing in this clause limits your right as a consumer under the Consumer Protection Act 68
+        of 2008 to refer a dispute to a consumer court, the National Consumer Commission, or an
+        applicable industry ombud (CPA Section 70).
       </p>
 
       <h4 className="text-sm font-semibold text-teal-400 pt-1">14. Severability</h4>
@@ -438,8 +447,10 @@ function TermsAndConditions(props: { onScrolledToBottom: () => void }) {
 
       <h4 className="text-sm font-semibold text-teal-400 pt-1">15. ECTA Disclosure (Section 43)</h4>
       <p>
-        Full name: Annix Investments (Pty) Ltd | Registration: 2018/472188/07 | Physical address:
-        Pretoria, Gauteng, South Africa | Email:{" "}
+        Full name: Annix Investments (Pty) Ltd | Legal status: Private company (Pty Ltd) |
+        Registration: 2018/472188/07 | Physical address: 171 Garsfontein Road, Ashlea Gardens,
+        Pretoria, Gauteng, 0081, South Africa | Telephone: +27 12 004 0162 | Website:{" "}
+        <span className="text-teal-400">comply-sa.annix.co.za</span> | Email:{" "}
         <span className="text-teal-400">support@annix.co.za</span> | Information Officer:{" "}
         <span className="text-teal-400">privacy@annix.co.za</span>
       </p>
@@ -526,9 +537,9 @@ function SuccessModal(props: {
         </p>
         <div className="text-left bg-slate-900 rounded-lg p-4 mb-6 space-y-3">
           {[
-            "Set up your SARS eFiling profile and link your tax reference",
-            "Upload your B-BBEE certificate or sworn affidavit",
-            "Complete your POPIA compliance self-assessment",
+            "Consider linking your SARS eFiling profile for automated deadline tracking",
+            "Upload your B-BBEE certificate or sworn affidavit if available",
+            "Review your personalised POPIA compliance checklist",
           ].map((action, i) => (
             <div key={action} className="flex items-start gap-3">
               <span className="bg-teal-500/20 text-teal-400 text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center shrink-0">
