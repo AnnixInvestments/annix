@@ -90,6 +90,15 @@ export class JobCardCoatingAnalysis {
   @Column({ name: "accepted_at", type: "timestamp", nullable: true })
   acceptedAt: Date | null;
 
+  @Column({ name: "pm_edited_assessment", type: "jsonb", nullable: true })
+  pmEditedAssessment: StockAssessmentItem[] | null;
+
+  @Column({ name: "pm_edited_by", type: "varchar", length: 200, nullable: true })
+  pmEditedBy: string | null;
+
+  @Column({ name: "pm_edited_at", type: "timestamptz", nullable: true })
+  pmEditedAt: Date | null;
+
   @ManyToOne(() => StockControlCompany, { onDelete: "CASCADE" })
   @JoinColumn({ name: "company_id" })
   company: StockControlCompany;

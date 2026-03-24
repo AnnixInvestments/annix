@@ -1,5 +1,6 @@
 import { StockControlApiClient } from "./base";
 import type {
+  AllocationPlanResponse,
   CoatingAnalysis,
   ImportMappingConfig,
   JobCard,
@@ -15,6 +16,8 @@ import type {
   RubberPlanOverride,
   RubberStockOptionsResponse,
   StockAllocation,
+  StockAssessmentItem,
+  StockReturn,
   UnverifiedProduct,
 } from "./types";
 
@@ -151,6 +154,26 @@ declare module "./base" {
     uploadJobCardJobFile(jobCardId: number, file: File): Promise<JobCardJobFile>;
     deleteJobCardJobFile(jobCardId: number, fileId: number): Promise<void>;
     jobCardJobFileViewUrl(jobCardId: number, fileId: number): Promise<{ url: string }>;
+    allocationPlan(jobCardId: number): Promise<AllocationPlanResponse>;
+    allocatePacks(
+      jobCardId: number,
+      items: Array<{
+        stockItemId: number;
+        packCount: number;
+        sourceLeftoverItemId?: number | null;
+      }>,
+    ): Promise<StockAllocation[]>;
+    deallocateAllocation(jobCardId: number, allocationId: number): Promise<StockAllocation>;
+    confirmIssuance(jobCardId: number, allocationIds: number[]): Promise<StockAllocation[]>;
+    returnLeftovers(
+      jobCardId: number,
+      allocationId: number,
+      data: { litresReturned: number; notes?: string },
+    ): Promise<{ stockReturn: StockReturn; costReduction: number }>;
+    updateStockAssessment(
+      jobCardId: number,
+      items: StockAssessmentItem[],
+    ): Promise<CoatingAnalysis>;
   }
 }
 
@@ -489,4 +512,45 @@ proto.deleteJobCardJobFile = async function (jobCardId, fileId) {
 
 proto.jobCardJobFileViewUrl = async function (jobCardId, fileId) {
   return this.request(`/stock-control/job-cards/${jobCardId}/job-files/${fileId}/view-url`);
+};
+
+proto.allocationPlan = async function (jobCardId) {
+  return this.request(`/stock-control/job-cards/${jobCardId}/allocation-plan`, {
+    method: "POST",
+  });
+};
+
+proto.allocatePacks = async function (jobCardId, items) {
+  return this.request(`/stock-control/job-cards/${jobCardId}/allocate-packs`, {
+    method: "POST",
+    body: JSON.stringify({ items }),
+  });
+};
+
+proto.deallocateAllocation = async function (jobCardId, allocationId) {
+  return this.request(
+    `/stock-control/job-cards/${jobCardId}/allocations/${allocationId}/deallocate`,
+    { method: "POST" },
+  );
+};
+
+proto.confirmIssuance = async function (jobCardId, allocationIds) {
+  return this.request(`/stock-control/job-cards/${jobCardId}/confirm-issuance`, {
+    method: "POST",
+    body: JSON.stringify({ allocationIds }),
+  });
+};
+
+proto.returnLeftovers = async function (jobCardId, allocationId, data) {
+  return this.request(`/stock-control/job-cards/${jobCardId}/allocations/${allocationId}/return`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+};
+
+proto.updateStockAssessment = async function (jobCardId, items) {
+  return this.request(`/stock-control/job-cards/${jobCardId}/coating-analysis/stock-assessment`, {
+    method: "PATCH",
+    body: JSON.stringify({ items }),
+  });
 };

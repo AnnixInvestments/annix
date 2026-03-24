@@ -50,6 +50,7 @@ import { JobCardVersionService } from "../services/job-card-version.service";
 import { JobCardWorkflowService } from "../services/job-card-workflow.service";
 import { JobFileService } from "../services/job-file.service";
 import { RequisitionService } from "../services/requisition.service";
+import { StockAllocationService } from "../services/stock-allocation.service";
 
 @ApiTags("Stock Control - Job Cards")
 @Controller("stock-control/job-cards")
@@ -67,6 +68,7 @@ export class JobCardsController {
     private readonly cpoService: CpoService,
     private readonly jobCardImportService: JobCardImportService,
     private readonly jobFileService: JobFileService,
+    private readonly stockAllocationService: StockAllocationService,
     @InjectRepository(StockItem)
     private readonly stockItemRepo: Repository<StockItem>,
     @InjectRepository(RubberDimensionOverride)
@@ -827,5 +829,113 @@ export class JobCardsController {
   @ApiOperation({ summary: "Presigned URL for a job file" })
   async jobFileViewUrl(@Req() req: any, @Param("id") id: number, @Param("fileId") fileId: number) {
     return this.jobFileService.presignedUrlForFile(req.user.companyId, id, fileId);
+  }
+
+  @StockControlRoles("manager", "admin", "storeman")
+  @Post(":id/allocation-plan")
+  @ApiOperation({ summary: "Recommended allocation plan for a job card" })
+  async allocationPlan(@Req() req: any, @Param("id") id: number) {
+    return this.stockAllocationService.recommendedAllocations(req.user.companyId, id);
+  }
+
+  @StockControlRoles("manager", "admin", "storeman")
+  @Post(":id/allocate-packs")
+  @ApiOperation({ summary: "Allocate stock packs to a job card" })
+  async allocatePacks(
+    @Req() req: any,
+    @Param("id") id: number,
+    @Body() body: {
+      items: Array<{
+        stockItemId: number;
+        packCount: number;
+        sourceLeftoverItemId?: number | null;
+      }>;
+    },
+  ) {
+    return this.stockAllocationService.allocatePacks(
+      req.user.companyId,
+      id,
+      body.items,
+      req.user.staffMemberId || null,
+      req.user.name || null,
+    );
+  }
+
+  @StockControlRoles("manager", "admin", "storeman")
+  @Post(":id/allocations/:allocationId/deallocate")
+  @ApiOperation({ summary: "Deallocate a pending stock allocation" })
+  async deallocateAllocation(
+    @Req() req: any,
+    @Param("id") id: number,
+    @Param("allocationId") allocationId: number,
+  ) {
+    return this.stockAllocationService.deallocate(
+      req.user.companyId,
+      id,
+      allocationId,
+      req.user.name || null,
+    );
+  }
+
+  @StockControlRoles("manager", "admin", "storeman")
+  @Post(":id/confirm-issuance")
+  @ApiOperation({ summary: "Confirm physical issuance of allocated stock" })
+  async confirmIssuance(
+    @Req() req: any,
+    @Param("id") id: number,
+    @Body() body: { allocationIds: number[] },
+  ) {
+    return this.stockAllocationService.confirmIssuance(
+      req.user.companyId,
+      id,
+      body.allocationIds,
+      req.user.name || null,
+    );
+  }
+
+  @StockControlRoles("manager", "admin", "storeman")
+  @Post(":id/allocations/:allocationId/return")
+  @ApiOperation({ summary: "Return leftover paint from an allocation" })
+  async returnLeftovers(
+    @Req() req: any,
+    @Param("id") id: number,
+    @Param("allocationId") allocationId: number,
+    @Body() body: { litresReturned: number; notes?: string },
+  ) {
+    return this.stockAllocationService.returnLeftovers(
+      req.user.companyId,
+      id,
+      allocationId,
+      body.litresReturned,
+      req.user.name || null,
+      req.user.staffMemberId || null,
+      body.notes || null,
+    );
+  }
+
+  @StockControlRoles("manager", "admin")
+  @Patch(":id/coating-analysis/stock-assessment")
+  @ApiOperation({ summary: "PM edits to stock assessment quantities" })
+  async updateStockAssessment(
+    @Req() req: any,
+    @Param("id") id: number,
+    @Body() body: {
+      items: Array<{
+        product: string;
+        stockItemId: number | null;
+        stockItemName: string | null;
+        currentStock: number;
+        required: number;
+        unit: string;
+        sufficient: boolean;
+      }>;
+    },
+  ) {
+    return this.coatingAnalysisService.updateStockAssessment(
+      req.user.companyId,
+      id,
+      body.items,
+      req.user.name || "PM",
+    );
   }
 }

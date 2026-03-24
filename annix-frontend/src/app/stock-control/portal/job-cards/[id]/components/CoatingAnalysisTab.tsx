@@ -131,6 +131,11 @@ export function CoatingAnalysisTab(props: CoatingAnalysisTabProps) {
 
   const [showTeachNix, setShowTeachNix] = useState(false);
   const [corrections, setCorrections] = useState<ExtractionCorrection[]>([]);
+  const [pmEdits, setPmEdits] = useState<Record<string, number>>({});
+  const [isSavingPmEdits, setIsSavingPmEdits] = useState(false);
+  const [pmEditError, setPmEditError] = useState<string | null>(null);
+  const isPmEditable = props.showStockDecision || props.isAdmin;
+  const hasPmEdits = Object.keys(pmEdits).length > 0;
   const [correctionField, setCorrectionField] = useState("coatingSpec");
   const [correctionValue, setCorrectionValue] = useState("");
   const [isSavingCorrection, setIsSavingCorrection] = useState(false);
@@ -412,25 +417,80 @@ export function CoatingAnalysisTab(props: CoatingAnalysisTabProps) {
             })()}
             {coatingAnalysis.stockAssessment.length > 0 &&
               (() => {
-                const deduped = coatingAnalysis.stockAssessment.reduce<
-                  typeof coatingAnalysis.stockAssessment
-                >((acc, item) => {
-                  const existing = acc.find((a) => a.product === item.product);
-                  if (existing) {
-                    existing.required = existing.required + item.required;
-                    existing.sufficient = existing.stockItemId
-                      ? existing.currentStock >= existing.required
-                      : false;
-                  } else {
-                    acc.push({ ...item });
+                const sourceAssessment =
+                  coatingAnalysis.pmEditedAssessment || coatingAnalysis.stockAssessment;
+                const deduped = sourceAssessment.reduce<typeof coatingAnalysis.stockAssessment>(
+                  (acc, item) => {
+                    const existing = acc.find((a) => a.product === item.product);
+                    if (existing) {
+                      existing.required = existing.required + item.required;
+                      existing.sufficient = existing.stockItemId
+                        ? existing.currentStock >= existing.required
+                        : false;
+                    } else {
+                      acc.push({ ...item });
+                    }
+                    return acc;
+                  },
+                  [],
+                );
+
+                const handlePmEditChange = (product: string, value: number) => {
+                  setPmEdits((prev) => ({ ...prev, [product]: value }));
+                };
+
+                const handleSavePmEdits = async () => {
+                  try {
+                    setIsSavingPmEdits(true);
+                    setPmEditError(null);
+                    const updatedItems = deduped.map((item) => ({
+                      ...item,
+                      required:
+                        pmEdits[item.product] !== undefined ? pmEdits[item.product] : item.required,
+                      sufficient: item.stockItemId
+                        ? item.currentStock >=
+                          (pmEdits[item.product] !== undefined
+                            ? pmEdits[item.product]
+                            : item.required)
+                        : false,
+                    }));
+                    const result = await stockControlApiClient.updateStockAssessment(
+                      props.jobId,
+                      updatedItems,
+                    );
+                    props.onCoatingAnalysisChange(result);
+                    setPmEdits({});
+                  } catch (err) {
+                    setPmEditError(err instanceof Error ? err.message : "Failed to save changes");
+                  } finally {
+                    setIsSavingPmEdits(false);
                   }
-                  return acc;
-                }, []);
+                };
+
                 return (
                   <div className="mt-4 pt-3 border-t border-gray-100">
-                    <h5 className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">
-                      Stock Assessment
-                    </h5>
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <h5 className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Stock Assessment
+                        </h5>
+                        {coatingAnalysis.pmEditedAssessment && (
+                          <span className="inline-flex px-1.5 py-0.5 text-[10px] font-medium rounded bg-blue-100 text-blue-700">
+                            PM adjusted
+                          </span>
+                        )}
+                      </div>
+                      {isPmEditable && hasPmEdits && (
+                        <button
+                          onClick={handleSavePmEdits}
+                          disabled={isSavingPmEdits}
+                          className="px-3 py-1 text-xs font-medium rounded-md bg-teal-600 text-white hover:bg-teal-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+                        >
+                          {isSavingPmEdits ? "Saving..." : "Save Changes"}
+                        </button>
+                      )}
+                    </div>
+                    {pmEditError && <p className="text-xs text-red-600 mb-2">{pmEditError}</p>}
                     <div className="space-y-1">
                       {deduped.map((item, idx) => (
                         <div key={idx} className="flex items-center justify-between text-sm">
@@ -439,16 +499,48 @@ export function CoatingAnalysisTab(props: CoatingAnalysisTabProps) {
                             {item.stockItemId ? (
                               <>
                                 <span className="text-gray-500">
-                                  {item.currentStock} / {item.required.toFixed(1)} {item.unit}
+                                  {item.currentStock} /
+                                  {isPmEditable ? (
+                                    <input
+                                      type="number"
+                                      step="0.1"
+                                      min="0"
+                                      value={
+                                        pmEdits[item.product] !== undefined
+                                          ? pmEdits[item.product]
+                                          : item.required
+                                      }
+                                      onChange={(e) =>
+                                        handlePmEditChange(
+                                          item.product,
+                                          Number.parseFloat(e.target.value) || 0,
+                                        )
+                                      }
+                                      className="w-16 mx-1 px-1 py-0.5 text-sm text-right border border-gray-300 rounded focus:ring-1 focus:ring-teal-500 focus:border-teal-500"
+                                    />
+                                  ) : (
+                                    <span className="mx-1">{item.required.toFixed(1)}</span>
+                                  )}
+                                  {item.unit}
                                 </span>
                                 <span
                                   className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full ${
-                                    item.sufficient
+                                    (
+                                      pmEdits[item.product] !== undefined
+                                        ? item.currentStock >= pmEdits[item.product]
+                                        : item.sufficient
+                                    )
                                       ? "bg-green-100 text-green-800"
                                       : "bg-red-100 text-red-800"
                                   }`}
                                 >
-                                  {item.sufficient ? "OK" : "Short"}
+                                  {(
+                                    pmEdits[item.product] !== undefined
+                                      ? item.currentStock >= pmEdits[item.product]
+                                      : item.sufficient
+                                  )
+                                    ? "OK"
+                                    : "Short"}
                                 </span>
                               </>
                             ) : (
@@ -463,7 +555,11 @@ export function CoatingAnalysisTab(props: CoatingAnalysisTabProps) {
                     {props.showStockDecision &&
                       (() => {
                         const allSufficient = deduped.every(
-                          (item) => item.stockItemId !== null && item.sufficient,
+                          (item) =>
+                            item.stockItemId !== null &&
+                            (pmEdits[item.product] !== undefined
+                              ? item.currentStock >= pmEdits[item.product]
+                              : item.sufficient),
                         );
                         return (
                           <div className="mt-4 pt-3 border-t border-gray-100" id="stock-decision">

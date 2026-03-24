@@ -9,6 +9,7 @@ import {
   UpdateDateColumn,
 } from "typeorm";
 import { DeliveryNoteItem } from "./delivery-note-item.entity";
+import { JobCard } from "./job-card.entity";
 import { StockAllocation } from "./stock-allocation.entity";
 import { StockControlCompany } from "./stock-control-company.entity";
 import { StockControlLocation } from "./stock-control-location.entity";
@@ -98,6 +99,28 @@ export class StockItem {
 
   @Column({ name: "compound_code", type: "varchar", length: 50, nullable: true })
   compoundCode: string | null;
+
+  @Column({ name: "pack_size_litres", type: "decimal", precision: 10, scale: 2, nullable: true })
+  packSizeLitres: number | null;
+
+  @Column({ name: "component_group", type: "varchar", length: 100, nullable: true })
+  componentGroup: string | null;
+
+  @Column({ name: "component_role", type: "varchar", length: 50, nullable: true })
+  componentRole: string | null;
+
+  @Column({ name: "mix_ratio", type: "varchar", length: 20, nullable: true })
+  mixRatio: string | null;
+
+  @Column({ name: "is_leftover", type: "boolean", default: false })
+  isLeftover: boolean;
+
+  @ManyToOne(() => JobCard, { nullable: true, onDelete: "SET NULL" })
+  @JoinColumn({ name: "source_job_card_id" })
+  sourceJobCard: JobCard | null;
+
+  @Column({ name: "source_job_card_id", nullable: true })
+  sourceJobCardId: number | null;
 
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;

@@ -100,6 +100,31 @@ export class StockAllocation {
   @Column({ name: "undone_by_name", type: "varchar", nullable: true })
   undoneByName: string | null;
 
+  @Column({ name: "pack_count", type: "integer", nullable: true })
+  packCount: number | null;
+
+  @Column({ name: "litres_per_pack", type: "decimal", precision: 10, scale: 2, nullable: true })
+  litresPerPack: number | null;
+
+  @Column({ name: "total_litres", type: "decimal", precision: 10, scale: 2, nullable: true })
+  totalLitres: number | null;
+
+  @Column({ name: "allocation_type", type: "varchar", length: 20, default: "allocation" })
+  allocationType: string;
+
+  @Column({ name: "issued_at", type: "timestamptz", nullable: true })
+  issuedAt: Date | null;
+
+  @Column({ name: "issued_by_name", type: "varchar", length: 255, nullable: true })
+  issuedByName: string | null;
+
+  @ManyToOne(() => StockItem, { nullable: true, onDelete: "SET NULL" })
+  @JoinColumn({ name: "source_leftover_item_id" })
+  sourceLeftoverItem: StockItem | null;
+
+  @Column({ name: "source_leftover_item_id", nullable: true })
+  sourceLeftoverItemId: number | null;
+
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;
 }

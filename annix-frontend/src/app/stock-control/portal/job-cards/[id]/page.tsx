@@ -786,6 +786,34 @@ export default function JobCardDetailPage() {
   );
 
   const hasAllocations = allocations.some((a) => !a.undone);
+  const hasUnissuedAllocations = allocations.some((a) => !a.undone && !a.issuedAt);
+  const [isConfirmingIssuance, setIsConfirmingIssuance] = useState(false);
+
+  const handleConfirmIssuance = async () => {
+    const unissued = allocations.filter((a) => !a.undone && !a.issuedAt);
+    if (unissued.length === 0) return;
+
+    const confirmed = await confirm({
+      title: "Confirm Issuance",
+      message: `Issue ${unissued.length} allocated item(s)? This confirms physical handover.`,
+      confirmLabel: "Issue",
+      variant: "default",
+    });
+    if (!confirmed) return;
+
+    try {
+      setIsConfirmingIssuance(true);
+      await stockControlApiClient.confirmIssuance(
+        jobId,
+        unissued.map((a) => a.id),
+      );
+      fetchData();
+    } catch (err) {
+      setError(err instanceof Error ? err : new Error("Failed to confirm issuance"));
+    } finally {
+      setIsConfirmingIssuance(false);
+    }
+  };
 
   const requisitionIsPending = useMemo(
     () => userPendingBgSteps.some(isRequisitionStep),
@@ -1166,9 +1194,7 @@ export default function JobCardDetailPage() {
                   ) : isStockAllocStep(bg) ? (
                     <div key={bg.stepKey} className="flex flex-wrap gap-2">
                       <button
-                        onClick={() =>
-                          router.push(`/stock-control/portal/issue-stock?jobCardId=${jobId}`)
-                        }
+                        onClick={() => handleTabChange("stock-issues")}
                         className="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-md bg-teal-600 text-white hover:bg-teal-700 transition-colors"
                       >
                         <svg
@@ -1184,8 +1210,17 @@ export default function JobCardDetailPage() {
                             d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
                           />
                         </svg>
-                        Issue Stock
+                        Allocate Stock
                       </button>
+                      {hasUnissuedAllocations && (
+                        <button
+                          onClick={handleConfirmIssuance}
+                          disabled={isConfirmingIssuance}
+                          className="px-3 py-1.5 text-xs font-medium rounded-md bg-green-600 text-white hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+                        >
+                          {isConfirmingIssuance ? "Issuing..." : "Issue Allocated"}
+                        </button>
+                      )}
                       {hasAllocations && (
                         <button
                           onClick={() => handleCompleteBackgroundStep(bg.stepKey)}

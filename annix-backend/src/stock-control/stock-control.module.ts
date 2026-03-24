@@ -10,6 +10,7 @@ import { PipeScheduleModule } from "../pipe-schedule/pipe-schedule.module";
 import { RubberLiningModule } from "../rubber-lining/rubber-lining.module";
 import { SageExportModule } from "../sage-export/sage-export.module";
 import { SharedModule } from "../shared/shared.module";
+import { StaffLeaveModule } from "../staff-leave/staff-leave.module";
 import { StorageModule } from "../storage/storage.module";
 import { StockControlAuthController } from "./controllers/auth.controller";
 import { CertificateController } from "./controllers/certificate.controller";
@@ -89,6 +90,7 @@ import { StockIssuance } from "./entities/stock-issuance.entity";
 import { StockItem } from "./entities/stock-item.entity";
 import { StockMovement } from "./entities/stock-movement.entity";
 import { StockPriceHistory } from "./entities/stock-price-history.entity";
+import { StockReturn } from "./entities/stock-return.entity";
 import { SupplierCertificate } from "./entities/supplier-certificate.entity";
 import { SupplierInvoice } from "./entities/supplier-invoice.entity";
 import { SupplierInvoiceItem } from "./entities/supplier-invoice-item.entity";
@@ -155,6 +157,7 @@ import { ScEmailRouterService } from "./services/sc-email-router.service";
 import { SearchService } from "./services/search.service";
 import { SignatureService } from "./services/signature.service";
 import { StaffService } from "./services/staff.service";
+import { StockAllocationService } from "./services/stock-allocation.service";
 import { WebPushService } from "./services/web-push.service";
 import { WorkflowAssignmentService } from "./services/workflow-assignment.service";
 import { WorkflowNotificationService } from "./services/workflow-notification.service";
@@ -224,6 +227,7 @@ import { WorkflowStepConfigService } from "./services/workflow-step-config.servi
       ReconciliationDocument,
       ReconciliationItem,
       ReconciliationEvent,
+      StockReturn,
     ]),
     EmailModule,
     JwtModule.registerAsync({
@@ -246,6 +250,7 @@ import { WorkflowStepConfigService } from "./services/workflow-step-config.servi
     RubberLiningModule,
     SageExportModule,
     SharedModule,
+    StaffLeaveModule,
     StorageModule,
   ],
   controllers: [
@@ -337,6 +342,7 @@ import { WorkflowStepConfigService } from "./services/workflow-step-config.servi
     ReconciliationDocumentService,
     ReconciliationExtractionService,
     ReconciliationService,
+    StockAllocationService,
   ],
 })
 export class StockControlModule {}

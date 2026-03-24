@@ -693,6 +693,27 @@ export class CoatingAnalysisService {
     return scored.length > 0 ? scored[0].item : null;
   }
 
+  async updateStockAssessment(
+    companyId: number,
+    jobCardId: number,
+    items: StockAssessmentItem[],
+    userName: string,
+  ): Promise<JobCardCoatingAnalysis> {
+    const analysis = await this.analysisRepo.findOne({
+      where: { jobCardId, companyId },
+    });
+
+    if (!analysis) {
+      throw new NotFoundException(`Coating analysis not found for job card ${jobCardId}`);
+    }
+
+    analysis.pmEditedAssessment = items;
+    analysis.pmEditedBy = userName;
+    analysis.pmEditedAt = now().toJSDate();
+
+    return this.analysisRepo.save(analysis);
+  }
+
   async bulkReanalyse(companyId: number): Promise<{ processed: number; failed: number }> {
     const draftJobCards = await this.jobCardRepo.find({
       where: { companyId, status: "draft" as any },

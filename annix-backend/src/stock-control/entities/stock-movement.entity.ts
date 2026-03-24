@@ -21,6 +21,7 @@ export enum ReferenceType {
   IMPORT = "import",
   ISSUANCE = "issuance",
   MANUAL = "manual",
+  RETURN = "return",
   STOCK_TAKE = "stock_take",
 }
 

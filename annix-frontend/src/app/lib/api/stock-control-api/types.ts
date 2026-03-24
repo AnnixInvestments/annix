@@ -42,6 +42,7 @@ export interface StockControlUserProfile {
   structuralSteelLossFactorPct: number;
   qcEnabled: boolean;
   messagingEnabled: boolean;
+  staffLeaveEnabled: boolean;
   linkedStaffId: number | null;
   createdAt: string;
   companyUpdatedAt: string | null;
@@ -101,6 +102,7 @@ export interface CompanyDetailsUpdate {
   structuralSteelLossFactorPct?: number;
   qcEnabled?: boolean;
   messagingEnabled?: boolean;
+  staffLeaveEnabled?: boolean;
 }
 
 export interface SmtpConfigResponse {
@@ -277,6 +279,12 @@ export interface StockItem {
   locationId: number | null;
   photoUrl: string | null;
   needsQrPrint: boolean;
+  packSizeLitres: number | null;
+  componentGroup: string | null;
+  componentRole: string | null;
+  mixRatio: string | null;
+  isLeftover: boolean;
+  sourceJobCardId: number | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -416,6 +424,13 @@ export interface StockAllocation {
   undone: boolean;
   undoneAt: string | null;
   undoneByName: string | null;
+  packCount: number | null;
+  litresPerPack: number | null;
+  totalLitres: number | null;
+  allocationType: string;
+  issuedAt: string | null;
+  issuedByName: string | null;
+  sourceLeftoverItemId: number | null;
 }
 
 export interface CoatDetail {
@@ -462,8 +477,48 @@ export interface CoatingAnalysis {
   analysedAt: string | null;
   acceptedBy: string | null;
   acceptedAt: string | null;
+  pmEditedAssessment: StockAssessmentItem[] | null;
+  pmEditedBy: string | null;
+  pmEditedAt: string | null;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface AllocationPlanItem {
+  product: string;
+  stockItemId: number;
+  stockItemName: string;
+  requiredLitres: number;
+  packSizeLitres: number | null;
+  recommendedPacks: number | null;
+  componentGroup: string | null;
+  componentRole: string | null;
+  mixRatio: string | null;
+  availableQuantity: number;
+  leftoverSuggestion: LeftoverSuggestion | null;
+}
+
+export interface LeftoverSuggestion {
+  stockItemId: number;
+  stockItemName: string;
+  availableLitres: number;
+  sourceJobCardId: number | null;
+}
+
+export interface AllocationPlanResponse {
+  items: AllocationPlanItem[];
+  leftovers: LeftoverSuggestion[];
+}
+
+export interface StockReturn {
+  id: number;
+  jobCardId: number;
+  allocationId: number;
+  litresReturned: number;
+  costReduction: number;
+  returnedByName: string | null;
+  notes: string | null;
+  createdAt: string;
 }
 
 export interface RubberStockOption {
@@ -1450,6 +1505,7 @@ export interface WorkflowStepAssignment {
   step: string;
   userIds: number[];
   primaryUserId: number | null;
+  secondaryUserId: number | null;
   users: { id: number; name: string; email: string; role: string }[];
 }
 
@@ -2212,4 +2268,26 @@ export interface ReconciliationSummary {
   partial: number;
   complete: number;
   discrepancy: number;
+}
+
+export type LeaveType = "sick" | "holiday";
+
+export interface StaffLeaveRecord {
+  id: number;
+  userId: number;
+  userName: string | null;
+  leaveType: LeaveType;
+  startDate: string;
+  endDate: string;
+  sickNoteUrl: string | null;
+  sickNoteOriginalFilename: string | null;
+  notes: string | null;
+  createdAt: string;
+}
+
+export interface CreateLeaveRequest {
+  leaveType: LeaveType;
+  startDate: string;
+  endDate: string;
+  notes?: string;
 }
