@@ -40,7 +40,9 @@ export default function PrivacyPolicyPage() {
                 </tr>
                 <tr>
                   <td className="py-2 text-slate-400">Physical address</td>
-                  <td className="py-2">Pretoria, Gauteng, 0181, South Africa</td>
+                  <td className="py-2">
+                    171 Garsfontein Road, Ashlea Gardens, Pretoria, Gauteng, 0081, South Africa
+                  </td>
                 </tr>
                 <tr>
                   <td className="py-2 text-slate-400">Information Officer</td>
@@ -212,7 +214,7 @@ export default function PrivacyPolicyPage() {
                   <tr>
                     <td className="p-2">Amazon Web Services (AWS)</td>
                     <td className="p-2">Cloud hosting, file storage (S3), database hosting</td>
-                    <td className="p-2">EU (Frankfurt) / South Africa where available</td>
+                    <td className="p-2">South Africa (Cape Town, af-south-1)</td>
                   </tr>
                   <tr>
                     <td className="p-2">Fly.io</td>
@@ -337,7 +339,7 @@ export default function PrivacyPolicyPage() {
                 </tr>
                 <tr>
                   <td className="py-2 text-slate-400">Website</td>
-                  <td className="py-2">www.justice.gov.za/inforeg</td>
+                  <td className="py-2">https://inforegulator.org.za</td>
                 </tr>
               </tbody>
             </table>
