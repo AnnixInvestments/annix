@@ -10,6 +10,14 @@ import {
 } from "typeorm";
 import { StockControlCompany } from "./stock-control-company.entity";
 
+export interface StepOutcome {
+  key: string;
+  label: string;
+  nextStepKey: string | null;
+  notifyStepKey: string | null;
+  style: string;
+}
+
 @Entity("workflow_step_configs")
 @Unique(["companyId", "key"])
 export class WorkflowStepConfig {
@@ -49,6 +57,15 @@ export class WorkflowStepConfig {
 
   @Column({ name: "phase_action_labels", type: "jsonb", nullable: true, default: null })
   phaseActionLabels: Record<string, string> | null;
+
+  @Column({ name: "step_outcomes", type: "jsonb", nullable: true, default: null })
+  stepOutcomes: StepOutcome[] | null;
+
+  @Column({ name: "branch_type", type: "varchar", length: 20, nullable: true, default: null })
+  branchType: "loop" | "connect" | null;
+
+  @Column({ name: "rejoin_at_step", type: "varchar", length: 50, nullable: true, default: null })
+  rejoinAtStep: string | null;
 
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;

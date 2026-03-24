@@ -1438,6 +1438,14 @@ export interface WorkflowNotification {
   jobCard?: JobCard;
 }
 
+export interface StepOutcome {
+  key: string;
+  label: string;
+  nextStepKey: string | null;
+  notifyStepKey: string | null;
+  style: string;
+}
+
 export interface WorkflowStepConfig {
   id: number;
   companyId: number;
@@ -1450,6 +1458,9 @@ export interface WorkflowStepConfig {
   actionLabel: string | null;
   branchColor: string | null;
   phaseActionLabels: Record<string, string> | null;
+  stepOutcomes: StepOutcome[] | null;
+  branchType: "loop" | "connect" | null;
+  rejoinAtStep: string | null;
 }
 
 export interface JobCardActionCompletion {
@@ -1474,6 +1485,7 @@ export interface BackgroundStepStatus {
   actionLabel: string | null;
   completionType: string | null;
   branchColor: string | null;
+  stepOutcomes: StepOutcome[] | null;
 }
 
 export interface QaReviewDecision {
@@ -1555,6 +1567,7 @@ export interface WorkflowStatus {
     actionLabel: string | null;
     completionType: string | null;
     branchColor: string | null;
+    stepOutcomes: StepOutcome[] | null;
   }>;
   actionCompletions: JobCardActionCompletion[];
   phaseInfo: Record<

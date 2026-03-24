@@ -167,6 +167,11 @@ export class CompleteBackgroundStepDto {
   @IsOptional()
   @IsString()
   notes?: string;
+
+  @ApiPropertyOptional({ description: "Outcome key when step has multiple outcomes" })
+  @IsOptional()
+  @IsString()
+  outcomeKey?: string;
 }
 
 export class RejectAllocationDto {

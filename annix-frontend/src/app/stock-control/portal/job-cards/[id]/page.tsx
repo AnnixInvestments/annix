@@ -290,11 +290,11 @@ export default function JobCardDetailPage() {
   };
 
   const [bgStepError, setBgStepError] = useState<string | null>(null);
-  const handleCompleteBackgroundStep = async (stepKey: string) => {
+  const handleCompleteBackgroundStep = async (stepKey: string, outcomeKey?: string) => {
     try {
       setCompletingStepKey(stepKey);
       setBgStepError(null);
-      await stockControlApiClient.completeBackgroundStep(jobId, stepKey);
+      await stockControlApiClient.completeBackgroundStep(jobId, stepKey, undefined, outcomeKey);
       fetchData();
     } catch (err) {
       setBgStepError(err instanceof Error ? err.message : "Failed to complete background step");
@@ -1392,6 +1392,26 @@ export default function JobCardDetailPage() {
                     >
                       Review Data Book
                     </button>
+                  ) : bg.stepOutcomes && bg.stepOutcomes.length > 1 ? (
+                    bg.stepOutcomes.map((outcome) => {
+                      const styleMap: Record<string, string> = {
+                        green: "bg-green-600 hover:bg-green-700",
+                        red: "bg-red-600 hover:bg-red-700",
+                        amber: "bg-amber-600 hover:bg-amber-700",
+                        blue: "bg-blue-600 hover:bg-blue-700",
+                      };
+                      const btnClass = styleMap[outcome.style] || "bg-amber-600 hover:bg-amber-700";
+                      return (
+                        <button
+                          key={`${bg.stepKey}-${outcome.key}`}
+                          onClick={() => handleCompleteBackgroundStep(bg.stepKey, outcome.key)}
+                          disabled={completingStepKey === bg.stepKey}
+                          className={`px-3 py-1.5 text-xs font-medium rounded-md text-white disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors ${btnClass}`}
+                        >
+                          {completingStepKey === bg.stepKey ? "..." : outcome.label}
+                        </button>
+                      );
+                    })
                   ) : (
                     <button
                       key={bg.stepKey}

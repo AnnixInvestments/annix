@@ -160,6 +160,7 @@ export type {
   StaffStockReportResult,
   StaffStockSummary,
   StepNotificationRecipients,
+  StepOutcome,
   StockAllocation,
   StockAssessmentItem,
   StockControlCompany,

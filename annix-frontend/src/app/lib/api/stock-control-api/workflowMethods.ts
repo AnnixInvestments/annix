@@ -80,7 +80,27 @@ declare module "./base" {
     ): Promise<{ success: boolean }>;
     backgroundStepConfigs(): Promise<WorkflowStepConfig[]>;
     backgroundStepsForJobCard(jobCardId: number): Promise<BackgroundStepStatus[]>;
-    completeBackgroundStep(jobCardId: number, stepKey: string, notes?: string): Promise<void>;
+    completeBackgroundStep(
+      jobCardId: number,
+      stepKey: string,
+      notes?: string,
+      outcomeKey?: string,
+    ): Promise<void>;
+    updateStepOutcomes(
+      key: string,
+      stepOutcomes: Array<{
+        key: string;
+        label: string;
+        nextStepKey: string | null;
+        notifyStepKey: string | null;
+        style: string;
+      }> | null,
+    ): Promise<{ success: boolean }>;
+    updateStepBranchType(
+      key: string,
+      branchType: "loop" | "connect" | null,
+    ): Promise<{ success: boolean }>;
+    updateStepRejoinAtStep(key: string, rejoinAtStep: string | null): Promise<{ success: boolean }>;
     uploadReadyPhoto(jobCardId: number, file: File): Promise<JobCardJobFile>;
     pendingBackgroundSteps(): Promise<PendingBackgroundStep[]>;
     workflowAssignments(): Promise<WorkflowStepAssignment[]>;
@@ -325,12 +345,39 @@ proto.backgroundStepsForJobCard = async function (jobCardId) {
   return this.request(`/stock-control/workflow/job-cards/${jobCardId}/background-steps`);
 };
 
-proto.completeBackgroundStep = async function (jobCardId, stepKey, notes) {
+proto.completeBackgroundStep = async function (jobCardId, stepKey, notes, outcomeKey) {
   return this.request(
     `/stock-control/workflow/job-cards/${jobCardId}/background-steps/${encodeURIComponent(stepKey)}/complete`,
     {
       method: "POST",
-      body: JSON.stringify({ notes }),
+      body: JSON.stringify({ notes, outcomeKey }),
+    },
+  );
+};
+
+proto.updateStepOutcomes = async function (key, stepOutcomes) {
+  return this.request(`/stock-control/workflow/step-configs/${encodeURIComponent(key)}/outcomes`, {
+    method: "PUT",
+    body: JSON.stringify({ stepOutcomes }),
+  });
+};
+
+proto.updateStepBranchType = async function (key, branchType) {
+  return this.request(
+    `/stock-control/workflow/step-configs/${encodeURIComponent(key)}/branch-type`,
+    {
+      method: "PUT",
+      body: JSON.stringify({ branchType }),
+    },
+  );
+};
+
+proto.updateStepRejoinAtStep = async function (key, rejoinAtStep) {
+  return this.request(
+    `/stock-control/workflow/step-configs/${encodeURIComponent(key)}/rejoin-at-step`,
+    {
+      method: "PUT",
+      body: JSON.stringify({ rejoinAtStep }),
     },
   );
 };

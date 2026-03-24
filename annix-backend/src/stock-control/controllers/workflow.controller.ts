@@ -441,6 +441,50 @@ export class WorkflowController {
     return { success: true };
   }
 
+  @Put("step-configs/:key/branch-type")
+  @StockControlRoles("admin")
+  @ApiOperation({ summary: "Update a workflow step branch type (loop/connect)" })
+  async updateStepBranchType(
+    @Req() req: any,
+    @Param("key") key: string,
+    @Body() dto: { branchType: "loop" | "connect" | null },
+  ) {
+    await this.stepConfigService.updateBranchType(req.user.companyId, key, dto.branchType);
+    return { success: true };
+  }
+
+  @Put("step-configs/:key/rejoin-at-step")
+  @StockControlRoles("admin")
+  @ApiOperation({ summary: "Update a workflow step rejoin point" })
+  async updateStepRejoinAtStep(
+    @Req() req: any,
+    @Param("key") key: string,
+    @Body() dto: { rejoinAtStep: string | null },
+  ) {
+    await this.stepConfigService.updateRejoinAtStep(req.user.companyId, key, dto.rejoinAtStep);
+    return { success: true };
+  }
+
+  @Put("step-configs/:key/outcomes")
+  @StockControlRoles("admin")
+  @ApiOperation({ summary: "Update step outcomes for a workflow step" })
+  async updateStepOutcomes(
+    @Req() req: any,
+    @Param("key") key: string,
+    @Body() dto: {
+      stepOutcomes: Array<{
+        key: string;
+        label: string;
+        nextStepKey: string | null;
+        notifyStepKey: string | null;
+        style: string;
+      }> | null;
+    },
+  ) {
+    await this.stepConfigService.updateStepOutcomes(req.user.companyId, key, dto.stepOutcomes);
+    return { success: true };
+  }
+
   @Post("step-configs")
   @StockControlRoles("admin")
   @ApiOperation({ summary: "Add a custom workflow step" })
@@ -518,6 +562,7 @@ export class WorkflowController {
       stepKey,
       req.user,
       dto.notes,
+      dto.outcomeKey,
     );
   }
 
@@ -624,12 +669,18 @@ export class WorkflowController {
       req.user,
     );
 
+    const hasRejection =
+      (dto.rubberAccepted !== undefined && dto.rubberAccepted !== null && !dto.rubberAccepted) ||
+      (dto.paintAccepted !== undefined && dto.paintAccepted !== null && !dto.paintAccepted);
+    const qaOutcomeKey = hasRejection ? "reject" : "accept";
+
     await this.backgroundStepService.completeStep(
       req.user.companyId,
       id,
       "qa_review",
       req.user,
       dto.notes,
+      qaOutcomeKey,
     );
 
     return { success: true, decision };

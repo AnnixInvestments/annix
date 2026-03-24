@@ -52,6 +52,7 @@ export class BackgroundStepService {
     stepKey: string,
     user: UserContext,
     notes?: string,
+    outcomeKey?: string,
   ): Promise<JobCardBackgroundCompletion> {
     const bgSteps = await this.stepConfigService.backgroundSteps(companyId);
     const stepConfig = bgSteps.find((s) => s.key === stepKey);
@@ -67,6 +68,15 @@ export class BackgroundStepService {
     if (existing) {
       throw new BadRequestException(
         `Background step "${stepKey}" already completed for this job card`,
+      );
+    }
+
+    const outcomes = stepConfig.stepOutcomes || [];
+    const chosenOutcome = outcomeKey ? outcomes.find((o) => o.key === outcomeKey) : null;
+
+    if (outcomes.length > 0 && !chosenOutcome) {
+      throw new BadRequestException(
+        `Step "${stepConfig.label}" requires an outcome. Valid outcomes: ${outcomes.map((o) => o.key).join(", ")}`,
       );
     }
 
@@ -109,6 +119,7 @@ export class BackgroundStepService {
       completedByName: user.name,
       completedAt: now().toJSDate(),
       notes: notes ?? null,
+      completionType: chosenOutcome ? chosenOutcome.key : "manual",
     });
 
     const saved = await this.completionRepo.save(completion);
@@ -141,22 +152,39 @@ export class BackgroundStepService {
         companyId,
         stepConfig.triggerAfterStep,
       );
-      const sameBranchPost = allSiblingsPost.filter(
-        (s) => (s.branchColor || null) === (stepConfig.branchColor || null),
-      );
-      const currentIdx = sameBranchPost.findIndex((s) => s.key === stepKey);
-      if (currentIdx >= 0 && currentIdx + 1 < sameBranchPost.length) {
-        const nextStep = sameBranchPost[currentIdx + 1];
-        await this.notificationService.notifyBackgroundStepRequired(
-          companyId,
-          jobCardId,
-          nextStep.key,
-          nextStep.label,
-          { id: user.id, name: user.name },
+
+      if (chosenOutcome?.notifyStepKey) {
+        const targetStep = allSiblingsPost.find((s) => s.key === chosenOutcome.notifyStepKey);
+        if (targetStep) {
+          await this.notificationService.notifyBackgroundStepRequired(
+            companyId,
+            jobCardId,
+            targetStep.key,
+            targetStep.label,
+            { id: user.id, name: user.name },
+          );
+          this.logger.log(
+            `Outcome "${chosenOutcome.key}" routed to step "${targetStep.key}" for job card ${jobCardId}`,
+          );
+        }
+      } else {
+        const sameBranchPost = allSiblingsPost.filter(
+          (s) => (s.branchColor || null) === (stepConfig.branchColor || null),
         );
-        this.logger.log(
-          `Triggered next background step "${nextStep.key}" for job card ${jobCardId}`,
-        );
+        const currentIdx = sameBranchPost.findIndex((s) => s.key === stepKey);
+        if (currentIdx >= 0 && currentIdx + 1 < sameBranchPost.length) {
+          const nextStep = sameBranchPost[currentIdx + 1];
+          await this.notificationService.notifyBackgroundStepRequired(
+            companyId,
+            jobCardId,
+            nextStep.key,
+            nextStep.label,
+            { id: user.id, name: user.name },
+          );
+          this.logger.log(
+            `Triggered next background step "${nextStep.key}" for job card ${jobCardId}`,
+          );
+        }
       }
 
       const allCompletions = await this.completionRepo.find({ where: { jobCardId, companyId } });
@@ -248,6 +276,13 @@ export class BackgroundStepService {
       completionType: string | null;
       branchColor: string | null;
       actionLabel: string | null;
+      stepOutcomes: Array<{
+        key: string;
+        label: string;
+        nextStepKey: string | null;
+        notifyStepKey: string | null;
+        style: string;
+      }> | null;
     }>
   > {
     const bgSteps = await this.stepConfigService.backgroundSteps(companyId);
@@ -272,6 +307,7 @@ export class BackgroundStepService {
         completionType: completion?.completionType ?? null,
         branchColor: step.branchColor ?? null,
         actionLabel: step.actionLabel ?? null,
+        stepOutcomes: step.stepOutcomes || null,
       };
     });
   }

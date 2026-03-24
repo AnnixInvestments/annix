@@ -124,8 +124,8 @@ export function TeamManagementSection({ companyRoles }: TeamManagementSectionPro
   };
 
   return (
-    <div className="lg:col-span-2 bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-      <div className="flex items-center justify-between mb-4">
+    <div className="lg:col-span-2 bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+      <div className="flex items-center justify-between mb-2">
         <button
           type="button"
           onClick={() => setCollapsed((prev) => !prev)}
@@ -145,9 +145,9 @@ export function TeamManagementSection({ companyRoles }: TeamManagementSectionPro
           <button
             type="button"
             onClick={() => setShowInviteForm(!showInviteForm)}
-            className="px-3 py-1.5 bg-teal-600 text-white text-sm font-medium rounded-md hover:bg-teal-700 transition-colors"
+            className="px-2.5 py-1 bg-teal-600 text-white text-xs font-medium rounded hover:bg-teal-700 transition-colors"
           >
-            Invite Member
+            + Invite
           </button>
         )}
       </div>
@@ -155,8 +155,8 @@ export function TeamManagementSection({ companyRoles }: TeamManagementSectionPro
       {collapsed ? null : (
         <>
           {showInviteForm && (
-            <div className="mb-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
-              <div className="flex flex-col sm:flex-row gap-3">
+            <div className="mb-2 p-2 bg-gray-50 rounded border border-gray-200">
+              <div className="flex gap-1.5">
                 <input
                   type="email"
                   placeholder="Email address"
@@ -165,12 +165,12 @@ export function TeamManagementSection({ companyRoles }: TeamManagementSectionPro
                     setInviteEmail(e.target.value);
                     setInviteError("");
                   }}
-                  className="flex-1 px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm focus:outline-none focus:ring-teal-500 focus:border-teal-500"
+                  className="flex-1 px-2 py-1 border border-gray-300 rounded text-xs focus:outline-none focus:ring-teal-500 focus:border-teal-500"
                 />
                 <select
                   value={inviteRole}
                   onChange={(e) => setInviteRole(e.target.value)}
-                  className="px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm focus:outline-none focus:ring-teal-500 focus:border-teal-500"
+                  className="px-2 py-1 border border-gray-300 rounded text-xs focus:outline-none focus:ring-teal-500 focus:border-teal-500"
                 >
                   {assignableRoles.map((r) => (
                     <option key={r.key} value={r.key}>
@@ -182,36 +182,36 @@ export function TeamManagementSection({ companyRoles }: TeamManagementSectionPro
                   type="button"
                   onClick={handleInvite}
                   disabled={inviteSending}
-                  className="px-4 py-2 bg-teal-600 text-white text-sm font-medium rounded-md hover:bg-teal-700 disabled:opacity-50 transition-colors"
+                  className="px-2.5 py-1 bg-teal-600 text-white text-xs font-medium rounded hover:bg-teal-700 disabled:opacity-50 transition-colors"
                 >
-                  {inviteSending ? "Sending..." : "Send"}
+                  {inviteSending ? "..." : "Send"}
                 </button>
               </div>
-              {inviteError && <p className="mt-2 text-sm text-red-600">{inviteError}</p>}
+              {inviteError && <p className="mt-1 text-xs text-red-600">{inviteError}</p>}
             </div>
           )}
 
           {teamLoading ? (
-            <div className="text-center py-8 text-gray-500">Loading team...</div>
+            <div className="text-center py-2 text-xs text-gray-500">Loading team...</div>
           ) : (
             <>
               <div className="overflow-x-auto">
                 <table className="min-w-full">
                   <thead>
                     <tr className="border-b border-gray-200">
-                      <th className="py-3 px-2 text-left text-xs font-medium uppercase text-gray-500">
+                      <th className="py-1.5 px-2 text-left text-[10px] font-medium uppercase text-gray-500">
                         Name
                       </th>
-                      <th className="hidden py-3 px-2 text-left text-xs font-medium uppercase text-gray-500 sm:table-cell">
+                      <th className="hidden py-1.5 px-2 text-left text-[10px] font-medium uppercase text-gray-500 sm:table-cell">
                         Email
                       </th>
-                      <th className="py-3 px-2 text-left text-xs font-medium uppercase text-gray-500">
+                      <th className="py-1.5 px-2 text-left text-[10px] font-medium uppercase text-gray-500">
                         Role
                       </th>
-                      <th className="hidden py-3 px-2 text-left text-xs font-medium uppercase text-gray-500 md:table-cell">
+                      <th className="hidden py-1.5 px-2 text-left text-[10px] font-medium uppercase text-gray-500 md:table-cell">
                         Joined
                       </th>
-                      <th className="py-3 px-2 text-right text-xs font-medium uppercase text-gray-500">
+                      <th className="py-1.5 px-2 text-right text-[10px] font-medium uppercase text-gray-500">
                         Actions
                       </th>
                     </tr>
@@ -219,15 +219,15 @@ export function TeamManagementSection({ companyRoles }: TeamManagementSectionPro
                   <tbody>
                     {teamMembers.map((member) => (
                       <tr key={member.id} className="border-b border-gray-100">
-                        <td className="py-3 px-2 text-sm text-gray-900">{member.name}</td>
-                        <td className="hidden py-3 px-2 text-sm text-gray-500 sm:table-cell">
+                        <td className="py-1 px-2 text-xs text-gray-900">{member.name}</td>
+                        <td className="hidden py-1 px-2 text-xs text-gray-500 sm:table-cell">
                           {member.email}
                         </td>
-                        <td className="py-3 px-2">
+                        <td className="py-1 px-2">
                           <select
                             value={member.role}
                             onChange={(e) => handleRoleChange(member.id, e.target.value)}
-                            className="rounded border border-gray-300 px-2 py-1 text-sm focus:border-teal-500 focus:outline-none focus:ring-teal-500"
+                            className="rounded border border-gray-200 px-1 py-0.5 text-xs bg-transparent focus:border-teal-500 focus:outline-none focus:ring-teal-500"
                           >
                             {assignableRoles.map((r) => (
                               <option key={r.key} value={r.key}>
@@ -236,17 +236,17 @@ export function TeamManagementSection({ companyRoles }: TeamManagementSectionPro
                             ))}
                           </select>
                         </td>
-                        <td className="hidden py-3 px-2 text-sm text-gray-500 md:table-cell">
+                        <td className="hidden py-1 px-2 text-xs text-gray-500 md:table-cell">
                           {new Date(member.createdAt).toLocaleDateString("en-ZA")}
                         </td>
-                        <td className="py-3 px-2 text-right">
+                        <td className="py-1 px-2 text-right">
                           <button
                             type="button"
                             onClick={() => handleSendAppLink(member.id)}
                             disabled={sendingAppLinkId === member.id}
-                            className="text-xs font-medium text-teal-600 hover:text-teal-800 disabled:opacity-50"
+                            className="text-[10px] font-medium text-teal-600 hover:text-teal-800 disabled:opacity-50"
                           >
-                            {sendingAppLinkId === member.id ? "Sending..." : "Send Link"}
+                            {sendingAppLinkId === member.id ? "..." : "Send Link"}
                           </button>
                         </td>
                       </tr>
@@ -256,32 +256,34 @@ export function TeamManagementSection({ companyRoles }: TeamManagementSectionPro
               </div>
 
               {invitations.length > 0 && (
-                <div className="mt-6">
-                  <h3 className="text-sm font-medium text-gray-700 mb-2">Pending Invitations</h3>
-                  <div className="space-y-2">
+                <div className="mt-2">
+                  <span className="text-[10px] font-medium uppercase tracking-wide text-gray-500">
+                    Pending Invitations
+                  </span>
+                  <div className="divide-y divide-yellow-100 border border-yellow-200 rounded mt-1">
                     {invitations.map((inv) => (
                       <div
                         key={inv.id}
-                        className="flex flex-col gap-2 rounded-lg border border-yellow-200 bg-yellow-50 p-3 sm:flex-row sm:items-center sm:justify-between"
+                        className="flex items-center justify-between px-2.5 py-1.5 bg-yellow-50/50"
                       >
                         <div className="min-w-0 truncate">
-                          <span className="text-sm text-gray-900">{inv.email}</span>
-                          <span className="ml-2 text-xs text-gray-500">
+                          <span className="text-xs text-gray-900">{inv.email}</span>
+                          <span className="ml-1.5 text-[10px] text-gray-500">
                             ({localRoleLabel(inv.role)})
                           </span>
                         </div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1.5">
                           <button
                             type="button"
                             onClick={() => handleResendInvitation(inv.id)}
-                            className="text-xs font-medium text-teal-600 hover:text-teal-800"
+                            className="text-[10px] font-medium text-teal-600 hover:text-teal-800"
                           >
                             Resend
                           </button>
                           <button
                             type="button"
                             onClick={() => handleCancelInvitation(inv.id)}
-                            className="text-xs font-medium text-red-600 hover:text-red-800"
+                            className="text-[10px] font-medium text-red-600 hover:text-red-800"
                           >
                             Cancel
                           </button>

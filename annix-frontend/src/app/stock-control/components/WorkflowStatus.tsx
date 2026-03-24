@@ -1637,6 +1637,7 @@ export function WorkflowStepper(props: WorkflowStepperProps) {
             actionLabel: null,
             completionType: null,
             branchColor: null,
+            stepOutcomes: null,
           }),
           triggerAfterStep: null,
           completedAt: docUploadFromBg?.completedAt || docUploadApproval?.approvedAt || null,

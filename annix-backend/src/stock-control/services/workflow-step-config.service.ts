@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, Logger, NotFoundException } from "@nestjs/common"; // v2
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
+import type { StepOutcome } from "../entities/workflow-step-config.entity";
 import { WorkflowStepConfig } from "../entities/workflow-step-config.entity";
 
 interface PhaseGroup {
@@ -18,6 +19,9 @@ const DEFAULT_STEPS: ReadonlyArray<{
   actionLabel: string | null;
   branchColor: string | null;
   phaseActionLabels: Record<string, string> | null;
+  stepOutcomes: StepOutcome[] | null;
+  branchType: "loop" | "connect" | null;
+  rejoinAtStep: string | null;
 }> = [
   {
     key: "admin_approval",
@@ -28,6 +32,9 @@ const DEFAULT_STEPS: ReadonlyArray<{
     actionLabel: "Accept JC",
     branchColor: null,
     phaseActionLabels: null,
+    stepOutcomes: null,
+    branchType: null,
+    rejoinAtStep: null,
   },
   {
     key: "manager_approval",
@@ -38,6 +45,9 @@ const DEFAULT_STEPS: ReadonlyArray<{
     actionLabel: "Release to Factory",
     branchColor: null,
     phaseActionLabels: null,
+    stepOutcomes: null,
+    branchType: null,
+    rejoinAtStep: null,
   },
   {
     key: "quality_check",
@@ -48,6 +58,9 @@ const DEFAULT_STEPS: ReadonlyArray<{
     actionLabel: "Quality Check",
     branchColor: null,
     phaseActionLabels: { "1": "Quality Check", "2": "Quality Release" },
+    stepOutcomes: null,
+    branchType: null,
+    rejoinAtStep: null,
   },
   {
     key: "dispatched",
@@ -58,6 +71,9 @@ const DEFAULT_STEPS: ReadonlyArray<{
     actionLabel: "Dispatched",
     branchColor: null,
     phaseActionLabels: null,
+    stepOutcomes: null,
+    branchType: null,
+    rejoinAtStep: null,
   },
   {
     key: "document_upload",
@@ -68,6 +84,9 @@ const DEFAULT_STEPS: ReadonlyArray<{
     actionLabel: "Accept Draft",
     branchColor: null,
     phaseActionLabels: null,
+    stepOutcomes: null,
+    branchType: null,
+    rejoinAtStep: null,
   },
   {
     key: "stock_allocation",
@@ -78,6 +97,9 @@ const DEFAULT_STEPS: ReadonlyArray<{
     actionLabel: "Complete Stock Alloc",
     branchColor: null,
     phaseActionLabels: null,
+    stepOutcomes: null,
+    branchType: null,
+    rejoinAtStep: null,
   },
   {
     key: "reception",
@@ -88,6 +110,9 @@ const DEFAULT_STEPS: ReadonlyArray<{
     actionLabel: "Print JC",
     branchColor: null,
     phaseActionLabels: null,
+    stepOutcomes: null,
+    branchType: null,
+    rejoinAtStep: null,
   },
   {
     key: "upload_source_documents",
@@ -98,6 +123,9 @@ const DEFAULT_STEPS: ReadonlyArray<{
     actionLabel: "Docs Uploaded",
     branchColor: null,
     phaseActionLabels: null,
+    stepOutcomes: null,
+    branchType: null,
+    rejoinAtStep: null,
   },
   {
     key: "requisition",
@@ -108,6 +136,9 @@ const DEFAULT_STEPS: ReadonlyArray<{
     actionLabel: "Req Sent",
     branchColor: null,
     phaseActionLabels: null,
+    stepOutcomes: null,
+    branchType: null,
+    rejoinAtStep: null,
   },
   {
     key: "req_auth",
@@ -118,6 +149,9 @@ const DEFAULT_STEPS: ReadonlyArray<{
     actionLabel: "Req Auth",
     branchColor: null,
     phaseActionLabels: null,
+    stepOutcomes: null,
+    branchType: null,
+    rejoinAtStep: null,
   },
   {
     key: "order_placement",
@@ -128,6 +162,9 @@ const DEFAULT_STEPS: ReadonlyArray<{
     actionLabel: "Order Placed",
     branchColor: null,
     phaseActionLabels: null,
+    stepOutcomes: null,
+    branchType: null,
+    rejoinAtStep: null,
   },
   {
     key: "qa_check",
@@ -138,6 +175,9 @@ const DEFAULT_STEPS: ReadonlyArray<{
     actionLabel: "QA Checked",
     branchColor: "#3b82f6",
     phaseActionLabels: null,
+    stepOutcomes: null,
+    branchType: null,
+    rejoinAtStep: null,
   },
   {
     key: "compile_data_book",
@@ -148,6 +188,9 @@ const DEFAULT_STEPS: ReadonlyArray<{
     actionLabel: "Data Book Compiled",
     branchColor: null,
     phaseActionLabels: null,
+    stepOutcomes: null,
+    branchType: null,
+    rejoinAtStep: null,
   },
   {
     key: "qa_review",
@@ -158,6 +201,24 @@ const DEFAULT_STEPS: ReadonlyArray<{
     actionLabel: "QA Reviewed",
     branchColor: null,
     phaseActionLabels: null,
+    stepOutcomes: [
+      {
+        key: "accept",
+        label: "QA Accepted",
+        nextStepKey: null,
+        notifyStepKey: null,
+        style: "green",
+      },
+      {
+        key: "reject",
+        label: "QA Rejected",
+        nextStepKey: "qc_repairs",
+        notifyStepKey: "qc_repairs",
+        style: "red",
+      },
+    ],
+    branchType: null,
+    rejoinAtStep: null,
   },
   {
     key: "qc_repairs",
@@ -168,6 +229,9 @@ const DEFAULT_STEPS: ReadonlyArray<{
     actionLabel: "Repairs Done",
     branchColor: null,
     phaseActionLabels: null,
+    stepOutcomes: null,
+    branchType: null,
+    rejoinAtStep: null,
   },
   {
     key: "qa_final_check",
@@ -178,6 +242,9 @@ const DEFAULT_STEPS: ReadonlyArray<{
     actionLabel: "Final Check Done",
     branchColor: null,
     phaseActionLabels: null,
+    stepOutcomes: null,
+    branchType: null,
+    rejoinAtStep: null,
   },
   {
     key: "book_3rd_party_inspections",
@@ -188,6 +255,9 @@ const DEFAULT_STEPS: ReadonlyArray<{
     actionLabel: "Inspections Booked",
     branchColor: null,
     phaseActionLabels: null,
+    stepOutcomes: null,
+    branchType: null,
+    rejoinAtStep: null,
   },
   {
     key: "qc_batch_certs",
@@ -198,6 +268,9 @@ const DEFAULT_STEPS: ReadonlyArray<{
     actionLabel: "Certs Done",
     branchColor: "#3b82f6",
     phaseActionLabels: null,
+    stepOutcomes: null,
+    branchType: null,
+    rejoinAtStep: null,
   },
   {
     key: "contact_customer_collection",
@@ -208,6 +281,9 @@ const DEFAULT_STEPS: ReadonlyArray<{
     actionLabel: "Customer Called",
     branchColor: null,
     phaseActionLabels: null,
+    stepOutcomes: null,
+    branchType: null,
+    rejoinAtStep: null,
   },
   {
     key: "job_file_review",
@@ -218,6 +294,9 @@ const DEFAULT_STEPS: ReadonlyArray<{
     actionLabel: null,
     branchColor: null,
     phaseActionLabels: null,
+    stepOutcomes: null,
+    branchType: null,
+    rejoinAtStep: null,
   },
   {
     key: "file_sign_off",
@@ -228,6 +307,9 @@ const DEFAULT_STEPS: ReadonlyArray<{
     actionLabel: "File Sign Off",
     branchColor: null,
     phaseActionLabels: null,
+    stepOutcomes: null,
+    branchType: null,
+    rejoinAtStep: null,
   },
 ];
 
@@ -299,6 +381,7 @@ export class WorkflowStepConfigService {
         actionLabel: step.actionLabel,
         branchColor: step.branchColor,
         phaseActionLabels: step.phaseActionLabels,
+        stepOutcomes: step.stepOutcomes,
       }),
     );
 
@@ -555,6 +638,42 @@ export class WorkflowStepConfigService {
     phaseActionLabels: Record<string, string> | null,
   ): Promise<void> {
     const result = await this.repo.update({ companyId, key: stepKey }, { phaseActionLabels });
+
+    if (result.affected === 0) {
+      throw new NotFoundException(`Step "${stepKey}" not found for this company`);
+    }
+  }
+
+  async updateStepOutcomes(
+    companyId: number,
+    stepKey: string,
+    stepOutcomes: StepOutcome[] | null,
+  ): Promise<void> {
+    const result = await this.repo.update({ companyId, key: stepKey }, { stepOutcomes });
+
+    if (result.affected === 0) {
+      throw new NotFoundException(`Step "${stepKey}" not found for this company`);
+    }
+  }
+
+  async updateBranchType(
+    companyId: number,
+    stepKey: string,
+    branchType: "loop" | "connect" | null,
+  ): Promise<void> {
+    const result = await this.repo.update({ companyId, key: stepKey }, { branchType });
+
+    if (result.affected === 0) {
+      throw new NotFoundException(`Step "${stepKey}" not found for this company`);
+    }
+  }
+
+  async updateRejoinAtStep(
+    companyId: number,
+    stepKey: string,
+    rejoinAtStep: string | null,
+  ): Promise<void> {
+    const result = await this.repo.update({ companyId, key: stepKey }, { rejoinAtStep });
 
     if (result.affected === 0) {
       throw new NotFoundException(`Step "${stepKey}" not found for this company`);

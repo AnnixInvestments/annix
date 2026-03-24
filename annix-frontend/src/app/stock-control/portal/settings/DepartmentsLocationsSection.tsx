@@ -158,14 +158,15 @@ export function DepartmentsLocationsSection({
         Departments & Locations
       </button>
       {collapsed ? null : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
           <div>
-            <h3 className="text-sm font-semibold text-gray-900 mb-2">Departments</h3>
-            <p className="text-sm text-gray-500 mb-4">
-              Manage departments that can be assigned to staff members.
-            </p>
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-xs font-semibold text-gray-900 uppercase tracking-wide">
+                Departments
+              </h3>
+            </div>
 
-            <div className="flex gap-2 mb-4">
+            <div className="flex gap-1.5 mb-2">
               <input
                 type="text"
                 placeholder="New department name"
@@ -177,30 +178,30 @@ export function DepartmentsLocationsSection({
                 onKeyDown={(e) => {
                   if (e.key === "Enter") handleAddDepartment();
                 }}
-                className="flex-1 px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm focus:outline-none focus:ring-teal-500 focus:border-teal-500"
+                className="flex-1 px-2 py-1 border border-gray-300 rounded text-xs focus:outline-none focus:ring-teal-500 focus:border-teal-500"
               />
               <button
                 type="button"
                 onClick={handleAddDepartment}
                 disabled={!newDepartmentName.trim()}
-                className="px-4 py-2 bg-teal-600 text-white text-sm font-medium rounded-md hover:bg-teal-700 disabled:opacity-50 transition-colors"
+                className="px-2.5 py-1 bg-teal-600 text-white text-xs font-medium rounded hover:bg-teal-700 disabled:opacity-50 transition-colors"
               >
                 Add
               </button>
             </div>
 
-            {departmentError && <p className="text-sm text-red-600 mb-4">{departmentError}</p>}
+            {departmentError && <p className="text-xs text-red-600 mb-1">{departmentError}</p>}
 
             {departmentsLoading ? (
-              <div className="text-center py-4 text-gray-500">Loading departments...</div>
+              <div className="text-center py-2 text-xs text-gray-500">Loading...</div>
             ) : departments.length === 0 ? (
-              <div className="text-center py-4 text-gray-500">No departments yet</div>
+              <div className="text-center py-2 text-xs text-gray-500">No departments yet</div>
             ) : (
-              <div className="space-y-2">
+              <div className="divide-y divide-gray-100 border border-gray-200 rounded">
                 {departments.map((dept) => (
                   <div
                     key={dept.id}
-                    className="flex items-center justify-between p-3 rounded-lg border border-gray-200 bg-gray-50"
+                    className="flex items-center justify-between px-2.5 py-1.5 bg-gray-50/50 hover:bg-gray-50"
                   >
                     {editingDepartmentId === dept.id ? (
                       <input
@@ -212,25 +213,25 @@ export function DepartmentsLocationsSection({
                           if (e.key === "Escape") setEditingDepartmentId(null);
                         }}
                         autoFocus
-                        className="flex-1 px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-teal-500 focus:border-teal-500"
+                        className="flex-1 px-1.5 py-0.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-teal-500 focus:border-teal-500"
                       />
                     ) : (
-                      <span className="text-sm text-gray-900">{dept.name}</span>
+                      <span className="text-xs text-gray-900">{dept.name}</span>
                     )}
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5">
                       {editingDepartmentId === dept.id ? (
                         <>
                           <button
                             type="button"
                             onClick={() => handleUpdateDepartment(dept.id)}
-                            className="text-xs font-medium text-teal-600 hover:text-teal-800"
+                            className="text-[10px] font-medium text-teal-600 hover:text-teal-800"
                           >
                             Save
                           </button>
                           <button
                             type="button"
                             onClick={() => setEditingDepartmentId(null)}
-                            className="text-xs font-medium text-gray-600 hover:text-gray-800"
+                            className="text-[10px] font-medium text-gray-500 hover:text-gray-700"
                           >
                             Cancel
                           </button>
@@ -243,14 +244,14 @@ export function DepartmentsLocationsSection({
                               setEditingDepartmentId(dept.id);
                               setEditingDepartmentName(dept.name);
                             }}
-                            className="text-xs font-medium text-teal-600 hover:text-teal-800"
+                            className="text-[10px] font-medium text-teal-600 hover:text-teal-800"
                           >
                             Edit
                           </button>
                           <button
                             type="button"
                             onClick={() => handleDeleteDepartment(dept.id)}
-                            className="text-xs font-medium text-red-600 hover:text-red-800"
+                            className="text-[10px] font-medium text-red-600 hover:text-red-800"
                           >
                             Delete
                           </button>
@@ -264,21 +265,22 @@ export function DepartmentsLocationsSection({
           </div>
 
           <div>
-            <h3 className="text-sm font-semibold text-gray-900 mb-2">Locations</h3>
-            <p className="text-sm text-gray-500 mb-4">
-              Manage storage locations for inventory items.
-            </p>
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-xs font-semibold text-gray-900 uppercase tracking-wide">
+                Locations
+              </h3>
+            </div>
 
-            <div className="space-y-2 mb-4">
+            <div className="flex gap-1.5 mb-2">
               <input
                 type="text"
-                placeholder="New location name"
+                placeholder="Location name"
                 value={newLocationName}
                 onChange={(e) => {
                   setNewLocationName(e.target.value);
                   setLocationError("");
                 }}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm focus:outline-none focus:ring-teal-500 focus:border-teal-500"
+                className="flex-1 px-2 py-1 border border-gray-300 rounded text-xs focus:outline-none focus:ring-teal-500 focus:border-teal-500"
               />
               <input
                 type="text"
@@ -288,74 +290,76 @@ export function DepartmentsLocationsSection({
                 onKeyDown={(e) => {
                   if (e.key === "Enter") handleAddLocation();
                 }}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm text-sm focus:outline-none focus:ring-teal-500 focus:border-teal-500"
+                className="flex-1 px-2 py-1 border border-gray-300 rounded text-xs focus:outline-none focus:ring-teal-500 focus:border-teal-500"
               />
               <button
                 type="button"
                 onClick={handleAddLocation}
                 disabled={!newLocationName.trim()}
-                className="px-4 py-2 bg-teal-600 text-white text-sm font-medium rounded-md hover:bg-teal-700 disabled:opacity-50 transition-colors"
+                className="px-2.5 py-1 bg-teal-600 text-white text-xs font-medium rounded hover:bg-teal-700 disabled:opacity-50 transition-colors"
               >
-                Add Location
+                Add
               </button>
             </div>
 
-            {locationError && <p className="text-sm text-red-600 mb-4">{locationError}</p>}
+            {locationError && <p className="text-xs text-red-600 mb-1">{locationError}</p>}
 
             {locationsLoading ? (
-              <div className="text-center py-4 text-gray-500">Loading locations...</div>
+              <div className="text-center py-2 text-xs text-gray-500">Loading...</div>
             ) : locations.length === 0 ? (
-              <div className="text-center py-4 text-gray-500">No locations yet</div>
+              <div className="text-center py-2 text-xs text-gray-500">No locations yet</div>
             ) : (
-              <div className="space-y-2">
+              <div className="divide-y divide-gray-100 border border-gray-200 rounded">
                 {locations.map((loc) => (
                   <div
                     key={loc.id}
-                    className="flex items-center justify-between p-3 rounded-lg border border-gray-200 bg-gray-50"
+                    className="flex items-center justify-between px-2.5 py-1.5 bg-gray-50/50 hover:bg-gray-50"
                   >
                     {editingLocationId === loc.id ? (
-                      <div className="flex-1 space-y-2 mr-4">
+                      <div className="flex-1 flex gap-1.5 mr-2">
                         <input
                           type="text"
                           value={editingLocationName}
                           onChange={(e) => setEditingLocationName(e.target.value)}
                           autoFocus
-                          className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-teal-500 focus:border-teal-500"
+                          className="flex-1 px-1.5 py-0.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-teal-500 focus:border-teal-500"
                         />
                         <input
                           type="text"
                           value={editingLocationDescription}
                           onChange={(e) => setEditingLocationDescription(e.target.value)}
-                          placeholder="Description (optional)"
+                          placeholder="Description"
                           onKeyDown={(e) => {
                             if (e.key === "Enter") handleUpdateLocation(loc.id);
                             if (e.key === "Escape") setEditingLocationId(null);
                           }}
-                          className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-teal-500 focus:border-teal-500"
+                          className="flex-1 px-1.5 py-0.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-teal-500 focus:border-teal-500"
                         />
                       </div>
                     ) : (
                       <div className="flex-1">
-                        <span className="text-sm text-gray-900">{loc.name}</span>
+                        <span className="text-xs text-gray-900">{loc.name}</span>
                         {loc.description && (
-                          <span className="ml-2 text-xs text-gray-500">{loc.description}</span>
+                          <span className="ml-1.5 text-[10px] text-gray-500">
+                            {loc.description}
+                          </span>
                         )}
                       </div>
                     )}
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5">
                       {editingLocationId === loc.id ? (
                         <>
                           <button
                             type="button"
                             onClick={() => handleUpdateLocation(loc.id)}
-                            className="text-xs font-medium text-teal-600 hover:text-teal-800"
+                            className="text-[10px] font-medium text-teal-600 hover:text-teal-800"
                           >
                             Save
                           </button>
                           <button
                             type="button"
                             onClick={() => setEditingLocationId(null)}
-                            className="text-xs font-medium text-gray-600 hover:text-gray-800"
+                            className="text-[10px] font-medium text-gray-500 hover:text-gray-700"
                           >
                             Cancel
                           </button>
@@ -369,14 +373,14 @@ export function DepartmentsLocationsSection({
                               setEditingLocationName(loc.name);
                               setEditingLocationDescription(loc.description ?? "");
                             }}
-                            className="text-xs font-medium text-teal-600 hover:text-teal-800"
+                            className="text-[10px] font-medium text-teal-600 hover:text-teal-800"
                           >
                             Edit
                           </button>
                           <button
                             type="button"
                             onClick={() => handleDeleteLocation(loc.id)}
-                            className="text-xs font-medium text-red-600 hover:text-red-800"
+                            className="text-[10px] font-medium text-red-600 hover:text-red-800"
                           >
                             Delete
                           </button>
