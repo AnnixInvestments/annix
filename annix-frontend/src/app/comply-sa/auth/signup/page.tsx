@@ -31,6 +31,8 @@ interface FormData {
   password: string;
   confirmPassword: string;
   termsAccepted: boolean;
+  privacyAccepted: boolean;
+  aiProcessingAccepted: boolean;
   entityType: EntityType | null;
   idNumber: string;
   usePassport: boolean;
@@ -59,6 +61,8 @@ const INITIAL_FORM: FormData = {
   password: "",
   confirmPassword: "",
   termsAccepted: false,
+  privacyAccepted: false,
+  aiProcessingAccepted: false,
   entityType: null,
   idNumber: "",
   usePassport: false,
@@ -84,6 +88,14 @@ const INITIAL_FORM: FormData = {
 const STEP_LABELS = ["Account Basics", "Entity Details", "Industry & Focus"];
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+const PASSWORD_RULES = [
+  { test: (p: string) => p.length >= 8, label: "At least 8 characters" },
+  { test: (p: string) => /[A-Z]/.test(p), label: "One uppercase letter" },
+  { test: (p: string) => /[a-z]/.test(p), label: "One lowercase letter" },
+  { test: (p: string) => /\d/.test(p), label: "One digit" },
+  { test: (p: string) => /[^A-Za-z0-9]/.test(p), label: "One special character" },
+];
 
 function validateSaIdNumber(id: string): string | null {
   if (!/^\d{13}$/.test(id)) {
@@ -603,8 +615,11 @@ export default function SignupPage() {
     }
     if (!form.password) {
       errs.password = "Password is required";
-    } else if (form.password.length < 8) {
-      errs.password = "Password must be at least 8 characters";
+    } else {
+      const failedRules = PASSWORD_RULES.filter((rule) => !rule.test(form.password));
+      if (failedRules.length > 0) {
+        errs.password = `Missing: ${failedRules.map((r) => r.label.toLowerCase()).join(", ")}`;
+      }
     }
     if (!form.confirmPassword) {
       errs.confirmPassword = "Please confirm your password";
@@ -613,6 +628,12 @@ export default function SignupPage() {
     }
     if (!form.termsAccepted) {
       errs.termsAccepted = "You must accept the Terms and Conditions";
+    }
+    if (!form.privacyAccepted) {
+      errs.privacyAccepted = "You must consent to data processing";
+    }
+    if (!form.aiProcessingAccepted) {
+      errs.aiProcessingAccepted = "You must acknowledge AI processing";
     }
     return errs;
   }
@@ -881,6 +902,18 @@ export default function SignupPage() {
                   {fieldErrors.password && (
                     <p className="text-red-400 text-xs mt-1">{fieldErrors.password}</p>
                   )}
+                  {form.password.length > 0 && (
+                    <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1.5">
+                      {PASSWORD_RULES.map((rule) => (
+                        <span
+                          key={rule.label}
+                          className={`text-[10px] ${rule.test(form.password) ? "text-teal-400" : "text-slate-500"}`}
+                        >
+                          {rule.test(form.password) ? "\u2713" : "\u2022"} {rule.label}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 <div>
@@ -923,30 +956,77 @@ export default function SignupPage() {
                     Terms and Conditions
                   </label>
                   <TermsAndConditions onScrolledToBottom={handleScrolledToBottom} />
-                  <label
-                    className={`flex items-start gap-2.5 mt-3 cursor-pointer ${!hasScrolledTerms ? "opacity-50 pointer-events-none" : ""}`}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={form.termsAccepted}
-                      onChange={(e) => updateField("termsAccepted", e.target.checked)}
-                      disabled={!hasScrolledTerms}
-                      className="mt-0.5 h-4 w-4 rounded border-slate-600 bg-slate-900 text-teal-500 focus:ring-teal-500 focus:ring-offset-0 accent-teal-500"
-                    />
-                    <span className="text-xs text-slate-300 leading-relaxed">
-                      I agree to the{" "}
-                      <strong className="text-teal-400">Terms of Service and Privacy Policy</strong>{" "}
-                      (POPIA compliant)
-                    </span>
-                  </label>
                   {!hasScrolledTerms && (
                     <p className="text-[11px] text-slate-500 mt-1.5">
                       Please scroll through the full Terms and Conditions above to continue.
                     </p>
                   )}
-                  {fieldErrors.termsAccepted && (
-                    <p className="text-red-400 text-xs mt-1">{fieldErrors.termsAccepted}</p>
-                  )}
+
+                  <div
+                    className={`space-y-2.5 mt-3 ${!hasScrolledTerms ? "opacity-50 pointer-events-none" : ""}`}
+                  >
+                    <label className="flex items-start gap-2.5 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={form.termsAccepted}
+                        onChange={(e) => updateField("termsAccepted", e.target.checked)}
+                        disabled={!hasScrolledTerms}
+                        className="mt-0.5 h-4 w-4 rounded border-slate-600 bg-slate-900 text-teal-500 focus:ring-teal-500 focus:ring-offset-0 accent-teal-500"
+                      />
+                      <span className="text-xs text-slate-300 leading-relaxed">
+                        I agree to the{" "}
+                        <Link
+                          href="/comply-sa/privacy"
+                          target="_blank"
+                          className="text-teal-400 underline hover:text-teal-300"
+                        >
+                          Terms of Service and Privacy Policy
+                        </Link>
+                      </span>
+                    </label>
+                    {fieldErrors.termsAccepted && (
+                      <p className="text-red-400 text-xs ml-6">{fieldErrors.termsAccepted}</p>
+                    )}
+
+                    <label className="flex items-start gap-2.5 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={form.privacyAccepted}
+                        onChange={(e) => updateField("privacyAccepted", e.target.checked)}
+                        disabled={!hasScrolledTerms}
+                        className="mt-0.5 h-4 w-4 rounded border-slate-600 bg-slate-900 text-teal-500 focus:ring-teal-500 focus:ring-offset-0 accent-teal-500"
+                      />
+                      <span className="text-xs text-slate-300 leading-relaxed">
+                        I consent to the processing of personal and special personal information
+                        (including B-BBEE demographic data) as described in the Privacy Policy, in
+                        accordance with POPIA Sections 11 and 27
+                      </span>
+                    </label>
+                    {fieldErrors.privacyAccepted && (
+                      <p className="text-red-400 text-xs ml-6">{fieldErrors.privacyAccepted}</p>
+                    )}
+
+                    <label className="flex items-start gap-2.5 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={form.aiProcessingAccepted}
+                        onChange={(e) => updateField("aiProcessingAccepted", e.target.checked)}
+                        disabled={!hasScrolledTerms}
+                        className="mt-0.5 h-4 w-4 rounded border-slate-600 bg-slate-900 text-teal-500 focus:ring-teal-500 focus:ring-offset-0 accent-teal-500"
+                      />
+                      <span className="text-xs text-slate-300 leading-relaxed">
+                        I acknowledge that compliance Q&A queries may be processed by third-party AI
+                        providers (including Google Gemini) and that AI-generated responses are not
+                        professional advice
+                      </span>
+                    </label>
+                    {fieldErrors.aiProcessingAccepted && (
+                      <p className="text-red-400 text-xs ml-6">
+                        {fieldErrors.aiProcessingAccepted}
+                      </p>
+                    )}
+                  </div>
+
                   <p className="text-[11px] text-slate-500 mt-2">
                     We process your information in line with the Protection of Personal Information
                     Act (POPIA) to deliver accurate compliance guidance only.
@@ -1211,10 +1291,10 @@ export default function SignupPage() {
                         />
                         <button
                           type="button"
-                          className="px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-xs text-slate-400 hover:text-teal-400 hover:border-teal-500 transition-colors whitespace-nowrap"
-                          title="Coming soon"
+                          disabled
+                          className="px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-xs text-slate-500 cursor-not-allowed whitespace-nowrap opacity-60"
                         >
-                          Verify with CIPC
+                          Verify &middot; Coming soon
                         </button>
                       </div>
                       <p className="text-[11px] text-slate-500 mt-1">Format: YYYY/NNNNNN/NN</p>
