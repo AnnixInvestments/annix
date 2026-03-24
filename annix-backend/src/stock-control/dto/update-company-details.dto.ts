@@ -85,4 +85,8 @@ export class UpdateCompanyDetailsDto {
   @IsOptional()
   @IsBoolean()
   messagingEnabled?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  staffLeaveEnabled?: boolean;
 }

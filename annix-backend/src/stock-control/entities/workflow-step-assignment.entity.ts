@@ -37,6 +37,13 @@ export class WorkflowStepAssignment {
   @Column({ name: "is_primary", type: "boolean", default: false })
   isPrimary: boolean;
 
+  @ManyToOne(() => StockControlUser, { nullable: true, onDelete: "SET NULL" })
+  @JoinColumn({ name: "secondary_user_id" })
+  secondaryUser: StockControlUser | null;
+
+  @Column({ name: "secondary_user_id", nullable: true })
+  secondaryUserId: number | null;
+
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;
 

@@ -13,7 +13,7 @@ export class CreateStockReturns1807000000071 implements MigrationInterface {
         litres_returned DECIMAL(10,2) NOT NULL,
         cost_reduction DECIMAL(12,2) NOT NULL,
         returned_by_name VARCHAR(255) NULL,
-        returned_by_staff_id INTEGER NULL REFERENCES staff_members(id) ON DELETE SET NULL,
+        returned_by_staff_id INTEGER NULL REFERENCES stock_control_staff_members(id) ON DELETE SET NULL,
         notes TEXT NULL,
         created_at TIMESTAMP DEFAULT now()
       )

@@ -72,6 +72,11 @@ function PageAccessGuard({ children }: { children: React.ReactNode }) {
       return;
     }
 
+    if (matchingItem.requiresStaffLeave && !profile?.staffLeaveEnabled) {
+      router.replace("/stock-control/portal/dashboard");
+      return;
+    }
+
     if (!hasAccess) {
       router.replace("/stock-control/portal/dashboard");
     }

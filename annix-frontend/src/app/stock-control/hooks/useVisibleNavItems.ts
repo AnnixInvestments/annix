@@ -19,6 +19,7 @@ export function useVisibleNavItems(group: string): NavItemDef[] {
       if (!allowedRoles.includes(effectiveRole)) return false;
 
       if (item.requiresQc && !profile?.qcEnabled && effectiveRole !== "admin") return false;
+      if (item.requiresStaffLeave && !profile?.staffLeaveEnabled) return false;
 
       return true;
     });

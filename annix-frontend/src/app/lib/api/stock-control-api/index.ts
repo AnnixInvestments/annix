@@ -16,6 +16,7 @@ import "./qcMethods";
 import "./positectorMethods";
 import "./miscMethods";
 import "./inspectionMethods";
+import "./leaveMethods";
 import "./reconciliationMethods";
 
 import { StockControlApiClient } from "./base";

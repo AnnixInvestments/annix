@@ -85,6 +85,7 @@ declare module "./base" {
       step: string,
       userIds: number[],
       primaryUserId?: number,
+      secondaryUserId?: number | null,
     ): Promise<{ success: boolean }>;
     notificationRecipients(): Promise<StepNotificationRecipients[]>;
     updateNotificationRecipients(step: string, emails: string[]): Promise<{ success: boolean }>;
@@ -338,10 +339,10 @@ proto.eligibleUsersForStep = async function (step) {
   );
 };
 
-proto.updateWorkflowAssignments = async function (step, userIds, primaryUserId) {
+proto.updateWorkflowAssignments = async function (step, userIds, primaryUserId, secondaryUserId) {
   return this.request(`/stock-control/workflow/assignments/${encodeURIComponent(step)}`, {
     method: "PUT",
-    body: JSON.stringify({ userIds, primaryUserId }),
+    body: JSON.stringify({ userIds, primaryUserId, secondaryUserId }),
   });
 };
 

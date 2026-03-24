@@ -9,7 +9,7 @@ import { StockItem } from "../entities/stock-item.entity";
 import { MovementType, ReferenceType, StockMovement } from "../entities/stock-movement.entity";
 import { StockReturn } from "../entities/stock-return.entity";
 
-interface AllocationPlanItem {
+export interface AllocationPlanItem {
   product: string;
   stockItemId: number;
   stockItemName: string;
@@ -23,7 +23,7 @@ interface AllocationPlanItem {
   leftoverSuggestion: LeftoverSuggestion | null;
 }
 
-interface LeftoverSuggestion {
+export interface LeftoverSuggestion {
   stockItemId: number;
   stockItemName: string;
   availableLitres: number;

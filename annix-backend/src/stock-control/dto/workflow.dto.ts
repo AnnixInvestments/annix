@@ -40,6 +40,11 @@ export class UpdateStepAssignmentsDto {
   @IsOptional()
   @IsNumber()
   primaryUserId?: number;
+
+  @ApiPropertyOptional({ description: "Secondary user ID for leave coverage" })
+  @IsOptional()
+  @IsNumber()
+  secondaryUserId?: number | null;
 }
 
 export class UpdateNotificationRecipientsDto {

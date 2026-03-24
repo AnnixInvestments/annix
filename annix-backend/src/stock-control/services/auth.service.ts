@@ -343,6 +343,7 @@ export class StockControlAuthService {
       structuralSteelLossFactorPct: user.company?.structuralSteelLossFactorPct ?? 30,
       qcEnabled: user.company?.qcEnabled ?? false,
       messagingEnabled: user.company?.messagingEnabled ?? false,
+      staffLeaveEnabled: user.company?.staffLeaveEnabled ?? false,
       linkedStaffId: user.linkedStaffId ?? null,
       createdAt: user.createdAt,
       companyUpdatedAt: user.company?.updatedAt ?? null,
@@ -460,6 +461,7 @@ export class StockControlAuthService {
       company.structuralSteelLossFactorPct = dto.structuralSteelLossFactorPct;
     if (dto.qcEnabled != null) company.qcEnabled = dto.qcEnabled;
     if (dto.messagingEnabled != null) company.messagingEnabled = dto.messagingEnabled;
+    if (dto.staffLeaveEnabled != null) company.staffLeaveEnabled = dto.staffLeaveEnabled;
 
     await this.companyRepo.save(company);
 

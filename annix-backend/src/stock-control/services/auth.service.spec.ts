@@ -134,6 +134,7 @@ describe("StockControlAuthService", () => {
       structuralSteelLossFactorPct: 30,
       qcEnabled: false,
       messagingEnabled: false,
+      staffLeaveEnabled: false,
       sageUsername: null,
       sagePassEncrypted: null,
       sageCompanyId: null,

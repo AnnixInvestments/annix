@@ -2,10 +2,12 @@ import { Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { InjectRepository } from "@nestjs/typeorm";
 import { IsNull, Repository } from "typeorm";
-import { now } from "../../lib/datetime";
+import { DateTime, now } from "../../lib/datetime";
+import { StaffLeaveService } from "../../staff-leave/services/staff-leave.service";
 import { CpoCalloffRecord } from "../entities/cpo-calloff-record.entity";
 import { CustomerPurchaseOrder } from "../entities/customer-purchase-order.entity";
 import { JobCard } from "../entities/job-card.entity";
+import { StockControlCompany } from "../entities/stock-control-company.entity";
 import { StockControlRole, StockControlUser } from "../entities/stock-control-user.entity";
 import {
   NotificationActionType,
@@ -31,10 +33,13 @@ export class WorkflowNotificationService {
     private readonly userRepo: Repository<StockControlUser>,
     @InjectRepository(JobCard)
     private readonly jobCardRepo: Repository<JobCard>,
+    @InjectRepository(StockControlCompany)
+    private readonly companyRepo: Repository<StockControlCompany>,
     private readonly companyEmailService: CompanyEmailService,
     private readonly configService: ConfigService,
     private readonly assignmentService: WorkflowAssignmentService,
     private readonly webPushService: WebPushService,
+    private readonly staffLeaveService: StaffLeaveService,
   ) {}
 
   async notifyApprovalRequired(
@@ -52,7 +57,8 @@ export class WorkflowNotificationService {
       return;
     }
 
-    const users = await this.assignmentService.usersForStep(companyId, step);
+    const rawUsers = await this.assignmentService.usersForStep(companyId, step);
+    const users = await this.applyLeaveAwareDelegation(companyId, step, rawUsers);
 
     const frontendUrl = this.configService.get<string>("FRONTEND_URL") || "http://localhost:3000";
     const actionUrl = `${frontendUrl}/stock-control/portal/job-cards/${jobCardId}`;
@@ -598,6 +604,74 @@ export class WorkflowNotificationService {
         ),
       ),
     );
+  }
+
+  private async applyLeaveAwareDelegation(
+    companyId: number,
+    step: string,
+    users: StockControlUser[],
+  ): Promise<StockControlUser[]> {
+    const company = await this.companyRepo.findOne({ where: { id: companyId } });
+    if (!company?.staffLeaveEnabled) {
+      return users;
+    }
+
+    const today = DateTime.now();
+    const assignments = await this.assignmentService.assignmentsForStep(companyId, step);
+    const primaryAssignment = assignments.find((a) => a.isPrimary);
+
+    if (!primaryAssignment) {
+      return users;
+    }
+
+    const primaryOnLeave = await this.staffLeaveService.activeLeaveForUser(
+      companyId,
+      primaryAssignment.userId,
+      today,
+    );
+
+    if (!primaryOnLeave) {
+      return users;
+    }
+
+    const secondaryUser = await this.assignmentService.secondaryUserForStep(companyId, step);
+
+    if (!secondaryUser) {
+      this.logger.warn(
+        `Primary user ${primaryAssignment.userId} is on leave for step "${step}" but no secondary user is configured`,
+      );
+      return users.filter((u) => u.id !== primaryAssignment.userId);
+    }
+
+    const secondaryOnLeave = await this.staffLeaveService.activeLeaveForUser(
+      companyId,
+      secondaryUser.id,
+      today,
+    );
+
+    if (secondaryOnLeave) {
+      this.logger.warn(
+        `Both primary (${primaryAssignment.userId}) and secondary (${secondaryUser.id}) users are on leave for step "${step}", falling back to remaining assigned users`,
+      );
+      return users.filter((u) => u.id !== primaryAssignment.userId);
+    }
+
+    this.logger.log(
+      `Delegating step "${step}" notifications from primary user ${primaryAssignment.userId} (on leave) to secondary user ${secondaryUser.id}`,
+    );
+
+    const delegatedUsers = users
+      .filter((u) => u.id !== primaryAssignment.userId)
+      .concat([secondaryUser]);
+
+    const uniqueUserIds = new Set<number>();
+    return delegatedUsers.filter((u) => {
+      if (uniqueUserIds.has(u.id)) {
+        return false;
+      }
+      uniqueUserIds.add(u.id);
+      return true;
+    });
   }
 
   private stepDisplayName(step: string): string {

@@ -157,19 +157,27 @@ export function WorkflowConfigurationSection({ teamMembers }: WorkflowConfigurat
     const assignment = assignmentsByStep[step];
     const currentIds = assignment?.userIds || [];
     const currentPrimary = assignment?.primaryUserId || null;
+    const currentSecondary = assignment?.secondaryUserId || null;
 
     const isCurrentlyAssigned = currentIds.includes(userId);
     const newIds = isCurrentlyAssigned
       ? currentIds.filter((id) => id !== userId)
       : [...currentIds, userId];
     const newPrimary = isCurrentlyAssigned && currentPrimary === userId ? null : currentPrimary;
+    const newSecondary =
+      isCurrentlyAssigned && currentSecondary === userId ? null : currentSecondary;
 
     setSaving(true);
     setError("");
     setSuccess(false);
 
     try {
-      await stockControlApiClient.updateWorkflowAssignments(step, newIds, newPrimary ?? undefined);
+      await stockControlApiClient.updateWorkflowAssignments(
+        step,
+        newIds,
+        newPrimary ?? undefined,
+        newSecondary,
+      );
       await loadData();
       setSuccess(true);
     } catch (e) {
@@ -183,17 +191,43 @@ export function WorkflowConfigurationSection({ teamMembers }: WorkflowConfigurat
     const assignment = assignmentsByStep[step];
     const currentIds = assignment?.userIds || [];
     const newIds = currentIds.includes(userId) ? currentIds : [...currentIds, userId];
+    const currentSecondary = assignment?.secondaryUserId || null;
 
     setSaving(true);
     setError("");
     setSuccess(false);
 
     try {
-      await stockControlApiClient.updateWorkflowAssignments(step, newIds, userId);
+      await stockControlApiClient.updateWorkflowAssignments(step, newIds, userId, currentSecondary);
       await loadData();
       setSuccess(true);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to set primary user");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleSetSecondary = async (userId: number | null, step: string) => {
+    const assignment = assignmentsByStep[step];
+    const currentIds = assignment?.userIds || [];
+    const currentPrimary = assignment?.primaryUserId || null;
+
+    setSaving(true);
+    setError("");
+    setSuccess(false);
+
+    try {
+      await stockControlApiClient.updateWorkflowAssignments(
+        step,
+        currentIds,
+        currentPrimary ?? undefined,
+        userId,
+      );
+      await loadData();
+      setSuccess(true);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to set secondary user");
     } finally {
       setSaving(false);
     }
@@ -426,65 +460,90 @@ export function WorkflowConfigurationSection({ teamMembers }: WorkflowConfigurat
     const assignment = assignmentsByStep[stepKey];
     const assignedUsers = assignment?.users || [];
     const primaryId = assignment?.primaryUserId || null;
+    const secondaryId = assignment?.secondaryUserId || null;
 
     return (
-      <div className="flex flex-wrap gap-1.5 mt-2">
-        {assignedUsers.map((u) => (
-          <span
-            key={u.id}
-            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium cursor-pointer transition-colors ${
-              u.id === primaryId
-                ? "bg-teal-600 text-white"
-                : "bg-teal-100 text-teal-700 hover:bg-teal-200"
-            }`}
-            onClick={() => handleToggleAssignment(u.id, stepKey)}
-            onContextMenu={(e) => {
-              e.preventDefault();
-              handleSetPrimary(u.id, stepKey);
-            }}
-            title={
-              u.id === primaryId
-                ? `${u.name} (primary) - click to unassign, right-click to change primary`
-                : `${u.name} - click to unassign, right-click to set as primary`
-            }
-          >
-            {u.id === primaryId && (
-              <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.563.563 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.386a.562.562 0 00-.182-.557l-4.204-3.602a.563.563 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z" />
-              </svg>
-            )}
-            {u.name}
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                handleToggleAssignment(u.id, stepKey);
+      <div className="space-y-2 mt-2">
+        <div className="flex flex-wrap gap-1.5">
+          {assignedUsers.map((u) => (
+            <span
+              key={u.id}
+              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium cursor-pointer transition-colors ${
+                u.id === primaryId
+                  ? "bg-teal-600 text-white"
+                  : "bg-teal-100 text-teal-700 hover:bg-teal-200"
+              }`}
+              onClick={() => handleToggleAssignment(u.id, stepKey)}
+              onContextMenu={(e) => {
+                e.preventDefault();
+                handleSetPrimary(u.id, stepKey);
               }}
-              className={`ml-0.5 ${u.id === primaryId ? "text-teal-200 hover:text-white" : "text-teal-400 hover:text-teal-700"}`}
+              title={
+                u.id === primaryId
+                  ? `${u.name} (primary) - click to unassign, right-click to change primary`
+                  : `${u.name} - click to unassign, right-click to set as primary`
+              }
             >
-              &times;
-            </button>
-          </span>
-        ))}
-        <select
-          value=""
-          onChange={(e) => {
-            if (e.target.value) {
-              handleToggleAssignment(Number(e.target.value), stepKey);
-            }
-          }}
-          disabled={saving}
-          className="text-xs border border-dashed border-gray-300 rounded-full px-2 py-0.5 text-gray-400 hover:border-teal-400 hover:text-teal-600 focus:ring-teal-500 focus:border-teal-500 cursor-pointer bg-transparent"
-        >
-          <option value="">+ Assign</option>
-          {matrixUsers
-            .filter((u) => !assignedUsers.some((au) => au.id === u.id))
-            .map((u) => (
-              <option key={u.id} value={u.id}>
-                {u.name} ({roleLabel(u.role)})
-              </option>
-            ))}
-        </select>
+              {u.id === primaryId && (
+                <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.563.563 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.386a.562.562 0 00-.182-.557l-4.204-3.602a.563.563 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z" />
+                </svg>
+              )}
+              {u.name}
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleToggleAssignment(u.id, stepKey);
+                }}
+                className={`ml-0.5 ${u.id === primaryId ? "text-teal-200 hover:text-white" : "text-teal-400 hover:text-teal-700"}`}
+              >
+                &times;
+              </button>
+            </span>
+          ))}
+          <select
+            value=""
+            onChange={(e) => {
+              if (e.target.value) {
+                handleToggleAssignment(Number(e.target.value), stepKey);
+              }
+            }}
+            disabled={saving}
+            className="text-xs border border-dashed border-gray-300 rounded-full px-2 py-0.5 text-gray-400 hover:border-teal-400 hover:text-teal-600 focus:ring-teal-500 focus:border-teal-500 cursor-pointer bg-transparent"
+          >
+            <option value="">+ Assign</option>
+            {matrixUsers
+              .filter((u) => !assignedUsers.some((au) => au.id === u.id))
+              .map((u) => (
+                <option key={u.id} value={u.id}>
+                  {u.name} ({roleLabel(u.role)})
+                </option>
+              ))}
+          </select>
+        </div>
+        {primaryId && assignedUsers.length > 0 && (
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-gray-500">Secondary (leave cover):</span>
+            <select
+              value={secondaryId || ""}
+              onChange={(e) =>
+                handleSetSecondary(e.target.value ? Number(e.target.value) : null, stepKey)
+              }
+              disabled={saving}
+              className="text-xs border border-gray-200 rounded px-1.5 py-0.5 text-gray-600 focus:ring-teal-500 focus:border-teal-500 bg-white cursor-pointer"
+            >
+              <option value="">None</option>
+              {matrixUsers
+                .filter((u) => u.id !== primaryId)
+                .map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {u.name} ({roleLabel(u.role)})
+                  </option>
+                ))}
+            </select>
+          </div>
+        )}
       </div>
     );
   };
@@ -621,6 +680,9 @@ export function WorkflowConfigurationSection({ teamMembers }: WorkflowConfigurat
     const assignment = assignmentsByStep[step.key];
     const assignedCount = assignment?.userIds?.length || 0;
     const primaryUser = assignment?.users?.find((u) => u.id === assignment.primaryUserId);
+    const secondaryUser = assignment?.secondaryUserId
+      ? matrixUsers.find((u) => u.id === assignment.secondaryUserId)
+      : null;
     const followsStep = String(step["triggerAfterStep" as keyof WorkflowStepConfig] ?? "");
 
     return (
@@ -743,6 +805,7 @@ export function WorkflowConfigurationSection({ teamMembers }: WorkflowConfigurat
                   <span className="text-xs text-gray-500">
                     {assignedCount} {assignedCount === 1 ? "person" : "people"} assigned
                     {primaryUser ? ` · Primary: ${primaryUser.name}` : ""}
+                    {secondaryUser ? ` · Secondary: ${secondaryUser.name}` : ""}
                   </span>
                 ) : (
                   <span className="text-xs text-orange-500">No one assigned</span>

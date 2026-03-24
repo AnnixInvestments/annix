@@ -238,6 +238,7 @@ export class WorkflowController {
       step,
       dto.userIds,
       dto.primaryUserId,
+      dto.secondaryUserId,
     );
     return { success: true };
   }

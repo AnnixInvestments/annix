@@ -136,6 +136,7 @@ export default function CompanyProfilePage() {
   const [structuralSteelLossFactorPct, setStructuralSteelLossFactorPct] = useState(30);
   const [qcEnabled, setQcEnabled] = useState(true);
   const [messagingEnabled, setMessagingEnabled] = useState(false);
+  const [staffLeaveEnabled, setStaffLeaveEnabled] = useState(false);
   const [featuresSaving, setFeaturesSaving] = useState(false);
   const [featuresSuccess, setFeaturesSuccess] = useState(false);
   const [featuresError, setFeaturesError] = useState("");
@@ -217,6 +218,10 @@ export default function CompanyProfilePage() {
       setMessagingEnabled(profile.messagingEnabled);
     }
 
+    if (profile?.staffLeaveEnabled !== undefined) {
+      setStaffLeaveEnabled(profile.staffLeaveEnabled);
+    }
+
     if (profile?.brandingType) {
       setBrandingSelection(profile.brandingType as BrandingSelection);
     }
@@ -292,7 +297,11 @@ export default function CompanyProfilePage() {
     setFeaturesSuccess(false);
 
     try {
-      await stockControlApiClient.updateCompanyDetails({ qcEnabled, messagingEnabled });
+      await stockControlApiClient.updateCompanyDetails({
+        qcEnabled,
+        messagingEnabled,
+        staffLeaveEnabled,
+      });
       setFeaturesSuccess(true);
       await refreshProfile();
     } catch (e) {
@@ -773,6 +782,31 @@ export default function CompanyProfilePage() {
               <span
                 className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
                   messagingEnabled ? "translate-x-5" : "translate-x-0"
+                }`}
+              />
+            </button>
+          </label>
+
+          <label className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-700">Staff Leave Management</p>
+              <p className="text-xs text-gray-500 mt-0.5">
+                Track staff sick days and holidays with automatic WFA task delegation to secondary
+                users
+              </p>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={staffLeaveEnabled}
+              onClick={() => setStaffLeaveEnabled(!staffLeaveEnabled)}
+              className={`relative inline-flex h-6 w-11 flex-shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 ${
+                staffLeaveEnabled ? "bg-teal-600" : "bg-gray-200"
+              }`}
+            >
+              <span
+                className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                  staffLeaveEnabled ? "translate-x-5" : "translate-x-0"
                 }`}
               />
             </button>

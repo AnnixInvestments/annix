@@ -10,6 +10,7 @@ export interface StepAssignment {
   step: string;
   userIds: number[];
   primaryUserId: number | null;
+  secondaryUserId: number | null;
   users: { id: number; name: string; email: string; role: string }[];
 }
 
@@ -52,7 +53,7 @@ export class WorkflowAssignmentService {
       (acc, assignment) => {
         const step = assignment.workflowStep;
         if (!acc[step]) {
-          acc[step] = { userIds: [], primaryUserId: null, users: [] };
+          acc[step] = { userIds: [], primaryUserId: null, secondaryUserId: null, users: [] };
         }
         acc[step].userIds.push(assignment.userId);
         acc[step].users.push({
@@ -63,6 +64,7 @@ export class WorkflowAssignmentService {
         });
         if (assignment.isPrimary) {
           acc[step].primaryUserId = assignment.userId;
+          acc[step].secondaryUserId = assignment.secondaryUserId ?? null;
         }
         return acc;
       },
@@ -71,6 +73,7 @@ export class WorkflowAssignmentService {
         {
           userIds: number[];
           primaryUserId: number | null;
+          secondaryUserId: number | null;
           users: { id: number; name: string; email: string; role: string }[];
         }
       >,
@@ -80,6 +83,7 @@ export class WorkflowAssignmentService {
       step,
       userIds: stepGroups[step]?.userIds || [],
       primaryUserId: stepGroups[step]?.primaryUserId || null,
+      secondaryUserId: stepGroups[step]?.secondaryUserId || null,
       users: stepGroups[step]?.users || [],
     }));
   }
@@ -97,6 +101,7 @@ export class WorkflowAssignmentService {
     step: string,
     userIds: number[],
     primaryUserId?: number,
+    secondaryUserId?: number | null,
   ): Promise<void> {
     await this.assignmentRepo.delete({ companyId, workflowStep: step });
 
@@ -110,11 +115,25 @@ export class WorkflowAssignmentService {
         workflowStep: step,
         userId,
         isPrimary: primaryUserId === userId,
+        secondaryUserId: primaryUserId === userId ? (secondaryUserId ?? null) : null,
       }),
     );
 
     await this.assignmentRepo.save(assignments);
     this.logger.log(`Updated ${step} assignments for company ${companyId}: ${userIds.join(", ")}`);
+  }
+
+  async secondaryUserForStep(companyId: number, step: string): Promise<StockControlUser | null> {
+    const primaryAssignment = await this.assignmentRepo.findOne({
+      where: { companyId, workflowStep: step, isPrimary: true },
+      relations: ["secondaryUser"],
+    });
+
+    if (!primaryAssignment?.secondaryUserId) {
+      return null;
+    }
+
+    return primaryAssignment.secondaryUser;
   }
 
   async usersForStep(companyId: number, step: string): Promise<StockControlUser[]> {
