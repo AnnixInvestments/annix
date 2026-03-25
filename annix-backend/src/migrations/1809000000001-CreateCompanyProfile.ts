@@ -60,28 +60,28 @@ export class CreateCompanyProfile1809000000001 implements MigrationInterface {
         directors
       ) VALUES (
         1,
-        'Annix (Pty) Ltd',
+        'Annix Investments (Pty) Ltd',
         'Annix',
-        '[TO BE CONFIRMED]',
-        '[TO BE CONFIRMED]',
+        '2021/779254/07',
+        '4810317505',
         'Private Company (Pty) Ltd',
-        '[TO BE CONFIRMED]',
-        '[TO BE CONFIRMED]',
+        '14 Flamingo Street',
+        'Ebotse Golf Estate, Benoni',
         'Gauteng',
-        '[TO BE CONFIRMED]',
+        '1501',
         'South Africa',
-        '[TO BE CONFIRMED]',
+        '0720398429',
         'info@annix.co.za',
-        'support@annix.co.za',
+        'admin@annix.co.za',
         'privacy@annix.co.za',
         'https://annix.co.za',
-        '[TO BE CONFIRMED]',
-        'privacy@annix.co.za',
+        'Nicolette Barrett',
+        'nikky@annix.co.za',
         'South Africa',
         'annix.co.za',
         'noreply@annix.co.za',
         'Annix',
-        '[]'
+        '[{"name":"Andrew Barrett","title":"Managing Director","email":"info@annix.co.za"},{"name":"Nicolette Barrett","title":"Director","email":"nikky@annix.co.za"}]'
       )
       ON CONFLICT (id) DO NOTHING
     `);
