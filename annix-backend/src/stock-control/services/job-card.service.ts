@@ -7,7 +7,7 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { DataSource, IsNull, Repository } from "typeorm";
+import { DataSource, IsNull, LessThan, MoreThan, Repository } from "typeorm";
 import { AuditService } from "../../audit/audit.service";
 import { AuditAction } from "../../audit/entities/audit-log.entity";
 import { now } from "../../lib/datetime";
@@ -80,6 +80,38 @@ export class JobCardService {
       throw new NotFoundException("Job card not found");
     }
     return jobCard;
+  }
+
+  async adjacentIds(
+    companyId: number,
+    id: number,
+  ): Promise<{ previousId: number | null; nextId: number | null }> {
+    const current = await this.jobCardRepo.findOne({
+      where: { id, companyId },
+      select: ["id", "createdAt"],
+    });
+    if (!current) {
+      throw new NotFoundException("Job card not found");
+    }
+
+    const baseWhere = { companyId, supersededById: IsNull() };
+
+    const previous = await this.jobCardRepo.findOne({
+      where: { ...baseWhere, createdAt: LessThan(current.createdAt) },
+      order: { createdAt: "DESC" },
+      select: ["id"],
+    });
+
+    const next = await this.jobCardRepo.findOne({
+      where: { ...baseWhere, createdAt: MoreThan(current.createdAt) },
+      order: { createdAt: "ASC" },
+      select: ["id"],
+    });
+
+    return {
+      previousId: previous?.id || null,
+      nextId: next?.id || null,
+    };
   }
 
   async deliveryJobCards(companyId: number, parentJobCardId: number): Promise<JobCard[]> {

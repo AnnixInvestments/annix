@@ -25,6 +25,7 @@ declare module "./base" {
   interface StockControlApiClient {
     jobCards(status?: string): Promise<JobCard[]>;
     jobCardById(id: number): Promise<JobCard>;
+    jobCardAdjacentIds(id: number): Promise<{ previousId: number | null; nextId: number | null }>;
     createJobCard(data: Partial<JobCard>): Promise<JobCard>;
     updateJobCard(id: number, data: Partial<JobCard>): Promise<JobCard>;
     deleteJobCard(id: number): Promise<void>;
@@ -186,6 +187,10 @@ proto.jobCards = async function (status) {
 
 proto.jobCardById = async function (id) {
   return this.request(`/stock-control/job-cards/${id}`);
+};
+
+proto.jobCardAdjacentIds = async function (id) {
+  return this.request(`/stock-control/job-cards/${id}/adjacent`);
 };
 
 proto.createJobCard = async function (data) {

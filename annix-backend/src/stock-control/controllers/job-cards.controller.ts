@@ -148,6 +148,12 @@ export class JobCardsController {
     return this.jobCardService.deduplicateJobCards(req.user.companyId);
   }
 
+  @Get(":id/adjacent")
+  @ApiOperation({ summary: "Previous and next job card IDs for navigation" })
+  async adjacentIds(@Req() req: any, @Param("id") id: number) {
+    return this.jobCardService.adjacentIds(req.user.companyId, id);
+  }
+
   @Get(":id")
   @ApiOperation({ summary: "Job card by ID" })
   async findById(@Req() req: any, @Param("id") id: number) {

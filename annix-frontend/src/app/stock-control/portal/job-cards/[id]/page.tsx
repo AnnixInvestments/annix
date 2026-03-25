@@ -80,6 +80,10 @@ export default function JobCardDetailPage() {
   const [backgroundSteps, setBackgroundSteps] = useState<BackgroundStepStatus[]>([]);
   const [completingStepKey, setCompletingStepKey] = useState<string | null>(null);
   const [deliveryJobCards, setDeliveryJobCards] = useState<JobCard[]>([]);
+  const [adjacentIds, setAdjacentIds] = useState<{
+    previousId: number | null;
+    nextId: number | null;
+  }>({ previousId: null, nextId: null });
 
   const fetchData = useCallback(async () => {
     try {
@@ -119,6 +123,11 @@ export default function JobCardDetailPage() {
         .backgroundStepsForJobCard(jobId)
         .then((data) => setBackgroundSteps(data))
         .catch(() => setBackgroundSteps([]));
+
+      stockControlApiClient
+        .jobCardAdjacentIds(jobId)
+        .then((data) => setAdjacentIds(data))
+        .catch(() => setAdjacentIds({ previousId: null, nextId: null }));
     } catch (err) {
       setError(err instanceof Error ? err : new Error("Failed to load job card"));
     } finally {
@@ -1440,6 +1449,84 @@ export default function JobCardDetailPage() {
           </div>
         )}
         <div className="flex flex-wrap items-center gap-2 flex-shrink-0">
+          <div className="inline-flex rounded-md shadow-sm">
+            {adjacentIds.previousId ? (
+              <Link
+                href={`/stock-control/portal/job-cards/${adjacentIds.previousId}`}
+                className="inline-flex items-center px-3 py-1.5 sm:px-4 sm:py-2 border border-gray-300 rounded-l-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+              >
+                <svg
+                  className="w-4 h-4 mr-1.5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M15 19l-7-7 7-7"
+                  />
+                </svg>
+                Previous JC
+              </Link>
+            ) : (
+              <span className="inline-flex items-center px-3 py-1.5 sm:px-4 sm:py-2 border border-gray-200 rounded-l-md text-sm font-medium text-gray-300 bg-gray-50 cursor-not-allowed">
+                <svg
+                  className="w-4 h-4 mr-1.5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M15 19l-7-7 7-7"
+                  />
+                </svg>
+                Previous JC
+              </span>
+            )}
+            {adjacentIds.nextId ? (
+              <Link
+                href={`/stock-control/portal/job-cards/${adjacentIds.nextId}`}
+                className="inline-flex items-center px-3 py-1.5 sm:px-4 sm:py-2 border border-l-0 border-gray-300 rounded-r-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+              >
+                Next JC
+                <svg
+                  className="w-4 h-4 ml-1.5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9 5l7 7-7 7"
+                  />
+                </svg>
+              </Link>
+            ) : (
+              <span className="inline-flex items-center px-3 py-1.5 sm:px-4 sm:py-2 border border-l-0 border-gray-200 rounded-r-md text-sm font-medium text-gray-300 bg-gray-50 cursor-not-allowed">
+                Next JC
+                <svg
+                  className="w-4 h-4 ml-1.5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9 5l7 7-7 7"
+                  />
+                </svg>
+              </span>
+            )}
+          </div>
           {jobCard.status.toLowerCase() !== "draft" && !receptionIsPending && (
             <button
               onClick={handlePrintQr}
