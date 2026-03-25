@@ -2315,3 +2315,55 @@ export interface CreateLeaveRequest {
   endDate: string;
   notes?: string;
 }
+
+export interface SageJcDumpParsedItem {
+  itemCode: string;
+  itemDescription: string;
+  itemNo: string;
+  itemNoBase: string;
+  quantity: number;
+  jtNo: string | null;
+  category: "jt" | "asterisk" | "undelivered";
+  pageNumber: number;
+}
+
+export interface AsteriskItem {
+  itemCode: string;
+  itemDescription: string;
+  itemNo: string;
+  itemNoBase: string;
+  cpoItemId: number;
+  totalCpoQty: number;
+  alreadyDeliveredQty: number;
+  remainingQty: number;
+  asteriskQtyInFile: number;
+}
+
+export interface SageJcDumpParseResult {
+  cpoId: number;
+  cpoNumber: string;
+  jobNumber: string;
+  customerName: string | null;
+  documentNumber: string | null;
+  jtGroups: Record<string, SageJcDumpParsedItem[]>;
+  asteriskItems: AsteriskItem[];
+  skippedJtNumbers: string[];
+  undeliveredItems: SageJcDumpParsedItem[];
+}
+
+export interface AsteriskAllocation {
+  cpoItemId: number;
+  allocations: Array<{ jtNumber: string; quantity: number }>;
+}
+
+export interface SageJcDumpConfirmRequest {
+  cpoId: number;
+  jtGroups: Record<string, SageJcDumpParsedItem[]>;
+  asteriskAllocations: AsteriskAllocation[];
+}
+
+export interface SageJcDumpImportResult {
+  createdJobCards: Array<{ id: number; jtNumber: string; itemCount: number }>;
+  skippedJtNumbers: string[];
+  totalCreated: number;
+}

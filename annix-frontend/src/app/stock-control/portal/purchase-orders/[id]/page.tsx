@@ -2,8 +2,14 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useState } from "react";
-import type { CpoCalloffRecord } from "@/app/lib/api/stockControlApi";
+import { useCallback, useRef, useState } from "react";
+import type {
+  AsteriskAllocation,
+  CpoCalloffRecord,
+  SageJcDumpImportResult,
+  SageJcDumpParseResult,
+} from "@/app/lib/api/stockControlApi";
+import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { formatDateZA, fromISO, now } from "@/app/lib/datetime";
 import {
   useCpoCalloffRecords,
@@ -12,6 +18,7 @@ import {
   useUpdateCalloffRecordStatus,
   useUpdateCpoStatus,
 } from "@/app/lib/query/hooks";
+import { AsteriskAllocationModal } from "../../../components/AsteriskAllocationModal";
 
 function statusBadgeColor(status: string): string {
   const colors: Record<string, string> = {
@@ -86,6 +93,76 @@ export default function CpoDetailPage() {
 
   const [mutationError, setMutationError] = useState<string | null>(null);
   const [updatingRecordId, setUpdatingRecordId] = useState<number | null>(null);
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [sageParseResult, setSageParseResult] = useState<SageJcDumpParseResult | null>(null);
+  const [sageImportResult, setSageImportResult] = useState<SageJcDumpImportResult | null>(null);
+  const [sageParsing, setSageParsing] = useState(false);
+  const [sageConfirming, setSageConfirming] = useState(false);
+  const [sageError, setSageError] = useState<string | null>(null);
+  const [showAllocationModal, setShowAllocationModal] = useState(false);
+
+  const handleSageFileUpload = useCallback(
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+
+      try {
+        setSageError(null);
+        setSageImportResult(null);
+        setSageParsing(true);
+        const result = await stockControlApiClient.uploadSageJcDump(id, file);
+        setSageParseResult(result);
+
+        if (result.asteriskItems.length > 0) {
+          setShowAllocationModal(true);
+        } else {
+          const jtGroupKeys = Object.keys(result.jtGroups);
+          if (jtGroupKeys.length > 0) {
+            setSageConfirming(true);
+            const importResult = await stockControlApiClient.confirmSageJcDump(id, {
+              cpoId: result.cpoId,
+              jtGroups: result.jtGroups,
+              asteriskAllocations: [],
+            });
+            setSageImportResult(importResult);
+            setSageConfirming(false);
+          }
+        }
+      } catch (err) {
+        setSageError(err instanceof Error ? err.message : "Failed to parse Sage JC dump");
+      } finally {
+        setSageParsing(false);
+      }
+    },
+    [id],
+  );
+
+  const handleAllocationConfirm = useCallback(
+    async (allocations: AsteriskAllocation[]) => {
+      if (!sageParseResult) return;
+      try {
+        setSageError(null);
+        setSageConfirming(true);
+        const importResult = await stockControlApiClient.confirmSageJcDump(id, {
+          cpoId: sageParseResult.cpoId,
+          jtGroups: sageParseResult.jtGroups,
+          asteriskAllocations: allocations,
+        });
+        setSageImportResult(importResult);
+        setShowAllocationModal(false);
+        setSageParseResult(null);
+      } catch (err) {
+        setSageError(err instanceof Error ? err.message : "Failed to create job cards");
+      } finally {
+        setSageConfirming(false);
+      }
+    },
+    [id, sageParseResult],
+  );
 
   const error = cpoError
     ? cpoError instanceof Error
@@ -196,6 +273,38 @@ export default function CpoDetailPage() {
           </span>
           {cpo.status === "active" && (
             <>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".xls,.xlsx,.csv"
+                onChange={handleSageFileUpload}
+                className="hidden"
+              />
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                disabled={sageParsing || sageConfirming}
+                className="px-3 py-1.5 text-sm font-medium text-white bg-amber-600 rounded-md hover:bg-amber-700 disabled:opacity-50 flex items-center gap-1.5"
+              >
+                {sageParsing && (
+                  <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                      fill="none"
+                    />
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                    />
+                  </svg>
+                )}
+                {sageParsing ? "Parsing..." : "Import Sage JC Dump"}
+              </button>
               <button
                 onClick={() => handleStatusChange("fulfilled")}
                 disabled={updateCpoStatusMutation.isPending}
@@ -670,11 +779,170 @@ export default function CpoDetailPage() {
         </div>
       )}
 
+      {sageError && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+          <div className="flex items-start gap-3">
+            <svg
+              className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
+            </svg>
+            <div>
+              <h3 className="text-sm font-medium text-red-800">Import Error</h3>
+              <p className="text-sm text-red-700 mt-1">{sageError}</p>
+            </div>
+            <button
+              onClick={() => setSageError(null)}
+              className="ml-auto text-red-400 hover:text-red-600"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {sageImportResult && (
+        <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+          <div className="flex items-start gap-3">
+            <svg
+              className="w-5 h-5 text-green-400 flex-shrink-0 mt-0.5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
+            </svg>
+            <div className="flex-1">
+              <h3 className="text-sm font-medium text-green-800">
+                Sage JC Dump Imported Successfully
+              </h3>
+              {sageImportResult.totalCreated > 0 && (
+                <div className="mt-2 space-y-1">
+                  <p className="text-sm text-green-700">
+                    Created {sageImportResult.totalCreated} job card
+                    {sageImportResult.totalCreated === 1 ? "" : "s"}:
+                  </p>
+                  <ul className="text-sm text-green-700 ml-4 list-disc">
+                    {sageImportResult.createdJobCards.map((jc) => (
+                      <li key={jc.id}>
+                        <Link
+                          href={`/stock-control/portal/job-cards/${jc.id}`}
+                          className="text-green-800 underline hover:text-green-900"
+                        >
+                          {jc.jtNumber}
+                        </Link>{" "}
+                        ({jc.itemCount} item{jc.itemCount === 1 ? "" : "s"})
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {sageImportResult.skippedJtNumbers.length > 0 && (
+                <p className="text-sm text-green-600 mt-2">
+                  Skipped {sageImportResult.skippedJtNumbers.length} already-imported JT
+                  {sageImportResult.skippedJtNumbers.length === 1 ? "" : "s"}:{" "}
+                  {sageImportResult.skippedJtNumbers.join(", ")}
+                </p>
+              )}
+              {sageImportResult.totalCreated === 0 &&
+                sageImportResult.skippedJtNumbers.length === 0 && (
+                  <p className="text-sm text-green-700 mt-1">
+                    No new job cards to create from this dump.
+                  </p>
+                )}
+            </div>
+            <button
+              onClick={() => setSageImportResult(null)}
+              className="ml-auto text-green-400 hover:text-green-600"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {sageParseResult && !showAllocationModal && !sageImportResult && (
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+          <h3 className="text-sm font-medium text-amber-800 mb-2">Sage JC Dump Parsed</h3>
+          <div className="text-sm text-amber-700 space-y-1">
+            <p>
+              New JT groups: {Object.keys(sageParseResult.jtGroups).length} (
+              {Object.keys(sageParseResult.jtGroups).join(", ") || "none"})
+            </p>
+            {sageParseResult.skippedJtNumbers.length > 0 && (
+              <p>Skipped (already imported): {sageParseResult.skippedJtNumbers.join(", ")}</p>
+            )}
+            <p>Undelivered items: {sageParseResult.undeliveredItems.length}</p>
+            {sageParseResult.asteriskItems.length > 0 && (
+              <p>Items needing allocation: {sageParseResult.asteriskItems.length}</p>
+            )}
+          </div>
+          {sageConfirming && (
+            <div className="mt-3 flex items-center gap-2 text-sm text-amber-800">
+              <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                <circle
+                  className="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                  fill="none"
+                />
+                <path
+                  className="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                />
+              </svg>
+              Creating job cards...
+            </div>
+          )}
+        </div>
+      )}
+
       <div className="text-xs text-gray-400">
         Created {formatDateZA(cpo.createdAt)}
         {cpo.createdBy && ` by ${cpo.createdBy}`}
         {cpo.sourceFileName && ` from ${cpo.sourceFileName}`}
       </div>
+
+      {sageParseResult && (
+        <AsteriskAllocationModal
+          isOpen={showAllocationModal}
+          onClose={() => setShowAllocationModal(false)}
+          onConfirm={handleAllocationConfirm}
+          asteriskItems={sageParseResult.asteriskItems}
+          submitting={sageConfirming}
+        />
+      )}
     </div>
   );
 }

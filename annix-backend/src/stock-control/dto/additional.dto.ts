@@ -100,6 +100,19 @@ export class UpdateCpoStatusDto {
   status: string;
 }
 
+export class ConfirmSageJcDumpDto {
+  @IsNumber()
+  cpoId: number;
+
+  jtGroups: Record<string, any[]>;
+
+  @IsArray()
+  asteriskAllocations: Array<{
+    cpoItemId: number;
+    allocations: Array<{ jtNumber: string; quantity: number }>;
+  }>;
+}
+
 export class RecordRequisitionReceiptDto {
   @IsNumber()
   @Min(1)

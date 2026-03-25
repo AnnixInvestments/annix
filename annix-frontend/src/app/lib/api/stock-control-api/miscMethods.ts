@@ -18,6 +18,9 @@ import type {
   JobCardImportUploadResponse,
   Requisition,
   RequisitionItem,
+  SageJcDumpConfirmRequest,
+  SageJcDumpImportResult,
+  SageJcDumpParseResult,
   StockControlSupplierDto,
 } from "./types";
 
@@ -53,6 +56,11 @@ declare module "./base" {
     cpoCalloffBreakdown(): Promise<CpoCalloffBreakdown>;
     cpoOverdueInvoices(): Promise<CpoOverdueInvoiceItem[]>;
     cpoExportCsv(): Promise<Blob>;
+    uploadSageJcDump(cpoId: number, file: File): Promise<SageJcDumpParseResult>;
+    confirmSageJcDump(
+      cpoId: number,
+      request: SageJcDumpConfirmRequest,
+    ): Promise<SageJcDumpImportResult>;
     globalSearch(query: string, limit?: number): Promise<GlobalSearchResponse>;
     glossaryTerms(): Promise<GlossaryTerm[]>;
     upsertGlossaryTerm(
@@ -174,6 +182,17 @@ proto.cpoExportCsv = async function () {
     throw new Error("Failed to export CSV");
   }
   return response.blob();
+};
+
+proto.uploadSageJcDump = async function (cpoId, file) {
+  return this.uploadFile(`/stock-control/cpos/${cpoId}/sage-jc-dump/upload`, file);
+};
+
+proto.confirmSageJcDump = async function (cpoId, request) {
+  return this.request(`/stock-control/cpos/${cpoId}/sage-jc-dump/confirm`, {
+    method: "POST",
+    body: JSON.stringify(request),
+  });
 };
 
 proto.globalSearch = async function (query, limit = 20) {

@@ -20,6 +20,7 @@ import { ApiOperation, ApiTags } from "@nestjs/swagger";
 import type { Response } from "express";
 import {
   ConfirmCpoImportDto,
+  ConfirmSageJcDumpDto,
   UpdateCalloffStatusDto,
   UpdateCpoStatusDto,
 } from "../dto/additional.dto";
@@ -29,6 +30,7 @@ import { StockControlAuthGuard } from "../guards/stock-control-auth.guard";
 import { StockControlRoleGuard, StockControlRoles } from "../guards/stock-control-role.guard";
 import { CpoService } from "../services/cpo.service";
 import { JobCardImportService } from "../services/job-card-import.service";
+import { SageJcDumpService } from "../services/sage-jc-dump.service";
 
 @ApiTags("Stock Control - Customer Purchase Orders")
 @Controller("stock-control/cpos")
@@ -40,6 +42,7 @@ export class CpoController {
   constructor(
     private readonly cpoService: CpoService,
     private readonly jobCardImportService: JobCardImportService,
+    private readonly sageJcDumpService: SageJcDumpService,
   ) {}
 
   @Get()
@@ -113,6 +116,33 @@ export class CpoController {
       req.user.name || null,
     );
     return result;
+  }
+
+  @Post(":id/sage-jc-dump/upload")
+  @StockControlRoles("accounts", "manager", "admin")
+  @UseInterceptors(FileInterceptor("file"))
+  @ApiOperation({ summary: "Upload and parse a Sage JC dump file against a CPO" })
+  async uploadSageJcDump(
+    @UploadedFile() file: Express.Multer.File,
+    @Req() req: any,
+    @Param("id", ParseIntPipe) id: number,
+  ) {
+    return this.sageJcDumpService.parseSageJcDump(file.buffer, req.user.companyId, id);
+  }
+
+  @Post(":id/sage-jc-dump/confirm")
+  @StockControlRoles("accounts", "manager", "admin")
+  @ApiOperation({ summary: "Confirm Sage JC dump import with asterisk allocations" })
+  async confirmSageJcDump(
+    @Req() req: any,
+    @Param("id", ParseIntPipe) id: number,
+    @Body() dto: ConfirmSageJcDumpDto,
+  ) {
+    return this.sageJcDumpService.confirmSageJcDump(
+      req.user.companyId,
+      { ...dto, cpoId: id },
+      req.user.name || null,
+    );
   }
 
   @Put("calloff-records/:recordId/status")

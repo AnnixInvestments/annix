@@ -151,6 +151,7 @@ import { ReconciliationExtractionService } from "./services/reconciliation-extra
 import { ReportsService } from "./services/reports.service";
 import { RequisitionService } from "./services/requisition.service";
 import { SageInvoiceAdapterService } from "./services/sage-invoice-adapter.service";
+import { SageJcDumpService } from "./services/sage-jc-dump.service";
 import { ScEmailClassifierService } from "./services/sc-email-classifier.service";
 import { ScEmailRegistrationService } from "./services/sc-email-registration.service";
 import { ScEmailRouterService } from "./services/sc-email-router.service";
@@ -343,6 +344,7 @@ import { WorkflowStepConfigService } from "./services/workflow-step-config.servi
     ReconciliationExtractionService,
     ReconciliationService,
     StockAllocationService,
+    SageJcDumpService,
   ],
 })
 export class StockControlModule {}
