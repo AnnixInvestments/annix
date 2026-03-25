@@ -55,4 +55,8 @@ export const adminKeys = {
     all: ["admin", "scheduledJobs"] as const,
     list: () => [...adminKeys.scheduledJobs.all, "list"] as const,
   },
+  companyProfile: {
+    all: ["admin", "companyProfile"] as const,
+    detail: () => [...adminKeys.companyProfile.all, "detail"] as const,
+  },
 } as const;

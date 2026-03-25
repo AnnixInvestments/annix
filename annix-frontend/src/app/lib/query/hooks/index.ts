@@ -24,6 +24,10 @@ export { useAdminRfqDetail, useAdminRfqs } from "./admin/useAdminRfqs";
 export { useAdminSupplierDetail } from "./admin/useAdminSupplierDetail";
 export { useAdminSuppliers, useInviteSupplier } from "./admin/useAdminSuppliers";
 export { useAiUsageLogs } from "./admin/useAiUsage";
+export {
+  useAnnixCompanyProfile,
+  useUpdateAnnixCompanyProfile,
+} from "./admin/useCompanyProfile";
 export { useFeatureFlags, useToggleFeatureFlag } from "./admin/useFeatureFlags";
 export {
   useRbacAllUsers,

@@ -1350,6 +1350,17 @@ class AdminApiClient {
       `/admin/ai-usage${queryString ? `?${queryString}` : ""}`,
     );
   }
+
+  async companyProfile(): Promise<CompanyProfileResponse> {
+    return this.request<CompanyProfileResponse>("/admin/company-profile");
+  }
+
+  async updateCompanyProfile(data: UpdateCompanyProfileRequest): Promise<CompanyProfileResponse> {
+    return this.request<CompanyProfileResponse>("/admin/company-profile", {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    });
+  }
 }
 
 export interface AiUsageQueryParams {
@@ -1803,6 +1814,65 @@ export interface ScheduledJobDto {
   cronTime: string;
   lastExecution: string | null;
   nextExecution: string | null;
+}
+
+export interface DirectorResponse {
+  name: string;
+  title: string;
+  email: string;
+}
+
+export interface CompanyProfileResponse {
+  id: number;
+  legalName: string;
+  tradingName: string;
+  registrationNumber: string;
+  vatNumber: string | null;
+  entityType: string | null;
+  streetAddress: string | null;
+  city: string | null;
+  province: string | null;
+  postalCode: string | null;
+  country: string;
+  phone: string | null;
+  generalEmail: string | null;
+  supportEmail: string | null;
+  privacyEmail: string | null;
+  websiteUrl: string | null;
+  informationOfficerName: string | null;
+  informationOfficerEmail: string | null;
+  jurisdiction: string;
+  primaryDomain: string | null;
+  noReplyEmail: string | null;
+  mailerName: string | null;
+  directors: DirectorResponse[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface UpdateCompanyProfileRequest {
+  legalName?: string;
+  tradingName?: string;
+  registrationNumber?: string;
+  vatNumber?: string;
+  entityType?: string;
+  streetAddress?: string;
+  city?: string;
+  province?: string;
+  postalCode?: string;
+  country?: string;
+  phone?: string;
+  generalEmail?: string;
+  supportEmail?: string;
+  privacyEmail?: string;
+  websiteUrl?: string;
+  informationOfficerName?: string;
+  informationOfficerEmail?: string;
+  jurisdiction?: string;
+  primaryDomain?: string;
+  noReplyEmail?: string;
+  mailerName?: string;
+  directors?: DirectorResponse[];
 }
 
 export const adminApiClient = new AdminApiClient();

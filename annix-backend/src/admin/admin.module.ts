@@ -25,6 +25,8 @@ import { User } from "../user/entities/user.entity";
 import { AdminAiUsageController } from "./admin-ai-usage.controller";
 import { AdminAuthController } from "./admin-auth.controller";
 import { AdminAuthService } from "./admin-auth.service";
+import { AdminCompanyProfileController } from "./admin-company-profile.controller";
+import { AdminCompanyProfileService } from "./admin-company-profile.service";
 import { AdminDashboardController } from "./admin-dashboard.controller";
 import { AdminDashboardService } from "./admin-dashboard.service";
 import { AdminFeedbackController } from "./admin-feedback.controller";
@@ -36,8 +38,10 @@ import { AdminRfqService } from "./admin-rfq.service";
 import { AdminScheduledJobsController } from "./admin-scheduled-jobs.controller";
 import { AdminScheduledJobsService } from "./admin-scheduled-jobs.service";
 import { AdminSession } from "./entities/admin-session.entity";
+import { CompanyProfile } from "./entities/company-profile.entity";
 import { ScheduledJobOverride } from "./entities/scheduled-job-override.entity";
 import { AdminAuthGuard } from "./guards/admin-auth.guard";
+import { PublicCompanyProfileController } from "./public-company-profile.controller";
 
 @Module({
   imports: [
@@ -60,6 +64,7 @@ import { AdminAuthGuard } from "./guards/admin-auth.guard";
       RfqDocument,
       AnonymousDraft,
       AuditLog,
+      CompanyProfile,
       ScheduledJobOverride,
     ]),
     JwtModule.registerAsync({
@@ -77,6 +82,7 @@ import { AdminAuthGuard } from "./guards/admin-auth.guard";
   providers: [
     AdminAuthService,
     AdminAuthGuard,
+    AdminCompanyProfileService,
     AdminDashboardService,
     AdminReferenceDataService,
     AdminRfqService,
@@ -85,13 +91,15 @@ import { AdminAuthGuard } from "./guards/admin-auth.guard";
   controllers: [
     AdminAiUsageController,
     AdminAuthController,
+    AdminCompanyProfileController,
     AdminDashboardController,
     AdminFeedbackController,
     AdminReferenceDataController,
     AdminRfqController,
     AdminMessagingController,
     AdminScheduledJobsController,
+    PublicCompanyProfileController,
   ],
-  exports: [AdminAuthService, AdminAuthGuard, JwtModule],
+  exports: [AdminAuthService, AdminAuthGuard, AdminCompanyProfileService, JwtModule],
 })
 export class AdminModule {}

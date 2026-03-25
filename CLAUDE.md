@@ -124,6 +124,36 @@ All Sage API integration code across ALL Annix apps (Stock Control, AU Rubber, C
 - Prefer small, targeted try/catch blocks close to the failing operation
 - When logging errors inside browser evaluation (e.g. Puppeteer), capture messages and surface them to the Node logger after evaluation
 
+### Legal Risk Prevention (ref #149)
+All code changes must avoid introducing content that could create legal exposure for Annix. The pre-push hook runs `scripts/check-legal-risks.sh` automatically, but Claude agents must catch these at authoring time — do not rely on the hook alone.
+
+#### Email addresses in examples, tests, Swagger docs
+- **Always use `@example.com`** (RFC 2606 reserved domain, guaranteed safe)
+- **Never use `.co.za`, `.com`, `.net`, or any other real TLD** for fake email addresses
+- ✅ `procurement@example.com`, `customer@example.com`
+- ❌ `procurement@acme-industrial.co.za`, `ops@chemical-plant.co.za`
+
+#### Phone numbers in examples, tests, Swagger docs
+- **Use `+27 11 000 xxxx`** (clearly fictitious 000 exchange)
+- ❌ `+27 11 555 0123` (555 is not reserved in SA numbering)
+
+#### Company names in examples and test data
+- Use clearly generic names: "Example Corp", "Test Company A", "Sample Industries"
+- Never use names that could match real South African companies
+
+#### Standards body data (ASME, API, ASTM, ISO, NACE, etc.)
+- **Do not add new verbatim data tables** from copyrighted standards without confirming Annix holds a reproduction license
+- Referencing standard names and numbers (e.g. "per ASME B16.5") is acceptable
+- Adding extracted P-T rating tables, chemical composition limits, tolerance values, or test requirements requires a license
+- When in doubt, flag to the user: "This data appears to come from [standard name] — confirm Annix has reproduction rights before adding"
+
+#### External URLs to standards bodies
+- Do not hardcode URLs to astm.org, iso.org, asme.org, api.org, awwa.org, nace.org, en-standard.eu, or plasticpipe.org in source files
+- If a reference URL is needed, store it in configuration that does not surface in customer-facing output
+
+#### Trademarks
+- When referencing third-party product names (e.g. Hardox, KSB), always append "equivalent" or "compatible" — never imply endorsement or affiliation
+
 ### Secrets Management
 - **Never commit secrets to source control**: No API keys, tokens, or credentials in code or config files
 - **No secrets in fly.toml**: Use Fly.io mechanisms instead:
@@ -131,6 +161,14 @@ All Sage API integration code across ALL Annix apps (Stock Control, AU Rubber, C
     - Build-time secrets: `fly deploy --build-secret KEY=value`
 - **Use environment-based secrets**: GitHub Actions secrets or Fly.io secrets only
 - **Client-side API keys** (e.g. Google Maps): Still use Fly.io build secrets, not source control
+
+### Company Profile (Dynamic Company Details)
+- **Never hardcode Annix company details**: Legal name, registration number, emails, addresses, domains, and director info must not be hardcoded as string literals
+- **All company details must come from the company profile API** or be passed as props from a component that fetches it
+- **Backend services**: Inject `AdminCompanyProfileService` and call `profile()` instead of using string literals
+- **Frontend components**: Use the `useAnnixCompanyProfile()` hook from `@/app/lib/query/hooks`
+- **Public/unauthenticated access**: Use `GET /public/company-profile` endpoint
+- **`corpId.ts` is only for static branding**: Colors, fonts, logos — not legal/contact details
 
 ### File Storage Architecture
 - **Default storage**: S3 (AWS) - files persist across deployments

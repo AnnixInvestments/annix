@@ -46,6 +46,7 @@ const NAV_TOOLTIPS: Record<string, string> = {
   RFQs: "View and manage request for quotations",
   "Admin Users": "Manage administrator accounts and permissions",
   "Secure Docs": "Access encrypted customer documents",
+  "Company Profile": "Manage Annix company details and legal information",
   "My RFQs": "View and manage your submitted quotations",
   "New RFQ": "Create a new request for quotation",
   Profile: "View and update your profile settings",
@@ -281,6 +282,31 @@ export default function PortalToolbar(props: PortalToolbarProps) {
                         My Profile
                       </div>
                     </Link>
+
+                    {portalType === "admin" && (
+                      <Link
+                        href="/admin/portal/company-profile"
+                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                        onClick={() => setIsUserMenuOpen(false)}
+                      >
+                        <div className="flex items-center">
+                          <svg
+                            className="w-4 h-4 mr-3"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h1.5m-1.5 3h1.5m-1.5 3h1.5m3-6H15m-1.5 3H15m-1.5 3H15M9 21v-3.375c0-.621.504-1.125 1.125-1.125h3.75c.621 0 1.125.504 1.125 1.125V21"
+                            />
+                          </svg>
+                          Company Profile
+                        </div>
+                      </Link>
+                    )}
 
                     {portalType !== "admin" && (
                       <Link
