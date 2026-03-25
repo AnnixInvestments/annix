@@ -548,7 +548,7 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
           paths.push({
             key: `bypass-merge-${bp.stepKey}`,
             color: mergeColor,
-            d: `M ${bx} ${by} L ${rx - r} ${by} Q ${rx} ${by} ${rx} ${by - r} L ${rx} ${ry}`,
+            d: `M ${bx} ${by} L ${rx} ${by} L ${rx} ${ry}`,
           });
         }
       });
@@ -825,6 +825,17 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
           positions[`loop-${branch.triggerFgKey}`] = {
             left: leftBound,
             right: rect.width - dynRight,
+          };
+        }
+      });
+      bypassSteps.forEach((bp) => {
+        const triggerIdx = allSteps.findIndex((s) => s.key === bp.triggerAfterStep);
+        const triggerNode = triggerIdx >= 0 ? fgNodeRefs.current[triggerIdx] : null;
+        if (triggerNode) {
+          const tR = triggerNode.getBoundingClientRect();
+          positions[`bypass-${bp.stepKey}`] = {
+            left: tR.left + tR.width / 2 - rect.left,
+            right: 0,
           };
         }
       });
@@ -1334,6 +1345,7 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
             const classes = bgNodeClasses(state, null);
             const bgAssigned = assignedNameForStep(bp.stepKey, stepAssignments);
             const bgDisplayName = state === "completed" ? bp.completedByName : bgAssigned;
+            const bpPos = branchPositions[`bypass-${bp.stepKey}`];
 
             return (
               <div
@@ -1341,7 +1353,7 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
                 className="absolute flex flex-col items-center"
                 style={{
                   top: `${laneCount * 52}px`,
-                  left: "50%",
+                  left: bpPos ? `${bpPos.left + 30}px` : "50%",
                   transform: "translateX(-50%)",
                 }}
               >
