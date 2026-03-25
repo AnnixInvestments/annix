@@ -1672,7 +1672,7 @@ export default function JobCardDetailPage() {
               <div className="mt-6 border rounded-lg p-4">
                 <h3 className="text-sm font-medium text-gray-900 mb-3">Version History</h3>
                 <select
-                  value={documents.selectedVersionId ?? ""}
+                  value={documents.selectedVersionId || ""}
                   onChange={(e) => {
                     const val = e.target.value;
                     documents.setSelectedVersionId(val ? Number(val) : null);
@@ -1757,7 +1757,9 @@ export default function JobCardDetailPage() {
                                         {String(li.itemDescription || "-")}
                                       </td>
                                       <td className="px-3 py-1.5 text-gray-700">
-                                        {String(li.quantity ?? "-")}
+                                        {li.quantity !== null && li.quantity !== undefined
+                                          ? String(li.quantity)
+                                          : "-"}
                                       </td>
                                     </tr>
                                   ))}
