@@ -1569,6 +1569,7 @@ export interface WorkflowStatus {
     completionType: string | null;
     branchColor: string | null;
     stepOutcomes: StepOutcome[] | null;
+    rejoinAtStep: string | null;
   }>;
   actionCompletions: JobCardActionCompletion[];
   phaseInfo: Record<

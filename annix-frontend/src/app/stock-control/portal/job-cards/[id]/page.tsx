@@ -15,6 +15,7 @@ import type {
   WorkflowStatus as WorkflowStatusData,
 } from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
+import { formatDateZA, nowMillis } from "@/app/lib/datetime";
 import { useInvalidateJobCards } from "@/app/lib/query/hooks";
 import { ApprovalModal } from "@/app/stock-control/components/ApprovalModal";
 import { JobCardNextAction } from "@/app/stock-control/components/NextActionBanner";
@@ -758,7 +759,7 @@ export default function JobCardDetailPage() {
       canvas.toBlob(resolve, "image/jpeg", 0.85),
     );
     if (!blob) return;
-    const file = new File([blob], `ready-photo-${Date.now()}.jpg`, { type: "image/jpeg" });
+    const file = new File([blob], `ready-photo-${nowMillis()}.jpg`, { type: "image/jpeg" });
     try {
       setIsUploadingReadyPhoto(true);
       await stockControlApiClient.uploadReadyPhoto(jobId, file);
@@ -1723,7 +1724,7 @@ export default function JobCardDetailPage() {
                         {selectedVersion.createdBy && (
                           <p className="text-sm text-gray-500">
                             Archived by: {selectedVersion.createdBy} on{" "}
-                            {new Date(selectedVersion.createdAt).toLocaleDateString("en-ZA")}
+                            {formatDateZA(selectedVersion.createdAt)}
                           </p>
                         )}
                         {selectedVersion.lineItemsSnapshot &&
