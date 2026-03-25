@@ -28,6 +28,7 @@ export interface SuggestedDeliveryNote {
 
 export interface PriceChangeItem {
   id: number;
+  description: string;
   stockItemName: string;
   quantity: number;
   oldPrice: number;
@@ -341,6 +342,7 @@ export class InvoiceService {
 
         return {
           id: item.id,
+          description: item.extractedDescription || "",
           stockItemName: item.stockItem?.name || item.extractedDescription || "",
           quantity: qty,
           oldPrice,

@@ -6,6 +6,7 @@ import type { PriceChangeSummary } from "@/app/lib/api/stockControlApi";
 interface ItemEdits {
   quantity?: string;
   unitPrice?: string;
+  description?: string;
 }
 
 interface PriceUpdateReviewProps {
@@ -14,7 +15,7 @@ interface PriceUpdateReviewProps {
   canAdjustPrice?: boolean;
   onAdjustItem?: (
     itemId: number,
-    updates: { quantity?: number; unitPrice?: number },
+    updates: { quantity?: number; unitPrice?: number; extractedDescription?: string },
   ) => Promise<void>;
 }
 
@@ -35,6 +36,7 @@ export default function PriceUpdateReview(props: PriceUpdateReviewProps) {
       [item.id]: {
         quantity: String(item.quantity),
         unitPrice: String(item.newPrice),
+        description: item.stockItemName,
       },
     }));
   };
@@ -58,7 +60,7 @@ export default function PriceUpdateReview(props: PriceUpdateReviewProps) {
     const edits = editingItems[itemId];
     if (!edits) return;
 
-    const updates: { quantity?: number; unitPrice?: number } = {};
+    const updates: { quantity?: number; unitPrice?: number; extractedDescription?: string } = {};
     const newQty = Number(edits.quantity);
     const newPrice = Number(edits.unitPrice);
 
@@ -67,6 +69,9 @@ export default function PriceUpdateReview(props: PriceUpdateReviewProps) {
     }
     if (newPrice !== originalItem.newPrice) {
       updates.unitPrice = newPrice;
+    }
+    if (edits.description !== undefined && edits.description !== originalItem.stockItemName) {
+      updates.extractedDescription = edits.description;
     }
 
     if (Object.keys(updates).length === 0) {
@@ -179,11 +184,18 @@ export default function PriceUpdateReview(props: PriceUpdateReviewProps) {
 
               return (
                 <tr key={item.id} className={item.needsApproval ? "bg-yellow-50" : ""}>
-                  <td
-                    className="px-2 py-2 text-gray-900 truncate max-w-[140px]"
-                    title={item.stockItemName}
-                  >
-                    {item.stockItemName}
+                  <td className="px-2 py-2 text-gray-900 max-w-[140px]" title={item.stockItemName}>
+                    {isEditingRow ? (
+                      <input
+                        type="text"
+                        value={edits.description || ""}
+                        onChange={(e) => updateEditField(item.id, "description", e.target.value)}
+                        className="w-full px-1 py-0.5 text-xs border border-teal-300 rounded focus:ring-1 focus:ring-teal-500 focus:border-teal-500"
+                        title="Edit item description to correct matching"
+                      />
+                    ) : (
+                      <span className="truncate block">{item.stockItemName}</span>
+                    )}
                   </td>
                   <td className="px-2 py-2 text-right text-gray-500">
                     {isEditingRow ? (

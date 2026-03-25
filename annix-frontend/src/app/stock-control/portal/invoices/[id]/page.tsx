@@ -290,7 +290,7 @@ export default function InvoiceDetailPage() {
 
   const handleAdjustItem = async (
     itemId: number,
-    updates: { quantity?: number; unitPrice?: number },
+    updates: { quantity?: number; unitPrice?: number; extractedDescription?: string },
   ) => {
     await stockControlApiClient.updateInvoiceItem(invoiceId, itemId, updates);
     await fetchInvoice();
