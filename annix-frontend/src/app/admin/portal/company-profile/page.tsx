@@ -186,7 +186,16 @@ export default function CompanyProfilePage() {
     );
   }
 
-  if (!profile || !form) return null;
+  if (!profile || !form) {
+    return (
+      <div className="flex flex-col items-center justify-center py-12 space-y-4">
+        <div className="text-red-500 text-lg font-medium">Failed to load company profile</div>
+        <p className="text-sm text-gray-500 dark:text-gray-400">
+          The company profile may not be seeded yet. Ensure the migration has been run.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
