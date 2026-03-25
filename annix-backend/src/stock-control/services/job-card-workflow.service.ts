@@ -877,13 +877,15 @@ export class JobCardWorkflowService {
       return { ...acc, [c.jobCardId]: set };
     }, {});
 
-    const bgByTrigger = bgSteps.reduce<Record<string, string[]>>((acc, s) => {
-      const trigger = s.triggerAfterStep;
-      if (!trigger) {
-        return acc;
-      }
-      return { ...acc, [trigger]: [...(acc[trigger] || []), s.key] };
-    }, {});
+    const bgByTrigger = bgSteps
+      .filter((s) => s.rejoinAtStep === null)
+      .reduce<Record<string, string[]>>((acc, s) => {
+        const trigger = s.triggerAfterStep;
+        if (!trigger) {
+          return acc;
+        }
+        return { ...acc, [trigger]: [...(acc[trigger] || []), s.key] };
+      }, {});
 
     return jobCards.reduce<Record<number, string>>((acc, jc) => {
       const currentStep = this.currentFgStep(jc.workflowStatus, fgSteps);

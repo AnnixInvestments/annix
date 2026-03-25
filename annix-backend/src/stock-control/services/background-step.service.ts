@@ -283,6 +283,7 @@ export class BackgroundStepService {
         notifyStepKey: string | null;
         style: string;
       }> | null;
+      rejoinAtStep: string | null;
     }>
   > {
     const bgSteps = await this.stepConfigService.backgroundSteps(companyId);
@@ -308,6 +309,7 @@ export class BackgroundStepService {
         branchColor: step.branchColor ?? null,
         actionLabel: step.actionLabel ?? null,
         stepOutcomes: step.stepOutcomes || null,
+        rejoinAtStep: step.rejoinAtStep ?? null,
       };
     });
   }

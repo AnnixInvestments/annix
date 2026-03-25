@@ -84,7 +84,7 @@ const resolveBgChainFlat = (
   bgByTrigger: Record<string, BackgroundStepStatus[]>,
   bgKeySet: Set<string>,
 ): BackgroundStepStatus[] => {
-  const direct = bgByTrigger[trigger] || [];
+  const direct = (bgByTrigger[trigger] || []).filter((bg) => bg.rejoinAtStep === null);
   return direct.reduce<BackgroundStepStatus[]>((chain, bg) => {
     const rest = bgKeySet.has(bg.stepKey)
       ? resolveBgChainFlat(bg.stepKey, bgByTrigger, bgKeySet)
@@ -289,8 +289,10 @@ const collectBranches = (
     const directChildren = bgByTrigger[step.key] || [];
     if (directChildren.length === 0) return branches;
 
-    const coloredDirect = directChildren.filter((bg) => inheritedColor(bg));
-    const regularDirect = directChildren.filter((bg) => !inheritedColor(bg));
+    const bypassDirect = directChildren.filter((bg) => bg.rejoinAtStep !== null);
+    const nonBypass = directChildren.filter((bg) => bg.rejoinAtStep === null);
+    const coloredDirect = nonBypass.filter((bg) => inheritedColor(bg));
+    const regularDirect = nonBypass.filter((bg) => !inheritedColor(bg));
 
     const result = [...branches];
 
@@ -445,10 +447,15 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
     return { docUploadStep: found as BackgroundStepStatus | null, branches: filtered };
   }, [allBranches]);
 
+  const bypassSteps = useMemo(
+    () => backgroundSteps.filter((bg) => bg.rejoinAtStep !== null),
+    [backgroundSteps],
+  );
+
   const loopBranches = useMemo(() => branches.filter((b) => b.isLoop), [branches]);
   const belowBranches = useMemo(() => branches.filter((b) => !b.isLoop), [branches]);
 
-  const hasBranches = branches.length > 0 || docUploadStep !== null;
+  const hasBranches = branches.length > 0 || docUploadStep !== null || bypassSteps.length > 0;
   const hasLoopBranches = loopBranches.length > 0;
 
   const branchLanes = useMemo(() => {
@@ -507,6 +514,44 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
           });
         }
       }
+
+      bypassSteps.forEach((bp) => {
+        const triggerIdx = allSteps.findIndex((s) => s.key === bp.triggerAfterStep);
+        const triggerNode = triggerIdx >= 0 ? fgNodeRefs.current[triggerIdx] : null;
+        const bpNode = bgNodeRefs.current[bp.stepKey];
+        const rejoinNode = bp.rejoinAtStep ? bgNodeRefs.current[bp.rejoinAtStep] : null;
+        if (!triggerNode || !bpNode) return;
+
+        const bpComplete = bp.completedAt !== null;
+        const bpActive = !bpComplete && triggerIdx < currentStepIndex;
+        const strokeColor = bpComplete ? "#f59e0b" : bpActive ? "#f59e0b" : "#d1d5db";
+
+        const tRect = triggerNode.getBoundingClientRect();
+        const bRect = bpNode.getBoundingClientRect();
+        const tx = tRect.left + tRect.width / 2 - rect.left;
+        const ty = tRect.top + tRect.height / 2 - rect.top;
+        const bx = bRect.left + bRect.width / 2 - rect.left;
+        const by = bRect.top + bRect.height / 2 - rect.top;
+
+        paths.push({
+          key: `bypass-fork-${bp.stepKey}`,
+          color: strokeColor,
+          d: `M ${tx} ${ty} L ${tx} ${by - r} Q ${tx} ${by} ${tx + r} ${by} L ${bx} ${by}`,
+        });
+
+        if (rejoinNode) {
+          const rRect = rejoinNode.getBoundingClientRect();
+          const rx = rRect.left + rRect.width / 2 - rect.left;
+          const ry = rRect.top + rRect.height / 2 - rect.top;
+          const mergeColor = bpComplete ? "#f59e0b" : "#d1d5db";
+
+          paths.push({
+            key: `bypass-merge-${bp.stepKey}`,
+            color: mergeColor,
+            d: `M ${bx} ${by} L ${rx - r} ${by} Q ${rx} ${by} ${rx} ${by - r} L ${rx} ${ry}`,
+          });
+        }
+      });
 
       loopBranches.forEach((branch) => {
         const startNode = fgNodeRefs.current[branch.triggerFgIdx];
@@ -809,7 +854,15 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
       clearTimeout(settledId);
       observer.disconnect();
     };
-  }, [loopBranches, belowBranches, docUploadStep, currentStepIndex, allSteps, backgroundSteps]);
+  }, [
+    loopBranches,
+    belowBranches,
+    docUploadStep,
+    bypassSteps,
+    currentStepIndex,
+    allSteps,
+    backgroundSteps,
+  ]);
 
   if (allSteps.length === 0) {
     return <p className="text-sm text-gray-500">No workflow steps configured</p>;
@@ -1210,11 +1263,11 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
           );
         })()}
 
-      {belowBranches.length > 0 && (
+      {(belowBranches.length > 0 || bypassSteps.length > 0) && (
         <div
           data-branch-container
           className="mt-2 relative"
-          style={{ height: `${laneCount * 52}px` }}
+          style={{ height: `${(laneCount + (bypassSteps.length > 0 ? 1 : 0)) * 52}px` }}
         >
           {belowBranches.map((branch) => {
             const pos = branchPositions[branch.triggerFgKey];
@@ -1266,6 +1319,46 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
                     </div>
                   );
                 })}
+              </div>
+            );
+          })}
+          {bypassSteps.map((bp) => {
+            const triggerIdx = allSteps.findIndex((s) => s.key === bp.triggerAfterStep);
+            const bpComplete = bp.completedAt !== null;
+            const bpActive = !bpComplete && triggerIdx >= 0 && triggerIdx < currentStepIndex;
+            const state = bpComplete
+              ? ("completed" as const)
+              : bpActive
+                ? ("active" as const)
+                : ("pending" as const);
+            const classes = bgNodeClasses(state, null);
+            const bgAssigned = assignedNameForStep(bp.stepKey, stepAssignments);
+            const bgDisplayName = state === "completed" ? bp.completedByName : bgAssigned;
+
+            return (
+              <div
+                key={`bypass-${bp.stepKey}`}
+                className="absolute flex flex-col items-center"
+                style={{
+                  top: `${laneCount * 52}px`,
+                  left: "50%",
+                  transform: "translateX(-50%)",
+                }}
+              >
+                <div
+                  ref={(el) => {
+                    bgNodeRefs.current[bp.stepKey] = el;
+                  }}
+                  className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 z-20 ${classes.circle}`}
+                >
+                  {classes.icon}
+                </div>
+                <p className={`mt-0.5 text-[9px] font-medium whitespace-nowrap ${classes.label}`}>
+                  {bp.label}
+                </p>
+                {bgDisplayName && (
+                  <p className="text-[8px] text-gray-400 truncate max-w-[60px]">{bgDisplayName}</p>
+                )}
               </div>
             );
           })}
@@ -1339,6 +1432,20 @@ function MobileTransitMap(props: MobileTransitMapProps) {
         return { ...acc, [branch.triggerFgKey]: [...(acc[branch.triggerFgKey] || []), branch] };
       }, {}),
     [branches],
+  );
+
+  const mobileBypassSteps = useMemo(
+    () => backgroundSteps.filter((bg) => bg.rejoinAtStep !== null),
+    [backgroundSteps],
+  );
+
+  const mobileBypassByTrigger = useMemo(
+    () =>
+      mobileBypassSteps.reduce<Record<string, BackgroundStepStatus[]>>((acc, bp) => {
+        const trigger = bp.triggerAfterStep || "";
+        return { ...acc, [trigger]: [...(acc[trigger] || []), bp] };
+      }, {}),
+    [mobileBypassSteps],
   );
 
   if (allSteps.length === 0) {
@@ -1579,6 +1686,63 @@ function MobileTransitMap(props: MobileTransitMapProps) {
                           </div>
                         );
                       })}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+
+            {(mobileBypassByTrigger[step.key] || []).map((bp) => {
+              const bpComplete = bp.completedAt !== null;
+              const bpActive = !bpComplete && index < currentStepIndex;
+              const bpState = bpComplete
+                ? ("completed" as const)
+                : bpActive
+                  ? ("active" as const)
+                  : ("pending" as const);
+              const mClasses = bgNodeClasses(bpState, null);
+              const bgAssigned = assignedNameForStep(bp.stepKey, stepAssignments);
+              const bgDisplayName = bpState === "completed" ? bp.completedByName : bgAssigned;
+              const rejoinLabel = backgroundSteps.find(
+                (bg) => bg.stepKey === bp.rejoinAtStep,
+              )?.label;
+
+              return (
+                <div
+                  key={`mb-bypass-${bp.stepKey}`}
+                  className="flex items-stretch"
+                  style={{ minHeight: "24px" }}
+                >
+                  <div className="flex flex-col items-center" style={{ width: "32px" }}>
+                    <div
+                      className="w-0.5 flex-1"
+                      style={{
+                        backgroundColor: bpComplete ? "#f59e0b" : "#e5e7eb",
+                        minHeight: "8px",
+                      }}
+                    />
+                  </div>
+                  <div className="ml-1 pl-3 border-l-2 border-dashed border-amber-300 py-1 flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      <div
+                        className={`w-4 h-4 rounded-full flex items-center justify-center flex-shrink-0 ${mClasses.circle}`}
+                      >
+                        {mClasses.icon}
+                      </div>
+                      <div className="min-w-0">
+                        <p className={`text-[10px] font-medium leading-tight ${mClasses.label}`}>
+                          {bp.label}
+                          {rejoinLabel && (
+                            <span className="text-gray-400 font-normal">
+                              {" → "}
+                              {rejoinLabel}
+                            </span>
+                          )}
+                        </p>
+                        {bgDisplayName && (
+                          <p className="text-[9px] text-gray-400 leading-tight">{bgDisplayName}</p>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>

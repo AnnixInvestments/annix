@@ -124,8 +124,8 @@ const DEFAULT_STEPS: ReadonlyArray<{
     branchColor: null,
     phaseActionLabels: null,
     stepOutcomes: null,
-    branchType: null,
-    rejoinAtStep: null,
+    branchType: "connect",
+    rejoinAtStep: "job_file_review",
   },
   {
     key: "requisition",

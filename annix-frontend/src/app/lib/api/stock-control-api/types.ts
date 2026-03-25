@@ -1486,6 +1486,7 @@ export interface BackgroundStepStatus {
   completionType: string | null;
   branchColor: string | null;
   stepOutcomes: StepOutcome[] | null;
+  rejoinAtStep: string | null;
 }
 
 export interface QaReviewDecision {
