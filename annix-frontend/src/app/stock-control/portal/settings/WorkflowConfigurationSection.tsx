@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type {
   EligibleUser,
   StepNotificationRecipients,
@@ -208,7 +208,14 @@ export function WorkflowConfigurationSection({ teamMembers }: WorkflowConfigurat
     [backgroundSteps],
   );
 
+  const savingFieldRef = useRef(false);
+  const cancelledRef = useRef(false);
   const saveField = async (stepKey: string, field: string, value: string) => {
+    if (savingFieldRef.current || cancelledRef.current) {
+      cancelledRef.current = false;
+      return;
+    }
+    savingFieldRef.current = true;
     setSaving(true);
     setError("");
     try {
@@ -224,6 +231,7 @@ export function WorkflowConfigurationSection({ teamMembers }: WorkflowConfigurat
       setError(e instanceof Error ? e.message : "Failed to save");
     } finally {
       setSaving(false);
+      savingFieldRef.current = false;
     }
   };
 
@@ -777,7 +785,10 @@ export function WorkflowConfigurationSection({ teamMembers }: WorkflowConfigurat
                               onChange={(e) => setEditValue(e.target.value)}
                               onKeyDown={(e) => {
                                 if (e.key === "Enter") saveField(step.key, "label", editValue);
-                                if (e.key === "Escape") setEditField(null);
+                                if (e.key === "Escape") {
+                                  cancelledRef.current = true;
+                                  setEditField(null);
+                                }
                               }}
                               onBlur={() => saveField(step.key, "label", editValue)}
                               autoFocus
@@ -871,7 +882,10 @@ export function WorkflowConfigurationSection({ teamMembers }: WorkflowConfigurat
                               onKeyDown={(e) => {
                                 if (e.key === "Enter")
                                   saveField(step.key, "actionLabel", editValue);
-                                if (e.key === "Escape") setEditField(null);
+                                if (e.key === "Escape") {
+                                  cancelledRef.current = true;
+                                  setEditField(null);
+                                }
                               }}
                               onBlur={() => saveField(step.key, "actionLabel", editValue)}
                               autoFocus
