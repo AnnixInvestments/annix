@@ -52,7 +52,7 @@ export const HDPE_STANDARDS: Record<HdpeStandardCode, HdpeStandard> = {
       "PE100: Minimum 10 MPa MRS classification",
       "Material lot traceability required",
     ],
-    referenceUrl: "https://www.astm.org/d3350-21.html",
+    referenceUrl: null,
   },
   ASTM_F714: {
     code: "ASTM_F714",
@@ -70,7 +70,7 @@ export const HDPE_STANDARDS: Record<HdpeStandardCode, HdpeStandard> = {
       "Standard lengths: 40ft (12.2m) or 50ft (15.2m)",
       "Marking: size, DR, material, manufacturer, date",
     ],
-    referenceUrl: "https://www.astm.org/f0714-22.html",
+    referenceUrl: null,
   },
   ASTM_D3035: {
     code: "ASTM_D3035",
@@ -88,7 +88,7 @@ export const HDPE_STANDARDS: Record<HdpeStandardCode, HdpeStandard> = {
       "Pressure class per HDB and DR",
       "Hydrostatic sustained pressure test required",
     ],
-    referenceUrl: "https://www.astm.org/d3035-21.html",
+    referenceUrl: null,
   },
   AWWA_C906: {
     code: "AWWA_C906",
@@ -107,7 +107,7 @@ export const HDPE_STANDARDS: Record<HdpeStandardCode, HdpeStandard> = {
       "Pipe color: solid black with blue stripes or solid blue",
       "NSF/ANSI 61 certification for potable water",
     ],
-    referenceUrl: "https://www.awwa.org/Store/Product-Details/productId/77066",
+    referenceUrl: null,
   },
   AWWA_C901: {
     code: "AWWA_C901",
@@ -126,7 +126,7 @@ export const HDPE_STANDARDS: Record<HdpeStandardCode, HdpeStandard> = {
       "Coil or straight length supply",
       "NSF/ANSI 61 certification required",
     ],
-    referenceUrl: "https://www.awwa.org/Store/Product-Details/productId/77064",
+    referenceUrl: null,
   },
   ISO_4427: {
     code: "ISO_4427",
@@ -145,7 +145,7 @@ export const HDPE_STANDARDS: Record<HdpeStandardCode, HdpeStandard> = {
       "Standard lengths: 5m, 6m, 12m or coils",
       "Color: blue, black with blue stripes, or as specified",
     ],
-    referenceUrl: "https://www.iso.org/standard/72428.html",
+    referenceUrl: null,
   },
   EN_12201: {
     code: "EN_12201",
@@ -164,7 +164,7 @@ export const HDPE_STANDARDS: Record<HdpeStandardCode, HdpeStandard> = {
       "CE marking requirements",
       "WRAS or equivalent potable water approval",
     ],
-    referenceUrl: "https://www.en-standard.eu/bs-en-12201-1-2011",
+    referenceUrl: null,
   },
   ISO_4437: {
     code: "ISO_4437",
@@ -183,7 +183,7 @@ export const HDPE_STANDARDS: Record<HdpeStandardCode, HdpeStandard> = {
       "Yellow color or black with yellow stripes",
       "Enhanced slow crack growth resistance required",
     ],
-    referenceUrl: "https://www.iso.org/standard/65252.html",
+    referenceUrl: null,
   },
   PPI_TR4: {
     code: "PPI_TR4",
@@ -203,7 +203,7 @@ export const HDPE_STANDARDS: Record<HdpeStandardCode, HdpeStandard> = {
       "Material compound approval listings",
       "Service factor (DF) recommendations",
     ],
-    referenceUrl: "https://plasticpipe.org/publications/tr-4.html",
+    referenceUrl: null,
   },
 };
 

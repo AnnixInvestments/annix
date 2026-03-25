@@ -28,8 +28,8 @@ describe("AnnixRepAuthService", () => {
 
   const mockUser = {
     id: 1,
-    username: "rep@company.com",
-    email: "rep@company.com",
+    username: "rep@example.com",
+    email: "rep@example.com",
     password: "hashed-password",
     salt: "random-salt",
     firstName: "John",
@@ -135,7 +135,7 @@ describe("AnnixRepAuthService", () => {
 
   describe("register", () => {
     const registerDto = {
-      email: "newrep@company.com",
+      email: "newrep@example.com",
       password: "mock-test-password",
       firstName: "Jane",
       lastName: "Smith",
@@ -190,7 +190,7 @@ describe("AnnixRepAuthService", () => {
   });
 
   describe("login", () => {
-    const loginDto = { email: "rep@company.com", password: "mock-test-password" };
+    const loginDto = { email: "rep@example.com", password: "mock-test-password" };
 
     it("should login and return auth response with profile status", async () => {
       userRepo.findOne.mockResolvedValue(mockUser);
@@ -308,7 +308,7 @@ describe("AnnixRepAuthService", () => {
     it("should refresh session and return new tokens", async () => {
       const payload = {
         sub: 1,
-        email: "rep@company.com",
+        email: "rep@example.com",
         type: "annixRep" as const,
         sessionToken: "old-session-token",
         annixRepUserId: 1,
@@ -337,7 +337,7 @@ describe("AnnixRepAuthService", () => {
     it("should throw UnauthorizedException when token type is not annixRep", async () => {
       tokenService.verifyToken.mockResolvedValue({
         sub: 1,
-        email: "rep@company.com",
+        email: "rep@example.com",
         type: "admin",
         sessionToken: "token",
         annixRepUserId: 1,
@@ -351,7 +351,7 @@ describe("AnnixRepAuthService", () => {
     it("should throw UnauthorizedException when user not found", async () => {
       tokenService.verifyToken.mockResolvedValue({
         sub: 999,
-        email: "gone@company.com",
+        email: "gone@example.com",
         type: "annixRep",
         sessionToken: "token",
         annixRepUserId: 999,
@@ -373,7 +373,7 @@ describe("AnnixRepAuthService", () => {
 
       expect(result).toEqual({
         userId: 1,
-        email: "rep@company.com",
+        email: "rep@example.com",
         firstName: "John",
         lastName: "Doe",
         setupCompleted: true,
@@ -400,7 +400,7 @@ describe("AnnixRepAuthService", () => {
     it("should return true when email is not taken", async () => {
       userRepo.findOne.mockResolvedValue(null);
 
-      const result = await service.checkEmailAvailable("new@company.com");
+      const result = await service.checkEmailAvailable("new@example.com");
 
       expect(result).toBe(true);
     });
@@ -408,7 +408,7 @@ describe("AnnixRepAuthService", () => {
     it("should return false when email already exists", async () => {
       userRepo.findOne.mockResolvedValue(mockUser);
 
-      const result = await service.checkEmailAvailable("rep@company.com");
+      const result = await service.checkEmailAvailable("rep@example.com");
 
       expect(result).toBe(false);
     });
@@ -498,7 +498,7 @@ describe("AnnixRepAuthService", () => {
       oauthProvider.exchangeCode.mockResolvedValue({
         accessToken: "oauth-access",
         refreshToken: null,
-        email: "oauth@company.com",
+        email: "oauth@example.com",
         oauthId: "google-123",
         firstName: "OAuth",
         lastName: "User",
@@ -508,12 +508,12 @@ describe("AnnixRepAuthService", () => {
       userRepo.create.mockReturnValue({
         ...mockUser,
         id: 5,
-        email: "oauth@company.com",
+        email: "oauth@example.com",
       } as User);
       userRepo.save.mockResolvedValue({
         ...mockUser,
         id: 5,
-        email: "oauth@company.com",
+        email: "oauth@example.com",
       } as User);
       sessionRepo.update.mockResolvedValue({ affected: 0 } as any);
       sessionRepo.create.mockReturnValue(mockSession);
@@ -530,7 +530,7 @@ describe("AnnixRepAuthService", () => {
       );
 
       expect(result.accessToken).toBe("mock-access-token");
-      expect(result.email).toBe("oauth@company.com");
+      expect(result.email).toBe("oauth@example.com");
       expect(result.setupCompleted).toBe(false);
     });
 
@@ -546,7 +546,7 @@ describe("AnnixRepAuthService", () => {
       oauthProvider.exchangeCode.mockResolvedValue({
         accessToken: "oauth-access",
         refreshToken: null,
-        email: "existing@company.com",
+        email: "existing@example.com",
         oauthId: "google-456",
         firstName: "Existing",
         lastName: "User",

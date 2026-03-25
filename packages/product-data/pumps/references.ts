@@ -3,7 +3,7 @@
 
 export interface IndustryReference {
   name: string;
-  url: string;
+  url: string | null;
   category: "manufacturer" | "supplier" | "standard" | "resource" | "local_sa";
   description: string;
   productsOffered?: string[];
@@ -140,49 +140,49 @@ export const SA_PUMP_SUPPLIERS: IndustryReference[] = [
 export const PUMP_STANDARDS: IndustryReference[] = [
   {
     name: "API 610",
-    url: "https://www.api.org",
+    url: null,
     category: "standard",
     description: "Centrifugal pumps for petroleum, petrochemical and natural gas industries",
   },
   {
     name: "API 674",
-    url: "https://www.api.org",
+    url: null,
     category: "standard",
     description: "Positive displacement pumps - reciprocating",
   },
   {
     name: "API 675",
-    url: "https://www.api.org",
+    url: null,
     category: "standard",
     description: "Positive displacement pumps - controlled volume (metering)",
   },
   {
     name: "API 676",
-    url: "https://www.api.org",
+    url: null,
     category: "standard",
     description: "Positive displacement pumps - rotary",
   },
   {
     name: "API 682",
-    url: "https://www.api.org",
+    url: null,
     category: "standard",
     description: "Pumps - shaft sealing systems",
   },
   {
     name: "ISO 5199",
-    url: "https://www.iso.org",
+    url: null,
     category: "standard",
     description: "Technical specifications for centrifugal pumps",
   },
   {
     name: "ISO 2858",
-    url: "https://www.iso.org",
+    url: null,
     category: "standard",
     description: "End suction centrifugal pumps - dimensions",
   },
   {
     name: "ISO 13709",
-    url: "https://www.iso.org",
+    url: null,
     category: "standard",
     description: "Centrifugal pumps for petroleum (identical to API 610)",
   },

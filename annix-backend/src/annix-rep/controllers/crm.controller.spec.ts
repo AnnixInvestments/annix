@@ -277,13 +277,13 @@ describe("CrmController", () => {
 
   describe("exportProspects", () => {
     it("should export CSV and send via response", async () => {
-      crmService.exportProspectsCsv.mockResolvedValue("name,email\nJohn,john@test.com");
+      crmService.exportProspectsCsv.mockResolvedValue("name,email\nJohn,john@example.com");
       const mockRes = { send: jest.fn() } as any;
 
       await controller.exportProspects(mockRequest, undefined, mockRes);
 
       expect(crmService.exportProspectsCsv).toHaveBeenCalledWith(100, null);
-      expect(mockRes.send).toHaveBeenCalledWith("name,email\nJohn,john@test.com");
+      expect(mockRes.send).toHaveBeenCalledWith("name,email\nJohn,john@example.com");
     });
 
     it("should pass configId when provided", async () => {

@@ -705,7 +705,7 @@ export default function SupplierRegistrationPage() {
             value={company.primaryContactPhone || ""}
             onChange={(e) => handleCompanyChange("primaryContactPhone", e.target.value)}
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-            placeholder="+27 12 345 6789"
+            placeholder="+27 11 000 6789"
           />
         </div>
 
@@ -716,7 +716,7 @@ export default function SupplierRegistrationPage() {
             value={company.website || ""}
             onChange={(e) => handleCompanyChange("website", e.target.value)}
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-            placeholder="https://www.company.co.za"
+            placeholder="https://www.example.com"
           />
         </div>
       </div>
@@ -1034,7 +1034,7 @@ export default function SupplierRegistrationPage() {
             value={profile.directPhone || ""}
             onChange={(e) => handleProfileChange("directPhone", e.target.value)}
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-            placeholder="+27 12 345 6789"
+            placeholder="+27 11 000 6789"
           />
         </div>
 
@@ -1045,7 +1045,7 @@ export default function SupplierRegistrationPage() {
             value={profile.mobilePhone || ""}
             onChange={(e) => handleProfileChange("mobilePhone", e.target.value)}
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-            placeholder="+27 82 123 4567"
+            placeholder="+27 82 000 4567"
           />
         </div>
       </div>
@@ -1084,7 +1084,7 @@ export default function SupplierRegistrationPage() {
             value={security.email}
             onChange={(e) => handleSecurityChange("email", e.target.value)}
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-            placeholder="your.email@company.co.za"
+            placeholder="your.email@example.com"
           />
         </div>
 

@@ -18,7 +18,7 @@ describe("PumpOrderService", () => {
     orderType: PumpOrderType.NEW_PUMP,
     customerCompany: "Mining Corp SA",
     customerContact: "John Smith",
-    customerEmail: "john@miningcorp.co.za",
+    customerEmail: "john@example.com",
     subtotal: 100000,
     vatAmount: 15000,
     totalAmount: 115000,
@@ -108,7 +108,7 @@ describe("PumpOrderService", () => {
         orderType: PumpOrderType.NEW_PUMP,
         customerCompany: "Mining Corp SA",
         customerContact: "John Smith",
-        customerEmail: "john@miningcorp.co.za",
+        customerEmail: "john@example.com",
         items: [
           {
             itemType: PumpOrderItemType.NEW_PUMP,

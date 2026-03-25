@@ -23,7 +23,7 @@ const MOCK_ORDERS: MockPumpOrder[] = [
   {
     id: 1,
     orderNumber: "PMP-2026-001",
-    customer: "Sasol Mining",
+    customer: "Example Mining Corp",
     serviceType: "new_pump",
     pumpType: "centrifugal_end_suction",
     status: "quoted",
@@ -33,7 +33,7 @@ const MOCK_ORDERS: MockPumpOrder[] = [
   {
     id: 2,
     orderNumber: "PMP-2026-002",
-    customer: "Anglo American Platinum",
+    customer: "Test Platinum Holdings",
     serviceType: "spare_parts",
     pumpType: "slurry_pump",
     status: "approved",
@@ -43,7 +43,7 @@ const MOCK_ORDERS: MockPumpOrder[] = [
   {
     id: 3,
     orderNumber: "PMP-2026-003",
-    customer: "Eskom Holdings",
+    customer: "Sample Power Utility",
     serviceType: "repair_service",
     pumpType: "boiler_feed",
     status: "in_progress",
@@ -53,7 +53,7 @@ const MOCK_ORDERS: MockPumpOrder[] = [
   {
     id: 4,
     orderNumber: "PMP-2026-004",
-    customer: "City of Johannesburg",
+    customer: "Test Municipality",
     serviceType: "new_pump",
     pumpType: "submersible",
     status: "pending",
@@ -63,7 +63,7 @@ const MOCK_ORDERS: MockPumpOrder[] = [
   {
     id: 5,
     orderNumber: "PMP-2026-005",
-    customer: "Impala Platinum",
+    customer: "Demo PGM Mines",
     serviceType: "rental",
     pumpType: "dewatering",
     status: "completed",

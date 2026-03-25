@@ -28,7 +28,7 @@ describe("ProspectController", () => {
       ownerId: OWNER_ID,
       companyName: "Acme Industrial",
       contactName: "John Doe",
-      contactEmail: "john@acme.co.za",
+      contactEmail: "john@example.com",
       contactPhone: "0821234567",
       contactTitle: "Procurement Manager",
       streetAddress: "10 Main Rd",
@@ -404,7 +404,7 @@ describe("ProspectController", () => {
           id: 1,
           prospectId: 1,
           userId: OWNER_ID,
-          user: { firstName: "John", lastName: "Doe", email: "john@test.com" },
+          user: { firstName: "John", lastName: "Doe", email: "john@example.com" },
           activityType: "created",
           oldValues: null,
           newValues: { companyName: "Acme" },
@@ -439,7 +439,7 @@ describe("ProspectController", () => {
           id: 1,
           prospectId: 1,
           userId: OWNER_ID,
-          user: { firstName: null, lastName: null, email: "anon@test.com" },
+          user: { firstName: null, lastName: null, email: "anon@example.com" },
           activityType: "contacted",
           oldValues: null,
           newValues: null,
@@ -452,7 +452,7 @@ describe("ProspectController", () => {
 
       const result = await controller.prospectActivities(mockRequest as any, 1);
 
-      expect(result[0].userName).toBe("anon@test.com");
+      expect(result[0].userName).toBe("anon@example.com");
     });
 
     it("should return null userName when user relation is missing", async () => {

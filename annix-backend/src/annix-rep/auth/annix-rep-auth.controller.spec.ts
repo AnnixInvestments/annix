@@ -20,7 +20,7 @@ describe("AnnixRepAuthController", () => {
     refreshToken: "mock-refresh-token",
     expiresIn: 3600,
     userId: 1,
-    email: "rep@company.com",
+    email: "rep@example.com",
     firstName: "John",
     lastName: "Doe",
     setupCompleted: true,
@@ -28,7 +28,7 @@ describe("AnnixRepAuthController", () => {
 
   const mockProfileResponse: AnnixRepProfileResponseDto = {
     userId: 1,
-    email: "rep@company.com",
+    email: "rep@example.com",
     firstName: "John",
     lastName: "Doe",
     setupCompleted: true,
@@ -37,7 +37,7 @@ describe("AnnixRepAuthController", () => {
   const mockRequest = {
     annixRepUser: {
       userId: 1,
-      email: "rep@company.com",
+      email: "rep@example.com",
       sessionToken: "test-session-token",
     },
   };
@@ -73,7 +73,7 @@ describe("AnnixRepAuthController", () => {
 
   describe("POST /register", () => {
     const dto: AnnixRepRegisterDto = {
-      email: "newrep@company.com",
+      email: "newrep@example.com",
       password: "SecurePass123!",
       firstName: "Jane",
       lastName: "Smith",
@@ -99,7 +99,7 @@ describe("AnnixRepAuthController", () => {
 
   describe("POST /login", () => {
     const dto: AnnixRepLoginDto = {
-      email: "rep@company.com",
+      email: "rep@example.com",
       password: "SecurePass123!",
     };
 
@@ -170,16 +170,16 @@ describe("AnnixRepAuthController", () => {
     it("should return available true when email is free", async () => {
       service.checkEmailAvailable.mockResolvedValue(true);
 
-      const result = await controller.checkEmail("new@company.com");
+      const result = await controller.checkEmail("new@example.com");
 
       expect(result).toEqual({ available: true });
-      expect(service.checkEmailAvailable).toHaveBeenCalledWith("new@company.com");
+      expect(service.checkEmailAvailable).toHaveBeenCalledWith("new@example.com");
     });
 
     it("should return available false when email is taken", async () => {
       service.checkEmailAvailable.mockResolvedValue(false);
 
-      const result = await controller.checkEmail("existing@company.com");
+      const result = await controller.checkEmail("existing@example.com");
 
       expect(result).toEqual({ available: false });
     });

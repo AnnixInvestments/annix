@@ -316,7 +316,7 @@ export function InspectionBookingModal(props: InspectionBookingModalProps) {
                   type="email"
                   value={inspectorEmail}
                   onChange={(e) => setInspectorEmail(e.target.value)}
-                  placeholder="inspector@company.com"
+                  placeholder="inspector@example.com"
                   className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-teal-500 focus:ring-teal-500"
                 />
               </div>

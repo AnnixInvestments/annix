@@ -30,7 +30,7 @@ describe("RubberQualityTrackingService", () => {
   const mockConfigRepo = mockRepo();
   const mockAlertRepo = mockRepo();
   const mockEmailService = { sendEmail: jest.fn() };
-  const mockConfigService = { get: jest.fn().mockReturnValue("test@test.com") };
+  const mockConfigService = { get: jest.fn().mockReturnValue("test@example.com") };
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({

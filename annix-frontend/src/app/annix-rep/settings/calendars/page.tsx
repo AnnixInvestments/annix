@@ -73,7 +73,7 @@ function CalDAVModal({ isOpen, onClose, onConnect, isConnecting }: CalDAVModalPr
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-700 text-gray-900 dark:text-white"
-              placeholder="your@icloud.com"
+              placeholder="your@example.com"
               required
             />
           </div>

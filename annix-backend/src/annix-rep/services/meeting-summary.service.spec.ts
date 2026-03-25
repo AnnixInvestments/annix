@@ -96,7 +96,7 @@ describe("MeetingSummaryService", () => {
         scheduledEnd: new Date("2026-01-15T11:00:00Z"),
         actualStart: new Date("2026-01-15T10:05:00Z"),
         actualEnd: new Date("2026-01-15T10:55:00Z"),
-        attendees: ["alice@test.com", "bob@test.com"],
+        attendees: ["alice@example.com", "bob@example.com"],
       };
 
       const mockRecording = {

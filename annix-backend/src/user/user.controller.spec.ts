@@ -38,13 +38,13 @@ describe("UserController", () => {
     it("should create a new user", async () => {
       const dto: CreateUserDto = {
         username: "john",
-        email: "john@test.com",
+        email: "john@example.com",
         password: "123456",
       };
       const result: Partial<User> = {
         id: 1,
         username: "john",
-        email: "john@test.com",
+        email: "john@example.com",
         roles: [],
       };
 
@@ -58,7 +58,7 @@ describe("UserController", () => {
   describe("findAll", () => {
     it("should return an array of users", async () => {
       const users: Partial<User>[] = [
-        { id: 1, username: "john", email: "john@test.com", roles: [] },
+        { id: 1, username: "john", email: "john@example.com", roles: [] },
       ];
       mockUserService.findAll.mockResolvedValue(users);
 
@@ -72,7 +72,7 @@ describe("UserController", () => {
       const user: Partial<User> = {
         id: 1,
         username: "john",
-        email: "john@test.com",
+        email: "john@example.com",
         roles: [],
       };
       mockUserService.findOne.mockResolvedValue(user);
@@ -88,7 +88,7 @@ describe("UserController", () => {
       const updatedUser: Partial<User> = {
         id: 1,
         username: "john_updated",
-        email: "john@test.com",
+        email: "john@example.com",
         roles: [],
       };
 

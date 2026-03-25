@@ -39,7 +39,7 @@ describe("TerritoryService", () => {
     ownerId: 100,
     companyName: "Acme Inc",
     contactName: "John Smith",
-    contactEmail: "john@acme.com",
+    contactEmail: "john@example.com",
     contactPhone: null,
     contactTitle: null,
     streetAddress: null,

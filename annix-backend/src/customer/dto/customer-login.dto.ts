@@ -4,7 +4,7 @@ import { IsEmail, IsNotEmpty, IsObject, IsOptional, IsString, MinLength } from "
 export class CustomerLoginDto {
   @ApiProperty({
     description: "Email address",
-    example: "john.smith@acme.co.za",
+    example: "john.smith@example.com",
   })
   @IsEmail()
   @IsNotEmpty()
@@ -71,7 +71,7 @@ export class CustomerRefreshTokenDto {
 export class ResendVerificationEmailDto {
   @ApiProperty({
     description: "Email address",
-    example: "john.smith@acme.co.za",
+    example: "john.smith@example.com",
   })
   @IsEmail()
   @IsNotEmpty()

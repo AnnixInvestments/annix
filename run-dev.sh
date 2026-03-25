@@ -378,7 +378,26 @@ cleanup() {
   fi
 }
 
+remove_orphaned_nest_watchers() {
+  local killed=0
+  local pids
+  pids=$(pgrep -f 'nest.*start.*--watch' 2>/dev/null) || return 0
+
+  for np in $pids; do
+    local ppid
+    ppid=$(ps -o ppid= -p "$np" 2>/dev/null | tr -d ' ')
+    if [ -z "$ppid" ] || [ "$ppid" = "1" ] || ! ps -p "$ppid" > /dev/null 2>&1; then
+      kill -9 "$np" 2>/dev/null && killed=$((killed + 1))
+    fi
+  done
+
+  if [ "$killed" -gt 0 ]; then
+    info "Cleaned up $killed orphaned nest --watch process(es)"
+  fi
+}
+
 main() {
+  remove_orphaned_nest_watchers
   ensure_node
   ensure_pnpm
   ensure_env_file

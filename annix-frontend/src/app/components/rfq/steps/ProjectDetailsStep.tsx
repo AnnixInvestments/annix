@@ -1729,7 +1729,7 @@ export default function ProjectDetailsStep() {
                   setCustomerAutoFilled((prev) => ({ ...prev, customerEmail: false }))
                 }
                 isAutoFilled={customerAutoFilled.customerEmail}
-                placeholder="email@company.com"
+                placeholder="email@example.com"
               />
               {errors.customerEmail && (
                 <p className="mt-1 text-xs text-red-600">{errors.customerEmail}</p>
@@ -1748,7 +1748,7 @@ export default function ProjectDetailsStep() {
                   setCustomerAutoFilled((prev) => ({ ...prev, customerPhone: false }))
                 }
                 isAutoFilled={customerAutoFilled.customerPhone}
-                placeholder="+27 11 555 0123"
+                placeholder="+27 11 000 0123"
               />
               {errors.customerPhone && (
                 <p className="mt-1 text-xs text-red-600">{errors.customerPhone}</p>

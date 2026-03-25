@@ -21,7 +21,7 @@ describe("ProspectService", () => {
       ownerId: OWNER_ID,
       companyName: "Acme Industrial",
       contactName: "John Doe",
-      contactEmail: "john@acme.co.za",
+      contactEmail: "john@example.com",
       contactPhone: "0821234567",
       contactTitle: "Procurement Manager",
       streetAddress: "10 Main Rd",
@@ -128,7 +128,7 @@ describe("ProspectService", () => {
       const dto = {
         companyName: "Acme Industrial",
         contactName: "John Doe",
-        contactEmail: "john@acme.co.za",
+        contactEmail: "john@example.com",
         contactPhone: "0821234567",
         contactTitle: "Procurement Manager",
         streetAddress: "10 Main Rd",
@@ -313,13 +313,16 @@ describe("ProspectService", () => {
   describe("update", () => {
     it("should update prospect fields", async () => {
       const existing = mockProspect();
-      const updated = mockProspect({ companyName: "Updated Name", contactEmail: "new@acme.co.za" });
+      const updated = mockProspect({
+        companyName: "Updated Name",
+        contactEmail: "new@example.com",
+      });
       (mockRepo.findOne as jest.Mock).mockResolvedValue(existing);
       (mockRepo.save as jest.Mock).mockResolvedValue(updated);
 
       const result = await service.update(OWNER_ID, 1, {
         companyName: "Updated Name",
-        contactEmail: "new@acme.co.za",
+        contactEmail: "new@example.com",
       });
 
       expect(result).toEqual(updated);
@@ -750,8 +753,8 @@ describe("ProspectService", () => {
 
     it("should detect duplicates by email", async () => {
       const prospects = [
-        mockProspect({ id: 1, contactEmail: "john@acme.co.za" }),
-        mockProspect({ id: 2, contactEmail: "John@Acme.co.za" }),
+        mockProspect({ id: 1, contactEmail: "john@example.com" }),
+        mockProspect({ id: 2, contactEmail: "john@example.com" }),
       ];
       (mockRepo.find as jest.Mock).mockResolvedValue(prospects);
 
@@ -779,13 +782,13 @@ describe("ProspectService", () => {
         mockProspect({
           id: 1,
           companyName: "Company A",
-          contactEmail: "a@a.com",
+          contactEmail: "a@example.com",
           contactPhone: "111",
         }),
         mockProspect({
           id: 2,
           companyName: "Company B",
-          contactEmail: "b@b.com",
+          contactEmail: "b@example.com",
           contactPhone: "222",
         }),
       ];
@@ -1090,7 +1093,7 @@ describe("ProspectService", () => {
         lastContactedAt: testDate,
         nextFollowUpAt: fromISO("2030-01-01T00:00:00Z").toJSDate(),
         contactName: "Full",
-        contactEmail: "full@test.com",
+        contactEmail: "full@example.com",
         contactPhone: "111",
         streetAddress: "123 St",
         city: "JHB",
@@ -1143,7 +1146,7 @@ describe("ProspectService", () => {
         lastContactedAt: null,
         nextFollowUpAt: null,
         contactName: "John",
-        contactEmail: "john@test.com",
+        contactEmail: "john@example.com",
         contactPhone: "111",
         streetAddress: "123 St",
         city: "JHB",

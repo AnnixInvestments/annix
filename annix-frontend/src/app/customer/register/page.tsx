@@ -926,7 +926,7 @@ export default function CustomerRegistrationPage() {
             value={company.primaryPhone || ""}
             onChange={(e) => handleCompanyChange("primaryPhone", e.target.value)}
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-            placeholder="+27 12 345 6789"
+            placeholder="+27 11 000 6789"
           />
         </div>
 
@@ -947,7 +947,7 @@ export default function CustomerRegistrationPage() {
             value={company.generalEmail || ""}
             onChange={(e) => handleCompanyChange("generalEmail", e.target.value)}
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-            placeholder="info@company.co.za"
+            placeholder="info@example.com"
           />
         </div>
 
@@ -958,7 +958,7 @@ export default function CustomerRegistrationPage() {
             value={company.website || ""}
             onChange={(e) => handleCompanyChange("website", e.target.value)}
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-            placeholder="https://www.company.co.za"
+            placeholder="https://www.example.com"
           />
         </div>
       </div>
@@ -1028,7 +1028,7 @@ export default function CustomerRegistrationPage() {
             value={user.directPhone || ""}
             onChange={(e) => handleUserChange("directPhone", e.target.value)}
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-            placeholder="+27 12 345 6789"
+            placeholder="+27 11 000 6789"
           />
         </div>
 
@@ -1039,7 +1039,7 @@ export default function CustomerRegistrationPage() {
             value={user.mobilePhone || ""}
             onChange={(e) => handleUserChange("mobilePhone", e.target.value)}
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-            placeholder="+27 82 123 4567"
+            placeholder="+27 82 000 4567"
           />
         </div>
       </div>
@@ -1078,7 +1078,7 @@ export default function CustomerRegistrationPage() {
             value={user.email || ""}
             onChange={(e) => handleUserChange("email", e.target.value)}
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-            placeholder="your.email@company.co.za"
+            placeholder="your.email@example.com"
           />
         </div>
 

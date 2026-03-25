@@ -16,8 +16,8 @@ export class SyncUsersAcrossEnvironments1799100000000 implements MigrationInterf
         salt: null as string | null,
       },
       {
-        email: "andy@auind.co.za",
-        username: "andy@auind.co.za",
+        email: "andy@example.com",
+        username: "andy@example.com",
         password: null as string | null,
         salt: null as string | null,
       },
@@ -28,8 +28,8 @@ export class SyncUsersAcrossEnvironments1799100000000 implements MigrationInterf
         salt: "$2b$10$yzqark.c0bGQPIIhm0XCbO",
       },
       {
-        email: "charlesh@miningpressure.co.za",
-        username: "charlesh@miningpressure.co.za",
+        email: "charlesh@example.com",
+        username: "charlesh@example.com",
         password: "$2b$10$bxpnEbD57rZpQGLdjf7Cmem188lRL13ZUROZ9GfN8j9M5Dl0pVA5i",
         salt: "$2b$10$bxpnEbD57rZpQGLdjf7Cme",
       },
@@ -40,8 +40,8 @@ export class SyncUsersAcrossEnvironments1799100000000 implements MigrationInterf
         salt: "$2b$10$weLG1Ti5zzgLqLE2XiuiLe",
       },
       {
-        email: "heine@miningpressure.co.za",
-        username: "heine@miningpressure.co.za",
+        email: "heine@example.com",
+        username: "heine@example.com",
         password: "$2b$10$jMGkS6asAbkxMG3Jc0gJoexMpc5K3mqsXnSXD.etOps3691zOBIZa",
         salt: "$2b$10$jMGkS6asAbkxMG3Jc0gJoe",
       },
@@ -82,9 +82,9 @@ export class SyncUsersAcrossEnvironments1799100000000 implements MigrationInterf
   public async down(queryRunner: QueryRunner): Promise<void> {
     const emailsToRemove = [
       "nick.barrett36@ngx-ramblers.org.uk",
-      "charlesh@miningpressure.co.za",
+      "charlesh@example.com",
       "mike.lecki@gmail.com",
-      "heine@miningpressure.co.za",
+      "heine@example.com",
     ];
 
     for (const email of emailsToRemove) {

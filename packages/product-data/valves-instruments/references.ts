@@ -3,7 +3,7 @@
 
 export interface IndustryReference {
   name: string;
-  url: string;
+  url: string | null;
   category: "manufacturer" | "supplier" | "standard" | "resource" | "local_sa";
   description: string;
   productsOffered?: string[];
@@ -235,73 +235,73 @@ export const SA_VALVE_INSTRUMENT_SUPPLIERS: IndustryReference[] = [
 export const VALVE_INSTRUMENT_STANDARDS: IndustryReference[] = [
   {
     name: "API 6D",
-    url: "https://www.api.org",
+    url: null,
     category: "standard",
     description: "Pipeline and piping valves",
   },
   {
     name: "API 600",
-    url: "https://www.api.org",
+    url: null,
     category: "standard",
     description: "Bolted bonnet steel gate valves for petroleum and natural gas industries",
   },
   {
     name: "API 608",
-    url: "https://www.api.org",
+    url: null,
     category: "standard",
     description: "Metal ball valves - flanged, threaded, welding ends",
   },
   {
     name: "API 609",
-    url: "https://www.api.org",
+    url: null,
     category: "standard",
     description: "Butterfly valves: double-flanged, lug, and wafer-type",
   },
   {
     name: "API 526",
-    url: "https://www.api.org",
+    url: null,
     category: "standard",
     description: "Flanged steel pressure relief valves",
   },
   {
     name: "API 594",
-    url: "https://www.api.org",
+    url: null,
     category: "standard",
     description: "Check valves: flanged, lug, wafer, and butt-welding",
   },
   {
     name: "ASME B16.34",
-    url: "https://www.asme.org",
+    url: null,
     category: "standard",
     description: "Valves - flanged, threaded and welding end",
   },
   {
     name: "ISA-75 Series",
-    url: "https://www.isa.org",
+    url: null,
     category: "standard",
     description: "Control valve standards (sizing, testing, terminology)",
   },
   {
     name: "IEC 61511",
-    url: "https://www.iec.ch",
+    url: null,
     category: "standard",
     description: "Functional safety - Safety instrumented systems",
   },
   {
     name: "IEC 61508",
-    url: "https://www.iec.ch",
+    url: null,
     category: "standard",
     description: "Functional safety of electrical/electronic systems",
   },
   {
     name: "ISO 5167",
-    url: "https://www.iso.org",
+    url: null,
     category: "standard",
     description: "Measurement of fluid flow - Differential pressure devices",
   },
   {
     name: "API 2530 (AGA 3)",
-    url: "https://www.api.org",
+    url: null,
     category: "standard",
     description: "Orifice metering of natural gas",
   },
@@ -317,7 +317,7 @@ export const VALVE_INSTRUMENT_RESOURCES: IndustryReference[] = [
   },
   {
     name: "ISA (International Society of Automation)",
-    url: "https://www.isa.org",
+    url: null,
     category: "resource",
     description: "Automation standards and certification body",
   },

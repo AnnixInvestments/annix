@@ -4,7 +4,7 @@ import { IsEmail, IsNotEmpty, IsObject, IsOptional, IsString, MinLength } from "
 export class SupplierLoginDto {
   @ApiProperty({
     description: "Email address",
-    example: "supplier@company.co.za",
+    example: "supplier@example.com",
   })
   @IsEmail()
   @IsNotEmpty()

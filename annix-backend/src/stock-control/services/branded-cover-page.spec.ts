@@ -16,7 +16,7 @@ function makeCompany(overrides: Record<string, any> = {}) {
 function makeJobCard(overrides: Record<string, any> = {}) {
   return {
     id: 10,
-    customerName: "Sasol",
+    customerName: "Example Corp",
     poNumber: "PO-12345",
     jobNumber: "JC-001",
     jobName: "Valve Lining Project",

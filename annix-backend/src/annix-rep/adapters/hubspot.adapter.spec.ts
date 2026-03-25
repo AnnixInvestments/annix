@@ -14,7 +14,7 @@ describe("HubSpotAdapter", () => {
     id: 1,
     companyName: "Acme Corp",
     contactName: "John Smith",
-    contactEmail: "john@acme.com",
+    contactEmail: "john@example.com",
     contactPhone: "+27821234567",
     contactTitle: "Purchasing Manager",
     streetAddress: "123 Main St",

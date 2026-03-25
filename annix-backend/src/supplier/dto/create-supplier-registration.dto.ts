@@ -4,7 +4,7 @@ import { IsEmail, IsNotEmpty, IsString, Matches, MinLength } from "class-validat
 export class CreateSupplierRegistrationDto {
   @ApiProperty({
     description: "Email address (used as login)",
-    example: "supplier@company.co.za",
+    example: "supplier@example.com",
   })
   @IsEmail()
   @IsNotEmpty()

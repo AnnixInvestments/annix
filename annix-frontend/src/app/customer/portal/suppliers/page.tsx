@@ -742,7 +742,7 @@ function CustomerSuppliersContent() {
                     value={addForm.supplierEmail}
                     onChange={(e) => setAddForm({ ...addForm, supplierEmail: e.target.value })}
                     className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                    placeholder="supplier@company.co.za"
+                    placeholder="supplier@example.com"
                   />
                 </div>
 
@@ -831,7 +831,7 @@ function CustomerSuppliersContent() {
                     value={inviteForm.email}
                     onChange={(e) => setInviteForm({ ...inviteForm, email: e.target.value })}
                     className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                    placeholder="supplier@company.co.za"
+                    placeholder="supplier@example.com"
                   />
                 </div>
 

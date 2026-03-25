@@ -882,7 +882,7 @@ export default function SignupPage() {
                     onChange={(e) => updateField("email", e.target.value)}
                     aria-invalid={!!fieldErrors.email}
                     className={fieldClass(!!fieldErrors.email)}
-                    placeholder="you@company.co.za"
+                    placeholder="you@example.com"
                   />
                   {fieldErrors.email && (
                     <p className="text-red-400 text-xs mt-1">{fieldErrors.email}</p>

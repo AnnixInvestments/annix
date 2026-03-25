@@ -105,7 +105,7 @@ describe("ScEmailClassifierService", () => {
         "Invoice #12345\nTotal: R15,000\nVAT: R2,250",
         "text/plain",
         "invoice.txt",
-        "accounts@supplier.com",
+        "accounts@example.com",
         "Invoice attached",
       );
 
@@ -122,7 +122,7 @@ describe("ScEmailClassifierService", () => {
         "some content",
         "text/plain",
         "file.txt",
-        "test@test.com",
+        "test@example.com",
         "Subject",
       );
 
@@ -143,7 +143,7 @@ describe("ScEmailClassifierService", () => {
         "content",
         "text/plain",
         "file.txt",
-        "test@test.com",
+        "test@example.com",
         "Subject",
       );
 
@@ -160,7 +160,7 @@ describe("ScEmailClassifierService", () => {
         "content",
         "text/plain",
         "file.txt",
-        "test@test.com",
+        "test@example.com",
         "Subject",
       );
 
@@ -176,7 +176,7 @@ describe("ScEmailClassifierService", () => {
         "content",
         "text/plain",
         "file.txt",
-        "test@test.com",
+        "test@example.com",
         "Subject",
       );
 
@@ -199,7 +199,7 @@ describe("ScEmailClassifierService", () => {
         longContent,
         "text/plain",
         "file.txt",
-        "test@test.com",
+        "test@example.com",
         "Subject",
       );
 
@@ -220,7 +220,7 @@ describe("ScEmailClassifierService", () => {
         "PO content",
         "text/plain",
         "po.txt",
-        "test@test.com",
+        "test@example.com",
         "PO",
       );
 
@@ -246,7 +246,7 @@ describe("ScEmailClassifierService", () => {
         imageBuffer,
         "image/jpeg",
         "invoice-scan.jpg",
-        "scan@supplier.com",
+        "scan@example.com",
         "Scanned invoice",
       );
 
@@ -273,7 +273,7 @@ describe("ScEmailClassifierService", () => {
         Buffer.from("png-data"),
         "image/png",
         "dn.png",
-        "test@test.com",
+        "test@example.com",
         "Subject",
       );
 
@@ -293,7 +293,7 @@ describe("ScEmailClassifierService", () => {
         Buffer.from("webp-data"),
         "image/webp",
         "cert.webp",
-        "test@test.com",
+        "test@example.com",
         "Subject",
       );
 
@@ -313,7 +313,7 @@ describe("ScEmailClassifierService", () => {
         Buffer.from("PO-12345 Widget order"),
         "application/pdf",
         "po.pdf",
-        "test@test.com",
+        "test@example.com",
         "PO attached",
       );
 
@@ -344,7 +344,7 @@ describe("ScEmailClassifierService", () => {
           "content",
           "text/plain",
           "file.txt",
-          "test@test.com",
+          "test@example.com",
           "Subject",
         );
 

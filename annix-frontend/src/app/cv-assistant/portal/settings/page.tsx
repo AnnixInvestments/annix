@@ -236,7 +236,7 @@ export default function SettingsPage() {
               type="text"
               value={imapUser}
               onChange={(e) => setImapUser(e.target.value)}
-              placeholder="recruiting@company.com"
+              placeholder="recruiting@example.com"
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent"
             />
           </div>
@@ -265,7 +265,7 @@ export default function SettingsPage() {
               type="email"
               value={emailFromAddress}
               onChange={(e) => setEmailFromAddress(e.target.value)}
-              placeholder="noreply@company.com"
+              placeholder="noreply@example.com"
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent"
             />
           </div>

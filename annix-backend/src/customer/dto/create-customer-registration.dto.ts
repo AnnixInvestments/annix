@@ -114,7 +114,7 @@ export class CompanyDetailsDto {
 
   @ApiProperty({
     description: "Primary contact phone number",
-    example: "+27 11 555 0123",
+    example: "+27 11 000 0123",
   })
   @IsString()
   @IsNotEmpty()
@@ -124,7 +124,7 @@ export class CompanyDetailsDto {
 
   @ApiPropertyOptional({
     description: "Fax number",
-    example: "+27 11 555 0124",
+    example: "+27 11 000 0124",
   })
   @IsString()
   @IsOptional()
@@ -133,7 +133,7 @@ export class CompanyDetailsDto {
 
   @ApiPropertyOptional({
     description: "General company email",
-    example: "info@acme.co.za",
+    example: "info@example.com",
   })
   @IsEmail()
   @IsOptional()
@@ -141,7 +141,7 @@ export class CompanyDetailsDto {
 
   @ApiPropertyOptional({
     description: "Company website",
-    example: "https://www.acme.co.za",
+    example: "https://www.example.com",
   })
   @IsString()
   @IsOptional()
@@ -173,7 +173,7 @@ export class UserDetailsDto {
 
   @ApiProperty({
     description: "Email address (used as login)",
-    example: "john.smith@acme.co.za",
+    example: "john.smith@example.com",
   })
   @IsEmail()
   @IsNotEmpty()
@@ -193,7 +193,7 @@ export class UserDetailsDto {
 
   @ApiPropertyOptional({
     description: "Direct phone number",
-    example: "+27 11 555 0125",
+    example: "+27 11 000 0125",
   })
   @IsString()
   @IsOptional()
@@ -203,7 +203,7 @@ export class UserDetailsDto {
 
   @ApiPropertyOptional({
     description: "Mobile phone number",
-    example: "+27 82 555 0123",
+    example: "+27 82 000 0123",
   })
   @IsString()
   @IsOptional()

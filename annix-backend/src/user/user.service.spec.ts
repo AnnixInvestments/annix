@@ -55,7 +55,7 @@ describe("UserService", () => {
     it("should create and return a user", async () => {
       const dto = {
         username: "john",
-        email: "john@test.com",
+        email: "john@example.com",
         password: "123456",
       };
       const salt = "random_salt";
@@ -87,14 +87,14 @@ describe("UserService", () => {
       expect(result).toMatchObject({
         id: 1,
         username: "john",
-        email: "john@test.com",
+        email: "john@example.com",
       });
     });
   });
 
   describe("findAll", () => {
     it("should return all users", async () => {
-      const users = [{ id: 1, username: "john", email: "john@test.com" }] as User[];
+      const users = [{ id: 1, username: "john", email: "john@example.com" }] as User[];
       userRepo.find.mockResolvedValue(users);
 
       const result = await service.findAll();

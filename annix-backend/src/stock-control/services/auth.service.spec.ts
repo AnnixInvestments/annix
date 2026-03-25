@@ -675,14 +675,14 @@ describe("StockControlAuthService", () => {
         {
           id: 1,
           name: "Alice",
-          email: "alice@test.com",
+          email: "alice@example.com",
           role: StockControlRole.ADMIN,
           createdAt: now().toJSDate(),
         },
         {
           id: 2,
           name: "Bob",
-          email: "bob@test.com",
+          email: "bob@example.com",
           role: StockControlRole.STOREMAN,
           createdAt: now().toJSDate(),
         },

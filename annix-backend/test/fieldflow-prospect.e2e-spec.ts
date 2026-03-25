@@ -21,7 +21,7 @@ describe("ProspectController (e2e)", () => {
     ownerId: 1,
     companyName: "Acme Corp",
     contactName: "John Doe",
-    contactEmail: "john@acme.com",
+    contactEmail: "john@example.com",
     contactPhone: "+27123456789",
     city: "Johannesburg",
     province: "Gauteng",
@@ -108,7 +108,7 @@ describe("ProspectController (e2e)", () => {
     const createDto = {
       companyName: "New Company",
       contactName: "Jane Smith",
-      contactEmail: "jane@newcompany.com",
+      contactEmail: "jane@example.com",
       contactPhone: "+27987654321",
       city: "Cape Town",
       province: "Western Cape",

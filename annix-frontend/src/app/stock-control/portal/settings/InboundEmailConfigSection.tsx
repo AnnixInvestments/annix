@@ -214,7 +214,7 @@ export function InboundEmailConfigSection() {
                   setEmailUser(e.target.value);
                   setSuccess("");
                 }}
-                placeholder="documents@company.co.za"
+                placeholder="documents@example.com"
                 className="mt-0.5 block w-full px-2 py-1 border border-gray-300 rounded text-xs placeholder-gray-400 focus:outline-none focus:ring-teal-500 focus:border-teal-500"
               />
             </div>

@@ -277,7 +277,7 @@ function SupplierDetailForm(props: {
                   type="email"
                   value={formData.cocFromEmail}
                   onChange={(e) => onFormChange({ ...formData, cocFromEmail: e.target.value })}
-                  placeholder="e.g. coc@supplier.com"
+                  placeholder="e.g. coc@example.com"
                   className={inputClass}
                 />
                 <p className="mt-1 text-xs text-gray-400">
@@ -290,7 +290,7 @@ function SupplierDetailForm(props: {
                   type="email"
                   value={formData.stiFromEmail}
                   onChange={(e) => onFormChange({ ...formData, stiFromEmail: e.target.value })}
-                  placeholder="e.g. sti@supplier.com"
+                  placeholder="e.g. sti@example.com"
                   className={inputClass}
                 />
                 <p className="mt-1 text-xs text-gray-400">
@@ -305,7 +305,7 @@ function SupplierDetailForm(props: {
                   onChange={(e) =>
                     onFormChange({ ...formData, purchaseOrderToEmail: e.target.value })
                   }
-                  placeholder="e.g. orders@supplier.com"
+                  placeholder="e.g. orders@example.com"
                   className={inputClass}
                 />
                 <p className="mt-1 text-xs text-gray-400">
@@ -318,7 +318,7 @@ function SupplierDetailForm(props: {
                   type="email"
                   value={formData.statementEmail}
                   onChange={(e) => onFormChange({ ...formData, statementEmail: e.target.value })}
-                  placeholder="e.g. accounts@supplier.com"
+                  placeholder="e.g. accounts@example.com"
                   className={inputClass}
                 />
                 <p className="mt-1 text-xs text-gray-400">Email address to send statements to</p>

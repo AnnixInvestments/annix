@@ -2,7 +2,7 @@ import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { IsEmail, IsNotEmpty, IsString, MinLength } from "class-validator";
 
 export class AnnixRepRegisterDto {
-  @ApiProperty({ description: "User email address", example: "rep@company.com" })
+  @ApiProperty({ description: "User email address", example: "rep@example.com" })
   @IsEmail()
   @IsNotEmpty()
   email: string;
@@ -24,7 +24,7 @@ export class AnnixRepRegisterDto {
 }
 
 export class AnnixRepLoginDto {
-  @ApiProperty({ description: "User email address", example: "rep@company.com" })
+  @ApiProperty({ description: "User email address", example: "rep@example.com" })
   @IsEmail()
   @IsNotEmpty()
   email: string;
@@ -86,7 +86,7 @@ export class AnnixRepProfileResponseDto {
 }
 
 export class CheckEmailAvailableDto {
-  @ApiProperty({ description: "Email to check", example: "rep@company.com" })
+  @ApiProperty({ description: "Email to check", example: "rep@example.com" })
   @IsEmail()
   @IsNotEmpty()
   email: string;

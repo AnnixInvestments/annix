@@ -78,7 +78,7 @@ describe("CrmService", () => {
     ownerId: 100,
     companyName: "Test Company",
     contactName: "John Doe",
-    email: "john@test.com",
+    email: "john@example.com",
     phone: "+27123456789",
     crmExternalId: null,
   } as any;

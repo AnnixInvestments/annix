@@ -117,7 +117,7 @@ export class SupplierCompanyDto {
 
   @ApiProperty({
     description: "Primary contact email",
-    example: "jane@abcsupplies.co.za",
+    example: "jane@example.com",
   })
   @IsEmail()
   @IsNotEmpty()
@@ -125,7 +125,7 @@ export class SupplierCompanyDto {
 
   @ApiProperty({
     description: "Primary contact phone",
-    example: "+27 21 555 0123",
+    example: "+27 21 000 0123",
   })
   @IsString()
   @IsNotEmpty()
@@ -135,7 +135,7 @@ export class SupplierCompanyDto {
 
   @ApiPropertyOptional({
     description: "Company main phone number",
-    example: "+27 21 555 0100",
+    example: "+27 21 000 0100",
   })
   @IsString()
   @IsOptional()
@@ -145,7 +145,7 @@ export class SupplierCompanyDto {
 
   @ApiPropertyOptional({
     description: "Fax number",
-    example: "+27 21 555 0101",
+    example: "+27 21 000 0101",
   })
   @IsString()
   @IsOptional()
@@ -154,7 +154,7 @@ export class SupplierCompanyDto {
 
   @ApiPropertyOptional({
     description: "General company email",
-    example: "info@abcsupplies.co.za",
+    example: "info@example.com",
   })
   @IsEmail()
   @IsOptional()
@@ -162,7 +162,7 @@ export class SupplierCompanyDto {
 
   @ApiPropertyOptional({
     description: "Company website",
-    example: "https://www.abcsupplies.co.za",
+    example: "https://www.example.com",
   })
   @IsString()
   @IsOptional()

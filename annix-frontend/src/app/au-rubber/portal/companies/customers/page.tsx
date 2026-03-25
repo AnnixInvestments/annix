@@ -314,7 +314,7 @@ function CustomerDetailForm(props: {
                   type="email"
                   value={formData.incomingPoEmail}
                   onChange={(e) => onFormChange({ ...formData, incomingPoEmail: e.target.value })}
-                  placeholder="e.g. purchasing@customer.com"
+                  placeholder="e.g. purchasing@example.com"
                   className={inputClass}
                 />
                 <p className="mt-1 text-xs text-gray-400">
@@ -327,7 +327,7 @@ function CustomerDetailForm(props: {
                   type="email"
                   value={formData.outgoingCocEmail}
                   onChange={(e) => onFormChange({ ...formData, outgoingCocEmail: e.target.value })}
-                  placeholder="e.g. quality@customer.com"
+                  placeholder="e.g. quality@example.com"
                   className={inputClass}
                 />
                 <p className="mt-1 text-xs text-gray-400">
@@ -340,7 +340,7 @@ function CustomerDetailForm(props: {
                   type="email"
                   value={formData.outgoingCtiEmail}
                   onChange={(e) => onFormChange({ ...formData, outgoingCtiEmail: e.target.value })}
-                  placeholder="e.g. quality@customer.com"
+                  placeholder="e.g. quality@example.com"
                   className={inputClass}
                 />
                 <p className="mt-1 text-xs text-gray-400">Email address to send CTI documents to</p>
@@ -353,7 +353,7 @@ function CustomerDetailForm(props: {
                   onChange={(e) =>
                     onFormChange({ ...formData, outgoingStatementEmail: e.target.value })
                   }
-                  placeholder="e.g. accounts@customer.com"
+                  placeholder="e.g. accounts@example.com"
                   className={inputClass}
                 />
                 <p className="mt-1 text-xs text-gray-400">Email address to send statements to</p>

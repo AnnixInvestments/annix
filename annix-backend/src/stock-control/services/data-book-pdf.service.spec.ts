@@ -167,7 +167,7 @@ function makeControlPlan(overrides: Record<string, any> = {}) {
     qcpNumber: "QCP-001",
     documentRef: null,
     revision: "00",
-    customerName: "Sasol",
+    customerName: "Example Corp",
     orderNumber: "PO-001",
     jobName: "Test Project",
     specification: "NR 40 Shore A",

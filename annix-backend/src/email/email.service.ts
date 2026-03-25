@@ -56,7 +56,7 @@ export class EmailService {
   }
 
   async sendEmail(options: EmailOptions): Promise<boolean> {
-    const fromEmail = this.configService.get<string>("EMAIL_FROM") || "noreply@annix.com";
+    const fromEmail = this.configService.get<string>("EMAIL_FROM") || "noreply@example.com";
     const fromName =
       options.fromName || this.configService.get<string>("EMAIL_FROM_NAME") || "Annix";
     const supportEmail = this.configService.get<string>("SUPPORT_EMAIL") || fromEmail;
@@ -65,7 +65,7 @@ export class EmailService {
 
     const from = `"${fromName}" <${fromEmail}>`;
 
-    const domain = fromEmail.split("@")[1] || "annix.com";
+    const domain = fromEmail.split("@")[1] || "example.com";
     const messageId = `<${nowMillis()}.${Math.random().toString(36).substring(2)}@${domain}>`;
 
     const headers: Record<string, string> = {

@@ -112,7 +112,7 @@ export class CreateMeetingDto {
   @IsOptional()
   longitude?: number;
 
-  @ApiPropertyOptional({ description: "List of attendee emails", example: ["john@acme.com"] })
+  @ApiPropertyOptional({ description: "List of attendee emails", example: ["john@example.com"] })
   @IsArray()
   @IsString({ each: true })
   @IsOptional()

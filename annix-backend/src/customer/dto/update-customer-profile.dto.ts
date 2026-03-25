@@ -15,7 +15,7 @@ export class UpdateCustomerProfileDto {
 
   @ApiPropertyOptional({
     description: "Direct phone number",
-    example: "+27 11 555 0125",
+    example: "+27 11 000 0125",
   })
   @IsString()
   @IsOptional()
@@ -25,7 +25,7 @@ export class UpdateCustomerProfileDto {
 
   @ApiPropertyOptional({
     description: "Mobile phone number",
-    example: "+27 82 555 0123",
+    example: "+27 82 000 0123",
   })
   @IsString()
   @IsOptional()
@@ -66,7 +66,7 @@ export class UpdateCompanyAddressDto {
 
   @ApiPropertyOptional({
     description: "Primary contact phone number",
-    example: "+27 21 555 0123",
+    example: "+27 21 000 0123",
   })
   @IsString()
   @IsOptional()

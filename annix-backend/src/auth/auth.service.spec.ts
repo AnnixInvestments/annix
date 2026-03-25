@@ -55,7 +55,7 @@ describe("AuthService", () => {
       const user = {
         id: 1,
         username: "john",
-        email: "john@test.com",
+        email: "john@example.com",
         password: "hashed_pass",
         salt: "random_salt",
         roles: [{ id: 1, name: "employee" }],
@@ -66,19 +66,19 @@ describe("AuthService", () => {
       (bcrypt.hash as jest.Mock).mockResolvedValue("hashed_pass");
       (bcrypt.compare as jest.Mock).mockResolvedValue(true);
 
-      const result = await service.validateUser("john@test.com", "123456");
+      const result = await service.validateUser("john@example.com", "123456");
 
       expect(result).toEqual({
         id: 1,
         username: "john",
-        email: "john@test.com",
+        email: "john@example.com",
         roles: [{ id: 1, name: "employee" }],
       });
     });
 
     it("should throw UnauthorizedException if user is not found", async () => {
       mockUserRepo.findOne.mockResolvedValue(null);
-      await expect(service.validateUser("nonexistent@test.com", "123456")).rejects.toThrow(
+      await expect(service.validateUser("nonexistent@example.com", "123456")).rejects.toThrow(
         UnauthorizedException,
       );
     });
@@ -87,7 +87,7 @@ describe("AuthService", () => {
       const user = {
         id: 1,
         username: "john",
-        email: "john@test.com",
+        email: "john@example.com",
         password: "hashed_pass",
         salt: "random_salt",
         roles: [{ id: 1, name: "employee" }],
@@ -97,7 +97,7 @@ describe("AuthService", () => {
 
       (bcrypt.compare as jest.Mock).mockResolvedValue(false);
 
-      await expect(service.validateUser("john@test.com", "123456")).rejects.toThrow(
+      await expect(service.validateUser("john@example.com", "123456")).rejects.toThrow(
         UnauthorizedException,
       );
     });

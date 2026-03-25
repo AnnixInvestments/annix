@@ -78,9 +78,9 @@ export default function MultiStepBendRfqForm(props: Props) {
   const [formData, setFormData] = useState<BendRfqFormData>({
     projectName: "Bend Pipeline Project",
     description: "Pipeline bends and elbows for system installation",
-    customerName: "Acme Industrial Solutions",
-    customerEmail: "procurement@acme-industrial.co.za",
-    customerPhone: "+27 11 555 0123",
+    customerName: "Example Industrial Solutions",
+    customerEmail: "procurement@example.com",
+    customerPhone: "+27 11 000 0123",
     requiredDate: addDaysFromNowISODate(30),
     notes: "All bends to be fabricated according to ASME B16.49",
     globalSpecs: {
@@ -620,7 +620,7 @@ export default function MultiStepBendRfqForm(props: Props) {
                           className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 ${
                             errors.customerEmail ? "border-red-500" : "border-gray-300"
                           }`}
-                          placeholder="procurement@company.com"
+                          placeholder="procurement@example.com"
                         />
                         {errors.customerEmail && (
                           <p className="mt-1 text-sm text-red-600">{errors.customerEmail}</p>
@@ -636,7 +636,7 @@ export default function MultiStepBendRfqForm(props: Props) {
                           value={formData.customerPhone}
                           onChange={(e) => updateField("customerPhone", e.target.value)}
                           className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
-                          placeholder="+27 11 555 0123"
+                          placeholder="+27 11 000 0123"
                         />
                       </div>
                     </div>

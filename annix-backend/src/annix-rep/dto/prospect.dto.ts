@@ -33,12 +33,12 @@ export class CreateProspectDto {
   @MaxLength(255)
   contactName?: string;
 
-  @ApiPropertyOptional({ description: "Contact email", example: "john@acme.com" })
+  @ApiPropertyOptional({ description: "Contact email", example: "john@example.com" })
   @IsEmail()
   @IsOptional()
   contactEmail?: string;
 
-  @ApiPropertyOptional({ description: "Contact phone", example: "+27 11 123 4567" })
+  @ApiPropertyOptional({ description: "Contact phone", example: "+27 11 000 4567" })
   @IsString()
   @IsOptional()
   @MaxLength(50)

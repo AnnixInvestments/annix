@@ -223,7 +223,7 @@ export default function PublicBookingPage() {
                       value={formData.email}
                       onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      placeholder="your@email.com"
+                      placeholder="your@example.com"
                     />
                   </div>
 

@@ -27,7 +27,7 @@ export class IsZAPhoneConstraint implements ValidatorConstraintInterface {
   }
 
   defaultMessage(): string {
-    return "Phone number must be a valid South African number (e.g., +27 11 555 0123 or 011 555 0123)";
+    return "Phone number must be a valid South African number (e.g., +27 11 000 0123 or 011 000 0123)";
   }
 }
 
@@ -54,7 +54,7 @@ export class IsInternationalPhoneConstraint implements ValidatorConstraintInterf
   }
 
   defaultMessage(): string {
-    return "Phone number must be in a valid format (e.g., +27 11 555 0123)";
+    return "Phone number must be in a valid format (e.g., +27 11 000 0123)";
   }
 }
 
