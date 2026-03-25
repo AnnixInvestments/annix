@@ -213,7 +213,7 @@ export class SageJcDumpService {
         return { ...acc, [jt]: jtGroups[jt] };
       }, {});
 
-    const asteriskItems = this.buildAsteriskItems(asteriskRawItems, cpo);
+    const asteriskItems = this.buildAsteriskItems(asteriskRawItems, jtItems, cpo);
 
     return {
       cpoId: cpo.id,
@@ -542,14 +542,20 @@ export class SageJcDumpService {
 
   private buildAsteriskItems(
     rawItems: SageJcDumpParsedItem[],
+    jtItems: SageJcDumpParsedItem[],
     cpo: CustomerPurchaseOrder,
   ): AsteriskItem[] {
+    const jtQtyByItemBase = jtItems.reduce<Record<string, number>>((acc, item) => {
+      const key = item.itemNoBase.toLowerCase();
+      return { ...acc, [key]: (acc[key] || 0) + item.quantity };
+    }, {});
+
     const grouped = rawItems.reduce<Record<string, SageJcDumpParsedItem[]>>((acc, item) => {
       const key = item.itemNoBase.toLowerCase();
       return { ...acc, [key]: [...(acc[key] || []), item] };
     }, {});
 
-    return Object.entries(grouped).reduce<AsteriskItem[]>((acc, [_key, items]) => {
+    return Object.entries(grouped).reduce<AsteriskItem[]>((acc, [key, items]) => {
       const representative = items[0];
       const totalAsteriskQty = items.reduce((sum, i) => sum + i.quantity, 0);
 
@@ -560,7 +566,9 @@ export class SageJcDumpService {
       );
       if (!cpoItem) return acc;
 
-      const remaining = Number(cpoItem.quantityOrdered) - Number(cpoItem.quantityFulfilled);
+      const jtQtyInDump = jtQtyByItemBase[key] || 0;
+      const alreadyDelivered = Number(cpoItem.quantityFulfilled) + jtQtyInDump;
+      const remaining = Number(cpoItem.quantityOrdered) - alreadyDelivered;
       if (remaining <= 0) return acc;
 
       return [
@@ -572,7 +580,7 @@ export class SageJcDumpService {
           itemNoBase: representative.itemNoBase,
           cpoItemId: cpoItem.id,
           totalCpoQty: Number(cpoItem.quantityOrdered),
-          alreadyDeliveredQty: Number(cpoItem.quantityFulfilled),
+          alreadyDeliveredQty: alreadyDelivered,
           remainingQty: remaining,
           asteriskQtyInFile: totalAsteriskQty,
         },

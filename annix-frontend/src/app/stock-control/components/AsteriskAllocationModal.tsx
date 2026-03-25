@@ -19,13 +19,16 @@ interface AsteriskAllocationModalProps {
   onClose: () => void;
   onConfirm: (allocations: AsteriskAllocation[]) => void;
   asteriskItems: AsteriskItem[];
+  autoJtCount: number;
+  autoJtNumbers: string[];
   submitting: boolean;
 }
 
 const EMPTY_ROW: AllocationRow = { jtNumber: "", quantity: "" };
 
 export function AsteriskAllocationModal(props: AsteriskAllocationModalProps) {
-  const { isOpen, onClose, onConfirm, asteriskItems, submitting } = props;
+  const { isOpen, onClose, onConfirm, asteriskItems, autoJtCount, autoJtNumbers, submitting } =
+    props;
 
   const [itemStates, setItemStates] = useState<ItemAllocationState[]>(() =>
     asteriskItems.map((item) => ({
@@ -157,9 +160,15 @@ export function AsteriskAllocationModal(props: AsteriskAllocationModalProps) {
               >
                 Allocate Deliveries
               </h2>
+              {autoJtCount > 0 && (
+                <p className="text-sm text-green-600 mt-0.5">
+                  {autoJtCount} JT{autoJtCount === 1 ? "" : "s"} will be auto-created:{" "}
+                  {autoJtNumbers.join(", ")}
+                </p>
+              )}
               <p className="text-sm text-gray-500 mt-0.5">
-                Items marked with *** in the Sage dump need JT number allocation. Leave blank if
-                nothing new has arrived.
+                The items below were marked with *** in the Sage dump. Allocate JT numbers and
+                quantities for any new deliveries, or leave blank if nothing new has arrived.
               </p>
             </div>
             <button

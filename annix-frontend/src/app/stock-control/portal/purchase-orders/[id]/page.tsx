@@ -940,6 +940,8 @@ export default function CpoDetailPage() {
           onClose={() => setShowAllocationModal(false)}
           onConfirm={handleAllocationConfirm}
           asteriskItems={sageParseResult.asteriskItems}
+          autoJtCount={Object.keys(sageParseResult.jtGroups).length}
+          autoJtNumbers={Object.keys(sageParseResult.jtGroups)}
           submitting={sageConfirming}
         />
       )}
