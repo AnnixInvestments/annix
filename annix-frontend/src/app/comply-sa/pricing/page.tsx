@@ -1,16 +1,9 @@
 "use client";
 
-import {
-  ArrowLeft,
-  Check,
-  CheckCircle,
-  ChevronDown,
-  ChevronUp,
-  Loader2,
-  Shield,
-} from "lucide-react";
+import { ArrowLeft, Check, CheckCircle, ChevronDown, ChevronUp, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
+import AmixLogo from "@/app/components/AmixLogo";
 import { useToast } from "@/app/components/Toast";
 import { useUpgradeSubscription } from "@/app/lib/query/hooks";
 
@@ -221,8 +214,7 @@ export default function PricingPage() {
       <header className="border-b border-slate-700 bg-slate-800">
         <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
           <Link href="/comply-sa/dashboard" className="flex items-center gap-2">
-            <Shield className="h-6 w-6 text-teal-400" />
-            <span className="text-lg font-bold text-white">Comply SA</span>
+            <AmixLogo size="sm" showText useSignatureFont />
           </Link>
           <Link
             href="/comply-sa/settings"

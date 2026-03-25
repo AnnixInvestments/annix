@@ -227,7 +227,7 @@ export default function HomePage() {
             </div>
           </Link>
 
-          <Link href="/comply-sa" className="group">
+          <Link href="/comply-sa" target="_blank" className="group">
             <div className="bg-white bg-opacity-95 backdrop-blur-sm rounded-xl shadow-lg p-8 border-2 border-transparent hover:border-rose-400 hover:shadow-xl transition-all duration-300 h-full">
               <div className="text-center">
                 <div className="inline-flex items-center justify-center w-20 h-20 bg-rose-100 rounded-2xl text-rose-600 mb-6 group-hover:bg-rose-600 group-hover:text-white transition-colors">

@@ -1,5 +1,5 @@
 export const metadata = {
-  title: "Comply SA",
+  title: "Annix Comply SA",
   description: "SA SME compliance dashboard",
 };
 

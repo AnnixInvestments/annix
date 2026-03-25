@@ -22,6 +22,7 @@ import {
   PROVINCES,
 } from "@/app/comply-sa/config/onboardingConstants";
 import { signup } from "@/app/comply-sa/lib/api";
+import AmixLogo from "@/app/components/AmixLogo";
 
 type EntityType = "individual" | "company" | "trust";
 
@@ -537,7 +538,7 @@ function SuccessModal(props: {
         <div className="w-16 h-16 bg-teal-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
           <CheckCircle2 className="h-8 w-8 text-teal-400" />
         </div>
-        <h2 className="text-xl font-bold text-white mb-2">Welcome to Comply SA!</h2>
+        <h2 className="text-xl font-bold text-white mb-2">Welcome to Annix Comply SA!</h2>
         <p className="text-slate-300 text-sm mb-4">
           Your personalised South African compliance dashboard is ready. Based on your{" "}
           <strong className="text-teal-400">{entityLabel}</strong> in the{" "}
@@ -813,8 +814,7 @@ export default function SignupPage() {
       <div className="w-full max-w-xl" ref={formRef}>
         <div className="text-center mb-6">
           <Link href="/comply-sa" className="inline-flex items-center gap-2 mb-4">
-            <Shield className="h-8 w-8 text-teal-400" />
-            <span className="text-xl font-bold text-white">Comply SA</span>
+            <AmixLogo size="sm" showText useSignatureFont />
           </Link>
           <h1 className="text-2xl font-bold text-white">
             Start Your South African Compliance Journey

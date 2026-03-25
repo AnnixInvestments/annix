@@ -19,7 +19,6 @@ import {
   Newspaper,
   Plug,
   Settings,
-  Shield,
   Users,
   X,
 } from "lucide-react";
@@ -156,8 +155,7 @@ function MobileMenu({
     <div className="lg:hidden fixed inset-0 z-50 bg-white dark:bg-slate-900">
       <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 dark:border-slate-700">
         <div className="flex items-center gap-2">
-          <Shield className="h-6 w-6 text-teal-400" />
-          <span className="text-lg font-bold text-slate-900 dark:text-white">Comply SA</span>
+          <AmixLogo size="sm" showText useSignatureFont />
         </div>
         <button
           type="button"

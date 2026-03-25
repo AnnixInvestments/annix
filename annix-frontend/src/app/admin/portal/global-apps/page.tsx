@@ -223,7 +223,7 @@ const platformApps: AppCard[] = [
     icon: <ComplySaIcon />,
     color: "bg-rose-100 text-rose-600",
     hoverColor: "hover:border-rose-400 group-hover:bg-rose-600 group-hover:text-white",
-    isExternal: false,
+    isExternal: true,
   },
 ];
 

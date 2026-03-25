@@ -1,15 +1,6 @@
 "use client";
 
-import {
-  ArrowLeft,
-  ArrowRight,
-  CheckCircle,
-  FileUp,
-  Loader2,
-  Shield,
-  Upload,
-  X,
-} from "lucide-react";
+import { ArrowLeft, ArrowRight, CheckCircle, FileUp, Loader2, Upload, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCallback, useRef, useState } from "react";
 import {
@@ -20,6 +11,7 @@ import {
   TURNOVER_OPTIONS,
   WIZARD_DOCUMENTS,
 } from "@/app/comply-sa/config/onboardingConstants";
+import AmixLogo from "@/app/components/AmixLogo";
 import {
   useAssessCompany,
   useUpdateCompanyProfile,
@@ -317,11 +309,9 @@ export default function SetupWizard() {
       <div className="w-full max-w-lg">
         <div className="text-center mb-8">
           <div className="inline-flex items-center gap-2 mb-4">
-            <Shield className="h-8 w-8 text-teal-400" />
-            <span className="text-xl font-bold text-slate-900 dark:text-white">
-              Welcome to Comply SA
-            </span>
+            <AmixLogo size="sm" showText useSignatureFont />
           </div>
+          <p className="text-lg font-bold text-slate-900 dark:text-white">Welcome to Comply SA</p>
           <p className="text-slate-500 dark:text-slate-400 text-sm">
             {step < 5 ? (
               <>

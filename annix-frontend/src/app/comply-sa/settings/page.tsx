@@ -554,7 +554,7 @@ export default function SettingsPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
             <div className="bg-slate-900/50 rounded-lg p-3">
               <p className="text-xs text-slate-500 mb-0.5">Application</p>
-              <p className="text-slate-300">Comply SA</p>
+              <p className="text-slate-300">Annix Comply SA</p>
             </div>
             <div className="bg-slate-900/50 rounded-lg p-3">
               <p className="text-xs text-slate-500 mb-0.5">Version</p>

@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, ArrowRight, Check, Shield } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import {
@@ -11,6 +11,7 @@ import {
   TURNOVER_OPTIONS,
 } from "@/app/comply-sa/config/onboardingConstants";
 import { assessCompany, updateCompanyProfile } from "@/app/comply-sa/lib/api";
+import AmixLogo from "@/app/components/AmixLogo";
 
 const TOTAL_STEPS = 4;
 
@@ -125,8 +126,7 @@ export default function OnboardingPage() {
       <div className="w-full max-w-lg">
         <div className="text-center mb-8">
           <div className="inline-flex items-center gap-2 mb-4">
-            <Shield className="h-8 w-8 text-teal-400" />
-            <span className="text-xl font-bold text-slate-900 dark:text-white">Comply SA</span>
+            <AmixLogo size="sm" showText useSignatureFont />
           </div>
           <p className="text-slate-500 dark:text-slate-400 text-sm">
             Step {step} of {TOTAL_STEPS}
