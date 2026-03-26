@@ -236,13 +236,13 @@ export default function ReportsPage() {
     const totalCost = costByJob.reduce((sum, j) => sum + j.totalCost, 0);
 
     return (
-      <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-200">
+      <div>
+        <table className="w-full table-fixed divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
               <th
                 scope="col"
-                className="px-3 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 sm:px-6"
+                className="w-[100px] px-3 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 sm:px-6"
               >
                 Job Number
               </th>
@@ -260,13 +260,13 @@ export default function ReportsPage() {
               </th>
               <th
                 scope="col"
-                className="hidden px-3 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500 lg:table-cell sm:px-6"
+                className="hidden w-[120px] px-3 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500 lg:table-cell sm:px-6"
               >
                 Items Allocated
               </th>
               <th
                 scope="col"
-                className="px-3 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500 sm:px-6"
+                className="w-[120px] px-3 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500 sm:px-6"
               >
                 Total Cost
               </th>
@@ -278,10 +278,10 @@ export default function ReportsPage() {
                 <td className="whitespace-nowrap px-3 py-4 text-sm font-medium text-teal-700 sm:px-6">
                   {job.jobNumber}
                 </td>
-                <td className="hidden whitespace-nowrap px-3 py-4 text-sm text-gray-900 sm:table-cell sm:px-6">
+                <td className="hidden px-3 py-4 text-sm text-gray-900 break-words sm:table-cell sm:px-6">
                   {job.jobName}
                 </td>
-                <td className="hidden whitespace-nowrap px-3 py-4 text-sm text-gray-500 md:table-cell sm:px-6">
+                <td className="hidden px-3 py-4 text-sm text-gray-500 break-words md:table-cell sm:px-6">
                   {job.customerName || "-"}
                 </td>
                 <td className="hidden whitespace-nowrap px-3 py-4 text-right text-sm text-gray-900 lg:table-cell sm:px-6">
@@ -338,13 +338,13 @@ export default function ReportsPage() {
     }
 
     return (
-      <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-200">
+      <div>
+        <table className="w-full table-fixed divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
               <th
                 scope="col"
-                className="hidden px-3 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 sm:table-cell sm:px-6"
+                className="hidden w-[120px] px-3 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 sm:table-cell sm:px-6"
               >
                 SKU
               </th>
@@ -356,25 +356,25 @@ export default function ReportsPage() {
               </th>
               <th
                 scope="col"
-                className="hidden px-3 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 md:table-cell sm:px-6"
+                className="hidden w-[130px] px-3 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 md:table-cell sm:px-6"
               >
                 Category
               </th>
               <th
                 scope="col"
-                className="px-3 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500 sm:px-6"
+                className="w-[80px] px-3 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500 sm:px-6"
               >
                 Qty
               </th>
               <th
                 scope="col"
-                className="hidden px-3 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500 lg:table-cell sm:px-6"
+                className="hidden w-[110px] px-3 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500 lg:table-cell sm:px-6"
               >
                 Cost/Unit
               </th>
               <th
                 scope="col"
-                className="px-3 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500 sm:px-6"
+                className="w-[120px] px-3 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500 sm:px-6"
               >
                 Total Value
               </th>
@@ -386,9 +386,7 @@ export default function ReportsPage() {
                 <td className="hidden whitespace-nowrap px-3 py-4 font-mono text-sm text-gray-900 sm:table-cell sm:px-6">
                   {item.sku}
                 </td>
-                <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-900 sm:px-6">
-                  {item.name}
-                </td>
+                <td className="px-3 py-4 text-sm text-gray-900 break-words sm:px-6">{item.name}</td>
                 <td className="hidden whitespace-nowrap px-3 py-4 text-sm text-gray-500 md:table-cell sm:px-6">
                   {item.category || "-"}
                 </td>
@@ -505,13 +503,13 @@ export default function ReportsPage() {
       ) : movements.length === 0 ? (
         <div className="py-12" />
       ) : (
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
+        <div>
+          <table className="w-full table-fixed divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
                 <th
                   scope="col"
-                  className="hidden px-3 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 sm:table-cell sm:px-6"
+                  className="hidden w-[100px] px-3 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 sm:table-cell sm:px-6"
                 >
                   Date
                 </th>
@@ -523,19 +521,19 @@ export default function ReportsPage() {
                 </th>
                 <th
                   scope="col"
-                  className="px-3 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 sm:px-6"
+                  className="w-[90px] px-3 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 sm:px-6"
                 >
                   Type
                 </th>
                 <th
                   scope="col"
-                  className="px-3 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500 sm:px-6"
+                  className="w-[60px] px-3 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500 sm:px-6"
                 >
                   Qty
                 </th>
                 <th
                   scope="col"
-                  className="hidden px-3 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 md:table-cell sm:px-6"
+                  className="hidden w-[120px] px-3 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 md:table-cell sm:px-6"
                 >
                   Reference
                 </th>
@@ -547,7 +545,7 @@ export default function ReportsPage() {
                 </th>
                 <th
                   scope="col"
-                  className="hidden px-3 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 lg:table-cell sm:px-6"
+                  className="hidden w-[100px] px-3 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 lg:table-cell sm:px-6"
                 >
                   By
                 </th>
@@ -559,8 +557,8 @@ export default function ReportsPage() {
                   <td className="hidden whitespace-nowrap px-3 py-4 text-sm text-gray-500 sm:table-cell sm:px-6">
                     {formatDateZA(movement.createdAt)}
                   </td>
-                  <td className="whitespace-nowrap px-3 py-4 sm:px-6">
-                    <div className="text-sm font-medium text-gray-900">
+                  <td className="px-3 py-4 sm:px-6">
+                    <div className="text-sm font-medium text-gray-900 break-words">
                       {movement.stockItem?.name || "-"}
                     </div>
                     <div className="font-mono text-xs text-gray-500">
@@ -582,7 +580,7 @@ export default function ReportsPage() {
                       ? `${movement.referenceType} #${movement.referenceId}`
                       : "-"}
                   </td>
-                  <td className="hidden max-w-xs truncate px-3 py-4 text-sm text-gray-500 lg:table-cell sm:px-6">
+                  <td className="hidden truncate px-3 py-4 text-sm text-gray-500 lg:table-cell sm:px-6">
                     {movement.notes || "-"}
                   </td>
                   <td className="hidden whitespace-nowrap px-3 py-4 text-sm text-gray-500 lg:table-cell sm:px-6">
@@ -797,8 +795,8 @@ export default function ReportsPage() {
             </div>
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
+          <div>
+            <table className="w-full table-fixed divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
                   <th
@@ -809,37 +807,37 @@ export default function ReportsPage() {
                   </th>
                   <th
                     scope="col"
-                    className="hidden px-3 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 sm:table-cell sm:px-6"
+                    className="hidden w-[80px] px-3 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 sm:table-cell sm:px-6"
                   >
                     Emp #
                   </th>
                   <th
                     scope="col"
-                    className="hidden px-3 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 md:table-cell sm:px-6"
+                    className="hidden w-[120px] px-3 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 md:table-cell sm:px-6"
                   >
                     Department
                   </th>
                   <th
                     scope="col"
-                    className="px-3 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500 sm:px-6"
+                    className="w-[80px] px-3 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500 sm:px-6"
                   >
                     Total Qty
                   </th>
                   <th
                     scope="col"
-                    className="hidden px-3 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500 lg:table-cell sm:px-6"
+                    className="hidden w-[110px] px-3 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500 lg:table-cell sm:px-6"
                   >
                     Total Value
                   </th>
                   <th
                     scope="col"
-                    className="hidden px-3 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500 lg:table-cell sm:px-6"
+                    className="hidden w-[90px] px-3 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500 lg:table-cell sm:px-6"
                   >
                     Issuances
                   </th>
                   <th
                     scope="col"
-                    className="px-3 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500 sm:px-6"
+                    className="w-[100px] px-3 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500 sm:px-6"
                   >
                     Anomaly Score
                   </th>
@@ -918,8 +916,8 @@ export default function ReportsPage() {
                     {expandedStaffIds.has(summary.staffMemberId) && summary.items.length > 0 && (
                       <tr key={`${summary.staffMemberId}-items`}>
                         <td colSpan={7} className="bg-gray-50 px-6 py-3">
-                          <div className="overflow-x-auto">
-                            <table className="min-w-full divide-y divide-gray-200">
+                          <div>
+                            <table className="w-full table-fixed divide-y divide-gray-200">
                               <thead>
                                 <tr>
                                   <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
@@ -1068,7 +1066,7 @@ export default function ReportsPage() {
         </nav>
       </div>
 
-      <div className="bg-white shadow rounded-lg overflow-x-auto">
+      <div className="bg-white shadow rounded-lg overflow-hidden">
         {!isLoading && !error && hasExportData && (
           <div className="flex justify-end px-6 pt-4">
             <button
