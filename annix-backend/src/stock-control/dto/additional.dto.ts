@@ -1,4 +1,4 @@
-import { IsArray, IsIn, IsNumber, IsOptional, IsString, Min } from "class-validator";
+import { IsArray, IsIn, IsNumber, IsObject, IsOptional, IsString, Min } from "class-validator";
 
 export class UpdateRubberPlanDto {
   @IsIn(["pending", "accepted", "manual"])
@@ -104,6 +104,7 @@ export class ConfirmSageJcDumpDto {
   @IsNumber()
   cpoId: number;
 
+  @IsObject()
   jtGroups: Record<string, any[]>;
 
   @IsArray()

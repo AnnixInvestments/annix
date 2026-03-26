@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useCallback, useRef, useState } from "react";
 import type {
   AsteriskAllocation,
@@ -82,6 +82,7 @@ function itemFulfillmentPercent(ordered: number, fulfilled: number): number {
 
 export default function CpoDetailPage() {
   const params = useParams();
+  const router = useRouter();
   const id = Number(params.id);
 
   const { data: cpo, isLoading: isLoadingCpo, error: cpoError } = useCpoDetail(id);
@@ -130,6 +131,7 @@ export default function CpoDetailPage() {
             });
             setSageImportResult(importResult);
             setSageConfirming(false);
+            router.push("/stock-control/portal/job-cards");
           }
         }
       } catch (err) {
@@ -138,7 +140,7 @@ export default function CpoDetailPage() {
         setSageParsing(false);
       }
     },
-    [id],
+    [id, router],
   );
 
   const handleAllocationConfirm = useCallback(
@@ -155,13 +157,15 @@ export default function CpoDetailPage() {
         setSageImportResult(importResult);
         setShowAllocationModal(false);
         setSageParseResult(null);
+        router.push("/stock-control/portal/job-cards");
       } catch (err) {
         setSageError(err instanceof Error ? err.message : "Failed to create job cards");
+        setShowAllocationModal(false);
       } finally {
         setSageConfirming(false);
       }
     },
-    [id, sageParseResult],
+    [id, sageParseResult, router],
   );
 
   const error = cpoError
