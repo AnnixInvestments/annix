@@ -10,6 +10,7 @@ import {
   Plus,
   RefreshCw,
   Trash2,
+  UserPlus,
   X,
 } from "lucide-react";
 import { useState } from "react";
@@ -121,7 +122,9 @@ export function CustomerDnAnalysisModal(props: CustomerDnAnalysisModalProps) {
     );
   };
 
-  const validGroups = analysis.groups.filter((_, index) => overrides[index]?.customerId);
+  const validGroups = analysis.groups.filter(
+    (group, index) => overrides[index]?.customerId || group.customerName,
+  );
 
   const handleConfirm = async () => {
     await onConfirm(overrides);
@@ -146,11 +149,11 @@ export function CustomerDnAnalysisModal(props: CustomerDnAnalysisModalProps) {
           </div>
 
           {analysis.unmatchedCustomerNames.length > 0 && (
-            <div className="px-6 py-3 bg-yellow-50 border-b border-yellow-100">
+            <div className="px-6 py-3 bg-blue-50 border-b border-blue-100">
               <div className="flex items-center">
-                <AlertTriangle className="h-5 w-5 text-yellow-600 mr-2" />
-                <span className="text-sm text-yellow-800">
-                  Could not match customers: {analysis.unmatchedCustomerNames.join(", ")}
+                <UserPlus className="h-5 w-5 text-blue-600 mr-2" />
+                <span className="text-sm text-blue-800">
+                  New customers will be created: {analysis.unmatchedCustomerNames.join(", ")}
                 </span>
               </div>
             </div>
@@ -269,7 +272,8 @@ function GroupCard(props: GroupCardProps) {
   const onUpdateLineItem = props.onUpdateLineItem;
   const onAddLineItem = props.onAddLineItem;
   const onRemoveLineItem = props.onRemoveLineItem;
-  const isValid = !!override.customerId;
+  const isValid = !!override.customerId || !!group.customerName;
+  const willCreateNewCustomer = !override.customerId && !!group.customerName;
   const lineItems = override.lineItems || group.allLineItems;
   const [customCategory, setCustomCategory] = useState("");
 
@@ -280,7 +284,7 @@ function GroupCard(props: GroupCardProps) {
 
   return (
     <div
-      className={`border rounded-lg ${isValid ? "border-gray-200" : "border-yellow-300 bg-yellow-50"}`}
+      className={`border rounded-lg ${!isValid ? "border-yellow-300 bg-yellow-50" : willCreateNewCustomer ? "border-blue-200 bg-blue-50/30" : "border-gray-200"}`}
     >
       <div
         className="px-4 py-3 flex items-center justify-between cursor-pointer hover:bg-gray-50"
@@ -325,6 +329,11 @@ function GroupCard(props: GroupCardProps) {
             <span className="inline-flex items-center text-yellow-600 text-sm">
               <AlertTriangle className="h-4 w-4 mr-1" />
               Needs customer
+            </span>
+          ) : willCreateNewCustomer ? (
+            <span className="inline-flex items-center text-blue-600 text-sm">
+              <UserPlus className="h-4 w-4 mr-1" />
+              New customer
             </span>
           ) : isExisting ? (
             <span className="inline-flex items-center text-amber-600 text-sm">
@@ -377,7 +386,11 @@ function GroupCard(props: GroupCardProps) {
                   onUpdateOverride("customerId", e.target.value ? Number(e.target.value) : null)
                 }
                 className={`block w-full rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm border p-2 ${
-                  !override.customerId ? "border-yellow-300" : "border-gray-300"
+                  !override.customerId && !group.customerName
+                    ? "border-yellow-300"
+                    : willCreateNewCustomer
+                      ? "border-blue-300"
+                      : "border-gray-300"
                 }`}
               >
                 <option value="">Select customer</option>
@@ -388,8 +401,8 @@ function GroupCard(props: GroupCardProps) {
                 ))}
               </select>
               {group.customerName && !override.customerId && (
-                <p className="mt-1 text-xs text-yellow-600">
-                  Detected: &quot;{group.customerName}&quot;
+                <p className="mt-1 text-xs text-blue-600">
+                  Will create new customer: &quot;{group.customerName}&quot;
                 </p>
               )}
             </div>

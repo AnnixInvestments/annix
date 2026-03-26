@@ -4,7 +4,7 @@ import { Repository } from "typeorm";
 import { generateUniqueId, nowMillis } from "../lib/datetime";
 import { AiChatService } from "../nix/ai-providers/ai-chat.service";
 import { IStorageService, STORAGE_SERVICE, StorageResult } from "../storage/storage.interface";
-import { RubberCompany } from "./entities/rubber-company.entity";
+import { CompanyType, RubberCompany } from "./entities/rubber-company.entity";
 import { DeliveryNoteStatus, DeliveryNoteType } from "./entities/rubber-delivery-note.entity";
 import { ProductCodingType, RubberProductCoding } from "./entities/rubber-product-coding.entity";
 import { SupplierCocType } from "./entities/rubber-supplier-coc.entity";
@@ -2418,12 +2418,32 @@ ${truncatedText}`;
         );
 
         try {
-          const customerId = override.customerId || group.customerId;
+          const resolvedCustomerId = await (async (): Promise<number | null> => {
+            const existingId = override.customerId || group.customerId;
+            if (existingId) return existingId;
+
+            const customerName = group.customerName;
+            if (!customerName) return null;
+
+            this.logger.log(
+              `Auto-creating customer "${customerName}" for DN ${group.deliveryNoteNumber}`,
+            );
+            const company = new RubberCompany();
+            company.firebaseUid = `pg_${generateUniqueId()}`;
+            company.name = customerName;
+            company.companyType = CompanyType.CUSTOMER;
+            company.availableProducts = [];
+            company.isCompoundOwner = false;
+            const saved = await this.companyRepository.save(company);
+            this.logger.log(`Created customer "${customerName}" with ID ${saved.id}`);
+            return saved.id;
+          })();
+          const customerId = resolvedCustomerId;
           if (!customerId) {
-            this.logger.warn(`Skipping group ${group.deliveryNoteNumber}: no customer ID`);
+            this.logger.warn(`Skipping group ${group.deliveryNoteNumber}: no customer ID or name`);
             return {
               ...acc,
-              errors: [...acc.errors, `Group ${group.deliveryNoteNumber}: no customer ID`],
+              errors: [...acc.errors, `Group ${group.deliveryNoteNumber}: no customer ID or name`],
             };
           }
 
