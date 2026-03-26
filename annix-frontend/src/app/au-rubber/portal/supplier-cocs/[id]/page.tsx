@@ -1,9 +1,9 @@
 "use client";
 
-import { Download, FileText, Pencil, RefreshCw, Trash2 } from "lucide-react";
+import { Check, Download, FileText, Pencil, RefreshCw, Trash2, X } from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Breadcrumb } from "@/app/au-rubber/components/Breadcrumb";
 import { useToast } from "@/app/components/Toast";
 import {
@@ -14,6 +14,36 @@ import {
   type SupplierCocType,
 } from "@/app/lib/api/auRubberApi";
 import { formatDateTimeZA, formatDateZA } from "@/app/lib/datetime";
+
+interface ExtractedBatch {
+  batchNumber: string;
+  shoreA?: number;
+  specificGravity?: number;
+  reboundPercent?: number;
+  tearStrengthKnM?: number;
+  tensileStrengthMpa?: number;
+  elongationPercent?: number;
+  rheometerSMin?: number;
+  rheometerSMax?: number;
+  rheometerTs2?: number;
+  rheometerTc90?: number;
+  passFailStatus?: string;
+}
+
+interface ExtractedSpecs {
+  shoreAMin?: number | null;
+  shoreAMax?: number | null;
+  specificGravityMin?: number | null;
+  specificGravityMax?: number | null;
+  tensileMin?: number | null;
+  tensileMax?: number | null;
+  elongationMin?: number | null;
+  elongationMax?: number | null;
+  tearStrengthMin?: number | null;
+  tearStrengthMax?: number | null;
+  reboundMin?: number | null;
+  reboundMax?: number | null;
+}
 
 export default function SupplierCocDetailPage() {
   const params = useParams();
@@ -38,6 +68,9 @@ export default function SupplierCocDetailPage() {
   const [editBatchFields, setEditBatchFields] = useState<Record<string, string>>({});
   const [isSavingBatch, setIsSavingBatch] = useState(false);
   const [documentUrl, setDocumentUrl] = useState<string | null>(null);
+  const [isEditingExtracted, setIsEditingExtracted] = useState(false);
+  const [editedBatches, setEditedBatches] = useState<ExtractedBatch[]>([]);
+  const [isSavingExtracted, setIsSavingExtracted] = useState(false);
 
   const cocId = Number(params.id);
 
@@ -185,6 +218,46 @@ export default function SupplierCocDetailPage() {
       showToast(err instanceof Error ? err.message : "Failed to delete batch", "error");
     }
   };
+
+  const startEditingExtracted = useCallback(() => {
+    const extracted = coc?.extractedData as Record<string, unknown> | null;
+    const rawBatches = (extracted?.batches || []) as ExtractedBatch[];
+    setEditedBatches(rawBatches.map((b) => ({ ...b })));
+    setIsEditingExtracted(true);
+  }, [coc]);
+
+  const handleExtractedBatchChange = useCallback(
+    (batchIdx: number, field: string, value: string) => {
+      setEditedBatches((prev) =>
+        prev.map((batch, i) => {
+          if (i !== batchIdx) return batch;
+          if (field === "batchNumber" || field === "passFailStatus") {
+            return { ...batch, [field]: value };
+          }
+          const numVal = value === "" ? undefined : Number(value);
+          return { ...batch, [field]: numVal };
+        }),
+      );
+    },
+    [],
+  );
+
+  const handleSaveExtracted = useCallback(async () => {
+    if (!coc) return;
+    try {
+      setIsSavingExtracted(true);
+      const existing = (coc.extractedData || {}) as Record<string, unknown>;
+      const updatedData = { ...existing, batches: editedBatches };
+      await auRubberApiClient.reviewSupplierCoc(cocId, { extractedData: updatedData });
+      showToast("Extracted data updated", "success");
+      setIsEditingExtracted(false);
+      fetchData();
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : "Failed to save extracted data", "error");
+    } finally {
+      setIsSavingExtracted(false);
+    }
+  }, [coc, cocId, editedBatches, showToast]);
 
   const statusBadge = (status: CocProcessingStatus) => {
     const colors: Record<CocProcessingStatus, string> = {
@@ -479,10 +552,360 @@ export default function SupplierCocDetailPage() {
 
         {coc.extractedData && Object.keys(coc.extractedData).length > 0 && (
           <div className="bg-white shadow rounded-lg p-6">
-            <h2 className="text-lg font-medium text-gray-900 mb-4">Extracted Data</h2>
-            <pre className="text-xs bg-gray-50 p-4 rounded-md overflow-auto max-h-64">
-              {JSON.stringify(coc.extractedData, null, 2)}
-            </pre>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-medium text-gray-900">Extracted Data</h2>
+              {!isEditingExtracted && coc.processingStatus !== "APPROVED" && (
+                <button
+                  onClick={startEditingExtracted}
+                  className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-gray-600 hover:text-gray-900 border border-gray-300 rounded-md hover:bg-gray-50"
+                >
+                  <Pencil className="w-3.5 h-3.5 mr-1.5" />
+                  Edit
+                </button>
+              )}
+            </div>
+
+            {(() => {
+              const extracted = coc.extractedData as Record<string, unknown>;
+              const specs = (extracted.specifications || {}) as ExtractedSpecs;
+              const rawBatches = isEditingExtracted
+                ? editedBatches
+                : ((extracted.batches || []) as ExtractedBatch[]);
+
+              const summaryFields = [
+                {
+                  label: "Compound",
+                  value: extracted.compoundCode || extracted.compoundDescription,
+                },
+                { label: "CoC Number", value: extracted.cocNumber },
+                { label: "Production Date", value: extracted.productionDate },
+                { label: "Order Number", value: extracted.orderNumber },
+                { label: "Ticket Number", value: extracted.ticketNumber },
+                { label: "Has Graph", value: extracted.hasGraph ? "Yes" : null },
+              ].filter((f) => f.value);
+
+              return (
+                <>
+                  {summaryFields.length > 0 && (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4">
+                      {summaryFields.map((f) => (
+                        <div key={f.label}>
+                          <dt className="text-xs font-medium text-gray-500">{f.label}</dt>
+                          <dd className="mt-0.5 text-sm text-gray-900">{String(f.value)}</dd>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {Object.values(specs).some((v) => v != null) && (
+                    <div className="mb-4">
+                      <h3 className="text-sm font-medium text-gray-700 mb-2">Specifications</h3>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
+                        {specs.shoreAMin != null && (
+                          <div className="bg-gray-50 rounded px-2 py-1">
+                            Shore A: {specs.shoreAMin}–{specs.shoreAMax}
+                          </div>
+                        )}
+                        {specs.specificGravityMin != null && (
+                          <div className="bg-gray-50 rounded px-2 py-1">
+                            SG: {specs.specificGravityMin}–{specs.specificGravityMax}
+                          </div>
+                        )}
+                        {specs.tensileMin != null && (
+                          <div className="bg-gray-50 rounded px-2 py-1">
+                            Tensile: {specs.tensileMin}–{specs.tensileMax} MPa
+                          </div>
+                        )}
+                        {specs.elongationMin != null && (
+                          <div className="bg-gray-50 rounded px-2 py-1">
+                            Elongation: {specs.elongationMin}–{specs.elongationMax}%
+                          </div>
+                        )}
+                        {specs.tearStrengthMin != null && (
+                          <div className="bg-gray-50 rounded px-2 py-1">
+                            Tear: {specs.tearStrengthMin}–{specs.tearStrengthMax} kN/m
+                          </div>
+                        )}
+                        {specs.reboundMin != null && (
+                          <div className="bg-gray-50 rounded px-2 py-1">
+                            Rebound: {specs.reboundMin}–{specs.reboundMax}%
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {rawBatches.length > 0 && (
+                    <div className="overflow-x-auto">
+                      <h3 className="text-sm font-medium text-gray-700 mb-2">Batch Results</h3>
+                      <table className="min-w-full divide-y divide-gray-200 text-sm">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                              Batch
+                            </th>
+                            <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                              Shore A
+                            </th>
+                            <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                              SG
+                            </th>
+                            <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                              Tensile
+                            </th>
+                            <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                              Elong %
+                            </th>
+                            <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                              Tear
+                            </th>
+                            <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                              Rebound
+                            </th>
+                            <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                              S&apos; Min
+                            </th>
+                            <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                              S&apos; Max
+                            </th>
+                            <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                              Ts2
+                            </th>
+                            <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                              Tc90
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                          {rawBatches.map((batch, bIdx) =>
+                            isEditingExtracted ? (
+                              <tr key={bIdx} className="bg-yellow-50">
+                                <td className="px-3 py-1.5">
+                                  <input
+                                    type="text"
+                                    value={batch.batchNumber || ""}
+                                    onChange={(e) =>
+                                      handleExtractedBatchChange(
+                                        bIdx,
+                                        "batchNumber",
+                                        e.target.value,
+                                      )
+                                    }
+                                    className="w-20 rounded border-gray-300 text-xs px-1.5 py-1"
+                                  />
+                                </td>
+                                <td className="px-3 py-1.5">
+                                  <input
+                                    type="number"
+                                    step="0.1"
+                                    value={batch.shoreA ?? ""}
+                                    onChange={(e) =>
+                                      handleExtractedBatchChange(bIdx, "shoreA", e.target.value)
+                                    }
+                                    className="w-16 rounded border-gray-300 text-xs px-1.5 py-1"
+                                  />
+                                </td>
+                                <td className="px-3 py-1.5">
+                                  <input
+                                    type="number"
+                                    step="0.001"
+                                    value={batch.specificGravity ?? ""}
+                                    onChange={(e) =>
+                                      handleExtractedBatchChange(
+                                        bIdx,
+                                        "specificGravity",
+                                        e.target.value,
+                                      )
+                                    }
+                                    className="w-16 rounded border-gray-300 text-xs px-1.5 py-1"
+                                  />
+                                </td>
+                                <td className="px-3 py-1.5">
+                                  <input
+                                    type="number"
+                                    step="0.01"
+                                    value={batch.tensileStrengthMpa ?? ""}
+                                    onChange={(e) =>
+                                      handleExtractedBatchChange(
+                                        bIdx,
+                                        "tensileStrengthMpa",
+                                        e.target.value,
+                                      )
+                                    }
+                                    className="w-16 rounded border-gray-300 text-xs px-1.5 py-1"
+                                  />
+                                </td>
+                                <td className="px-3 py-1.5">
+                                  <input
+                                    type="number"
+                                    step="0.1"
+                                    value={batch.elongationPercent ?? ""}
+                                    onChange={(e) =>
+                                      handleExtractedBatchChange(
+                                        bIdx,
+                                        "elongationPercent",
+                                        e.target.value,
+                                      )
+                                    }
+                                    className="w-16 rounded border-gray-300 text-xs px-1.5 py-1"
+                                  />
+                                </td>
+                                <td className="px-3 py-1.5">
+                                  <input
+                                    type="number"
+                                    step="0.1"
+                                    value={batch.tearStrengthKnM ?? ""}
+                                    onChange={(e) =>
+                                      handleExtractedBatchChange(
+                                        bIdx,
+                                        "tearStrengthKnM",
+                                        e.target.value,
+                                      )
+                                    }
+                                    className="w-16 rounded border-gray-300 text-xs px-1.5 py-1"
+                                  />
+                                </td>
+                                <td className="px-3 py-1.5">
+                                  <input
+                                    type="number"
+                                    step="0.1"
+                                    value={batch.reboundPercent ?? ""}
+                                    onChange={(e) =>
+                                      handleExtractedBatchChange(
+                                        bIdx,
+                                        "reboundPercent",
+                                        e.target.value,
+                                      )
+                                    }
+                                    className="w-16 rounded border-gray-300 text-xs px-1.5 py-1"
+                                  />
+                                </td>
+                                <td className="px-3 py-1.5">
+                                  <input
+                                    type="number"
+                                    step="0.01"
+                                    value={batch.rheometerSMin ?? ""}
+                                    onChange={(e) =>
+                                      handleExtractedBatchChange(
+                                        bIdx,
+                                        "rheometerSMin",
+                                        e.target.value,
+                                      )
+                                    }
+                                    className="w-16 rounded border-gray-300 text-xs px-1.5 py-1"
+                                  />
+                                </td>
+                                <td className="px-3 py-1.5">
+                                  <input
+                                    type="number"
+                                    step="0.01"
+                                    value={batch.rheometerSMax ?? ""}
+                                    onChange={(e) =>
+                                      handleExtractedBatchChange(
+                                        bIdx,
+                                        "rheometerSMax",
+                                        e.target.value,
+                                      )
+                                    }
+                                    className="w-16 rounded border-gray-300 text-xs px-1.5 py-1"
+                                  />
+                                </td>
+                                <td className="px-3 py-1.5">
+                                  <input
+                                    type="number"
+                                    step="0.01"
+                                    value={batch.rheometerTs2 ?? ""}
+                                    onChange={(e) =>
+                                      handleExtractedBatchChange(
+                                        bIdx,
+                                        "rheometerTs2",
+                                        e.target.value,
+                                      )
+                                    }
+                                    className="w-16 rounded border-gray-300 text-xs px-1.5 py-1"
+                                  />
+                                </td>
+                                <td className="px-3 py-1.5">
+                                  <input
+                                    type="number"
+                                    step="0.01"
+                                    value={batch.rheometerTc90 ?? ""}
+                                    onChange={(e) =>
+                                      handleExtractedBatchChange(
+                                        bIdx,
+                                        "rheometerTc90",
+                                        e.target.value,
+                                      )
+                                    }
+                                    className="w-16 rounded border-gray-300 text-xs px-1.5 py-1"
+                                  />
+                                </td>
+                              </tr>
+                            ) : (
+                              <tr key={bIdx} className="hover:bg-gray-50">
+                                <td className="px-3 py-2 font-medium text-gray-900">
+                                  {batch.batchNumber}
+                                </td>
+                                <td className="px-3 py-2 text-gray-500">{batch.shoreA ?? "-"}</td>
+                                <td className="px-3 py-2 text-gray-500">
+                                  {batch.specificGravity ?? "-"}
+                                </td>
+                                <td className="px-3 py-2 text-gray-500">
+                                  {batch.tensileStrengthMpa ?? "-"}
+                                </td>
+                                <td className="px-3 py-2 text-gray-500">
+                                  {batch.elongationPercent ?? "-"}
+                                </td>
+                                <td className="px-3 py-2 text-gray-500">
+                                  {batch.tearStrengthKnM ?? "-"}
+                                </td>
+                                <td className="px-3 py-2 text-gray-500">
+                                  {batch.reboundPercent ?? "-"}
+                                </td>
+                                <td className="px-3 py-2 text-gray-500">
+                                  {batch.rheometerSMin ?? "-"}
+                                </td>
+                                <td className="px-3 py-2 text-gray-500">
+                                  {batch.rheometerSMax ?? "-"}
+                                </td>
+                                <td className="px-3 py-2 text-gray-500">
+                                  {batch.rheometerTs2 ?? "-"}
+                                </td>
+                                <td className="px-3 py-2 text-gray-500">
+                                  {batch.rheometerTc90 ?? "-"}
+                                </td>
+                              </tr>
+                            ),
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+
+                  {isEditingExtracted && (
+                    <div className="flex gap-3 mt-4">
+                      <button
+                        onClick={handleSaveExtracted}
+                        disabled={isSavingExtracted}
+                        className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-yellow-600 hover:bg-yellow-700 disabled:opacity-50"
+                      >
+                        <Check className="w-3.5 h-3.5 mr-1.5" />
+                        {isSavingExtracted ? "Saving..." : "Save Changes"}
+                      </button>
+                      <button
+                        onClick={() => setIsEditingExtracted(false)}
+                        disabled={isSavingExtracted}
+                        className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
+                      >
+                        <X className="w-3.5 h-3.5 mr-1.5" />
+                        Cancel
+                      </button>
+                    </div>
+                  )}
+                </>
+              );
+            })()}
+
             {coc.reviewNotes && (
               <div className="mt-4">
                 <h3 className="text-sm font-medium text-gray-700">Review Notes</h3>
