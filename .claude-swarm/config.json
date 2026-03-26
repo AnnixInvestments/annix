@@ -5,6 +5,7 @@
       "name": "backend",
       "start": { "mac": "./run-backend.sh", "windows": ".\\run-backend.ps1" },
       "readyPattern": "Nest application successfully started",
+      "readyTimeoutMs": 120000,
       "port": 4001
     },
     {
