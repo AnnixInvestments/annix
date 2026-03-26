@@ -165,6 +165,7 @@ export function CustomerDnAnalysisModal(props: CustomerDnAnalysisModalProps) {
                   groupIndex={groupIndex}
                   override={overrides[groupIndex]}
                   customers={customers}
+                  sourceFiles={files}
                   isExpanded={expandedGroups.has(groupIndex)}
                   onToggle={() => toggleGroup(groupIndex)}
                   onUpdateOverride={(field, value) => updateOverride(groupIndex, field, value)}
@@ -246,6 +247,7 @@ interface GroupCardProps {
   groupIndex: number;
   override: CustomerDnOverride;
   customers: RubberCompanyDto[];
+  sourceFiles: File[];
   isExpanded: boolean;
   isExisting: boolean;
   onToggle: () => void;
@@ -255,18 +257,18 @@ interface GroupCardProps {
   onRemoveLineItem: (itemIndex: number) => void;
 }
 
-function GroupCard({
-  group,
-  override,
-  customers,
-  isExpanded,
-  isExisting,
-  onToggle,
-  onUpdateOverride,
-  onUpdateLineItem,
-  onAddLineItem,
-  onRemoveLineItem,
-}: GroupCardProps) {
+function GroupCard(props: GroupCardProps) {
+  const group = props.group;
+  const override = props.override;
+  const customers = props.customers;
+  const sourceFiles = props.sourceFiles;
+  const isExpanded = props.isExpanded;
+  const isExisting = props.isExisting;
+  const onToggle = props.onToggle;
+  const onUpdateOverride = props.onUpdateOverride;
+  const onUpdateLineItem = props.onUpdateLineItem;
+  const onAddLineItem = props.onAddLineItem;
+  const onRemoveLineItem = props.onRemoveLineItem;
   const isValid = !!override.customerId;
   const lineItems = override.lineItems || group.allLineItems;
   const [customCategory, setCustomCategory] = useState("");
@@ -771,16 +773,25 @@ function GroupCard({
             <h4 className="text-sm font-medium text-gray-700 mb-2">Source Files</h4>
             <div className="flex flex-wrap gap-2">
               {group.files.map((f, fIndex) => (
-                <span
+                <button
+                  type="button"
                   key={fIndex}
-                  className="inline-flex items-center px-2 py-1 rounded bg-gray-100 text-gray-700 text-xs"
+                  className="inline-flex items-center px-2 py-1 rounded bg-gray-100 text-teal-700 text-xs hover:bg-teal-50 hover:text-teal-900 transition-colors cursor-pointer"
+                  onClick={() => {
+                    const sourceFile = sourceFiles[f.fileIndex];
+                    if (sourceFile) {
+                      const url = URL.createObjectURL(sourceFile);
+                      window.open(url, "_blank");
+                    }
+                  }}
+                  title="Click to view uploaded document"
                 >
                   <FileText className="h-3 w-3 mr-1" />
                   {f.filename}
                   {f.pageNumber && (
                     <span className="ml-1 text-gray-500">(Page {f.pageNumber})</span>
                   )}
-                </span>
+                </button>
               ))}
             </div>
           </div>
