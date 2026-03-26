@@ -543,12 +543,13 @@ export class RubberQualityTrackingService {
   private calculateTrend(values: number[]): TrendDirection {
     if (values.length < 3) return "stable";
 
-    const n = values.length;
+    const chronological = [...values].reverse();
+    const n = chronological.length;
     const indices = Array.from({ length: n }, (_, i) => i);
 
     const sumX = indices.reduce((a, b) => a + b, 0);
-    const sumY = values.reduce((a, b) => a + b, 0);
-    const sumXY = indices.reduce((acc, x, i) => acc + x * values[i], 0);
+    const sumY = chronological.reduce((a, b) => a + b, 0);
+    const sumXY = indices.reduce((acc, x, i) => acc + x * chronological[i], 0);
     const sumX2 = indices.reduce((acc, x) => acc + x * x, 0);
 
     const slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
