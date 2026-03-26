@@ -1104,7 +1104,7 @@ export default function ReportsPage() {
               >
                 <img
                   src={profile.logoUrl}
-                  alt={profile.companyName ?? "Company"}
+                  alt={profile.companyName || "Company"}
                   className="h-12 max-w-[180px] object-contain"
                 />
               </div>
