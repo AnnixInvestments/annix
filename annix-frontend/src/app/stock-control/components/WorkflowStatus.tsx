@@ -68,7 +68,9 @@ const resolveStepState = (
     if (approval?.status === "rejected") return "rejected";
     if (index > 0) {
       const prevKey = allSteps[index - 1].key;
-      const prevBgTasks = resolveBgChainFlat(prevKey, bgByTrigger, bgKeySet);
+      const prevBgTasks = resolveBgChainFlat(prevKey, bgByTrigger, bgKeySet).filter(
+        (bg) => bg.stepKey !== "document_upload",
+      );
       const prevBgIncomplete =
         prevBgTasks.length > 0 && prevBgTasks.some((bg) => bg.completedAt === null);
       if (prevBgIncomplete) return "pending";
@@ -498,8 +500,8 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
         const authNode = fgNodeRefs.current[0];
         const docNode = bgNodeRefs.current["document_upload"];
         if (authNode && docNode) {
-          const docComplete = docUploadStep.completedAt !== null;
-          const strokeColor = docComplete ? "#f59e0b" : "#d1d5db";
+          const docTriggered = currentStepIndex > 0 || docUploadStep.completedAt !== null;
+          const strokeColor = docTriggered ? "#f59e0b" : "#d1d5db";
           const aRect = authNode.getBoundingClientRect();
           const dRect = docNode.getBoundingClientRect();
           const ax = aRect.left + aRect.width / 2 - rect.left;
@@ -566,7 +568,9 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
 
         const prevFgKey = allSteps[branch.triggerFgIdx - 1]?.key;
         const prevAmberBg = prevFgKey
-          ? resolveBgChainFlat(prevFgKey, bgByTrigger, bgKeySet).filter((bg) => !bg.branchColor)
+          ? resolveBgChainFlat(prevFgKey, bgByTrigger, bgKeySet).filter(
+              (bg) => !bg.branchColor && bg.stepKey !== "document_upload",
+            )
           : [];
         const prevAmberComplete =
           prevAmberBg.length === 0 || prevAmberBg.every((bg) => bg.completedAt !== null);
@@ -733,7 +737,7 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
         const prevBelowFgKey = allSteps[branch.triggerFgIdx - 1]?.key;
         const prevBelowAmberBg = prevBelowFgKey
           ? resolveBgChainFlat(prevBelowFgKey, bgByTrigger, bgKeySet).filter(
-              (bg) => !bg.branchColor,
+              (bg) => !bg.branchColor && bg.stepKey !== "document_upload",
             )
           : [];
         const prevBelowAmberComplete =
@@ -919,7 +923,9 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
         const containerLeft = triggerPos?.left || 0;
         const prevLoopFgKey = allSteps[branch.triggerFgIdx - 1]?.key;
         const prevLoopAmberBg = prevLoopFgKey
-          ? resolveBgChainFlat(prevLoopFgKey, bgByTrigger, bgKeySet).filter((bg) => !bg.branchColor)
+          ? resolveBgChainFlat(prevLoopFgKey, bgByTrigger, bgKeySet).filter(
+              (bg) => !bg.branchColor && bg.stepKey !== "document_upload",
+            )
           : [];
         const prevLoopAmberComplete =
           prevLoopAmberBg.length === 0 || prevLoopAmberBg.every((bg) => bg.completedAt !== null);
@@ -1114,7 +1120,9 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
                   (() => {
                     const prevStepKey = allSteps[index - 1]?.key;
                     const prevBgTasks = prevStepKey
-                      ? resolveBgChainFlat(prevStepKey, bgByTrigger, bgKeySet)
+                      ? resolveBgChainFlat(prevStepKey, bgByTrigger, bgKeySet).filter(
+                          (bg) => bg.stepKey !== "document_upload",
+                        )
                       : [];
                     const prevBgAllComplete =
                       prevBgTasks.length === 0 ||
@@ -1563,7 +1571,9 @@ function MobileTransitMap(props: MobileTransitMapProps) {
 
                 {!isLast &&
                   (() => {
-                    const thisBgTasks = resolveBgChainFlat(step.key, bgByTrigger, bgKeySet);
+                    const thisBgTasks = resolveBgChainFlat(step.key, bgByTrigger, bgKeySet).filter(
+                      (bg) => bg.stepKey !== "document_upload",
+                    );
                     const thisBgAllComplete =
                       thisBgTasks.length === 0 ||
                       thisBgTasks.every((bg) => bg.completedAt !== null);
@@ -1630,7 +1640,7 @@ function MobileTransitMap(props: MobileTransitMapProps) {
               const prevMobileFgKey = allSteps[branch.triggerFgIdx - 1]?.key;
               const prevMobileAmberBg = prevMobileFgKey
                 ? resolveBgChainFlat(prevMobileFgKey, bgByTrigger, bgKeySet).filter(
-                    (bg) => !bg.branchColor,
+                    (bg) => !bg.branchColor && bg.stepKey !== "document_upload",
                   )
                 : [];
               const prevMobileAmberComplete =
