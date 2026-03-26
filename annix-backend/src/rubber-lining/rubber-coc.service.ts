@@ -548,19 +548,25 @@ export class RubberCocService {
         return [];
       }
 
-      const batches = await this.compoundBatchRepository
+      const qb = this.compoundBatchRepository
         .createQueryBuilder("batch")
         .leftJoinAndSelect("batch.supplierCoc", "supplierCoc")
         .leftJoinAndSelect("batch.compoundStock", "compoundStock")
         .leftJoinAndSelect("compoundStock.compoundCoding", "compoundCoding")
-        .where("batch.batchNumber IN (:...batchNumbers)", { batchNumbers })
-        .orderBy(
-          "CASE WHEN batch.batch_number ~ '^[0-9]+$' THEN CAST(batch.batch_number AS INTEGER) ELSE 0 END",
-          "ASC",
-        )
-        .addOrderBy("batch.batchNumber", "ASC")
-        .getMany();
+        .where("batch.batchNumber IN (:...batchNumbers)", { batchNumbers });
 
+      if (coc.compoundCode) {
+        qb.andWhere("compoundCoding.code = :compoundCode", {
+          compoundCode: coc.compoundCode,
+        });
+      }
+
+      qb.orderBy(
+        "CASE WHEN batch.batch_number ~ '^[0-9]+$' THEN CAST(batch.batch_number AS INTEGER) ELSE 0 END",
+        "ASC",
+      ).addOrderBy("batch.batchNumber", "ASC");
+
+      const batches = await qb.getMany();
       return batches.map((batch) => this.mapCompoundBatchToDto(batch));
     }
 
