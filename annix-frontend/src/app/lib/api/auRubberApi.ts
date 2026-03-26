@@ -570,6 +570,8 @@ export interface AnalyzedCustomerDnFile {
     rollWeightKg: number | null;
     rollNumber: string | null;
     cocBatchNumbers: string[] | null;
+    itemCategory: string;
+    description: string | null;
   }>;
   pdfText: string;
 }
@@ -602,6 +604,7 @@ export interface CustomerDnOverride {
   customerId?: number | null;
   customerReference?: string | null;
   deliveryDate?: string | null;
+  stockCategory?: string | null;
   lineItems?: CustomerDnLineItem[];
 }
 

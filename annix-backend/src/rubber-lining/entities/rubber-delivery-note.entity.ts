@@ -67,6 +67,8 @@ export interface ExtractedCustomerDeliveryNoteLineItem {
   rollNumber?: string;
   actualWeightKg?: number;
   cocBatchNumbers?: string[];
+  itemCategory?: string;
+  description?: string;
 }
 
 export interface ExtractedCustomerDeliveryNoteData {
@@ -162,6 +164,9 @@ export class RubberDeliveryNote {
     default: DocumentVersionStatus.ACTIVE,
   })
   versionStatus: DocumentVersionStatus;
+
+  @Column({ name: "stock_category", type: "varchar", length: 100, nullable: true })
+  stockCategory: string | null;
 
   @Column({ name: "pod_page_numbers", type: "jsonb", nullable: true })
   podPageNumbers: number[] | null;

@@ -6,6 +6,7 @@ import {
   ChevronDown,
   ChevronRight,
   FileText,
+  Package,
   Plus,
   RefreshCw,
   Trash2,
@@ -20,6 +21,8 @@ import type {
 } from "@/app/lib/api/auRubberApi";
 import type { RubberCompanyDto } from "@/app/lib/api/rubberPortalApi";
 
+const STOCK_CATEGORY_OPTIONS = ["Rubber Rolls", "Pump Parts", "Wear Liners", "Spare Parts"];
+
 interface CustomerDnAnalysisModalProps {
   analysis: AnalyzeCustomerDnsResult;
   files: File[];
@@ -27,6 +30,14 @@ interface CustomerDnAnalysisModalProps {
   onClose: () => void;
   onConfirm: (overrides: CustomerDnOverride[]) => Promise<void>;
   isCreating: boolean;
+}
+
+function hasPartItems(lineItems: CustomerDnLineItem[]): boolean {
+  return lineItems.some((item) => item.itemCategory === "PART");
+}
+
+function allPartItems(lineItems: CustomerDnLineItem[]): boolean {
+  return lineItems.length > 0 && lineItems.every((item) => item.itemCategory === "PART");
 }
 
 export function CustomerDnAnalysisModal(props: CustomerDnAnalysisModalProps) {
@@ -37,6 +48,7 @@ export function CustomerDnAnalysisModal(props: CustomerDnAnalysisModalProps) {
       customerId: group.customerId || null,
       customerReference: group.customerReference || null,
       deliveryDate: group.deliveryDate || null,
+      stockCategory: allPartItems(group.allLineItems) ? "Pump Parts" : null,
       lineItems: group.allLineItems.map((item) => ({ ...item })),
     })),
   );
@@ -74,22 +86,25 @@ export function CustomerDnAnalysisModal(props: CustomerDnAnalysisModalProps) {
     );
   };
 
-  const addLineItem = (groupIndex: number) => {
+  const addLineItem = (groupIndex: number, category: string) => {
     setOverrides((prev) =>
       prev.map((o, gi) => {
         if (gi !== groupIndex) return o;
         const items = [...(o.lineItems || [])];
         const lastItem = items[items.length - 1];
+        const isPart = category === "PART";
         const newItem: CustomerDnLineItem = {
           lineNumber: items.length + 1,
           compoundType: lastItem?.compoundType || null,
-          thicknessMm: lastItem?.thicknessMm || null,
-          widthMm: lastItem?.widthMm || null,
-          lengthM: lastItem?.lengthM || null,
+          thicknessMm: isPart ? null : lastItem?.thicknessMm || null,
+          widthMm: isPart ? null : lastItem?.widthMm || null,
+          lengthM: isPart ? null : lastItem?.lengthM || null,
           quantity: 1,
           rollWeightKg: null,
           rollNumber: null,
           cocBatchNumbers: null,
+          itemCategory: category,
+          description: null,
         };
         return { ...o, lineItems: [...items, newItem] };
       }),
@@ -156,7 +171,7 @@ export function CustomerDnAnalysisModal(props: CustomerDnAnalysisModalProps) {
                   onUpdateLineItem={(itemIndex, field, value) =>
                     updateLineItem(groupIndex, itemIndex, field, value)
                   }
-                  onAddLineItem={() => addLineItem(groupIndex)}
+                  onAddLineItem={(category) => addLineItem(groupIndex, category)}
                   onRemoveLineItem={(itemIndex) => removeLineItem(groupIndex, itemIndex)}
                   isExisting={
                     Array.isArray(analysis.existingDnNumbers) &&
@@ -236,7 +251,7 @@ interface GroupCardProps {
   onToggle: () => void;
   onUpdateOverride: (field: keyof CustomerDnOverride, value: unknown) => void;
   onUpdateLineItem: (itemIndex: number, field: keyof CustomerDnLineItem, value: unknown) => void;
-  onAddLineItem: () => void;
+  onAddLineItem: (category: string) => void;
   onRemoveLineItem: (itemIndex: number) => void;
 }
 
@@ -254,6 +269,12 @@ function GroupCard({
 }: GroupCardProps) {
   const isValid = !!override.customerId;
   const lineItems = override.lineItems || group.allLineItems;
+  const [customCategory, setCustomCategory] = useState("");
+
+  const partItems = lineItems.filter((item) => item.itemCategory === "PART");
+  const rollItems = lineItems.filter((item) => item.itemCategory !== "PART");
+  const hasParts = partItems.length > 0;
+  const hasRolls = rollItems.length > 0;
 
   return (
     <div
@@ -289,6 +310,12 @@ function GroupCard({
             <span className="text-sm text-gray-500">
               {lineItems.length} line item{lineItems.length !== 1 ? "s" : ""}
             </span>
+            {hasParts && (
+              <span className="text-xs bg-purple-100 text-purple-800 px-2 py-0.5 rounded-full inline-flex items-center">
+                <Package className="h-3 w-3 mr-1" />
+                {partItems.length} part{partItems.length !== 1 ? "s" : ""}
+              </span>
+            )}
           </div>
         </div>
         <div className="flex items-center space-x-2">
@@ -313,7 +340,24 @@ function GroupCard({
 
       {isExpanded && (
         <div className="px-4 pb-4 border-t border-gray-100 pt-4">
-          <div className="grid grid-cols-2 gap-4 mb-4">
+          {hasParts && (
+            <div className="mb-4 px-3 py-2 bg-purple-50 border border-purple-200 rounded-md">
+              <div className="flex items-start">
+                <Package className="h-4 w-4 text-purple-600 mt-0.5 mr-2 flex-shrink-0" />
+                <div className="flex-1">
+                  <p className="text-sm text-purple-800 font-medium">
+                    Parts detected (not rubber rolls)
+                  </p>
+                  <p className="text-xs text-purple-600 mt-0.5">
+                    These items appear to be fabricated parts or components. Assign a stock category
+                    below so they are tracked separately from rubber rolls.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className={`grid ${hasParts ? "grid-cols-3" : "grid-cols-2"} gap-4 mb-4`}>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">DN Number</label>
               <input
@@ -347,6 +391,58 @@ function GroupCard({
                 </p>
               )}
             </div>
+            {hasParts && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Stock Category
+                </label>
+                <div className="flex space-x-2">
+                  <select
+                    value={override.stockCategory || ""}
+                    onChange={(e) => onUpdateOverride("stockCategory", e.target.value)}
+                    className="block w-full rounded-md border-purple-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 sm:text-sm border p-2"
+                  >
+                    <option value="">Select category</option>
+                    {STOCK_CATEGORY_OPTIONS.map((cat) => (
+                      <option key={cat} value={cat}>
+                        {cat}
+                      </option>
+                    ))}
+                    {override.stockCategory &&
+                      !STOCK_CATEGORY_OPTIONS.includes(override.stockCategory) && (
+                        <option value={override.stockCategory}>{override.stockCategory}</option>
+                      )}
+                  </select>
+                </div>
+                <div className="mt-1 flex items-center space-x-1">
+                  <input
+                    type="text"
+                    value={customCategory}
+                    onChange={(e) => setCustomCategory(e.target.value)}
+                    placeholder="Or type custom category..."
+                    className="block w-full rounded border-gray-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 text-xs border px-1.5 py-1"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && customCategory.trim()) {
+                        onUpdateOverride("stockCategory", customCategory.trim());
+                        setCustomCategory("");
+                      }
+                    }}
+                  />
+                  {customCategory.trim() && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onUpdateOverride("stockCategory", customCategory.trim());
+                        setCustomCategory("");
+                      }}
+                      className="text-xs text-purple-700 bg-purple-50 border border-purple-200 rounded px-2 py-1 hover:bg-purple-100 whitespace-nowrap"
+                    >
+                      Set
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 PO / Customer Reference
@@ -370,168 +466,306 @@ function GroupCard({
             </div>
           </div>
 
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <h4 className="text-sm font-medium text-gray-700">Line Items</h4>
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onAddLineItem();
-                }}
-                className="inline-flex items-center px-2 py-1 text-xs font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded hover:bg-blue-100"
-              >
-                <Plus className="h-3 w-3 mr-1" />
-                Add Row
-              </button>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200 text-sm">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase">
-                      Roll #
-                    </th>
-                    <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase">
-                      Compound
-                    </th>
-                    <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase">
-                      Thick
-                    </th>
-                    <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase">
-                      Width
-                    </th>
-                    <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase">
-                      Length
-                    </th>
-                    <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase">
-                      Qty
-                    </th>
-                    <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase">
-                      Weight (kg)
-                    </th>
-                    <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase w-8" />
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {lineItems.map((item, itemIndex) => (
-                    <tr key={itemIndex} className="hover:bg-gray-50">
-                      <td className="px-2 py-1.5">
-                        <input
-                          type="text"
-                          value={item.rollNumber || ""}
-                          onChange={(e) =>
-                            onUpdateLineItem(itemIndex, "rollNumber", e.target.value)
-                          }
-                          className={inputClass}
-                          placeholder="e.g., 187-41524"
-                        />
-                      </td>
-                      <td className="px-2 py-1.5">
-                        <input
-                          type="text"
-                          value={item.compoundType || ""}
-                          onChange={(e) =>
-                            onUpdateLineItem(itemIndex, "compoundType", e.target.value)
-                          }
-                          className={inputClass}
-                          placeholder="SC38"
-                        />
-                      </td>
-                      <td className="px-2 py-1.5 w-16">
-                        <input
-                          type="number"
-                          value={item.thicknessMm || ""}
-                          onChange={(e) =>
-                            onUpdateLineItem(
-                              itemIndex,
-                              "thicknessMm",
-                              e.target.value ? Number(e.target.value) : null,
-                            )
-                          }
-                          className={inputClass}
-                          step="any"
-                        />
-                      </td>
-                      <td className="px-2 py-1.5 w-20">
-                        <input
-                          type="number"
-                          value={item.widthMm || ""}
-                          onChange={(e) =>
-                            onUpdateLineItem(
-                              itemIndex,
-                              "widthMm",
-                              e.target.value ? Number(e.target.value) : null,
-                            )
-                          }
-                          className={inputClass}
-                          step="any"
-                        />
-                      </td>
-                      <td className="px-2 py-1.5 w-20">
-                        <input
-                          type="number"
-                          value={item.lengthM || ""}
-                          onChange={(e) =>
-                            onUpdateLineItem(
-                              itemIndex,
-                              "lengthM",
-                              e.target.value ? Number(e.target.value) : null,
-                            )
-                          }
-                          className={inputClass}
-                          step="any"
-                        />
-                      </td>
-                      <td className="px-2 py-1.5 w-16">
-                        <input
-                          type="number"
-                          value={item.quantity || ""}
-                          onChange={(e) =>
-                            onUpdateLineItem(
-                              itemIndex,
-                              "quantity",
-                              e.target.value ? Number(e.target.value) : null,
-                            )
-                          }
-                          className={inputClass}
-                          min="1"
-                        />
-                      </td>
-                      <td className="px-2 py-1.5 w-20">
-                        <input
-                          type="number"
-                          value={item.rollWeightKg || ""}
-                          onChange={(e) =>
-                            onUpdateLineItem(
-                              itemIndex,
-                              "rollWeightKg",
-                              e.target.value ? Number(e.target.value) : null,
-                            )
-                          }
-                          className={inputClass}
-                          step="any"
-                        />
-                      </td>
-                      <td className="px-2 py-1.5">
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onRemoveLineItem(itemIndex);
-                          }}
-                          className="text-red-400 hover:text-red-600 p-0.5"
-                          title="Remove row"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
-                      </td>
+          {hasParts && (
+            <div className="mb-4">
+              <div className="flex items-center justify-between mb-2">
+                <h4 className="text-sm font-medium text-purple-700 inline-flex items-center">
+                  <Package className="h-4 w-4 mr-1" />
+                  Parts / Components
+                </h4>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onAddLineItem("PART");
+                  }}
+                  className="inline-flex items-center px-2 py-1 text-xs font-medium text-purple-700 bg-purple-50 border border-purple-200 rounded hover:bg-purple-100"
+                >
+                  <Plus className="h-3 w-3 mr-1" />
+                  Add Part
+                </button>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200 text-sm">
+                  <thead className="bg-purple-50">
+                    <tr>
+                      <th className="px-2 py-2 text-left text-xs font-medium text-purple-600 uppercase">
+                        Part Code
+                      </th>
+                      <th className="px-2 py-2 text-left text-xs font-medium text-purple-600 uppercase">
+                        Description
+                      </th>
+                      <th className="px-2 py-2 text-left text-xs font-medium text-purple-600 uppercase">
+                        Compound
+                      </th>
+                      <th className="px-2 py-2 text-left text-xs font-medium text-purple-600 uppercase">
+                        Qty
+                      </th>
+                      <th className="px-2 py-2 text-left text-xs font-medium text-purple-600 uppercase">
+                        Weight (kg)
+                      </th>
+                      <th className="px-2 py-2 text-left text-xs font-medium text-purple-600 uppercase w-8" />
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {lineItems.map((item, itemIndex) => {
+                      if (item.itemCategory !== "PART") return null;
+                      return (
+                        <tr key={itemIndex} className="hover:bg-purple-50/30">
+                          <td className="px-2 py-1.5 w-36">
+                            <input
+                              type="text"
+                              value={item.rollNumber || ""}
+                              onChange={(e) =>
+                                onUpdateLineItem(itemIndex, "rollNumber", e.target.value)
+                              }
+                              className={inputClass}
+                              placeholder="e.g., CPL-4E-AUA60B"
+                            />
+                          </td>
+                          <td className="px-2 py-1.5">
+                            <input
+                              type="text"
+                              value={item.description || ""}
+                              onChange={(e) =>
+                                onUpdateLineItem(itemIndex, "description", e.target.value)
+                              }
+                              className={inputClass}
+                              placeholder="e.g., Cover Plate Liner 4E 60"
+                            />
+                          </td>
+                          <td className="px-2 py-1.5 w-28">
+                            <input
+                              type="text"
+                              value={item.compoundType || ""}
+                              onChange={(e) =>
+                                onUpdateLineItem(itemIndex, "compoundType", e.target.value)
+                              }
+                              className={inputClass}
+                              placeholder="AUA60B"
+                            />
+                          </td>
+                          <td className="px-2 py-1.5 w-16">
+                            <input
+                              type="number"
+                              value={item.quantity || ""}
+                              onChange={(e) =>
+                                onUpdateLineItem(
+                                  itemIndex,
+                                  "quantity",
+                                  e.target.value ? Number(e.target.value) : null,
+                                )
+                              }
+                              className={inputClass}
+                              min="1"
+                            />
+                          </td>
+                          <td className="px-2 py-1.5 w-20">
+                            <input
+                              type="number"
+                              value={item.rollWeightKg || ""}
+                              onChange={(e) =>
+                                onUpdateLineItem(
+                                  itemIndex,
+                                  "rollWeightKg",
+                                  e.target.value ? Number(e.target.value) : null,
+                                )
+                              }
+                              className={inputClass}
+                              step="any"
+                            />
+                          </td>
+                          <td className="px-2 py-1.5">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onRemoveLineItem(itemIndex);
+                              }}
+                              className="text-red-400 hover:text-red-600 p-0.5"
+                              title="Remove row"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
             </div>
-          </div>
+          )}
+
+          {(hasRolls || !hasParts) && (
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <h4 className="text-sm font-medium text-gray-700">
+                  {hasParts ? "Rubber Rolls" : "Line Items"}
+                </h4>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onAddLineItem("ROLL");
+                  }}
+                  className="inline-flex items-center px-2 py-1 text-xs font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded hover:bg-blue-100"
+                >
+                  <Plus className="h-3 w-3 mr-1" />
+                  Add Row
+                </button>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200 text-sm">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                        Roll #
+                      </th>
+                      <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                        Compound
+                      </th>
+                      <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                        Thick
+                      </th>
+                      <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                        Width
+                      </th>
+                      <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                        Length
+                      </th>
+                      <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                        Qty
+                      </th>
+                      <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                        Weight (kg)
+                      </th>
+                      <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase w-8" />
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {lineItems.map((item, itemIndex) => {
+                      if (item.itemCategory === "PART") return null;
+                      return (
+                        <tr key={itemIndex} className="hover:bg-gray-50">
+                          <td className="px-2 py-1.5">
+                            <input
+                              type="text"
+                              value={item.rollNumber || ""}
+                              onChange={(e) =>
+                                onUpdateLineItem(itemIndex, "rollNumber", e.target.value)
+                              }
+                              className={inputClass}
+                              placeholder="e.g., 187-41524"
+                            />
+                          </td>
+                          <td className="px-2 py-1.5">
+                            <input
+                              type="text"
+                              value={item.compoundType || ""}
+                              onChange={(e) =>
+                                onUpdateLineItem(itemIndex, "compoundType", e.target.value)
+                              }
+                              className={inputClass}
+                              placeholder="SC38"
+                            />
+                          </td>
+                          <td className="px-2 py-1.5 w-16">
+                            <input
+                              type="number"
+                              value={item.thicknessMm || ""}
+                              onChange={(e) =>
+                                onUpdateLineItem(
+                                  itemIndex,
+                                  "thicknessMm",
+                                  e.target.value ? Number(e.target.value) : null,
+                                )
+                              }
+                              className={inputClass}
+                              step="any"
+                            />
+                          </td>
+                          <td className="px-2 py-1.5 w-20">
+                            <input
+                              type="number"
+                              value={item.widthMm || ""}
+                              onChange={(e) =>
+                                onUpdateLineItem(
+                                  itemIndex,
+                                  "widthMm",
+                                  e.target.value ? Number(e.target.value) : null,
+                                )
+                              }
+                              className={inputClass}
+                              step="any"
+                            />
+                          </td>
+                          <td className="px-2 py-1.5 w-20">
+                            <input
+                              type="number"
+                              value={item.lengthM || ""}
+                              onChange={(e) =>
+                                onUpdateLineItem(
+                                  itemIndex,
+                                  "lengthM",
+                                  e.target.value ? Number(e.target.value) : null,
+                                )
+                              }
+                              className={inputClass}
+                              step="any"
+                            />
+                          </td>
+                          <td className="px-2 py-1.5 w-16">
+                            <input
+                              type="number"
+                              value={item.quantity || ""}
+                              onChange={(e) =>
+                                onUpdateLineItem(
+                                  itemIndex,
+                                  "quantity",
+                                  e.target.value ? Number(e.target.value) : null,
+                                )
+                              }
+                              className={inputClass}
+                              min="1"
+                            />
+                          </td>
+                          <td className="px-2 py-1.5 w-20">
+                            <input
+                              type="number"
+                              value={item.rollWeightKg || ""}
+                              onChange={(e) =>
+                                onUpdateLineItem(
+                                  itemIndex,
+                                  "rollWeightKg",
+                                  e.target.value ? Number(e.target.value) : null,
+                                )
+                              }
+                              className={inputClass}
+                              step="any"
+                            />
+                          </td>
+                          <td className="px-2 py-1.5">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onRemoveLineItem(itemIndex);
+                              }}
+                              className="text-red-400 hover:text-red-600 p-0.5"
+                              title="Remove row"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
 
           <div className="mt-4">
             <h4 className="text-sm font-medium text-gray-700 mb-2">Source Files</h4>

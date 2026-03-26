@@ -84,6 +84,12 @@ export class RubberDeliveryNoteItem {
   @Column({ name: "compound_type", type: "varchar", length: 100, nullable: true })
   compoundType: string | null;
 
+  @Column({ name: "item_category", type: "varchar", length: 50, default: "'ROLL'" })
+  itemCategory: string;
+
+  @Column({ name: "description", type: "varchar", length: 500, nullable: true })
+  description: string | null;
+
   @Column({ name: "quantity", type: "int", nullable: true })
   quantity: number | null;
 

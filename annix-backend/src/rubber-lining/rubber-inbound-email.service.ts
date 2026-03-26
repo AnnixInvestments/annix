@@ -2171,6 +2171,8 @@ ${truncatedText}`;
               cocBatchNumbers: (item.cocBatchNumbers as string[]) || null,
               rollNumber: (item.rollNumber as string) || null,
               specificGravity: (item.specificGravity as number) || null,
+              itemCategory: (item.itemCategory as string) || "ROLL",
+              description: (item.description as string) || null,
             }),
           );
 
@@ -2398,6 +2400,7 @@ ${truncatedText}`;
       customerId?: number;
       customerReference?: string;
       deliveryDate?: string;
+      stockCategory?: string;
     }>,
     createdBy?: string,
   ): Promise<{ deliveryNoteIds: number[] }> {
@@ -2470,6 +2473,7 @@ ${truncatedText}`;
                   deliveryNoteNumber,
                   deliveryDate: deliveryDate || null,
                   customerReference: customerReference || null,
+                  stockCategory: override.stockCategory || null,
                 },
                 createdBy,
               );
@@ -2489,6 +2493,8 @@ ${truncatedText}`;
               rollWeightKg: lineItem.rollWeightKg,
               rollNumber: lineItem.rollNumber,
               cocBatchNumbers: lineItem.cocBatchNumbers,
+              itemCategory: (lineItem as Record<string, unknown>).itemCategory as string,
+              description: (lineItem as Record<string, unknown>).description as string,
             });
           }, Promise.resolve());
 

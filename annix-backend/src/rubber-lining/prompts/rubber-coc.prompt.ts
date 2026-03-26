@@ -637,6 +637,27 @@ REFERENCE/PO NUMBER EXTRACTION - CRITICAL:
 Look for ANY of these field labels: "REFERENCE:", "REF:", "PO:", "ORDER No.", "ORDER:", "YOUR REF:", "CUSTOMER REF:", "Customer O/No.:"
 Extract the FULL reference string.
 
+ITEM CATEGORY DETECTION:
+Not all items on delivery notes are rubber rolls/sheets. Some delivery notes contain fabricated parts, pump components, or other non-roll items.
+
+Classify each line item as one of:
+- "ROLL" — standard rubber rolls/sheets with dimensions (thickness, width, length), roll numbers, and weights
+- "PART" — fabricated parts, pump components, replacement parts, liners, impellers, or any item that is NOT a rubber roll/sheet
+
+Indicators of PART items:
+- Product codes like "CPL-" (Cover Plate Liner), "FPL-" (Frame Plate Liner), "IMP-" (Impeller), etc.
+- Descriptions containing "liner", "plate", "impeller", "pump", "sleeve", "bush", "wear ring", "volute", etc.
+- Items with no roll dimensions (no thickness × width × length pattern)
+- Items with no roll numbers
+
+For PART items:
+- Set itemCategory to "PART"
+- Put the full product description in "description" (e.g., "Cover Plate Liner 4E 60")
+- compoundCode should still capture the compound if identifiable (e.g., "AUA60B" from "CPL-4E-AUA60B")
+- thicknessMm, widthMm, lengthM will typically be null
+- rollNumber will typically be null
+- quantity and actualWeightKg should still be extracted if available
+
 Return a JSON object with this structure:
 {
   "deliveryNotes": [
@@ -656,7 +677,9 @@ Return a JSON object with this structure:
           "lengthM": number or null,
           "rollNumber": string or null,
           "actualWeightKg": number or null,
-          "quantity": number or null
+          "quantity": number or null,
+          "itemCategory": "ROLL" or "PART" (default "ROLL"),
+          "description": string or null (full item description for PART items)
         }
       ]
     }

@@ -151,6 +151,7 @@ export class RubberDeliveryNoteService {
       customerReference: dto.customerReference ?? null,
       supplierCompanyId: dto.supplierCompanyId,
       documentPath: dto.documentPath ?? null,
+      stockCategory: dto.stockCategory ?? null,
       status: DeliveryNoteStatus.PENDING,
       createdBy: createdBy ?? null,
       version: isDuplicate ? existingActive.version + 1 : 1,
@@ -599,6 +600,8 @@ export class RubberDeliveryNoteService {
       lengthM: dto.lengthM ?? null,
       linkedBatchIds: [],
       compoundType: dto.compoundType ?? null,
+      itemCategory: dto.itemCategory ?? "ROLL",
+      description: dto.description ?? null,
       quantity: dto.quantity ? Math.round(dto.quantity) : null,
       cocBatchNumbers: dto.cocBatchNumbers ?? null,
     });
@@ -960,6 +963,7 @@ export class RubberDeliveryNoteService {
       versionStatus: note.versionStatus,
       versionStatusLabel: DOCUMENT_VERSION_STATUS_LABELS[note.versionStatus],
       previousVersionId: note.previousVersionId,
+      stockCategory: note.stockCategory || null,
       podPageNumbers: note.podPageNumbers || null,
     };
   }
@@ -982,6 +986,8 @@ export class RubberDeliveryNoteService {
       lengthM: item.lengthM ? Number(item.lengthM) : null,
       linkedBatchIds: item.linkedBatchIds,
       compoundType: item.compoundType,
+      itemCategory: item.itemCategory || "ROLL",
+      description: item.description,
       quantity: item.quantity,
       cocBatchNumbers: item.cocBatchNumbers,
       theoreticalWeightKg,

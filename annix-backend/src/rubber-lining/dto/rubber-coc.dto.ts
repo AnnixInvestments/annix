@@ -276,6 +276,7 @@ export class RubberDeliveryNoteDto {
   versionStatus: DocumentVersionStatus;
   versionStatusLabel: string;
   previousVersionId: number | null;
+  stockCategory: string | null;
   podPageNumbers: number[] | null;
 }
 
@@ -300,6 +301,10 @@ export class CreateDeliveryNoteDto {
   @IsOptional()
   @IsString()
   documentPath?: string | null;
+
+  @IsOptional()
+  @IsString()
+  stockCategory?: string | null;
 }
 
 export class UpdateDeliveryNoteDto {
@@ -378,6 +383,8 @@ export class DeliveryNoteItemDto {
   lengthM: number | null;
   linkedBatchIds: number[];
   compoundType: string | null;
+  itemCategory: string;
+  description: string | null;
   quantity: number | null;
   cocBatchNumbers: string[] | null;
   theoreticalWeightKg: number | null;
@@ -426,6 +433,14 @@ export class CreateDeliveryNoteItemDto {
   @IsOptional()
   @IsString()
   compoundType?: string | null;
+
+  @IsOptional()
+  @IsString()
+  itemCategory?: string;
+
+  @IsOptional()
+  @IsString()
+  description?: string | null;
 
   @IsOptional()
   @IsNumber()
