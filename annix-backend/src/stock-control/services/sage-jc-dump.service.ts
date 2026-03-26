@@ -241,15 +241,33 @@ export class SageJcDumpService {
       throw new NotFoundException("CPO not found");
     }
 
-    const parentJc = await this.jobCardRepo.findOne({
+    let parentJc = await this.jobCardRepo.findOne({
       where: { companyId, cpoId: cpo.id, parentJobCardId: IsNull() },
     });
     if (!parentJc) {
-      throw new NotFoundException("No parent job card found for this CPO");
+      const newJc = this.jobCardRepo.create({
+        jobNumber: cpo.jobNumber,
+        jobName: cpo.jobName || cpo.cpoNumber,
+        customerName: cpo.customerName,
+        poNumber: cpo.poNumber,
+        siteLocation: cpo.siteLocation,
+        contactPerson: cpo.contactPerson,
+        description: cpo.notes || null,
+        status: JobCardStatus.DRAFT,
+        workflowStatus: WORKFLOW_STATUS_DRAFT,
+        versionNumber: 1,
+        cpoId: cpo.id,
+        isCpoCalloff: true,
+        companyId,
+      });
+      parentJc = await this.jobCardRepo.save(newJc);
+      this.logger.log(`Auto-created parent JC #${parentJc.id} for CPO ${cpo.cpoNumber}`);
     }
 
+    const parentJcId = parentJc.id;
+
     const existingJcs = await this.jobCardRepo.find({
-      where: { companyId, parentJobCardId: parentJc.id },
+      where: { companyId, parentJobCardId: parentJcId },
       select: ["jtDnNumber"],
     });
     const existingJtSet = new Set(
@@ -300,19 +318,18 @@ export class SageJcDumpService {
 
         const deliveryJc = this.jobCardRepo.create({
           jobNumber: parentJc.jobNumber,
-          jcNumber: parentJc.jcNumber || null,
+          jcNumber: parentJc.jcNumber || undefined,
           jobName: parentJc.jobName,
           customerName: parentJc.customerName,
-          description: parentJc.description || null,
+          description: parentJc.description || undefined,
           poNumber: parentJc.poNumber,
           siteLocation: parentJc.siteLocation,
           contactPerson: parentJc.contactPerson,
           status: JobCardStatus.DRAFT,
           workflowStatus: WORKFLOW_STATUS_DRAFT,
           versionNumber: 1,
-          parentJobCardId: parentJc.id,
+          parentJobCardId: parentJcId,
           jtDnNumber: jtNumber,
-          workflowCeiling: null,
           cpoId: cpo.id,
           isCpoCalloff: true,
           companyId,
