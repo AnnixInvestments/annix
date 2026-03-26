@@ -1087,7 +1087,7 @@ export default function JobCardDetailPage() {
             <p className="mt-1 text-sm text-gray-500">{jobCard.jobName}</p>
           </div>
         </div>
-        {workflowStatus && workflowStatus.jobCardStatus !== "draft" && (
+        {workflowStatus && (
           <div
             id="workflow-actions"
             className="flex-1 min-w-0 rounded-lg border border-gray-200 bg-white px-3 py-2"
@@ -1583,7 +1583,7 @@ export default function JobCardDetailPage() {
         </div>
       )}
 
-      {workflowStatus && workflowStatus.jobCardStatus !== "draft" && (
+      {workflowStatus && (
         <WorkflowStatus
           currentStatus={currentStatus!}
           approvals={approvals}
