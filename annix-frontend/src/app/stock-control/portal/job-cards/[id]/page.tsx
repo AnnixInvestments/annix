@@ -1050,7 +1050,18 @@ export default function JobCardDetailPage() {
             <div className="flex items-center space-x-3 flex-wrap">
               <h1 className="text-xl font-bold text-gray-900 whitespace-nowrap">
                 {jobCard.jobNumber}
-                {jobCard.jcNumber ? ` - ${jobCard.jcNumber}` : null}
+                {jobCard.jcNumber ? ` / ${jobCard.jcNumber}` : null}
+                {(() => {
+                  const jtNumbers = [
+                    ...new Set(
+                      (jobCard.lineItems || [])
+                        .map((li) => li.jtNo)
+                        .filter((jt): jt is string => jt !== null && jt !== ""),
+                    ),
+                  ];
+                  if (jtNumbers.length === 0) return null;
+                  return ` / ${jtNumbers.join(", ")}`;
+                })()}
               </h1>
               {jobCard.versionNumber && jobCard.versionNumber > 1 && (
                 <span className="px-2 py-0.5 text-xs font-semibold rounded-full bg-purple-100 text-purple-800">

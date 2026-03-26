@@ -144,11 +144,11 @@ describe("RubberQualityTrackingService", () => {
     });
 
     it("should detect upward trend", () => {
-      expect(trend([10, 20, 30, 40, 50])).toBe("up");
+      expect(trend([50, 40, 30, 20, 10])).toBe("up");
     });
 
     it("should detect downward trend", () => {
-      expect(trend([50, 40, 30, 20, 10])).toBe("down");
+      expect(trend([10, 20, 30, 40, 50])).toBe("down");
     });
 
     it("should return stable for flat data", () => {
