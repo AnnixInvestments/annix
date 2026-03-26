@@ -24,6 +24,10 @@ export default function CustomerDeliveriesPage() {
   const [error, setError] = useState<Error | null>(null);
   const [isDragOver, setIsDragOver] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [mismatchPopup, setMismatchPopup] = useState<{
+    detectedType: string;
+    supplierName: string;
+  } | null>(null);
 
   const fetchDeliveries = useCallback(async () => {
     try {
@@ -73,6 +77,23 @@ export default function CustomerDeliveriesPage() {
         setIsAnalyzing(true);
         showToast("Analyzing document...", "info");
         const result = await stockControlApiClient.analyzeDeliveryNotePhoto(file);
+
+        const detectedType = result.data.documentType;
+        if (detectedType !== "CUSTOMER_DELIVERY") {
+          const supplierName =
+            result.data.fromCompany?.name || result.data.toCompany?.name || "Unknown";
+          setMismatchPopup({
+            detectedType:
+              detectedType === "SUPPLIER_DELIVERY"
+                ? "Supplier Delivery Note"
+                : detectedType === "SUPPLIER_INVOICE" || detectedType === "TAX_INVOICE"
+                  ? "Supplier Invoice"
+                  : detectedType,
+            supplierName,
+          });
+          return;
+        }
+
         const deliveryNote = await stockControlApiClient.acceptAnalyzedDeliveryNote(
           file,
           result.data,
@@ -157,6 +178,56 @@ export default function CustomerDeliveriesPage() {
                 </p>
               </>
             )}
+          </div>
+        </div>
+      )}
+
+      {mismatchPopup && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4 overflow-hidden">
+            <div className="bg-red-50 px-6 py-4 flex items-center gap-3">
+              <svg
+                className="h-8 w-8 text-red-500 flex-shrink-0"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"
+                />
+              </svg>
+              <h3 className="text-lg font-semibold text-red-800">Wrong Document Type</h3>
+            </div>
+            <div className="px-6 py-5">
+              <p className="text-sm text-gray-700">
+                Nix detected this document as a{" "}
+                <span className="font-semibold text-red-700">{mismatchPopup.detectedType}</span>{" "}
+                from <span className="font-semibold">{mismatchPopup.supplierName}</span>.
+              </p>
+              <p className="mt-3 text-sm text-gray-600">
+                This page is for <span className="font-semibold">Customer Delivery Notes</span>{" "}
+                (outgoing deliveries to customers). Supplier documents should be uploaded on the{" "}
+                <span className="font-semibold text-teal-700">Supplier &gt; Delivery Notes</span>{" "}
+                page instead.
+              </p>
+            </div>
+            <div className="px-6 pb-5 flex justify-end gap-3">
+              <button
+                onClick={() => setMismatchPopup(null)}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors"
+              >
+                Close
+              </button>
+              <Link
+                href="/stock-control/portal/deliveries"
+                className="px-4 py-2 text-sm font-medium text-white bg-teal-600 rounded-md hover:bg-teal-700 transition-colors"
+              >
+                Go to Supplier Delivery Notes
+              </Link>
+            </div>
           </div>
         </div>
       )}
