@@ -270,7 +270,10 @@ export default function JobCardDetailPage() {
 
   const handleDraftAccepted = async () => {
     const hasUnverified = await coating.checkUnverifiedProducts();
-    if (hasUnverified) return;
+    if (hasUnverified) {
+      handleTabChange("coating");
+      return;
+    }
 
     try {
       setIsUpdatingStatus(true);
