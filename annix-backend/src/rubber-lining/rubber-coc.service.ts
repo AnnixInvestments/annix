@@ -554,17 +554,28 @@ export class RubberCocService {
         .leftJoinAndSelect("batch.compoundStock", "compoundStock")
         .leftJoinAndSelect("compoundStock.compoundCoding", "compoundCoding")
         .where("batch.batchNumber IN (:...batchNumbers)", { batchNumbers })
-        .orderBy("batch.batchNumber", "ASC")
+        .orderBy(
+          "CASE WHEN batch.batch_number ~ '^[0-9]+$' THEN CAST(batch.batch_number AS INTEGER) ELSE 0 END",
+          "ASC",
+        )
+        .addOrderBy("batch.batchNumber", "ASC")
         .getMany();
 
       return batches.map((batch) => this.mapCompoundBatchToDto(batch));
     }
 
-    const batches = await this.compoundBatchRepository.find({
-      where: { supplierCocId },
-      relations: ["supplierCoc", "compoundStock", "compoundStock.compoundCoding"],
-      order: { batchNumber: "ASC" },
-    });
+    const batches = await this.compoundBatchRepository
+      .createQueryBuilder("batch")
+      .leftJoinAndSelect("batch.supplierCoc", "supplierCoc")
+      .leftJoinAndSelect("batch.compoundStock", "compoundStock")
+      .leftJoinAndSelect("compoundStock.compoundCoding", "compoundCoding")
+      .where("batch.supplier_coc_id = :supplierCocId", { supplierCocId })
+      .orderBy(
+        "CASE WHEN batch.batch_number ~ '^[0-9]+$' THEN CAST(batch.batch_number AS INTEGER) ELSE 0 END",
+        "ASC",
+      )
+      .addOrderBy("batch.batchNumber", "ASC")
+      .getMany();
     return batches.map((batch) => this.mapCompoundBatchToDto(batch));
   }
 
