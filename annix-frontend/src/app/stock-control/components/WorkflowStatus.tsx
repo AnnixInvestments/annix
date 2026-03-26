@@ -521,7 +521,13 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
         const triggerIdx = allSteps.findIndex((s) => s.key === bp.triggerAfterStep);
         const triggerNode = triggerIdx >= 0 ? fgNodeRefs.current[triggerIdx] : null;
         const bpNode = bgNodeRefs.current[bp.stepKey];
-        const rejoinNode = bp.rejoinAtStep ? bgNodeRefs.current[bp.rejoinAtStep] : null;
+        const rejoinFgIdx = bp.rejoinAtStep
+          ? allSteps.findIndex((s) => s.key === bp.rejoinAtStep)
+          : -1;
+        const rejoinNode = bp.rejoinAtStep
+          ? bgNodeRefs.current[bp.rejoinAtStep] ||
+            (rejoinFgIdx >= 0 ? fgNodeRefs.current[rejoinFgIdx] : null)
+          : null;
         if (!triggerNode || !bpNode) return;
 
         const bpComplete = bp.completedAt !== null;
