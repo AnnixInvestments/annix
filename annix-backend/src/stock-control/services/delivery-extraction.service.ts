@@ -277,21 +277,67 @@ export class DeliveryExtractionService {
     }
 
     const safeCost = Number.isFinite(costPerUnit) ? costPerUnit : 0;
+    const category = this.inferCategory(item);
+    const inferredLocationId = await this.inferLocationForCategory(companyId, category);
+
     const created = this.stockItemRepo.create({
       sku,
       name: (item.description || "Unknown Item").slice(0, 255),
       description: null,
-      category: item.isPaint ? "Paint" : "Uncategorized",
+      category,
       unitOfMeasure,
       costPerUnit: safeCost,
       quantity,
       minStockLevel: 0,
       needsQrPrint: true,
       companyId,
+      locationId: inferredLocationId,
     });
     await this.stockItemRepo.save(created);
-    this.logger.log(`Created new stock item ${sku}: ${item.description} @ R${safeCost.toFixed(2)}`);
+    const locLabel = inferredLocationId ? `location=${inferredLocationId}` : "no location";
+    this.logger.log(
+      `Created new stock item ${sku}: ${item.description} @ R${safeCost.toFixed(2)} (${locLabel})`,
+    );
     return created;
+  }
+
+  private inferCategory(item: ExtractedLineItem): string {
+    if (item.isPaint) return "Paint";
+
+    const desc = (item.description || "").toLowerCase();
+    const code = (item.itemCode || "").toLowerCase();
+    const combined = `${desc} ${code}`;
+
+    const rubberPatterns =
+      /\brubber\b|\bshore\b|\bcured\b|\broll\b|\bcompound\b|\blagging\b|\bliner\b|\blining\b/;
+    if (rubberPatterns.test(combined)) return "RUBBER";
+
+    const consumablePatterns = /\bbrush\b|\btape\b|\bpaper\b|\bglove\b|\brag\b|\bstrap/;
+    if (consumablePatterns.test(combined)) return "CONSUMABLES";
+
+    return "Uncategorized";
+  }
+
+  private async inferLocationForCategory(
+    companyId: number,
+    category: string,
+  ): Promise<number | null> {
+    const rows: Array<{ location_id: number; cnt: string }> = await this.stockItemRepo.query(
+      `SELECT location_id, COUNT(*) AS cnt
+       FROM stock_items
+       WHERE company_id = $1
+         AND category = $2
+         AND location_id IS NOT NULL
+       GROUP BY location_id
+       ORDER BY cnt DESC
+       LIMIT 1`,
+      [companyId, category],
+    );
+
+    if (rows.length > 0) {
+      return rows[0].location_id;
+    }
+    return null;
   }
 
   private async handleReturnedItem(
