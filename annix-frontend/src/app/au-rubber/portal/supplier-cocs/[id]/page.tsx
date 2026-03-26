@@ -698,7 +698,7 @@ export default function SupplierCocDetailPage() {
                                   <input
                                     type="number"
                                     step="0.1"
-                                    value={batch.shoreA ?? ""}
+                                    value={batch.shoreA || ""}
                                     onChange={(e) =>
                                       handleExtractedBatchChange(bIdx, "shoreA", e.target.value)
                                     }
@@ -709,7 +709,7 @@ export default function SupplierCocDetailPage() {
                                   <input
                                     type="number"
                                     step="0.001"
-                                    value={batch.specificGravity ?? ""}
+                                    value={batch.specificGravity || ""}
                                     onChange={(e) =>
                                       handleExtractedBatchChange(
                                         bIdx,
@@ -724,7 +724,7 @@ export default function SupplierCocDetailPage() {
                                   <input
                                     type="number"
                                     step="0.01"
-                                    value={batch.tensileStrengthMpa ?? ""}
+                                    value={batch.tensileStrengthMpa || ""}
                                     onChange={(e) =>
                                       handleExtractedBatchChange(
                                         bIdx,
@@ -739,7 +739,7 @@ export default function SupplierCocDetailPage() {
                                   <input
                                     type="number"
                                     step="0.1"
-                                    value={batch.elongationPercent ?? ""}
+                                    value={batch.elongationPercent || ""}
                                     onChange={(e) =>
                                       handleExtractedBatchChange(
                                         bIdx,
@@ -754,7 +754,7 @@ export default function SupplierCocDetailPage() {
                                   <input
                                     type="number"
                                     step="0.1"
-                                    value={batch.tearStrengthKnM ?? ""}
+                                    value={batch.tearStrengthKnM || ""}
                                     onChange={(e) =>
                                       handleExtractedBatchChange(
                                         bIdx,
@@ -769,7 +769,7 @@ export default function SupplierCocDetailPage() {
                                   <input
                                     type="number"
                                     step="0.1"
-                                    value={batch.reboundPercent ?? ""}
+                                    value={batch.reboundPercent || ""}
                                     onChange={(e) =>
                                       handleExtractedBatchChange(
                                         bIdx,
@@ -784,7 +784,7 @@ export default function SupplierCocDetailPage() {
                                   <input
                                     type="number"
                                     step="0.01"
-                                    value={batch.rheometerSMin ?? ""}
+                                    value={batch.rheometerSMin || ""}
                                     onChange={(e) =>
                                       handleExtractedBatchChange(
                                         bIdx,
@@ -799,7 +799,7 @@ export default function SupplierCocDetailPage() {
                                   <input
                                     type="number"
                                     step="0.01"
-                                    value={batch.rheometerSMax ?? ""}
+                                    value={batch.rheometerSMax || ""}
                                     onChange={(e) =>
                                       handleExtractedBatchChange(
                                         bIdx,
@@ -814,7 +814,7 @@ export default function SupplierCocDetailPage() {
                                   <input
                                     type="number"
                                     step="0.01"
-                                    value={batch.rheometerTs2 ?? ""}
+                                    value={batch.rheometerTs2 || ""}
                                     onChange={(e) =>
                                       handleExtractedBatchChange(
                                         bIdx,
@@ -829,7 +829,7 @@ export default function SupplierCocDetailPage() {
                                   <input
                                     type="number"
                                     step="0.01"
-                                    value={batch.rheometerTc90 ?? ""}
+                                    value={batch.rheometerTc90 || ""}
                                     onChange={(e) =>
                                       handleExtractedBatchChange(
                                         bIdx,
@@ -846,33 +846,33 @@ export default function SupplierCocDetailPage() {
                                 <td className="px-3 py-2 font-medium text-gray-900">
                                   {batch.batchNumber}
                                 </td>
-                                <td className="px-3 py-2 text-gray-500">{batch.shoreA ?? "-"}</td>
+                                <td className="px-3 py-2 text-gray-500">{batch.shoreA || "-"}</td>
                                 <td className="px-3 py-2 text-gray-500">
-                                  {batch.specificGravity ?? "-"}
+                                  {batch.specificGravity || "-"}
                                 </td>
                                 <td className="px-3 py-2 text-gray-500">
-                                  {batch.tensileStrengthMpa ?? "-"}
+                                  {batch.tensileStrengthMpa || "-"}
                                 </td>
                                 <td className="px-3 py-2 text-gray-500">
-                                  {batch.elongationPercent ?? "-"}
+                                  {batch.elongationPercent || "-"}
                                 </td>
                                 <td className="px-3 py-2 text-gray-500">
-                                  {batch.tearStrengthKnM ?? "-"}
+                                  {batch.tearStrengthKnM || "-"}
                                 </td>
                                 <td className="px-3 py-2 text-gray-500">
-                                  {batch.reboundPercent ?? "-"}
+                                  {batch.reboundPercent || "-"}
                                 </td>
                                 <td className="px-3 py-2 text-gray-500">
-                                  {batch.rheometerSMin ?? "-"}
+                                  {batch.rheometerSMin || "-"}
                                 </td>
                                 <td className="px-3 py-2 text-gray-500">
-                                  {batch.rheometerSMax ?? "-"}
+                                  {batch.rheometerSMax || "-"}
                                 </td>
                                 <td className="px-3 py-2 text-gray-500">
-                                  {batch.rheometerTs2 ?? "-"}
+                                  {batch.rheometerTs2 || "-"}
                                 </td>
                                 <td className="px-3 py-2 text-gray-500">
-                                  {batch.rheometerTc90 ?? "-"}
+                                  {batch.rheometerTc90 || "-"}
                                 </td>
                               </tr>
                             ),
@@ -1078,19 +1078,19 @@ export default function SupplierCocDetailPage() {
                         {batch.batchNumber}
                       </td>
                       <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {batch.shoreAHardness ?? "-"}
+                        {batch.shoreAHardness || "-"}
                       </td>
                       <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {batch.specificGravity ?? "-"}
+                        {batch.specificGravity || "-"}
                       </td>
                       <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {batch.tensileStrengthMpa ?? "-"}
+                        {batch.tensileStrengthMpa || "-"}
                       </td>
                       <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {batch.elongationPercent ?? "-"}
+                        {batch.elongationPercent || "-"}
                       </td>
                       <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {batch.tearStrengthKnM ?? "-"}
+                        {batch.tearStrengthKnM || "-"}
                       </td>
                       <td className="px-4 py-4 whitespace-nowrap">
                         <span

@@ -1144,7 +1144,7 @@ export default function JobCardDetailPage() {
                     {currentStepPhaseInfo.phase2ActionLabel || "Release"}
                   </button>
                 )}
-              {workflowStatus.jobCardStatus !== "active" && (
+              {workflowStatus.jobCardStatus === "draft" && (
                 <button
                   onClick={handleDraftAccepted}
                   disabled={isUpdatingStatus}

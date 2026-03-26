@@ -31,13 +31,13 @@ export default function AuRubberDashboard() {
   const companiesQuery = useAuRubberCompanies();
   const productsQuery = useAuRubberProducts();
   const pendingAuCocsQuery = useAuRubberPendingAuCocs();
-  const orders = ordersQuery.data ?? [];
-  const companies = companiesQuery.data ?? [];
-  const products = productsQuery.data ?? [];
-  const pendingAuCocs = pendingAuCocsQuery.data ?? [];
+  const orders = ordersQuery.data || [];
+  const companies = companiesQuery.data || [];
+  const products = productsQuery.data || [];
+  const pendingAuCocs = pendingAuCocsQuery.data || [];
   const [generatingIds, setGeneratingIds] = useState<Set<number>>(new Set());
   const isLoading = ordersQuery.isLoading || companiesQuery.isLoading || productsQuery.isLoading;
-  const error = ordersQuery.error ?? companiesQuery.error ?? productsQuery.error;
+  const error = ordersQuery.error || companiesQuery.error || productsQuery.error;
   const [currentPage, setCurrentPage] = useState(0);
 
   const triggerGeneration = async (auCocId: number) => {
@@ -66,7 +66,7 @@ export default function AuRubberDashboard() {
       WAITING_FOR_APPROVAL: "Waiting for Approval",
       READY_FOR_GENERATION: "Ready to Generate",
     };
-    return labels[status ?? ""] ?? status ?? "Unknown";
+    return labels[status || ""] || status || "Unknown";
   };
 
   const readinessColor = (status: string | null): string => {
@@ -77,7 +77,7 @@ export default function AuRubberDashboard() {
       WAITING_FOR_APPROVAL: "bg-yellow-100 text-yellow-800",
       READY_FOR_GENERATION: "bg-green-100 text-green-800",
     };
-    return colors[status ?? ""] ?? "bg-gray-100 text-gray-800";
+    return colors[status || ""] || "bg-gray-100 text-gray-800";
   };
 
   const ordersByStatus: StatusCount[] = Object.entries(RUBBER_ORDER_STATUS).map(([key, value]) => ({
@@ -508,7 +508,7 @@ export default function AuRubberDashboard() {
                         </span>
                       </div>
                       <div className="mt-1 flex items-center space-x-4 text-sm text-gray-500">
-                        <span>{coc.customerCompanyName ?? "Unknown Customer"}</span>
+                        <span>{coc.customerCompanyName || "Unknown Customer"}</span>
                         {coc.deliveryNoteRef && <span>DN: {coc.deliveryNoteRef}</span>}
                         {coc.poNumber && <span>PO: {coc.poNumber}</span>}
                       </div>

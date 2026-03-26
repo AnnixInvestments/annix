@@ -646,7 +646,7 @@ export default function OtherItemsPage() {
                       <label className="block text-sm font-medium text-gray-700">Category</label>
                       <input
                         type="text"
-                        value={itemForm.category ?? ""}
+                        value={itemForm.category || ""}
                         onChange={(e) =>
                           setItemForm({ ...itemForm, category: e.target.value || null })
                         }
@@ -731,7 +731,7 @@ export default function OtherItemsPage() {
                     <div>
                       <label className="block text-sm font-medium text-gray-700">Location</label>
                       <select
-                        value={itemForm.locationId ?? ""}
+                        value={itemForm.locationId || ""}
                         onChange={(e) =>
                           setItemForm({
                             ...itemForm,
@@ -757,7 +757,7 @@ export default function OtherItemsPage() {
                       <input
                         type="number"
                         step="0.01"
-                        value={itemForm.costPerUnit ?? ""}
+                        value={itemForm.costPerUnit || ""}
                         onChange={(e) =>
                           setItemForm({
                             ...itemForm,
@@ -775,7 +775,7 @@ export default function OtherItemsPage() {
                       <input
                         type="number"
                         step="0.01"
-                        value={itemForm.pricePerUnit ?? ""}
+                        value={itemForm.pricePerUnit || ""}
                         onChange={(e) =>
                           setItemForm({
                             ...itemForm,
@@ -790,7 +790,7 @@ export default function OtherItemsPage() {
                       <label className="block text-sm font-medium text-gray-700">Supplier</label>
                       <input
                         type="text"
-                        value={itemForm.supplier ?? ""}
+                        value={itemForm.supplier || ""}
                         onChange={(e) =>
                           setItemForm({ ...itemForm, supplier: e.target.value || null })
                         }
@@ -802,7 +802,7 @@ export default function OtherItemsPage() {
                   <div>
                     <label className="block text-sm font-medium text-gray-700">Description</label>
                     <textarea
-                      value={itemForm.description ?? ""}
+                      value={itemForm.description || ""}
                       onChange={(e) =>
                         setItemForm({ ...itemForm, description: e.target.value || null })
                       }
@@ -814,7 +814,7 @@ export default function OtherItemsPage() {
                   <div>
                     <label className="block text-sm font-medium text-gray-700">Notes</label>
                     <textarea
-                      value={itemForm.notes ?? ""}
+                      value={itemForm.notes || ""}
                       onChange={(e) => setItemForm({ ...itemForm, notes: e.target.value || null })}
                       className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 sm:text-sm border p-2"
                       rows={2}
@@ -905,7 +905,7 @@ export default function OtherItemsPage() {
                                 <td className="px-3 py-2 text-sm text-gray-900">{row.itemName}</td>
                                 <td className="px-3 py-2 text-sm text-gray-900">{row.quantity}</td>
                                 <td className="px-3 py-2 text-sm text-gray-900">
-                                  {row.category ?? "-"}
+                                  {row.category || "-"}
                                 </td>
                               </tr>
                             ))}

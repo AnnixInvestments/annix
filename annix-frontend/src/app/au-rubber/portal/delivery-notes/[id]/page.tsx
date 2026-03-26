@@ -237,7 +237,7 @@ export default function DeliveryNoteDetailPage() {
               widthMm: roll.widthMm,
               lengthM: roll.lengthM,
               weightKg: roll.weightKg,
-              areaSqM: calculateAreaSqM(roll.widthMm, roll.lengthM) ?? undefined,
+              areaSqM: calculateAreaSqM(roll.widthMm, roll.lengthM) || undefined,
               deliveryNoteNumber: roll.deliveryNoteNumber,
               deliveryDate: roll.deliveryDate,
               customerName: roll.customerName,
@@ -1205,7 +1205,7 @@ export default function DeliveryNoteDetailPage() {
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Select CoC</label>
                   <select
-                    value={selectedCocId ?? ""}
+                    value={selectedCocId || ""}
                     onChange={(e) =>
                       setSelectedCocId(e.target.value ? Number(e.target.value) : null)
                     }

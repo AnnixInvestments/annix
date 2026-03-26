@@ -34,10 +34,10 @@ export default function QualityTrackingPage() {
   const { showToast } = useToast();
   const summaryQuery = useAuRubberQualityTrackingSummary();
   const alertsQuery = useAuRubberQualityAlerts();
-  const summaries = summaryQuery.data ?? [];
-  const alerts = alertsQuery.data ?? [];
+  const summaries = summaryQuery.data || [];
+  const alerts = alertsQuery.data || [];
   const isLoading = summaryQuery.isLoading || alertsQuery.isLoading;
-  const error = summaryQuery.error ?? alertsQuery.error;
+  const error = summaryQuery.error || alertsQuery.error;
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState<QualityStatus | "">("");
   const [currentPage, setCurrentPage] = useState(0);

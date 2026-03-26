@@ -39,7 +39,7 @@ export default function AuCocsPage() {
   const cocsQuery = useAuRubberAuCocs({
     status: filterStatus || undefined,
   });
-  const cocs = cocsQuery.data ?? [];
+  const cocs = cocsQuery.data || [];
   const isLoading = cocsQuery.isLoading;
   const error = cocsQuery.error;
   const [currentPage, setCurrentPage] = useState(0);

@@ -104,11 +104,11 @@ export default function TaxInvoiceDetailPage() {
   const startEditingSummary = () => {
     if (!invoice) return;
     setEditForm({
-      productDescription: invoice.productDescription ?? "",
+      productDescription: invoice.productDescription || "",
       deliveryNoteRef: invoice.extractedData?.deliveryNoteRef || "",
       orderNumber: invoice.extractedData?.orderNumber || "",
       quantity: invoice.numberOfRolls != null ? String(invoice.numberOfRolls) : "",
-      unit: invoice.unit ?? "",
+      unit: invoice.unit || "",
       costPerUnit: invoice.costPerUnit != null ? String(invoice.costPerUnit) : "",
       subtotal:
         invoice.extractedData?.subtotal != null ? String(invoice.extractedData.subtotal) : "",

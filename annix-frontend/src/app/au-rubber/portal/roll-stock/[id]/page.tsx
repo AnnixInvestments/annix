@@ -397,16 +397,16 @@ export default function RollStockDetailPage() {
                     {batch.batchNumber}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {batch.shoreAHardness ?? "-"}
+                    {batch.shoreAHardness || "-"}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {batch.specificGravity ?? "-"}
+                    {batch.specificGravity || "-"}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {batch.tensileStrengthMpa ?? "-"}
+                    {batch.tensileStrengthMpa || "-"}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {batch.elongationPercent ?? "-"}
+                    {batch.elongationPercent || "-"}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span
@@ -441,7 +441,7 @@ export default function RollStockDetailPage() {
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Customer</label>
                   <select
-                    value={sellCustomerId ?? ""}
+                    value={sellCustomerId || ""}
                     onChange={(e) =>
                       setSellCustomerId(e.target.value ? Number(e.target.value) : null)
                     }

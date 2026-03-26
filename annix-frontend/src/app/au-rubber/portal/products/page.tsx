@@ -76,8 +76,8 @@ export default function AuRubberProductsPage() {
 
   const productsQuery = useAuRubberProducts();
   const codingsQuery = useAuRubberCodings();
-  const products = productsQuery.data ?? [];
-  const codings = codingsQuery.data ?? [];
+  const products = productsQuery.data || [];
+  const codings = codingsQuery.data || [];
   const isLoading = productsQuery.isLoading;
   const error = productsQuery.error;
 

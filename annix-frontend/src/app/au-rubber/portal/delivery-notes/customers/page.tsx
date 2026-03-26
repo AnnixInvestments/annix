@@ -54,9 +54,9 @@ export default function CustomerDeliveryNotesPage() {
     status: filterStatus || undefined,
   });
   const companiesQuery = useAuRubberCompanies();
-  const customers = (companiesQuery.data ?? []).filter((c) => c.companyType === "CUSTOMER");
+  const customers = (companiesQuery.data || []).filter((c) => c.companyType === "CUSTOMER");
   const customerIds = new Set(customers.map((c) => c.id));
-  const notes = (notesQuery.data ?? []).filter((n) => customerIds.has(n.supplierCompanyId));
+  const notes = (notesQuery.data || []).filter((n) => customerIds.has(n.supplierCompanyId));
   const isLoading = notesQuery.isLoading;
   const error = notesQuery.error;
   const [currentPage, setCurrentPage] = useState(0);
@@ -102,7 +102,7 @@ export default function CustomerDeliveryNotesPage() {
     data: ExtractedDeliveryNoteData | ExtractedDeliveryNoteData[] | null,
   ): ExtractedDeliveryNoteData | null => {
     if (!data) return null;
-    if (Array.isArray(data)) return data[0] ?? null;
+    if (Array.isArray(data)) return data[0] || null;
     return data;
   };
 
@@ -811,7 +811,7 @@ export default function CustomerDeliveryNotesPage() {
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Customer</label>
                   <select
-                    value={uploadCustomerId ?? ""}
+                    value={uploadCustomerId || ""}
                     onChange={(e) =>
                       setUploadCustomerId(e.target.value ? Number(e.target.value) : null)
                     }

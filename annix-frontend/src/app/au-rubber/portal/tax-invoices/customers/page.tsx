@@ -719,7 +719,7 @@ export default function CustomerTaxInvoicesPage() {
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Customer</label>
                   <select
-                    value={uploadCustomerId ?? ""}
+                    value={uploadCustomerId || ""}
                     onChange={(e) =>
                       setUploadCustomerId(e.target.value ? Number(e.target.value) : null)
                     }

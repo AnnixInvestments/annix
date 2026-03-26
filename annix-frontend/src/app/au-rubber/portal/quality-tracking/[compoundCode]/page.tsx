@@ -40,8 +40,8 @@ interface MetricCardProps {
 function MetricCard(props: MetricCardProps) {
   const label = props.label;
   const stats = props.stats;
-  const unit = props.unit ?? "";
-  const decimals = props.decimals ?? 2;
+  const unit = props.unit || "";
+  const decimals = props.decimals || 2;
   const specMin = props.specMin;
   const specMax = props.specMax;
   const specNominal = props.specNominal;
@@ -495,7 +495,7 @@ export default function QualityTrackingDetailPage() {
                   </label>
                   <input
                     type="number"
-                    value={configForm.windowSize ?? 10}
+                    value={configForm.windowSize || 10}
                     onChange={(e) =>
                       setConfigForm({ ...configForm, windowSize: Number(e.target.value) })
                     }
@@ -510,7 +510,7 @@ export default function QualityTrackingDetailPage() {
                     <input
                       type="number"
                       step="0.1"
-                      value={configForm.shoreADriftThreshold ?? 3}
+                      value={configForm.shoreADriftThreshold || 3}
                       onChange={(e) =>
                         setConfigForm({
                           ...configForm,
@@ -527,7 +527,7 @@ export default function QualityTrackingDetailPage() {
                     <input
                       type="number"
                       step="0.001"
-                      value={configForm.specificGravityDriftThreshold ?? 0.02}
+                      value={configForm.specificGravityDriftThreshold || 0.02}
                       onChange={(e) =>
                         setConfigForm({
                           ...configForm,
@@ -545,7 +545,7 @@ export default function QualityTrackingDetailPage() {
                     </label>
                     <input
                       type="number"
-                      value={configForm.tensileStrengthDropPercent ?? 10}
+                      value={configForm.tensileStrengthDropPercent || 10}
                       onChange={(e) =>
                         setConfigForm({
                           ...configForm,
@@ -561,7 +561,7 @@ export default function QualityTrackingDetailPage() {
                     </label>
                     <input
                       type="number"
-                      value={configForm.tearStrengthDropPercent ?? 15}
+                      value={configForm.tearStrengthDropPercent || 15}
                       onChange={(e) =>
                         setConfigForm({
                           ...configForm,
@@ -579,7 +579,7 @@ export default function QualityTrackingDetailPage() {
                     </label>
                     <input
                       type="number"
-                      value={configForm.elongationDropPercent ?? 15}
+                      value={configForm.elongationDropPercent || 15}
                       onChange={(e) =>
                         setConfigForm({
                           ...configForm,
@@ -595,7 +595,7 @@ export default function QualityTrackingDetailPage() {
                     </label>
                     <input
                       type="number"
-                      value={configForm.tc90CvThreshold ?? 15}
+                      value={configForm.tc90CvThreshold || 15}
                       onChange={(e) =>
                         setConfigForm({
                           ...configForm,

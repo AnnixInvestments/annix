@@ -62,8 +62,8 @@ export default function SupplierCocsPage() {
     includeAllVersions: showAllVersions || undefined,
   });
   const companiesQuery = useAuRubberCompanies();
-  const cocs = cocsQuery.data ?? [];
-  const companies = companiesQuery.data ?? [];
+  const cocs = cocsQuery.data || [];
+  const companies = companiesQuery.data || [];
   const isLoading = cocsQuery.isLoading;
   const error = cocsQuery.error;
   const [compounderPage, setCompounderPage] = useState(0);

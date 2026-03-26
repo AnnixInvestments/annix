@@ -614,7 +614,7 @@ export default function AuRubberOrderDetailPage() {
           <div>
             <label className="block text-sm font-medium text-gray-700">Company</label>
             <select
-              value={editCompanyId ?? ""}
+              value={editCompanyId || ""}
               onChange={(e) =>
                 setEditCompanyId(e.target.value ? Number(e.target.value) : undefined)
               }
@@ -870,7 +870,7 @@ export default function AuRubberOrderDetailPage() {
                         </td>
                         <td className="px-3 py-3">
                           <select
-                            value={item.productId ?? ""}
+                            value={item.productId || ""}
                             onChange={(e) =>
                               updateItem(index, {
                                 productId: e.target.value ? Number(e.target.value) : undefined,
@@ -904,7 +904,7 @@ export default function AuRubberOrderDetailPage() {
                         </td>
                         <td className="px-3 py-3 text-center">
                           <select
-                            value={item.thickness ?? ""}
+                            value={item.thickness || ""}
                             onChange={(e) =>
                               updateItem(index, {
                                 thickness: e.target.value ? Number(e.target.value) : undefined,
@@ -922,7 +922,7 @@ export default function AuRubberOrderDetailPage() {
                         </td>
                         <td className="px-3 py-3 text-center">
                           <select
-                            value={item.width ?? ""}
+                            value={item.width || ""}
                             onChange={(e) =>
                               updateItem(index, {
                                 width: e.target.value ? Number(e.target.value) : undefined,
@@ -940,7 +940,7 @@ export default function AuRubberOrderDetailPage() {
                         </td>
                         <td className="px-3 py-3 text-center">
                           <select
-                            value={item.length ?? ""}
+                            value={item.length || ""}
                             onChange={(e) =>
                               updateItem(index, {
                                 length: e.target.value ? Number(e.target.value) : undefined,
@@ -988,7 +988,7 @@ export default function AuRubberOrderDetailPage() {
                             </button>
                             <input
                               type="number"
-                              value={item.quantity ?? ""}
+                              value={item.quantity || ""}
                               onChange={(e) =>
                                 updateItem(index, {
                                   quantity: e.target.value ? Number(e.target.value) : undefined,

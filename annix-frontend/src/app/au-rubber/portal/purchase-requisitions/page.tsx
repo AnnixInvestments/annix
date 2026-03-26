@@ -511,7 +511,7 @@ export default function PurchaseRequisitionsPage() {
                       Supplier (Optional)
                     </label>
                     <select
-                      value={formSupplierCompanyId ?? ""}
+                      value={formSupplierCompanyId || ""}
                       onChange={(e) =>
                         setFormSupplierCompanyId(e.target.value ? Number(e.target.value) : null)
                       }
@@ -564,7 +564,7 @@ export default function PurchaseRequisitionsPage() {
                     {formItems.map((item, index) => (
                       <div key={index} className="flex items-center space-x-2">
                         <select
-                          value={item.compoundStockId ?? ""}
+                          value={item.compoundStockId || ""}
                           onChange={(e) =>
                             updateFormItem(
                               index,

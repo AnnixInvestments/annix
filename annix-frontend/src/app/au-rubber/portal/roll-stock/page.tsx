@@ -594,7 +594,7 @@ export default function RollStockPage() {
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Customer</label>
                   <select
-                    value={reserveCustomerId ?? ""}
+                    value={reserveCustomerId || ""}
                     onChange={(e) =>
                       setReserveCustomerId(e.target.value ? Number(e.target.value) : null)
                     }
@@ -777,7 +777,7 @@ export default function RollStockPage() {
                       <input
                         type="number"
                         step="0.01"
-                        value={openingStockForm.costZar ?? ""}
+                        value={openingStockForm.costZar || ""}
                         onChange={(e) =>
                           setOpeningStockForm({
                             ...openingStockForm,
@@ -795,7 +795,7 @@ export default function RollStockPage() {
                       <input
                         type="number"
                         step="0.01"
-                        value={openingStockForm.priceZar ?? ""}
+                        value={openingStockForm.priceZar || ""}
                         onChange={(e) =>
                           setOpeningStockForm({
                             ...openingStockForm,
@@ -811,7 +811,7 @@ export default function RollStockPage() {
                     <div>
                       <label className="block text-sm font-medium text-gray-700">Location</label>
                       <select
-                        value={openingStockForm.locationId ?? ""}
+                        value={openingStockForm.locationId || ""}
                         onChange={(e) =>
                           setOpeningStockForm({
                             ...openingStockForm,
@@ -834,7 +834,7 @@ export default function RollStockPage() {
                       </label>
                       <input
                         type="date"
-                        value={openingStockForm.productionDate ?? ""}
+                        value={openingStockForm.productionDate || ""}
                         onChange={(e) =>
                           setOpeningStockForm({
                             ...openingStockForm,
@@ -848,7 +848,7 @@ export default function RollStockPage() {
                   <div>
                     <label className="block text-sm font-medium text-gray-700">Notes</label>
                     <textarea
-                      value={openingStockForm.notes ?? ""}
+                      value={openingStockForm.notes || ""}
                       onChange={(e) =>
                         setOpeningStockForm({
                           ...openingStockForm,
@@ -950,10 +950,10 @@ export default function RollStockPage() {
                                 </td>
                                 <td className="px-3 py-2 text-sm text-gray-900">{row.weightKg}</td>
                                 <td className="px-3 py-2 text-sm text-gray-900">
-                                  {row.costZar ?? "-"}
+                                  {row.costZar || "-"}
                                 </td>
                                 <td className="px-3 py-2 text-sm text-gray-900">
-                                  {row.priceZar ?? "-"}
+                                  {row.priceZar || "-"}
                                 </td>
                               </tr>
                             ))}

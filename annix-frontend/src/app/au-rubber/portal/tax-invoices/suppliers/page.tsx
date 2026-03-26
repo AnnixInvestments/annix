@@ -868,7 +868,7 @@ export default function SupplierTaxInvoicesPage() {
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Supplier</label>
                   <select
-                    value={uploadSupplierId ?? ""}
+                    value={uploadSupplierId || ""}
                     onChange={(e) =>
                       setUploadSupplierId(e.target.value ? Number(e.target.value) : null)
                     }

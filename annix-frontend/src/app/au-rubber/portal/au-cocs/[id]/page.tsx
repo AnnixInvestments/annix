@@ -462,13 +462,13 @@ export default function AuCocDetailPage() {
                       {roll.rollNumber}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {roll.thicknessMm ?? "-"}
+                      {roll.thicknessMm || "-"}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {roll.widthMm ?? "-"}
+                      {roll.widthMm || "-"}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {roll.lengthM ?? "-"}
+                      {roll.lengthM || "-"}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {roll.weightKg != null ? roll.weightKg.toFixed(2) : "-"}

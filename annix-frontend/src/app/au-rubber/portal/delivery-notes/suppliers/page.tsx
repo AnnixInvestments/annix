@@ -48,10 +48,10 @@ export default function SupplierDeliveryNotesPage() {
     includeAllVersions: showAllVersions || undefined,
   });
   const companiesQuery = useAuRubberCompanies();
-  const allCompanies = companiesQuery.data ?? [];
+  const allCompanies = companiesQuery.data || [];
   const suppliers = allCompanies.filter((c) => c.companyType === "SUPPLIER");
   const supplierIds = new Set(suppliers.map((c) => c.id));
-  const notes = (notesQuery.data ?? []).filter((n) => supplierIds.has(n.supplierCompanyId));
+  const notes = (notesQuery.data || []).filter((n) => supplierIds.has(n.supplierCompanyId));
   const isLoading = notesQuery.isLoading;
   const error = notesQuery.error;
   const [currentPage, setCurrentPage] = useState(0);
@@ -298,7 +298,7 @@ export default function SupplierDeliveryNotesPage() {
     data: ExtractedDeliveryNoteData | ExtractedDeliveryNoteData[] | null,
   ): ExtractedDeliveryNoteData | null => {
     if (!data) return null;
-    if (Array.isArray(data)) return data[0] ?? null;
+    if (Array.isArray(data)) return data[0] || null;
     return data;
   };
 

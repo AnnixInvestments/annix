@@ -85,9 +85,9 @@ export default function AuRubberOrdersPage() {
   const ordersQuery = useAuRubberOrders(statusFilter);
   const companiesQuery = useAuRubberCompanies();
   const productsQuery = useAuRubberProducts();
-  const orders = ordersQuery.data ?? [];
-  const companies = companiesQuery.data ?? [];
-  const products = productsQuery.data ?? [];
+  const orders = ordersQuery.data || [];
+  const companies = companiesQuery.data || [];
+  const products = productsQuery.data || [];
   const statuses = ORDER_STATUS_OPTIONS;
   const isLoading = ordersQuery.isLoading;
   const error = ordersQuery.error;
@@ -381,7 +381,7 @@ export default function AuRubberOrdersPage() {
             <div className="flex items-center space-x-2">
               <label className="text-sm font-medium text-gray-700">Company:</label>
               <select
-                value={companyFilter ?? ""}
+                value={companyFilter || ""}
                 onChange={(e) =>
                   setCompanyFilter(e.target.value ? Number(e.target.value) : undefined)
                 }
@@ -398,7 +398,7 @@ export default function AuRubberOrdersPage() {
             <div className="flex items-center space-x-2">
               <label className="text-sm font-medium text-gray-700">Status:</label>
               <select
-                value={statusFilter ?? ""}
+                value={statusFilter || ""}
                 onChange={(e) =>
                   setStatusFilter(e.target.value ? Number(e.target.value) : undefined)
                 }
@@ -608,7 +608,7 @@ export default function AuRubberOrdersPage() {
                   <div>
                     <label className="block text-sm font-medium text-gray-700">Company</label>
                     <select
-                      value={newOrderCompanyId ?? ""}
+                      value={newOrderCompanyId || ""}
                       onChange={(e) =>
                         setNewOrderCompanyId(e.target.value ? Number(e.target.value) : undefined)
                       }

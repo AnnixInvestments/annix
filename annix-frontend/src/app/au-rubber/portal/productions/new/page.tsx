@@ -164,7 +164,7 @@ export default function NewProductionPage() {
             <div>
               <label className="block text-sm font-medium text-gray-700">Product *</label>
               <select
-                value={productId ?? ""}
+                value={productId || ""}
                 onChange={(e) =>
                   handleProductChange(e.target.value ? Number(e.target.value) : null)
                 }
@@ -232,7 +232,7 @@ export default function NewProductionPage() {
             <div>
               <label className="block text-sm font-medium text-gray-700">Compound Stock *</label>
               <select
-                value={compoundStockId ?? ""}
+                value={compoundStockId || ""}
                 onChange={(e) => setCompoundStockId(e.target.value ? Number(e.target.value) : null)}
                 className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 sm:text-sm border p-2"
               >
