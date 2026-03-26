@@ -23,6 +23,7 @@ import {
   type TrendDirection,
 } from "@/app/lib/api/auRubberApi";
 import { formatDateZA } from "@/app/lib/datetime";
+import BatchHistoryChart from "./BatchHistoryChart";
 
 type ViewMode = "table" | "chart";
 
@@ -469,15 +470,7 @@ export default function QualityTrackingDetailPage() {
             </table>
           </div>
         ) : (
-          <div className="p-6">
-            <div className="text-center text-gray-500 py-12">
-              <BarChart3 className="w-12 h-12 mx-auto mb-4 text-gray-400" />
-              <p>Chart view would display line graphs for each metric over time.</p>
-              <p className="text-sm mt-2">
-                Consider integrating Recharts or a similar charting library for visualization.
-              </p>
-            </div>
-          </div>
+          <BatchHistoryChart batches={detail.batches} config={detail.config} />
         )}
       </div>
 
