@@ -1,6 +1,17 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import type { DragEndEvent, DragStartEvent } from "@dnd-kit/core";
+import {
+  closestCenter,
+  DndContext,
+  DragOverlay,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import { arrayMove, SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
 import type { WorkflowNotification } from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
@@ -12,6 +23,7 @@ import {
   useUpdateDashboardPreferences,
   useWorkflowLaneCounts,
 } from "@/app/lib/query/hooks";
+import { DraggableWidget } from "../../components/dashboard/DraggableWidget";
 import { HeroBanner } from "../../components/dashboard/HeroBanner";
 import { MyTasksWidget } from "../../components/dashboard/MyTasksWidget";
 import { PushNotificationBanner } from "../../components/dashboard/PushNotificationBanner";
@@ -28,6 +40,8 @@ import { useViewAs } from "../../context/ViewAsContext";
 const INBOUND_ROLES = ["accounts", "manager", "admin"];
 const WORKSHOP_ROLES = ["storeman", "accounts", "manager", "admin"];
 const OUTBOUND_ROLES = ["storeman", "manager", "admin"];
+
+const DEFAULT_WIDGET_ORDER = ["role-summary", "my-tasks", "stats", "workflow-lanes", "quick-links"];
 
 const ALL_WIDGETS = [
   { key: "role-summary", label: "Role Summary" },
@@ -49,6 +63,8 @@ export default function StockControlDashboard() {
   const { data: preferences } = useDashboardPreferences();
   const updatePreferences = useUpdateDashboardPreferences();
   const [notifications, setNotifications] = useState<WorkflowNotification[]>([]);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [activeWidget, setActiveWidget] = useState<string | null>(null);
 
   useEffect(() => {
     stockControlApiClient
@@ -58,6 +74,15 @@ export default function StockControlDashboard() {
   }, []);
 
   const hiddenWidgets = preferences?.hiddenWidgets || [];
+
+  const widgetOrder = useMemo(() => {
+    const saved = preferences?.widgetOrder || [];
+    if (saved.length === 0) return DEFAULT_WIDGET_ORDER;
+    const allKeys = new Set(DEFAULT_WIDGET_ORDER);
+    const missing = DEFAULT_WIDGET_ORDER.filter((k) => !saved.includes(k));
+    const valid = saved.filter((k) => allKeys.has(k));
+    return [...valid, ...missing];
+  }, [preferences?.widgetOrder]);
 
   const handleWidgetToggle = useCallback(
     (widgetKey: string) => {
@@ -86,6 +111,64 @@ export default function StockControlDashboard() {
   const showWorkshop = WORKSHOP_ROLES.includes(effectiveRole);
   const showOutbound = OUTBOUND_ROLES.includes(effectiveRole);
 
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(KeyboardSensor),
+  );
+
+  const handleDragStart = useCallback((event: DragStartEvent) => {
+    setActiveWidget(event.active.id as string);
+  }, []);
+
+  const handleDragEnd = useCallback(
+    (event: DragEndEvent) => {
+      setActiveWidget(null);
+      const { active, over } = event;
+      if (!over || active.id === over.id) return;
+
+      const oldIndex = widgetOrder.indexOf(active.id as string);
+      const newIndex = widgetOrder.indexOf(over.id as string);
+      if (oldIndex === -1 || newIndex === -1) return;
+
+      const newOrder = arrayMove(widgetOrder, oldIndex, newIndex);
+      updatePreferences.mutate({ widgetOrder: newOrder });
+    },
+    [widgetOrder, updatePreferences],
+  );
+
+  const visibleWidgets = widgetOrder.filter((key) => widgetVisible(key));
+
+  const renderWidget = (key: string) => {
+    if (key === "role-summary") {
+      return <RoleSummarySection activeView={effectiveRole} />;
+    } else if (key === "my-tasks") {
+      return (
+        <MyTasksWidget pendingApprovals={pendingApprovals ?? []} notifications={notifications} />
+      );
+    } else if (key === "stats") {
+      if (!stats) return null;
+      return <QuickStatsSection stats={stats} navItemVisible={navItemVisible} />;
+    } else if (key === "workflow-lanes") {
+      return (
+        <WorkflowLanesSection
+          lanes={lanes}
+          lanesLoading={lanesLoading}
+          cpoSummary={cpoSummary}
+          showInbound={showInbound}
+          showWorkshop={showWorkshop}
+          showOutbound={showOutbound}
+        />
+      );
+    } else if (key === "quick-links") {
+      return <QuickLinksSection navItemVisible={navItemVisible} />;
+    }
+    return null;
+  };
+
+  const activeWidgetLabel = activeWidget
+    ? ALL_WIDGETS.find((w) => w.key === activeWidget)?.label
+    : null;
+
   return (
     <div className="space-y-6">
       <HeroBanner
@@ -97,6 +180,41 @@ export default function StockControlDashboard() {
       <PushNotificationBanner />
 
       <div className="flex items-center justify-end gap-2">
+        <button
+          type="button"
+          onClick={() => setIsEditMode((prev) => !prev)}
+          className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-md shadow-sm transition-colors ${
+            isEditMode
+              ? "bg-teal-600 text-white hover:bg-teal-700"
+              : "text-gray-700 bg-white border border-gray-300 hover:bg-gray-50"
+          }`}
+        >
+          {isEditMode ? (
+            <>
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M5 13l4 4L19 7"
+                />
+              </svg>
+              Done
+            </>
+          ) : (
+            <>
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"
+                />
+              </svg>
+              Reorder
+            </>
+          )}
+        </button>
         <WidgetVisibilityToggle
           allWidgets={ALL_WIDGETS}
           hiddenWidgets={hiddenWidgets}
@@ -104,28 +222,30 @@ export default function StockControlDashboard() {
         />
       </div>
 
-      {widgetVisible("role-summary") && <RoleSummarySection activeView={effectiveRole} />}
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragStart={handleDragStart}
+        onDragEnd={handleDragEnd}
+      >
+        <SortableContext items={visibleWidgets} strategy={verticalListSortingStrategy}>
+          <div className="space-y-6">
+            {visibleWidgets.map((key) => (
+              <DraggableWidget key={key} id={key} isEditMode={isEditMode}>
+                {renderWidget(key)}
+              </DraggableWidget>
+            ))}
+          </div>
+        </SortableContext>
 
-      {widgetVisible("my-tasks") && (
-        <MyTasksWidget pendingApprovals={pendingApprovals ?? []} notifications={notifications} />
-      )}
-
-      {widgetVisible("stats") && stats && (
-        <QuickStatsSection stats={stats} navItemVisible={navItemVisible} />
-      )}
-
-      {widgetVisible("workflow-lanes") && (
-        <WorkflowLanesSection
-          lanes={lanes}
-          lanesLoading={lanesLoading}
-          cpoSummary={cpoSummary}
-          showInbound={showInbound}
-          showWorkshop={showWorkshop}
-          showOutbound={showOutbound}
-        />
-      )}
-
-      {widgetVisible("quick-links") && <QuickLinksSection navItemVisible={navItemVisible} />}
+        <DragOverlay>
+          {activeWidget && activeWidgetLabel && (
+            <div className="bg-white border-2 border-teal-400 rounded-lg shadow-2xl px-6 py-4 opacity-90">
+              <p className="text-sm font-medium text-teal-700">{activeWidgetLabel}</p>
+            </div>
+          )}
+        </DragOverlay>
+      </DndContext>
     </div>
   );
 }

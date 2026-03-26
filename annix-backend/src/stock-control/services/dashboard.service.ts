@@ -458,7 +458,9 @@ export class DashboardService {
   async updatePreferences(
     companyId: number,
     userId: number,
-    data: Partial<Pick<DashboardPreference, "pinnedWidgets" | "hiddenWidgets" | "viewOverride">>,
+    data: Partial<
+      Pick<DashboardPreference, "pinnedWidgets" | "hiddenWidgets" | "viewOverride" | "widgetOrder">
+    >,
   ): Promise<DashboardPreference> {
     const existing = await this.preferenceRepo.findOne({ where: { companyId, userId } });
 

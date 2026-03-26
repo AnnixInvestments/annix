@@ -102,6 +102,7 @@ export class DashboardController {
       pinnedWidgets?: string[];
       hiddenWidgets?: string[];
       viewOverride?: string | null;
+      widgetOrder?: string[];
     },
   ) {
     return this.dashboardService.updatePreferences(req.user.companyId, req.user.id, body);

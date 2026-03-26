@@ -109,6 +109,7 @@ export function useUpdateDashboardPreferences() {
     mutationFn: (data: {
       pinnedWidgets?: string[];
       hiddenWidgets?: string[];
+      widgetOrder?: string[];
       viewOverride?: string | null;
     }) => stockControlApiClient.updateDashboardPreferences(data),
     onMutate: async (data) => {
@@ -123,6 +124,7 @@ export function useUpdateDashboardPreferences() {
         userId: 0,
         pinnedWidgets: [],
         hiddenWidgets: [],
+        widgetOrder: [],
         viewOverride: null,
       };
       queryClient.setQueryData<DashboardPreferences>(

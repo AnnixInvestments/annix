@@ -37,6 +37,9 @@ export class DashboardPreference {
   @Column({ name: "hidden_widgets", type: "jsonb", default: "[]" })
   hiddenWidgets: string[];
 
+  @Column({ name: "widget_order", type: "jsonb", default: "[]" })
+  widgetOrder: string[];
+
   @Column({ name: "view_override", type: "varchar", length: 50, nullable: true })
   viewOverride: string | null;
 

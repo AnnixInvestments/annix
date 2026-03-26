@@ -1245,6 +1245,7 @@ export interface DashboardPreferences {
   userId: number;
   pinnedWidgets: string[];
   hiddenWidgets: string[];
+  widgetOrder: string[];
   viewOverride: string | null;
 }
 
