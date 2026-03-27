@@ -1,6 +1,7 @@
 import { Test, TestingModule } from "@nestjs/testing";
 import { getRepositoryToken } from "@nestjs/typeorm";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
+import { STORAGE_SERVICE } from "../../storage/storage.interface";
 import { CoatingAnalysisStatus, JobCardCoatingAnalysis } from "../entities/coating-analysis.entity";
 import { JobCard } from "../entities/job-card.entity";
 import { JobCardExtractionCorrection } from "../entities/job-card-extraction-correction.entity";
@@ -58,6 +59,10 @@ describe("CoatingAnalysisService", () => {
         },
         { provide: AiChatService, useValue: mockAiChatService },
         { provide: M2CalculationService, useValue: mockM2CalculationService },
+        {
+          provide: STORAGE_SERVICE,
+          useValue: { upload: jest.fn(), download: jest.fn(), presignedUrl: jest.fn() },
+        },
       ],
     }).compile();
 

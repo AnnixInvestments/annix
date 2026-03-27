@@ -364,7 +364,7 @@ describe("JobCardsController", () => {
 
       const result = await controller.verifyCoatingTds(mockReq(), 5, file);
 
-      expect(coatingAnalysisService.verifyFromTds).toHaveBeenCalledWith(1, 5, file.buffer);
+      expect(coatingAnalysisService.verifyFromTds).toHaveBeenCalledWith(1, 5, file);
       expect(result).toBe(expected);
     });
   });
