@@ -2,10 +2,20 @@ import type { MigrationInterface, QueryRunner } from "typeorm";
 
 export class AddRubberOrderImportCorrections1809000000008 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
+    const hasRubberCompanies = await queryRunner.query(`
+      SELECT EXISTS (
+        SELECT 1 FROM information_schema.tables
+        WHERE table_name = 'rubber_companies'
+      ) AS "exists"
+    `);
+    const fkClause = hasRubberCompanies[0]?.exists
+      ? "REFERENCES rubber_companies(id) ON DELETE CASCADE"
+      : "";
+
     await queryRunner.query(`
       CREATE TABLE IF NOT EXISTS rubber_order_import_corrections (
         id SERIAL PRIMARY KEY,
-        company_id INTEGER REFERENCES rubber_companies(id) ON DELETE CASCADE,
+        company_id INTEGER ${fkClause},
         company_name VARCHAR(255),
         field_name VARCHAR(100) NOT NULL,
         original_value TEXT,
