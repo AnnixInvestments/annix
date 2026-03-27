@@ -490,6 +490,7 @@ export class SageJcDumpService {
 
     if (itemHeaderIdx >= 0) {
       const itemRows = rows.slice(itemHeaderIdx + 1);
+      let lastJtNo = "";
       itemRows.forEach((row) => {
         const itemCode = String(row[0] || "").trim();
         const itemDesc = String(row[1] || "").trim();
@@ -503,7 +504,12 @@ export class SageJcDumpService {
         const itemNo = String(row[4] || "").trim();
         const rawQty = row[5];
         const quantity = typeof rawQty === "number" ? rawQty : parseFloat(String(rawQty || "0"));
-        const jtNo = String(row[6] || "").trim();
+        const explicitJt = String(row[6] || "").trim();
+        const jtNo = explicitJt || lastJtNo;
+
+        if (explicitJt) {
+          lastJtNo = explicitJt;
+        }
 
         if (Number.isNaN(quantity) || quantity <= 0) return;
 

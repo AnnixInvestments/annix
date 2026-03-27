@@ -387,9 +387,7 @@ export default function JobCardDetailPage() {
   const canAcceptDraft = useMemo(() => {
     if (!workflowStatus || workflowStatus.jobCardStatus !== "draft") return false;
     if (!user?.name) return false;
-    const firstFgStep = (workflowStatus.foregroundSteps || []).find((s) => s.key !== "draft");
-    if (!firstFgStep) return false;
-    const assigned = workflowStatus.stepAssignments?.[firstFgStep.key];
+    const assigned = workflowStatus.stepAssignments?.["document_upload"];
     if (!assigned || assigned.length === 0) return true;
     return assigned.some((u) => u.name === user.name);
   }, [workflowStatus, user?.name]);
