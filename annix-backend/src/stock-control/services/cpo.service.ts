@@ -1007,6 +1007,43 @@ export class CpoService {
       .join("\n");
   }
 
+  private cpoDataUnchanged(
+    existing: CustomerPurchaseOrder,
+    row: JobCardImportRow,
+    validLineItems: {
+      itemCode?: string;
+      itemDescription?: string;
+      itemNo?: string;
+      quantity?: string;
+      jtNo?: string;
+      m2?: number;
+    }[],
+    totalQuantity: number,
+  ): boolean {
+    if (
+      (existing.jobName || null) !== (row.jobName || null) ||
+      (existing.customerName || null) !== (row.customerName || null) ||
+      (existing.poNumber || null) !== (row.poNumber || null) ||
+      existing.totalItems !== validLineItems.length ||
+      Number(existing.totalQuantity) !== totalQuantity
+    ) {
+      return false;
+    }
+
+    const existingItems = (existing.items || [])
+      .map((item) => `${item.itemCode}|${item.itemDescription}|${Number(item.quantityOrdered)}`)
+      .sort();
+    const incomingItems = validLineItems
+      .map(
+        (li) =>
+          `${li.itemCode || ""}|${li.itemDescription || ""}|${li.quantity ? parseFloat(li.quantity) : 0}`,
+      )
+      .sort();
+
+    if (existingItems.length !== incomingItems.length) return false;
+    return existingItems.every((item, idx) => item === incomingItems[idx]);
+  }
+
   private async archiveAndOverwriteCpo(
     existing: CustomerPurchaseOrder,
     row: JobCardImportRow,
@@ -1023,6 +1060,11 @@ export class CpoService {
     companyId: number,
     createdBy: string | null,
   ): Promise<number> {
+    if (this.cpoDataUnchanged(existing, row, validLineItems, totalQuantity)) {
+      this.logger.log(`CPO ${existing.cpoNumber} data unchanged, skipping version bump`);
+      return existing.id;
+    }
+
     const versionSnapshot: CpoPreviousVersion = {
       versionNumber: existing.versionNumber,
       archivedAt: nowISO(),
