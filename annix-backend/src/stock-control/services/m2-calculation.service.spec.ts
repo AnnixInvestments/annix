@@ -232,4 +232,195 @@ describe("M2CalculationService", () => {
       expect(results).toHaveLength(2);
     });
   });
+
+  describe("wall thickness parsing", () => {
+    it("parses W/T direct format (SABS 719)", async () => {
+      setupStandardMocks();
+      const [result] = await service.calculateM2ForItems([
+        "500NB W/T 6mm SABS 719 ERW Pipe, 12.192Lg",
+      ]);
+      expect(result.parsedWallThicknessMm).toBe(6);
+    });
+
+    it("parses wall thickness in parentheses after schedule", async () => {
+      setupStandardMocks();
+      const [result] = await service.calculateM2ForItems([
+        "100NB Sch 40 (6.02mm) ASTM A106 Gr B Pipe, 6000 LG",
+      ]);
+      expect(result.parsedWallThicknessMm).toBe(6.02);
+    });
+
+    it("uses parsed WT over schedule lookup", async () => {
+      mockNbOdLookup.nbToOd.mockResolvedValue({ outsideDiameterMm: 114.3 });
+      mockPipeSchedule.getSchedulesByNbMm.mockResolvedValue([
+        { schedule: "40", wallThicknessMm: 99 },
+      ]);
+
+      const [result] = await service.calculateM2ForItems(["100NB Sch 40 (6.02mm) Pipe 6000 LG"]);
+      const expectedId = 114.3 - 2 * 6.02;
+      const expectedInternal = Math.PI * (expectedId / 1000) * 6;
+      expect(result.internalM2).toBeCloseTo(expectedInternal, 2);
+    });
+  });
+
+  describe("Lg meters format parsing", () => {
+    it("parses decimal Lg as meters", async () => {
+      setupStandardMocks();
+      const [result] = await service.calculateM2ForItems(["100NB Pipe, 12.192Lg"]);
+      expect(result.parsedLengthM).toBeCloseTo(12.192, 2);
+    });
+
+    it("parses short decimal Lg as meters", async () => {
+      setupStandardMocks();
+      const [result] = await service.calculateM2ForItems(["100NB Pipe, 3.65Lg"]);
+      expect(result.parsedLengthM).toBeCloseTo(3.65, 2);
+    });
+  });
+
+  describe("bend property parsing", () => {
+    it("parses bend angle", async () => {
+      setupStandardMocks();
+      const [result] = await service.calculateM2ForItems([
+        "80NB Sch 40 (5.49mm) ASTM A106 45° 3D Bend C/F 455mm",
+      ]);
+      expect(result.parsedBendAngle).toBe(45);
+    });
+
+    it("parses bend type", async () => {
+      setupStandardMocks(88.9, 5.49);
+      const [result] = await service.calculateM2ForItems([
+        "80NB Sch 40 (5.49mm) ASTM A106 90° 3D Bend C/F 455mm",
+      ]);
+      expect(result.parsedBendType).toBe("3D");
+    });
+
+    it("calculates bend m2 using arc length formula", async () => {
+      setupStandardMocks(88.9, 5.49);
+      const [result] = await service.calculateM2ForItems([
+        "80NB Sch 40 (5.49mm) ASTM A106 90° 3D Bend C/F 455mm",
+      ]);
+      expect(result.externalM2).toBeGreaterThan(0);
+      expect(result.internalM2).toBeGreaterThan(0);
+    });
+  });
+
+  describe("fitting parsing", () => {
+    it("parses fitting dimensions from parenthesized format", async () => {
+      setupStandardMocks();
+      const [result] = await service.calculateM2ForItems([
+        "100NB Short Equal Tee Sch40 (6.02mm) ASTM A106 (150x200)",
+      ]);
+      expect(result.parsedFittingType).toBe("equal_tee");
+      expect(result.parsedItemType).toBe("tee");
+    });
+
+    it("calculates tee m2 without requiring length", async () => {
+      setupStandardMocks();
+      const [result] = await service.calculateM2ForItems([
+        "100NB Short Equal Tee Sch40 (6.02mm) (150x200)",
+      ]);
+      expect(result.externalM2).toBeGreaterThan(0);
+      expect(result.internalM2).toBeGreaterThan(0);
+    });
+  });
+
+  describe("flange count parsing", () => {
+    it("parses 2X R/F as 2 flanges", async () => {
+      setupStandardMocks();
+      const [result] = await service.calculateM2ForItems(["100NB Pipe 6000 LG, 2X R/F"]);
+      expect(result.parsedFlangeCount).toBe(2);
+    });
+
+    it("parses 1X R/F, 1X L/F as 2 flanges", async () => {
+      setupStandardMocks();
+      const [result] = await service.calculateM2ForItems(["100NB Pipe 6000 LG, 1X R/F, 1X L/F"]);
+      expect(result.parsedFlangeCount).toBe(2);
+    });
+
+    it("parses FBE as 2 flanges", async () => {
+      setupStandardMocks();
+      const [result] = await service.calculateM2ForItems(["100NB Pipe FBE 6000 LG"]);
+      expect(result.parsedFlangeCount).toBe(2);
+    });
+
+    it("parses FOE as 1 flange", async () => {
+      setupStandardMocks();
+      const [result] = await service.calculateM2ForItems(["100NB Pipe FOE 6000 LG"]);
+      expect(result.parsedFlangeCount).toBe(1);
+    });
+
+    it("returns 0 for PE", async () => {
+      setupStandardMocks();
+      const [result] = await service.calculateM2ForItems(["100NB Pipe PE 6000 LG"]);
+      expect(result.parsedFlangeCount).toBe(0);
+    });
+  });
+
+  describe("flange standard and pressure class parsing", () => {
+    it("parses ASME B16.5 with class", async () => {
+      setupStandardMocks();
+      const [result] = await service.calculateM2ForItems([
+        "100NB Pipe 6000 LG, 2X R/F, ASME B16.5 150",
+      ]);
+      expect(result.parsedFlangeStandard).toBe("ASME B16.5");
+      expect(result.parsedPressureClass).toBe("150");
+    });
+
+    it("parses SABS 1123 with table designation", async () => {
+      setupStandardMocks();
+      const [result] = await service.calculateM2ForItems([
+        "100NB Pipe 6000 LG FBE SABS 1123 1000/3",
+      ]);
+      expect(result.parsedFlangeStandard).toBe("SABS 1123");
+      expect(result.parsedPressureClass).toBe("1000/3");
+    });
+  });
+
+  describe("flange area adds to m2", () => {
+    it("flanged pipe has higher m2 than plain pipe", async () => {
+      setupStandardMocks();
+      const [plainResult] = await service.calculateM2ForItems(["100NB Pipe PE 6000 LG"]);
+      const [flangedResult] = await service.calculateM2ForItems(["100NB Pipe FBE 6000 LG"]);
+      expect(flangedResult.totalM2!).toBeGreaterThan(plainResult.totalM2!);
+    });
+  });
+
+  describe("RFQ-format descriptions end-to-end", () => {
+    it("parses full ASTM pipe description", async () => {
+      setupStandardMocks();
+      const [result] = await service.calculateM2ForItems([
+        "500NB Sch 40 (9.53mm) ASTM A106 Gr B Pipe, 12.192Lg, 2X R/F, ASME B16.5 150",
+      ]);
+      expect(result.parsedDiameterMm).toBe(500);
+      expect(result.parsedWallThicknessMm).toBe(9.53);
+      expect(result.parsedFlangeCount).toBe(2);
+      expect(result.parsedFlangeStandard).toBe("ASME B16.5");
+      expect(result.parsedPressureClass).toBe("150");
+      expect(result.parsedItemType).toBe("pipe");
+      expect(result.totalM2).toBeGreaterThan(0);
+    });
+
+    it("parses full SABS 719 pipe description", async () => {
+      setupStandardMocks(508.0, 6);
+      const [result] = await service.calculateM2ForItems([
+        "500NB W/T 6mm SABS 719 ERW Pipe, 12.192Lg",
+      ]);
+      expect(result.parsedDiameterMm).toBe(500);
+      expect(result.parsedWallThicknessMm).toBe(6);
+      expect(result.parsedLengthM).toBeCloseTo(12.192, 2);
+      expect(result.totalM2).toBeGreaterThan(0);
+    });
+
+    it("parses full bend description", async () => {
+      setupStandardMocks(88.9, 5.49);
+      const [result] = await service.calculateM2ForItems([
+        "80NB Sch 40 (5.49mm) ASTM A106 90° 3D Bend C/F 455mm FBE ASME B16.5 150",
+      ]);
+      expect(result.parsedDiameterMm).toBe(80);
+      expect(result.parsedBendAngle).toBe(90);
+      expect(result.parsedBendType).toBe("3D");
+      expect(result.parsedFlangeCount).toBe(2);
+      expect(result.totalM2).toBeGreaterThan(0);
+    });
+  });
 });

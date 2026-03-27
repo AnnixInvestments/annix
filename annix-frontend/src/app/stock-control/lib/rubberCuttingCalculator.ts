@@ -210,6 +210,17 @@ export interface ParsedPipeItem {
   quantity: number;
   isValidPipe: boolean;
   m2: number | null;
+  wallThicknessMm: number | null;
+  bendAngle: number | null;
+  bendType: string | null;
+  centerToFaceMm: number | null;
+  fittingLengthAMm: number | null;
+  fittingLengthBMm: number | null;
+  flangeCount: number;
+  pressureClass: string | null;
+  flangeStandard: string | null;
+  calculatedExtM2: number | null;
+  calculatedIntM2: number | null;
 }
 
 export interface RollSpecification {
@@ -315,8 +326,15 @@ function parseOd(description: string): number | null {
 }
 
 function parseLength(description: string): number | null {
-  const lgMatch = description.match(/(\d+)\s*(?:mm\s*)?LG/i);
-  if (lgMatch) return parseInt(lgMatch[1], 10);
+  const lgMatch = description.match(/(\d+(?:\.\d+)?)\s*(?:mm\s*)?LG/i);
+  if (lgMatch) {
+    const value = parseFloat(lgMatch[1]);
+    if (lgMatch[1].includes(".") && value < 50) {
+      return Math.round(value * 1000);
+    } else {
+      return Math.round(value);
+    }
+  }
 
   const longMatch = description.match(/(\d+)\s*(?:mm\s*)?LONG/i);
   if (longMatch) return parseInt(longMatch[1], 10);
@@ -325,7 +343,7 @@ function parseLength(description: string): number | null {
   if (mmMatch) return parseInt(mmMatch[1], 10);
 
   const mMatch = description.match(/(\d+(?:\.\d+)?)\s*[Mm](?:\s|$)/);
-  if (mMatch) return parseFloat(mMatch[1]) * 1000;
+  if (mMatch) return Math.round(parseFloat(mMatch[1]) * 1000);
 
   return null;
 }
@@ -373,6 +391,137 @@ function parseItemType(description: string): string | null {
 
   const match = patterns.find(({ pattern }) => pattern.test(description));
   return match ? match.type : null;
+}
+
+function parseWallThickness(description: string): number | null {
+  const wtMatch = description.match(/W\/T\s+(\d+(?:\.\d+)?)\s*mm/i);
+  if (wtMatch) return parseFloat(wtMatch[1]);
+
+  const schWtMatch = description.match(/Sch\s*\d+\s*\((\d+(?:\.\d+)?)\s*mm\)/i);
+  if (schWtMatch) return parseFloat(schWtMatch[1]);
+
+  return null;
+}
+
+function parseBendAngle(description: string): number | null {
+  const match = description.match(/(\d+)\s*°/);
+  return match ? parseInt(match[1], 10) : null;
+}
+
+function parseBendRadiusType(description: string): string | null {
+  const match = description.match(/(\d+(?:\.\d+)?)\s*D\b/i);
+  return match ? `${match[1]}D` : null;
+}
+
+function parseCenterToFace(description: string): number | null {
+  const singleMatch = description.match(/C\/F\s+(\d+(?:\.\d+)?)\s*mm/i);
+  if (singleMatch) return parseFloat(singleMatch[1]);
+
+  const dimMatch = description.match(/(\d+(?:\.\d+)?)\s*x\s*\d+(?:\.\d+)?\s*C\/F/i);
+  if (dimMatch) return parseFloat(dimMatch[1]);
+
+  return null;
+}
+
+function parseFittingDimensions(description: string): {
+  lengthA: number | null;
+  lengthB: number | null;
+} {
+  const match = description.match(/\((\d+(?:\.\d+)?)\s*x\s*(\d+(?:\.\d+)?)\)/);
+  if (match) {
+    return {
+      lengthA: parseFloat(match[1]),
+      lengthB: parseFloat(match[2]),
+    };
+  }
+  return { lengthA: null, lengthB: null };
+}
+
+function parseFlangeCount(description: string): number {
+  const flangeEntries = description.match(/(\d+)\s*X\s*[RL]\/F/gi);
+  if (flangeEntries) {
+    return flangeEntries.reduce((total, entry) => {
+      const countMatch = entry.match(/(\d+)/);
+      return total + (countMatch ? parseInt(countMatch[1], 10) : 0);
+    }, 0);
+  }
+
+  if (/\bFBE\b/i.test(description) || /\bFFE\b/i.test(description) || /\bF2E\b/i.test(description))
+    return 2;
+  if (/\bFOE\b/i.test(description) || /\bF1E\b/i.test(description)) return 1;
+
+  return 0;
+}
+
+function parsePressureClass(description: string): string | null {
+  const match = description.match(/\b(?:Class|CL|#)\s*(150|300|400|600|900|1500|2500)\b/i);
+  return match ? `Class ${match[1]}` : null;
+}
+
+function parseFlangeStandard(description: string): string | null {
+  const standards: { pattern: RegExp; standard: string }[] = [
+    { pattern: /\bASME\s*B16\.5\b/i, standard: "ASME B16.5" },
+    { pattern: /\bASME\s*B16\.47\b/i, standard: "ASME B16.47" },
+    { pattern: /\bSABS\s*1123\b/i, standard: "SABS 1123" },
+    { pattern: /\bEN\s*1092\b/i, standard: "EN 1092" },
+    { pattern: /\bBS\s*10\b/i, standard: "BS 10" },
+  ];
+
+  const match = standards.find(({ pattern }) => pattern.test(description));
+  return match ? match.standard : null;
+}
+
+function bendRadiusMultiplier(bendType: string | null): number {
+  if (!bendType) return 1.5;
+  const match = bendType.match(/(\d+(?:\.\d+)?)/);
+  return match ? parseFloat(match[1]) : 1.5;
+}
+
+function calculateItemSurfaceArea(item: ParsedPipeItem): {
+  extM2: number | null;
+  intM2: number | null;
+} {
+  if (!item.odMm || item.lengthMm <= 0) return { extM2: null, intM2: null };
+
+  const flangeAllowanceMm = item.flangeCount * 100;
+
+  if (item.itemType === "bend" && item.bendAngle && item.nbMm) {
+    const multiplier = bendRadiusMultiplier(item.bendType);
+    const bendRadiusMm = multiplier * item.nbMm;
+    const arcLengthMm = (item.bendAngle / 360) * 2 * Math.PI * bendRadiusMm;
+    const effectiveLengthMm = arcLengthMm + flangeAllowanceMm;
+    const extM2 = (Math.PI * item.odMm * effectiveLengthMm) / 1_000_000;
+    const intM2 = item.idMm ? (Math.PI * item.idMm * effectiveLengthMm) / 1_000_000 : null;
+    return { extM2, intM2 };
+  }
+
+  if (item.itemType === "tee") {
+    const mainLengthMm = (item.fittingLengthAMm || 0) + (item.fittingLengthBMm || 0);
+    const effectiveMainMm = mainLengthMm > 0 ? mainLengthMm : item.lengthMm;
+    const mainExtM2 = (Math.PI * item.odMm * (effectiveMainMm + flangeAllowanceMm)) / 1_000_000;
+    const branchExtM2 = (2.7 * item.odMm * item.odMm) / 1_000_000;
+    const extM2 = mainExtM2 + branchExtM2;
+
+    if (item.idMm) {
+      const mainIntM2 = (Math.PI * item.idMm * (effectiveMainMm + flangeAllowanceMm)) / 1_000_000;
+      const branchIntM2 = (2.7 * item.idMm * item.idMm) / 1_000_000;
+      return { extM2, intM2: mainIntM2 + branchIntM2 };
+    }
+    return { extM2, intM2: null };
+  }
+
+  if (item.itemType === "reducer" && item.nbMm) {
+    const avgDiameter = item.idMm ? (item.odMm + item.idMm) / 2 : item.odMm;
+    const effectiveLengthMm = item.lengthMm + flangeAllowanceMm;
+    const extM2 = (Math.PI * item.odMm * effectiveLengthMm) / 1_000_000;
+    const intM2 = (Math.PI * avgDiameter * effectiveLengthMm) / 1_000_000;
+    return { extM2, intM2 };
+  }
+
+  const effectiveLengthMm = item.lengthMm + flangeAllowanceMm;
+  const extM2 = (Math.PI * item.odMm * effectiveLengthMm) / 1_000_000;
+  const intM2 = item.idMm ? (Math.PI * item.idMm * effectiveLengthMm) / 1_000_000 : null;
+  return { extM2, intM2 };
 }
 
 function openEndsFromConfig(config: string | null): number {
@@ -472,6 +621,14 @@ export function parsePipeItem(
   const flangeConfig = parseFlangeConfig(description);
   const itemType = parseItemType(description);
   const openEnds = openEndsFromConfig(flangeConfig);
+  const parsedWt = parseWallThickness(description);
+  const bendAngle = parseBendAngle(description);
+  const bendType = parseBendRadiusType(description);
+  const centerToFaceMm = parseCenterToFace(description);
+  const fittingDims = parseFittingDimensions(description);
+  const flangeCount = parseFlangeCount(description);
+  const pressureClass = parsePressureClass(description);
+  const flangeStandard = parseFlangeStandard(description);
 
   const hasDimensions = (nbMm !== null || directOd !== null) && lengthMm !== null && lengthMm > 0;
   const isExternalLining = itemType === "pulley" || itemType === "drum" || itemType === "roller";
@@ -496,7 +653,7 @@ export function parsePipeItem(
       }
     } else if (nbMm) {
       odMm = nbToOd(nbMm);
-      const wt = wallThickness(nbMm, schedule);
+      const wt = parsedWt || wallThickness(nbMm, schedule);
       idMm = odMm - 2 * wt;
 
       const circumference = Math.PI * idMm;
@@ -512,7 +669,7 @@ export function parsePipeItem(
     }
   }
 
-  return {
+  const partialItem: ParsedPipeItem = {
     id,
     itemNo,
     description,
@@ -530,6 +687,25 @@ export function parsePipeItem(
     quantity,
     isValidPipe: hasDimensions && rubberWidthMm > 0,
     m2,
+    wallThicknessMm: parsedWt,
+    bendAngle,
+    bendType,
+    centerToFaceMm,
+    fittingLengthAMm: fittingDims.lengthA,
+    fittingLengthBMm: fittingDims.lengthB,
+    flangeCount,
+    pressureClass,
+    flangeStandard,
+    calculatedExtM2: null,
+    calculatedIntM2: null,
+  };
+
+  const surfaceArea = calculateItemSurfaceArea(partialItem);
+
+  return {
+    ...partialItem,
+    calculatedExtM2: surfaceArea.extM2,
+    calculatedIntM2: surfaceArea.intM2,
   };
 }
 
