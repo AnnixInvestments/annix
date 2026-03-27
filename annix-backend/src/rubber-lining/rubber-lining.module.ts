@@ -25,6 +25,7 @@ import { RubberCompoundStock } from "./entities/rubber-compound-stock.entity";
 import { RubberDeliveryNote } from "./entities/rubber-delivery-note.entity";
 import { RubberDeliveryNoteItem } from "./entities/rubber-delivery-note-item.entity";
 import { RubberOrder } from "./entities/rubber-order.entity";
+import { RubberOrderImportCorrection } from "./entities/rubber-order-import-correction.entity";
 import { RubberOrderItem } from "./entities/rubber-order-item.entity";
 import { RubberOtherStock } from "./entities/rubber-other-stock.entity";
 import { RubberPoExtractionRegion } from "./entities/rubber-po-extraction-region.entity";
@@ -118,6 +119,7 @@ import { RubberTaxInvoiceService } from "./rubber-tax-invoice.service";
       RubberTaxInvoice,
       RubberTaxInvoiceCorrection,
       RubberCocBatchCorrection,
+      RubberOrderImportCorrection,
     ]),
   ],
   controllers: [RubberLiningController, RubberAdminController, RubberInboundEmailController],

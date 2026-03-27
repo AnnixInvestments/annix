@@ -12,6 +12,7 @@ import type {
   NewCompanyFromAnalysis,
 } from "./dto/rubber-order-import.dto";
 import { CompanyType, RubberCompany } from "./entities/rubber-company.entity";
+import { RubberOrderImportCorrection } from "./entities/rubber-order-import-correction.entity";
 import { RubberProduct } from "./entities/rubber-product.entity";
 import { RubberLiningService } from "./rubber-lining.service";
 import { RubberPoTemplateService } from "./rubber-po-template.service";
@@ -32,6 +33,8 @@ export class RubberOrderImportService {
     private companyRepository: Repository<RubberCompany>,
     @InjectRepository(RubberProduct)
     private productRepository: Repository<RubberProduct>,
+    @InjectRepository(RubberOrderImportCorrection)
+    private correctionRepository: Repository<RubberOrderImportCorrection>,
     private aiChatService: AiChatService,
     private rubberLiningService: RubberLiningService,
     private templateService: RubberPoTemplateService,
@@ -215,7 +218,11 @@ export class RubberOrderImportService {
         this.logger.log("Could not detect company from document text");
       }
 
-      const extraction = await this.extractOrderDataWithAi(text, file.originalname);
+      const extraction = await this.extractOrderDataWithAi(
+        text,
+        file.originalname,
+        result.companyName,
+      );
       Object.assign(result, {
         ...extraction,
         extractionMethod: "ai" as ExtractionMethod,
@@ -420,6 +427,7 @@ Respond ONLY with JSON: { "lines": [...] }`;
   private async extractOrderDataWithAi(
     text: string,
     filename: string,
+    companyName?: string | null,
   ): Promise<Partial<AnalyzedOrderData>> {
     const isAvailable = await this.aiChatService.isAvailable();
     if (!isAvailable) {
@@ -432,7 +440,9 @@ Respond ONLY with JSON: { "lines": [...] }`;
 
     const truncatedText = text.length > 8000 ? text.substring(0, 8000) : text;
 
-    const systemPrompt = `You are NIX, an AI assistant for AU Industries' rubber lining operations. Your task is to extract order information from documents.
+    const correctionHints = await this.correctionHintsForCompany(companyName || null);
+
+    let systemPrompt = `You are NIX, an AI assistant for AU Industries' rubber lining operations. Your task is to extract order information from documents.
 
 AU Industries receives rubber lining orders from customers. Orders typically contain:
 - Company name (the customer placing the order)
@@ -472,6 +482,10 @@ Respond ONLY with a JSON object:
   "confidence": 0.0-1.0,
   "notes": "any relevant extraction notes"
 }`;
+
+    if (correctionHints) {
+      systemPrompt = `${systemPrompt}\n\n${correctionHints}`;
+    }
 
     const userMessage = `Extract order information from this document.
 
@@ -654,6 +668,11 @@ ${truncatedText}`;
     });
 
     this.logger.log(`Created order ${order.id} (${order.orderNumber}) from analysis`);
+
+    this.detectAndSaveCorrections(analysis, dto, companyId || null).catch((err) =>
+      this.logger.error(`Failed to save order import corrections: ${err.message}`),
+    );
+
     return { orderId: order.id };
   }
 
@@ -809,5 +828,108 @@ Respond ONLY with JSON:
     }
 
     return false;
+  }
+
+  private async detectAndSaveCorrections(
+    originalAnalysis: AnalyzedOrderData,
+    dto: CreateOrderFromAnalysisDto,
+    companyId: number | null,
+  ): Promise<void> {
+    const overrides = dto.overrides;
+    if (!overrides) {
+      return;
+    }
+
+    const corrections: Partial<RubberOrderImportCorrection>[] = [];
+
+    let companyName: string | null = null;
+    if (companyId) {
+      const company = await this.companyRepository.findOneBy({ id: companyId });
+      companyName = company?.name || null;
+    }
+
+    if (
+      overrides.poNumber !== undefined &&
+      overrides.poNumber !== null &&
+      overrides.poNumber !== originalAnalysis.poNumber
+    ) {
+      corrections.push({
+        companyId,
+        companyName,
+        fieldName: "poNumber",
+        originalValue: originalAnalysis.poNumber,
+        correctedValue: overrides.poNumber,
+      });
+    }
+
+    if (overrides.lines && originalAnalysis.lines.length > 0) {
+      const lineFields = ["thickness", "width", "length", "quantity"] as const;
+
+      overrides.lines.forEach((overrideLine, idx) => {
+        const originalLine = originalAnalysis.lines[idx];
+        if (!originalLine) {
+          return;
+        }
+
+        lineFields.forEach((field) => {
+          const overrideVal = overrideLine[field];
+          const originalVal = originalLine[field];
+
+          if (overrideVal !== undefined && overrideVal !== null && overrideVal !== originalVal) {
+            corrections.push({
+              companyId,
+              companyName,
+              fieldName: `line[${idx}].${field}`,
+              originalValue: originalVal !== null ? String(originalVal) : null,
+              correctedValue: String(overrideVal),
+            });
+          }
+        });
+
+        if (overrideLine.productId && overrideLine.productId !== originalLine.productId) {
+          corrections.push({
+            companyId,
+            companyName,
+            fieldName: `line[${idx}].productId`,
+            originalValue: originalLine.productName || String(originalLine.productId || ""),
+            correctedValue: String(overrideLine.productId),
+          });
+        }
+      });
+    }
+
+    if (corrections.length === 0) {
+      return;
+    }
+
+    this.logger.log(
+      `Saving ${corrections.length} order import corrections for company "${companyName}"`,
+    );
+    await this.correctionRepository.save(corrections);
+  }
+
+  private async correctionHintsForCompany(companyName: string | null): Promise<string | null> {
+    if (!companyName) {
+      return null;
+    }
+
+    const corrections = await this.correctionRepository.find({
+      where: { companyName },
+      order: { createdAt: "DESC" },
+      take: 30,
+    });
+
+    if (corrections.length === 0) {
+      return null;
+    }
+
+    const hints = corrections.map((c) => {
+      const fieldLabel = c.fieldName.startsWith("line[")
+        ? `Line ${c.fieldName.match(/\[(\d+)\]/)?.[1] || "?"}, field "${c.fieldName.replace(/line\[\d+\]\./, "")}"`
+        : `Field "${c.fieldName}"`;
+      return `- ${fieldLabel}: AI extracted "${c.originalValue || "(empty)"}" but correct value is "${c.correctedValue}"`;
+    });
+
+    return `PREVIOUS USER CORRECTIONS FOR THIS CUSTOMER (learn from these patterns):\n${hints.join("\n")}\nApply these correction patterns when extracting order data from this customer's POs.`;
   }
 }

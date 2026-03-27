@@ -5,11 +5,11 @@ import {
   statusColor,
   statusLabel,
 } from "@annix/product-data/rubber/orderStatus";
-import { FileUp, Plus } from "lucide-react";
+import { FileUp, Loader2, Plus, Upload } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useToast } from "@/app/components/Toast";
-import { auRubberApiClient } from "@/app/lib/api/auRubberApi";
+import { type AnalyzeOrderFilesResult, auRubberApiClient } from "@/app/lib/api/auRubberApi";
 import type {
   RubberCompanyDto,
   RubberOrderDto,
@@ -76,6 +76,98 @@ export default function AuRubberOrdersPage() {
   const [showImportModal, setShowImportModal] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [deleteOrderId, setDeleteOrderId] = useState<number | null>(null);
+  const [isDragOver, setIsDragOver] = useState(false);
+  const [isAnalyzingDrop, setIsAnalyzingDrop] = useState(false);
+  const [dropAnalysis, setDropAnalysis] = useState<AnalyzeOrderFilesResult | null>(null);
+  const [dropFiles, setDropFiles] = useState<File[] | null>(null);
+  const dragCounter = useRef(0);
+
+  const ACCEPTED_TYPES = [
+    "application/pdf",
+    "image/png",
+    "image/jpeg",
+    "image/gif",
+    "image/bmp",
+    "image/webp",
+    "image/tiff",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    "application/vnd.ms-excel",
+    "message/rfc822",
+  ];
+
+  const ACCEPTED_EXTENSIONS = [
+    ".pdf",
+    ".png",
+    ".jpg",
+    ".jpeg",
+    ".gif",
+    ".bmp",
+    ".webp",
+    ".tiff",
+    ".xlsx",
+    ".xls",
+    ".eml",
+  ];
+
+  const isAcceptedFile = useCallback((file: File) => {
+    if (ACCEPTED_TYPES.includes(file.type)) return true;
+    const nameLower = file.name.toLowerCase();
+    return ACCEPTED_EXTENSIONS.some((ext) => nameLower.endsWith(ext));
+  }, []);
+
+  const handlePageDragEnter = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounter.current += 1;
+    if (dragCounter.current === 1) {
+      setIsDragOver(true);
+    }
+  }, []);
+
+  const handlePageDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  }, []);
+
+  const handlePageDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounter.current -= 1;
+    if (dragCounter.current === 0) {
+      setIsDragOver(false);
+    }
+  }, []);
+
+  const handlePageDrop = useCallback(
+    async (e: React.DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      dragCounter.current = 0;
+      setIsDragOver(false);
+
+      const droppedFiles = Array.from(e.dataTransfer.files);
+      const validFiles = droppedFiles.filter(isAcceptedFile);
+
+      if (validFiles.length === 0) {
+        showToast("No supported files found. Drop PDF, image, Excel, or email files.", "error");
+        return;
+      }
+
+      setIsAnalyzingDrop(true);
+      try {
+        const result = await auRubberApiClient.analyzeOrderFiles(validFiles);
+        setDropAnalysis(result);
+        setDropFiles(validFiles);
+        setShowImportModal(true);
+      } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : "Failed to analyze files";
+        showToast(errorMessage, "error");
+      } finally {
+        setIsAnalyzingDrop(false);
+      }
+    },
+    [isAcceptedFile, showToast],
+  );
 
   const handleSort = (column: SortColumn) => {
     if (sortColumn === column) {
@@ -191,7 +283,34 @@ export default function AuRubberOrdersPage() {
 
   return (
     <RequirePermission permission={PAGE_PERMISSIONS["/au-rubber/portal/orders"]}>
-      <div className="space-y-6">
+      <div
+        className="space-y-6 relative"
+        onDragEnter={handlePageDragEnter}
+        onDragOver={handlePageDragOver}
+        onDragLeave={handlePageDragLeave}
+        onDrop={handlePageDrop}
+      >
+        {(isDragOver || isAnalyzingDrop) && (
+          <div className="fixed inset-0 z-40 bg-yellow-50/80 backdrop-blur-sm flex items-center justify-center">
+            <div className="border-2 border-dashed border-yellow-400 rounded-2xl p-12 text-center bg-white/80 shadow-lg">
+              {isAnalyzingDrop ? (
+                <>
+                  <Loader2 className="w-16 h-16 text-yellow-600 mx-auto mb-4 animate-spin" />
+                  <p className="text-xl font-semibold text-yellow-800">
+                    Nix is analyzing your PO...
+                  </p>
+                  <p className="text-sm text-yellow-600 mt-2">Extracting order details</p>
+                </>
+              ) : (
+                <>
+                  <Upload className="w-16 h-16 text-yellow-500 mx-auto mb-4" />
+                  <p className="text-xl font-semibold text-yellow-800">Drop PO files to import</p>
+                  <p className="text-sm text-yellow-600 mt-2">PDF, images, Excel, or email files</p>
+                </>
+              )}
+            </div>
+          </div>
+        )}
         <Breadcrumb items={[{ label: "Orders" }]} />
         <div className="flex items-center justify-between">
           <div>
@@ -427,14 +546,22 @@ export default function AuRubberOrdersPage() {
 
         <OrderImportModal
           isOpen={showImportModal}
-          onClose={() => setShowImportModal(false)}
+          onClose={() => {
+            setShowImportModal(false);
+            setDropAnalysis(null);
+            setDropFiles(null);
+          }}
           onOrderCreated={(orderId, orderNumber) => {
             showToast(`Order ${orderNumber} imported`, "success");
             setShowImportModal(false);
+            setDropAnalysis(null);
+            setDropFiles(null);
             ordersQuery.refetch();
           }}
           companies={companies}
           products={products}
+          initialAnalysis={dropAnalysis}
+          initialFiles={dropFiles || undefined}
         />
       </div>
     </RequirePermission>
