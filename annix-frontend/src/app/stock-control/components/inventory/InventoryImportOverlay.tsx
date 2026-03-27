@@ -190,7 +190,7 @@ function ImportPreviewModal({
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex items-start justify-center min-h-screen px-4 py-8">
-        <div className="fixed inset-0 bg-gray-500/75" onClick={onDismissImport}></div>
+        <div className="fixed inset-0 bg-black/20 backdrop-blur-sm"></div>
         <div className="relative bg-white rounded-lg shadow-xl max-w-4xl w-full">
           <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
             <div>
@@ -368,7 +368,7 @@ function ImportResultModal({ importResult, onDismiss }: ImportResultModalProps) 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex items-center justify-center min-h-screen px-4">
-        <div className="fixed inset-0 bg-gray-500/75" onClick={onDismiss}></div>
+        <div className="fixed inset-0 bg-black/20 backdrop-blur-sm"></div>
         <div className="relative bg-white rounded-lg shadow-xl max-w-md w-full p-6">
           <h3 className="text-lg font-medium text-gray-900 mb-4">Import Complete</h3>
           <div className="grid grid-cols-3 gap-4 mb-6">

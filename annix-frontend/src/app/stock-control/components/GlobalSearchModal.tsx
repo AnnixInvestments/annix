@@ -302,7 +302,7 @@ export function GlobalSearchModal({ isOpen, onClose }: GlobalSearchModalProps) {
       aria-modal="true"
       aria-labelledby="global-search-modal-title"
     >
-      <div className="fixed inset-0 bg-black bg-opacity-50" onClick={onClose} />
+      <div className="fixed inset-0 bg-black/20 backdrop-blur-sm" />
       <div className="flex items-start justify-center min-h-screen pt-[10vh] px-4 pb-20">
         <div className="relative bg-white rounded-xl shadow-2xl w-full max-w-2xl">
           <h2 id="global-search-modal-title" className="sr-only">
