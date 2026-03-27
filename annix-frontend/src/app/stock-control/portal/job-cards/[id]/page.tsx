@@ -493,7 +493,8 @@ export default function JobCardDetailPage() {
 
       const trigger = bg.triggerAfterStep || "__root__";
       const originFgIdx = resolveOriginFgIdx(trigger);
-      if (originFgIdx > currentFgIdx) return false;
+      const isColored = isInColoredBranch(bg.stepKey);
+      if (isColored ? originFgIdx > currentFgIdx : originFgIdx >= currentFgIdx) return false;
 
       if (hasIncompleteColored && !isInColoredBranch(bg.stepKey)) {
         const originKey = fgKeys[resolveOriginFgIdx(trigger)];
