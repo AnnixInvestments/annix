@@ -18,6 +18,7 @@ import {
 import { JobCardWorkflowService } from "./job-card-workflow.service";
 import { JobFileService } from "./job-file.service";
 import { QaProcessService } from "./qa-process.service";
+import { ReconciliationDocumentService } from "./reconciliation-document.service";
 import { WorkflowNotificationService } from "./workflow-notification.service";
 import { WorkflowStepConfigService } from "./workflow-step-config.service";
 
@@ -44,6 +45,8 @@ export class BackgroundStepService {
     private readonly workflowService: JobCardWorkflowService,
     private readonly jobFileService: JobFileService,
     private readonly qaProcessService: QaProcessService,
+    @Inject(forwardRef(() => ReconciliationDocumentService))
+    private readonly reconciliationDocService: ReconciliationDocumentService,
   ) {}
 
   async completeStep(
@@ -107,6 +110,15 @@ export class BackgroundStepService {
       if (!hasPhotos) {
         throw new BadRequestException(
           "A photo of the completed item(s) must be uploaded before completing Data Book",
+        );
+      }
+    }
+
+    if (stepKey === "job_file_review") {
+      const gate = await this.reconciliationDocService.gateStatus(companyId, jobCardId);
+      if (!gate.satisfied) {
+        throw new BadRequestException(
+          "All required documents must be uploaded before completing Job File Review",
         );
       }
     }

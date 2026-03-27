@@ -383,6 +383,16 @@ export default function JobCardDetailPage() {
 
     return workflowStatus.canApprove;
   }, [currentStep, workflowStatus]);
+
+  const canAcceptDraft = useMemo(() => {
+    if (!workflowStatus || workflowStatus.jobCardStatus !== "draft") return false;
+    if (!user?.name) return false;
+    const firstFgStep = (workflowStatus.foregroundSteps || []).find((s) => s.key !== "draft");
+    if (!firstFgStep) return false;
+    const assigned = workflowStatus.stepAssignments?.[firstFgStep.key];
+    if (!assigned || assigned.length === 0) return true;
+    return assigned.some((u) => u.name === user.name);
+  }, [workflowStatus, user?.name]);
   const pipingLossPct = profile?.pipingLossFactorPct || 45;
 
   const validLineItemCount = useMemo(
@@ -426,6 +436,7 @@ export default function JobCardDetailPage() {
 
   const userPendingBgSteps = useMemo(() => {
     if (!workflowStatus || !user?.name) return [];
+    if (workflowStatus.jobCardStatus === "draft") return [];
     const fgSteps = workflowStatus.foregroundSteps || [];
     const fgKeys = fgSteps.filter((s) => s.key !== "draft").map((s) => s.key);
     const fgKeySet = new Set(fgKeys);
@@ -696,6 +707,24 @@ export default function JobCardDetailPage() {
     (bg: BackgroundStepStatus) => bg.stepKey === "compile_data_book",
     [],
   );
+
+  const isJobFileReviewStep = useCallback(
+    (bg: BackgroundStepStatus) => bg.stepKey === "job_file_review",
+    [],
+  );
+
+  const [jobFileGateSatisfied, setJobFileGateSatisfied] = useState(false);
+
+  useEffect(() => {
+    const pendingFileReview = backgroundSteps.some(
+      (bg) => bg.stepKey === "job_file_review" && bg.completedAt === null,
+    );
+    if (!pendingFileReview) return;
+    stockControlApiClient
+      .reconciliationGateStatus(jobId)
+      .then((gate) => setJobFileGateSatisfied(gate.satisfied))
+      .catch(() => setJobFileGateSatisfied(false));
+  }, [backgroundSteps, jobId]);
 
   const hasReadyPhoto = useMemo(
     () =>
@@ -1158,7 +1187,7 @@ export default function JobCardDetailPage() {
                     {currentStepPhaseInfo.phase2ActionLabel || "Release"}
                   </button>
                 )}
-              {workflowStatus.jobCardStatus === "draft" && (
+              {canAcceptDraft && (
                 <button
                   onClick={handleDraftAccepted}
                   disabled={isUpdatingStatus}
@@ -1416,6 +1445,37 @@ export default function JobCardDetailPage() {
                     >
                       Review Data Book
                     </button>
+                  ) : isJobFileReviewStep(bg) ? (
+                    <div key={bg.stepKey} className="flex flex-wrap gap-2">
+                      <button
+                        onClick={() => handleTabChange("job-files")}
+                        className="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-md bg-blue-600 text-white hover:bg-blue-700 transition-colors"
+                      >
+                        <svg
+                          className="w-4 h-4 mr-1"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"
+                          />
+                        </svg>
+                        Upload Docs
+                      </button>
+                      {jobFileGateSatisfied && (
+                        <button
+                          onClick={() => handleCompleteBackgroundStep(bg.stepKey)}
+                          disabled={completingStepKey === bg.stepKey}
+                          className="px-3 py-1.5 text-xs font-medium rounded-md bg-green-600 text-white hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+                        >
+                          {completingStepKey === bg.stepKey ? "..." : "Complete File Review"}
+                        </button>
+                      )}
+                    </div>
                   ) : bg.stepOutcomes && bg.stepOutcomes.length > 1 ? (
                     bg.stepOutcomes.map((outcome) => {
                       const styleMap: Record<string, string> = {

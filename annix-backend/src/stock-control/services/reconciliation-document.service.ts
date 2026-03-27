@@ -1,4 +1,4 @@
-import { Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
+import { forwardRef, Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { IStorageService, STORAGE_SERVICE } from "../../storage/storage.interface";
@@ -31,6 +31,7 @@ export class ReconciliationDocumentService {
     private readonly docRepo: Repository<ReconciliationDocument>,
     @Inject(STORAGE_SERVICE)
     private readonly storageService: IStorageService,
+    @Inject(forwardRef(() => BackgroundStepService))
     private readonly backgroundStepService: BackgroundStepService,
     private readonly extractionService: ReconciliationExtractionService,
   ) {}
