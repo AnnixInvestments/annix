@@ -160,7 +160,7 @@ export class CoatingAnalysisService {
       }
 
       const SPEC_NOTE_PATTERN =
-        /INT\s*:|EXT\s*:|R\/L|rubber|lining|lagging|shore|paint|blast|coat|primer|oxide|epoxy|polyurethane|zinc|silicate|nitrile|neoprene|butadiene/i;
+        /INT\s*:|EXT\s*:|R\/L|rubber|lining|lagging|shore|paint|blast|coat|primer|oxide|epoxy|polyurethane|zinc|silicate|nitrile|neoprene|butadiene|\bROT\b/i;
       const noteLineItems = lineItems
         .filter((li) => {
           const code = (li.itemCode || "").trim();
@@ -175,13 +175,23 @@ export class CoatingAnalysisService {
       const lineItemNotes = [
         ...new Set(lineItems.map((li) => (li.notes || "").trim()).filter((n) => n.length > 0)),
       ];
+
+      const DESCRIPTION_RUBBER_PATTERN = /\bROT\b|\bR\/L\b|\brubber\b/i;
+      const DESCRIPTION_PAINT_PATTERN =
+        /\bpaint\b|\bblast\b|\bcoat(?:ing)?\b|\bprimer\b|\bepoxy\b/i;
+      const allDescriptions = lineItems
+        .map((li) => (li.itemDescription || "").trim())
+        .filter(Boolean);
+      const descriptionHasRubber = allDescriptions.some((d) => DESCRIPTION_RUBBER_PATTERN.test(d));
+      const descriptionHasPaint = allDescriptions.some((d) => DESCRIPTION_PAINT_PATTERN.test(d));
+
       const combinedNotes =
         sanitizeNotes(
           [jobCard.notes || "", ...noteLineItems, ...lineItemNotes].filter(Boolean).join("\n"),
         ) || "";
       analysis.rawNotes = combinedNotes || sanitizeNotes(jobCard.notes);
 
-      if (!combinedNotes.trim()) {
+      if (!combinedNotes.trim() && !descriptionHasRubber && !descriptionHasPaint) {
         analysis.extM2 = 0;
         analysis.intM2 = 0;
         analysis.hasInternalLining = false;
@@ -196,13 +206,21 @@ export class CoatingAnalysisService {
         companyId,
         jobCard.customerName,
       );
-      const aiResult = await this.extractCoatingSpec(combinedNotes, correctionHints);
+      const aiResult = combinedNotes.trim()
+        ? await this.extractCoatingSpec(combinedNotes, correctionHints)
+        : {
+            applicationType: descriptionHasRubber ? "internal" : "external",
+            surfacePrep: null,
+            coats: [] as AiCoatResult[],
+          };
 
       const hasInternalRubberLining =
         /INT\s*:\s*R\/L/i.test(combinedNotes) ||
         /\bR\/L\b/i.test(combinedNotes) ||
         /\brubber\s+lin(?:ing|er)\b/i.test(combinedNotes) ||
-        /\bINT\s*:.*(?:rubber|lining|lagging|nitrile|neoprene|butadiene)/i.test(combinedNotes);
+        /\bINT\s*:.*(?:rubber|lining|lagging|nitrile|neoprene|butadiene)/i.test(combinedNotes) ||
+        /\bROT\b/i.test(combinedNotes) ||
+        descriptionHasRubber;
       analysis.applicationType = aiResult.applicationType;
       analysis.surfacePrep = hasInternalRubberLining ? "sa3_blast" : aiResult.surfacePrep;
       analysis.hasInternalLining = hasInternalRubberLining;
@@ -579,7 +597,7 @@ export class CoatingAnalysisService {
 
     const validated = validateCoatingExtraction(JSON.parse(jsonMatch[0]));
 
-    const RUBBER_PATTERN = /\br\/l\b|rubber|shore|lining|liner|lagging/i;
+    const RUBBER_PATTERN = /\br\/l\b|rubber|shore|lining|liner|lagging|\brot\b/i;
 
     const allCoats = validated.coats.map((coat: Record<string, unknown>) => ({
       product: validString(coat.product, "Unknown"),
@@ -723,7 +741,10 @@ export class CoatingAnalysisService {
 
   async bulkReanalyse(companyId: number): Promise<{ processed: number; failed: number }> {
     const draftJobCards = await this.jobCardRepo.find({
-      where: { companyId, status: "draft" as any },
+      where: [
+        { companyId, status: "draft" as any },
+        { companyId, status: "active" as any },
+      ],
     });
 
     const results = await draftJobCards.reduce(
