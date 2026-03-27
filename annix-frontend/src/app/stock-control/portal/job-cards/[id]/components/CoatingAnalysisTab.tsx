@@ -24,6 +24,7 @@ interface CoatingAnalysisTabProps {
   onTdsFileChange: (file: File | null) => void;
   isUploadingTds: boolean;
   onTdsUpload: () => void;
+  tdsUploadError: string | null;
   isAdmin: boolean;
   sourceFileUrl: string | null;
   lineItems: JobCardLineItem[];
@@ -899,6 +900,9 @@ export function CoatingAnalysisTab(props: CoatingAnalysisTabProps) {
                   </label>
                 )}
               </div>
+              {props.tdsUploadError && (
+                <p className="mt-3 text-sm text-red-600">{props.tdsUploadError}</p>
+              )}
               <div className="mt-4 flex justify-end space-x-3">
                 <button
                   onClick={() => {
@@ -914,7 +918,7 @@ export function CoatingAnalysisTab(props: CoatingAnalysisTabProps) {
                   disabled={!tdsFile || isUploadingTds}
                   className="px-4 py-2 text-sm font-medium text-white bg-teal-600 rounded-md hover:bg-teal-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
                 >
-                  {isUploadingTds ? "Processing..." : "Upload & Verify"}
+                  {isUploadingTds ? "Processing..." : "Accept & Save"}
                 </button>
               </div>
             </div>

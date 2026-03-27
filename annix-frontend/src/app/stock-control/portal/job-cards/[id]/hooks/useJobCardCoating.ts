@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import type { CoatingAnalysis, UnverifiedProduct } from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 
@@ -9,6 +9,8 @@ export function useJobCardCoating(jobId: number) {
   const [unverifiedProducts, setUnverifiedProducts] = useState<UnverifiedProduct[]>([]);
   const [tdsFile, setTdsFile] = useState<File | null>(null);
   const [isUploadingTds, setIsUploadingTds] = useState(false);
+  const [tdsUploadError, setTdsUploadError] = useState<string | null>(null);
+  const onAllVerifiedRef = useRef<(() => Promise<void>) | null>(null);
 
   const loadCoatingAnalysis = useCallback(async () => {
     stockControlApiClient
@@ -33,6 +35,7 @@ export function useJobCardCoating(jobId: number) {
     if (!tdsFile) return;
     try {
       setIsUploadingTds(true);
+      setTdsUploadError(null);
       const updated = await stockControlApiClient.uploadCoatingTds(jobId, tdsFile);
       setCoatingAnalysis(updated);
       setTdsFile(null);
@@ -40,6 +43,11 @@ export function useJobCardCoating(jobId: number) {
       if (remaining.length === 0) {
         setShowTdsModal(false);
         setUnverifiedProducts([]);
+        if (onAllVerifiedRef.current) {
+          const callback = onAllVerifiedRef.current;
+          onAllVerifiedRef.current = null;
+          await callback();
+        }
       } else {
         setUnverifiedProducts(
           remaining.map((c) => ({
@@ -50,25 +58,30 @@ export function useJobCardCoating(jobId: number) {
         );
       }
     } catch (err) {
-      throw err instanceof Error ? err : new Error("Failed to process TDS");
+      setTdsUploadError(err instanceof Error ? err.message : "Failed to process TDS");
     } finally {
       setIsUploadingTds(false);
     }
   }, [jobId, tdsFile]);
 
-  const checkUnverifiedProducts = useCallback(async (): Promise<boolean> => {
-    try {
-      const products = await stockControlApiClient.unverifiedCoatingProducts(jobId);
-      if (products.length > 0) {
-        setUnverifiedProducts(products);
-        setShowTdsModal(true);
-        return true;
+  const checkUnverifiedProducts = useCallback(
+    async (onAllVerified?: () => Promise<void>): Promise<boolean> => {
+      try {
+        const products = await stockControlApiClient.unverifiedCoatingProducts(jobId);
+        if (products.length > 0) {
+          setUnverifiedProducts(products);
+          setTdsUploadError(null);
+          onAllVerifiedRef.current = onAllVerified || null;
+          setShowTdsModal(true);
+          return true;
+        }
+        return false;
+      } catch {
+        return false;
       }
-      return false;
-    } catch {
-      return false;
-    }
-  }, [jobId]);
+    },
+    [jobId],
+  );
 
   return {
     coatingAnalysis,
@@ -81,6 +94,7 @@ export function useJobCardCoating(jobId: number) {
     tdsFile,
     setTdsFile,
     isUploadingTds,
+    tdsUploadError,
     loadCoatingAnalysis,
     handleRunAnalysis,
     handleTdsUpload,

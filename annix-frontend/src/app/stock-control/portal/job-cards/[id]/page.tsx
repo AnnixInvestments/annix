@@ -252,8 +252,22 @@ export default function JobCardDetailPage() {
 
   const handleStatusUpdate = async (newStatus: string) => {
     if (newStatus === "active") {
-      const hasUnverified = await coating.checkUnverifiedProducts();
+      const activateWithStatus = async () => {
+        try {
+          setIsUpdatingStatus(true);
+          await stockControlApiClient.updateJobCard(jobId, { status: "active" });
+          invalidateJobCardsList();
+          fetchData();
+        } catch (err) {
+          setError(err instanceof Error ? err : new Error("Failed to update status"));
+        } finally {
+          setIsUpdatingStatus(false);
+        }
+      };
+      const hasUnverified = await coating.checkUnverifiedProducts(activateWithStatus);
       if (hasUnverified) return;
+      await activateWithStatus();
+      return;
     }
 
     try {
@@ -268,13 +282,7 @@ export default function JobCardDetailPage() {
     }
   };
 
-  const handleDraftAccepted = async () => {
-    const hasUnverified = await coating.checkUnverifiedProducts();
-    if (hasUnverified) {
-      handleTabChange("coating");
-      return;
-    }
-
+  const activateJobCard = async () => {
     try {
       setIsUpdatingStatus(true);
       await stockControlApiClient.updateJobCard(jobId, { status: "active" });
@@ -285,6 +293,16 @@ export default function JobCardDetailPage() {
     } finally {
       setIsUpdatingStatus(false);
     }
+  };
+
+  const handleDraftAccepted = async () => {
+    const hasUnverified = await coating.checkUnverifiedProducts(activateJobCard);
+    if (hasUnverified) {
+      handleTabChange("coating");
+      return;
+    }
+
+    await activateJobCard();
   };
 
   const handleApprove = async (signatureDataUrl?: string, comments?: string) => {
@@ -1915,6 +1933,7 @@ export default function JobCardDetailPage() {
               onTdsFileChange={coating.setTdsFile}
               isUploadingTds={coating.isUploadingTds}
               onTdsUpload={coating.handleTdsUpload}
+              tdsUploadError={coating.tdsUploadError}
               isAdmin={userRole === "admin"}
               sourceFileUrl={jobCard?.sourceFilePath || null}
               lineItems={jobCard?.lineItems || []}
