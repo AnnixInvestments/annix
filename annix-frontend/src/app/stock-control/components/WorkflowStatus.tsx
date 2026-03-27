@@ -553,10 +553,11 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
           const ry = rRect.top + rRect.height / 2 - rect.top;
           const mergeColor = bpComplete ? "#f59e0b" : "#d1d5db";
 
+          const bottomY = by + 30;
           paths.push({
             key: `bypass-merge-${bp.stepKey}`,
             color: mergeColor,
-            d: `M ${bx} ${by} L ${rx} ${by} L ${rx} ${ry}`,
+            d: `M ${bx} ${by} L ${bx} ${bottomY - r} Q ${bx} ${bottomY} ${bx + r} ${bottomY} L ${rx - r} ${bottomY} Q ${rx} ${bottomY} ${rx} ${bottomY - r} L ${rx} ${ry}`,
           });
         }
       });
@@ -1292,7 +1293,9 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
         <div
           data-branch-container
           className="mt-2 relative"
-          style={{ height: `${(laneCount + (bypassSteps.length > 0 ? 1 : 0)) * 52}px` }}
+          style={{
+            height: `${(laneCount + (bypassSteps.length > 0 ? 1 : 0)) * 52 + (bypassSteps.length > 0 ? 30 : 0)}px`,
+          }}
         >
           {belowBranches.map((branch) => {
             const pos = branchPositions[branch.triggerFgKey];
