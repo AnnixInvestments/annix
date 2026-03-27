@@ -625,7 +625,7 @@ export default function JobCardDetailPage() {
         return [...chain, bg, ...rest];
       }, []);
     };
-    const prevBgTasks = resolveChain(prevStepKey);
+    const prevBgTasks = resolveChain(prevStepKey).filter((bg) => bg.rejoinAtStep === null);
     return prevBgTasks.length > 0 && prevBgTasks.some((bg) => bg.completedAt === null);
   }, [workflowStatus, currentStep]);
 

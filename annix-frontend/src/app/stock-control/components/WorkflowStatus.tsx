@@ -69,7 +69,7 @@ const resolveStepState = (
     if (index > 0) {
       const prevKey = allSteps[index - 1].key;
       const prevBgTasks = resolveBgChainFlat(prevKey, bgByTrigger, bgKeySet).filter(
-        (bg) => bg.stepKey !== "document_upload",
+        (bg) => bg.stepKey !== "document_upload" && bg.rejoinAtStep === null,
       );
       const prevBgIncomplete =
         prevBgTasks.length > 0 && prevBgTasks.some((bg) => bg.completedAt === null);
