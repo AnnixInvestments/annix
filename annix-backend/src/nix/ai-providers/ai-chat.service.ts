@@ -7,6 +7,7 @@ import {
   StreamChunk,
 } from "./claude-chat.provider";
 import { GeminiChatProvider } from "./gemini-chat.provider";
+import { withRetry } from "./retry";
 
 export type AiChatProviderType = "gemini" | "claude" | "auto";
 
@@ -109,7 +110,7 @@ export class AiChatService implements OnModuleInit {
     this.logger.log(`Using chat provider: ${provider.name}`);
 
     try {
-      const result = await provider.chat(messages, systemPrompt);
+      const result = await this.chatWithRetry(provider, messages, systemPrompt);
       return {
         content: result.content,
         providerUsed: provider.name,
@@ -122,7 +123,7 @@ export class AiChatService implements OnModuleInit {
       if (fallbackProvider) {
         this.logger.log(`Attempting fallback to: ${fallbackProvider.name}`);
         try {
-          const result = await fallbackProvider.chat(messages, systemPrompt);
+          const result = await this.chatWithRetry(fallbackProvider, messages, systemPrompt);
           return {
             content: result.content,
             providerUsed: fallbackProvider.name,
@@ -283,5 +284,13 @@ export class AiChatService implements OnModuleInit {
       }
     }
     return null;
+  }
+
+  private async chatWithRetry(
+    provider: ChatProvider,
+    messages: ChatMessage[],
+    systemPrompt?: string,
+  ): Promise<{ content: string; tokensUsed?: number }> {
+    return withRetry(() => provider.chat(messages, systemPrompt), provider.name, this.logger);
   }
 }

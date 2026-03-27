@@ -5,6 +5,7 @@ import { ExtractedItem, SpecificationCellData } from "../services/excel-extracto
 import { AiExtractedItem, AiExtractionRequest, AiProvider } from "./ai-provider.interface";
 import { ClaudeProvider } from "./claude.provider";
 import { GeminiProvider } from "./gemini.provider";
+import { withRetry } from "./retry";
 
 export type AiProviderType = "gemini" | "claude" | "auto";
 
@@ -105,7 +106,11 @@ export class AiExtractionService implements OnModuleInit {
       },
     };
 
-    const response = await provider.extractItems(request);
+    const response = await withRetry(
+      () => provider.extractItems(request),
+      provider.name,
+      this.logger,
+    );
 
     const items = this.convertToExtractedItems(response.items);
     const specificationCells = this.convertToSpecificationCells(response.specifications);
