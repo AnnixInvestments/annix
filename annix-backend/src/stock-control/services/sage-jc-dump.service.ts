@@ -241,12 +241,15 @@ export class SageJcDumpService {
       throw new NotFoundException("CPO not found");
     }
 
+    const cpoJcNumber = this.extractJcNumber(cpo.cpoNumber);
+
     let parentJc = await this.jobCardRepo.findOne({
       where: { companyId, cpoId: cpo.id, parentJobCardId: IsNull() },
     });
     if (!parentJc) {
       const newJc = this.jobCardRepo.create({
         jobNumber: cpo.jobNumber,
+        jcNumber: cpoJcNumber,
         jobName: cpo.jobName || cpo.cpoNumber,
         customerName: cpo.customerName,
         poNumber: cpo.poNumber,
@@ -262,6 +265,9 @@ export class SageJcDumpService {
       });
       parentJc = await this.jobCardRepo.save(newJc);
       this.logger.log(`Auto-created parent JC #${parentJc.id} for CPO ${cpo.cpoNumber}`);
+    } else if (!parentJc.jcNumber && cpoJcNumber) {
+      parentJc.jcNumber = cpoJcNumber;
+      await this.jobCardRepo.save(parentJc);
     }
 
     const parentJcId = parentJc.id;
@@ -316,9 +322,13 @@ export class SageJcDumpService {
           continue;
         }
 
+        const itemPages = items.map((item) => item.pageNumber).filter((p) => p > 0);
+        const pageNumber = itemPages.length > 0 ? String(Math.min(...itemPages)) : null;
+
         const deliveryJc = this.jobCardRepo.create({
           jobNumber: parentJc.jobNumber,
-          jcNumber: parentJc.jcNumber || undefined,
+          jcNumber: cpoJcNumber || parentJc.jcNumber || undefined,
+          pageNumber,
           jobName: parentJc.jobName,
           customerName: parentJc.customerName,
           description: parentJc.description || undefined,
@@ -490,7 +500,6 @@ export class SageJcDumpService {
 
     if (itemHeaderIdx >= 0) {
       const itemRows = rows.slice(itemHeaderIdx + 1);
-      let lastJtNo = "";
       itemRows.forEach((row) => {
         const itemCode = String(row[0] || "").trim();
         const itemDesc = String(row[1] || "").trim();
@@ -504,12 +513,7 @@ export class SageJcDumpService {
         const itemNo = String(row[4] || "").trim();
         const rawQty = row[5];
         const quantity = typeof rawQty === "number" ? rawQty : parseFloat(String(rawQty || "0"));
-        const explicitJt = String(row[6] || "").trim();
-        const jtNo = explicitJt || lastJtNo;
-
-        if (explicitJt) {
-          lastJtNo = explicitJt;
-        }
+        const jtNo = String(row[6] || "").trim();
 
         if (Number.isNaN(quantity) || quantity <= 0) return;
 
@@ -609,6 +613,11 @@ export class SageJcDumpService {
         },
       ];
     }, []);
+  }
+
+  private extractJcNumber(cpoNumber: string): string | null {
+    const match = cpoNumber.match(/-(JC\d+)$/i);
+    return match ? match[1] : null;
   }
 
   private updateCpoFulfillment(

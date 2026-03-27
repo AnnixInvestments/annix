@@ -92,9 +92,9 @@ export function AsteriskAllocationModal(props: AsteriskAllocationModalProps) {
         return sum + (Number.isNaN(qty) ? 0 : qty);
       }, 0);
 
-      if (totalAllocated > asterisk.remainingQty) {
+      if (totalAllocated > asterisk.asteriskQtyInFile) {
         newErrors[idx] =
-          `Total allocated (${totalAllocated}) exceeds remaining (${asterisk.remainingQty})`;
+          `Total allocated (${totalAllocated}) exceeds asterisk quantity (${asterisk.asteriskQtyInFile})`;
       }
 
       filledRows.forEach((r) => {
@@ -151,7 +151,7 @@ export function AsteriskAllocationModal(props: AsteriskAllocationModalProps) {
       <div className="flex min-h-screen items-center justify-center p-4">
         <div className="fixed inset-0 bg-black/20 backdrop-blur-sm" />
 
-        <div className="relative bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
+        <div className="relative bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] flex flex-col overflow-hidden">
           <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
             <div>
               <h2
@@ -189,7 +189,7 @@ export function AsteriskAllocationModal(props: AsteriskAllocationModalProps) {
             </button>
           </div>
 
-          <div className="p-6 overflow-y-auto max-h-[calc(90vh-140px)] space-y-6">
+          <div className="p-6 overflow-y-auto flex-1 min-h-0 space-y-6">
             {asteriskItems.map((item, itemIdx) => {
               const state = itemStates[itemIdx];
               if (!state) return null;
