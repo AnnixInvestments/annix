@@ -1,8 +1,6 @@
 const LINE_ITEMS_FOOTER =
   /^(production|foreman?\s*sign|forman\s*sign|material\s*spec|job\s*comp|completion\s*date|supervisor|quality\s*control|qc\s*sign|inspector|approved\s*by|checked\s*by|despatch)\b|^Sage\s*\d{3}\s*Evolution/i;
 
-const PRODUCT_CODE = /^[A-Z]\d{3,}/;
-
 const ITEM_HEADER = /^Item\s*Code/i;
 
 function scanSectionRows(grid: string[][], startRow: number): number[] {
@@ -37,11 +35,6 @@ function itemSectionRanges(grid: string[][], startRow: number): number[] {
   return sectionStarts.reduce<number[]>((allRows, sectionStart) => {
     const dataStart = sectionStart + 1;
     if (dataStart < startRow) return allRows;
-    const hasItems = grid.slice(dataStart, Math.min(dataStart + 3, grid.length)).some((row) => {
-      const code = (row[0] || "").trim();
-      return PRODUCT_CODE.test(code);
-    });
-    if (!hasItems) return allRows;
 
     return [...allRows, ...scanSectionRows(grid, dataStart)];
   }, []);
