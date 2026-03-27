@@ -27,6 +27,7 @@ export interface CoatDetail {
   coverageM2PerLiter: number;
   litersRequired: number;
   verified?: boolean;
+  tdsFilePath?: string | null;
 }
 
 export interface StockAssessmentItem {

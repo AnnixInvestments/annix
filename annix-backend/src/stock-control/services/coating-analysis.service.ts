@@ -1,9 +1,10 @@
-import { Injectable, Logger, NotFoundException } from "@nestjs/common";
+import { Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { now } from "../../lib/datetime";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
 import { ChatMessage } from "../../nix/ai-providers/claude-chat.provider";
+import { IStorageService, STORAGE_SERVICE, StorageArea } from "../../storage/storage.interface";
 import { lookupCoatingProduct } from "../config/coating-products";
 import {
   CoatDetail,
@@ -98,6 +99,8 @@ export class CoatingAnalysisService {
     private readonly correctionRepo: Repository<JobCardExtractionCorrection>,
     private readonly aiChatService: AiChatService,
     private readonly m2CalculationService: M2CalculationService,
+    @Inject(STORAGE_SERVICE)
+    private readonly storageService: IStorageService,
   ) {}
 
   async analyseJobCards(jobCardIds: number[], companyId: number): Promise<void> {
@@ -374,7 +377,7 @@ export class CoatingAnalysisService {
   async verifyFromTds(
     companyId: number,
     jobCardId: number,
-    fileBuffer: Buffer,
+    file: Express.Multer.File,
   ): Promise<JobCardCoatingAnalysis> {
     const analysis = await this.analysisRepo.findOne({
       where: { jobCardId, companyId },
@@ -389,8 +392,11 @@ export class CoatingAnalysisService {
       return analysis;
     }
 
+    const storagePath = `${StorageArea.STOCK_CONTROL}/coating-tds/company-${companyId}/job-${jobCardId}`;
+    const stored = await this.storageService.upload(file, storagePath);
+
     const productNames = unverified.map((c) => c.product).join(", ");
-    const tdsBase64 = fileBuffer.toString("base64");
+    const tdsBase64 = file.buffer.toString("base64");
 
     const messages: ChatMessage[] = [
       {
@@ -456,6 +462,7 @@ export class CoatingAnalysisService {
         coverageM2PerLiter: Math.round(coverageM2PerLiter * 100) / 100,
         litersRequired,
         verified: true,
+        tdsFilePath: stored.path,
       };
     });
 

@@ -284,7 +284,7 @@ export class JobCardsController {
     @Param("id") id: number,
     @UploadedFile() file: Express.Multer.File,
   ) {
-    return this.coatingAnalysisService.verifyFromTds(req.user.companyId, id, file.buffer);
+    return this.coatingAnalysisService.verifyFromTds(req.user.companyId, id, file);
   }
 
   @Patch(":id/coating-analysis/accept")

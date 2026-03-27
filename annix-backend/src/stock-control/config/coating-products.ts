@@ -69,6 +69,12 @@ const COATING_PRODUCTS: CoatingProductSpec[] = [
     volumeSolidsPercent: 55,
   },
   {
+    name: "Hardtop Flexi",
+    aliases: ["hardtopflexi", "hardtop flexi royal blue", "hardtop flexi f01"],
+    genericType: "polyurethane",
+    volumeSolidsPercent: 55,
+  },
+  {
     name: "Hardtop One",
     aliases: ["hardtop 1"],
     genericType: "polyurethane",

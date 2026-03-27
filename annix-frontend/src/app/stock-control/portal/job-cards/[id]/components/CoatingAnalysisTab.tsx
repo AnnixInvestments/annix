@@ -129,6 +129,7 @@ export function CoatingAnalysisTab(props: CoatingAnalysisTabProps) {
     lineItems,
   } = props;
 
+  const [isDraggingTds, setIsDraggingTds] = useState(false);
   const [showTeachNix, setShowTeachNix] = useState(false);
   const [corrections, setCorrections] = useState<ExtractionCorrection[]>([]);
   const [pmEdits, setPmEdits] = useState<Record<string, number>>({});
@@ -172,6 +173,7 @@ export function CoatingAnalysisTab(props: CoatingAnalysisTabProps) {
       setCorrectionValue("");
       await loadCorrections();
       onRunAnalysis();
+      setShowTeachNix(false);
     } finally {
       setIsSavingCorrection(false);
     }
@@ -819,7 +821,37 @@ export function CoatingAnalysisTab(props: CoatingAnalysisTabProps) {
                   </div>
                 ))}
               </div>
-              <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:border-gray-400 transition-colors">
+              <div
+                className={`border-2 border-dashed rounded-lg p-4 text-center transition-colors ${
+                  isDraggingTds
+                    ? "border-teal-500 bg-teal-50"
+                    : "border-gray-300 hover:border-gray-400"
+                }`}
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setIsDraggingTds(true);
+                }}
+                onDragEnter={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setIsDraggingTds(true);
+                }}
+                onDragLeave={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setIsDraggingTds(false);
+                }}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setIsDraggingTds(false);
+                  const file = e.dataTransfer.files?.[0] || null;
+                  if (file) {
+                    onTdsFileChange(file);
+                  }
+                }}
+              >
                 {tdsFile ? (
                   <div className="space-y-1">
                     <svg
@@ -847,7 +879,7 @@ export function CoatingAnalysisTab(props: CoatingAnalysisTabProps) {
                 ) : (
                   <label className="cursor-pointer">
                     <svg
-                      className="mx-auto h-10 w-10 text-gray-400"
+                      className={`mx-auto h-10 w-10 ${isDraggingTds ? "text-teal-500" : "text-gray-400"}`}
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"
@@ -859,7 +891,11 @@ export function CoatingAnalysisTab(props: CoatingAnalysisTabProps) {
                         d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
                       />
                     </svg>
-                    <p className="mt-1 text-sm text-gray-600">Upload Technical Data Sheet (PDF)</p>
+                    <p
+                      className={`mt-1 text-sm ${isDraggingTds ? "text-teal-600 font-medium" : "text-gray-600"}`}
+                    >
+                      {isDraggingTds ? "Drop file here" : "Upload Technical Data Sheet (PDF)"}
+                    </p>
                     <input
                       type="file"
                       accept=".pdf,.png,.jpg,.jpeg,.gif,.bmp,.webp,.heic,.tiff"
