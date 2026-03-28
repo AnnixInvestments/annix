@@ -49,7 +49,11 @@ function MainContent({ children }: { children: React.ReactNode }) {
           : undefined
       }
     >
-      <div className="max-w-[1600px] mx-auto">{children}</div>
+      <div
+        className={`max-w-[1600px] mx-auto${heroObjectUrl ? " bg-white/90 backdrop-blur-sm rounded-lg p-4 lg:p-6 shadow-sm" : ""}`}
+      >
+        {children}
+      </div>
     </main>
   );
 }
