@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, Circle, Clock, Minus, RefreshCw, X } from "lucide-react";
+import { Check, ChevronDown, ChevronUp, Circle, Clock, Minus, RefreshCw, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { BackgroundStepStatus, JobCardApproval } from "@/app/lib/api/stockControlApi";
 import { formatDateLongZA } from "@/app/lib/datetime";
@@ -1863,6 +1863,7 @@ export function WorkflowStepper(props: WorkflowStepperProps) {
   }, {});
 
   const [diagramKey, setDiagramKey] = useState(0);
+  const [mapHidden, setMapHidden] = useState(false);
 
   const handleStepClick = useCallback(
     (stepKey: string, state: StepState) => {
@@ -1877,50 +1878,70 @@ export function WorkflowStepper(props: WorkflowStepperProps) {
     <div className="bg-white rounded-lg border border-gray-200 p-4">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-sm font-semibold text-gray-900">Workflow Progress</h3>
-        <button
-          type="button"
-          onClick={() => setDiagramKey((k) => k + 1)}
-          className="p-1 text-gray-400 hover:text-gray-600 transition-colors"
-          title="Refresh diagram"
-        >
-          <RefreshCw className="h-3.5 w-3.5" />
-        </button>
+        <div className="flex items-center gap-1">
+          {!mapHidden && (
+            <button
+              type="button"
+              onClick={() => setDiagramKey((k) => k + 1)}
+              className="p-1 text-gray-400 hover:text-gray-600 transition-colors"
+              title="Refresh diagram"
+            >
+              <RefreshCw className="h-3.5 w-3.5" />
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => setMapHidden((h) => !h)}
+            className="p-1 text-gray-400 hover:text-gray-600 transition-colors"
+            title={mapHidden ? "Show workflow map" : "Hide workflow map"}
+          >
+            {mapHidden ? (
+              <ChevronDown className="h-3.5 w-3.5" />
+            ) : (
+              <ChevronUp className="h-3.5 w-3.5" />
+            )}
+          </button>
+        </div>
       </div>
 
-      <div className="hidden md:block">
-        <DesktopTransitMap
-          key={`desktop-${diagramKey}`}
-          allSteps={allSteps}
-          currentStepIndex={currentStepIndex}
-          approvalByStep={approvalByStep}
-          bgByTrigger={bgByTrigger}
-          backgroundSteps={effectiveBgSteps}
-          stepAssignments={stepAssignments}
-          currentUserName={currentUserName}
-          expandedStep={expandedStep}
-          hoveredRejection={hoveredRejection}
-          onStepClick={handleStepClick}
-          onSetExpandedStep={setExpandedStep}
-          onSetHoveredRejection={setHoveredRejection}
-        />
-      </div>
+      {!mapHidden && (
+        <>
+          <div className="hidden md:block">
+            <DesktopTransitMap
+              key={`desktop-${diagramKey}`}
+              allSteps={allSteps}
+              currentStepIndex={currentStepIndex}
+              approvalByStep={approvalByStep}
+              bgByTrigger={bgByTrigger}
+              backgroundSteps={effectiveBgSteps}
+              stepAssignments={stepAssignments}
+              currentUserName={currentUserName}
+              expandedStep={expandedStep}
+              hoveredRejection={hoveredRejection}
+              onStepClick={handleStepClick}
+              onSetExpandedStep={setExpandedStep}
+              onSetHoveredRejection={setHoveredRejection}
+            />
+          </div>
 
-      <div className="md:hidden">
-        <MobileTransitMap
-          allSteps={allSteps}
-          currentStepIndex={currentStepIndex}
-          approvalByStep={approvalByStep}
-          bgByTrigger={bgByTrigger}
-          backgroundSteps={effectiveBgSteps}
-          stepAssignments={stepAssignments}
-          currentUserName={currentUserName}
-          expandedStep={expandedStep}
-          hoveredRejection={hoveredRejection}
-          onStepClick={handleStepClick}
-          onSetExpandedStep={setExpandedStep}
-          onSetHoveredRejection={setHoveredRejection}
-        />
-      </div>
+          <div className="md:hidden">
+            <MobileTransitMap
+              allSteps={allSteps}
+              currentStepIndex={currentStepIndex}
+              approvalByStep={approvalByStep}
+              bgByTrigger={bgByTrigger}
+              backgroundSteps={effectiveBgSteps}
+              stepAssignments={stepAssignments}
+              currentUserName={currentUserName}
+              expandedStep={expandedStep}
+              hoveredRejection={hoveredRejection}
+              onStepClick={handleStepClick}
+              onSetExpandedStep={setExpandedStep}
+              onSetHoveredRejection={setHoveredRejection}
+            />
+          </div>
+        </>
+      )}
     </div>
   );
 }
