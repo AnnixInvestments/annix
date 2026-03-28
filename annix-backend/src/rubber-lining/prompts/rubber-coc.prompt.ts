@@ -21,11 +21,16 @@ Use these rules to identify which output field each column maps to:
 - "TC 90" / "Tc90" / "TC90" / "tc90" → rheometerTc90 (cure time in minutes)
 - "State" / "Status" / "Pass/Fail" → passFailStatus
 
-CRITICAL - BLANK/EMPTY CELLS:
-- Many batches only have SOME test values filled in - others are BLANK
+CRITICAL - SPARSE ROWS AND COLUMN ALIGNMENT:
+- Most batches have values in ONLY SOME columns - many cells are BLANK/EMPTY
 - If a cell is empty, blank, or has no value, return null for that field
 - DO NOT guess or fill in values - if it's blank in the source, it MUST be null
 - If a column does not exist at all in this document, return null for that field in every batch
+- CRITICAL: When a batch row has only a few values (e.g. Shore A + S'min + S'max + TS2 + TC90), you MUST count the column positions carefully from left to right to determine WHICH column each value falls under. Do NOT compress the values together ignoring blank columns.
+- STEP 1: First identify the column order from the header row. Write it out mentally: col1=ShoreA, col2=SG, col3=Rebound, etc.
+- STEP 2: For each batch row, align values to their column positions. If there are blank cells between values, those fields must be null.
+- Example: If headers are [Shore A, SG, Rebound, Tear, Tensile, Elongation, S'min, S'max, TS2, TC90] and a row has values at positions 1, 7, 8, 9, 10 only, then shoreA=val1, SG=null, rebound=null, tear=null, tensile=null, elongation=null, S'min=val7, S'max=val8, TS2=val9, TC90=val10
+- NEVER shift values left to fill gaps - blank cells MUST remain null
 
 CRITICAL - SHARED vs PER-BATCH VALUES:
 - Some documents show physical properties (SG, Tensile, Elongation, etc.) only once for the entire group, not per-batch
@@ -104,7 +109,16 @@ Guidelines:
 - Elongation is typically 300-980% - if you get < 100, columns are likely misaligned
 - Rheometer values: S'min (0.1-2.0 dNm), S'max (3-15 dNm), Ts2/TC10 (0.3-6 min), Tc90 (0.5-7 min)
 - PASS/FAIL status may be in the last column labeled "State"
-- SELF-CHECK: After extraction, verify each value falls within its expected range. If not, re-parse the table
+- SELF-CHECK AFTER EXTRACTION - verify ALL of these:
+  1. Shore A should be 35-90. If you see a value like 1.0-1.5 in Shore A, that is SG - columns are shifted.
+  2. SG should be 1.0-1.5. If you see a value like 39 in SG, that is Shore A - columns are shifted.
+  3. Rebound should be 50-96%. If null for most batches, confirm those cells are truly blank.
+  4. Tear should be 3-50. If you see a value > 50 in tear, it might be rebound.
+  5. Tensile should be 5-30 MPa. If you see a value like 1.23 in tensile, that is likely S'min - values are shifted.
+  6. S'min should be 0.1-2.0 dNm. If you see values like 4-7 in S'min, those are likely TS2/TC90 - columns are shifted.
+  7. S'max should be 3-15 dNm. If you see values like 4-7 in S'max, verify against column headers.
+  8. If a batch has FEWER non-null values than the number of populated columns in the PDF, your column alignment is wrong. Re-check.
+  9. Cross-reference against the Nominal/Limit rows - extracted values should fall near the nominal ranges.
 - Return ONLY the JSON object, no additional text`;
 
 export const CALENDARER_COC_SYSTEM_PROMPT = `You are an expert at extracting structured data from Impilo Industries rubber Batch Certificates.
@@ -351,8 +365,11 @@ Return ONLY a valid JSON object with the extracted data.`;
 }
 
 export function compounderCocExtractionPrompt(pdfText: string): string {
-  return `Please extract structured data from this rubber compounder Certificate of Conformance:
+  return `Please extract structured data from this rubber compounder Certificate of Conformance.
 
+IMPORTANT: Before extracting batch values, first identify the exact column headers in the table and their left-to-right order. Then for each batch row, count the column positions to determine which column each value belongs to. Many rows have blank cells in the middle - do NOT shift values left to fill gaps.
+
+Document text:
 ${pdfText}
 
 Return ONLY a valid JSON object with the extracted data.`;
