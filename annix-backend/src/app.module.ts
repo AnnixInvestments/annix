@@ -60,7 +60,11 @@ import { WorkflowModule } from "./workflow/workflow.module";
         },
       ],
     }),
-    TypeOrmModule.forRoot(typeormConfig()),
+    TypeOrmModule.forRoot({
+      ...typeormConfig(),
+      retryAttempts: 5,
+      retryDelay: 3000,
+    }),
 
     AiUsageModule,
 

@@ -23,8 +23,8 @@ const config: DataSourceOptions = {
     max: 25,
     min: 0,
     idleTimeoutMillis: 10000,
-    connectionTimeoutMillis: 10000,
-    acquireTimeoutMillis: 30000,
+    connectionTimeoutMillis: 30000,
+    acquireTimeoutMillis: 60000,
   },
 };
 

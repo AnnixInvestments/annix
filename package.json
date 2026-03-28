@@ -12,6 +12,7 @@
     "test:watch": "cd annix-backend && pnpm test:watch",
     "test:e2e": "cd annix-backend && pnpm test:e2e",
     "dev:backend": "cd annix-backend && pnpm start:dev",
+    "dev:backend:migrate": "cd annix-backend && pnpm start:dev:migrate",
     "env:setup": "claude-swarm env setup",
     "env:list": "claude-swarm env list",
     "dev:frontend": "cd annix-frontend && pnpm dev",

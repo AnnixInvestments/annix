@@ -3,7 +3,7 @@
   "apps": [
     {
       "name": "backend",
-      "start": "pnpm dev:backend",
+      "start": "pnpm dev:backend:migrate",
       "stop": "npx ts-node scripts/kill-port.ts 4001",
       "kill": "npx ts-node scripts/kill-port.ts 4001",
       "readyPattern": "Nest application successfully started",
