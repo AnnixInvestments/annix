@@ -109,6 +109,28 @@ export function useDeleteDocument() {
   });
 }
 
+export type GovernmentDocumentCategory = Awaited<
+  ReturnType<typeof api.governmentDocuments>
+>[number];
+
+export function useGovernmentDocuments() {
+  return useQuery({
+    queryKey: complySaKeys.governmentDocuments.list(),
+    queryFn: () => api.governmentDocuments(),
+    staleTime: 1000 * 60 * 30,
+  });
+}
+
+export function useSyncGovernmentDocuments() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => api.syncGovernmentDocuments(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: complySaKeys.governmentDocuments.all });
+    },
+  });
+}
+
 export function useComplySaNotifications() {
   return useQuery({
     queryKey: complySaKeys.notifications.list(),

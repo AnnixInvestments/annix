@@ -474,6 +474,36 @@ export function tenderScore(): Promise<{
   return request("/tender/score");
 }
 
+export function governmentDocuments(): Promise<
+  Array<{
+    key: string;
+    label: string;
+    department: string | null;
+    departmentUrl: string | null;
+    documents: Array<{
+      id: number;
+      name: string;
+      description: string;
+      downloadUrl: string;
+      synced: boolean;
+    }>;
+  }>
+> {
+  return request("/government-documents");
+}
+
+export function governmentDocumentUrl(id: number): Promise<{ url: string }> {
+  return request(`/government-documents/${id}/url`);
+}
+
+export function syncGovernmentDocuments(): Promise<{
+  syncedCount: number;
+  failedCount: number;
+  errors: string[];
+}> {
+  return request("/government-documents/sync", { method: "POST" });
+}
+
 export function regulatoryUpdates(limit?: number): Promise<
   Array<{
     id: string;

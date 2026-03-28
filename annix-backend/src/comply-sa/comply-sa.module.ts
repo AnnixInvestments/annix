@@ -10,6 +10,7 @@ import { ComplySaDocumentsModule } from "./comply-documents/documents.module";
 import { ComplySaIntegrationsModule } from "./comply-integrations/integrations.module";
 import { ComplySaNotificationsModule } from "./comply-notifications/notifications.module";
 import { ComplySaTemplatesModule } from "./comply-templates/templates.module";
+import { ComplySaGovernmentDocumentsModule } from "./government-documents/government-documents.module";
 import { ComplySaI18nModule } from "./i18n/i18n.module";
 import { ComplySaRegulatoryModule } from "./regulatory/regulatory.module";
 import { ComplySaSubscriptionsModule } from "./subscriptions/subscriptions.module";
@@ -22,6 +23,7 @@ import { ComplySaTenderModule } from "./tender/tender.module";
     ComplySaCompaniesModule,
     ComplySaComplianceModule,
     ComplySaDocumentsModule,
+    ComplySaGovernmentDocumentsModule,
     ComplySaNotificationsModule,
     ComplySaBbeeModule,
     ComplySaTaxModule,

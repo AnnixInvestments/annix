@@ -11,6 +11,10 @@ export const complySaKeys = {
     byRequirement: (reqId: string) =>
       [...complySaKeys.documents.all, "by-requirement", reqId] as const,
   },
+  governmentDocuments: {
+    all: ["comply-sa", "government-documents"] as const,
+    list: () => ["comply-sa", "government-documents", "list"] as const,
+  },
   notifications: {
     all: ["comply-sa", "notifications"] as const,
     list: () => [...complySaKeys.notifications.all, "list"] as const,

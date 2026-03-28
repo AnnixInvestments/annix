@@ -8,6 +8,7 @@ import {
   FileText,
   FolderOpen,
   Globe,
+  Loader2,
   Search,
   Trash2,
   Upload,
@@ -15,10 +16,12 @@ import {
 import { useRef, useState } from "react";
 import { useToast } from "@/app/components/Toast";
 import { formatDateZA } from "@/app/lib/datetime";
+import type { GovernmentDocumentCategory } from "@/app/lib/query/hooks";
 import {
   useComplySaDocuments,
   useComplySaRequirements,
   useDeleteDocument,
+  useGovernmentDocuments,
   useUploadDocument,
 } from "@/app/lib/query/hooks";
 
@@ -38,384 +41,24 @@ function formatFileSize(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-type ComplianceDocument = {
-  name: string;
-  description: string;
-  url: string;
+const CATEGORY_COLORS: Record<string, string> = {
+  company: "text-purple-400 border-purple-500/30 bg-purple-500/10",
+  ip: "text-indigo-400 border-indigo-500/30 bg-indigo-500/10",
+  tax: "text-blue-400 border-blue-500/30 bg-blue-500/10",
+  labour: "text-yellow-400 border-yellow-500/30 bg-yellow-500/10",
+  bbbee: "text-green-400 border-green-500/30 bg-green-500/10",
+  consumer: "text-orange-400 border-orange-500/30 bg-orange-500/10",
+  ohs: "text-red-400 border-red-500/30 bg-red-500/10",
+  privacy: "text-teal-400 border-teal-500/30 bg-teal-500/10",
+  financial: "text-cyan-400 border-cyan-500/30 bg-cyan-500/10",
 };
 
-type ComplianceCategory = {
-  key: string;
-  label: string;
-  department: string;
-  departmentUrl: string;
-  color: string;
-  documents: ComplianceDocument[];
-};
-
-const COMPLIANCE_CATEGORIES: ComplianceCategory[] = [
-  {
-    key: "company",
-    label: "Company & Corporate Law",
-    department: "the dtic / CIPC",
-    departmentUrl: "https://www.cipc.co.za/",
-    color: "text-purple-400 border-purple-500/30 bg-purple-500/10",
-    documents: [
-      {
-        name: "Companies Act, 2008 (Act No. 71 of 2008) (PDF)",
-        description:
-          "Primary legislation governing company registration, governance, and compliance",
-        url: "https://www.thedtic.gov.za/wp-content/uploads/companies_act.pdf",
-      },
-      {
-        name: "Companies Act Notebook (Plain-English Guide) (PDF)",
-        description: "Simplified guide to the Companies Act for businesses",
-        url: "https://www.thedtic.gov.za/wp-content/uploads/Companies_Act_Notebook.pdf",
-      },
-      {
-        name: "Companies Amendment Act 16 of 2024",
-        description: "Latest amendments including beneficial ownership requirements",
-        url: "https://www.gov.za/documents/companies-amendment-act-16-2024-16-jan-2025-0000",
-      },
-      {
-        name: "Close Corporations Act 69 of 1984",
-        description: "Governs existing close corporations (no new registrations permitted)",
-        url: "https://www.gov.za/documents/close-corporations-act",
-      },
-      {
-        name: "National Credit Act, 2005 (Act No. 34 of 2005) (PDF)",
-        description: "Credit industry regulation, consumer credit rights, and lending practices",
-        url: "https://www.thedtic.gov.za/wp-content/uploads/credit_act.pdf",
-      },
-      {
-        name: "Legal Metrology Act, 2014 (Act No. 9 of 2014) (PDF)",
-        description: "Trade measurement standards and metrology compliance",
-        url: "https://www.thedtic.gov.za/wp-content/uploads/Legal_Metrology_Act-1.pdf",
-      },
-      {
-        name: "Special Economic Zone (SEZ) Act, 2014 (Act No. 16 of 2014) (PDF)",
-        description: "Framework for special economic zones, incentives, and qualifying criteria",
-        url: "https://www.thedtic.gov.za/wp-content/uploads/SEZ_Act-1.pdf",
-      },
-      {
-        name: "National Regulator for Compulsory Specifications Act, 2008 (PDF)",
-        description: "Standards compliance, compulsory specifications, and product regulation",
-        url: "https://www.thedtic.gov.za/wp-content/uploads/national_regulator_act.pdf",
-      },
-      {
-        name: "CIPC Notices & Gazettes",
-        description: "Individual company and IP notices published by CIPC",
-        url: "https://www.cipc.co.za/?page_id=5045",
-      },
-    ],
-  },
-  {
-    key: "ip",
-    label: "Intellectual Property",
-    department: "the dtic (Department of Trade, Industry and Competition)",
-    departmentUrl: "https://www.thedtic.gov.za/legislation/legislation-and-business-regulation/",
-    color: "text-indigo-400 border-indigo-500/30 bg-indigo-500/10",
-    documents: [
-      {
-        name: "Copyright Act, 1978 (Act No. 98 of 1978) (PDF)",
-        description: "Copyright protection for literary, musical, artistic, and other works",
-        url: "https://www.thedtic.gov.za/wp-content/uploads/copyright_act.pdf",
-      },
-      {
-        name: "Designs Act, 1993 (Act No. 195 of 1993) (PDF)",
-        description: "Registration and protection of aesthetic and functional designs",
-        url: "https://www.thedtic.gov.za/wp-content/uploads/designs_act.pdf",
-      },
-      {
-        name: "Patents Act, 1978 (Act No. 57 of 1978) (PDF)",
-        description: "Patent application, registration, and protection of inventions",
-        url: "https://www.thedtic.gov.za/wp-content/uploads/patent_act.pdf",
-      },
-      {
-        name: "Intellectual Property Laws Amendment Act, 2013 (PDF)",
-        description:
-          "Amendments extending IP protection to indigenous cultural expressions and knowledge",
-        url: "https://www.thedtic.gov.za/wp-content/uploads/IP_amendment_act2013.pdf",
-      },
-      {
-        name: "Intellectual Property Law Rationalisation Act, 1996 (PDF)",
-        description: "Consolidation and rationalisation of IP legislation in South Africa",
-        url: "https://www.thedtic.gov.za/wp-content/uploads/intellectual_property_act.pdf",
-      },
-    ],
-  },
-  {
-    key: "tax",
-    label: "Tax & Revenue",
-    department: "SARS (South African Revenue Service)",
-    departmentUrl: "https://www.sars.gov.za/businesses-and-employers/small-businesses-taxpayers/",
-    color: "text-blue-400 border-blue-500/30 bg-blue-500/10",
-    documents: [
-      {
-        name: "Income Tax Act 58 of 1962",
-        description: "Primary income tax legislation for individuals, companies, and trusts",
-        url: "https://www.gov.za/documents/income-tax-act-26-may-2015-1207",
-      },
-      {
-        name: "Value-Added Tax Act 89 of 1991",
-        description: "VAT registration, collection, and compliance requirements",
-        url: "https://www.gov.za/documents/value-added-tax-act",
-      },
-      {
-        name: "Tax Administration Act 28 of 2011",
-        description: "Tax administration procedures, penalties, disputes, and taxpayer rights",
-        url: "https://www.gov.za/documents/tax-administration-act",
-      },
-      {
-        name: "Tax Guide for Small Businesses (2024/2025) (PDF)",
-        description: "Comprehensive SARS guide covering tax obligations for small businesses",
-        url: "https://www.sars.gov.za/wp-content/uploads/Ops/Guides/Legal-Pub-Guide-Gen09-Tax-Guide-for-Small-Businesses.pdf",
-      },
-      {
-        name: "Tax Guide for Micro Businesses (Issue 3) (PDF)",
-        description: "Simplified SARS guide for turnover tax and micro business compliance",
-        url: "https://www.sars.gov.za/wp-content/uploads/Ops/Guides/Legal-Pub-Guide-TT01-Tax-Guide-for-Micro-Businesses.pdf",
-      },
-      {
-        name: "SARS RSS Feeds",
-        description: "Subscribe to SARS news and compliance announcement updates",
-        url: "https://www.sars.gov.za/about/rss-feeds/",
-      },
-    ],
-  },
-  {
-    key: "labour",
-    label: "Labour & Employment",
-    department: "Department of Employment and Labour",
-    departmentUrl: "https://www.labour.gov.za/DocumentCenter/Pages/Acts.aspx",
-    color: "text-yellow-400 border-yellow-500/30 bg-yellow-500/10",
-    documents: [
-      {
-        name: "Basic Conditions of Employment Act, 1997 (PDF)",
-        description: "Working hours, leave, remuneration, and employment conditions",
-        url: "https://www.labour.gov.za/DocumentCenter/Acts/Basic%20Conditions%20of%20Employment/Act%20-%20Basic%20Conditions%20of%20Employment.pdf",
-      },
-      {
-        name: "Labour Relations Act, 1995 (PDF)",
-        description:
-          "Labour rights, collective bargaining, dispute resolution, and unfair dismissal",
-        url: "https://www.labour.gov.za/DocumentCenter/Acts/Labour%20Relations/Labour%20Relations%20Act.pdf",
-      },
-      {
-        name: "Employment Equity Act, 1998 (PDF)",
-        description: "Workplace equity, affirmative action, and EE reporting requirements",
-        url: "https://www.labour.gov.za/DocumentCenter/Acts/Employment%20Equity/Act%20-%20Employment%20Equity%201998.pdf",
-      },
-      {
-        name: "Employment Services Act, 2014 (PDF)",
-        description:
-          "Public employment services, private employment agencies, and work-seeker registration",
-        url: "https://www.labour.gov.za/DocumentCenter/Acts/Public%20Employment%20Services/Employment%20Services%20Act%202014.pdf",
-      },
-      {
-        name: "Unemployment Insurance Contributions Act, 2002 (Amended) (PDF)",
-        description: "UIF contributions, rates, and employer obligations",
-        url: "https://www.labour.gov.za/DocumentCenter/Acts/UIF/Amended%20Act%20-%20Unemployment%20Insurance%20Contributions.pdf",
-      },
-      {
-        name: "COIDA Service Booklet (PDF)",
-        description: "Compensation for Occupational Injuries and Diseases Act guide and procedures",
-        url: "https://www.labour.gov.za/DocumentCenter/Publications/Compensation%20for%20Occupational%20Injuries%20and%20Diseases/COIDA_SERVICE_BOOK_VERSION_23.pdf",
-      },
-      {
-        name: "Skills Development Act 97 of 1998",
-        description: "Skills levies, SETAs, and workplace skills development obligations",
-        url: "https://www.gov.za/documents/skills-development-act",
-      },
-      {
-        name: "Unemployment Insurance Act 63 of 2001",
-        description: "UIF benefits, claims, and eligibility requirements",
-        url: "https://www.gov.za/documents/unemployment-insurance-act",
-      },
-      {
-        name: "Code of Good Practice on the Arrangement of Working Time (PDF)",
-        description: "Guidelines on shift work, night work, overtime, and rest periods",
-        url: "https://www.labour.gov.za/DocumentCenter/Code%20of%20Good%20Practice/Basic%20Condition/Code%20of%20Good%20Practice%20on%20the%20Arrangement%20of%20Working%20Time.PDF",
-      },
-      {
-        name: "Code of Good Practice on Prevention and Elimination of Harassment (PDF)",
-        description: "Workplace harassment prevention, policies, and procedures",
-        url: "https://www.labour.gov.za/DocumentCenter/Code%20of%20Good%20Practice/Employment%20Equity/Code%20of%20Good%20Practice%20on%20the%20Prevention%20and%20Elimination%20of%20Harassment%20in%20the%20Workplace.pdf",
-      },
-    ],
-  },
-  {
-    key: "bbbee",
-    label: "B-BBEE",
-    department: "the dtic / B-BBEE Commission",
-    departmentUrl: "https://www.bbbeecommission.co.za/",
-    color: "text-green-400 border-green-500/30 bg-green-500/10",
-    documents: [
-      {
-        name: "B-BBEE Amendment Act, 2003 (PDF)",
-        description: "Broad-Based Black Economic Empowerment Amendment Act full text",
-        url: "https://www.thedtic.gov.za/wp-content/uploads/BEE-Amendment_ACT2013-1.pdf",
-      },
-      {
-        name: "B-BBEE Act 53 of 2003 (as amended)",
-        description: "B-BBEE framework and scorecard requirements",
-        url: "https://www.gov.za/documents/broad-based-black-economic-empowerment-act",
-      },
-      {
-        name: "B-BBEE Codes of Good Practice (Amended 2019)",
-        description: "Generic and sector codes for B-BBEE scorecard measurement",
-        url: "https://www.gov.za/documents/broad-based-black-economic-empowerment-act-issue-codes-good-practice",
-      },
-      {
-        name: "Compliance Reporting Matrix / Template (PDF)",
-        description: "B-BBEE Commission compliance reporting template for entities",
-        url: "https://www.bbbeecommission.co.za/wp-content/uploads/2019/07/COMPLIANCE-REPORTING-TEMPLATE-Nov17_1.pdf",
-      },
-      {
-        name: "FORM BBBEE 1 \u2013 Compliance Report: Government / Public Entities (PDF)",
-        description:
-          "Section 13G(1) compliance report for spheres of government and public entities",
-        url: "https://www.bbbeecommission.co.za/wp-content/uploads/2017/06/FORM-BBBEE-1-Compliance-Report-13G1.pdf",
-      },
-      {
-        name: "FORM BBBEE 1 \u2013 Compliance Report: JSE-listed Companies (PDF)",
-        description: "Section 13G(2) compliance report for JSE-listed companies",
-        url: "https://www.bbbeecommission.co.za/wp-content/uploads/2018/07/FORM-BBBEE-1-Compliance-Report-13G2-JSE-2.pdf",
-      },
-      {
-        name: "FORM BBBEE 2 \u2013 Compliance Report: SETAs (PDF)",
-        description:
-          "Section 13G(3) compliance report for Sector Education and Training Authorities",
-        url: "https://www.bbbeecommission.co.za/wp-content/uploads/2017/06/FORM-BBBEE-2-Compliance-Report-13G3.pdf",
-      },
-      {
-        name: "FORM BBBEE 3 \u2013 Notice of Non-Compliance (PDF)",
-        description: "Official non-compliance notification form",
-        url: "https://www.bbbeecommission.co.za/wp-content/uploads/2017/06/FORM-BBBEE-3-Notice-of-Non-Compliance.pdf",
-      },
-      {
-        name: "FORM BBBEE 4 \u2013 Notice for Rejection of Report (PDF)",
-        description: "Report rejection notification form",
-        url: "https://www.bbbeecommission.co.za/wp-content/uploads/2017/06/FORM-BBBEE-4-Notice-for-Rejection-of-Report.pdf",
-      },
-      {
-        name: "FORM BBBEE 5 \u2013 Notice of Compliance (PDF)",
-        description: "Official compliance confirmation notification form",
-        url: "https://www.bbbeecommission.co.za/wp-content/uploads/2017/06/FORM-BBBEE-5-Notice-of-Compliance.pdf",
-      },
-      {
-        name: "FORM BBBEE 6 \u2013 Restricted / Confidential Information (PDF)",
-        description: "Application for restricted or confidential treatment of information",
-        url: "https://www.bbbeecommission.co.za/wp-content/uploads/2017/06/FORM-BBBEE-6-Restricted-Confidential-Information.pdf",
-      },
-      {
-        name: "FORM BBBEE 7 \u2013 Complaint Form (PDF)",
-        description: "Lodge a B-BBEE compliance complaint with the Commission",
-        url: "https://www.bbbeecommission.co.za/wp-content/uploads/2017/06/FORM-BBBEE-7-Complaint-Form.pdf",
-      },
-      {
-        name: "FORM BBBEE 8 \u2013 Request for Additional Information (PDF)",
-        description: "Commission request for additional information from reporting entities",
-        url: "https://www.bbbeecommission.co.za/wp-content/uploads/2017/06/FORM-BBBEE-8-Request-for-Additional-Information.pdf",
-      },
-    ],
-  },
-  {
-    key: "consumer",
-    label: "Consumer & Trade",
-    department: "the dtic / National Consumer Commission",
-    departmentUrl: "https://www.thedtic.gov.za/legislation/legislation-and-business-regulation/",
-    color: "text-orange-400 border-orange-500/30 bg-orange-500/10",
-    documents: [
-      {
-        name: "Consumer Protection Act, 2008 (Act No. 68 of 2008) (PDF)",
-        description: "Consumer rights, product liability, and fair business practices",
-        url: "https://www.thedtic.gov.za/wp-content/uploads/consumer_protection.pdf",
-      },
-      {
-        name: "Consumer Protection Brochure (PDF)",
-        description: "Plain-English summary of consumer rights and business obligations",
-        url: "https://www.thedtic.gov.za/wp-content/uploads/CP_Brochure.pdf",
-      },
-      {
-        name: "Competition Act 89 of 1998",
-        description: "Anti-competitive practices, mergers, and market regulation",
-        url: "https://www.gov.za/documents/competition-act",
-      },
-    ],
-  },
-  {
-    key: "ohs",
-    label: "Health & Safety",
-    department: "Department of Employment and Labour",
-    departmentUrl: "https://www.labour.gov.za/DocumentCenter/Pages/Acts.aspx",
-    color: "text-red-400 border-red-500/30 bg-red-500/10",
-    documents: [
-      {
-        name: "Occupational Health and Safety Act 85 of 1993",
-        description: "Workplace health and safety obligations, incident reporting, and compliance",
-        url: "https://www.gov.za/documents/occupational-health-and-safety-act",
-      },
-      {
-        name: "Compensation for Occupational Injuries and Diseases Act 130 of 1993",
-        description: "COIDA registration, worker compensation, and employer levies",
-        url: "https://www.gov.za/documents/compensation-occupational-injuries-and-diseases-act",
-      },
-      {
-        name: "OHS Regulations & Codes of Practice",
-        description: "Full collection of OHS Act regulations, codes, and supporting documents",
-        url: "https://www.labour.gov.za/DocumentCenter/Pages/Acts.aspx",
-      },
-    ],
-  },
-  {
-    key: "privacy",
-    label: "Data Privacy",
-    department: "Information Regulator South Africa",
-    departmentUrl: "https://inforegulator.org.za/",
-    color: "text-teal-400 border-teal-500/30 bg-teal-500/10",
-    documents: [
-      {
-        name: "Protection of Personal Information Act 4 of 2013 (POPIA)",
-        description: "Data protection, privacy, and processing of personal information",
-        url: "https://www.gov.za/documents/protection-personal-information-act",
-      },
-      {
-        name: "Promotion of Access to Information Act 2 of 2000 (PAIA)",
-        description:
-          "Access to information held by public and private bodies, PAIA manual requirements",
-        url: "https://www.gov.za/documents/promotion-access-information-act",
-      },
-      {
-        name: "Information Regulator Compliance Resources",
-        description: "POPIA compliance guides, notices, and enforcement actions",
-        url: "https://inforegulator.org.za/",
-      },
-    ],
-  },
-  {
-    key: "financial",
-    label: "Financial Regulation",
-    department: "National Treasury",
-    departmentUrl: "https://www.treasury.gov.za/legislation/",
-    color: "text-cyan-400 border-cyan-500/30 bg-cyan-500/10",
-    documents: [
-      {
-        name: "National Treasury Acts & Regulations",
-        description: "Financial legislation, PFMA, MFMA, and regulatory frameworks",
-        url: "https://www.treasury.gov.za/legislation/",
-      },
-      {
-        name: "SABS Standards & Technical Regulations",
-        description: "South African Bureau of Standards compulsory specifications and standards",
-        url: "https://www.sabs.co.za/",
-      },
-    ],
-  },
-];
+function categoryColor(key: string): string {
+  return CATEGORY_COLORS[key] || "text-slate-400 border-slate-500/30 bg-slate-500/10";
+}
 
 function CategoryAccordion(props: {
-  category: ComplianceCategory;
+  category: GovernmentDocumentCategory;
   expanded: boolean;
   onToggle: () => void;
 }) {
@@ -432,7 +75,7 @@ function CategoryAccordion(props: {
       >
         <div className="flex items-center gap-3">
           <span
-            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${category.color}`}
+            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${categoryColor(category.key)}`}
           >
             {category.label}
           </span>
@@ -447,23 +90,25 @@ function CategoryAccordion(props: {
 
       {expanded && (
         <div className="border-t border-slate-700">
-          <div className="px-5 py-3 bg-slate-700/20">
-            <a
-              href={category.departmentUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 text-xs text-teal-400 hover:text-teal-300 transition-colors"
-            >
-              <Globe className="h-3 w-3" />
-              {category.department}
-              <ExternalLink className="h-3 w-3" />
-            </a>
-          </div>
+          {category.department && (
+            <div className="px-5 py-3 bg-slate-700/20">
+              <a
+                href={category.departmentUrl || "#"}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 text-xs text-teal-400 hover:text-teal-300 transition-colors"
+              >
+                <Globe className="h-3 w-3" />
+                {category.department}
+                <ExternalLink className="h-3 w-3" />
+              </a>
+            </div>
+          )}
           <div className="divide-y divide-slate-700">
             {category.documents.map((doc) => (
               <a
-                key={doc.url}
-                href={doc.url}
+                key={doc.id}
+                href={doc.downloadUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-start gap-3 px-5 py-3 hover:bg-slate-700/30 transition-colors group"
@@ -486,6 +131,7 @@ function CategoryAccordion(props: {
 }
 
 function GovernmentDocumentsTab() {
+  const { data: categories, isLoading, error } = useGovernmentDocuments();
   const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({});
 
   function toggleCategory(key: string) {
@@ -493,7 +139,7 @@ function GovernmentDocumentsTab() {
   }
 
   function expandAll() {
-    const allExpanded = COMPLIANCE_CATEGORIES.reduce(
+    const allExpanded = (categories || []).reduce(
       (acc, cat) => ({ ...acc, [cat.key]: true }),
       {} as Record<string, boolean>,
     );
@@ -504,7 +150,25 @@ function GovernmentDocumentsTab() {
     setExpandedCategories({});
   }
 
-  const allExpanded = COMPLIANCE_CATEGORIES.every((cat) => expandedCategories[cat.key]);
+  const allExpanded =
+    (categories || []).length > 0 && (categories || []).every((cat) => expandedCategories[cat.key]);
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="h-6 w-6 text-teal-400 animate-spin" />
+        <span className="ml-2 text-slate-400 text-sm">Loading government documents...</span>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="bg-red-500/10 border border-red-500/30 text-red-400 rounded-lg px-4 py-3 text-sm">
+        {error.message}
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
@@ -550,7 +214,7 @@ function GovernmentDocumentsTab() {
         </button>
       </div>
 
-      {COMPLIANCE_CATEGORIES.map((category) => (
+      {(categories || []).map((category) => (
         <CategoryAccordion
           key={category.key}
           category={category}
