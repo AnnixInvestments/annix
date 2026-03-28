@@ -145,6 +145,10 @@ describe("JobCardsController", () => {
           provide: getRepositoryToken(JobCardLineItem),
           useValue: { findOne: jest.fn(), create: jest.fn(), save: jest.fn(), remove: jest.fn() },
         },
+        {
+          provide: "STORAGE_SERVICE",
+          useValue: { upload: jest.fn(), download: jest.fn(), presignedUrl: jest.fn() },
+        },
       ],
     })
       .overrideGuard(StockControlAuthGuard)
