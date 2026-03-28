@@ -286,25 +286,54 @@ export function AllocationPlanSection(props: AllocationPlanSectionProps) {
                         </div>
 
                         <div className="flex flex-col items-end gap-1 text-sm">
-                          <div className="text-gray-500">
-                            Required:{" "}
-                            <span className="font-medium text-gray-900">
-                              {item.requiredLitres.toFixed(1)}L
-                            </span>
-                          </div>
-                          <div className="text-gray-500">
-                            Available:{" "}
-                            <span className="font-medium text-gray-900">
-                              {item.availableQuantity.toFixed(1)}L
-                            </span>
-                          </div>
-                          {item.packSizeLitres && (
-                            <div className="text-gray-500">
-                              Pack:{" "}
-                              <span className="font-medium text-gray-900">
-                                {item.packSizeLitres}L
-                              </span>
-                            </div>
+                          {item.unitOfMeasure === "rolls" ? (
+                            <>
+                              <div className="text-gray-500">
+                                Rolls:{" "}
+                                <span className="font-medium text-gray-900">
+                                  {item.rubberRollsRequired || 1}
+                                </span>
+                              </div>
+                              {item.rubberRollWidthMm && item.rubberRollLengthM && (
+                                <div className="text-gray-500">
+                                  Size:{" "}
+                                  <span className="font-medium text-gray-900">
+                                    {item.rubberRollWidthMm}mm x {item.rubberRollLengthM}m
+                                  </span>
+                                </div>
+                              )}
+                              <div className="text-gray-500">
+                                Available:{" "}
+                                <span className="font-medium text-gray-900">
+                                  {item.availableQuantity > 0
+                                    ? `${item.availableQuantity} in stock`
+                                    : "None"}
+                                </span>
+                              </div>
+                            </>
+                          ) : (
+                            <>
+                              <div className="text-gray-500">
+                                Required:{" "}
+                                <span className="font-medium text-gray-900">
+                                  {item.requiredLitres.toFixed(1)}L
+                                </span>
+                              </div>
+                              <div className="text-gray-500">
+                                Available:{" "}
+                                <span className="font-medium text-gray-900">
+                                  {item.availableQuantity.toFixed(1)}L
+                                </span>
+                              </div>
+                              {item.packSizeLitres && (
+                                <div className="text-gray-500">
+                                  Pack:{" "}
+                                  <span className="font-medium text-gray-900">
+                                    {item.packSizeLitres}L
+                                  </span>
+                                </div>
+                              )}
+                            </>
                           )}
                         </div>
 

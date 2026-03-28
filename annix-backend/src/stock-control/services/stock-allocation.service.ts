@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { DataSource, IsNull, Repository } from "typeorm";
+import { DataSource, ILike, IsNull, MoreThan, Repository } from "typeorm";
 import { now } from "../../lib/datetime";
 import { JobCardCoatingAnalysis, StockAssessmentItem } from "../entities/coating-analysis.entity";
 import { JobCard } from "../entities/job-card.entity";
@@ -21,6 +21,11 @@ export interface AllocationPlanItem {
   mixRatio: string | null;
   availableQuantity: number;
   leftoverSuggestion: LeftoverSuggestion | null;
+  unitOfMeasure?: string | null;
+  rubberRollWidthMm?: number | null;
+  rubberRollLengthM?: number | null;
+  rubberRollThicknessMm?: number | null;
+  rubberRollsRequired?: number | null;
 }
 
 export interface LeftoverSuggestion {
@@ -125,7 +130,98 @@ export class StockAllocationService {
       };
     });
 
-    return { items, leftovers };
+    const rubberItems = await this.rubberAllocationItems(companyId, jobCardId);
+
+    return { items: [...items, ...rubberItems], leftovers };
+  }
+
+  private async rubberAllocationItems(
+    companyId: number,
+    jobCardId: number,
+  ): Promise<AllocationPlanItem[]> {
+    const jobCard = await this.jobCardRepo.findOne({
+      where: { id: jobCardId, companyId },
+      relations: ["lineItems"],
+    });
+
+    if (!jobCard) {
+      return [];
+    }
+
+    const override = jobCard.rubberPlanOverride;
+    if (!override || override.status === "pending") {
+      return [];
+    }
+
+    const rubberStock = await this.stockItemRepo.find({
+      where: {
+        companyId,
+        category: ILike("%rubber%"),
+        quantity: MoreThan(0),
+      },
+      order: { thicknessMm: "ASC", widthMm: "ASC" },
+    });
+
+    if (rubberStock.length === 0) {
+      return [];
+    }
+
+    if (override.manualRolls?.length) {
+      return override.manualRolls.map((roll, idx) => {
+        const matched = rubberStock.find(
+          (si) =>
+            si.thicknessMm !== null &&
+            Number(si.thicknessMm) === roll.thicknessMm &&
+            si.widthMm !== null &&
+            Number(si.widthMm) === roll.widthMm,
+        );
+
+        return {
+          product: `Rubber ${roll.thicknessMm}mm (Roll ${idx + 1})`,
+          stockItemId: matched?.id || 0,
+          stockItemName: matched?.name || `${roll.widthMm}mm x ${roll.lengthM}m rubber`,
+          requiredLitres: 1,
+          packSizeLitres: null,
+          recommendedPacks: 1,
+          componentGroup: "Rubber Lining",
+          componentRole: `${roll.thicknessMm}mm ply`,
+          mixRatio: null,
+          availableQuantity: matched ? Number(matched.quantity) : 0,
+          leftoverSuggestion: null,
+          unitOfMeasure: "rolls",
+          rubberRollWidthMm: roll.widthMm,
+          rubberRollLengthM: roll.lengthM,
+          rubberRollThicknessMm: roll.thicknessMm,
+          rubberRollsRequired: 1,
+        };
+      });
+    }
+
+    const plyCombination = override.selectedPlyCombination || [];
+    return plyCombination.map((thicknessMm) => {
+      const matched = rubberStock.find(
+        (si) => si.thicknessMm !== null && Number(si.thicknessMm) === thicknessMm,
+      );
+
+      return {
+        product: `Rubber ${thicknessMm}mm`,
+        stockItemId: matched?.id || 0,
+        stockItemName: matched?.name || `${thicknessMm}mm rubber sheet`,
+        requiredLitres: 1,
+        packSizeLitres: null,
+        recommendedPacks: 1,
+        componentGroup: "Rubber Lining",
+        componentRole: `${thicknessMm}mm ply`,
+        mixRatio: null,
+        availableQuantity: matched ? Number(matched.quantity) : 0,
+        leftoverSuggestion: null,
+        unitOfMeasure: "rolls",
+        rubberRollWidthMm: matched?.widthMm ? Number(matched.widthMm) : null,
+        rubberRollLengthM: matched?.lengthM ? Number(matched.lengthM) : null,
+        rubberRollThicknessMm: thicknessMm,
+        rubberRollsRequired: 1,
+      };
+    });
   }
 
   async allocatePacks(

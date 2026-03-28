@@ -498,6 +498,11 @@ export interface AllocationPlanItem {
   mixRatio: string | null;
   availableQuantity: number;
   leftoverSuggestion: LeftoverSuggestion | null;
+  unitOfMeasure?: string | null;
+  rubberRollWidthMm?: number | null;
+  rubberRollLengthM?: number | null;
+  rubberRollThicknessMm?: number | null;
+  rubberRollsRequired?: number | null;
 }
 
 export interface LeftoverSuggestion {
