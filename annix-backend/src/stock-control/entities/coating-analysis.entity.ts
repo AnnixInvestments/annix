@@ -58,6 +58,12 @@ export class JobCardCoatingAnalysis {
   @Column({ name: "surface_prep", type: "varchar", length: 100, nullable: true })
   surfacePrep: string | null;
 
+  @Column({ name: "ext_surface_prep", type: "varchar", length: 100, nullable: true })
+  extSurfacePrep: string | null;
+
+  @Column({ name: "int_surface_prep", type: "varchar", length: 100, nullable: true })
+  intSurfacePrep: string | null;
+
   @Column({ name: "ext_m2", type: "numeric", precision: 12, scale: 4, default: 0 })
   extM2: number;
 

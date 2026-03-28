@@ -468,6 +468,8 @@ export interface CoatingAnalysis {
   jobCardId: number;
   applicationType: string | null;
   surfacePrep: string | null;
+  extSurfacePrep: string | null;
+  intSurfacePrep: string | null;
   extM2: number;
   intM2: number;
   hasInternalLining: boolean;

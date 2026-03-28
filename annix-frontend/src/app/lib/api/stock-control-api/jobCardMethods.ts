@@ -41,7 +41,10 @@ declare module "./base" {
     ): Promise<StockAllocation>;
     jobCardAllocations(jobCardId: number): Promise<StockAllocation[]>;
     jobCardCoatingAnalysis(jobCardId: number): Promise<CoatingAnalysis | null>;
-    updateSurfacePrep(jobCardId: number, surfacePrep: string): Promise<CoatingAnalysis>;
+    updateSurfacePrep(
+      jobCardId: number,
+      updates: { extSurfacePrep?: string; intSurfacePrep?: string },
+    ): Promise<CoatingAnalysis>;
     updateCoatingSurfaceArea(
       jobCardId: number,
       extM2: number,
@@ -235,11 +238,11 @@ proto.jobCardCoatingAnalysis = async function (jobCardId) {
   return result && "id" in result ? (result as CoatingAnalysis) : null;
 };
 
-proto.updateSurfacePrep = async function (jobCardId, surfacePrep) {
+proto.updateSurfacePrep = async function (jobCardId, updates) {
   return this.request(`/stock-control/job-cards/${jobCardId}/coating-analysis/surface-prep`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ surfacePrep }),
+    body: JSON.stringify(updates),
   });
 };
 

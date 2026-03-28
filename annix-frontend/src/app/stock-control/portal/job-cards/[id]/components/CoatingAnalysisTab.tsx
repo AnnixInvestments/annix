@@ -317,7 +317,7 @@ export function CoatingAnalysisTab(props: CoatingAnalysisTabProps) {
                 </button>
               </div>
             </div>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-2 mb-4 text-sm">
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-x-4 gap-y-2 mb-4 text-sm">
               {coatingAnalysis.applicationType && (
                 <div>
                   <span className="font-medium text-gray-500">Application: </span>
@@ -327,15 +327,14 @@ export function CoatingAnalysisTab(props: CoatingAnalysisTabProps) {
                 </div>
               )}
               <div>
-                <span className="font-medium text-gray-500">Surface Prep: </span>
+                <span className="font-medium text-gray-500">Ext Surface Prep: </span>
                 {isPmEditable ? (
                   <select
-                    value={coatingAnalysis.surfacePrep || ""}
+                    value={coatingAnalysis.extSurfacePrep || ""}
                     onChange={async (e) => {
-                      const updated = await stockControlApiClient.updateSurfacePrep(
-                        jobId,
-                        e.target.value,
-                      );
+                      const updated = await stockControlApiClient.updateSurfacePrep(jobId, {
+                        extSurfacePrep: e.target.value,
+                      });
                       onCoatingAnalysisChange(updated);
                     }}
                     className="text-sm border border-gray-300 rounded px-1 py-0.5 focus:outline-none focus:ring-1 focus:ring-teal-500 uppercase"
@@ -351,8 +350,38 @@ export function CoatingAnalysisTab(props: CoatingAnalysisTabProps) {
                   </select>
                 ) : (
                   <span className="text-gray-900 uppercase">
-                    {coatingAnalysis.surfacePrep
-                      ? coatingAnalysis.surfacePrep.replace(/_/g, " ")
+                    {coatingAnalysis.extSurfacePrep
+                      ? coatingAnalysis.extSurfacePrep.replace(/_/g, " ")
+                      : "—"}
+                  </span>
+                )}
+              </div>
+              <div>
+                <span className="font-medium text-gray-500">Int Surface Prep: </span>
+                {isPmEditable ? (
+                  <select
+                    value={coatingAnalysis.intSurfacePrep || ""}
+                    onChange={async (e) => {
+                      const updated = await stockControlApiClient.updateSurfacePrep(jobId, {
+                        intSurfacePrep: e.target.value,
+                      });
+                      onCoatingAnalysisChange(updated);
+                    }}
+                    className="text-sm border border-gray-300 rounded px-1 py-0.5 focus:outline-none focus:ring-1 focus:ring-teal-500 uppercase"
+                  >
+                    <option value="">Select...</option>
+                    <option value="sa3_blast">SA3 BLAST</option>
+                    <option value="sa2_5_blast">SA2.5 BLAST</option>
+                    <option value="sa2_blast">SA2 BLAST</option>
+                    <option value="sa1_blast">SA1 BLAST</option>
+                    <option value="blast">BLAST</option>
+                    <option value="hand_tool">HAND TOOL</option>
+                    <option value="power_tool">POWER TOOL</option>
+                  </select>
+                ) : (
+                  <span className="text-gray-900 uppercase">
+                    {coatingAnalysis.intSurfacePrep
+                      ? coatingAnalysis.intSurfacePrep.replace(/_/g, " ")
                       : "—"}
                   </span>
                 )}

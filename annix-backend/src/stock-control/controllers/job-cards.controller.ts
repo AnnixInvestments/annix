@@ -263,9 +263,12 @@ export class JobCardsController {
   async updateSurfacePrep(
     @Req() req: any,
     @Param("id") id: number,
-    @Body() body: { surfacePrep: string },
+    @Body() body: { extSurfacePrep?: string; intSurfacePrep?: string },
   ) {
-    return this.coatingAnalysisService.updateSurfacePrep(req.user.companyId, id, body.surfacePrep);
+    return this.coatingAnalysisService.updateSurfacePrep(req.user.companyId, id, {
+      extSurfacePrep: body.extSurfacePrep,
+      intSurfacePrep: body.intSurfacePrep,
+    });
   }
 
   @Put(":id/coating-analysis/surface-area")
