@@ -293,6 +293,7 @@ export class RubberCocService {
     this.logger.log(`Deleted existing batches for CoC ${id} before re-extraction`);
 
     const merged = this.mergeExtractedData(coc.extractedData, extractedData);
+    merged.batches = extractedData.batches;
     coc.extractedData = merged;
     coc.processingStatus = CocProcessingStatus.EXTRACTED;
 

@@ -770,6 +770,32 @@ export class RubberCocExtractionService {
         corrected.rheometerTc90 = ts2Tc90[1] ?? undefined;
       }
 
+      const tearInReboundRange =
+        hasVal(corrected.tearStrengthKnM) && corrected.tearStrengthKnM > 50;
+      const tensileInTearRange =
+        hasVal(corrected.tensileStrengthMpa) && corrected.tensileStrengthMpa > 30;
+
+      if (tearInReboundRange && tensileInTearRange) {
+        this.logger.warn(
+          `Batch ${batch.batchNumber}: Column swap detected - tear=${corrected.tearStrengthKnM} is in rebound range, ` +
+            `tensile=${corrected.tensileStrengthMpa} is in tear range. Correcting.`,
+        );
+        const realRebound = corrected.tearStrengthKnM;
+        const realTear = corrected.tensileStrengthMpa;
+        const possibleTensile =
+          hasVal(corrected.elongationPercent) &&
+          corrected.elongationPercent >= 5 &&
+          corrected.elongationPercent <= 35
+            ? corrected.elongationPercent
+            : undefined;
+
+        corrected.reboundPercent = realRebound;
+        corrected.tearStrengthKnM = realTear;
+        corrected.tensileStrengthMpa = possibleTensile;
+        corrected.elongationPercent =
+          possibleTensile !== undefined ? undefined : corrected.elongationPercent;
+      }
+
       if (
         hasVal(corrected.elongationPercent) &&
         corrected.elongationPercent < 100 &&
