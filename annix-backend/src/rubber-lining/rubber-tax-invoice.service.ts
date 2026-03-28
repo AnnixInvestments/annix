@@ -815,6 +815,19 @@ export class RubberTaxInvoiceService {
       return { productDescription: null, numberOfRolls: null, unit: null, costPerUnit: null };
     }
 
+    const hasMultipleLineItems = data.lineItems && data.lineItems.length > 1;
+
+    if (hasMultipleLineItems) {
+      const totalQty = data.lineItems.reduce((sum, item) => sum + (item.quantity || 0), 0);
+      const productDescription = data.lineItems.map((item) => item.description).join("; ");
+      return {
+        productDescription,
+        numberOfRolls: totalQty > 0 ? totalQty : null,
+        unit: "each",
+        costPerUnit: null,
+      };
+    }
+
     const subtotalExVat = data.subtotal;
 
     const extractedQuantity = data.productQuantity || null;
