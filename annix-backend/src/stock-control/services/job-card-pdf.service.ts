@@ -593,7 +593,6 @@ export class JobCardPdfService {
     const manualOverride = jobCard.rubberPlanOverride;
     const hasAcceptedPlan =
       manualOverride?.status === "accepted" || manualOverride?.status === "manual";
-    if (!hasAcceptedPlan) return startY;
 
     doc
       .moveTo(50, startY - 10)
