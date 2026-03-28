@@ -2,7 +2,7 @@
 
 import { CheckCircle, Download, FileText, Pencil, RefreshCw, Save, X } from "lucide-react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Breadcrumb } from "@/app/au-rubber/components/Breadcrumb";
 import { useToast } from "@/app/components/Toast";
 import {
@@ -37,6 +37,36 @@ export default function TaxInvoiceDetailPage() {
     vatAmount: "",
     totalAmount: "",
   });
+
+  const [splitPercent, setSplitPercent] = useState(50);
+  const splitContainerRef = useRef<HTMLDivElement>(null);
+  const isDraggingRef = useRef(false);
+
+  const handleDragStart = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    isDraggingRef.current = true;
+
+    const handleMouseMove = (moveEvent: MouseEvent) => {
+      if (!isDraggingRef.current || !splitContainerRef.current) return;
+      const rect = splitContainerRef.current.getBoundingClientRect();
+      const x = moveEvent.clientX - rect.left;
+      const percent = Math.max(20, Math.min(80, (x / rect.width) * 100));
+      setSplitPercent(percent);
+    };
+
+    const handleMouseUp = () => {
+      isDraggingRef.current = false;
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleMouseUp);
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+    };
+
+    document.addEventListener("mousemove", handleMouseMove);
+    document.addEventListener("mouseup", handleMouseUp);
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+  }, []);
 
   const invoiceId = Number(params.id);
 
@@ -322,8 +352,11 @@ export default function TaxInvoiceDetailPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white shadow rounded-lg p-6">
+      <div ref={splitContainerRef} className="flex flex-col lg:flex-row gap-0 relative">
+        <div
+          className="bg-white shadow rounded-lg p-6 overflow-auto"
+          style={{ width: `calc(${splitPercent}% - 4px)` }}
+        >
           <h2 className="text-lg font-medium text-gray-900 mb-4">Invoice Details</h2>
           <dl className="grid grid-cols-2 gap-4">
             <div>
@@ -359,7 +392,18 @@ export default function TaxInvoiceDetailPage() {
           </dl>
         </div>
 
-        <div className="bg-white shadow rounded-lg p-6">
+        <div
+          onMouseDown={handleDragStart}
+          className="hidden lg:flex w-2 cursor-col-resize items-center justify-center group hover:bg-teal-100 rounded transition-colors"
+          title="Drag to resize"
+        >
+          <div className="w-0.5 h-8 bg-gray-300 group-hover:bg-teal-500 rounded-full transition-colors" />
+        </div>
+
+        <div
+          className="bg-white shadow rounded-lg p-6 overflow-auto flex-1"
+          style={{ width: `calc(${100 - splitPercent}% - 4px)` }}
+        >
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-medium text-gray-900">Invoice Summary</h2>
             {!isEditingSummary ? (
