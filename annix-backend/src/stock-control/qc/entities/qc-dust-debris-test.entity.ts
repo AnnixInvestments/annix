@@ -17,10 +17,22 @@ export enum DustDebrisResult {
 export interface DustDebrisTestEntry {
   testNumber: number;
   quantity: number | null;
+  sizeClass: number | null;
+  location: string | null;
   coatingType: string | null;
   itemNumber: string | null;
   result: DustDebrisResult;
   testedAt: string | null;
+}
+
+export interface DustDebrisAcceptanceCriteria {
+  maxQuantity: number;
+  maxSizeClass: number;
+}
+
+export interface DustDebrisEnvironmentalConditions {
+  temperatureC: number | null;
+  humidityPercent: number | null;
 }
 
 @Entity("qc_dust_debris_tests")
@@ -40,6 +52,15 @@ export class QcDustDebrisTest {
 
   @Column({ name: "tests", type: "jsonb" })
   tests: DustDebrisTestEntry[];
+
+  @Column({ name: "surface_prep_method", type: "varchar", length: 255, nullable: true })
+  surfacePrepMethod: string | null;
+
+  @Column({ name: "acceptance_criteria", type: "jsonb", nullable: true })
+  acceptanceCriteria: DustDebrisAcceptanceCriteria | null;
+
+  @Column({ name: "environmental_conditions", type: "jsonb", nullable: true })
+  environmentalConditions: DustDebrisEnvironmentalConditions | null;
 
   @Column({ name: "reading_date", type: "date" })
   readingDate: string;

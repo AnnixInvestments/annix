@@ -266,7 +266,7 @@ export function QualityTab(props: QualityTabProps) {
                   onClick={() => setActiveForm("dust-debris")}
                   className="rounded-md bg-teal-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-teal-700"
                 >
-                  + Dust & Debris
+                  + Dust Tape Test
                 </button>
                 <button
                   onClick={() => setActiveForm("pull-test")}
@@ -422,6 +422,17 @@ export function QualityTab(props: QualityTabProps) {
                 {(qcData?.dustDebrisTests || []).map((rec) => {
                   const passCount = rec.tests.filter((t) => t.result === "pass").length;
                   const failCount = rec.tests.filter((t) => t.result === "fail").length;
+                  const maxQty = rec.tests.reduce(
+                    (m, t) => (t.quantity !== null && t.quantity > m ? t.quantity : m),
+                    0,
+                  );
+                  const maxSize = rec.tests.reduce(
+                    (m, t) => (t.sizeClass !== null && t.sizeClass > m ? t.sizeClass : m),
+                    0,
+                  );
+                  const hasRatings = rec.tests.some(
+                    (t) => t.quantity !== null || t.sizeClass !== null,
+                  );
                   return (
                     <div
                       key={`dd-${rec.id}`}
@@ -429,16 +440,24 @@ export function QualityTab(props: QualityTabProps) {
                     >
                       <div className="flex items-center gap-3">
                         <span className="inline-flex items-center rounded-full bg-cyan-100 px-2.5 py-0.5 text-xs font-medium text-cyan-800">
-                          Dust
+                          Dust Tape
                         </span>
                         <span className="text-sm text-gray-500">
                           {rec.tests.length} test{rec.tests.length !== 1 ? "s" : ""}
                         </span>
+                        {hasRatings && (
+                          <span className="text-xs text-gray-500">
+                            Qty {maxQty} / Size {maxSize}
+                          </span>
+                        )}
                         <span className="text-xs text-green-600">{passCount} pass</span>
                         {failCount > 0 && (
                           <span className="inline-flex items-center rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-800">
                             {failCount} fail
                           </span>
+                        )}
+                        {rec.surfacePrepMethod && (
+                          <span className="text-xs text-gray-400">{rec.surfacePrepMethod}</span>
                         )}
                         <span className="text-xs text-gray-400">{rec.readingDate}</span>
                       </div>

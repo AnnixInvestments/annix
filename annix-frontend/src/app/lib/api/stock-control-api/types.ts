@@ -744,10 +744,22 @@ export interface QcBlastProfileRecord {
 export interface QcDustDebrisTestEntry {
   testNumber: number;
   quantity: number | null;
+  sizeClass: number | null;
+  location: string | null;
   coatingType: string | null;
   itemNumber: string | null;
   result: "pass" | "fail";
   testedAt: string | null;
+}
+
+export interface QcDustDebrisAcceptanceCriteria {
+  maxQuantity: number;
+  maxSizeClass: number;
+}
+
+export interface QcDustDebrisEnvironmentalConditions {
+  temperatureC: number | null;
+  humidityPercent: number | null;
 }
 
 export interface QcDustDebrisRecord {
@@ -755,6 +767,9 @@ export interface QcDustDebrisRecord {
   companyId: number;
   jobCardId: number;
   tests: QcDustDebrisTestEntry[];
+  surfacePrepMethod: string | null;
+  acceptanceCriteria: QcDustDebrisAcceptanceCriteria | null;
+  environmentalConditions: QcDustDebrisEnvironmentalConditions | null;
   readingDate: string;
   capturedByName: string;
   capturedById: number | null;
