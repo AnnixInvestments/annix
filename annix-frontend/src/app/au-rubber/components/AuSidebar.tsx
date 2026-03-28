@@ -202,6 +202,11 @@ const navSections: NavSection[] = [
         label: "Pricing Tiers",
         permission: PAGE_PERMISSIONS["/au-rubber/portal/pricing-tiers"],
       },
+      {
+        href: "/au-rubber/portal/cost-of-sale",
+        label: "Cost of Sale",
+        permission: PAGE_PERMISSIONS["/au-rubber/portal/cost-of-sale"],
+      },
     ],
   },
   {

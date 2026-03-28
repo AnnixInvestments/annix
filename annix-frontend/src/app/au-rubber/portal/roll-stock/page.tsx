@@ -308,12 +308,14 @@ export default function RollStockPage() {
       RESERVED: "bg-yellow-100 text-yellow-800",
       SOLD: "bg-blue-100 text-blue-800",
       SCRAPPED: "bg-red-100 text-red-800",
+      REJECTED: "bg-amber-100 text-amber-800",
     };
     const labels: Record<RollStockStatus, string> = {
       IN_STOCK: "In Stock",
       RESERVED: "Reserved",
       SOLD: "Sold",
       SCRAPPED: "Scrapped",
+      REJECTED: "Rejected",
     };
     return (
       <span

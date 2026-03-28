@@ -174,6 +174,55 @@ export interface ImportProductsResultDto {
   results: ImportProductRowResultDto[];
 }
 
+export type CostRateType = "CALENDERER_UNCURED" | "CALENDERER_CURED_BUFFED" | "COMPOUND";
+
+export interface CostRateDto {
+  id: number;
+  rateType: CostRateType;
+  costPerKgZar: number;
+  compoundCodingId: number | null;
+  compoundCode: string | null;
+  compoundName: string | null;
+  notes: string | null;
+  updatedBy: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateCostRateInput {
+  rateType: CostRateType;
+  costPerKgZar: number;
+  compoundCodingId?: number | null;
+  notes?: string | null;
+}
+
+export interface UpdateCostRateInput {
+  costPerKgZar?: number;
+  notes?: string | null;
+}
+
+export interface CalendererConversionRates {
+  uncuredPerKg: number | null;
+  curedBuffedPerKg: number | null;
+}
+
+export interface RollCosDto {
+  rollId: number;
+  rollNumber: string;
+  compoundCode: string | null;
+  compoundName: string | null;
+  weightKg: number;
+  compoundCostPerKg: number | null;
+  compoundCostTotal: number | null;
+  calendererCostPerKg: number | null;
+  calendererCostTotal: number | null;
+  totalCos: number | null;
+  currentCostZar: number | null;
+  anomalyZar: number | null;
+  priceZar: number | null;
+  profitLossZar: number | null;
+}
+
 function adminHeaders(): Record<string, string> {
   if (typeof window === "undefined") return {};
   const token = localStorage.getItem("adminAccessToken");
@@ -450,5 +499,43 @@ export const rubberPortalApi = {
       method: "POST",
       body: JSON.stringify(data),
     });
+  },
+
+  costRates: async (rateType?: CostRateType): Promise<CostRateDto[]> => {
+    const query = rateType ? `?rateType=${rateType}` : "";
+    return request(`/rubber-lining/portal/cost-rates${query}`);
+  },
+
+  createCostRate: async (data: CreateCostRateInput): Promise<CostRateDto> => {
+    return request("/rubber-lining/portal/cost-rates", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  },
+
+  updateCostRate: async (id: number, data: UpdateCostRateInput): Promise<CostRateDto> => {
+    return request(`/rubber-lining/portal/cost-rates/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    });
+  },
+
+  deleteCostRate: async (id: number): Promise<void> => {
+    return request(`/rubber-lining/portal/cost-rates/${id}`, {
+      method: "DELETE",
+    });
+  },
+
+  calendererConversionRates: async (): Promise<CalendererConversionRates> => {
+    return request("/rubber-lining/portal/cost-rates/calenderer-rates");
+  },
+
+  allRollCos: async (status?: string): Promise<RollCosDto[]> => {
+    const query = status ? `?status=${status}` : "";
+    return request(`/rubber-lining/portal/roll-cos${query}`);
+  },
+
+  rollCos: async (rollId: number): Promise<RollCosDto> => {
+    return request(`/rubber-lining/portal/roll-cos/${rollId}`);
   },
 };
