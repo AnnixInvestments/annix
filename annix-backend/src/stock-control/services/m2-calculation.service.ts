@@ -42,6 +42,7 @@ interface RegexParseResult {
   cfDimensionMm: number | null;
 }
 
+const REDUCING_NB_PATTERN = /(\d+)\s*x\s*\d+\s*NB/i;
 const NB_PATTERN = /(\d+)\s*NB/i;
 const LG_PATTERN = /(\d+)\s*LG/i;
 const LG_METERS_PATTERN = /(\d+(?:\.\d+)?)Lg\b/;
@@ -57,6 +58,7 @@ const BEND_TYPE_PATTERN = /\b(\d+(?:\.\d+)?)\s*D\b/;
 const CF_SINGLE_PATTERN = /C\/F\s+(\d+)mm/i;
 const CF_PAIR_PATTERN = /(\d+)\s*x\s*(\d+)\s*C\/F/i;
 const FITTING_DIMS_PATTERN = /\((\d+)\s*x\s*(\d+)\)/;
+const BEND_CF_BARE_PATTERN = /(\d{3,})\s*x\s*(\d{3,})\s+(?:BEND|ELBOW)/i;
 const FLANGE_STANDARD_ASME_PATTERN = /\bASME\s+B16\.5\s+(\d+)\b/i;
 const FLANGE_STANDARD_SABS_PATTERN = /\bSABS\s+1123\s+(\d+(?:\/\d+)?)\b/i;
 const FLANGE_STANDARD_BS_PATTERN = /\bBS\s+4504\s+PN(\d+)\b/i;
@@ -131,8 +133,13 @@ export class M2CalculationService {
   }
 
   private regexParse(description: string): RegexParseResult {
+    const reducingMatch = description.match(REDUCING_NB_PATTERN);
     const nbMatch = description.match(NB_PATTERN);
-    const diameterMm = nbMatch ? parseInt(nbMatch[1], 10) : null;
+    const diameterMm = reducingMatch
+      ? parseInt(reducingMatch[1], 10)
+      : nbMatch
+        ? parseInt(nbMatch[1], 10)
+        : null;
 
     const itemType = ITEM_TYPE_PATTERNS.find((it) => it.pattern.test(description))?.type ?? null;
 
@@ -144,6 +151,9 @@ export class M2CalculationService {
 
     if (itemType === "bend" || itemType === "offset") {
       lengthMm = this.parseBendArcLength(description);
+      if (lengthMm === null && cfDimensionMm) {
+        lengthMm = cfDimensionMm;
+      }
     }
 
     if (lengthMm === null) {
@@ -235,6 +245,11 @@ export class M2CalculationService {
     const pairMatch = description.match(CF_PAIR_PATTERN);
     if (pairMatch) {
       return parseInt(pairMatch[1], 10) + parseInt(pairMatch[2], 10);
+    }
+
+    const bareMatch = description.match(BEND_CF_BARE_PATTERN);
+    if (bareMatch) {
+      return parseInt(bareMatch[1], 10) + parseInt(bareMatch[2], 10);
     }
 
     return null;
