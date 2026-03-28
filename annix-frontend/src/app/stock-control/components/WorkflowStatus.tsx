@@ -521,13 +521,6 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
         const triggerIdx = allSteps.findIndex((s) => s.key === bp.triggerAfterStep);
         const triggerNode = triggerIdx >= 0 ? fgNodeRefs.current[triggerIdx] : null;
         const bpNode = bgNodeRefs.current[bp.stepKey];
-        const rejoinFgIdx = bp.rejoinAtStep
-          ? allSteps.findIndex((s) => s.key === bp.rejoinAtStep)
-          : -1;
-        const rejoinNode = bp.rejoinAtStep
-          ? bgNodeRefs.current[bp.rejoinAtStep] ||
-            (rejoinFgIdx >= 0 ? fgNodeRefs.current[rejoinFgIdx] : null)
-          : null;
         if (!triggerNode || !bpNode) return;
 
         const bpComplete = bp.completedAt !== null;
@@ -547,18 +540,32 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
           d: `M ${tx} ${ty} L ${tx} ${by - r} Q ${tx} ${by} ${tx + r} ${by} L ${bx} ${by}`,
         });
 
-        if (rejoinNode) {
-          const rRect = rejoinNode.getBoundingClientRect();
-          const rx = rRect.left + rRect.width / 2 - rect.left;
-          const ry = rRect.top + rRect.height / 2 - rect.top;
-          const mergeColor = bpComplete ? "#f59e0b" : "#d1d5db";
+        if (bp.rejoinAtStep) {
+          const hostBranch = belowBranches.find((b) =>
+            b.bgSteps.some((bg) => bg.stepKey === bp.rejoinAtStep),
+          );
+          const branchPos = hostBranch ? positions[hostBranch.triggerFgKey] : null;
 
-          const bottomY = by + 30;
-          paths.push({
-            key: `bypass-merge-${bp.stepKey}`,
-            color: mergeColor,
-            d: `M ${bx} ${by} L ${bx} ${bottomY - r} Q ${bx} ${bottomY} ${bx + r} ${bottomY} L ${rx - r} ${bottomY} Q ${rx} ${bottomY} ${rx} ${bottomY - r} L ${rx} ${ry}`,
-          });
+          if (hostBranch && branchPos) {
+            const branchW = rect.width - branchPos.left - branchPos.right;
+            const stepIdx = hostBranch.bgSteps.findIndex((bg) => bg.stepKey === bp.rejoinAtStep);
+            const stepCount = hostBranch.bgSteps.length;
+            const rx = branchPos.left + ((stepIdx + 0.5) / stepCount) * branchW;
+
+            const branchContainerEl = container.querySelector("[data-branch-container]");
+            const bcRect = branchContainerEl ? branchContainerEl.getBoundingClientRect() : null;
+            const bcTop = bcRect ? bcRect.top - rect.top : ty + 40;
+            const lane = branchLanes[hostBranch.triggerFgKey] || 0;
+            const ry = bcTop + lane * 52 + 10;
+
+            const mergeColor = bpComplete ? "#f59e0b" : "#d1d5db";
+            const bottomY = by + 30;
+            paths.push({
+              key: `bypass-merge-${bp.stepKey}`,
+              color: mergeColor,
+              d: `M ${bx} ${by} L ${bx} ${bottomY - r} Q ${bx} ${bottomY} ${bx + r} ${bottomY} L ${rx - r} ${bottomY} Q ${rx} ${bottomY} ${rx} ${bottomY - r} L ${rx} ${ry}`,
+            });
+          }
         }
       });
 
@@ -857,6 +864,7 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
 
     const frameId = requestAnimationFrame(computePaths);
     const settledId = setTimeout(computePaths, 100);
+    const repositionId = setTimeout(computePaths, 400);
 
     const observer = new ResizeObserver(computePaths);
     observer.observe(container);
@@ -874,6 +882,7 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
     return () => {
       cancelAnimationFrame(frameId);
       clearTimeout(settledId);
+      clearTimeout(repositionId);
       observer.disconnect();
     };
   }, [
