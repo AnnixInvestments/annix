@@ -59,6 +59,17 @@ export function QaReviewSection(props: QaReviewSectionProps) {
   const qaReviewPending = qaReviewStep ? qaReviewStep.completedAt === null : true;
   const qcRepairsPending = qcRepairsStep ? qcRepairsStep.completedAt === null : false;
 
+  const qaReviewActive = (() => {
+    if (!qaReviewStep || !qaReviewPending) return true;
+    const trigger = qaReviewStep.triggerAfterStep;
+    const sameBranch = backgroundSteps.filter(
+      (bg) => bg.triggerAfterStep === trigger && !bg.branchColor,
+    );
+    const qaIdx = sameBranch.findIndex((bg) => bg.stepKey === qaReviewStep.stepKey);
+    const preceding = sameBranch.slice(0, qaIdx);
+    return preceding.every((bg) => bg.completedAt !== null);
+  })();
+
   const loadData = useCallback(async () => {
     try {
       const [applicRes, decisionRes, filesRes] = await Promise.all([
@@ -438,6 +449,19 @@ export function QaReviewSection(props: QaReviewSectionProps) {
           </div>
         </div>
         <div className="px-5 py-4 space-y-3">{renderDecisionSummary()}</div>
+      </div>
+    );
+  }
+
+  if (!qaReviewActive) {
+    return (
+      <div id="qa-review-section" className="rounded-lg border border-gray-200 bg-white shadow-sm">
+        <div className="border-b border-gray-200 bg-gray-50 px-5 py-3">
+          <h3 className="text-sm font-semibold text-gray-600">QA Review</h3>
+        </div>
+        <div className="py-8 text-center text-sm text-gray-400">
+          Awaiting preceding quality steps to complete before QA Review becomes available.
+        </div>
       </div>
     );
   }
