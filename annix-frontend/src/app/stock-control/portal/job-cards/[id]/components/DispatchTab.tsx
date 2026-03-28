@@ -241,7 +241,7 @@ export default function DispatchTab(props: DispatchTabProps) {
                     <p className="text-xs text-gray-500">
                       {cdn.cdnNumber ? `CDN #${cdn.cdnNumber}` : "Analysing..."}
                       {cdn.uploadedByName ? ` | Uploaded by ${cdn.uploadedByName}` : ""}
-                      {cdn.createdAt ? ` | ${formatDateLongZA(new Date(cdn.createdAt))}` : ""}
+                      {cdn.createdAt ? ` | ${formatDateLongZA(cdn.createdAt)}` : ""}
                     </p>
                     {cdn.lineMatches && cdn.lineMatches.length > 0 && (
                       <p className="text-xs text-teal-600 mt-1">

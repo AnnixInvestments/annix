@@ -7,6 +7,7 @@ import type {
   UnverifiedProduct,
 } from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
+import { formatDateZA } from "@/app/lib/datetime";
 import { HelpTooltip } from "../../../../components/HelpTooltip";
 
 interface CoatingAnalysisTabProps {
@@ -783,9 +784,7 @@ export function CoatingAnalysisTab(props: CoatingAnalysisTabProps) {
                           <span className="font-medium text-purple-700 capitalize">
                             {c.fieldName.replace(/([A-Z])/g, " $1").trim()}
                           </span>
-                          <span className="text-gray-400">
-                            {new Date(c.createdAt).toLocaleDateString()}
-                          </span>
+                          <span className="text-gray-400">{formatDateZA(c.createdAt)}</span>
                         </div>
                         {c.originalValue && (
                           <div className="text-gray-500 line-through mb-0.5 truncate">

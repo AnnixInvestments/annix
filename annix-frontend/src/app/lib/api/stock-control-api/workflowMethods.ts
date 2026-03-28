@@ -1,3 +1,4 @@
+import { nowMillis } from "@/app/lib/datetime";
 import { API_BASE_URL } from "@/lib/api-config";
 import { StockControlApiClient } from "./base";
 import type {
@@ -312,7 +313,7 @@ proto.deleteDispatchLoadPhoto = async function (jobCardId, photoId) {
 
 proto.downloadSignedJobCardPdf = async function (jobCardId) {
   const h = this.headers();
-  const cacheBuster = Date.now();
+  const cacheBuster = nowMillis();
   const response = await fetch(
     `${API_BASE_URL}/stock-control/workflow/job-cards/${jobCardId}/print?_t=${cacheBuster}`,
     { headers: { Authorization: h.Authorization ?? "" }, cache: "no-store" },

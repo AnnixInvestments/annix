@@ -85,6 +85,7 @@ describe("JobCardService", () => {
 
   const mockDataSource = {
     createQueryRunner: jest.fn().mockReturnValue(mockQueryRunner),
+    query: jest.fn().mockResolvedValue([]),
   };
 
   beforeEach(async () => {

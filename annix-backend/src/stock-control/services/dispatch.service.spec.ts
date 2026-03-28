@@ -3,6 +3,8 @@ import { Test, TestingModule } from "@nestjs/testing";
 import { getRepositoryToken } from "@nestjs/typeorm";
 import { DataSource } from "typeorm";
 import { AuditService } from "../../audit/audit.service";
+import { DispatchCdn } from "../entities/dispatch-cdn.entity";
+import { DispatchLoadPhoto } from "../entities/dispatch-load-photo.entity";
 import { DispatchScan } from "../entities/dispatch-scan.entity";
 import { JobCard } from "../entities/job-card.entity";
 import { StockAllocation } from "../entities/stock-allocation.entity";
@@ -37,6 +39,20 @@ describe("DispatchService", () => {
   };
 
   const mockMovementRepo = {};
+
+  const mockCdnRepo = {
+    find: jest.fn(),
+    save: jest.fn(),
+    create: jest.fn(),
+    count: jest.fn().mockResolvedValue(0),
+  };
+
+  const mockLoadPhotoRepo = {
+    find: jest.fn(),
+    save: jest.fn(),
+    create: jest.fn(),
+    count: jest.fn().mockResolvedValue(0),
+  };
 
   const mockDataSource = {};
 
@@ -90,6 +106,8 @@ describe("DispatchService", () => {
         { provide: getRepositoryToken(StockAllocation), useValue: mockAllocationRepo },
         { provide: getRepositoryToken(StockItem), useValue: mockStockItemRepo },
         { provide: getRepositoryToken(StockMovement), useValue: mockMovementRepo },
+        { provide: getRepositoryToken(DispatchCdn), useValue: mockCdnRepo },
+        { provide: getRepositoryToken(DispatchLoadPhoto), useValue: mockLoadPhotoRepo },
         { provide: DataSource, useValue: mockDataSource },
         { provide: AuditService, useValue: mockAuditService },
       ],
@@ -331,6 +349,8 @@ describe("DispatchService", () => {
     it("updates job card status to DISPATCHED when all items dispatched", async () => {
       mockAllocationRepo.find.mockResolvedValue([makeAllocation(10, 5, 1)]);
       mockDispatchScanRepo.find.mockResolvedValue([makeScan(10, 5)]);
+      mockCdnRepo.count.mockResolvedValue(1);
+      mockLoadPhotoRepo.count.mockResolvedValue(1);
       mockJobCardRepo.update.mockResolvedValue({ affected: 1 });
       const completedJobCard = makeJobCard("dispatched");
       mockJobCardRepo.findOne.mockResolvedValue(completedJobCard);
@@ -348,9 +368,11 @@ describe("DispatchService", () => {
       expect(result.workflowStatus).toBe("dispatched");
     });
 
-    it("throws BadRequestException when dispatch is not complete", async () => {
+    it("throws BadRequestException when CDN and photos are missing", async () => {
       mockAllocationRepo.find.mockResolvedValue([makeAllocation(10, 5, 1)]);
-      mockDispatchScanRepo.find.mockResolvedValue([makeScan(10, 3)]);
+      mockDispatchScanRepo.find.mockResolvedValue([makeScan(10, 5)]);
+      mockCdnRepo.count.mockResolvedValue(0);
+      mockLoadPhotoRepo.count.mockResolvedValue(0);
 
       await expect(service.completeDispatch(1, 1, mockUser)).rejects.toThrow(BadRequestException);
     });
@@ -358,6 +380,8 @@ describe("DispatchService", () => {
     it("throws ConflictException when job card status changed concurrently", async () => {
       mockAllocationRepo.find.mockResolvedValue([makeAllocation(10, 5, 1)]);
       mockDispatchScanRepo.find.mockResolvedValue([makeScan(10, 5)]);
+      mockCdnRepo.count.mockResolvedValue(1);
+      mockLoadPhotoRepo.count.mockResolvedValue(1);
       mockJobCardRepo.update.mockResolvedValue({ affected: 0 });
 
       await expect(service.completeDispatch(1, 1, mockUser)).rejects.toThrow(ConflictException);
@@ -366,6 +390,8 @@ describe("DispatchService", () => {
     it("logs audit entry on successful dispatch", async () => {
       mockAllocationRepo.find.mockResolvedValue([makeAllocation(10, 5, 1)]);
       mockDispatchScanRepo.find.mockResolvedValue([makeScan(10, 5)]);
+      mockCdnRepo.count.mockResolvedValue(1);
+      mockLoadPhotoRepo.count.mockResolvedValue(1);
       mockJobCardRepo.update.mockResolvedValue({ affected: 1 });
       mockJobCardRepo.findOne.mockResolvedValue(makeJobCard("dispatched"));
 
@@ -387,6 +413,8 @@ describe("DispatchService", () => {
     it("throws NotFoundException when job card disappears after update", async () => {
       mockAllocationRepo.find.mockResolvedValue([makeAllocation(10, 5, 1)]);
       mockDispatchScanRepo.find.mockResolvedValue([makeScan(10, 5)]);
+      mockCdnRepo.count.mockResolvedValue(1);
+      mockLoadPhotoRepo.count.mockResolvedValue(1);
       mockJobCardRepo.update.mockResolvedValue({ affected: 1 });
       mockJobCardRepo.findOne.mockResolvedValue(null);
 
