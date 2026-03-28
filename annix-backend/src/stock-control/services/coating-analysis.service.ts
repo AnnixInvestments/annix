@@ -740,6 +740,8 @@ export class CoatingAnalysisService {
   }
 
   async bulkReanalyse(companyId: number): Promise<{ processed: number; failed: number }> {
+    const BATCH_SIZE = 5;
+
     const draftJobCards = await this.jobCardRepo.find({
       where: [
         { companyId, status: "draft" as any },
@@ -747,19 +749,36 @@ export class CoatingAnalysisService {
       ],
     });
 
-    const results = await draftJobCards.reduce(
-      async (accPromise, jc) => {
+    const sanitizedCards = await Promise.all(
+      draftJobCards.map(async (jc) => {
+        jc.notes = sanitizeNotes(jc.notes);
+        await this.jobCardRepo.save(jc);
+        return jc;
+      }),
+    );
+
+    const batches = Array.from({ length: Math.ceil(sanitizedCards.length / BATCH_SIZE) }, (_, i) =>
+      sanitizedCards.slice(i * BATCH_SIZE, (i + 1) * BATCH_SIZE),
+    );
+
+    const results = await batches.reduce(
+      async (accPromise, batch) => {
         const acc = await accPromise;
-        try {
-          jc.notes = sanitizeNotes(jc.notes);
-          await this.jobCardRepo.save(jc);
-          await this.analyseJobCard(jc.id, companyId);
-          return { processed: acc.processed + 1, failed: acc.failed };
-        } catch (err) {
-          const message = err instanceof Error ? err.message : "Unknown error";
-          this.logger.error(`Bulk re-analyse failed for JC ${jc.id}: ${message}`);
-          return { processed: acc.processed, failed: acc.failed + 1 };
-        }
+        const batchResults = await Promise.allSettled(
+          batch.map((jc) => this.analyseJobCard(jc.id, companyId)),
+        );
+        const batchProcessed = batchResults.filter((r) => r.status === "fulfilled").length;
+        const batchFailed = batchResults.filter((r) => r.status === "rejected").length;
+
+        batchResults.forEach((result, idx) => {
+          if (result.status === "rejected") {
+            const message =
+              result.reason instanceof Error ? result.reason.message : "Unknown error";
+            this.logger.error(`Bulk re-analyse failed for JC ${batch[idx].id}: ${message}`);
+          }
+        });
+
+        return { processed: acc.processed + batchProcessed, failed: acc.failed + batchFailed };
       },
       Promise.resolve({ processed: 0, failed: 0 }),
     );
