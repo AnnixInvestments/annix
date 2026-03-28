@@ -235,6 +235,8 @@ describe("QcMeasurementService", () => {
           {
             testNumber: 1,
             quantity: 5,
+            sizeClass: 2,
+            location: "Top plate",
             coatingType: "rubber",
             itemNumber: "001",
             result: "pass" as any,
