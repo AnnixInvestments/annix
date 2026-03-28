@@ -558,6 +558,44 @@ export class CoatingAnalysisService {
     }, 0);
   }
 
+  async recalculateLineItemM2(companyId: number, jobCardId: number): Promise<JobCardLineItem[]> {
+    const lineItems = await this.lineItemRepo.find({
+      where: { jobCardId, companyId },
+    });
+
+    const pipeItems = lineItems.filter((li) => {
+      const desc = li.itemDescription || li.itemCode || "";
+      return /\d+\s*NB/i.test(desc);
+    });
+
+    if (pipeItems.length === 0) {
+      return lineItems;
+    }
+
+    const descriptions = pipeItems.map((li) => li.itemDescription || li.itemCode || "");
+    const results = await this.m2CalculationService.calculateM2ForItems(descriptions);
+
+    const itemsToUpdate: JobCardLineItem[] = [];
+    pipeItems.forEach((li, idx) => {
+      const result = results[idx];
+      if (result.externalM2 && result.externalM2 > 0) {
+        li.m2 = Math.round(result.externalM2 * 10000) / 10000;
+        itemsToUpdate.push(li);
+      }
+    });
+
+    if (itemsToUpdate.length > 0) {
+      await this.lineItemRepo.save(itemsToUpdate);
+      this.logger.log(
+        `Force-recalculated m² on ${itemsToUpdate.length} line item(s) for job card ${jobCardId}`,
+      );
+    }
+
+    return await this.lineItemRepo.find({
+      where: { jobCardId, companyId },
+    });
+  }
+
   private async calculatePipeM2(
     lineItems: JobCardLineItem[],
   ): Promise<{ extM2: number; intM2: number }> {

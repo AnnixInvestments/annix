@@ -54,6 +54,7 @@ declare module "./base" {
     acceptCoatingAnalysis(jobCardId: number): Promise<CoatingAnalysis>;
     unverifiedCoatingProducts(jobCardId: number): Promise<UnverifiedProduct[]>;
     uploadCoatingTds(jobCardId: number, file: File): Promise<CoatingAnalysis>;
+    recalculateM2(jobCardId: number): Promise<{ lineItems: JobCardLineItem[] }>;
     rubberStockOptions(jobCardId: number): Promise<RubberStockOptionsResponse>;
     updateRubberPlan(jobCardId: number, override: RubberPlanOverride): Promise<JobCard>;
     markOffcutAsWastage(
@@ -270,6 +271,12 @@ proto.unverifiedCoatingProducts = async function (jobCardId) {
 
 proto.uploadCoatingTds = async function (jobCardId, file) {
   return this.uploadFile(`/stock-control/job-cards/${jobCardId}/coating-analysis/verify-tds`, file);
+};
+
+proto.recalculateM2 = async function (jobCardId) {
+  return this.request(`/stock-control/job-cards/${jobCardId}/recalculate-m2`, {
+    method: "POST",
+  });
 };
 
 proto.rubberStockOptions = async function (jobCardId) {

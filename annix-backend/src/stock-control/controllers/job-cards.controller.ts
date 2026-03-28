@@ -246,6 +246,16 @@ export class JobCardsController {
     return this.jobCardService.remove(req.user.companyId, id);
   }
 
+  @Post(":id/recalculate-m2")
+  @ApiOperation({ summary: "Force recalculate m² for all pipe line items" })
+  async recalculateM2(@Req() req: any, @Param("id") id: number) {
+    const lineItems = await this.coatingAnalysisService.recalculateLineItemM2(
+      req.user.companyId,
+      id,
+    );
+    return { lineItems };
+  }
+
   @Get(":id/coating-analysis")
   @ApiOperation({ summary: "Coating analysis for a job card" })
   async coatingAnalysis(@Req() req: any, @Param("id") id: number) {

@@ -1974,7 +1974,7 @@ export default function JobCardDetailPage() {
             visited={visitedTabs.has("rubber-analysis")}
           >
             <div className="space-y-6">
-              <RubberAllocationGuard jobCard={jobCard} />
+              <RubberAllocationGuard jobCard={jobCard} onRefresh={fetchData} />
             </div>
           </TabPanel>
 

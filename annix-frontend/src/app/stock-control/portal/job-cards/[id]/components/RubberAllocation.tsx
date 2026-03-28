@@ -1462,7 +1462,27 @@ function RubberAllocationSection({
   );
 }
 
-export function RubberAllocationGuard({ jobCard }: { jobCard: JobCard }) {
+export function RubberAllocationGuard({
+  jobCard,
+  onRefresh,
+}: {
+  jobCard: JobCard;
+  onRefresh?: () => Promise<void>;
+}) {
+  const [isRecalculating, setIsRecalculating] = useState(false);
+
+  const handleRecalculateM2 = async () => {
+    setIsRecalculating(true);
+    try {
+      await stockControlApiClient.recalculateM2(jobCard.id);
+      if (onRefresh) {
+        await onRefresh();
+      }
+    } finally {
+      setIsRecalculating(false);
+    }
+  };
+
   const allText = [
     jobCard.notes || "",
     ...(jobCard.lineItems || []).map(
@@ -1494,10 +1514,20 @@ export function RubberAllocationGuard({ jobCard }: { jobCard: JobCard }) {
     <>
       {allLineItems.length > 0 && (
         <div className="mb-6">
-          <h4 className="text-sm font-medium text-gray-900 mb-2">
-            Line Items{" "}
-            <span className="text-gray-400 font-normal">{allLineItems.length} items</span>
-          </h4>
+          <div className="flex items-center justify-between mb-2">
+            <h4 className="text-sm font-medium text-gray-900">
+              Line Items{" "}
+              <span className="text-gray-400 font-normal">{allLineItems.length} items</span>
+            </h4>
+            <button
+              type="button"
+              onClick={handleRecalculateM2}
+              disabled={isRecalculating}
+              className="text-xs text-teal-600 hover:text-teal-800 disabled:text-gray-400"
+            >
+              {isRecalculating ? "Recalculating..." : "Re-analyse m\u00B2"}
+            </button>
+          </div>
           <table className="min-w-full text-sm">
             <thead>
               <tr className="border-b border-gray-200">
