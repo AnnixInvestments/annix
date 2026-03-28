@@ -17,6 +17,7 @@ export enum RollStockStatus {
   RESERVED = "RESERVED",
   SOLD = "SOLD",
   SCRAPPED = "SCRAPPED",
+  REJECTED = "REJECTED",
 }
 
 @Entity("rubber_roll_stock")

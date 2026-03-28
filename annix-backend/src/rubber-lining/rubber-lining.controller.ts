@@ -129,6 +129,7 @@ import {
   CompoundMovementType,
 } from "./entities/rubber-compound-movement.entity";
 import { RubberCompoundOrderStatus } from "./entities/rubber-compound-order.entity";
+import { CostRateType } from "./entities/rubber-cost-rate.entity";
 import {
   DeliveryNoteStatus,
   DeliveryNoteType,
@@ -143,6 +144,7 @@ import {
   RequisitionSourceType,
   RequisitionStatus,
 } from "./entities/rubber-purchase-requisition.entity";
+import { RollRejectionStatus } from "./entities/rubber-roll-rejection.entity";
 import { RollStockStatus } from "./entities/rubber-roll-stock.entity";
 import { CocProcessingStatus, SupplierCocType } from "./entities/rubber-supplier-coc.entity";
 import { TaxInvoiceStatus, TaxInvoiceType } from "./entities/rubber-tax-invoice.entity";
@@ -152,6 +154,13 @@ import { RubberAuCocReadinessService } from "./rubber-au-coc-readiness.service";
 import { RubberBrandingService, ScrapedBrandingCandidates } from "./rubber-branding.service";
 import { RubberCocService } from "./rubber-coc.service";
 import { RubberCocExtractionService } from "./rubber-coc-extraction.service";
+import {
+  type CostRateDto,
+  type CreateCostRateDto,
+  type RollCosDto,
+  RubberCostService,
+  type UpdateCostRateDto,
+} from "./rubber-cost.service";
 import { RubberDeliveryNoteService } from "./rubber-delivery-note.service";
 import {
   RubberDocumentVersioningService,
@@ -161,6 +170,11 @@ import { RubberLiningService } from "./rubber-lining.service";
 import { RubberOtherStockService } from "./rubber-other-stock.service";
 import { RubberQualityTrackingService } from "./rubber-quality-tracking.service";
 import { RequisitionDto, RubberRequisitionService } from "./rubber-requisition.service";
+import {
+  type RejectRollInput,
+  type RollRejectionDto,
+  RubberRollRejectionService,
+} from "./rubber-roll-rejection.service";
 import { RubberRollStockService } from "./rubber-roll-stock.service";
 import { RubberSageCocAdapterService } from "./rubber-sage-coc-adapter.service";
 import {
@@ -218,6 +232,8 @@ export class RubberLiningController {
     private readonly rubberSageContactSyncService: RubberSageContactSyncService,
     private readonly rubberSageInvoicePostService: RubberSageInvoicePostService,
     private readonly rubberDocumentVersioningService: RubberDocumentVersioningService,
+    private readonly rubberRollRejectionService: RubberRollRejectionService,
+    private readonly rubberCostService: RubberCostService,
     @Inject(STORAGE_SERVICE) private readonly storageService: IStorageService,
   ) {}
 
@@ -2486,6 +2502,7 @@ Formula: totalPrice = totalKg × salePricePerKg
       { value: "RESERVED", label: "Reserved" },
       { value: "SOLD", label: "Sold" },
       { value: "SCRAPPED", label: "Scrapped" },
+      { value: "REJECTED", label: "Rejected" },
     ];
   }
 
@@ -3404,6 +3421,188 @@ Formula: totalPrice = totalKg × salePricePerKg
   @ApiParam({ name: "id", description: "Supplier CoC ID" })
   async supplierCocVersionHistory(@Param("id") id: string): Promise<VersionHistoryEntry[]> {
     return this.rubberDocumentVersioningService.versionHistory("supplier-coc", Number(id));
+  }
+
+  // ── Roll Rejections ──────────────────────────────────────────────
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Get("portal/roll-rejections")
+  @ApiOperation({ summary: "List all roll rejections" })
+  @ApiQuery({ name: "status", required: false, enum: RollRejectionStatus })
+  async allRollRejections(
+    @Query("status") status?: RollRejectionStatus,
+  ): Promise<RollRejectionDto[]> {
+    return this.rubberRollRejectionService.allRejections(status || undefined);
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Get("portal/supplier-cocs/:id/roll-rejections")
+  @ApiOperation({ summary: "List roll rejections for a supplier CoC" })
+  @ApiParam({ name: "id", description: "Supplier CoC ID" })
+  async rollRejectionsBySupplierCoc(@Param("id") id: string): Promise<RollRejectionDto[]> {
+    return this.rubberRollRejectionService.rejectionsBySupplierCoc(Number(id));
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Post("portal/roll-rejections")
+  @ApiOperation({ summary: "Create a roll rejection" })
+  async createRollRejection(@Body() body: RejectRollInput): Promise<RollRejectionDto> {
+    return this.rubberRollRejectionService.rejectRoll(body);
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Post("portal/roll-rejections/:id/return-document")
+  @ApiOperation({ summary: "Upload return document for a roll rejection" })
+  @ApiParam({ name: "id", description: "Roll rejection ID" })
+  @ApiConsumes("multipart/form-data")
+  @UseInterceptors(FileInterceptor("file"))
+  async uploadRollRejectionReturnDocument(
+    @Param("id") id: string,
+    @UploadedFile() file: Express.Multer.File,
+  ): Promise<RollRejectionDto> {
+    if (!file) {
+      throw new BadRequestException("No file uploaded");
+    }
+    return this.rubberRollRejectionService.uploadReturnDocument(Number(id), file);
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Put("portal/roll-rejections/:id/link-replacement")
+  @ApiOperation({ summary: "Link a replacement supplier CoC to a roll rejection" })
+  @ApiParam({ name: "id", description: "Roll rejection ID" })
+  async linkReplacementCoc(
+    @Param("id") id: string,
+    @Body() body: { replacementCocId: number; replacementRollNumber?: string },
+  ): Promise<RollRejectionDto> {
+    return this.rubberRollRejectionService.linkReplacementCoc(
+      Number(id),
+      body.replacementCocId,
+      body.replacementRollNumber,
+    );
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Put("portal/roll-rejections/:id/close")
+  @ApiOperation({ summary: "Close a roll rejection" })
+  @ApiParam({ name: "id", description: "Roll rejection ID" })
+  async closeRollRejection(@Param("id") id: string): Promise<RollRejectionDto> {
+    return this.rubberRollRejectionService.closeRejection(Number(id));
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Get("portal/roll-rejections/:id/return-document-url")
+  @ApiOperation({ summary: "Get presigned URL for a return document" })
+  @ApiParam({ name: "id", description: "Roll rejection ID" })
+  async rollRejectionReturnDocumentUrl(@Param("id") id: string): Promise<{ url: string | null }> {
+    const url = await this.rubberRollRejectionService.returnDocumentPresignedUrl(Number(id));
+    return { url };
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Get("portal/cost-rates")
+  @ApiOperation({
+    summary: "List cost rates",
+    description:
+      "Retrieve all admin-configured cost rates (calenderer conversion and compound costs)",
+  })
+  @ApiQuery({ name: "rateType", required: false, enum: CostRateType })
+  async costRates(@Query("rateType") rateType?: CostRateType): Promise<CostRateDto[]> {
+    return this.rubberCostService.allCostRates(rateType);
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Get("portal/cost-rates/calenderer-rates")
+  @ApiOperation({
+    summary: "Get calenderer conversion rates",
+    description: "Returns the current uncured and cured & buffed conversion cost per kg",
+  })
+  async calendererConversionRates(): Promise<{
+    uncuredPerKg: number | null;
+    curedBuffedPerKg: number | null;
+  }> {
+    return this.rubberCostService.calendererConversionRates();
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Get("portal/cost-rates/:id")
+  @ApiOperation({ summary: "Get cost rate by ID" })
+  @ApiParam({ name: "id", description: "Cost rate ID" })
+  async costRateById(@Param("id") id: string): Promise<CostRateDto> {
+    const rate = await this.rubberCostService.costRateById(Number(id));
+    if (!rate) throw new NotFoundException("Cost rate not found");
+    return rate;
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Post("portal/cost-rates")
+  @ApiOperation({
+    summary: "Create cost rate",
+    description: "Create a new cost rate (calenderer conversion or compound cost per kg)",
+  })
+  async createCostRate(
+    @Body() dto: CreateCostRateDto,
+    @Req() req: AdminRequest,
+  ): Promise<CostRateDto> {
+    return this.rubberCostService.createCostRate(dto, req.user?.email);
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Put("portal/cost-rates/:id")
+  @ApiOperation({ summary: "Update cost rate" })
+  @ApiParam({ name: "id", description: "Cost rate ID" })
+  async updateCostRate(
+    @Param("id") id: string,
+    @Body() dto: UpdateCostRateDto,
+    @Req() req: AdminRequest,
+  ): Promise<CostRateDto> {
+    const rate = await this.rubberCostService.updateCostRate(Number(id), dto, req.user?.email);
+    if (!rate) throw new NotFoundException("Cost rate not found");
+    return rate;
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Delete("portal/cost-rates/:id")
+  @ApiOperation({ summary: "Delete cost rate" })
+  @ApiParam({ name: "id", description: "Cost rate ID" })
+  async deleteCostRate(@Param("id") id: string): Promise<void> {
+    const deleted = await this.rubberCostService.deleteCostRate(Number(id));
+    if (!deleted) throw new NotFoundException("Cost rate not found");
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Get("portal/roll-cos")
+  @ApiOperation({
+    summary: "Get COS for all rolls",
+    description: "Calculate cost of sale for all rolls with profit/loss and anomaly tracking",
+  })
+  @ApiQuery({ name: "status", required: false, enum: RollStockStatus })
+  async allRollCos(@Query("status") status?: string): Promise<RollCosDto[]> {
+    return this.rubberCostService.allRollCos(status);
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Get("portal/roll-cos/:rollId")
+  @ApiOperation({ summary: "Get COS for a specific roll" })
+  @ApiParam({ name: "rollId", description: "Roll stock ID" })
+  async rollCos(@Param("rollId") rollId: string): Promise<RollCosDto> {
+    const cos = await this.rubberCostService.rollCos(Number(rollId));
+    if (!cos) throw new NotFoundException("Roll not found");
+    return cos;
   }
 
   private resolvePodPageNumbers(

@@ -22,6 +22,7 @@ import { RubberCompoundMovement } from "./entities/rubber-compound-movement.enti
 import { RubberCompoundOrder } from "./entities/rubber-compound-order.entity";
 import { RubberCompoundQualityConfig } from "./entities/rubber-compound-quality-config.entity";
 import { RubberCompoundStock } from "./entities/rubber-compound-stock.entity";
+import { RubberCostRate } from "./entities/rubber-cost-rate.entity";
 import { RubberDeliveryNote } from "./entities/rubber-delivery-note.entity";
 import { RubberDeliveryNoteItem } from "./entities/rubber-delivery-note-item.entity";
 import { RubberOrder } from "./entities/rubber-order.entity";
@@ -39,6 +40,7 @@ import {
   RubberPurchaseRequisitionItem,
 } from "./entities/rubber-purchase-requisition.entity";
 import { RubberQualityAlert } from "./entities/rubber-quality-alert.entity";
+import { RubberRollRejection } from "./entities/rubber-roll-rejection.entity";
 import { RubberRollStock } from "./entities/rubber-roll-stock.entity";
 import { RubberSpecification } from "./entities/rubber-specification.entity";
 import { RubberStockLocation } from "./entities/rubber-stock-location.entity";
@@ -53,6 +55,7 @@ import { RubberAuCocReadinessService } from "./rubber-au-coc-readiness.service";
 import { RubberBrandingService } from "./rubber-branding.service";
 import { RubberCocService } from "./rubber-coc.service";
 import { RubberCocExtractionService } from "./rubber-coc-extraction.service";
+import { RubberCostService } from "./rubber-cost.service";
 import { RubberDeliveryNoteService } from "./rubber-delivery-note.service";
 import { RubberDocumentVersioningService } from "./rubber-document-versioning.service";
 import { RubberEmailMonitorService } from "./rubber-email-monitor.service";
@@ -66,6 +69,7 @@ import { RubberPoTemplateService } from "./rubber-po-template.service";
 import { RubberProductImportService } from "./rubber-product-import.service";
 import { RubberQualityTrackingService } from "./rubber-quality-tracking.service";
 import { RubberRequisitionService } from "./rubber-requisition.service";
+import { RubberRollRejectionService } from "./rubber-roll-rejection.service";
 import { RubberRollStockService } from "./rubber-roll-stock.service";
 import { RubberSageCocAdapterService } from "./rubber-sage-coc-adapter.service";
 import { RubberSageContactSyncService } from "./rubber-sage-contact-sync.service";
@@ -120,6 +124,8 @@ import { RubberTaxInvoiceService } from "./rubber-tax-invoice.service";
       RubberTaxInvoiceCorrection,
       RubberCocBatchCorrection,
       RubberOrderImportCorrection,
+      RubberRollRejection,
+      RubberCostRate,
     ]),
   ],
   controllers: [RubberLiningController, RubberAdminController, RubberInboundEmailController],
@@ -144,10 +150,12 @@ import { RubberTaxInvoiceService } from "./rubber-tax-invoice.service";
     RubberOtherStockService,
     RubberTaxInvoiceService,
     RubberDocumentVersioningService,
+    RubberRollRejectionService,
     RubberSageCocAdapterService,
     RubberSageContactSyncService,
     RubberSageInvoiceAdapterService,
     RubberSageInvoicePostService,
+    RubberCostService,
     AuRubberAccessGuard,
   ],
   exports: [
@@ -165,6 +173,7 @@ import { RubberTaxInvoiceService } from "./rubber-tax-invoice.service";
     RubberQualityTrackingService,
     RubberOtherStockService,
     RubberTaxInvoiceService,
+    RubberCostService,
   ],
 })
 export class RubberLiningModule {}

@@ -58,7 +58,8 @@ export type SupplierCocType = "COMPOUNDER" | "CALENDARER" | "CALENDER_ROLL";
 export type CocProcessingStatus = "PENDING" | "EXTRACTED" | "NEEDS_REVIEW" | "APPROVED";
 export type DeliveryNoteType = "COMPOUND" | "ROLL";
 export type DeliveryNoteStatus = "PENDING" | "EXTRACTED" | "APPROVED" | "LINKED" | "STOCK_CREATED";
-export type RollStockStatus = "IN_STOCK" | "RESERVED" | "SOLD" | "SCRAPPED";
+export type RollStockStatus = "IN_STOCK" | "RESERVED" | "SOLD" | "SCRAPPED" | "REJECTED";
+export type RollRejectionStatus = "PENDING_RETURN" | "RETURNED" | "REPLACEMENT_RECEIVED" | "CLOSED";
 export type AuCocStatus = "DRAFT" | "GENERATED" | "SENT";
 export type RequisitionStatus =
   | "PENDING"
@@ -634,6 +635,26 @@ export interface RubberRollStockDto {
   productionDate: string | null;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface RollRejectionDto {
+  id: number;
+  firebaseUid: string;
+  originalSupplierCocId: number;
+  originalCocNumber: string | null;
+  rollNumber: string;
+  rollStockId: number | null;
+  rejectionReason: string;
+  rejectedBy: string;
+  rejectedAt: string;
+  returnDocumentPath: string | null;
+  replacementSupplierCocId: number | null;
+  replacementCocNumber: string | null;
+  replacementRollNumber: string | null;
+  status: RollRejectionStatus;
+  statusLabel: string;
+  notes: string | null;
+  createdAt: string;
 }
 
 export interface CreateOpeningStockDto {
@@ -2491,6 +2512,60 @@ class AuRubberApiClient {
       method: "POST",
       body: JSON.stringify({ rows }),
     });
+  }
+
+  async rollRejectionsBySupplierCoc(supplierCocId: number): Promise<RollRejectionDto[]> {
+    return this.request(`/rubber-lining/portal/supplier-cocs/${supplierCocId}/roll-rejections`);
+  }
+
+  async allRollRejections(statusFilter?: RollRejectionStatus): Promise<RollRejectionDto[]> {
+    const query = statusFilter ? `?status=${statusFilter}` : "";
+    return this.request(`/rubber-lining/portal/roll-rejections${query}`);
+  }
+
+  async createRollRejection(data: {
+    originalSupplierCocId: number;
+    rollNumber: string;
+    rejectionReason: string;
+    rejectedBy: string;
+    notes?: string | null;
+  }): Promise<RollRejectionDto> {
+    return this.request("/rubber-lining/portal/roll-rejections", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  }
+
+  async uploadRollRejectionReturnDocument(
+    rejectionId: number,
+    file: File,
+  ): Promise<RollRejectionDto> {
+    return this.requestWithFiles<RollRejectionDto>(
+      `/rubber-lining/portal/roll-rejections/${rejectionId}/return-document`,
+      [file],
+      undefined,
+      "file",
+    );
+  }
+
+  async linkReplacementCoc(
+    rejectionId: number,
+    data: { replacementCocId: number; replacementRollNumber?: string },
+  ): Promise<RollRejectionDto> {
+    return this.request(`/rubber-lining/portal/roll-rejections/${rejectionId}/link-replacement`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    });
+  }
+
+  async closeRollRejection(rejectionId: number): Promise<RollRejectionDto> {
+    return this.request(`/rubber-lining/portal/roll-rejections/${rejectionId}/close`, {
+      method: "PUT",
+    });
+  }
+
+  async rollRejectionReturnDocumentUrl(rejectionId: number): Promise<{ url: string | null }> {
+    return this.request(`/rubber-lining/portal/roll-rejections/${rejectionId}/return-document-url`);
   }
 
   async auCocs(filters?: { status?: AuCocStatus; customerId?: number }): Promise<RubberAuCocDto[]> {

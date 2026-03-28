@@ -29,6 +29,7 @@ import { RubberCompoundBatch } from "./entities/rubber-compound-batch.entity";
 import { RubberCompoundQualityConfig } from "./entities/rubber-compound-quality-config.entity";
 import { RubberDeliveryNote } from "./entities/rubber-delivery-note.entity";
 import { RubberDeliveryNoteItem } from "./entities/rubber-delivery-note-item.entity";
+import { RubberRollRejection } from "./entities/rubber-roll-rejection.entity";
 import { RollStockStatus, RubberRollStock } from "./entities/rubber-roll-stock.entity";
 import {
   ExtractedCocData,
@@ -87,6 +88,8 @@ export class RubberAuCocService {
     private deliveryNoteRepository: Repository<RubberDeliveryNote>,
     @InjectRepository(RubberDeliveryNoteItem)
     private deliveryNoteItemRepository: Repository<RubberDeliveryNoteItem>,
+    @InjectRepository(RubberRollRejection)
+    private rollRejectionRepository: Repository<RubberRollRejection>,
     @Inject(STORAGE_SERVICE)
     private storageService: IStorageService,
     private readonly configService: ConfigService,
@@ -710,11 +713,45 @@ export class RubberAuCocService {
       })();
 
       const seenIds = new Set<number>();
-      const uniqueCandidates = supplierCocCandidates.filter((sc) => {
+      const deduplicatedCandidates = supplierCocCandidates.filter((sc) => {
         if (seenIds.has(sc.id)) return false;
         seenIds.add(sc.id);
         return true;
       });
+
+      const rejections = await this.rollRejectionRepository.find({
+        where: deduplicatedCandidates.map((sc) => ({ originalSupplierCocId: sc.id })),
+        select: ["originalSupplierCocId", "replacementSupplierCocId"],
+      });
+      const rejectedCocIds = new Set(rejections.map((r) => r.originalSupplierCocId));
+      const replacementCocIds = rejections
+        .filter((r) => r.replacementSupplierCocId !== null)
+        .map((r) => r.replacementSupplierCocId as number);
+
+      const replacementCocs =
+        replacementCocIds.length > 0
+          ? await this.supplierCocRepository.find({ where: { id: In(replacementCocIds) } })
+          : [];
+
+      const uniqueCandidates = deduplicatedCandidates.reduce<RubberSupplierCoc[]>((acc, sc) => {
+        if (rejectedCocIds.has(sc.id)) {
+          const rejection = rejections.find((r) => r.originalSupplierCocId === sc.id);
+          const replacement = rejection?.replacementSupplierCocId
+            ? replacementCocs.find((rc) => rc.id === rejection.replacementSupplierCocId) || null
+            : null;
+          if (replacement) {
+            this.logger.log(
+              `Substituting rejected supplier CoC ${sc.id} with replacement CoC ${replacement.id} for AU CoC ${coc.cocNumber}`,
+            );
+            return [...acc, replacement];
+          }
+          this.logger.warn(
+            `Excluding rejected supplier CoC ${sc.id} (no replacement linked) for AU CoC ${coc.cocNumber}`,
+          );
+          return acc;
+        }
+        return [...acc, sc];
+      }, []);
 
       const supplierCoc: RubberSupplierCoc | null = await (async () => {
         if (uniqueCandidates.length === 0) return null;

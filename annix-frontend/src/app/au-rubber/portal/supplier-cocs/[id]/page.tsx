@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Breadcrumb } from "@/app/au-rubber/components/Breadcrumb";
+import { RollRejectionsPanel } from "@/app/au-rubber/components/RollRejectionsPanel";
 import { useToast } from "@/app/components/Toast";
 import {
   auRubberApiClient,
@@ -1188,6 +1189,8 @@ export default function SupplierCocDetailPage() {
           </div>
         </div>
       )}
+
+      {coc && <RollRejectionsPanel supplierCoc={coc} onRejectionCreated={fetchData} />}
     </div>
   );
 }

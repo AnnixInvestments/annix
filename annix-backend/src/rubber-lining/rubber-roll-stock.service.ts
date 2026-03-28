@@ -34,6 +34,7 @@ const ROLL_STATUS_LABELS: Record<RollStockStatus, string> = {
   [RollStockStatus.RESERVED]: "Reserved",
   [RollStockStatus.SOLD]: "Sold",
   [RollStockStatus.SCRAPPED]: "Scrapped",
+  [RollStockStatus.REJECTED]: "Rejected",
 };
 
 const COC_TYPE_LABELS: Record<SupplierCocType, string> = {
