@@ -292,22 +292,22 @@ export class RubberCocService {
     await this.compoundBatchRepository.delete({ supplierCocId: id });
     this.logger.log(`Deleted existing batches for CoC ${id} before re-extraction`);
 
-    coc.extractedData = extractedData;
+    const merged = this.mergeExtractedData(coc.extractedData, extractedData);
+    coc.extractedData = merged;
     coc.processingStatus = CocProcessingStatus.EXTRACTED;
 
-    if (extractedData.cocNumber) coc.cocNumber = extractedData.cocNumber;
-    if (extractedData.productionDate)
-      coc.productionDate = fromISO(extractedData.productionDate).toJSDate();
-    if (extractedData.compoundCode) coc.compoundCode = extractedData.compoundCode;
-    if (extractedData.orderNumber) coc.orderNumber = extractedData.orderNumber;
-    if (extractedData.ticketNumber) coc.ticketNumber = extractedData.ticketNumber;
+    if (merged.cocNumber) coc.cocNumber = merged.cocNumber;
+    if (merged.productionDate) coc.productionDate = fromISO(merged.productionDate).toJSDate();
+    if (merged.compoundCode) coc.compoundCode = merged.compoundCode;
+    if (merged.orderNumber) coc.orderNumber = merged.orderNumber;
+    if (merged.ticketNumber) coc.ticketNumber = merged.ticketNumber;
 
     await this.supplierCocRepository.save(coc);
 
-    if (extractedData.batches && extractedData.batches.length > 0) {
+    if (merged.batches && merged.batches.length > 0) {
       await this.createBatchesFromExtractedData(coc);
       this.logger.log(
-        `Created ${extractedData.batches.length} batches from re-extracted data for CoC ${id}`,
+        `Created ${merged.batches.length} batches from merged re-extracted data for CoC ${id}`,
       );
     }
 
@@ -316,6 +316,126 @@ export class RubberCocService {
     }
 
     return this.mapSupplierCocToDto(coc);
+  }
+
+  private mergeExtractedData(
+    existing: ExtractedCocData | null,
+    fresh: ExtractedCocData,
+  ): ExtractedCocData {
+    if (!existing) return fresh;
+
+    const topLevelKeys: Array<keyof ExtractedCocData> = [
+      "cocNumber",
+      "productionDate",
+      "customerName",
+      "compoundCode",
+      "compoundDescription",
+      "orderNumber",
+      "ticketNumber",
+      "hasGraph",
+      "deliveryNoteNumber",
+      "waybillNumber",
+      "sharedDensity",
+      "sharedTensile",
+      "sharedElongation",
+      "shoreANominal",
+      "shoreALimits",
+    ];
+
+    const merged: ExtractedCocData = { ...fresh };
+    topLevelKeys.forEach((key) => {
+      const existingVal = existing[key];
+      const freshVal = fresh[key];
+      if (existingVal != null && (freshVal == null || freshVal === "")) {
+        (merged as Record<string, unknown>)[key] = existingVal;
+      }
+    });
+
+    if (existing.approverNames?.length && !fresh.approverNames?.length) {
+      merged.approverNames = existing.approverNames;
+    }
+    if (existing.batchNumbers?.length && !fresh.batchNumbers?.length) {
+      merged.batchNumbers = existing.batchNumbers;
+    }
+    if (existing.rollNumbers?.length && !fresh.rollNumbers?.length) {
+      merged.rollNumbers = existing.rollNumbers;
+    }
+
+    if (existing.specifications || fresh.specifications) {
+      const existSpec = existing.specifications || {};
+      const freshSpec = fresh.specifications || {};
+      const mergedSpec = { ...freshSpec };
+      Object.entries(existSpec).forEach(([key, val]) => {
+        if (
+          val != null &&
+          ((mergedSpec as Record<string, unknown>)[key] == null ||
+            (mergedSpec as Record<string, unknown>)[key] === "")
+        ) {
+          (mergedSpec as Record<string, unknown>)[key] = val;
+        }
+      });
+      merged.specifications = mergedSpec;
+    }
+
+    if (existing.batches?.length && fresh.batches?.length) {
+      const batchFields = [
+        "shoreA",
+        "specificGravity",
+        "reboundPercent",
+        "tearStrengthKnM",
+        "tensileStrengthMpa",
+        "elongationPercent",
+        "rheometerSMin",
+        "rheometerSMax",
+        "rheometerTs2",
+        "rheometerTc90",
+        "passFailStatus",
+      ] as const;
+
+      const existingByBatch = new Map(existing.batches.map((b) => [b.batchNumber, b]));
+
+      merged.batches = fresh.batches.map((freshBatch) => {
+        const existingBatch = existingByBatch.get(freshBatch.batchNumber);
+        if (!existingBatch) return freshBatch;
+
+        const mergedBatch = { ...freshBatch };
+        batchFields.forEach((field) => {
+          const existingVal = existingBatch[field];
+          const freshVal = freshBatch[field];
+          if (existingVal != null && freshVal == null) {
+            (mergedBatch as Record<string, unknown>)[field] = existingVal;
+          }
+        });
+        return mergedBatch;
+      });
+
+      existing.batches.forEach((existingBatch) => {
+        const alreadyInFresh = fresh.batches!.some(
+          (fb) => fb.batchNumber === existingBatch.batchNumber,
+        );
+        if (!alreadyInFresh) {
+          merged.batches!.push(existingBatch);
+        }
+      });
+    } else if (existing.batches?.length && !fresh.batches?.length) {
+      merged.batches = existing.batches;
+    }
+
+    if (existing.rolls?.length && fresh.rolls?.length) {
+      const existingByRoll = new Map(existing.rolls.map((r) => [r.rollNumber, r]));
+      merged.rolls = fresh.rolls.map((freshRoll) => {
+        const existingRoll = existingByRoll.get(freshRoll.rollNumber);
+        if (!existingRoll) return freshRoll;
+        return {
+          ...freshRoll,
+          shoreA: freshRoll.shoreA ?? existingRoll.shoreA,
+        };
+      });
+    } else if (existing.rolls?.length && !fresh.rolls?.length) {
+      merged.rolls = existing.rolls;
+    }
+
+    return merged;
   }
 
   private async saveSpecificationsFromExtractedData(coc: RubberSupplierCoc): Promise<void> {
