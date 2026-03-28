@@ -20,7 +20,7 @@ export default function CustomerHubPage() {
   return (
     <HubPage
       title="Customer"
-      description="Manage job cards, delivery notes, and purchase orders."
+      description="Manage purchase orders, job cards, and delivery notes."
       items={hubItems}
     />
   );
