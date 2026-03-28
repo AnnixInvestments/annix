@@ -270,7 +270,12 @@ export class DataBookPdfService {
     ctx: DataBookContext,
     renderFn: (doc: PDFDoc, tocEntries: TocEntry[]) => void,
   ): Promise<Buffer> {
-    const doc = new PDFDocument({ size: "A4", margin: A4.margin, bufferPages: true });
+    const doc = new PDFDocument({
+      size: "A4",
+      margin: A4.margin,
+      bufferPages: true,
+      autoFirstPage: false,
+    });
     const chunks: Buffer[] = [];
     doc.on("data", (chunk: Buffer) => chunks.push(chunk));
 
@@ -355,7 +360,12 @@ export class DataBookPdfService {
       itemsReleases,
     };
 
-    const doc = new PDFDocument({ size: "A4", margin: A4.margin, bufferPages: true });
+    const doc = new PDFDocument({
+      size: "A4",
+      margin: A4.margin,
+      bufferPages: true,
+      autoFirstPage: false,
+    });
     const chunks: Buffer[] = [];
     doc.on("data", (chunk: Buffer) => chunks.push(chunk));
 
