@@ -92,7 +92,11 @@ export default function TaxInvoiceDetailPage() {
       setIsApproving(true);
       await auRubberApiClient.approveTaxInvoice(invoiceId);
       showToast("Invoice approved successfully", "success");
-      router.push("/au-rubber/portal/tax-invoices/suppliers");
+      const listPath =
+        invoice?.invoiceType === "CUSTOMER"
+          ? "/au-rubber/portal/tax-invoices/customers"
+          : "/au-rubber/portal/tax-invoices/suppliers";
+      router.push(listPath);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Approval failed";
       showToast(message, "error");
@@ -498,10 +502,60 @@ export default function TaxInvoiceDetailPage() {
             </div>
           ) : invoice.extractedData ? (
             <dl className="space-y-4">
-              <div>
-                <dt className="text-sm font-medium text-gray-500">Product Description</dt>
-                <dd className="mt-1 text-sm text-gray-900">{invoice.productDescription || "-"}</dd>
-              </div>
+              {invoice.extractedData.lineItems && invoice.extractedData.lineItems.length > 1 ? (
+                <div>
+                  <dt className="text-sm font-medium text-gray-500 mb-2">
+                    Line Items ({invoice.extractedData.lineItems.length})
+                  </dt>
+                  <dd>
+                    <table className="min-w-full divide-y divide-gray-200 border border-gray-200 rounded-md overflow-hidden">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                            #
+                          </th>
+                          <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                            Description
+                          </th>
+                          <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">
+                            Qty
+                          </th>
+                          <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">
+                            Unit Price
+                          </th>
+                          <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase">
+                            Amount
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-100">
+                        {invoice.extractedData.lineItems.map((item, idx) => (
+                          <tr key={idx}>
+                            <td className="px-3 py-2 text-xs text-gray-400">{idx + 1}</td>
+                            <td className="px-3 py-2 text-sm text-gray-900">{item.description}</td>
+                            <td className="px-3 py-2 text-sm text-gray-900 text-right">
+                              {item.quantity != null ? item.quantity : "-"}
+                            </td>
+                            <td className="px-3 py-2 text-sm text-gray-900 text-right">
+                              {formatCurrency(item.unitPrice)}
+                            </td>
+                            <td className="px-3 py-2 text-sm font-medium text-gray-900 text-right">
+                              {formatCurrency(item.amount)}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </dd>
+                </div>
+              ) : (
+                <div>
+                  <dt className="text-sm font-medium text-gray-500">Product Description</dt>
+                  <dd className="mt-1 text-sm text-gray-900">
+                    {invoice.productDescription || "-"}
+                  </dd>
+                </div>
+              )}
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <dt className="text-sm font-medium text-gray-500">Delivery Note Ref</dt>
@@ -516,26 +570,28 @@ export default function TaxInvoiceDetailPage() {
                   </dd>
                 </div>
               </div>
-              <div className="grid grid-cols-3 gap-4 pt-2 border-t border-gray-100">
-                <div>
-                  <dt className="text-sm font-medium text-gray-500">Quantity</dt>
-                  <dd className="mt-1 text-lg font-semibold text-gray-900">
-                    {invoice.numberOfRolls != null ? invoice.numberOfRolls : "-"}
-                  </dd>
+              {invoice.extractedData.lineItems && invoice.extractedData.lineItems.length <= 1 ? (
+                <div className="grid grid-cols-3 gap-4 pt-2 border-t border-gray-100">
+                  <div>
+                    <dt className="text-sm font-medium text-gray-500">Quantity</dt>
+                    <dd className="mt-1 text-lg font-semibold text-gray-900">
+                      {invoice.numberOfRolls != null ? invoice.numberOfRolls : "-"}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-sm font-medium text-gray-500">Unit</dt>
+                    <dd className="mt-1 text-lg font-semibold text-gray-900">
+                      {invoice.unit || "-"}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-sm font-medium text-gray-500">Cost per Unit</dt>
+                    <dd className="mt-1 text-lg font-semibold text-gray-900">
+                      {formatCurrency(invoice.costPerUnit)}
+                    </dd>
+                  </div>
                 </div>
-                <div>
-                  <dt className="text-sm font-medium text-gray-500">Unit</dt>
-                  <dd className="mt-1 text-lg font-semibold text-gray-900">
-                    {invoice.unit || "-"}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="text-sm font-medium text-gray-500">Cost per Unit</dt>
-                  <dd className="mt-1 text-lg font-semibold text-gray-900">
-                    {formatCurrency(invoice.costPerUnit)}
-                  </dd>
-                </div>
-              </div>
+              ) : null}
               <div className="grid grid-cols-3 gap-4 pt-2 border-t border-gray-100">
                 <div>
                   <dt className="text-sm font-medium text-gray-500">Subtotal (ex VAT)</dt>
