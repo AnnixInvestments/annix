@@ -496,6 +496,53 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
       > = {};
       const r = 14;
 
+      const positions: Record<string, { left: number; right: number }> = {};
+      belowBranches.forEach((branch) => {
+        const sNode = fgNodeRefs.current[branch.triggerFgIdx];
+        const eNode = fgNodeRefs.current[branch.nextFgIdx];
+        if (sNode && eNode) {
+          const sR = sNode.getBoundingClientRect();
+          const eR = eNode.getBoundingClientRect();
+          const isLastBranch = branch.triggerFgIdx === branch.nextFgIdx;
+          positions[branch.triggerFgKey] = {
+            left: sR.left + sR.width / 2 - rect.left,
+            right: isLastBranch ? 8 : rect.width - (eR.left + eR.width / 2 - rect.left),
+          };
+        }
+      });
+      loopBranches.forEach((branch) => {
+        const sNode = fgNodeRefs.current[branch.triggerFgIdx];
+        const nextFgN = fgNodeRefs.current[branch.triggerFgIdx + 1];
+        if (sNode) {
+          const sR = sNode.getBoundingClientRect();
+          const triggerX = sR.left + sR.width / 2 - rect.left;
+          const nextX = nextFgN
+            ? nextFgN.getBoundingClientRect().left +
+              nextFgN.getBoundingClientRect().width / 2 -
+              rect.left
+            : rect.width - 20;
+          const nodeSlot = 80;
+          const needed = branch.bgSteps.length * nodeSlot;
+          const dynRight = Math.min(triggerX + needed * 0.5, nextX - 30);
+          const leftBound = Math.max(16, dynRight - needed);
+          positions[`loop-${branch.triggerFgKey}`] = {
+            left: leftBound,
+            right: rect.width - dynRight,
+          };
+        }
+      });
+      bypassSteps.forEach((bp) => {
+        const triggerIdx = allSteps.findIndex((s) => s.key === bp.triggerAfterStep);
+        const triggerNode = triggerIdx >= 0 ? fgNodeRefs.current[triggerIdx] : null;
+        if (triggerNode) {
+          const tR = triggerNode.getBoundingClientRect();
+          positions[`bypass-${bp.stepKey}`] = {
+            left: tR.left + tR.width / 2 - rect.left,
+            right: 0,
+          };
+        }
+      });
+
       if (docUploadStep) {
         const authNode = fgNodeRefs.current[0];
         const docNode = bgNodeRefs.current["document_upload"];
@@ -811,52 +858,6 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
         });
       });
 
-      const positions: Record<string, { left: number; right: number }> = {};
-      belowBranches.forEach((branch) => {
-        const sNode = fgNodeRefs.current[branch.triggerFgIdx];
-        const eNode = fgNodeRefs.current[branch.nextFgIdx];
-        if (sNode && eNode) {
-          const sR = sNode.getBoundingClientRect();
-          const eR = eNode.getBoundingClientRect();
-          const isLastBranch = branch.triggerFgIdx === branch.nextFgIdx;
-          positions[branch.triggerFgKey] = {
-            left: sR.left + sR.width / 2 - rect.left,
-            right: isLastBranch ? 8 : rect.width - (eR.left + eR.width / 2 - rect.left),
-          };
-        }
-      });
-      loopBranches.forEach((branch) => {
-        const sNode = fgNodeRefs.current[branch.triggerFgIdx];
-        const nextFgN = fgNodeRefs.current[branch.triggerFgIdx + 1];
-        if (sNode) {
-          const sR = sNode.getBoundingClientRect();
-          const triggerX = sR.left + sR.width / 2 - rect.left;
-          const nextX = nextFgN
-            ? nextFgN.getBoundingClientRect().left +
-              nextFgN.getBoundingClientRect().width / 2 -
-              rect.left
-            : rect.width - 20;
-          const nodeSlot = 80;
-          const needed = branch.bgSteps.length * nodeSlot;
-          const dynRight = Math.min(triggerX + needed * 0.5, nextX - 30);
-          const leftBound = Math.max(16, dynRight - needed);
-          positions[`loop-${branch.triggerFgKey}`] = {
-            left: leftBound,
-            right: rect.width - dynRight,
-          };
-        }
-      });
-      bypassSteps.forEach((bp) => {
-        const triggerIdx = allSteps.findIndex((s) => s.key === bp.triggerAfterStep);
-        const triggerNode = triggerIdx >= 0 ? fgNodeRefs.current[triggerIdx] : null;
-        if (triggerNode) {
-          const tR = triggerNode.getBoundingClientRect();
-          positions[`bypass-${bp.stepKey}`] = {
-            left: tR.left + tR.width / 2 - rect.left,
-            right: 0,
-          };
-        }
-      });
       setBranchPositions(positions);
 
       setSvgPaths(paths);
