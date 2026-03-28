@@ -1760,8 +1760,18 @@ Formula: totalPrice = totalKg × salePricePerKg
 
     const extractedData = await (async () => {
       if (isRollDeliveryNote) {
-        const customerResult =
-          await this.rubberCocExtractionService.extractCustomerDeliveryNoteFromImages(pdfBuffer);
+        let customerResult: Awaited<
+          ReturnType<typeof this.rubberCocExtractionService.extractCustomerDeliveryNoteFromImages>
+        >;
+        try {
+          customerResult =
+            await this.rubberCocExtractionService.extractCustomerDeliveryNoteFromImages(pdfBuffer);
+        } catch (pdfErr: unknown) {
+          const msg = pdfErr instanceof Error ? pdfErr.message : "Unknown error";
+          throw new BadRequestException(
+            `Failed to process PDF: ${msg}. Please ensure the uploaded file is a valid PDF.`,
+          );
+        }
 
         const allRolls = customerResult.deliveryNotes.flatMap((dn, dnIdx) =>
           (dn.lineItems || [])
@@ -2270,7 +2280,9 @@ Formula: totalPrice = totalKg × salePricePerKg
   @ApiOperation({ summary: "Get AU CoC by ID" })
   @ApiParam({ name: "id", description: "AU CoC ID" })
   async auCocById(@Param("id") id: string): Promise<RubberAuCocDto> {
-    const coc = await this.rubberAuCocService.auCocById(Number(id));
+    const numericId = Number(id);
+    if (Number.isNaN(numericId)) throw new BadRequestException("Invalid AU CoC ID");
+    const coc = await this.rubberAuCocService.auCocById(numericId);
     if (!coc) throw new NotFoundException("AU CoC not found");
     return coc;
   }
