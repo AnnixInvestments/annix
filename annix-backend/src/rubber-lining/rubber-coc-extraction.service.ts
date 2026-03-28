@@ -717,109 +717,59 @@ export class RubberCocExtractionService {
 
     const hasVal = (v: number | null | undefined): v is number => v !== null && v !== undefined;
 
+    const documentHasRheometer = data.batches.some(
+      (b) =>
+        hasVal(b.rheometerSMin) ||
+        hasVal(b.rheometerSMax) ||
+        hasVal(b.rheometerTs2) ||
+        hasVal(b.rheometerTc90),
+    );
+
     data.batches = data.batches.map((batch) => {
       const corrected = { ...batch };
 
-      // Pattern 1: Sparse row with rheometer values shifted into physical property columns.
-      // If SG looks like S'min (0.5-2.0) and tensile looks like S'max or TS2/TC90 (3-8),
-      // and rebound/tear/elongation are all null — values were shifted left past blank columns.
-      const sgLooksSMin =
+      const noElong = !hasVal(corrected.elongationPercent);
+      const sgInSMinRange =
         hasVal(corrected.specificGravity) &&
         corrected.specificGravity >= 0.5 &&
-        corrected.specificGravity <= 2.0;
-      const physicalColumnsEmpty =
-        !hasVal(corrected.reboundPercent) &&
-        !hasVal(corrected.tearStrengthKnM) &&
-        !hasVal(corrected.elongationPercent);
-      const tensileLooksRheometer =
-        hasVal(corrected.tensileStrengthMpa) &&
-        corrected.tensileStrengthMpa >= 2.5 &&
-        corrected.tensileStrengthMpa <= 15;
-      const noRheometerValues =
-        !hasVal(corrected.rheometerSMin) &&
-        !hasVal(corrected.rheometerSMax) &&
-        !hasVal(corrected.rheometerTs2) &&
-        !hasVal(corrected.rheometerTc90);
+        corrected.specificGravity <= 2.5;
 
-      if (sgLooksSMin && physicalColumnsEmpty && tensileLooksRheometer && noRheometerValues) {
+      if (documentHasRheometer && noElong && sgInSMinRange) {
+        const candidates: number[] = [];
+        if (hasVal(corrected.specificGravity)) candidates.push(corrected.specificGravity);
+        if (hasVal(corrected.tensileStrengthMpa)) candidates.push(corrected.tensileStrengthMpa);
+        if (hasVal(corrected.tearStrengthKnM)) candidates.push(corrected.tearStrengthKnM);
+        if (hasVal(corrected.reboundPercent)) candidates.push(corrected.reboundPercent);
+        if (hasVal(corrected.rheometerSMin)) candidates.push(corrected.rheometerSMin);
+        if (hasVal(corrected.rheometerSMax)) candidates.push(corrected.rheometerSMax);
+        if (hasVal(corrected.rheometerTs2)) candidates.push(corrected.rheometerTs2);
+        if (hasVal(corrected.rheometerTc90)) candidates.push(corrected.rheometerTc90);
+
+        const unique = [...new Set(candidates)];
+
+        const sMinMatch = unique.find((v) => v >= 0.5 && v <= 2.5);
+        const sMaxMatch = unique.find((v) => v >= 3.0 && v <= 15.0 && v !== sMinMatch);
+        const ts2Tc90 = unique
+          .filter((v) => v !== sMinMatch && v !== sMaxMatch && v >= 2.0 && v <= 10.0)
+          .sort((a, b) => a - b);
+
         this.logger.warn(
-          `Batch ${batch.batchNumber}: Column shift detected - sparse row has rheometer values in physical columns. ` +
-            `SG=${corrected.specificGravity}→S'min, tensile=${corrected.tensileStrengthMpa}→S'max. Correcting.`,
+          `Batch ${batch.batchNumber}: Sparse row detected (no elongation, SG=${corrected.specificGravity} in S'min range). ` +
+            `Candidate values: [${unique.join(", ")}]. ` +
+            `Reassigning → S'min=${sMinMatch || null}, S'max=${sMaxMatch || null}, ` +
+            `TS2=${ts2Tc90[0] || null}, TC90=${ts2Tc90[1] || null}`,
         );
-        corrected.rheometerSMin = corrected.specificGravity;
-        corrected.rheometerSMax = corrected.tensileStrengthMpa;
+
         corrected.specificGravity = undefined;
         corrected.tensileStrengthMpa = undefined;
-
-        // Remaining shifted values: check what occupied the later slots
-        if (hasVal(corrected.rheometerSMin) && !hasVal(corrected.rheometerTs2)) {
-          // elongation and rheometerSMin in the original may hold TS2 and TC90
-          // but they were already null/undefined — check the original batch for any remaining values
-        }
-      }
-
-      // Pattern 1b: Extended shift — SG=S'min, rebound=S'max, tear=TS2, tensile=TC90
-      const sgCouldBeSMin =
-        hasVal(corrected.specificGravity) &&
-        corrected.specificGravity >= 0.5 &&
-        corrected.specificGravity <= 2.0;
-      const reboundCouldBeSMax =
-        hasVal(corrected.reboundPercent) &&
-        corrected.reboundPercent >= 2.5 &&
-        corrected.reboundPercent <= 15;
-      const tearCouldBeTs2 =
-        hasVal(corrected.tearStrengthKnM) &&
-        corrected.tearStrengthKnM >= 0.3 &&
-        corrected.tearStrengthKnM <= 8;
-      const tensileCouldBeTc90 =
-        hasVal(corrected.tensileStrengthMpa) &&
-        corrected.tensileStrengthMpa >= 0.5 &&
-        corrected.tensileStrengthMpa <= 8;
-      const allRheometerNull =
-        !hasVal(corrected.rheometerSMin) &&
-        !hasVal(corrected.rheometerSMax) &&
-        !hasVal(corrected.rheometerTs2) &&
-        !hasVal(corrected.rheometerTc90);
-      const noElongation = !hasVal(corrected.elongationPercent);
-
-      if (
-        sgCouldBeSMin &&
-        reboundCouldBeSMax &&
-        tearCouldBeTs2 &&
-        tensileCouldBeTc90 &&
-        allRheometerNull &&
-        noElongation
-      ) {
-        this.logger.warn(
-          `Batch ${batch.batchNumber}: Full column shift detected - SG=${corrected.specificGravity}→S'min, ` +
-            `rebound=${corrected.reboundPercent}→S'max, tear=${corrected.tearStrengthKnM}→TS2, ` +
-            `tensile=${corrected.tensileStrengthMpa}→TC90. Correcting.`,
-        );
-        corrected.rheometerSMin = corrected.specificGravity;
-        corrected.rheometerSMax = corrected.reboundPercent;
-        corrected.rheometerTs2 = corrected.tearStrengthKnM;
-        corrected.rheometerTc90 = corrected.tensileStrengthMpa;
-        corrected.specificGravity = undefined;
-        corrected.reboundPercent = undefined;
         corrected.tearStrengthKnM = undefined;
-        corrected.tensileStrengthMpa = undefined;
+        corrected.reboundPercent = undefined;
+        corrected.rheometerSMin = sMinMatch ?? undefined;
+        corrected.rheometerSMax = sMaxMatch ?? undefined;
+        corrected.rheometerTs2 = ts2Tc90[0] ?? undefined;
+        corrected.rheometerTc90 = ts2Tc90[1] ?? undefined;
       }
 
-      // Pattern 2: Tear/Rebound column swap
-      const reboundIsNull = !hasVal(corrected.reboundPercent);
-      const tearInReboundRange =
-        hasVal(corrected.tearStrengthKnM) && corrected.tearStrengthKnM >= 50;
-
-      if (reboundIsNull && tearInReboundRange) {
-        this.logger.warn(
-          `Batch ${batch.batchNumber}: Column shift detected - tear=${corrected.tearStrengthKnM} is in rebound range (74-96). Correcting: rebound=${corrected.tearStrengthKnM}, tear=${corrected.tensileStrengthMpa}, tensile=null`,
-        );
-        corrected.reboundPercent = corrected.tearStrengthKnM;
-        corrected.tearStrengthKnM = corrected.tensileStrengthMpa;
-        corrected.tensileStrengthMpa = undefined;
-      }
-
-      // Pattern 3: Merged elongation/S'min columns
       if (
         hasVal(corrected.elongationPercent) &&
         corrected.elongationPercent < 100 &&
@@ -837,7 +787,6 @@ export class RubberCocExtractionService {
         }
       }
 
-      // Pattern 4: Suspicious elongation (too low)
       if (hasVal(corrected.elongationPercent) && corrected.elongationPercent < 100) {
         this.logger.warn(
           `Batch ${batch.batchNumber}: Suspicious elongation value ${corrected.elongationPercent} (expected 600-980), setting to null`,
@@ -845,7 +794,6 @@ export class RubberCocExtractionService {
         corrected.elongationPercent = undefined;
       }
 
-      // Pattern 5: Suspicious S'min (too high)
       if (hasVal(corrected.rheometerSMin) && corrected.rheometerSMin > 10) {
         this.logger.warn(
           `Batch ${batch.batchNumber}: Suspicious S'min value ${corrected.rheometerSMin} (expected 0.5-2.0), setting to null`,
