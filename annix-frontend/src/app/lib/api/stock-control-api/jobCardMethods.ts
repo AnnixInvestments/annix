@@ -41,6 +41,7 @@ declare module "./base" {
     ): Promise<StockAllocation>;
     jobCardAllocations(jobCardId: number): Promise<StockAllocation[]>;
     jobCardCoatingAnalysis(jobCardId: number): Promise<CoatingAnalysis | null>;
+    updateSurfacePrep(jobCardId: number, surfacePrep: string): Promise<CoatingAnalysis>;
     updateCoatingSurfaceArea(
       jobCardId: number,
       extM2: number,

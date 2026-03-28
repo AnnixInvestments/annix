@@ -63,12 +63,37 @@ export class JobCardService {
     if (status) {
       where.status = status;
     }
-    return this.jobCardRepo.find({
+    const jobCards = await this.jobCardRepo.find({
       where,
       order: { createdAt: "DESC" },
       take: limit,
       skip: (page - 1) * limit,
     });
+
+    const idsWithoutJtDn = jobCards.filter((jc) => !jc.jtDnNumber).map((jc) => jc.id);
+
+    if (idsWithoutJtDn.length > 0) {
+      const jtRows: { jobCardId: number; jtNumbers: string }[] = await this.dataSource.query(
+        `SELECT li.job_card_id AS "jobCardId",
+                  STRING_AGG(DISTINCT li.jt_no, ', ' ORDER BY li.jt_no) AS "jtNumbers"
+           FROM stock_control_job_card_line_items li
+           WHERE li.job_card_id = ANY($1)
+             AND li.jt_no IS NOT NULL
+             AND li.jt_no <> ''
+           GROUP BY li.job_card_id`,
+        [idsWithoutJtDn],
+      );
+
+      const jtMap = new Map(jtRows.map((r) => [r.jobCardId, r.jtNumbers]));
+      return jobCards.map((jc) => {
+        if (!jc.jtDnNumber && jtMap.has(jc.id)) {
+          return { ...jc, jtDnNumber: jtMap.get(jc.id) || null };
+        }
+        return jc;
+      });
+    }
+
+    return jobCards;
   }
 
   async findById(companyId: number, id: number): Promise<JobCard> {

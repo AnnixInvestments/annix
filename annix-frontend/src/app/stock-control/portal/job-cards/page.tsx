@@ -22,6 +22,16 @@ import { setPendingImportFile } from "./import/pending-file";
 
 const STATUS_TABS = ["all", "draft", "active", "completed", "cancelled"] as const;
 
+type SortKey =
+  | "jobNumber"
+  | "jcNumber"
+  | "pageNumber"
+  | "jobName"
+  | "customerName"
+  | "status"
+  | "createdAt";
+type SortDir = "asc" | "desc";
+
 export default function JobCardsPage() {
   const router = useRouter();
   const { user } = useStockControlAuth();
@@ -30,6 +40,9 @@ export default function JobCardsPage() {
   const [activeTab, setActiveTab] = useState<string>("all");
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [sortKey, setSortKey] = useState<SortKey | null>(null);
+  const [sortDir, setSortDir] = useState<SortDir>("asc");
   const [createForm, setCreateForm] = useState({
     jobNumber: "",
     jcNumber: "",
@@ -54,8 +67,49 @@ export default function JobCardsPage() {
   const [bulkResult, setBulkResult] = useState<{ processed: number; failed: number } | null>(null);
   const modalFileInputRef = useRef<HTMLInputElement>(null);
 
+  const toggleSort = (key: SortKey) => {
+    if (sortKey === key) {
+      setSortDir(sortDir === "asc" ? "desc" : "asc");
+    } else {
+      setSortKey(key);
+      setSortDir("asc");
+    }
+  };
+
   const queryClient = useQueryClient();
-  const { data: jobCards = [], isLoading, error } = useJobCards(activeTab);
+  const { data: rawJobCards = [], isLoading, error } = useJobCards(activeTab);
+
+  const jobCards = useMemo(() => {
+    const lowerQuery = searchQuery.toLowerCase().trim();
+    const filtered = lowerQuery
+      ? rawJobCards.filter((jc) => {
+          const searchable = [
+            jc.jobNumber,
+            jc.jtDnNumber,
+            jc.jcNumber,
+            jc.pageNumber,
+            jc.jobName,
+            jc.customerName,
+            jc.status,
+            formatDateZA(jc.createdAt),
+          ]
+            .filter(Boolean)
+            .join(" ")
+            .toLowerCase();
+          return searchable.includes(lowerQuery);
+        })
+      : rawJobCards;
+
+    if (!sortKey) return filtered;
+
+    return [...filtered].sort((a, b) => {
+      const aVal = (a[sortKey] || "").toString().toLowerCase();
+      const bVal = (b[sortKey] || "").toString().toLowerCase();
+      const cmp = aVal.localeCompare(bVal);
+      return sortDir === "asc" ? cmp : -cmp;
+    });
+  }, [rawJobCards, searchQuery, sortKey, sortDir]);
+
   const jobCardIds = useMemo(() => jobCards.map((jc) => jc.id), [jobCards]);
   const { data: dataBookStatuses = {} } = useDataBookStatuses(jobCardIds);
   const createJobCard = useCreateJobCard();
@@ -348,21 +402,45 @@ export default function JobCardsPage() {
       )}
 
       <div className="border-b border-gray-200">
-        <nav className="-mb-px flex space-x-8">
-          {STATUS_TABS.map((tab) => (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm capitalize ${
-                activeTab === tab
-                  ? "border-teal-500 text-teal-600"
-                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-              }`}
+        <div className="flex items-center justify-between">
+          <nav className="-mb-px flex space-x-8">
+            {STATUS_TABS.map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm capitalize ${
+                  activeTab === tab
+                    ? "border-teal-500 text-teal-600"
+                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                }`}
+              >
+                {tab}
+              </button>
+            ))}
+          </nav>
+          <div className="relative mb-1">
+            <svg
+              className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
             >
-              {tab}
-            </button>
-          ))}
-        </nav>
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+              />
+            </svg>
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search job cards..."
+              className="pl-9 pr-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-teal-500 focus:border-teal-500 w-64"
+            />
+          </div>
+        </div>
       </div>
 
       <div className="bg-white shadow rounded-lg overflow-x-auto">
@@ -388,42 +466,44 @@ export default function JobCardsPage() {
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  Job Number
-                </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  JC Number
-                </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  Page
-                </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  Job Name
-                </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  Customer
-                </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  Status
-                </th>
+                {(
+                  [
+                    { key: "jobNumber" as SortKey, label: "Job Number" },
+                    { key: "jcNumber" as SortKey, label: "JC Number" },
+                    { key: "pageNumber" as SortKey, label: "Page" },
+                    { key: "jobName" as SortKey, label: "Job Name" },
+                    { key: "customerName" as SortKey, label: "Customer" },
+                    { key: "status" as SortKey, label: "Status" },
+                  ] as const
+                ).map((col) => (
+                  <th
+                    key={col.key}
+                    scope="col"
+                    onClick={() => toggleSort(col.key)}
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer select-none hover:text-gray-700"
+                  >
+                    <span className="inline-flex items-center gap-1">
+                      {col.label}
+                      {sortKey === col.key ? (
+                        <svg className="h-3 w-3" fill="currentColor" viewBox="0 0 20 20">
+                          {sortDir === "asc" ? (
+                            <path d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L10 6.414l-3.293 3.293a1 1 0 01-1.414 0z" />
+                          ) : (
+                            <path d="M14.707 10.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L10 13.586l3.293-3.293a1 1 0 011.414 0z" />
+                          )}
+                        </svg>
+                      ) : (
+                        <svg
+                          className="h-3 w-3 opacity-0 group-hover:opacity-30"
+                          fill="currentColor"
+                          viewBox="0 0 20 20"
+                        >
+                          <path d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L10 6.414l-3.293 3.293a1 1 0 01-1.414 0z" />
+                        </svg>
+                      )}
+                    </span>
+                  </th>
+                ))}
                 <th
                   scope="col"
                   className="hidden xl:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
@@ -438,9 +518,21 @@ export default function JobCardsPage() {
                 </th>
                 <th
                   scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  onClick={() => toggleSort("createdAt")}
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer select-none hover:text-gray-700"
                 >
-                  Created
+                  <span className="inline-flex items-center gap-1">
+                    Created
+                    {sortKey === "createdAt" ? (
+                      <svg className="h-3 w-3" fill="currentColor" viewBox="0 0 20 20">
+                        {sortDir === "asc" ? (
+                          <path d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L10 6.414l-3.293 3.293a1 1 0 01-1.414 0z" />
+                        ) : (
+                          <path d="M14.707 10.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L10 13.586l3.293-3.293a1 1 0 011.414 0z" />
+                        )}
+                      </svg>
+                    ) : null}
+                  </span>
                 </th>
                 <th scope="col" className="relative px-6 py-3">
                   <span className="sr-only">Actions</span>
