@@ -12,12 +12,18 @@ const SCORE_COLOR_HIGH = "#4caf50";
 const SCORE_COLOR_MEDIUM = "#ff9800";
 const SCORE_COLOR_LOW = "#f44336";
 
+export interface TemplateField {
+  name: string;
+  label: string;
+  type: string;
+}
+
 export interface TemplateMetadata {
   id: string;
   name: string;
   description: string;
   category: string;
-  requiredFields: string[];
+  fields: TemplateField[];
 }
 
 export interface GeneratedTemplate {
@@ -30,21 +36,26 @@ const TEMPLATE_REGISTRY: TemplateMetadata[] = [
     name: "POPIA Privacy Policy",
     description:
       "Comprehensive privacy policy compliant with the Protection of Personal Information Act",
-    category: "privacy",
-    requiredFields: ["companyName", "informationOfficerName", "informationOfficerEmail", "address"],
+    category: "Privacy",
+    fields: [
+      { name: "companyName", label: "Company Name", type: "text" },
+      { name: "informationOfficerName", label: "Information Officer Name", type: "text" },
+      { name: "informationOfficerEmail", label: "Information Officer Email", type: "text" },
+      { name: "address", label: "Address", type: "text" },
+    ],
   },
   {
     id: "popia_paia_manual",
     name: "PAIA Section 51 Manual",
     description: "Promotion of Access to Information Act manual for private bodies",
-    category: "privacy",
-    requiredFields: [
-      "companyName",
-      "registrationNumber",
-      "address",
-      "informationOfficerName",
-      "informationOfficerEmail",
-      "phone",
+    category: "Privacy",
+    fields: [
+      { name: "companyName", label: "Company Name", type: "text" },
+      { name: "registrationNumber", label: "Registration Number", type: "text" },
+      { name: "address", label: "Address", type: "text" },
+      { name: "informationOfficerName", label: "Information Officer Name", type: "text" },
+      { name: "informationOfficerEmail", label: "Information Officer Email", type: "text" },
+      { name: "phone", label: "Phone", type: "text" },
     ],
   },
   {
@@ -52,28 +63,53 @@ const TEMPLATE_REGISTRY: TemplateMetadata[] = [
     name: "Data Breach Notification",
     description:
       "Notification template for reporting data breaches to the Information Regulator and affected data subjects",
-    category: "privacy",
-    requiredFields: [
-      "companyName",
-      "breachDate",
-      "breachDescription",
-      "dataAffected",
-      "actionsTaken",
-      "contactPerson",
-      "contactEmail",
+    category: "Privacy",
+    fields: [
+      { name: "companyName", label: "Company Name", type: "text" },
+      { name: "breachDate", label: "Breach Date", type: "date" },
+      { name: "breachDescription", label: "Breach Description", type: "text" },
+      { name: "dataAffected", label: "Data Affected", type: "text" },
+      { name: "actionsTaken", label: "Actions Taken", type: "text" },
+      { name: "contactPerson", label: "Contact Person", type: "text" },
+      { name: "contactEmail", label: "Contact Email", type: "text" },
     ],
   },
   {
     id: "popia_io_appointment",
     name: "Information Officer Appointment Letter",
     description: "Formal appointment letter for the designated Information Officer under POPIA",
-    category: "privacy",
-    requiredFields: [
-      "companyName",
-      "officerName",
-      "officerTitle",
-      "appointmentDate",
-      "directorName",
+    category: "Privacy",
+    fields: [
+      { name: "companyName", label: "Company Name", type: "text" },
+      { name: "officerName", label: "Officer Name", type: "text" },
+      { name: "officerTitle", label: "Officer Title", type: "text" },
+      { name: "appointmentDate", label: "Appointment Date", type: "date" },
+      { name: "directorName", label: "Director / CEO Name", type: "text" },
+    ],
+  },
+  {
+    id: "gdpr_privacy_policy",
+    name: "GDPR Privacy Policy",
+    description:
+      "Privacy policy for businesses also processing EU personal data, with GDPR-specific provisions",
+    category: "Privacy",
+    fields: [
+      { name: "companyName", label: "Company Name", type: "text" },
+      { name: "dpoName", label: "Data Protection Officer Name", type: "text" },
+      { name: "dpoEmail", label: "Data Protection Officer Email", type: "text" },
+      { name: "address", label: "Company Address", type: "text" },
+      { name: "supervisoryAuthority", label: "Supervisory Authority", type: "text" },
+    ],
+  },
+  {
+    id: "gdpr_popia_comparison",
+    name: "GDPR vs POPIA Comparison Checklist",
+    description:
+      "Quick-reference comparison checklist between GDPR and POPIA for dual-compliance businesses",
+    category: "Privacy",
+    fields: [
+      { name: "companyName", label: "Company Name", type: "text" },
+      { name: "date", label: "Date", type: "date" },
     ],
   },
   {
@@ -81,17 +117,17 @@ const TEMPLATE_REGISTRY: TemplateMetadata[] = [
     name: "EME Sworn Affidavit",
     description:
       "B-BBEE sworn affidavit for Exempted Micro Enterprises with turnover under R10 million",
-    category: "bbee",
-    requiredFields: [
-      "companyName",
-      "registrationNumber",
-      "tradingName",
-      "financialYearEnd",
-      "annualTurnover",
-      "blackOwnershipPercent",
-      "deponentName",
-      "deponentIdNumber",
-      "date",
+    category: "B-BBEE",
+    fields: [
+      { name: "companyName", label: "Company Name", type: "text" },
+      { name: "registrationNumber", label: "Registration Number", type: "text" },
+      { name: "tradingName", label: "Trading Name", type: "text" },
+      { name: "financialYearEnd", label: "Financial Year End", type: "date" },
+      { name: "annualTurnover", label: "Annual Turnover (R)", type: "text" },
+      { name: "blackOwnershipPercent", label: "Black Ownership %", type: "text" },
+      { name: "deponentName", label: "Deponent Name", type: "text" },
+      { name: "deponentIdNumber", label: "Deponent ID Number", type: "text" },
+      { name: "date", label: "Date", type: "date" },
     ],
   },
   {
@@ -99,37 +135,43 @@ const TEMPLATE_REGISTRY: TemplateMetadata[] = [
     name: "Permanent Employment Contract",
     description:
       "Standard permanent employment contract compliant with the Basic Conditions of Employment Act",
-    category: "labour",
-    requiredFields: [
-      "companyName",
-      "employeeName",
-      "employeeIdNumber",
-      "position",
-      "startDate",
-      "salary",
-      "workingHours",
-      "leaveEntitlement",
-      "noticePeriod",
+    category: "Labour",
+    fields: [
+      { name: "companyName", label: "Company Name", type: "text" },
+      { name: "employeeName", label: "Employee Name", type: "text" },
+      { name: "employeeIdNumber", label: "Employee ID Number", type: "text" },
+      { name: "position", label: "Position", type: "text" },
+      { name: "startDate", label: "Start Date", type: "date" },
+      { name: "salary", label: "Monthly Salary (R)", type: "text" },
+      { name: "workingHours", label: "Working Hours / Week", type: "text" },
+      { name: "leaveEntitlement", label: "Leave Entitlement (Days)", type: "text" },
+      { name: "noticePeriod", label: "Notice Period", type: "text" },
     ],
   },
   {
     id: "ohs_safety_policy",
     name: "OHS Safety Policy",
     description: "Occupational Health and Safety policy document as required by the OHS Act",
-    category: "safety",
-    requiredFields: ["companyName", "managingDirector", "safetyOfficer", "address", "date"],
+    category: "Safety",
+    fields: [
+      { name: "companyName", label: "Company Name", type: "text" },
+      { name: "managingDirector", label: "Managing Director", type: "text" },
+      { name: "safetyOfficer", label: "Safety Officer", type: "text" },
+      { name: "address", label: "Address", type: "text" },
+      { name: "date", label: "Date", type: "date" },
+    ],
   },
   {
     id: "coida_roe_worksheet",
     name: "COIDA Return of Earnings Worksheet",
     description: "Worksheet for calculating and preparing the annual Return of Earnings submission",
-    category: "labour",
-    requiredFields: [
-      "companyName",
-      "registrationNumber",
-      "assessmentYear",
-      "totalEmployees",
-      "totalEarnings",
+    category: "Labour",
+    fields: [
+      { name: "companyName", label: "Company Name", type: "text" },
+      { name: "registrationNumber", label: "CF Registration Number", type: "text" },
+      { name: "assessmentYear", label: "Assessment Year", type: "text" },
+      { name: "totalEmployees", label: "Total Employees", type: "text" },
+      { name: "totalEarnings", label: "Total Earnings (R)", type: "text" },
     ],
   },
   {
@@ -137,8 +179,8 @@ const TEMPLATE_REGISTRY: TemplateMetadata[] = [
     name: "Compliance Health Report",
     description:
       "Comprehensive compliance health report with overall score, category breakdowns, and recommendations",
-    category: "compliance",
-    requiredFields: [],
+    category: "Compliance",
+    fields: [],
   },
 ];
 
@@ -167,6 +209,8 @@ export class ComplySaTemplatesService {
       popia_paia_manual: this.popiaPaiaManual,
       popia_breach_notification: this.popiaBreachNotification,
       popia_io_appointment: this.popiaIoAppointment,
+      gdpr_privacy_policy: this.gdprPrivacyPolicy,
+      gdpr_popia_comparison: this.gdprPopiaComparison,
       bbee_eme_affidavit: this.bbeeEmeAffidavit,
       employment_contract_permanent: this.employmentContractPermanent,
       ohs_safety_policy: this.ohsSafetyPolicy,
@@ -864,6 +908,264 @@ ${recommendations.length > 0 ? `<h2>Recommendations</h2><ul>${recommendations}</
 <div class="footer">
   <p>This appointment is made in terms of sections 55 and 56 of the Protection of Personal Information Act 4 of 2013.</p>
   <p>${companyName}</p>
+</div>
+
+</body>
+</html>`;
+  }
+
+  private gdprPrivacyPolicy(data: Record<string, string>): string {
+    const companyName = data["companyName"];
+    const dpoName = data["dpoName"];
+    const dpoEmail = data["dpoEmail"];
+    const address = data["address"];
+    const supervisoryAuthority = data["supervisoryAuthority"];
+
+    return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>GDPR Privacy Policy - ${companyName}</title>
+<style>
+  body { font-family: "Times New Roman", Georgia, serif; margin: 50px 60px; line-height: 1.8; color: #1a1a1a; font-size: 13px; }
+  h1 { text-align: center; font-size: 22px; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 5px; color: #1a365d; }
+  h2 { text-align: center; font-size: 14px; font-weight: normal; color: #4a5568; margin-top: 0; margin-bottom: 30px; }
+  h3 { font-size: 14px; text-transform: uppercase; color: #1a365d; margin-top: 30px; border-bottom: 1px solid #cbd5e0; padding-bottom: 5px; }
+  p { text-align: justify; margin: 8px 0; }
+  .section-number { font-weight: bold; margin-right: 8px; }
+  .defined-term { font-weight: bold; }
+  .effective-date { text-align: center; font-style: italic; margin-bottom: 30px; }
+  .footer { margin-top: 40px; border-top: 2px solid #1a365d; padding-top: 15px; font-size: 11px; color: #718096; text-align: center; }
+  .signature-block { margin-top: 50px; }
+  .signature-line { border-bottom: 1px dotted #1a1a1a; width: 300px; display: inline-block; margin-bottom: 5px; }
+  .signature-label { font-size: 11px; color: #4a5568; }
+  ul { margin: 8px 0 8px 20px; }
+  li { margin: 4px 0; }
+  .disclaimer { background: #fffbeb; border: 1px solid #f59e0b; border-radius: 4px; padding: 12px 16px; margin: 20px 0; font-size: 12px; }
+  @media print { body { margin: 30px 40px; } .disclaimer { background: #fff; } }
+</style>
+</head>
+<body>
+
+<h1>GDPR Privacy Policy</h1>
+<h2>${companyName}</h2>
+<p class="effective-date">Prepared in terms of the General Data Protection Regulation (EU) 2016/679</p>
+
+<div class="disclaimer">
+<strong>Disclaimer:</strong> This is a sample document generated from official EU regulatory guidelines. It is not legal advice. Customise for your specific business and have it reviewed by a qualified attorney or data protection expert before use.
+</div>
+
+<h3><span class="section-number">1.</span> Data Controller</h3>
+<p>${companyName} ("the Company", "we", "us") is the data controller responsible for processing personal data of individuals located in the European Economic Area (EEA). Our Data Protection Officer is <span class="defined-term">${dpoName}</span>, contactable at <span class="defined-term">${dpoEmail}</span>.</p>
+
+<h3><span class="section-number">2.</span> Personal Data We Collect</h3>
+<p>We may collect and process the following categories of personal data:</p>
+<ul>
+  <li>Identity data (name, date of birth, nationality, identification documents);</li>
+  <li>Contact data (email address, telephone number, postal address);</li>
+  <li>Financial data (bank account details, payment information, transaction records);</li>
+  <li>Technical data (IP address, browser type, device identifiers, cookies, and usage data);</li>
+  <li>Communication records (correspondence, feedback, call recordings where applicable);</li>
+  <li>Any other data voluntarily provided in the course of engaging with our services.</li>
+</ul>
+
+<h3><span class="section-number">3.</span> Lawful Basis for Processing</h3>
+<p>We process personal data on one or more of the following legal bases under Article 6 of the GDPR:</p>
+<ul>
+  <li><span class="defined-term">Consent</span> — the data subject has given clear consent (Article 6(1)(a));</li>
+  <li><span class="defined-term">Contract</span> — processing is necessary for the performance of a contract (Article 6(1)(b));</li>
+  <li><span class="defined-term">Legal obligation</span> — processing is necessary for compliance with a legal obligation (Article 6(1)(c));</li>
+  <li><span class="defined-term">Legitimate interests</span> — processing is necessary for our legitimate interests, provided they do not override the data subject's rights (Article 6(1)(f)).</li>
+</ul>
+
+<h3><span class="section-number">4.</span> Data Subject Rights</h3>
+<p>Under the GDPR, data subjects have the following rights:</p>
+<ul>
+  <li><span class="defined-term">Right of access</span> — to obtain confirmation of whether personal data is being processed and access to that data (Article 15);</li>
+  <li><span class="defined-term">Right to rectification</span> — to have inaccurate personal data corrected (Article 16);</li>
+  <li><span class="defined-term">Right to erasure</span> — to request deletion of personal data ("right to be forgotten") (Article 17);</li>
+  <li><span class="defined-term">Right to restrict processing</span> — to request restriction of processing in certain circumstances (Article 18);</li>
+  <li><span class="defined-term">Right to data portability</span> — to receive personal data in a structured, commonly used, machine-readable format (Article 20);</li>
+  <li><span class="defined-term">Right to object</span> — to object to processing based on legitimate interests or for direct marketing (Article 21);</li>
+  <li><span class="defined-term">Right regarding automated decisions</span> — not to be subject to automated decision-making, including profiling (Article 22).</li>
+</ul>
+<p>To exercise any of these rights, contact our Data Protection Officer at <span class="defined-term">${dpoEmail}</span>. We will respond within 30 days.</p>
+
+<h3><span class="section-number">5.</span> Data Breach Notification</h3>
+<p>In the event of a personal data breach likely to result in a risk to the rights and freedoms of data subjects, we will notify the relevant supervisory authority within <span class="defined-term">72 hours</span> of becoming aware of the breach, in accordance with Article 33. Where the breach is likely to result in a high risk, we will also notify affected data subjects without undue delay (Article 34).</p>
+
+<h3><span class="section-number">6.</span> International Transfers</h3>
+<p>Where personal data is transferred outside the EEA, we ensure appropriate safeguards are in place, including Standard Contractual Clauses (SCCs) approved by the European Commission, adequacy decisions, or binding corporate rules as required by Chapter V of the GDPR.</p>
+
+<h3><span class="section-number">7.</span> Data Retention</h3>
+<p>Personal data is retained only for as long as necessary to fulfil the purposes for which it was collected, or as required by applicable law. When retention is no longer necessary, data will be securely deleted or anonymised.</p>
+
+<h3><span class="section-number">8.</span> Security Measures</h3>
+<p>We implement appropriate technical and organisational measures to ensure the security of personal data, in accordance with Article 32 of the GDPR, including encryption, access controls, regular testing, and staff training.</p>
+
+<h3><span class="section-number">9.</span> Supervisory Authority</h3>
+<p>Data subjects have the right to lodge a complaint with the relevant supervisory authority. Our lead supervisory authority is: <span class="defined-term">${supervisoryAuthority}</span>.</p>
+
+<h3><span class="section-number">10.</span> Data Protection Officer</h3>
+<ul>
+  <li><span class="defined-term">Name:</span> ${dpoName}</li>
+  <li><span class="defined-term">Email:</span> ${dpoEmail}</li>
+  <li><span class="defined-term">Address:</span> ${address}</li>
+</ul>
+
+<h3><span class="section-number">11.</span> Amendments</h3>
+<p>We reserve the right to update this policy. Material changes will be communicated to data subjects. The most current version is available upon request from the Data Protection Officer.</p>
+
+<div class="signature-block">
+  <p><strong>Authorised by:</strong></p>
+  <p><br><span class="signature-line">&nbsp;</span></p>
+  <p class="signature-label">Signature &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Date: <span class="signature-line" style="width:150px">&nbsp;</span></p>
+</div>
+
+<div class="footer">
+  <p>This Privacy Policy is prepared in terms of the General Data Protection Regulation (EU) 2016/679.</p>
+  <p>${companyName} &bull; ${address}</p>
+</div>
+
+</body>
+</html>`;
+  }
+
+  private gdprPopiaComparison(data: Record<string, string>): string {
+    const companyName = data["companyName"];
+    const date = data["date"];
+
+    return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>GDPR vs POPIA Comparison - ${companyName}</title>
+<style>
+  body { font-family: "Times New Roman", Georgia, serif; margin: 50px 60px; line-height: 1.8; color: #1a1a1a; font-size: 13px; }
+  h1 { text-align: center; font-size: 22px; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 5px; color: #1a365d; }
+  h2 { text-align: center; font-size: 14px; font-weight: normal; color: #4a5568; margin-top: 0; margin-bottom: 30px; }
+  h3 { font-size: 14px; text-transform: uppercase; color: #1a365d; margin-top: 30px; border-bottom: 1px solid #cbd5e0; padding-bottom: 5px; }
+  p { text-align: justify; margin: 8px 0; }
+  table { border-collapse: collapse; width: 100%; margin: 20px 0; }
+  th, td { border: 1px solid #cbd5e0; padding: 10px 14px; text-align: left; font-size: 12px; vertical-align: top; }
+  th { background: #f7fafc; font-weight: bold; color: #1a365d; }
+  .col-aspect { width: 18%; }
+  .col-framework { width: 41%; }
+  .check { color: #22c55e; font-weight: bold; }
+  .cross { color: #ef4444; font-weight: bold; }
+  .disclaimer { background: #fffbeb; border: 1px solid #f59e0b; border-radius: 4px; padding: 12px 16px; margin: 20px 0; font-size: 12px; }
+  .footer { margin-top: 40px; border-top: 2px solid #1a365d; padding-top: 15px; font-size: 11px; color: #718096; text-align: center; }
+  .checklist { margin-top: 30px; }
+  .checklist li { margin: 6px 0; }
+  .checklist input[type="checkbox"] { margin-right: 8px; }
+  @media print { body { margin: 30px 40px; } .disclaimer { background: #fff; } }
+</style>
+</head>
+<body>
+
+<h1>GDPR vs POPIA Comparison Checklist</h1>
+<h2>${companyName} &mdash; ${date}</h2>
+
+<div class="disclaimer">
+<strong>Disclaimer:</strong> This is a quick-reference comparison document. It is not legal advice. Businesses processing data under both frameworks should consult qualified legal counsel to ensure full compliance.
+</div>
+
+<h3>Framework Comparison</h3>
+<table>
+  <tr>
+    <th class="col-aspect">Aspect</th>
+    <th class="col-framework">POPIA (South Africa)</th>
+    <th class="col-framework">GDPR (European Union)</th>
+  </tr>
+  <tr>
+    <td><strong>Scope</strong></td>
+    <td>Covers natural <em>and</em> juristic persons (companies)</td>
+    <td>Covers natural persons only</td>
+  </tr>
+  <tr>
+    <td><strong>Governing Body</strong></td>
+    <td>Information Regulator (South Africa)</td>
+    <td>National Data Protection Authorities / EDPB</td>
+  </tr>
+  <tr>
+    <td><strong>Data Officer</strong></td>
+    <td>Information Officer &mdash; <strong>mandatory</strong> for all responsible parties</td>
+    <td>DPO &mdash; mandatory only in specific cases (Article 37)</td>
+  </tr>
+  <tr>
+    <td><strong>Lawful Basis</strong></td>
+    <td>Consent, contract, legal obligation, legitimate interest, public interest, vital interest (Section 11)</td>
+    <td>Same six bases (Article 6) plus explicit requirements for special categories (Article 9)</td>
+  </tr>
+  <tr>
+    <td><strong>Consent</strong></td>
+    <td>Must be voluntary, specific, informed; can be withdrawn</td>
+    <td>Must be freely given, specific, informed, unambiguous; explicit consent for sensitive data</td>
+  </tr>
+  <tr>
+    <td><strong>Breach Notification</strong></td>
+    <td>&ldquo;As soon as reasonably possible&rdquo; to Information Regulator and data subjects (Section 22)</td>
+    <td><strong>72 hours</strong> to supervisory authority (Article 33); &ldquo;without undue delay&rdquo; to data subjects if high risk (Article 34)</td>
+  </tr>
+  <tr>
+    <td><strong>Data Portability</strong></td>
+    <td>Not explicitly provided</td>
+    <td><span class="check">&#10003;</span> Explicit right (Article 20)</td>
+  </tr>
+  <tr>
+    <td><strong>Right to Erasure</strong></td>
+    <td>Deletion/destruction when no longer needed (Section 14)</td>
+    <td><span class="check">&#10003;</span> Explicit &ldquo;right to be forgotten&rdquo; (Article 17)</td>
+  </tr>
+  <tr>
+    <td><strong>Automated Decisions</strong></td>
+    <td>Right not to be subject to automated decisions (Section 71)</td>
+    <td>Right not to be subject to automated decisions, including profiling (Article 22)</td>
+  </tr>
+  <tr>
+    <td><strong>Cross-border Transfers</strong></td>
+    <td>Adequate protection or consent or binding corporate rules (Section 72)</td>
+    <td>Adequacy decisions, SCCs, BCRs, or derogations (Chapter V)</td>
+  </tr>
+  <tr>
+    <td><strong>Children&rsquo;s Data</strong></td>
+    <td>Competent person (parent/guardian) consent required; child = under 18 (Section 35)</td>
+    <td>Parental consent for under 16 (member states may lower to 13) (Article 8)</td>
+  </tr>
+  <tr>
+    <td><strong>Penalties</strong></td>
+    <td>Up to <strong>R10 million</strong> fine and/or up to <strong>10 years</strong> imprisonment (Section 107)</td>
+    <td>Up to <strong>&euro;20 million</strong> or <strong>4% of global annual turnover</strong>, whichever is higher (Article 83)</td>
+  </tr>
+  <tr>
+    <td><strong>Direct Marketing</strong></td>
+    <td>Opt-in required; existing customer exemption with opt-out (Section 69)</td>
+    <td>Consent required; &ldquo;soft opt-in&rdquo; for existing customers (ePrivacy Directive + Article 21)</td>
+  </tr>
+</table>
+
+<h3>Dual-Compliance Checklist</h3>
+<p>For businesses processing data under both POPIA and GDPR, verify the following:</p>
+<ul class="checklist">
+  <li><input type="checkbox"> Information Officer appointed and registered with Information Regulator</li>
+  <li><input type="checkbox"> DPO appointed where required under GDPR Article 37</li>
+  <li><input type="checkbox"> Privacy policy covers both POPIA and GDPR provisions</li>
+  <li><input type="checkbox"> PAIA Section 51 Manual prepared and published</li>
+  <li><input type="checkbox"> Consent mechanisms meet both POPIA and GDPR standards</li>
+  <li><input type="checkbox"> Data breach notification process covers 72-hour GDPR requirement</li>
+  <li><input type="checkbox"> Data portability mechanisms in place for EU data subjects</li>
+  <li><input type="checkbox"> Cross-border transfer safeguards (SCCs or adequacy) documented</li>
+  <li><input type="checkbox"> Records of processing activities maintained (Article 30)</li>
+  <li><input type="checkbox"> Data Protection Impact Assessments conducted where required (Article 35)</li>
+  <li><input type="checkbox"> Children&rsquo;s data handling procedures comply with both frameworks</li>
+  <li><input type="checkbox"> Direct marketing practices comply with both opt-in requirements</li>
+  <li><input type="checkbox"> Data retention schedules documented and enforced</li>
+  <li><input type="checkbox"> Staff training covers both POPIA and GDPR obligations</li>
+</ul>
+
+<div class="footer">
+  <p>This comparison checklist is for reference purposes only and does not constitute legal advice.</p>
+  <p>${companyName} &bull; Prepared: ${date}</p>
 </div>
 
 </body>

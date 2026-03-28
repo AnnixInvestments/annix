@@ -9,7 +9,7 @@ type Template = {
   name: string;
   category: string;
   description: string;
-  fields: { name: string; label: string; type: string }[];
+  fields: { name: string; label: string; type: string }[] | null;
 };
 
 const CATEGORY_COLORS: Record<string, string> = {
@@ -17,6 +17,8 @@ const CATEGORY_COLORS: Record<string, string> = {
   Corporate: "bg-blue-500/20 text-blue-400 border-blue-500/30",
   Labour: "bg-green-500/20 text-green-400 border-green-500/30",
   Safety: "bg-orange-500/20 text-orange-400 border-orange-500/30",
+  "B-BBEE": "bg-emerald-500/20 text-emerald-400 border-emerald-500/30",
+  Compliance: "bg-teal-500/20 text-teal-400 border-teal-500/30",
 };
 
 function CategoryBadge({ category }: { category: string }) {
@@ -52,7 +54,8 @@ function TemplateCard({
       </div>
       <p className="text-xs text-slate-400 line-clamp-2">{template.description}</p>
       <p className="text-xs text-teal-500 mt-3 font-medium">
-        {template.fields.length} field{template.fields.length !== 1 ? "s" : ""} required
+        {(template.fields || []).length} field{(template.fields || []).length !== 1 ? "s" : ""}{" "}
+        required
       </p>
     </button>
   );
@@ -60,7 +63,7 @@ function TemplateCard({
 
 function TemplateForm({ template, onClose }: { template: Template; onClose: () => void }) {
   const [formData, setFormData] = useState<Record<string, string>>(
-    template.fields.reduce(
+    (template.fields || []).reduce(
       (acc, field) => ({ ...acc, [field.name]: "" }),
       {} as Record<string, string>,
     ),
@@ -114,7 +117,7 @@ function TemplateForm({ template, onClose }: { template: Template; onClose: () =
         {!generatedHtml ? (
           <>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {template.fields.map((field) => (
+              {(template.fields || []).map((field) => (
                 <div key={field.name}>
                   <label className="block text-sm font-medium text-slate-300 mb-1.5">
                     {field.label}
