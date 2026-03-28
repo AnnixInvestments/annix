@@ -1,6 +1,6 @@
 "use client";
 
-import { Calendar, ExternalLink, Newspaper } from "lucide-react";
+import { Calendar, ExternalLink, Globe, Newspaper } from "lucide-react";
 import { useState } from "react";
 import { formatDateZA, fromISO } from "@/app/lib/datetime";
 import { useRegulatoryUpdates, useRegulatoryUpdatesByCategory } from "@/app/lib/query/hooks";
@@ -12,7 +12,7 @@ type RegulatoryUpdate = {
   category: string;
   effectiveDate: string;
   sourceUrl: string | null;
-  affectedAreas: string[];
+  affectedAreas: string[] | null;
 };
 
 const CATEGORIES = [
@@ -71,9 +71,9 @@ function UpdateCard({ update }: { update: RegulatoryUpdate }) {
         )}
       </div>
 
-      {update.affectedAreas.length > 0 && (
+      {(update.affectedAreas || []).length > 0 && (
         <div className="flex flex-wrap gap-1.5 pt-1">
-          {update.affectedAreas.map((area) => (
+          {(update.affectedAreas || []).map((area) => (
             <span
               key={area}
               className="px-2 py-0.5 rounded text-[10px] font-medium bg-slate-700 text-slate-300"
@@ -83,6 +83,64 @@ function UpdateCard({ update }: { update: RegulatoryUpdate }) {
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+const OFFICIAL_SOURCES = [
+  {
+    name: "Government Gazette",
+    description: "All new laws, regulations, and amendments",
+    url: "https://www.gpwonline.co.za/egazettes/",
+  },
+  {
+    name: "SA Gov Latest Documents",
+    description: "Government notices, regulation gazettes, and board notices",
+    url: "https://www.gov.za/documents/latest",
+  },
+  {
+    name: "SARS",
+    description: "Tax and customs compliance updates",
+    url: "https://www.sars.gov.za/legal-counsel/secondary-legislation/",
+  },
+  {
+    name: "CIPC",
+    description: "Company and intellectual property compliance",
+    url: "https://www.cipc.co.za/",
+  },
+  {
+    name: "the dtic",
+    description: "Trade, competition, and consumer protection legislation",
+    url: "https://www.thedtic.gov.za/legislation/legislation-and-business-regulation/",
+  },
+];
+
+function OfficialSourcesPanel() {
+  return (
+    <div className="bg-slate-800 border border-slate-700 rounded-xl p-5">
+      <h2 className="text-sm font-semibold text-white flex items-center gap-2 mb-3">
+        <Globe className="h-4 w-4 text-teal-400" />
+        Official Regulatory Sources
+      </h2>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        {OFFICIAL_SOURCES.map((source) => (
+          <a
+            key={source.url}
+            href={source.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-start gap-3 p-3 rounded-lg bg-slate-700/50 hover:bg-slate-700 border border-slate-600/50 hover:border-teal-500/30 transition-colors group"
+          >
+            <ExternalLink className="h-4 w-4 text-slate-500 group-hover:text-teal-400 mt-0.5 shrink-0 transition-colors" />
+            <div className="min-w-0">
+              <span className="text-sm font-medium text-white group-hover:text-teal-300 transition-colors">
+                {source.name}
+              </span>
+              <p className="text-xs text-slate-400 mt-0.5 leading-snug">{source.description}</p>
+            </div>
+          </a>
+        ))}
+      </div>
     </div>
   );
 }
@@ -128,6 +186,8 @@ export default function RegulatoryPage() {
           Latest South African regulatory changes and compliance news
         </p>
       </div>
+
+      <OfficialSourcesPanel />
 
       <div className="border-b border-slate-700">
         <div className="flex overflow-x-auto -mb-px">

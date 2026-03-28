@@ -26,7 +26,15 @@ const REGULATORY_SOURCES = [
   },
   {
     name: "Government Gazette",
-    url: "https://www.gpwonline.co.za/",
+    url: "https://www.gpwonline.co.za/egazettes/",
+  },
+  {
+    name: "SA Government Latest",
+    url: "https://www.gov.za/documents/latest",
+  },
+  {
+    name: "dtic Legislation",
+    url: "https://www.thedtic.gov.za/legislation/legislation-and-business-regulation/",
   },
 ] as const;
 
