@@ -1612,6 +1612,42 @@ export interface DispatchProgress {
   totalDispatched: number;
   isComplete: boolean;
   items: AllocationSummary[];
+  hasCdn: boolean;
+  hasLoadPhotos: boolean;
+  canComplete: boolean;
+}
+
+export interface CdnLineMatch {
+  lineItemId: number | null;
+  cdnDescription: string;
+  cdnQuantity: number | null;
+  matchedDescription: string | null;
+  matchedQuantity: number | null;
+  confidence: number;
+  dispatched: boolean;
+}
+
+export interface DispatchCdn {
+  id: number;
+  jobCardId: number;
+  filePath: string;
+  originalFilename: string;
+  mimeType: string;
+  cdnNumber: string | null;
+  lineMatches: CdnLineMatch[] | null;
+  uploadedByName: string | null;
+  createdAt: string;
+}
+
+export interface DispatchLoadPhoto {
+  id: number;
+  jobCardId: number;
+  filePath: string;
+  originalFilename: string;
+  mimeType: string;
+  caption: string | null;
+  uploadedByName: string | null;
+  createdAt: string;
 }
 
 export interface StaffSignature {

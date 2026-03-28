@@ -9,6 +9,8 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { DataSource, Repository } from "typeorm";
 import { AuditService } from "../../audit/audit.service";
 import { AuditAction } from "../../audit/entities/audit-log.entity";
+import { DispatchCdn } from "../entities/dispatch-cdn.entity";
+import { DispatchLoadPhoto } from "../entities/dispatch-load-photo.entity";
 import { DispatchScan } from "../entities/dispatch-scan.entity";
 import { JobCard } from "../entities/job-card.entity";
 import { StockAllocation } from "../entities/stock-allocation.entity";
@@ -34,6 +36,9 @@ export interface DispatchProgress {
   totalDispatched: number;
   isComplete: boolean;
   items: AllocationSummary[];
+  hasCdn: boolean;
+  hasLoadPhotos: boolean;
+  canComplete: boolean;
 }
 
 @Injectable()
@@ -51,6 +56,10 @@ export class DispatchService {
     private readonly stockItemRepo: Repository<StockItem>,
     @InjectRepository(StockMovement)
     private readonly movementRepo: Repository<StockMovement>,
+    @InjectRepository(DispatchCdn)
+    private readonly cdnRepo: Repository<DispatchCdn>,
+    @InjectRepository(DispatchLoadPhoto)
+    private readonly loadPhotoRepo: Repository<DispatchLoadPhoto>,
     private readonly dataSource: DataSource,
     private readonly auditService: AuditService,
   ) {}
@@ -177,11 +186,20 @@ export class DispatchService {
     const totalDispatched = items.reduce((sum, item) => sum + item.dispatchedQuantity, 0);
     const isComplete = items.every((item) => item.remainingQuantity === 0);
 
+    const cdnCount = await this.cdnRepo.count({ where: { jobCardId, companyId } });
+    const photoCount = await this.loadPhotoRepo.count({ where: { jobCardId, companyId } });
+    const hasCdn = cdnCount > 0;
+    const hasLoadPhotos = photoCount > 0;
+    const canComplete = hasCdn && hasLoadPhotos;
+
     return {
       totalAllocated,
       totalDispatched,
       isComplete,
       items,
+      hasCdn,
+      hasLoadPhotos,
+      canComplete,
     };
   }
 
@@ -200,8 +218,15 @@ export class DispatchService {
   ): Promise<JobCard> {
     const progress = await this.dispatchProgress(companyId, jobCardId);
 
-    if (!progress.isComplete) {
-      throw new BadRequestException("Cannot complete dispatch. Not all items have been scanned.");
+    if (!progress.canComplete) {
+      const missing: string[] = [];
+      if (!progress.hasCdn) {
+        missing.push("Customer Delivery Note (CDN)");
+      }
+      if (!progress.hasLoadPhotos) {
+        missing.push("load photos");
+      }
+      throw new BadRequestException(`Cannot complete dispatch. Missing: ${missing.join(" and ")}.`);
     }
 
     const result = await this.jobCardRepo.update(

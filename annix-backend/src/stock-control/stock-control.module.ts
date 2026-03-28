@@ -47,6 +47,8 @@ import { CustomerPurchaseOrderItem } from "./entities/customer-purchase-order-it
 import { DashboardPreference } from "./entities/dashboard-preference.entity";
 import { DeliveryNote } from "./entities/delivery-note.entity";
 import { DeliveryNoteItem } from "./entities/delivery-note-item.entity";
+import { DispatchCdn } from "./entities/dispatch-cdn.entity";
+import { DispatchLoadPhoto } from "./entities/dispatch-load-photo.entity";
 import { DispatchScan } from "./entities/dispatch-scan.entity";
 import { GlossaryTerm } from "./entities/glossary-term.entity";
 import { InspectionBooking } from "./entities/inspection-booking.entity";
@@ -121,6 +123,8 @@ import { DeliveryExtractionService } from "./services/delivery-extraction.servic
 import { DeliveryInvoiceService } from "./services/delivery-invoice.service";
 import { DeliverySupplierService } from "./services/delivery-supplier.service";
 import { DispatchService } from "./services/dispatch.service";
+import { DispatchCdnService } from "./services/dispatch-cdn.service";
+import { DispatchLoadPhotoService } from "./services/dispatch-load-photo.service";
 import { DrawingExtractionService } from "./services/drawing-extraction.service";
 import { GlossaryService } from "./services/glossary.service";
 import { ImportService } from "./services/import.service";
@@ -192,6 +196,8 @@ import { WorkflowStepConfigService } from "./services/workflow-step-config.servi
       WorkflowNotification,
       WorkflowStepAssignment,
       DispatchScan,
+      DispatchCdn,
+      DispatchLoadPhoto,
       StaffSignature,
       StockIssuance,
       SupplierInvoice,
@@ -315,6 +321,8 @@ import { WorkflowStepConfigService } from "./services/workflow-step-config.servi
     WorkflowNotificationService,
     JobCardWorkflowService,
     DispatchService,
+    DispatchCdnService,
+    DispatchLoadPhotoService,
     JobCardPdfService,
     JobCardVersionService,
     DrawingExtractionService,

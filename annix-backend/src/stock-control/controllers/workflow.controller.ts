@@ -12,10 +12,11 @@ import {
   Req,
   Res,
   UploadedFile,
+  UploadedFiles,
   UseGuards,
   UseInterceptors,
 } from "@nestjs/common";
-import { FileInterceptor } from "@nestjs/platform-express";
+import { AnyFilesInterceptor, FileInterceptor } from "@nestjs/platform-express";
 import { ApiOperation, ApiTags } from "@nestjs/swagger";
 import { Response } from "express";
 import {
@@ -49,6 +50,8 @@ import {
 } from "../guards/stock-control-role.guard";
 import { BackgroundStepService } from "../services/background-step.service";
 import { DispatchService } from "../services/dispatch.service";
+import { DispatchCdnService } from "../services/dispatch-cdn.service";
+import { DispatchLoadPhotoService } from "../services/dispatch-load-photo.service";
 import { InspectionBookingService } from "../services/inspection-booking.service";
 import { JobCardPdfService } from "../services/job-card-pdf.service";
 import { JobCardWorkflowService } from "../services/job-card-workflow.service";
@@ -79,6 +82,8 @@ export class WorkflowController {
     private readonly requisitionService: RequisitionService,
     private readonly jobFileService: JobFileService,
     private readonly inspectionBookingService: InspectionBookingService,
+    private readonly dispatchCdnService: DispatchCdnService,
+    private readonly dispatchLoadPhotoService: DispatchLoadPhotoService,
   ) {}
 
   @Post("job-cards/:id/documents")
@@ -340,6 +345,89 @@ export class WorkflowController {
   @ApiOperation({ summary: "Identify item by QR code" })
   async scanQr(@Req() req: any, @Body() dto: ScanQrDto) {
     return this.dispatchService.scanByQrToken(req.user.companyId, dto.qrToken);
+  }
+
+  @Post("job-cards/:id/dispatch/cdn")
+  @StockControlRoles("storeman", "admin", "manager")
+  @UseInterceptors(FileInterceptor("file"))
+  @ApiOperation({ summary: "Upload a Customer Delivery Note for dispatch" })
+  async uploadDispatchCdn(
+    @Req() req: any,
+    @Param("id") id: number,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    return this.dispatchCdnService.uploadAndAnalyse(req.user.companyId, id, file, {
+      id: req.user.id,
+      name: req.user.name,
+    });
+  }
+
+  @Get("job-cards/:id/dispatch/cdns")
+  @ApiOperation({ summary: "List CDNs for a dispatch" })
+  async dispatchCdns(@Req() req: any, @Param("id") id: number) {
+    return this.dispatchCdnService.cdnsForJobCard(req.user.companyId, id);
+  }
+
+  @Put("job-cards/:id/dispatch/cdns/:cdnId/matches")
+  @StockControlRoles("storeman", "admin", "manager")
+  @ApiOperation({ summary: "Update line item matches for a CDN" })
+  async updateCdnMatches(
+    @Req() req: any,
+    @Param("id") _id: number,
+    @Param("cdnId") cdnId: number,
+    @Body() body: { lineMatches: any[] },
+  ) {
+    return this.dispatchCdnService.updateLineMatches(req.user.companyId, cdnId, body.lineMatches);
+  }
+
+  @Delete("job-cards/:id/dispatch/cdns/:cdnId")
+  @StockControlRoles("manager", "admin")
+  @ApiOperation({ summary: "Delete a CDN" })
+  async deleteDispatchCdn(
+    @Req() req: any,
+    @Param("id") _id: number,
+    @Param("cdnId") cdnId: number,
+  ) {
+    await this.dispatchCdnService.deleteCdn(req.user.companyId, cdnId);
+    return { success: true };
+  }
+
+  @Post("job-cards/:id/dispatch/load-photos")
+  @StockControlRoles("storeman", "admin", "manager")
+  @UseInterceptors(AnyFilesInterceptor())
+  @ApiOperation({ summary: "Upload load photos for dispatch" })
+  async uploadLoadPhotos(
+    @Req() req: any,
+    @Param("id") id: number,
+    @UploadedFiles() files: Express.Multer.File[],
+  ) {
+    const results = await Promise.all(
+      files.map((file) =>
+        this.dispatchLoadPhotoService.uploadPhoto(req.user.companyId, id, file, {
+          id: req.user.id,
+          name: req.user.name,
+        }),
+      ),
+    );
+    return results;
+  }
+
+  @Get("job-cards/:id/dispatch/load-photos")
+  @ApiOperation({ summary: "List load photos for a dispatch" })
+  async dispatchLoadPhotos(@Req() req: any, @Param("id") id: number) {
+    return this.dispatchLoadPhotoService.photosForJobCard(req.user.companyId, id);
+  }
+
+  @Delete("job-cards/:id/dispatch/load-photos/:photoId")
+  @StockControlRoles("manager", "admin")
+  @ApiOperation({ summary: "Delete a load photo" })
+  async deleteLoadPhoto(
+    @Req() req: any,
+    @Param("id") _id: number,
+    @Param("photoId") photoId: number,
+  ) {
+    await this.dispatchLoadPhotoService.deletePhoto(req.user.companyId, photoId);
+    return { success: true };
   }
 
   @Get("job-cards/:id/print")

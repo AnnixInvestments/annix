@@ -2,6 +2,9 @@ import { API_BASE_URL } from "@/lib/api-config";
 import { StockControlApiClient } from "./base";
 import type {
   BackgroundStepStatus,
+  CdnLineMatch,
+  DispatchCdn,
+  DispatchLoadPhoto,
   DispatchProgress,
   DispatchScan,
   EligibleUser,
@@ -56,6 +59,17 @@ declare module "./base" {
     ): Promise<DispatchScan>;
     completeDispatch(jobCardId: number): Promise<JobCard>;
     scanQrCode(qrToken: string): Promise<{ type: "job_card" | "stock_item"; id: number }>;
+    uploadDispatchCdn(jobCardId: number, file: File): Promise<DispatchCdn>;
+    dispatchCdns(jobCardId: number): Promise<DispatchCdn[]>;
+    updateCdnMatches(
+      jobCardId: number,
+      cdnId: number,
+      lineMatches: CdnLineMatch[],
+    ): Promise<DispatchCdn>;
+    deleteDispatchCdn(jobCardId: number, cdnId: number): Promise<{ success: boolean }>;
+    uploadDispatchLoadPhotos(jobCardId: number, files: File[]): Promise<DispatchLoadPhoto[]>;
+    dispatchLoadPhotos(jobCardId: number): Promise<DispatchLoadPhoto[]>;
+    deleteDispatchLoadPhoto(jobCardId: number, photoId: number): Promise<{ success: boolean }>;
     downloadSignedJobCardPdf(jobCardId: number): Promise<void>;
     workflowStepConfigs(): Promise<WorkflowStepConfig[]>;
     updateWorkflowStepLabel(key: string, label: string): Promise<{ success: boolean }>;
@@ -244,6 +258,56 @@ proto.scanQrCode = async function (qrToken) {
     method: "POST",
     body: JSON.stringify({ qrToken }),
   });
+};
+
+proto.uploadDispatchCdn = async function (jobCardId, file) {
+  return this.uploadFile(`/stock-control/workflow/job-cards/${jobCardId}/dispatch/cdn`, file);
+};
+
+proto.dispatchCdns = async function (jobCardId) {
+  return this.request(`/stock-control/workflow/job-cards/${jobCardId}/dispatch/cdns`);
+};
+
+proto.updateCdnMatches = async function (jobCardId, cdnId, lineMatches) {
+  return this.request(
+    `/stock-control/workflow/job-cards/${jobCardId}/dispatch/cdns/${cdnId}/matches`,
+    {
+      method: "PUT",
+      body: JSON.stringify({ lineMatches }),
+    },
+  );
+};
+
+proto.deleteDispatchCdn = async function (jobCardId, cdnId) {
+  return this.request(`/stock-control/workflow/job-cards/${jobCardId}/dispatch/cdns/${cdnId}`, {
+    method: "DELETE",
+  });
+};
+
+proto.uploadDispatchLoadPhotos = async function (jobCardId, files) {
+  const formData = new FormData();
+  files.forEach((file) => formData.append("files", file));
+  const h = this.headers();
+  const response = await fetch(
+    `${API_BASE_URL}/stock-control/workflow/job-cards/${jobCardId}/dispatch/load-photos`,
+    { method: "POST", headers: { Authorization: h.Authorization || "" }, body: formData },
+  );
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({ message: response.statusText }));
+    throw new Error(err.message || "Upload failed");
+  }
+  return response.json();
+};
+
+proto.dispatchLoadPhotos = async function (jobCardId) {
+  return this.request(`/stock-control/workflow/job-cards/${jobCardId}/dispatch/load-photos`);
+};
+
+proto.deleteDispatchLoadPhoto = async function (jobCardId, photoId) {
+  return this.request(
+    `/stock-control/workflow/job-cards/${jobCardId}/dispatch/load-photos/${photoId}`,
+    { method: "DELETE" },
+  );
 };
 
 proto.downloadSignedJobCardPdf = async function (jobCardId) {

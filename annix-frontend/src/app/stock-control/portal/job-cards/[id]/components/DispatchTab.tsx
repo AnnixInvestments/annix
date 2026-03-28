@@ -1,11 +1,12 @@
 "use client";
 
-import { CheckCircle, Package, QrCode, Truck, X } from "lucide-react";
+import { Camera, CheckCircle, FileText, ImageIcon, Trash2, Truck, Upload, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type {
-  AllocationSummary,
+  CdnLineMatch,
+  DispatchCdn,
+  DispatchLoadPhoto,
   DispatchProgress,
-  DispatchScan,
 } from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { formatDateLongZA } from "@/app/lib/datetime";
@@ -17,34 +18,34 @@ interface DispatchTabProps {
   onRefreshParent: () => void;
 }
 
-export default function DispatchTab({
-  jobId,
-  jobNumber,
-  jobName,
-  onRefreshParent,
-}: DispatchTabProps) {
+export default function DispatchTab(props: DispatchTabProps) {
+  const jobId = props.jobId;
+  const onRefreshParent = props.onRefreshParent;
+
   const [progress, setProgress] = useState<DispatchProgress | null>(null);
-  const [history, setHistory] = useState<DispatchScan[]>([]);
+  const [cdns, setCdns] = useState<DispatchCdn[]>([]);
+  const [loadPhotos, setLoadPhotos] = useState<DispatchLoadPhoto[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [scanInput, setScanInput] = useState("");
-  const [isScanning, setIsScanning] = useState(false);
-  const [scanQuantity, setScanQuantity] = useState(1);
-  const [scanNotes, setScanNotes] = useState("");
-  const [showScanModal, setShowScanModal] = useState(false);
-  const [selectedItem, setSelectedItem] = useState<AllocationSummary | null>(null);
+  const [isUploadingCdn, setIsUploadingCdn] = useState(false);
+  const [isUploadingPhotos, setIsUploadingPhotos] = useState(false);
   const [isCompleting, setIsCompleting] = useState(false);
-  const scanInputRef = useRef<HTMLInputElement>(null);
+  const [showCdnPreview, setShowCdnPreview] = useState<DispatchCdn | null>(null);
+  const [showPhotoPreview, setShowPhotoPreview] = useState<DispatchLoadPhoto | null>(null);
+  const cdnInputRef = useRef<HTMLInputElement>(null);
+  const photoInputRef = useRef<HTMLInputElement>(null);
 
   const fetchData = useCallback(async () => {
     try {
       setIsLoading(true);
-      const [progressData, historyData] = await Promise.all([
+      const [progressData, cdnData, photoData] = await Promise.all([
         stockControlApiClient.dispatchProgress(jobId),
-        stockControlApiClient.dispatchHistory(jobId),
+        stockControlApiClient.dispatchCdns(jobId),
+        stockControlApiClient.dispatchLoadPhotos(jobId),
       ]);
       setProgress(progressData);
-      setHistory(historyData);
+      setCdns(cdnData);
+      setLoadPhotos(photoData);
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load dispatch data");
@@ -57,78 +58,72 @@ export default function DispatchTab({
     fetchData();
   }, [fetchData]);
 
-  useEffect(() => {
-    if (scanInputRef.current && !showScanModal) {
-      scanInputRef.current.focus();
-    }
-  }, [showScanModal]);
-
-  const handleScanSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!scanInput.trim()) return;
+  const handleCdnUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
 
     try {
-      setIsScanning(true);
-      const result = await stockControlApiClient.scanQrCode(scanInput.trim());
-
-      if (result.type === "job_card") {
-        if (result.id !== jobId) {
-          setError(`Scanned QR belongs to job card ${result.id}, not the current one.`);
-        } else {
-          setError("This is a job card QR code. Please scan a stock item.");
-        }
-        setScanInput("");
-        return;
-      }
-
-      const item = progress?.items.find((i) => i.stockItemId === result.id);
-      if (item) {
-        setSelectedItem(item);
-        setScanQuantity(Math.min(1, item.allocatedQuantity - item.dispatchedQuantity));
-        setShowScanModal(true);
-      } else {
-        setError("Scanned item is not allocated to this job card.");
-      }
+      setIsUploadingCdn(true);
+      setError(null);
+      await stockControlApiClient.uploadDispatchCdn(jobId, file);
+      await fetchData();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Scan failed");
+      setError(err instanceof Error ? err.message : "CDN upload failed");
     } finally {
-      setIsScanning(false);
-      setScanInput("");
+      setIsUploadingCdn(false);
+      if (cdnInputRef.current) {
+        cdnInputRef.current.value = "";
+      }
     }
   };
 
-  const handleManualSelect = (item: AllocationSummary) => {
-    setSelectedItem(item);
-    setScanQuantity(Math.min(1, item.allocatedQuantity - item.dispatchedQuantity));
-    setShowScanModal(true);
-  };
-
-  const handleConfirmDispatch = async () => {
-    if (!selectedItem) return;
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
 
     try {
-      setIsScanning(true);
-      await stockControlApiClient.scanDispatchItem(
-        jobId,
-        selectedItem.stockItemId,
-        scanQuantity,
-        scanNotes || undefined,
-      );
-      setShowScanModal(false);
-      setSelectedItem(null);
-      setScanQuantity(1);
-      setScanNotes("");
-      fetchData();
+      setIsUploadingPhotos(true);
+      setError(null);
+      await stockControlApiClient.uploadDispatchLoadPhotos(jobId, Array.from(files));
+      await fetchData();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Dispatch failed");
+      setError(err instanceof Error ? err.message : "Photo upload failed");
     } finally {
-      setIsScanning(false);
+      setIsUploadingPhotos(false);
+      if (photoInputRef.current) {
+        photoInputRef.current.value = "";
+      }
+    }
+  };
+
+  const handleDeleteCdn = async (cdnId: number) => {
+    try {
+      await stockControlApiClient.deleteDispatchCdn(jobId, cdnId);
+      await fetchData();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to delete CDN");
+    }
+  };
+
+  const handleDeletePhoto = async (photoId: number) => {
+    try {
+      await stockControlApiClient.deleteDispatchLoadPhoto(jobId, photoId);
+      await fetchData();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to delete photo");
     }
   };
 
   const handleCompleteDispatch = async () => {
-    if (!progress?.isComplete) {
-      setError("Cannot complete dispatch - not all items have been dispatched.");
+    if (!progress?.canComplete) {
+      const missing: string[] = [];
+      if (!progress?.hasCdn) {
+        missing.push("Customer Delivery Note");
+      }
+      if (!progress?.hasLoadPhotos) {
+        missing.push("load photos");
+      }
+      setError(`Cannot complete dispatch. Missing: ${missing.join(" and ")}.`);
       return;
     }
 
@@ -165,28 +160,17 @@ export default function DispatchTab({
     );
   }
 
-  const remainingItems = progress.items.filter(
-    (item) => item.dispatchedQuantity < item.allocatedQuantity,
-  );
-  const completedItems = progress.items.filter(
-    (item) => item.dispatchedQuantity >= item.allocatedQuantity,
-  );
-  const progressPercentage =
-    progress.totalAllocated > 0
-      ? Math.round((progress.totalDispatched / progress.totalAllocated) * 100)
-      : 0;
-
   return (
     <div className="space-y-6">
-      {progress.isComplete && (
+      {progress.canComplete && (
         <div className="flex justify-end">
           <button
             onClick={handleCompleteDispatch}
             disabled={isCompleting}
-            className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 disabled:bg-gray-400"
+            className="inline-flex items-center px-6 py-3 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-orange-500 hover:bg-orange-600 disabled:bg-gray-400"
           >
-            <CheckCircle className="w-4 h-4 mr-2" />
-            {isCompleting ? "Completing..." : "Complete Dispatch"}
+            <Truck className="w-5 h-5 mr-2" />
+            {isCompleting ? "Completing..." : "Dispatch Complete"}
           </button>
         </div>
       )}
@@ -205,238 +189,304 @@ export default function DispatchTab({
 
       <div className="bg-white shadow rounded-lg p-6">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-gray-900">Scan Item</h2>
-          <div className="flex items-center space-x-2">
-            <QrCode className="w-5 h-5 text-gray-400" />
-            <span className="text-sm text-gray-500">Scan barcode or enter manually</span>
-          </div>
-        </div>
-        <form onSubmit={handleScanSubmit} className="flex space-x-4">
-          <input
-            ref={scanInputRef}
-            type="text"
-            value={scanInput}
-            onChange={(e) => setScanInput(e.target.value)}
-            placeholder="Scan barcode or enter stock item code..."
-            className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-teal-500 focus:border-teal-500 text-lg"
-            autoFocus
-          />
-          <button
-            type="submit"
-            disabled={isScanning || !scanInput.trim()}
-            className="px-6 py-3 bg-teal-600 text-white rounded-lg hover:bg-teal-700 disabled:bg-gray-300 font-medium"
-          >
-            {isScanning ? "Scanning..." : "Scan"}
-          </button>
-        </form>
-      </div>
-
-      <div className="bg-white shadow rounded-lg overflow-x-auto">
-        <div className="px-4 py-5 sm:px-6 border-b border-gray-200">
-          <div className="flex items-center justify-between">
-            <h3 className="text-lg leading-6 font-medium text-gray-900">Dispatch Progress</h3>
-            <span className="text-sm text-gray-500">
-              {progress.totalDispatched} / {progress.totalAllocated} items dispatched
+          <h2 className="text-lg font-semibold text-gray-900 flex items-center">
+            <FileText className="w-5 h-5 mr-2 text-teal-600" />
+            Customer Delivery Note (CDN)
+          </h2>
+          {progress.hasCdn && (
+            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+              <CheckCircle className="w-3 h-3 mr-1" />
+              Uploaded
             </span>
-          </div>
-          <div className="mt-3">
-            <div className="w-full bg-gray-200 rounded-full h-3">
-              <div
-                className={`h-3 rounded-full transition-all ${progress.isComplete ? "bg-green-500" : "bg-teal-500"}`}
-                style={{ width: `${progressPercentage}%` }}
-              />
-            </div>
-            <p className="mt-1 text-sm text-gray-500 text-right">{progressPercentage}% complete</p>
-          </div>
+          )}
         </div>
 
-        {remainingItems.length > 0 && (
-          <div className="px-4 py-4 sm:px-6">
-            <h4 className="text-sm font-medium text-gray-700 mb-3 flex items-center">
-              <Package className="w-4 h-4 mr-2 text-orange-500" />
-              Pending Items ({remainingItems.length})
-            </h4>
-            <div className="space-y-2">
-              {remainingItems.map((item) => (
-                <div
-                  key={item.stockItemId}
-                  className="flex items-center justify-between p-3 bg-orange-50 border border-orange-200 rounded-lg cursor-pointer hover:bg-orange-100"
-                  onClick={() => handleManualSelect(item)}
-                >
-                  <div>
-                    <p className="font-medium text-gray-900">{item.stockItem?.name}</p>
-                    <p className="text-sm text-gray-500">SKU: {item.stockItem?.sku}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-semibold text-gray-900">
-                      {item.dispatchedQuantity} / {item.allocatedQuantity}
-                    </p>
-                    <p className="text-sm text-orange-600">
-                      {item.allocatedQuantity - item.dispatchedQuantity} remaining
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+        <p className="text-sm text-gray-500 mb-4">
+          Upload the Customer Delivery Note (PDF or image). Nix will analyse it against the job card
+          line items.
+        </p>
 
-        {completedItems.length > 0 && (
-          <div className="px-4 py-4 sm:px-6 border-t border-gray-200">
-            <h4 className="text-sm font-medium text-gray-700 mb-3 flex items-center">
-              <CheckCircle className="w-4 h-4 mr-2 text-green-500" />
-              Dispatched Items ({completedItems.length})
-            </h4>
-            <div className="space-y-2">
-              {completedItems.map((item) => (
+        <div className="flex items-center space-x-4">
+          <input
+            ref={cdnInputRef}
+            type="file"
+            accept=".pdf,image/*"
+            onChange={handleCdnUpload}
+            className="hidden"
+            id="cdn-upload"
+          />
+          <label
+            htmlFor="cdn-upload"
+            className={`inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 cursor-pointer ${isUploadingCdn ? "opacity-50 pointer-events-none" : ""}`}
+          >
+            <Upload className="w-4 h-4 mr-2" />
+            {isUploadingCdn ? "Uploading..." : "Upload CDN"}
+          </label>
+        </div>
+
+        {cdns.length > 0 && (
+          <div className="mt-4 space-y-3">
+            {cdns.map((cdn) => (
+              <div
+                key={cdn.id}
+                className="flex items-center justify-between p-3 bg-gray-50 border border-gray-200 rounded-lg"
+              >
                 <div
-                  key={item.stockItemId}
-                  className="flex items-center justify-between p-3 bg-green-50 border border-green-200 rounded-lg"
+                  className="flex items-center space-x-3 flex-1 cursor-pointer"
+                  onClick={() => setShowCdnPreview(cdn)}
                 >
+                  <FileText className="w-8 h-8 text-teal-600" />
                   <div>
-                    <p className="font-medium text-gray-900">{item.stockItem?.name}</p>
-                    <p className="text-sm text-gray-500">SKU: {item.stockItem?.sku}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-semibold text-green-600">
-                      {item.dispatchedQuantity} / {item.allocatedQuantity}
+                    <p className="text-sm font-medium text-gray-900">{cdn.originalFilename}</p>
+                    <p className="text-xs text-gray-500">
+                      {cdn.cdnNumber ? `CDN #${cdn.cdnNumber}` : "Analysing..."}
+                      {cdn.uploadedByName ? ` | Uploaded by ${cdn.uploadedByName}` : ""}
+                      {cdn.createdAt ? ` | ${formatDateLongZA(new Date(cdn.createdAt))}` : ""}
                     </p>
-                    <CheckCircle className="w-5 h-5 text-green-500 inline-block ml-2" />
+                    {cdn.lineMatches && cdn.lineMatches.length > 0 && (
+                      <p className="text-xs text-teal-600 mt-1">
+                        {cdn.lineMatches.length} line items matched
+                      </p>
+                    )}
                   </div>
                 </div>
-              ))}
-            </div>
+                <button
+                  onClick={() => handleDeleteCdn(cdn.id)}
+                  className="p-1 hover:bg-red-50 rounded text-gray-400 hover:text-red-500"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+            ))}
           </div>
         )}
       </div>
 
-      {history.length > 0 && (
+      {cdns.length > 0 && cdns.some((c) => c.lineMatches && c.lineMatches.length > 0) && (
         <div className="bg-white shadow rounded-lg overflow-x-auto">
           <div className="px-4 py-5 sm:px-6 border-b border-gray-200">
-            <h3 className="text-lg leading-6 font-medium text-gray-900 flex items-center">
-              <Truck className="w-5 h-5 mr-2 text-gray-400" />
-              Dispatch History
-            </h3>
+            <h3 className="text-lg leading-6 font-medium text-gray-900">CDN Line Item Analysis</h3>
+            <p className="mt-1 text-sm text-gray-500">
+              AI-matched CDN items against job card line items
+            </p>
           </div>
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Item
+                  CDN Item
                 </th>
                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">
-                  Qty
+                  CDN Qty
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Scanned By
+                  Matched JC Item
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Time
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">
+                  JC Qty
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Notes
+                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
+                  Confidence
                 </th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {history.map((scan) => (
-                <tr key={scan.id}>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <p className="text-sm font-medium text-gray-900">
-                      {scan.stockItem?.name || `Item #${scan.stockItemId}`}
-                    </p>
-                    <p className="text-xs text-gray-500">{scan.stockItem?.sku}</p>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-semibold text-gray-900">
-                    {scan.quantityDispatched}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {scan.scannedByName || "Unknown"}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {formatDateLongZA(new Date(scan.scannedAt))}
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-500 max-w-xs truncate">
-                    {scan.dispatchNotes || "-"}
-                  </td>
-                </tr>
-              ))}
+              {cdns.flatMap((cdn) =>
+                (cdn.lineMatches || ([] as CdnLineMatch[])).map((match, idx) => (
+                  <tr key={`${cdn.id}-${idx}`}>
+                    <td className="px-6 py-4 text-sm text-gray-900 max-w-xs truncate">
+                      {match.cdnDescription}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-900 text-right">
+                      {match.cdnQuantity || "-"}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-600 max-w-xs truncate">
+                      {match.matchedDescription || (
+                        <span className="text-orange-500 italic">No match</span>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-600 text-right">
+                      {match.matchedQuantity || "-"}
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      <span
+                        className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                          match.confidence >= 0.7
+                            ? "bg-green-100 text-green-800"
+                            : match.confidence >= 0.4
+                              ? "bg-yellow-100 text-yellow-800"
+                              : "bg-red-100 text-red-800"
+                        }`}
+                      >
+                        {Math.round(match.confidence * 100)}%
+                      </span>
+                    </td>
+                  </tr>
+                )),
+              )}
             </tbody>
           </table>
         </div>
       )}
 
-      {showScanModal && selectedItem && (
+      <div className="bg-white shadow rounded-lg p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold text-gray-900 flex items-center">
+            <Camera className="w-5 h-5 mr-2 text-teal-600" />
+            Load Photos
+          </h2>
+          {progress.hasLoadPhotos && (
+            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+              <CheckCircle className="w-3 h-3 mr-1" />
+              {loadPhotos.length} photo{loadPhotos.length !== 1 ? "s" : ""}
+            </span>
+          )}
+        </div>
+
+        <p className="text-sm text-gray-500 mb-4">
+          Upload photos of the load on the trucks. These are stored in the job file for records.
+        </p>
+
+        <div className="flex items-center space-x-4">
+          <input
+            ref={photoInputRef}
+            type="file"
+            accept="image/*"
+            multiple
+            onChange={handlePhotoUpload}
+            className="hidden"
+            id="photo-upload"
+          />
+          <label
+            htmlFor="photo-upload"
+            className={`inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 cursor-pointer ${isUploadingPhotos ? "opacity-50 pointer-events-none" : ""}`}
+          >
+            <Camera className="w-4 h-4 mr-2" />
+            {isUploadingPhotos ? "Uploading..." : "Upload Photos"}
+          </label>
+        </div>
+
+        {loadPhotos.length > 0 && (
+          <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+            {loadPhotos.map((photo) => (
+              <div
+                key={photo.id}
+                className="relative group rounded-lg overflow-hidden border border-gray-200"
+              >
+                <div
+                  className="aspect-square bg-gray-100 cursor-pointer"
+                  onClick={() => setShowPhotoPreview(photo)}
+                >
+                  {photo.mimeType.startsWith("image/") ? (
+                    <img
+                      src={photo.filePath}
+                      alt={photo.originalFilename}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                      <ImageIcon className="w-12 h-12 text-gray-400" />
+                    </div>
+                  )}
+                </div>
+                <div className="p-2">
+                  <p className="text-xs text-gray-600 truncate">{photo.originalFilename}</p>
+                  <p className="text-xs text-gray-400">{photo.uploadedByName || "Unknown"}</p>
+                </div>
+                <button
+                  onClick={() => handleDeletePhoto(photo.id)}
+                  className="absolute top-1 right-1 p-1 bg-white bg-opacity-80 rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-50"
+                >
+                  <Trash2 className="w-3 h-3 text-red-500" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {!progress.canComplete && (
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+          <div className="flex items-start space-x-3">
+            <Truck className="w-5 h-5 text-amber-500 mt-0.5" />
+            <div>
+              <p className="text-sm font-medium text-amber-800">
+                Before dispatch can be completed:
+              </p>
+              <ul className="mt-1 text-sm text-amber-700 list-disc list-inside">
+                {!progress.hasCdn && <li>Upload a Customer Delivery Note (CDN)</li>}
+                {!progress.hasLoadPhotos && <li>Upload photos of the load on the trucks</li>}
+              </ul>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showCdnPreview && (
         <div className="fixed inset-0 z-50 overflow-y-auto">
           <div className="flex min-h-screen items-center justify-center p-4">
             <div
               className="fixed inset-0 bg-black bg-opacity-50"
-              onClick={() => setShowScanModal(false)}
+              onClick={() => setShowCdnPreview(null)}
             />
-            <div className="relative bg-white rounded-lg shadow-xl max-w-md w-full p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-gray-900">Confirm Dispatch</h3>
+            <div className="relative bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] flex flex-col">
+              <div className="flex items-center justify-between p-4 border-b">
+                <h3 className="text-lg font-semibold text-gray-900">
+                  {showCdnPreview.originalFilename}
+                  {showCdnPreview.cdnNumber ? ` (CDN #${showCdnPreview.cdnNumber})` : ""}
+                </h3>
                 <button
-                  onClick={() => setShowScanModal(false)}
+                  onClick={() => setShowCdnPreview(null)}
                   className="p-1 hover:bg-gray-100 rounded-full"
                 >
                   <X className="h-5 w-5 text-gray-500" />
                 </button>
               </div>
-
-              <div className="bg-gray-50 rounded-lg p-4 mb-4">
-                <p className="font-medium text-gray-900">{selectedItem.stockItem?.name}</p>
-                <p className="text-sm text-gray-500">SKU: {selectedItem.stockItem?.sku}</p>
-                <p className="text-sm text-gray-600 mt-2">
-                  Remaining to dispatch:{" "}
-                  <span className="font-semibold">
-                    {selectedItem.allocatedQuantity - selectedItem.dispatchedQuantity}
-                  </span>
-                </p>
-              </div>
-
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Quantity to Dispatch
-                  </label>
-                  <input
-                    type="number"
-                    min={1}
-                    max={selectedItem.allocatedQuantity - selectedItem.dispatchedQuantity}
-                    value={scanQuantity}
-                    onChange={(e) => setScanQuantity(parseInt(e.target.value, 10) || 1)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-teal-500 focus:border-teal-500"
+              <div className="flex-1 overflow-auto p-4">
+                {showCdnPreview.mimeType === "application/pdf" ? (
+                  <iframe
+                    src={showCdnPreview.filePath}
+                    className="w-full min-h-[70vh]"
+                    title={showCdnPreview.originalFilename}
                   />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Notes (optional)
-                  </label>
-                  <textarea
-                    value={scanNotes}
-                    onChange={(e) => setScanNotes(e.target.value)}
-                    rows={2}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-teal-500 focus:border-teal-500"
-                    placeholder="Any notes about this dispatch..."
+                ) : (
+                  <img
+                    src={showCdnPreview.filePath}
+                    alt={showCdnPreview.originalFilename}
+                    className="max-w-full mx-auto"
                   />
-                </div>
+                )}
               </div>
+            </div>
+          </div>
+        </div>
+      )}
 
-              <div className="mt-6 flex space-x-3">
+      {showPhotoPreview && (
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+          <div className="flex min-h-screen items-center justify-center p-4">
+            <div
+              className="fixed inset-0 bg-black bg-opacity-50"
+              onClick={() => setShowPhotoPreview(null)}
+            />
+            <div className="relative bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] flex flex-col">
+              <div className="flex items-center justify-between p-4 border-b">
+                <h3 className="text-lg font-semibold text-gray-900">
+                  {showPhotoPreview.originalFilename}
+                </h3>
                 <button
-                  onClick={() => setShowScanModal(false)}
-                  className="flex-1 px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+                  onClick={() => setShowPhotoPreview(null)}
+                  className="p-1 hover:bg-gray-100 rounded-full"
                 >
-                  Cancel
+                  <X className="h-5 w-5 text-gray-500" />
                 </button>
-                <button
-                  onClick={handleConfirmDispatch}
-                  disabled={isScanning}
-                  className="flex-1 px-4 py-2 bg-teal-600 text-white rounded-md hover:bg-teal-700 disabled:bg-gray-300"
-                >
-                  {isScanning ? "Dispatching..." : "Confirm Dispatch"}
-                </button>
+              </div>
+              <div className="flex-1 overflow-auto p-4">
+                <img
+                  src={showPhotoPreview.filePath}
+                  alt={showPhotoPreview.originalFilename}
+                  className="max-w-full mx-auto"
+                />
               </div>
             </div>
           </div>

@@ -9,6 +9,8 @@ import {
   UpdateDateColumn,
 } from "typeorm";
 import { CustomerPurchaseOrder } from "./customer-purchase-order.entity";
+import { DispatchCdn } from "./dispatch-cdn.entity";
+import { DispatchLoadPhoto } from "./dispatch-load-photo.entity";
 import { DispatchScan } from "./dispatch-scan.entity";
 import { JobCardApproval } from "./job-card-approval.entity";
 import { JobCardAttachment } from "./job-card-attachment.entity";
@@ -212,6 +214,18 @@ export class JobCard {
     (scan) => scan.jobCard,
   )
   dispatchScans: DispatchScan[];
+
+  @OneToMany(
+    () => DispatchCdn,
+    (cdn) => cdn.jobCard,
+  )
+  dispatchCdns: DispatchCdn[];
+
+  @OneToMany(
+    () => DispatchLoadPhoto,
+    (photo) => photo.jobCard,
+  )
+  dispatchLoadPhotos: DispatchLoadPhoto[];
 
   @OneToMany(
     () => JobCardVersion,
