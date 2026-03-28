@@ -8,6 +8,7 @@ import { StockAllocation } from "../entities/stock-allocation.entity";
 import { StockItem } from "../entities/stock-item.entity";
 import { MovementType, ReferenceType, StockMovement } from "../entities/stock-movement.entity";
 import { StockReturn } from "../entities/stock-return.entity";
+import { parseRubberSpecNote, suggestPlyCombinations } from "../lib/rubberCuttingCalculator";
 
 export interface AllocationPlanItem {
   product: string;
@@ -148,8 +149,14 @@ export class StockAllocationService {
       return [];
     }
 
+    const analysis = await this.analysisRepo.findOne({
+      where: { jobCardId, companyId },
+    });
+
     const override = jobCard.rubberPlanOverride;
-    if (!override || override.status === "pending") {
+    const hasOverride = override && override.status !== "pending";
+
+    if (!hasOverride && !analysis?.hasInternalLining) {
       return [];
     }
 
@@ -166,7 +173,7 @@ export class StockAllocationService {
       return [];
     }
 
-    if (override.manualRolls?.length) {
+    if (hasOverride && override.manualRolls?.length) {
       return override.manualRolls.map((roll, idx) => {
         const matched = rubberStock.find(
           (si) =>
@@ -197,8 +204,68 @@ export class StockAllocationService {
       });
     }
 
-    const plyCombination = override.selectedPlyCombination || [];
-    return plyCombination.map((thicknessMm) => {
+    if (hasOverride && override.selectedPlyCombination?.length) {
+      return override.selectedPlyCombination.map((thicknessMm) => {
+        const matched = rubberStock.find(
+          (si) => si.thicknessMm !== null && Number(si.thicknessMm) === thicknessMm,
+        );
+
+        return {
+          product: `Rubber ${thicknessMm}mm`,
+          stockItemId: matched?.id || 0,
+          stockItemName: matched?.name || `${thicknessMm}mm rubber sheet`,
+          requiredLitres: 1,
+          packSizeLitres: null,
+          recommendedPacks: 1,
+          componentGroup: "Rubber Lining",
+          componentRole: `${thicknessMm}mm ply`,
+          mixRatio: null,
+          availableQuantity: matched ? Number(matched.quantity) : 0,
+          leftoverSuggestion: null,
+          unitOfMeasure: "rolls",
+          rubberRollWidthMm: matched?.widthMm ? Number(matched.widthMm) : null,
+          rubberRollLengthM: matched?.lengthM ? Number(matched.lengthM) : null,
+          rubberRollThicknessMm: thicknessMm,
+          rubberRollsRequired: 1,
+        };
+      });
+    }
+
+    const rubberSpec = this.detectRubberSpec(jobCard);
+    if (!rubberSpec) {
+      const thickest = rubberStock[rubberStock.length - 1];
+      return [
+        {
+          product: "Rubber Lining",
+          stockItemId: thickest.id,
+          stockItemName: thickest.name,
+          requiredLitres: 1,
+          packSizeLitres: null,
+          recommendedPacks: 1,
+          componentGroup: "Rubber Lining",
+          componentRole: null,
+          mixRatio: null,
+          availableQuantity: Number(thickest.quantity),
+          leftoverSuggestion: null,
+          unitOfMeasure: "rolls",
+          rubberRollWidthMm: thickest.widthMm ? Number(thickest.widthMm) : null,
+          rubberRollLengthM: thickest.lengthM ? Number(thickest.lengthM) : null,
+          rubberRollThicknessMm: thickest.thicknessMm ? Number(thickest.thicknessMm) : null,
+          rubberRollsRequired: 1,
+        },
+      ];
+    }
+
+    const plyCombinations = suggestPlyCombinations(rubberSpec.thicknessMm);
+    const availableThicknesses = new Set(
+      rubberStock.filter((si) => si.thicknessMm !== null).map((si) => Number(si.thicknessMm)),
+    );
+    const bestCombo = plyCombinations.find((combo) =>
+      combo.every((t) => availableThicknesses.has(t)),
+    ) ||
+      plyCombinations[0] || [rubberSpec.thicknessMm];
+
+    return bestCombo.map((thicknessMm) => {
       const matched = rubberStock.find(
         (si) => si.thicknessMm !== null && Number(si.thicknessMm) === thicknessMm,
       );
@@ -210,7 +277,7 @@ export class StockAllocationService {
         requiredLitres: 1,
         packSizeLitres: null,
         recommendedPacks: 1,
-        componentGroup: "Rubber Lining",
+        componentGroup: "Rubber Lining (auto-detected)",
         componentRole: `${thicknessMm}mm ply`,
         mixRatio: null,
         availableQuantity: matched ? Number(matched.quantity) : 0,
@@ -222,6 +289,21 @@ export class StockAllocationService {
         rubberRollsRequired: 1,
       };
     });
+  }
+
+  private detectRubberSpec(jobCard: JobCard): { thicknessMm: number } | null {
+    const allNotes = [
+      jobCard.notes || "",
+      ...(jobCard.lineItems || []).map(
+        (li) => `${li.itemCode || ""} ${li.itemDescription || ""} ${li.notes || ""}`,
+      ),
+    ].filter(Boolean);
+
+    const result = allNotes.reduce(
+      (found: { thicknessMm: number } | null, text) => found || parseRubberSpecNote(text),
+      null,
+    );
+    return result;
   }
 
   async allocatePacks(
