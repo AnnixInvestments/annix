@@ -1483,11 +1483,70 @@ export function RubberAllocationGuard({ jobCard }: { jobCard: JobCard }) {
   const hasM2Items = validItems.some((li) => li.m2 !== null && Number(li.m2) > 0);
   if (!hasM2Items) return null;
 
+  const allLineItems = jobCard.lineItems || [];
+  const totalM2 = allLineItems.reduce((sum, li) => {
+    const m2 = Number(li.m2) || 0;
+    const qty = Number(li.quantity) || 1;
+    return sum + m2 * qty;
+  }, 0);
+
   return (
-    <RubberAllocationSection
-      lineItems={validItems}
-      jobCardId={jobCard.id}
-      rubberPlanOverride={jobCard.rubberPlanOverride || null}
-    />
+    <>
+      {allLineItems.length > 0 && (
+        <div className="mb-6">
+          <h4 className="text-sm font-medium text-gray-900 mb-2">
+            Line Items{" "}
+            <span className="text-gray-400 font-normal">{allLineItems.length} items</span>
+          </h4>
+          <table className="min-w-full text-sm">
+            <thead>
+              <tr className="border-b border-gray-200">
+                <th className="text-left py-2 pr-4 font-medium text-gray-500 w-10">#</th>
+                <th className="text-left py-2 pr-4 font-medium text-gray-500">Item Code</th>
+                <th className="text-left py-2 pr-4 font-medium text-gray-500">Description</th>
+                <th className="text-right py-2 pr-4 font-medium text-gray-500">Qty</th>
+                <th className="text-right py-2 pr-4 font-medium text-gray-500">m²</th>
+                <th className="text-right py-2 pr-4 font-medium text-gray-500">Total m²</th>
+              </tr>
+            </thead>
+            <tbody>
+              {allLineItems.map((li, idx) => {
+                const m2 = Number(li.m2) || 0;
+                const qty = Number(li.quantity) || 1;
+                return (
+                  <tr key={li.id} className="border-b border-gray-100">
+                    <td className="py-2 pr-4 text-gray-400">{idx + 1}</td>
+                    <td className="py-2 pr-4 text-gray-900 font-medium">{li.itemCode || "—"}</td>
+                    <td className="py-2 pr-4 text-gray-700">{li.itemDescription || "—"}</td>
+                    <td className="py-2 pr-4 text-right font-semibold text-gray-900">{qty}</td>
+                    <td className="py-2 pr-4 text-right text-gray-700">
+                      {m2 > 0 ? m2.toFixed(2) : "—"}
+                    </td>
+                    <td className="py-2 pr-4 text-right font-semibold text-teal-700">
+                      {m2 > 0 ? (m2 * qty).toFixed(2) : "—"}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+            <tfoot>
+              <tr className="border-t border-gray-300">
+                <td colSpan={5} className="py-2 pr-4 text-right font-medium text-gray-600">
+                  Total m²
+                </td>
+                <td className="py-2 pr-4 text-right font-bold text-teal-800">
+                  {totalM2.toFixed(2)}
+                </td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      )}
+      <RubberAllocationSection
+        lineItems={validItems}
+        jobCardId={jobCard.id}
+        rubberPlanOverride={jobCard.rubberPlanOverride || null}
+      />
+    </>
   );
 }

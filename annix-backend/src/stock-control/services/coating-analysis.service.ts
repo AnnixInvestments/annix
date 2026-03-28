@@ -281,6 +281,23 @@ export class CoatingAnalysisService {
     });
   }
 
+  async updateSurfacePrep(
+    companyId: number,
+    jobCardId: number,
+    surfacePrep: string,
+  ): Promise<JobCardCoatingAnalysis> {
+    const analysis = await this.analysisRepo.findOne({
+      where: { jobCardId, companyId },
+    });
+
+    if (!analysis) {
+      throw new NotFoundException(`Coating analysis not found for job card ${jobCardId}`);
+    }
+
+    analysis.surfacePrep = surfacePrep;
+    return this.analysisRepo.save(analysis);
+  }
+
   async updateSurfaceArea(
     companyId: number,
     jobCardId: number,

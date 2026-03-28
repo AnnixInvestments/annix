@@ -4,7 +4,9 @@ import {
   Controller,
   Delete,
   Get,
+  Inject,
   Logger,
+  NotFoundException,
   Param,
   Patch,
   Post,
@@ -20,6 +22,7 @@ import { ApiOperation, ApiTags } from "@nestjs/swagger";
 import { InjectRepository } from "@nestjs/typeorm";
 import { ILike, MoreThan, Repository } from "typeorm";
 import { now, nowISO } from "../../lib/datetime";
+import { IStorageService, STORAGE_SERVICE } from "../../storage/storage.interface";
 import {
   MarkOffcutAsWastageDto,
   UpdateRubberPlanDto,
@@ -77,6 +80,7 @@ export class JobCardsController {
     private readonly stockMovementRepo: Repository<StockMovement>,
     @InjectRepository(JobCardLineItem)
     private readonly lineItemRepo: Repository<JobCardLineItem>,
+    @Inject(STORAGE_SERVICE) private readonly storageService: IStorageService,
   ) {}
 
   @Get()
@@ -254,6 +258,16 @@ export class JobCardsController {
     return this.coatingAnalysisService.analyseJobCard(id, req.user.companyId);
   }
 
+  @Patch(":id/coating-analysis/surface-prep")
+  @ApiOperation({ summary: "Update surface prep for coating analysis" })
+  async updateSurfacePrep(
+    @Req() req: any,
+    @Param("id") id: number,
+    @Body() body: { surfacePrep: string },
+  ) {
+    return this.coatingAnalysisService.updateSurfacePrep(req.user.companyId, id, body.surfacePrep);
+  }
+
   @Put(":id/coating-analysis/surface-area")
   @ApiOperation({ summary: "Update surface area for coating analysis" })
   async updateSurfaceArea(
@@ -352,6 +366,17 @@ export class JobCardsController {
     });
 
     return result;
+  }
+
+  @Get(":id/source-file-url")
+  @ApiOperation({ summary: "Get presigned URL for the original imported file" })
+  async sourceFileUrl(@Req() req: any, @Param("id") id: number) {
+    const jobCard = await this.jobCardService.findById(req.user.companyId, id);
+    if (!jobCard.sourceFilePath) {
+      throw new NotFoundException("No source file stored for this job card");
+    }
+    const url = await this.storageService.presignedUrl(jobCard.sourceFilePath, 3600);
+    return { url, fileName: jobCard.sourceFileName };
   }
 
   @StockControlRoles("admin", "accounts")

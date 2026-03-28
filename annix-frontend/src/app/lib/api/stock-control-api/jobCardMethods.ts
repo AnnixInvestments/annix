@@ -104,12 +104,17 @@ declare module "./base" {
     saveJobCardImportMapping(mappingConfig: ImportMappingConfig): Promise<JobCardImportMapping>;
     calculateM2(descriptions: string[]): Promise<M2Result[]>;
     autoDetectJobCardMapping(grid: string[][]): Promise<ImportMappingConfig>;
-    confirmJobCardImport(rows: JobCardImportRow[]): Promise<JobCardImportResult>;
+    confirmJobCardImport(
+      rows: JobCardImportRow[],
+      sourceFilePath?: string | null,
+      sourceFileName?: string | null,
+    ): Promise<JobCardImportResult>;
     confirmDeliveryMatches(
       jobCardId: number,
       matches: { deliveryItemId: number; cpoItemId: number }[],
     ): Promise<{ success: boolean }>;
     downloadJobCardQrPdf(id: number): Promise<void>;
+    sourceFileUrl(jobCardId: number): Promise<{ url: string; fileName: string | null }>;
     bulkReanalyseJobCards(): Promise<{ processed: number; failed: number }>;
     deduplicateJobCards(): Promise<{ merged: number; groups: number }>;
     jobCardCorrections(jobCardId: number): Promise<
@@ -227,6 +232,14 @@ proto.jobCardCoatingAnalysis = async function (jobCardId) {
     `/stock-control/job-cards/${jobCardId}/coating-analysis`,
   );
   return result && "id" in result ? (result as CoatingAnalysis) : null;
+};
+
+proto.updateSurfacePrep = async function (jobCardId, surfacePrep) {
+  return this.request(`/stock-control/job-cards/${jobCardId}/coating-analysis/surface-prep`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ surfacePrep }),
+  });
 };
 
 proto.updateCoatingSurfaceArea = async function (jobCardId, extM2, intM2) {
@@ -426,10 +439,10 @@ proto.autoDetectJobCardMapping = async function (grid) {
   });
 };
 
-proto.confirmJobCardImport = async function (rows) {
+proto.confirmJobCardImport = async function (rows, sourceFilePath, sourceFileName) {
   return this.request("/stock-control/job-card-import/confirm", {
     method: "POST",
-    body: JSON.stringify({ rows }),
+    body: JSON.stringify({ rows, sourceFilePath, sourceFileName }),
   });
 };
 
@@ -442,6 +455,10 @@ proto.confirmDeliveryMatches = async function (jobCardId, matches) {
 
 proto.downloadJobCardQrPdf = async function (id) {
   return this.downloadBlob(`/stock-control/workflow/job-cards/${id}/print`, `job-card-${id}.pdf`);
+};
+
+proto.sourceFileUrl = async function (jobCardId) {
+  return this.request(`/stock-control/job-cards/${jobCardId}/source-file-url`);
 };
 
 proto.bulkReanalyseJobCards = async function () {
