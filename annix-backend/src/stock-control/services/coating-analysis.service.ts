@@ -145,19 +145,22 @@ export class CoatingAnalysisService {
         where: { jobCardId, companyId },
       });
 
-      const lineItemTotalM2 = this.sumLineItemM2WithQuantity(lineItems);
-      const paintM2 = this.sumPaintM2(lineItems);
+      const hasMissingM2 = lineItems.some((li) => {
+        const desc = li.itemDescription || li.itemCode || "";
+        return /\d+\s*NB/i.test(desc) && (li.m2 === null || li.m2 === 0);
+      });
+
       let calculatedExtM2 = 0;
       let calculatedIntM2 = 0;
 
-      if (lineItemTotalM2 === 0 && paintM2 === 0) {
+      if (hasMissingM2) {
         const calculated = await this.calculatePipeM2(lineItems);
         calculatedExtM2 = calculated.extM2;
         calculatedIntM2 = calculated.intM2;
-        this.logger.log(
-          `No line item m² for JC ${jobCardId}, calculated from pipe dims: ext=${calculatedExtM2.toFixed(2)}, int=${calculatedIntM2.toFixed(2)}`,
-        );
       }
+
+      const lineItemTotalM2 = this.sumLineItemM2WithQuantity(lineItems);
+      const paintM2 = this.sumPaintM2(lineItems);
 
       const SPEC_NOTE_PATTERN =
         /INT\s*:|EXT\s*:|R\/L|rubber|lining|lagging|shore|paint|blast|coat|primer|oxide|epoxy|polyurethane|zinc|silicate|nitrile|neoprene|butadiene|\bROT\b/i;
@@ -223,6 +226,8 @@ export class CoatingAnalysisService {
         descriptionHasRubber;
       analysis.applicationType = aiResult.applicationType;
       analysis.surfacePrep = hasInternalRubberLining ? "sa3_blast" : aiResult.surfacePrep;
+      analysis.extSurfacePrep = aiResult.surfacePrep;
+      analysis.intSurfacePrep = hasInternalRubberLining ? "sa3_blast" : aiResult.surfacePrep;
       analysis.hasInternalLining = hasInternalRubberLining;
 
       const hasExt = aiResult.coats.some((c) => c.area === "external");
@@ -284,7 +289,7 @@ export class CoatingAnalysisService {
   async updateSurfacePrep(
     companyId: number,
     jobCardId: number,
-    surfacePrep: string,
+    updates: { extSurfacePrep?: string; intSurfacePrep?: string },
   ): Promise<JobCardCoatingAnalysis> {
     const analysis = await this.analysisRepo.findOne({
       where: { jobCardId, companyId },
@@ -294,7 +299,13 @@ export class CoatingAnalysisService {
       throw new NotFoundException(`Coating analysis not found for job card ${jobCardId}`);
     }
 
-    analysis.surfacePrep = surfacePrep;
+    if (updates.extSurfacePrep !== undefined) {
+      analysis.extSurfacePrep = updates.extSurfacePrep || null;
+    }
+    if (updates.intSurfacePrep !== undefined) {
+      analysis.intSurfacePrep = updates.intSurfacePrep || null;
+    }
+    analysis.surfacePrep = analysis.extSurfacePrep || analysis.intSurfacePrep;
     return this.analysisRepo.save(analysis);
   }
 
