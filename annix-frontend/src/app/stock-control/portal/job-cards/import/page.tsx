@@ -666,6 +666,8 @@ export default function JobCardImportPage() {
   const [isCalculatingM2, setIsCalculatingM2] = useState(false);
   const [manualM2, setManualM2] = useState<Record<string, number>>({});
   const [documentNumber, setDocumentNumber] = useState<string | null>(null);
+  const [sourceFilePath, setSourceFilePath] = useState<string | null>(null);
+  const [sourceFileName, setSourceFileName] = useState<string | null>(null);
   const [isAutoDetecting, setIsAutoDetecting] = useState(false);
   const [isDrawingImport, setIsDrawingImport] = useState(false);
   const [drawingFiles, setDrawingFiles] = useState<File[]>([]);
@@ -744,6 +746,8 @@ export default function JobCardImportPage() {
       const response = await stockControlApiClient.uploadJobCardImportFile(selectedFile);
       setGrid(response.grid);
       setDocumentNumber(response.documentNumber);
+      setSourceFilePath(response.sourceFilePath || null);
+      setSourceFileName(response.sourceFileName || null);
 
       if (response.drawingRows && response.drawingRows.length > 0) {
         setIsDrawingImport(true);
@@ -793,6 +797,8 @@ export default function JobCardImportPage() {
       setIsUploading(true);
       const response = await stockControlApiClient.uploadDrawingFiles(files);
       setDocumentNumber(response.documentNumber);
+      setSourceFilePath(response.sourceFilePath || null);
+      setSourceFileName(response.sourceFileName || null);
 
       if (response.drawingRows && response.drawingRows.length > 0) {
         setIsDrawingImport(true);
@@ -1050,7 +1056,11 @@ export default function JobCardImportPage() {
           return autoM2 != null ? { ...li, m2: autoM2 } : li;
         }),
       }));
-      const importResult = await stockControlApiClient.confirmJobCardImport(rowsWithM2);
+      const importResult = await stockControlApiClient.confirmJobCardImport(
+        rowsWithM2,
+        sourceFilePath,
+        sourceFileName,
+      );
       setResult(importResult);
       queryClient.invalidateQueries({ queryKey: stockControlKeys.jobCards.all });
 

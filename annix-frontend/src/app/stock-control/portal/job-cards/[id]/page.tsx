@@ -758,6 +758,9 @@ export default function JobCardDetailPage() {
   const [isUploadingReadyPhoto, setIsUploadingReadyPhoto] = useState(false);
   const [showReadyPhotoModal, setShowReadyPhotoModal] = useState(false);
   const [showInspectionModal, setShowInspectionModal] = useState(false);
+  const [showSourceFileModal, setShowSourceFileModal] = useState(false);
+  const [sourceFileUrl, setSourceFileUrl] = useState<string | null>(null);
+  const [sourceFileLoading, setSourceFileLoading] = useState(false);
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
   const [cameraError, setCameraError] = useState<string | null>(null);
 
@@ -1142,6 +1145,26 @@ export default function JobCardDetailPage() {
                 <span className="px-2.5 py-0.5 text-xs font-semibold rounded-full bg-orange-100 text-orange-800">
                   Up to Requisition
                 </span>
+              ) : null}
+              {jobCard.sourceFilePath ? (
+                <button
+                  onClick={async () => {
+                    setSourceFileLoading(true);
+                    try {
+                      const result = await stockControlApiClient.sourceFileUrl(jobCard.id);
+                      setSourceFileUrl(result.url);
+                      setShowSourceFileModal(true);
+                    } catch {
+                      setSourceFileUrl(null);
+                    } finally {
+                      setSourceFileLoading(false);
+                    }
+                  }}
+                  disabled={sourceFileLoading}
+                  className="px-2.5 py-0.5 text-xs font-semibold rounded-full bg-gray-100 text-gray-700 hover:bg-gray-200 disabled:opacity-50"
+                >
+                  {sourceFileLoading ? "Loading..." : "View Original"}
+                </button>
               ) : null}
             </div>
             <p className="mt-1 text-sm text-gray-500">{jobCard.jobName}</p>
@@ -2034,6 +2057,76 @@ export default function JobCardDetailPage() {
         jobNumber={jobCard.jobNumber}
         stepName={currentApprovalStep.replace(/_/g, " ")}
       />
+
+      {showSourceFileModal && sourceFileUrl && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl mx-4 max-h-[90vh] flex flex-col">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+              <h3 className="text-lg font-semibold text-gray-900">
+                Original Job Card — {jobCard.sourceFileName || "Source File"}
+              </h3>
+              <div className="flex items-center gap-3">
+                <a
+                  href={sourceFileUrl}
+                  download={jobCard.sourceFileName || "source-file"}
+                  className="px-3 py-1.5 text-sm font-medium rounded-md bg-teal-600 text-white hover:bg-teal-700"
+                >
+                  Download
+                </a>
+                <button
+                  onClick={() => {
+                    setShowSourceFileModal(false);
+                    setSourceFileUrl(null);
+                  }}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
+                </button>
+              </div>
+            </div>
+            <div className="flex-1 overflow-auto p-2">
+              {(jobCard.sourceFileName || "").toLowerCase().endsWith(".pdf") ? (
+                <iframe
+                  src={sourceFileUrl}
+                  className="w-full h-[75vh] border-0 rounded"
+                  title="Original Job Card"
+                />
+              ) : (
+                <div className="flex flex-col items-center justify-center py-16 text-gray-500">
+                  <svg
+                    className="w-16 h-16 mb-4 text-gray-300"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={1.5}
+                      d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                    />
+                  </svg>
+                  <p className="text-sm mb-4">Preview not available for this file type</p>
+                  <a
+                    href={sourceFileUrl}
+                    download={jobCard.sourceFileName || "source-file"}
+                    className="px-4 py-2 text-sm font-medium rounded-md bg-teal-600 text-white hover:bg-teal-700"
+                  >
+                    Download File
+                  </a>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

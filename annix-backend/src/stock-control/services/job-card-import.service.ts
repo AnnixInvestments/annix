@@ -1123,6 +1123,8 @@ export class JobCardImportService {
     existing: JobCard,
     row: JobCardImportRow,
     companyId: number,
+    sourceFilePath: string | null = null,
+    sourceFileName: string | null = null,
   ): Promise<number> {
     await this.versionService.archiveCurrentVersion(
       companyId,
@@ -1147,6 +1149,8 @@ export class JobCardImportService {
     existing.reference = row.reference || null;
     existing.customFields = customFields;
     existing.versionNumber = existing.versionNumber + 1;
+    existing.sourceFilePath = sourceFilePath;
+    existing.sourceFileName = sourceFileName;
 
     const saved = await this.jobCardRepo.save(existing);
 
@@ -1171,6 +1175,8 @@ export class JobCardImportService {
     row: JobCardImportRow,
     jtDnNumber: string,
     companyId: number,
+    sourceFilePath: string | null = null,
+    sourceFileName: string | null = null,
   ): Promise<{ jobCardId: number; deliveryMatch: DeliveryMatchResult | null }> {
     const customFields =
       row.customFields && Object.keys(row.customFields).length > 0 ? row.customFields : null;
@@ -1198,6 +1204,8 @@ export class JobCardImportService {
       cpoId: parentJobCard.cpoId,
       isCpoCalloff: true,
       companyId,
+      sourceFilePath,
+      sourceFileName,
     });
 
     const saved = await this.jobCardRepo.save(deliveryJc);
@@ -1361,7 +1369,12 @@ export class JobCardImportService {
     );
   }
 
-  async importJobCards(companyId: number, rows: JobCardImportRow[]): Promise<JobCardImportResult> {
+  async importJobCards(
+    companyId: number,
+    rows: JobCardImportRow[],
+    sourceFilePath: string | null = null,
+    sourceFileName: string | null = null,
+  ): Promise<JobCardImportResult> {
     const mergedRows = mergeRowsByJtNumber(rows);
 
     const result: JobCardImportResult = {
@@ -1398,6 +1411,8 @@ export class JobCardImportService {
             row,
             jtDnNumber,
             companyId,
+            sourceFilePath,
+            sourceFileName,
           );
 
           return {
@@ -1409,7 +1424,13 @@ export class JobCardImportService {
               : acc.deliveryMatches,
           };
         } else if (existing && !jtDnNumber) {
-          const savedId = await this.archiveAndOverwrite(existing, row, companyId);
+          const savedId = await this.archiveAndOverwrite(
+            existing,
+            row,
+            companyId,
+            sourceFilePath,
+            sourceFileName,
+          );
 
           await this.cpoService.matchJobCardToCpo(companyId, savedId).catch((err) => {
             this.logger.warn(
@@ -1443,6 +1464,8 @@ export class JobCardImportService {
           customFields,
           status: JobCardStatus.DRAFT,
           companyId,
+          sourceFilePath,
+          sourceFileName,
         });
         const saved = await this.jobCardRepo.save(jobCard);
 

@@ -1836,6 +1836,8 @@ export interface JobCardImportUploadResponse {
   savedMapping: JobCardImportMapping | null;
   documentNumber: string | null;
   drawingRows?: JobCardImportRow[];
+  sourceFilePath?: string | null;
+  sourceFileName?: string | null;
 }
 
 export interface CustomerPurchaseOrderItem {

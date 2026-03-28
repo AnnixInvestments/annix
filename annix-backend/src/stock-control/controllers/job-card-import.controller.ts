@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Get,
+  Inject,
   Logger,
   Post,
   Req,
@@ -12,6 +13,7 @@ import {
 } from "@nestjs/common";
 import { AnyFilesInterceptor, FileInterceptor } from "@nestjs/platform-express";
 import { ApiOperation, ApiTags } from "@nestjs/swagger";
+import { IStorageService, STORAGE_SERVICE, StorageArea } from "../../storage/storage.interface";
 import { ImportMappingConfig } from "../entities/job-card-import-mapping.entity";
 import { StockControlAuthGuard } from "../guards/stock-control-auth.guard";
 import {
@@ -39,6 +41,7 @@ export class JobCardImportController {
     private readonly coatingAnalysisService: CoatingAnalysisService,
     private readonly notificationService: WorkflowNotificationService,
     private readonly workflowService: JobCardWorkflowService,
+    @Inject(STORAGE_SERVICE) private readonly storageService: IStorageService,
   ) {}
 
   @Post("upload")
@@ -53,20 +56,36 @@ export class JobCardImportController {
     const savedMapping = await this.jobCardImportService.mapping(req.user.companyId);
     const docMatch = file.originalname?.match(/^([A-Z]{1,5}\d{4,})/i);
     const documentNumber = pdfDocNumber || (docMatch ? docMatch[1].toUpperCase() : null);
-    return { grid, savedMapping, documentNumber, drawingRows };
+
+    const storagePath = `${StorageArea.STOCK_CONTROL}/job-card-imports/company-${req.user.companyId}`;
+    const stored = await this.storageService.upload(file, storagePath);
+
+    return {
+      grid,
+      savedMapping,
+      documentNumber,
+      drawingRows,
+      sourceFilePath: stored.path,
+      sourceFileName: file.originalname,
+    };
   }
 
   @Post("upload-drawings")
   @UseInterceptors(AnyFilesInterceptor())
   @ApiOperation({ summary: "Upload multiple drawing PDFs for vision-based job card import" })
-  async uploadDrawings(@UploadedFiles() files: Express.Multer.File[]) {
+  async uploadDrawings(@UploadedFiles() files: Express.Multer.File[], @Req() req: any) {
     const pdfFiles = files.filter(
       (f) => f.mimetype === "application/pdf" || f.originalname.toLowerCase().endsWith(".pdf"),
     );
 
     if (pdfFiles.length === 0) {
-      return { drawingRows: [], documentNumber: null };
+      return { drawingRows: [], documentNumber: null, sourceFilePaths: [] };
     }
+
+    const storagePath = `${StorageArea.STOCK_CONTROL}/job-card-imports/company-${req.user.companyId}`;
+    const storedFiles = await Promise.all(
+      pdfFiles.map((f) => this.storageService.upload(f, storagePath)),
+    );
 
     const pdfBuffers = pdfFiles.map((f) => ({
       buffer: f.buffer,
@@ -76,7 +95,19 @@ export class JobCardImportController {
     const { drawingRows, documentNumber } =
       await this.jobCardImportService.parseDrawingPdfs(pdfBuffers);
 
-    return { grid: [] as string[][], savedMapping: null, documentNumber, drawingRows };
+    const sourceFilePaths = storedFiles.map((s, i) => ({
+      path: s.path,
+      name: pdfFiles[i].originalname,
+    }));
+
+    return {
+      grid: [] as string[][],
+      savedMapping: null,
+      documentNumber,
+      drawingRows,
+      sourceFilePath: sourceFilePaths[0]?.path || null,
+      sourceFileName: sourceFilePaths[0]?.name || null,
+    };
   }
 
   @Get("mapping")
@@ -105,8 +136,21 @@ export class JobCardImportController {
 
   @Post("confirm")
   @ApiOperation({ summary: "Confirm and import mapped job card rows" })
-  async confirm(@Body() body: { rows: JobCardImportRow[] }, @Req() req: any) {
-    const result = await this.jobCardImportService.importJobCards(req.user.companyId, body.rows);
+  async confirm(
+    @Body()
+    body: {
+      rows: JobCardImportRow[];
+      sourceFilePath?: string | null;
+      sourceFileName?: string | null;
+    },
+    @Req() req: any,
+  ) {
+    const result = await this.jobCardImportService.importJobCards(
+      req.user.companyId,
+      body.rows,
+      body.sourceFilePath || null,
+      body.sourceFileName || null,
+    );
 
     if (result.createdJobCardIds.length > 0) {
       this.coatingAnalysisService
