@@ -12,7 +12,7 @@ export class AddRollRejections1809000000011 implements MigrationInterface {
 
     await queryRunner.query(`
       DO $$ BEGIN
-        ALTER TYPE "rubber_roll_stock_status_enum" ADD VALUE IF NOT EXISTS 'REJECTED';
+        ALTER TYPE "roll_stock_status_enum" ADD VALUE IF NOT EXISTS 'REJECTED';
       END $$
     `);
 

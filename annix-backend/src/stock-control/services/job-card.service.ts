@@ -76,7 +76,7 @@ export class JobCardService {
       const jtRows: { jobCardId: number; jtNumbers: string }[] = await this.dataSource.query(
         `SELECT li.job_card_id AS "jobCardId",
                   STRING_AGG(DISTINCT li.jt_no, ', ' ORDER BY li.jt_no) AS "jtNumbers"
-           FROM stock_control_job_card_line_items li
+           FROM job_card_line_items li
            WHERE li.job_card_id = ANY($1)
              AND li.jt_no IS NOT NULL
              AND li.jt_no <> ''
