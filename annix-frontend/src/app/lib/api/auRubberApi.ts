@@ -2092,6 +2092,7 @@ class AuRubberApiClient {
   async updateSupplierCoc(
     id: number,
     data: {
+      cocType?: SupplierCocType;
       cocNumber?: string | null;
       compoundCode?: string | null;
       productionDate?: string | null;

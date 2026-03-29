@@ -84,6 +84,10 @@ export class CreateSupplierCocDto {
 
 export class UpdateSupplierCocDto {
   @IsOptional()
+  @IsEnum(SupplierCocType)
+  cocType?: SupplierCocType;
+
+  @IsOptional()
   @IsString()
   graphPdfPath?: string | null;
 

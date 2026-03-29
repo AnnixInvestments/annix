@@ -59,6 +59,7 @@ export default function SupplierCocDetailPage() {
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [editFields, setEditFields] = useState({
+    cocType: "" as SupplierCocType | "",
     cocNumber: "",
     compoundCode: "",
     productionDate: "",
@@ -174,6 +175,7 @@ export default function SupplierCocDetailPage() {
   const startEditing = () => {
     if (!coc) return;
     setEditFields({
+      cocType: coc.cocType,
       cocNumber: coc.cocNumber || "",
       compoundCode: coc.compoundCode || "",
       productionDate: coc.productionDate ? coc.productionDate.split("T")[0] : "",
@@ -188,6 +190,7 @@ export default function SupplierCocDetailPage() {
     try {
       setIsSaving(true);
       await auRubberApiClient.updateSupplierCoc(cocId, {
+        cocType: editFields.cocType || undefined,
         cocNumber: editFields.cocNumber || null,
         compoundCode: editFields.compoundCode || null,
         productionDate: editFields.productionDate || null,
@@ -450,6 +453,23 @@ export default function SupplierCocDetailPage() {
           {isEditing ? (
             <div className="grid grid-cols-2 gap-4">
               <div>
+                <label className="block text-sm font-medium text-gray-500">CoC Type</label>
+                <select
+                  value={editFields.cocType}
+                  onChange={(e) =>
+                    setEditFields({
+                      ...editFields,
+                      cocType: e.target.value as SupplierCocType,
+                    })
+                  }
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 text-sm"
+                >
+                  <option value="COMPOUNDER">Compounder</option>
+                  <option value="CALENDARER">Calendered Sheeting</option>
+                  <option value="CALENDER_ROLL">Calender Roll</option>
+                </select>
+              </div>
+              <div>
                 <label className="block text-sm font-medium text-gray-500">CoC Number</label>
                 <input
                   type="text"
@@ -476,7 +496,7 @@ export default function SupplierCocDetailPage() {
                   className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 text-sm"
                 />
               </div>
-              {coc.cocType === "CALENDARER" && (
+              {editFields.cocType === "CALENDARER" && (
                 <>
                   <div>
                     <label className="block text-sm font-medium text-gray-500">Order Number</label>

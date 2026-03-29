@@ -170,6 +170,7 @@ export class RubberCocService {
     });
     if (!coc) return null;
 
+    if (dto.cocType !== undefined) coc.cocType = dto.cocType;
     if (dto.graphPdfPath !== undefined) coc.graphPdfPath = dto.graphPdfPath;
     if (dto.cocNumber !== undefined) coc.cocNumber = dto.cocNumber;
     if (dto.productionDate !== undefined) {
@@ -181,7 +182,11 @@ export class RubberCocService {
     if (dto.processingStatus !== undefined) coc.processingStatus = dto.processingStatus;
 
     await this.supplierCocRepository.save(coc);
-    return this.mapSupplierCocToDto(coc);
+    const refreshed = await this.supplierCocRepository.findOne({
+      where: { id: coc.id },
+      relations: ["supplierCompany"],
+    });
+    return this.mapSupplierCocToDto(refreshed ?? coc);
   }
 
   async setExtractedData(
