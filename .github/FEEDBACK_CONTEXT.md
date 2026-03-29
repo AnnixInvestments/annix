@@ -55,11 +55,34 @@ Each app has a single persistent GitHub issue that collects all feedback as comm
 
 1. Read the feedback content and examine any screenshots
 2. Identify the relevant page/component from the app context and page URL
-3. Find the root cause in the codebase
-4. Make a minimal, targeted fix
-5. Follow all rules in the root CLAUDE.md
-6. Reference the feedback issue in the commit: `fix(app): description (ref #ISSUE)`
-7. **NEVER use `Closes`, `Fixes`, or `Resolves` keywords with feedback tracker issues (#154, #156-#161)** — always use `Ref #ISSUE` instead, as these are persistent trackers that must stay open
+3. **Verify IDs carefully** — the page URL contains the record ID (e.g. `/supplier-cocs/176` means COC ID 176). Always use the ID from the URL, never guess or assume a different ID
+4. Find the root cause in the codebase
+5. Make a minimal, targeted fix
+6. Follow all rules in the root CLAUDE.md
+7. Reference the feedback issue in the commit: `fix(app): description (ref #ISSUE)`
+8. **NEVER use `Closes`, `Fixes`, or `Resolves` keywords with feedback tracker issues (#154, #156-#161)** — always use `Ref #ISSUE` instead, as these are persistent trackers that must stay open
+
+## Strict Prohibitions
+
+These actions are NEVER allowed when fixing feedback issues:
+
+- **NEVER delete files from S3/storage** — no `DeleteObject`, `removeFile`, or any storage deletion operations
+- **NEVER drop database tables or delete rows** — migrations must only UPDATE or INSERT, never DELETE or DROP
+- **NEVER modify or overwrite existing documents** — only add new records or update metadata fields
+- **NEVER run direct SQL against production** — all database changes must go through TypeORM migrations
+- **NEVER modify authentication, secrets, or environment configuration**
+
+## When You Cannot Fix an Issue
+
+If you cannot determine the root cause or the fix requires actions you cannot safely take:
+
+1. **Do NOT create an empty or incorrect PR** — no guessing at fixes
+2. **Comment on the issue** explaining:
+   - What you investigated
+   - What you found (or didn't find)
+   - Why you cannot fix it (e.g. "data issue requiring manual intervention", "need screenshot to see the problem", "requires access to production database")
+   - Suggested next steps for a human developer
+3. **Label the issue** with `needs-human-review` if available
 
 ## Pre-Commit Quality Checks (MANDATORY)
 

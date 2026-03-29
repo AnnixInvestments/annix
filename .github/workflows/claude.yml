@@ -129,11 +129,19 @@ jobs:
             - Screenshots showing the current state of the page
             - AI classification of the feedback type
 
+            SAFETY RULES — NEVER VIOLATE:
+            - NEVER delete files from S3/storage or run any storage deletion operations
+            - NEVER drop database tables or delete database rows
+            - NEVER modify existing documents in storage
+            - The page URL contains the record ID (e.g. /supplier-cocs/176 = ID 176) — always use this exact ID, never guess
+            - If you cannot determine the root cause or safely fix the issue, comment on the issue explaining what you found and why you can't fix it — do NOT create an incorrect PR
+
             Your task:
             1. Read the feedback content and examine any screenshots in the issue
-            2. Use the app context and page URL to locate the relevant code
+            2. Use the app context and page URL to locate the relevant code — pay attention to the record ID in the URL
             3. Identify and fix the root cause
-            4. Create a feature branch, commit, push, and open a PR referencing this issue
+            4. If you can fix it: create a feature branch, commit, push, and open a PR referencing this issue
+            5. If you CANNOT fix it: comment on the issue explaining what you investigated, what you found, and what a human developer needs to do
 
             CRITICAL: Before committing, you MUST run these checks and fix any failures:
             1. `npx biome check --write --unsafe .` (Biome lint/format — use --write to auto-fix)
