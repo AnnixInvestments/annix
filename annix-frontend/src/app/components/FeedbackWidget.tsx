@@ -67,7 +67,44 @@ export function FeedbackWidget(props: FeedbackWidgetProps) {
     };
   }, []);
 
+  const neutralizeOklch = (): Array<{ sheet: CSSStyleSheet; index: number; original: string }> => {
+    const replacements: Array<{ sheet: CSSStyleSheet; index: number; original: string }> = [];
+    try {
+      Array.from(document.styleSheets).forEach((sheet) => {
+        try {
+          Array.from(sheet.cssRules).forEach((rule, index) => {
+            if (rule.cssText.includes("oklch(")) {
+              replacements.push({ sheet, index, original: rule.cssText });
+              const neutralized = rule.cssText.replace(/oklch\([^)]*\)/g, "transparent");
+              sheet.deleteRule(index);
+              sheet.insertRule(neutralized, index);
+            }
+          });
+        } catch {
+          // Cross-origin stylesheets can't be accessed — skip
+        }
+      });
+    } catch {
+      // Ignore stylesheet access errors
+    }
+    return replacements;
+  };
+
+  const restoreOklch = (
+    replacements: Array<{ sheet: CSSStyleSheet; index: number; original: string }>,
+  ) => {
+    [...replacements].reverse().forEach(({ sheet, index, original }) => {
+      try {
+        sheet.deleteRule(index);
+        sheet.insertRule(original, index);
+      } catch {
+        // Ignore restore errors
+      }
+    });
+  };
+
   const captureScreenshot = async (): Promise<File | null> => {
+    const replacements = neutralizeOklch();
     try {
       setIsCapturingScreenshot(true);
       const canvas = await html2canvas(document.body, {
@@ -101,6 +138,7 @@ export function FeedbackWidget(props: FeedbackWidgetProps) {
       console.error("Screenshot capture failed:", error);
       return null;
     } finally {
+      restoreOklch(replacements);
       setIsCapturingScreenshot(false);
     }
   };
