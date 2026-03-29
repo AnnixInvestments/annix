@@ -1,6 +1,6 @@
 "use client";
 
-import html2canvas from "html2canvas";
+import { toBlob } from "html-to-image";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useFeatureGate } from "@/app/hooks/useFeatureGate";
@@ -67,88 +67,30 @@ export function FeedbackWidget(props: FeedbackWidgetProps) {
     };
   }, []);
 
-  const UNSUPPORTED_COLOR_PATTERN =
-    /(?:oklch|oklab|lch|lab|color-mix|color|hwb)\([^)]*(?:\([^)]*\)[^)]*)*\)/g;
-
-  const hasUnsupportedColors = (cssText: string): boolean =>
-    /(?:oklch|oklab|lch|lab|color-mix|color|hwb)\(/.test(cssText);
-
-  const neutralizeUnsupportedColors = (): Array<{
-    sheet: CSSStyleSheet;
-    index: number;
-    original: string;
-  }> => {
-    const replacements: Array<{ sheet: CSSStyleSheet; index: number; original: string }> = [];
-    try {
-      Array.from(document.styleSheets).forEach((sheet) => {
-        try {
-          Array.from(sheet.cssRules).forEach((rule, index) => {
-            if (hasUnsupportedColors(rule.cssText)) {
-              replacements.push({ sheet, index, original: rule.cssText });
-              const neutralized = rule.cssText.replace(UNSUPPORTED_COLOR_PATTERN, "transparent");
-              sheet.deleteRule(index);
-              sheet.insertRule(neutralized, index);
-            }
-          });
-        } catch {
-          // Cross-origin stylesheets can't be accessed — skip
-        }
-      });
-    } catch {
-      // Ignore stylesheet access errors
-    }
-    return replacements;
-  };
-
-  const restoreColors = (
-    replacements: Array<{ sheet: CSSStyleSheet; index: number; original: string }>,
-  ) => {
-    [...replacements].reverse().forEach(({ sheet, index, original }) => {
-      try {
-        sheet.deleteRule(index);
-        sheet.insertRule(original, index);
-      } catch {
-        // Ignore restore errors
-      }
-    });
-  };
-
   const captureScreenshot = async (): Promise<File | null> => {
-    const replacements = neutralizeUnsupportedColors();
     try {
       setIsCapturingScreenshot(true);
-      const canvas = await html2canvas(document.body, {
-        ignoreElements: (el) => {
-          const feedbackWidget = el.closest("[data-feedback-widget]");
-          return feedbackWidget !== null;
+
+      const blob = await toBlob(document.body, {
+        filter: (node) => {
+          if (node instanceof HTMLElement) {
+            return node.closest("[data-feedback-widget]") === null;
+          }
+          return true;
         },
-        scale: 1,
-        useCORS: true,
-        allowTaint: true,
-        foreignObjectRendering: false,
-        logging: false,
-        removeContainer: true,
-        imageTimeout: 5000,
+        quality: 0.8,
+        pixelRatio: 1,
+        skipAutoScale: true,
       });
 
-      return new Promise((resolve) => {
-        canvas.toBlob(
-          (blob) => {
-            if (blob) {
-              resolve(new File([blob], "auto-screenshot.png", { type: "image/png" }));
-            } else {
-              resolve(null);
-            }
-          },
-          "image/png",
-          0.8,
-        );
-      });
+      if (blob) {
+        return new File([blob], "auto-screenshot.png", { type: "image/png" });
+      }
+      return null;
     } catch (error) {
       console.error("Screenshot capture failed:", error);
       return null;
     } finally {
-      restoreColors(replacements);
       setIsCapturingScreenshot(false);
     }
   };
