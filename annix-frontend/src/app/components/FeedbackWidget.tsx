@@ -77,7 +77,11 @@ export function FeedbackWidget(props: FeedbackWidgetProps) {
         },
         scale: 1,
         useCORS: true,
+        allowTaint: true,
+        foreignObjectRendering: false,
         logging: false,
+        removeContainer: true,
+        imageTimeout: 5000,
       });
 
       return new Promise((resolve) => {
@@ -93,7 +97,8 @@ export function FeedbackWidget(props: FeedbackWidgetProps) {
           0.8,
         );
       });
-    } catch {
+    } catch (error) {
+      console.error("Screenshot capture failed:", error);
       return null;
     } finally {
       setIsCapturingScreenshot(false);
