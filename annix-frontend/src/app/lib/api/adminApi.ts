@@ -78,26 +78,58 @@ export interface SupplierStats {
 
 export type FeedbackSource = "text" | "voice";
 
+export type FeedbackClassification =
+  | "bug"
+  | "feature-request"
+  | "question"
+  | "ui-issue"
+  | "data-issue";
+export type FeedbackStatus = "submitted" | "triaged" | "in_progress" | "resolved";
+
 export interface FeedbackItem {
   id: number;
-  customerProfileId: number;
+  customerProfileId: number | null;
   conversationId: number | null;
   assignedToId: number | null;
   content: string;
   source: FeedbackSource;
   pageUrl: string | null;
+  submitterType: string | null;
+  submitterName: string | null;
+  submitterEmail: string | null;
+  appContext: string | null;
+  githubIssueNumber: number | null;
+  aiClassification: FeedbackClassification | null;
+  status: FeedbackStatus;
   createdAt: string;
   customerProfile?: {
     id: number;
     firstName: string;
     lastName: string;
     company?: { legalName: string };
-  };
+  } | null;
   assignedTo?: {
     id: number;
     firstName: string;
     lastName: string;
   } | null;
+  attachments?: FeedbackAttachmentItem[];
+}
+
+export interface FeedbackAttachmentItem {
+  id: number;
+  originalFilename: string;
+  mimeType: string;
+  fileSize: number;
+  isAutoScreenshot: boolean;
+  createdAt: string;
+}
+
+export interface FeedbackAttachmentUrl {
+  id: number;
+  url: string;
+  filename: string;
+  isAutoScreenshot: boolean;
 }
 
 export interface FeedbackDetail extends FeedbackItem {
@@ -1128,6 +1160,10 @@ class AdminApiClient {
     return this.request<FeedbackDetail>(`/admin/feedback/${feedbackId}/unassign`, {
       method: "POST",
     });
+  }
+
+  async feedbackAttachmentUrls(feedbackId: number): Promise<FeedbackAttachmentUrl[]> {
+    return this.request<FeedbackAttachmentUrl[]>(`/admin/feedback/${feedbackId}/attachments`);
   }
 
   async conversations(

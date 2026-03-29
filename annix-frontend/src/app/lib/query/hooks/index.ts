@@ -11,6 +11,13 @@ export {
 export { useAdminCustomers, useInviteCustomer } from "./admin/useAdminCustomers";
 export { useAdminDashboard } from "./admin/useAdminDashboard";
 export {
+  useAdminFeedback,
+  useAdminFeedbackDetail,
+  useAssignFeedback,
+  useFeedbackAttachmentUrls,
+  useUnassignFeedback,
+} from "./admin/useAdminFeedback";
+export {
   useAdminBroadcasts,
   useAdminConversationDetail,
   useAdminConversations,

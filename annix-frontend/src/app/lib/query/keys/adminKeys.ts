@@ -59,4 +59,10 @@ export const adminKeys = {
     all: ["admin", "companyProfile"] as const,
     detail: () => [...adminKeys.companyProfile.all, "detail"] as const,
   },
+  feedback: {
+    all: ["admin", "feedback"] as const,
+    list: () => [...adminKeys.feedback.all, "list"] as const,
+    detail: (id: number) => [...adminKeys.feedback.all, "detail", id] as const,
+    attachments: (id: number) => [...adminKeys.feedback.all, "attachments", id] as const,
+  },
 } as const;
