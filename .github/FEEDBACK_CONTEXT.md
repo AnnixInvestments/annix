@@ -37,6 +37,20 @@ Screenshots show the exact state of the page when the user submitted feedback. L
 - Missing data or incorrect values
 - The URL bar showing the current page route
 
+## Consolidated Feedback Issues
+
+Each app has a single persistent GitHub issue that collects all feedback as comments. These issues must NEVER be closed:
+
+| App | Issue |
+|-----|-------|
+| au-rubber | #154 |
+| customer | #156 |
+| admin | #157 |
+| stock-control | #158 |
+| supplier | #159 |
+| cv-assistant | #160 |
+| annix-rep | #161 |
+
 ## Fix Guidelines
 
 1. Read the feedback content and examine any screenshots
@@ -45,3 +59,4 @@ Screenshots show the exact state of the page when the user submitted feedback. L
 4. Make a minimal, targeted fix
 5. Follow all rules in the root CLAUDE.md
 6. Reference the feedback issue in the commit: `fix(app): description (ref #ISSUE)`
+7. **NEVER use `Closes`, `Fixes`, or `Resolves` keywords with feedback tracker issues (#154, #156-#161)** — always use `Ref #ISSUE` instead, as these are persistent trackers that must stay open

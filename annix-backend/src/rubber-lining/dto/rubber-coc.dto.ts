@@ -114,10 +114,6 @@ export class UpdateSupplierCocDto {
   @IsOptional()
   @IsEnum(CocProcessingStatus)
   processingStatus?: CocProcessingStatus;
-
-  @IsOptional()
-  @IsEnum(SupplierCocType)
-  cocType?: SupplierCocType;
 }
 
 export class ReviewExtractionDto {

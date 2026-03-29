@@ -65,7 +65,6 @@ export default function SupplierCocDetailPage() {
     productionDate: "",
     orderNumber: "",
     ticketNumber: "",
-    cocType: "" as SupplierCocType | "",
   });
   const [editingBatchId, setEditingBatchId] = useState<number | null>(null);
   const [editBatchFields, setEditBatchFields] = useState<Record<string, string>>({});
@@ -182,7 +181,6 @@ export default function SupplierCocDetailPage() {
       productionDate: coc.productionDate ? coc.productionDate.split("T")[0] : "",
       orderNumber: coc.orderNumber || "",
       ticketNumber: coc.ticketNumber || "",
-      cocType: coc.cocType,
     });
     setIsEditing(true);
   };
@@ -198,7 +196,6 @@ export default function SupplierCocDetailPage() {
         productionDate: editFields.productionDate || null,
         orderNumber: editFields.orderNumber || null,
         ticketNumber: editFields.ticketNumber || null,
-        cocType: editFields.cocType || undefined,
       });
       showToast("CoC details updated", "success");
       setIsEditing(false);
