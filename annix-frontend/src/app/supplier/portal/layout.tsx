@@ -2,6 +2,7 @@
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import React, { Suspense, useEffect } from "react";
+import { FeedbackWidget } from "@/app/components/FeedbackWidget";
 import PortalToolbar from "@/app/components/PortalToolbar";
 import RemoteAccessNotificationBanner from "@/app/components/remote-access/RemoteAccessNotificationBanner";
 import { ErrorBoundary } from "@/app/components/ui/ErrorBoundary";
@@ -111,6 +112,7 @@ function ProtectedLayout({ children }: { children: React.ReactNode }) {
           <ErrorBoundary>{children}</ErrorBoundary>
         </main>
       </div>
+      <FeedbackWidget authContext="supplier" />
       <NixAssistant
         context="supplier"
         pageContext={{

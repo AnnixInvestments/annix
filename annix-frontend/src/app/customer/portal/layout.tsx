@@ -116,7 +116,7 @@ function ProtectedLayout({ children }: { children: React.ReactNode }) {
           <ErrorBoundary>{children}</ErrorBoundary>
         </div>
       </main>
-      <FeedbackWidget />
+      <FeedbackWidget authContext="customer" />
       <NixAssistant
         context="customer"
         pageContext={{

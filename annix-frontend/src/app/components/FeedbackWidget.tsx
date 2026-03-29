@@ -1,22 +1,38 @@
 "use client";
 
+import html2canvas from "html2canvas";
 import { usePathname } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useFeatureGate } from "@/app/hooks/useFeatureGate";
 import { useVoiceDictation } from "@/app/hooks/useVoiceDictation";
-import { useSubmitFeedback } from "@/app/lib/query/hooks";
+import type { FeedbackAuthContext } from "@/app/lib/api/feedbackApi";
+import { useSubmitGeneralFeedback } from "@/app/lib/query/hooks";
 
 type FeedbackSource = "text" | "voice";
 
-export function FeedbackWidget() {
+interface Attachment {
+  file: File;
+  preview: string;
+  isAutoScreenshot: boolean;
+}
+
+interface FeedbackWidgetProps {
+  authContext: FeedbackAuthContext;
+}
+
+export function FeedbackWidget(props: FeedbackWidgetProps) {
+  const authContext = props.authContext;
   const pathname = usePathname();
   const { isFeatureEnabled, isLoading: flagsLoading } = useFeatureGate();
   const [isExpanded, setIsExpanded] = useState(false);
   const [content, setContent] = useState("");
   const [feedbackSource, setFeedbackSource] = useState<FeedbackSource>("text");
   const [showSuccess, setShowSuccess] = useState(false);
+  const [attachments, setAttachments] = useState<Attachment[]>([]);
+  const [isCapturingScreenshot, setIsCapturingScreenshot] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const submitFeedback = useSubmitFeedback();
+  const submitFeedback = useSubmitGeneralFeedback();
 
   const handleTranscriptChange = useCallback((transcript: string, isFinal: boolean) => {
     if (isFinal) {
@@ -45,18 +61,71 @@ export function FeedbackWidget() {
     }
   }, [transcript]);
 
+  useEffect(() => {
+    return () => {
+      attachments.forEach((att) => URL.revokeObjectURL(att.preview));
+    };
+  }, []);
+
+  const captureScreenshot = async (): Promise<File | null> => {
+    try {
+      setIsCapturingScreenshot(true);
+      const canvas = await html2canvas(document.body, {
+        ignoreElements: (el) => {
+          const feedbackWidget = el.closest("[data-feedback-widget]");
+          return feedbackWidget !== null;
+        },
+        scale: 1,
+        useCORS: true,
+        logging: false,
+      });
+
+      return new Promise((resolve) => {
+        canvas.toBlob(
+          (blob) => {
+            if (blob) {
+              resolve(new File([blob], "auto-screenshot.png", { type: "image/png" }));
+            } else {
+              resolve(null);
+            }
+          },
+          "image/png",
+          0.8,
+        );
+      });
+    } catch {
+      return null;
+    } finally {
+      setIsCapturingScreenshot(false);
+    }
+  };
+
   const handleSubmit = async () => {
     if (!content.trim() || content.length < 10) {
       return;
     }
 
+    const screenshotFile = await captureScreenshot();
+
+    const allFiles = [
+      ...attachments.map((a) => a.file),
+      ...(screenshotFile ? [screenshotFile] : []),
+    ];
+
     try {
       await submitFeedback.mutateAsync({
-        content: content.trim(),
-        source: feedbackSource,
-        pageUrl: pathname,
+        dto: {
+          content: content.trim(),
+          source: feedbackSource,
+          pageUrl: pathname,
+          appContext: authContext,
+        },
+        files: allFiles,
+        authContext,
       });
 
+      attachments.forEach((att) => URL.revokeObjectURL(att.preview));
+      setAttachments([]);
       setContent("");
       resetTranscript();
       setShowSuccess(true);
@@ -86,9 +155,43 @@ export function FeedbackWidget() {
     }
   };
 
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFiles = e.target.files;
+    if (!selectedFiles) {
+      return;
+    }
+
+    const newAttachments = Array.from(selectedFiles)
+      .filter((f) => f.type.startsWith("image/"))
+      .slice(0, 5 - attachments.length)
+      .map((file) => ({
+        file,
+        preview: URL.createObjectURL(file),
+        isAutoScreenshot: false,
+      }));
+
+    setAttachments((prev) => [...prev, ...newAttachments]);
+
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
+  const handleRemoveAttachment = (index: number) => {
+    setAttachments((prev) => {
+      const removed = prev[index];
+      if (removed) {
+        URL.revokeObjectURL(removed.preview);
+      }
+      return prev.filter((_, i) => i !== index);
+    });
+  };
+
   const handleClose = () => {
     setIsExpanded(false);
     setContent("");
+    attachments.forEach((att) => URL.revokeObjectURL(att.preview));
+    setAttachments([]);
     resetTranscript();
     submitFeedback.reset();
     if (isListening) {
@@ -108,6 +211,7 @@ export function FeedbackWidget() {
         onClick={() => setIsExpanded(true)}
         className="fixed bottom-20 right-4 z-50 p-3 bg-blue-600 text-white rounded-full shadow-lg hover:bg-blue-700 transition-colors"
         title="Give Feedback"
+        data-feedback-widget
       >
         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path
@@ -122,7 +226,10 @@ export function FeedbackWidget() {
   }
 
   return (
-    <div className="fixed bottom-20 right-4 z-50 w-80 bg-white rounded-lg shadow-lg border border-gray-200 overflow-hidden">
+    <div
+      data-feedback-widget
+      className="fixed bottom-20 right-4 z-50 w-80 bg-white rounded-lg shadow-lg border border-gray-200 overflow-hidden"
+    >
       <div className="px-4 py-3 bg-blue-600 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -164,7 +271,9 @@ export function FeedbackWidget() {
               />
             </svg>
             <p className="text-green-700 font-medium">Thank you for your feedback!</p>
-            <p className="text-sm text-gray-500 mt-1">We appreciate your input.</p>
+            <p className="text-sm text-gray-500 mt-1">
+              A screenshot of this page was included automatically.
+            </p>
           </div>
         ) : (
           <>
@@ -190,6 +299,33 @@ export function FeedbackWidget() {
               )}
             </div>
 
+            {attachments.length > 0 && (
+              <div className="flex gap-2 mt-2 overflow-x-auto pb-1">
+                {attachments.map((att, idx) => (
+                  <div key={att.preview} className="relative shrink-0 w-14 h-14">
+                    <img
+                      src={att.preview}
+                      alt={`Attachment ${idx + 1}`}
+                      className="w-14 h-14 object-cover rounded border border-gray-200"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveAttachment(idx)}
+                      className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600"
+                    >
+                      x
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="flex items-center gap-1 mt-1">
+              <span className="text-[10px] text-gray-400 italic">
+                A screenshot is captured automatically when you send
+              </span>
+            </div>
+
             {voiceError && <p className="text-xs text-red-600 mt-1">{voiceError}</p>}
 
             {submitFeedback.error && (
@@ -205,7 +341,7 @@ export function FeedbackWidget() {
             )}
 
             <div className="flex items-center justify-between mt-3">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5">
                 {voiceSupported && (
                   <button
                     onClick={handleVoiceToggle}
@@ -237,10 +373,37 @@ export function FeedbackWidget() {
                     )}
                   </button>
                 )}
+
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={attachments.length >= 5}
+                  className="p-2 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                  title="Attach image"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"
+                    />
+                  </svg>
+                </button>
+
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  onChange={handleFileSelect}
+                  className="hidden"
+                />
+
                 <span className="text-xs text-gray-400">
                   {content.length}/5000
                   {content.length < 10 && content.length > 0 && (
-                    <span className="text-yellow-600 ml-1">(min 10 characters)</span>
+                    <span className="text-yellow-600 ml-1">(min 10)</span>
                   )}
                 </span>
               </div>
@@ -248,11 +411,15 @@ export function FeedbackWidget() {
               <button
                 onClick={handleSubmit}
                 disabled={
-                  !content.trim() || content.length < 10 || submitFeedback.isPending || isListening
+                  !content.trim() ||
+                  content.length < 10 ||
+                  submitFeedback.isPending ||
+                  isListening ||
+                  isCapturingScreenshot
                 }
                 className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
               >
-                {submitFeedback.isPending ? (
+                {submitFeedback.isPending || isCapturingScreenshot ? (
                   <>
                     <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24">
                       <circle
@@ -270,7 +437,7 @@ export function FeedbackWidget() {
                         d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                       />
                     </svg>
-                    Sending...
+                    {isCapturingScreenshot ? "Capturing..." : "Sending..."}
                   </>
                 ) : (
                   <>

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect } from "react";
+import { FeedbackWidget } from "@/app/components/FeedbackWidget";
 import { useCvAssistantAuth } from "@/app/context/CvAssistantAuthContext";
 import { CV_ASSISTANT_VERSION } from "../config/version";
 import {
@@ -105,6 +106,7 @@ function PortalContent({ children }: { children: React.ReactNode }) {
       </nav>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">{children}</main>
+      <FeedbackWidget authContext="cv-assistant" />
     </div>
   );
 }

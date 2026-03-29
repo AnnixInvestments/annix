@@ -434,7 +434,7 @@ export {
   useCustomerDrafts,
 } from "./customer/useCustomerDashboard";
 export { useCustomerDocuments } from "./customer/useCustomerDocuments";
-export { useSubmitFeedback } from "./customer/useCustomerFeedback";
+export { useSubmitFeedback, useSubmitGeneralFeedback } from "./customer/useCustomerFeedback";
 export {
   useArchiveCustomerConversation,
   useCreateCustomerConversation,

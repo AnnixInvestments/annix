@@ -2,6 +2,7 @@
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import React, { Suspense, useEffect } from "react";
+import { FeedbackWidget } from "@/app/components/FeedbackWidget";
 import PortalToolbar from "@/app/components/PortalToolbar";
 import { ErrorBoundary } from "@/app/components/ui/ErrorBoundary";
 import { useAdminAuth } from "@/app/context/AdminAuthContext";
@@ -139,6 +140,7 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
           <ErrorBoundary>{children}</ErrorBoundary>
         </div>
       </main>
+      <FeedbackWidget authContext="admin" />
       <NixAssistant
         context="admin"
         pageContext={{

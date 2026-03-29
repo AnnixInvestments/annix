@@ -2,6 +2,7 @@
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import React, { Suspense, useEffect, useState } from "react";
+import { FeedbackWidget } from "@/app/components/FeedbackWidget";
 import { useAuRubberAuth } from "@/app/context/AuRubberAuthContext";
 import { useAuRubberBranding } from "@/app/context/AuRubberBrandingContext";
 import { auRubberApiClient } from "@/app/lib/api/auRubberApi";
@@ -63,6 +64,7 @@ function PortalContent({ children }: { children: React.ReactNode }) {
     <div className="flex flex-col h-screen bg-gray-50">
       <AuHeader />
       <MainContent>{children}</MainContent>
+      <FeedbackWidget authContext="au-rubber" />
     </div>
   );
 }

@@ -2,6 +2,7 @@
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import React, { Suspense, useEffect, useLayoutEffect } from "react";
+import { FeedbackWidget } from "@/app/components/FeedbackWidget";
 import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
 import { ChatPanel } from "../components/ChatPanel";
 import { HubBreadcrumb } from "../components/HubBreadcrumb";
@@ -113,6 +114,7 @@ function PortalContent({ children }: { children: React.ReactNode }) {
               <div className="print:hidden">
                 <ChatPanel />
               </div>
+              <FeedbackWidget authContext="stock-control" />
             </div>
           </GlossaryProvider>
         </ViewAsProvider>

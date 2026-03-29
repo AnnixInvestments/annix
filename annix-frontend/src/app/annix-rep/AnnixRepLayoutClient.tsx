@@ -3,6 +3,7 @@
 import { usePathname, useRouter } from "next/navigation";
 import React, { useEffect } from "react";
 import { ANNIX_REP_VERSION } from "@/app/annix-rep/config/annix-rep-version";
+import { FeedbackWidget } from "@/app/components/FeedbackWidget";
 import PortalToolbar from "@/app/components/PortalToolbar";
 import {
   OfflineIndicator,
@@ -193,6 +194,7 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
       <ServiceWorkerRegistration />
       <PwaInstallPrompt />
       <OfflineIndicator />
+      <FeedbackWidget authContext="annix-rep" />
     </div>
   );
 }

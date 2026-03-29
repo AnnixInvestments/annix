@@ -1,4 +1,4 @@
-import { Injectable, Logger } from "@nestjs/common";
+import { Inject, Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
@@ -7,9 +7,12 @@ import { EmailService } from "../email/email.service";
 import { formatDateTime, now } from "../lib/datetime";
 import { ConversationType, RelatedEntityType } from "../messaging/entities";
 import { MessagingService } from "../messaging/messaging.service";
+import { type IStorageService, STORAGE_SERVICE, StorageArea } from "../storage/storage.interface";
 import { User } from "../user/entities/user.entity";
 import { SubmitFeedbackDto, SubmitFeedbackResponseDto } from "./dto";
-import { CustomerFeedback } from "./entities/customer-feedback.entity";
+import { CustomerFeedback, type SubmitterType } from "./entities/customer-feedback.entity";
+import { FeedbackAttachment } from "./entities/feedback-attachment.entity";
+import type { FeedbackSubmitter } from "./guards/feedback-auth.guard";
 
 interface CustomerInfo {
   firstName: string;
@@ -19,6 +22,13 @@ interface CustomerInfo {
   userId: number;
 }
 
+interface GeneralFeedbackDto {
+  content: string;
+  source: "text" | "voice";
+  pageUrl: string | null;
+  appContext: string | null;
+}
+
 @Injectable()
 export class FeedbackService {
   private readonly logger = new Logger(FeedbackService.name);
@@ -26,6 +36,8 @@ export class FeedbackService {
   constructor(
     @InjectRepository(CustomerFeedback)
     private readonly feedbackRepository: Repository<CustomerFeedback>,
+    @InjectRepository(FeedbackAttachment)
+    private readonly attachmentRepository: Repository<FeedbackAttachment>,
     @InjectRepository(CustomerProfile)
     private readonly customerProfileRepository: Repository<CustomerProfile>,
     @InjectRepository(User)
@@ -33,6 +45,8 @@ export class FeedbackService {
     private readonly messagingService: MessagingService,
     private readonly emailService: EmailService,
     private readonly configService: ConfigService,
+    @Inject(STORAGE_SERVICE)
+    private readonly storageService: IStorageService,
   ) {}
 
   async submitFeedback(
@@ -61,6 +75,9 @@ export class FeedbackService {
       content: dto.content,
       source: dto.source,
       pageUrl: dto.pageUrl || null,
+      submitterType: "customer",
+      submitterName: `${customerInfo.firstName} ${customerInfo.lastName}`,
+      submitterEmail: customerInfo.email,
     });
 
     const savedFeedback = await this.feedbackRepository.save(feedback);
@@ -82,6 +99,97 @@ export class FeedbackService {
       id: savedFeedback.id,
       message: "Feedback submitted successfully",
     };
+  }
+
+  async submitGeneralFeedback(
+    submitter: FeedbackSubmitter,
+    dto: GeneralFeedbackDto,
+    files: Express.Multer.File[],
+  ): Promise<SubmitFeedbackResponseDto> {
+    const feedback = this.feedbackRepository.create({
+      customerProfileId: null,
+      content: dto.content,
+      source: dto.source,
+      pageUrl: dto.pageUrl,
+      submitterType: submitter.type as SubmitterType,
+      submitterName: submitter.displayName,
+      submitterEmail: submitter.email,
+      appContext: dto.appContext,
+    });
+
+    const savedFeedback = await this.feedbackRepository.save(feedback);
+
+    const attachments = await this.uploadAttachments(savedFeedback.id, files);
+
+    const conversationId = await this.createGeneralFeedbackConversation(
+      savedFeedback,
+      submitter,
+      attachments,
+    );
+
+    if (conversationId) {
+      savedFeedback.conversationId = conversationId;
+      await this.feedbackRepository.save(savedFeedback);
+    }
+
+    await this.sendGeneralEmailNotification(submitter, dto, attachments.length);
+
+    this.logger.log(
+      `Feedback submitted by ${submitter.type} user ${submitter.userId} (${submitter.displayName}), ${attachments.length} attachment(s)`,
+    );
+
+    return {
+      id: savedFeedback.id,
+      message: "Feedback submitted successfully",
+    };
+  }
+
+  private async uploadAttachments(
+    feedbackId: number,
+    files: Express.Multer.File[],
+  ): Promise<FeedbackAttachment[]> {
+    const uploadResults = await Promise.all(
+      files.map(async (file) => {
+        const isAutoScreenshot = file.originalname === "auto-screenshot.png";
+        const result = await this.storageService.upload(
+          file,
+          `${StorageArea.ANNIX_APP}/feedback/${feedbackId}`,
+        );
+
+        const attachment = this.attachmentRepository.create({
+          feedbackId,
+          filePath: result.path,
+          originalFilename: file.originalname,
+          mimeType: file.mimetype,
+          fileSize: file.size,
+          isAutoScreenshot,
+        });
+
+        return this.attachmentRepository.save(attachment);
+      }),
+    );
+
+    return uploadResults;
+  }
+
+  async attachmentUrls(
+    feedbackId: number,
+  ): Promise<Array<{ id: number; url: string; filename: string; isAutoScreenshot: boolean }>> {
+    const attachments = await this.attachmentRepository.find({
+      where: { feedbackId },
+      order: { createdAt: "ASC" },
+    });
+
+    const urls = await Promise.all(
+      attachments.map(async (att) => ({
+        id: att.id,
+        url: await this.storageService.presignedUrl(att.filePath),
+        filename: att.originalFilename,
+        isAutoScreenshot: att.isAutoScreenshot,
+      })),
+    );
+
+    return urls;
   }
 
   async assignFeedback(feedbackId: number, adminUserId: number): Promise<CustomerFeedback> {
@@ -140,13 +248,19 @@ export class FeedbackService {
   async feedbackById(feedbackId: number): Promise<CustomerFeedback | null> {
     return this.feedbackRepository.findOne({
       where: { id: feedbackId },
-      relations: ["customerProfile", "customerProfile.company", "assignedTo", "conversation"],
+      relations: [
+        "customerProfile",
+        "customerProfile.company",
+        "assignedTo",
+        "conversation",
+        "attachments",
+      ],
     });
   }
 
   async allFeedback(): Promise<CustomerFeedback[]> {
     return this.feedbackRepository.find({
-      relations: ["customerProfile", "customerProfile.company", "assignedTo"],
+      relations: ["customerProfile", "customerProfile.company", "assignedTo", "attachments"],
       order: { createdAt: "DESC" },
     });
   }
@@ -185,6 +299,55 @@ export class FeedbackService {
     return conversation.id;
   }
 
+  private async createGeneralFeedbackConversation(
+    feedback: CustomerFeedback,
+    submitter: FeedbackSubmitter,
+    attachments: FeedbackAttachment[],
+  ): Promise<number | null> {
+    const adminIds = await this.adminUserIds();
+
+    if (adminIds.length === 0) {
+      this.logger.warn("No admin users found to create feedback conversation");
+      return null;
+    }
+
+    const uniqueParticipantIds = [...new Set(adminIds)];
+
+    const timestamp = formatDateTime(now().toJSDate());
+    const attachmentNote =
+      attachments.length > 0
+        ? `\n\n*${attachments.length} attachment(s) included${attachments.some((a) => a.isAutoScreenshot) ? " (including auto-screenshot)" : ""}*`
+        : "";
+
+    const initialMessage = `**Feedback from ${submitter.type} user**
+
+**From:** ${submitter.displayName}
+**Email:** ${submitter.email}
+**App:** ${feedback.appContext || submitter.type}
+**Page:** ${feedback.pageUrl || "unknown"}
+
+---
+
+${feedback.content}
+
+---
+*Submitted via ${feedback.source === "voice" ? "voice recording" : "text"}*
+*Date: ${timestamp}*${attachmentNote}`;
+
+    const creatorId = adminIds[0];
+
+    const conversation = await this.messagingService.createConversation(creatorId, {
+      subject: `Feedback: ${submitter.displayName} (${submitter.type})`,
+      conversationType: ConversationType.SUPPORT,
+      relatedEntityType: RelatedEntityType.FEEDBACK,
+      relatedEntityId: feedback.id,
+      participantIds: uniqueParticipantIds,
+      initialMessage,
+    });
+
+    return conversation.id;
+  }
+
   private async adminUserIds(): Promise<number[]> {
     const adminUsers = await this.userRepository
       .createQueryBuilder("user")
@@ -207,6 +370,35 @@ export class FeedbackService {
       dto.content,
       dto.source,
       dto.pageUrl || null,
+    );
+  }
+
+  private async sendGeneralEmailNotification(
+    submitter: FeedbackSubmitter,
+    dto: GeneralFeedbackDto,
+    attachmentCount: number,
+  ): Promise<void> {
+    const supportEmail = this.configService.get<string>("SUPPORT_EMAIL") || "info@annix.co.za";
+
+    const customerInfo: CustomerInfo = {
+      firstName: submitter.displayName.split(" ")[0] || submitter.displayName,
+      lastName: submitter.displayName.split(" ").slice(1).join(" ") || "",
+      email: submitter.email,
+      companyName: `${submitter.type} user`,
+      userId: submitter.userId,
+    };
+
+    const contentWithAttachments =
+      attachmentCount > 0
+        ? `${dto.content}\n\n[${attachmentCount} attachment(s) included]`
+        : dto.content;
+
+    await this.emailService.sendCustomerFeedbackNotificationEmail(
+      supportEmail,
+      customerInfo,
+      contentWithAttachments,
+      dto.source,
+      dto.pageUrl,
     );
   }
 
