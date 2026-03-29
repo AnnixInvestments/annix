@@ -1,0 +1,73 @@
+name: Feedback Resolved Notification
+
+on:
+  pull_request:
+    types: [closed]
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  notify-feedback:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - name: Find linked feedback issues
+        id: find-feedback
+        env:
+          GH_TOKEN: ${{ secrets.PROJECT_TOKEN }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          ISSUE_NUMS=$(echo "$PR_BODY" | grep -oP '(?:closes|fixes|resolves|ref)\s*#(\d+)' | grep -oP '\d+' || echo "")
+
+          FEEDBACK_ISSUES=""
+          for NUM in $ISSUE_NUMS; do
+            LABELS=$(gh issue view "$NUM" --repo "${{ github.repository }}" --json labels -q '.labels[].name' 2>/dev/null || echo "")
+            if echo "$LABELS" | grep -q "feedback"; then
+              FEEDBACK_ISSUES="$FEEDBACK_ISSUES $NUM"
+            fi
+          done
+
+          FEEDBACK_ISSUES=$(echo "$FEEDBACK_ISSUES" | xargs)
+          echo "issues=$FEEDBACK_ISSUES" >> "$GITHUB_OUTPUT"
+          if [ -n "$FEEDBACK_ISSUES" ]; then
+            echo "has_feedback=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_feedback=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Notify on feedback issues
+        if: steps.find-feedback.outputs.has_feedback == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.PROJECT_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          for NUM in ${{ steps.find-feedback.outputs.issues }}; do
+            gh issue comment "$NUM" \
+              --repo "${{ github.repository }}" \
+              --body "This feedback has been addressed in PR #${PR_NUMBER} (${PR_TITLE}), which has been merged. Closing this issue."
+
+            gh issue close "$NUM" --repo "${{ github.repository }}"
+          done
+
+      - name: Notify backend to update feedback status
+        if: steps.find-feedback.outputs.has_feedback == 'true'
+        env:
+          BACKEND_URL: ${{ secrets.BACKEND_URL }}
+          GITHUB_WEBHOOK_SECRET: ${{ secrets.GITHUB_WEBHOOK_SECRET }}
+        run: |
+          if [ -n "$BACKEND_URL" ] && [ -n "$GITHUB_WEBHOOK_SECRET" ]; then
+            for NUM in ${{ steps.find-feedback.outputs.issues }}; do
+              curl -s -X POST "${BACKEND_URL}/feedback/github-webhook/resolved" \
+                -H "Content-Type: application/json" \
+                -H "X-Webhook-Secret: ${GITHUB_WEBHOOK_SECRET}" \
+                -d "{\"issueNumber\": ${NUM}, \"prNumber\": ${{ github.event.pull_request.number }}}" \
+                || echo "Failed to notify backend for issue #${NUM} (backend may not be configured yet)"
+            done
+          else
+            echo "BACKEND_URL or GITHUB_WEBHOOK_SECRET not configured — skipping backend notification"
+          fi

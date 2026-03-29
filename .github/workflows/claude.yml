@@ -74,8 +74,76 @@ jobs:
             echo "BODY_EOF"
           } >> "$GITHUB_OUTPUT"
 
+      - name: Detect feedback issue
+        id: feedback-check
+        if: github.event_name == 'issues' || github.event_name == 'issue_comment'
+        env:
+          GH_TOKEN: ${{ secrets.PROJECT_TOKEN }}
+        run: |
+          ISSUE_NUM=""
+          if [ "${{ github.event_name }}" = "issues" ]; then
+            ISSUE_NUM="${{ github.event.issue.number }}"
+          elif [ "${{ github.event_name }}" = "issue_comment" ]; then
+            ISSUE_NUM="${{ github.event.issue.number }}"
+          fi
+
+          if [ -n "$ISSUE_NUM" ]; then
+            LABELS=$(gh issue view "$ISSUE_NUM" --repo "${{ github.repository }}" --json labels -q '.labels[].name' 2>/dev/null || echo "")
+            if echo "$LABELS" | grep -q "feedback"; then
+              echo "is_feedback=true" >> "$GITHUB_OUTPUT"
+              CONTEXT=$(cat .github/FEEDBACK_CONTEXT.md 2>/dev/null || echo "")
+              {
+                echo "context<<CONTEXT_EOF"
+                echo "$CONTEXT"
+                echo "CONTEXT_EOF"
+              } >> "$GITHUB_OUTPUT"
+            else
+              echo "is_feedback=false" >> "$GITHUB_OUTPUT"
+            fi
+          else
+            echo "is_feedback=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Run Claude Code (feedback issue)
+        if: |
+          github.event_name != 'workflow_dispatch' &&
+          steps.feedback-check.outputs.is_feedback == 'true'
+        id: claude-feedback
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          github_token: ${{ secrets.PROJECT_TOKEN }}
+          claude_args: "--allowedTools Bash,Read,Edit,MultiEdit,Write,Glob,Grep,LS,WebFetch,WebSearch,TodoRead,TodoWrite,Task"
+          prompt: |
+            You are operating autonomously on a feedback issue auto-created from user submissions.
+            Do NOT ask questions or request clarification. Make all implementation decisions yourself.
+
+            Read the CLAUDE.md and agents.md files for project conventions. Follow all existing patterns.
+
+            IMPORTANT FEEDBACK CONTEXT:
+            ${{ steps.feedback-check.outputs.context }}
+
+            This issue was auto-created from user feedback. The issue body contains:
+            - Submitter details and which app they were using
+            - The page URL where the problem occurred
+            - Screenshots showing the current state of the page
+            - AI classification of the feedback type
+
+            Your task:
+            1. Read the feedback content and examine any screenshots in the issue
+            2. Use the app context and page URL to locate the relevant code
+            3. Identify and fix the root cause
+            4. Create a feature branch, commit, push, and open a PR referencing this issue
+
+            CRITICAL: Before committing, you MUST run these checks and fix any failures:
+            1. `pnpm format:check` (Biome lint/format)
+            2. `pnpm test:all` (backend tests + frontend type-check)
+            Do NOT commit or push code that fails these checks.
+
       - name: Run Claude Code (event triggered)
-        if: github.event_name != 'workflow_dispatch'
+        if: |
+          github.event_name != 'workflow_dispatch' &&
+          steps.feedback-check.outputs.is_feedback != 'true'
         id: claude-event
         uses: anthropics/claude-code-action@v1
         with:

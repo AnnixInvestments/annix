@@ -264,6 +264,36 @@ export class FeedbackService {
     });
   }
 
+  async markResolvedByIssue(issueNumber: number, prNumber: number): Promise<void> {
+    const feedback = await this.feedbackRepository.findOne({
+      where: { githubIssueNumber: issueNumber },
+      relations: ["conversation"],
+    });
+
+    if (!feedback) {
+      this.logger.warn(`No feedback found for GitHub issue #${issueNumber}`);
+      return;
+    }
+
+    feedback.status = "resolved";
+    await this.feedbackRepository.save(feedback);
+
+    if (feedback.conversationId) {
+      const adminIds = await this.adminUserIds();
+      const senderId = adminIds[0];
+
+      if (senderId) {
+        await this.messagingService.sendMessage(feedback.conversationId, senderId, {
+          content: `*Your feedback has been addressed in PR #${prNumber} and deployed. Thank you for reporting this!*`,
+        });
+      }
+    }
+
+    this.logger.log(
+      `Feedback #${feedback.id} resolved via GitHub issue #${issueNumber}, PR #${prNumber}`,
+    );
+  }
+
   async allFeedback(): Promise<CustomerFeedback[]> {
     return this.feedbackRepository.find({
       relations: ["customerProfile", "customerProfile.company", "assignedTo", "attachments"],

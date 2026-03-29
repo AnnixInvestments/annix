@@ -13,6 +13,7 @@ import { FeedbackAttachment } from "./entities/feedback-attachment.entity";
 import { FeedbackController } from "./feedback.controller";
 import { FeedbackService } from "./feedback.service";
 import { FeedbackGithubService } from "./feedback-github.service";
+import { FeedbackWebhookController } from "./feedback-webhook.controller";
 import { GeneralFeedbackController } from "./general-feedback.controller";
 import { FeedbackAuthGuard } from "./guards/feedback-auth.guard";
 
@@ -32,7 +33,7 @@ import { FeedbackAuthGuard } from "./guards/feedback-auth.guard";
     MessagingModule,
     NixModule,
   ],
-  controllers: [FeedbackController, GeneralFeedbackController],
+  controllers: [FeedbackController, GeneralFeedbackController, FeedbackWebhookController],
   providers: [FeedbackService, FeedbackGithubService, FeedbackAuthGuard],
   exports: [FeedbackService],
 })
