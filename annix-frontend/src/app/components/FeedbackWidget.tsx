@@ -71,6 +71,9 @@ export function FeedbackWidget(props: FeedbackWidgetProps) {
     try {
       setIsCapturingScreenshot(true);
 
+      const TRANSPARENT_PIXEL =
+        "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==";
+
       const blob = await toBlob(document.body, {
         filter: (node) => {
           if (node instanceof HTMLElement) {
@@ -81,6 +84,7 @@ export function FeedbackWidget(props: FeedbackWidgetProps) {
         quality: 0.8,
         pixelRatio: 1,
         skipAutoScale: true,
+        imagePlaceholder: TRANSPARENT_PIXEL,
       });
 
       if (blob) {
