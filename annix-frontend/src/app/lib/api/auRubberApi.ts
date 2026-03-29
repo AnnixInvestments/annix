@@ -2098,7 +2098,6 @@ class AuRubberApiClient {
       productionDate?: string | null;
       orderNumber?: string | null;
       ticketNumber?: string | null;
-      cocType?: SupplierCocType;
     },
   ): Promise<RubberSupplierCocDto> {
     return this.request(`/rubber-lining/portal/supplier-cocs/${id}`, {

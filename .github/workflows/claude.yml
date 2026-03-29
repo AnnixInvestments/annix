@@ -136,9 +136,10 @@ jobs:
             4. Create a feature branch, commit, push, and open a PR referencing this issue
 
             CRITICAL: Before committing, you MUST run these checks and fix any failures:
-            1. `pnpm format:check` (Biome lint/format)
+            1. `npx biome check --write --unsafe .` (Biome lint/format — use --write to auto-fix)
             2. `pnpm test:all` (backend tests + frontend type-check)
-            Do NOT commit or push code that fails these checks.
+            3. After fixing, run `npx biome check .` again to verify zero errors remain
+            Do NOT commit or push code that fails these checks. If biome reports errors after --write, manually fix them.
 
       - name: Run Claude Code (event triggered)
         if: |
@@ -154,9 +155,10 @@ jobs:
             Read the CLAUDE.md and agents.md files for project conventions. Follow all existing patterns.
 
             CRITICAL: Before committing, you MUST run these checks and fix any failures:
-            1. `pnpm format:check` (Biome lint/format)
+            1. `npx biome check --write --unsafe .` (Biome lint/format — use --write to auto-fix)
             2. `pnpm test:all` (backend tests + frontend type-check)
-            Do NOT commit or push code that fails these checks.
+            3. After fixing, run `npx biome check .` again to verify zero errors remain
+            Do NOT commit or push code that fails these checks. If biome reports errors after --write, manually fix them.
 
       - name: Run Claude Code (manual dispatch)
         if: github.event_name == 'workflow_dispatch'
@@ -172,9 +174,10 @@ jobs:
             Read the CLAUDE.md and agents.md files for project conventions. Follow all existing patterns.
 
             CRITICAL: Before committing, you MUST run these checks and fix any failures:
-            1. `pnpm format:check` (Biome lint/format)
+            1. `npx biome check --write --unsafe .` (Biome lint/format — use --write to auto-fix)
             2. `pnpm test:all` (backend tests + frontend type-check)
-            Do NOT commit or push code that fails these checks.
+            3. After fixing, run `npx biome check .` again to verify zero errors remain
+            Do NOT commit or push code that fails these checks. If biome reports errors after --write, manually fix them.
 
             Your task: implement the following GitHub issue. Create a feature branch, implement all changes, commit, push, and open a PR referencing issue #${{ inputs.issue_number }}.
 

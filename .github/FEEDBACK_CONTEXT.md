@@ -60,3 +60,30 @@ Each app has a single persistent GitHub issue that collects all feedback as comm
 5. Follow all rules in the root CLAUDE.md
 6. Reference the feedback issue in the commit: `fix(app): description (ref #ISSUE)`
 7. **NEVER use `Closes`, `Fixes`, or `Resolves` keywords with feedback tracker issues (#154, #156-#161)** — always use `Ref #ISSUE` instead, as these are persistent trackers that must stay open
+
+## Pre-Commit Quality Checks (MANDATORY)
+
+Before committing ANY code, you MUST run these checks and fix all failures:
+
+1. **Biome lint/format** — run `npx biome check --write --unsafe .` to auto-fix, then `npx biome check .` to verify zero errors remain
+2. **Backend type-check** — run `cd annix-backend && npx tsc --noEmit`
+3. **Frontend type-check** — run `cd annix-frontend && npx tsc --noEmit`
+4. **Backend tests** — run `pnpm test:all`
+
+Do NOT commit or push code that fails any of these checks. If biome reports errors after `--write`, manually fix them before committing.
+
+## Code Style Rules (from CLAUDE.md)
+
+These rules MUST be followed in all fixes:
+
+- **No comments in code** — use self-documenting method names
+- **No imperative loops** — use `map`, `filter`, `reduce` instead of `for`/`while`
+- **No duplicate properties** — never add the same property twice in an object literal or class
+- **Use null, not undefined** — for absence of value
+- **Use const** — never `let` unless reassignment is unavoidable
+- **SWC safety** — never combine `?.` with `??`, use `||` instead
+- **No destructuring defaults in function params** — destructure in function body
+- **Dates via Luxon only** — import from `@/app/lib/datetime` (frontend) or `../lib/datetime` (backend)
+- **Method naming** — never prefix with "get", use meaningful names like `user()`, `queryUsers()`
+- **Biome formatting** — double quotes per biome.json
+- **No AI attribution** — do not include AI attribution (e.g. "Co-Authored-By: Claude") in commit messages
