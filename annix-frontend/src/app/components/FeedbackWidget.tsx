@@ -67,15 +67,25 @@ export function FeedbackWidget(props: FeedbackWidgetProps) {
     };
   }, []);
 
-  const neutralizeOklch = (): Array<{ sheet: CSSStyleSheet; index: number; original: string }> => {
+  const UNSUPPORTED_COLOR_PATTERN =
+    /(?:oklch|oklab|lch|lab|color-mix|color|hwb)\([^)]*(?:\([^)]*\)[^)]*)*\)/g;
+
+  const hasUnsupportedColors = (cssText: string): boolean =>
+    /(?:oklch|oklab|lch|lab|color-mix|color|hwb)\(/.test(cssText);
+
+  const neutralizeUnsupportedColors = (): Array<{
+    sheet: CSSStyleSheet;
+    index: number;
+    original: string;
+  }> => {
     const replacements: Array<{ sheet: CSSStyleSheet; index: number; original: string }> = [];
     try {
       Array.from(document.styleSheets).forEach((sheet) => {
         try {
           Array.from(sheet.cssRules).forEach((rule, index) => {
-            if (rule.cssText.includes("oklch(")) {
+            if (hasUnsupportedColors(rule.cssText)) {
               replacements.push({ sheet, index, original: rule.cssText });
-              const neutralized = rule.cssText.replace(/oklch\([^)]*\)/g, "transparent");
+              const neutralized = rule.cssText.replace(UNSUPPORTED_COLOR_PATTERN, "transparent");
               sheet.deleteRule(index);
               sheet.insertRule(neutralized, index);
             }
@@ -90,7 +100,7 @@ export function FeedbackWidget(props: FeedbackWidgetProps) {
     return replacements;
   };
 
-  const restoreOklch = (
+  const restoreColors = (
     replacements: Array<{ sheet: CSSStyleSheet; index: number; original: string }>,
   ) => {
     [...replacements].reverse().forEach(({ sheet, index, original }) => {
@@ -104,7 +114,7 @@ export function FeedbackWidget(props: FeedbackWidgetProps) {
   };
 
   const captureScreenshot = async (): Promise<File | null> => {
-    const replacements = neutralizeOklch();
+    const replacements = neutralizeUnsupportedColors();
     try {
       setIsCapturingScreenshot(true);
       const canvas = await html2canvas(document.body, {
@@ -138,7 +148,7 @@ export function FeedbackWidget(props: FeedbackWidgetProps) {
       console.error("Screenshot capture failed:", error);
       return null;
     } finally {
-      restoreOklch(replacements);
+      restoreColors(replacements);
       setIsCapturingScreenshot(false);
     }
   };
