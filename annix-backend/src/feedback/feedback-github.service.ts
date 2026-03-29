@@ -107,7 +107,8 @@ export class FeedbackGithubService {
       const title = this.formatIssueTitle(feedback);
       const labels = this.issueLabels(feedback, classification);
 
-      const shouldTriggerClaude = classification === "bug" || classification === "ui-issue";
+      const shouldTriggerClaude =
+        classification !== "question" && classification !== "feature-request";
 
       const fullBody = shouldTriggerClaude
         ? `${body}\n\n---\n@claude Please investigate and fix this issue. The feedback includes screenshots showing the current state.`
