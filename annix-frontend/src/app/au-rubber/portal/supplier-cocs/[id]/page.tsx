@@ -64,6 +64,7 @@ export default function SupplierCocDetailPage() {
     productionDate: "",
     orderNumber: "",
     ticketNumber: "",
+    cocType: "" as SupplierCocType | "",
   });
   const [editingBatchId, setEditingBatchId] = useState<number | null>(null);
   const [editBatchFields, setEditBatchFields] = useState<Record<string, string>>({});
@@ -179,6 +180,7 @@ export default function SupplierCocDetailPage() {
       productionDate: coc.productionDate ? coc.productionDate.split("T")[0] : "",
       orderNumber: coc.orderNumber || "",
       ticketNumber: coc.ticketNumber || "",
+      cocType: coc.cocType,
     });
     setIsEditing(true);
   };
@@ -193,6 +195,7 @@ export default function SupplierCocDetailPage() {
         productionDate: editFields.productionDate || null,
         orderNumber: editFields.orderNumber || null,
         ticketNumber: editFields.ticketNumber || null,
+        cocType: editFields.cocType || undefined,
       });
       showToast("CoC details updated", "success");
       setIsEditing(false);
@@ -457,6 +460,20 @@ export default function SupplierCocDetailPage() {
                   onChange={(e) => setEditFields({ ...editFields, cocNumber: e.target.value })}
                   className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 text-sm"
                 />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-500">CoC Type</label>
+                <select
+                  value={editFields.cocType}
+                  onChange={(e) =>
+                    setEditFields({ ...editFields, cocType: e.target.value as SupplierCocType })
+                  }
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 text-sm"
+                >
+                  <option value="COMPOUNDER">Compounder</option>
+                  <option value="CALENDARER">Calenderer (Sheeting)</option>
+                  <option value="CALENDER_ROLL">Calender Roll</option>
+                </select>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-500">Compound Code</label>
