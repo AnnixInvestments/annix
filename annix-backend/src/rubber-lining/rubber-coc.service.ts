@@ -180,6 +180,7 @@ export class RubberCocService {
     if (dto.orderNumber !== undefined) coc.orderNumber = dto.orderNumber;
     if (dto.ticketNumber !== undefined) coc.ticketNumber = dto.ticketNumber;
     if (dto.processingStatus !== undefined) coc.processingStatus = dto.processingStatus;
+    if (dto.cocType !== undefined) coc.cocType = dto.cocType;
 
     await this.supplierCocRepository.save(coc);
     const refreshed = await this.supplierCocRepository.findOne({
