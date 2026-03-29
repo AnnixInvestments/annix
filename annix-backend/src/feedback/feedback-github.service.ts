@@ -27,6 +27,16 @@ const VALID_CLASSIFICATIONS: FeedbackClassification[] = [
   "data-issue",
 ];
 
+const APP_ISSUE_MAP: Record<string, number> = {
+  "au-rubber": 154,
+  customer: 156,
+  admin: 157,
+  "stock-control": 158,
+  supplier: 159,
+  "cv-assistant": 160,
+  "annix-rep": 161,
+};
+
 @Injectable()
 export class FeedbackGithubService {
   private readonly logger = new Logger(FeedbackGithubService.name);
@@ -103,92 +113,110 @@ export class FeedbackGithubService {
         order: { createdAt: "ASC" },
       });
 
-      const body = await this.formatIssueBody(feedback, classification, attachments);
-      const title = this.formatIssueTitle(feedback);
-      const labels = this.issueLabels(feedback, classification);
+      const commentBody = await this.formatCommentBody(feedback, classification, attachments);
+
+      const appContext = feedback.appContext || "admin";
+      const issueNumber = APP_ISSUE_MAP[appContext] || APP_ISSUE_MAP["admin"];
 
       const shouldTriggerClaude =
         classification !== "question" && classification !== "feature-request";
 
-      const fullBody = shouldTriggerClaude
-        ? `${body}\n\n---\n@claude Please investigate and fix this issue. The feedback includes screenshots showing the current state.`
-        : body;
+      const fullComment = shouldTriggerClaude
+        ? `${commentBody}\n\n---\n@claude Please investigate and fix this issue. The feedback includes screenshots showing the current state.`
+        : commentBody;
 
-      const issue = await this.octokit.issues.create({
+      await this.octokit.issues.createComment({
         owner: this.owner,
         repo: this.repo,
-        title,
-        body: fullBody,
-        labels,
+        issue_number: issueNumber,
+        body: fullComment,
       });
 
-      feedback.githubIssueNumber = issue.data.number;
+      await this.addClassificationLabel(issueNumber, classification, appContext);
+
+      feedback.githubIssueNumber = issueNumber;
       await this.feedbackRepository.save(feedback);
 
       this.logger.log(
-        `Created GitHub issue #${issue.data.number} for feedback #${feedback.id} (${classification})${shouldTriggerClaude ? " — Claude auto-fix triggered" : ""}`,
+        `Added comment to GitHub issue #${issueNumber} for feedback #${feedback.id} (${classification})${shouldTriggerClaude ? " — Claude auto-fix triggered" : ""}`,
       );
 
-      return issue.data.number;
+      return issueNumber;
     } catch (error) {
-      this.logger.error(`Failed to create GitHub issue for feedback #${feedback.id}: ${error}`);
+      this.logger.error(`Failed to add feedback #${feedback.id} to GitHub issue: ${error}`);
       return null;
     }
   }
 
-  private formatIssueTitle(feedback: CustomerFeedback): string {
-    const truncatedContent =
-      feedback.content.length > 80 ? `${feedback.content.substring(0, 77)}...` : feedback.content;
-
-    const context = feedback.appContext || feedback.submitterType || "unknown";
-    return `[Feedback] ${truncatedContent} (${context})`;
-  }
-
-  private issueLabels(
-    feedback: CustomerFeedback,
+  private async addClassificationLabel(
+    issueNumber: number,
     classification: FeedbackClassification,
-  ): string[] {
-    return feedback.appContext
-      ? ["feedback", classification, feedback.appContext]
-      : ["feedback", classification];
+    appContext: string,
+  ): Promise<void> {
+    if (!this.octokit) {
+      return;
+    }
+
+    try {
+      const { data: issue } = await this.octokit.issues.get({
+        owner: this.owner,
+        repo: this.repo,
+        issue_number: issueNumber,
+      });
+
+      const existingLabels = issue.labels
+        .map((l) => (typeof l === "string" ? l : l.name))
+        .filter((name): name is string => name !== undefined);
+
+      const desiredLabels = [
+        ...new Set([...existingLabels, "feedback", classification, appContext]),
+      ];
+
+      await this.octokit.issues.setLabels({
+        owner: this.owner,
+        repo: this.repo,
+        issue_number: issueNumber,
+        labels: desiredLabels,
+      });
+    } catch (error) {
+      this.logger.warn(`Failed to update labels on issue #${issueNumber}: ${error}`);
+    }
   }
 
-  private async formatIssueBody(
+  private async formatCommentBody(
     feedback: CustomerFeedback,
     classification: FeedbackClassification,
     attachments: FeedbackAttachment[],
   ): Promise<string> {
     const sections = [
-      "## Feedback Details",
+      `## Feedback #${feedback.id} — \`${classification}\``,
       "",
       "| Field | Value |",
       "|-------|-------|",
       `| **Submitter** | ${feedback.submitterName || "Unknown"} |`,
       `| **Email** | ${feedback.submitterEmail || "Unknown"} |`,
       `| **Type** | ${feedback.submitterType || "Unknown"} |`,
-      `| **App** | ${feedback.appContext || "Unknown"} |`,
       `| **Page** | ${feedback.pageUrl || "Unknown"} |`,
       `| **Source** | ${feedback.source} |`,
       `| **Classification** | \`${classification}\` |`,
-      `| **Feedback ID** | #${feedback.id} |`,
       "",
-      "## Content",
+      "### Content",
       "",
       feedback.content,
       "",
     ];
 
     if (attachments.length > 0) {
-      sections.push("## Attachments", "");
+      sections.push("### Attachments", "");
 
       const attachmentLines = await Promise.all(
         attachments.map(async (att) => {
           const url = await this.storageService.presignedUrl(att.filePath, 604800);
           const label = att.isAutoScreenshot ? "Auto-Screenshot" : att.originalFilename;
           if (att.mimeType.startsWith("image/")) {
-            return `### ${label}\n![${label}](${url})`;
+            return `**${label}**\n![${label}](${url})`;
           }
-          return `### ${label}\n[Download ${att.originalFilename}](${url})`;
+          return `**${label}**\n[Download ${att.originalFilename}](${url})`;
         }),
       );
 

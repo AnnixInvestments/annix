@@ -39,7 +39,7 @@ jobs:
             echo "has_feedback=false" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Notify on feedback issues
+      - name: Comment on feedback issues
         if: steps.find-feedback.outputs.has_feedback == 'true'
         env:
           GH_TOKEN: ${{ secrets.PROJECT_TOKEN }}
@@ -49,9 +49,7 @@ jobs:
           for NUM in ${{ steps.find-feedback.outputs.issues }}; do
             gh issue comment "$NUM" \
               --repo "${{ github.repository }}" \
-              --body "This feedback has been addressed in PR #${PR_NUMBER} (${PR_TITLE}), which has been merged. Closing this issue."
-
-            gh issue close "$NUM" --repo "${{ github.repository }}"
+              --body "A fix related to feedback in this issue has been merged in PR #${PR_NUMBER} (${PR_TITLE})."
           done
 
       - name: Notify backend to update feedback status
