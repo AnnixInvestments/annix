@@ -6,11 +6,13 @@ import { CustomerModule } from "../customer/customer.module";
 import { CustomerProfile } from "../customer/entities/customer-profile.entity";
 import { EmailModule } from "../email/email.module";
 import { MessagingModule } from "../messaging/messaging.module";
+import { NixModule } from "../nix/nix.module";
 import { User } from "../user/entities/user.entity";
 import { CustomerFeedback } from "./entities/customer-feedback.entity";
 import { FeedbackAttachment } from "./entities/feedback-attachment.entity";
 import { FeedbackController } from "./feedback.controller";
 import { FeedbackService } from "./feedback.service";
+import { FeedbackGithubService } from "./feedback-github.service";
 import { GeneralFeedbackController } from "./general-feedback.controller";
 import { FeedbackAuthGuard } from "./guards/feedback-auth.guard";
 
@@ -28,9 +30,10 @@ import { FeedbackAuthGuard } from "./guards/feedback-auth.guard";
     CustomerModule,
     EmailModule,
     MessagingModule,
+    NixModule,
   ],
   controllers: [FeedbackController, GeneralFeedbackController],
-  providers: [FeedbackService, FeedbackAuthGuard],
+  providers: [FeedbackService, FeedbackGithubService, FeedbackAuthGuard],
   exports: [FeedbackService],
 })
 export class FeedbackModule {}

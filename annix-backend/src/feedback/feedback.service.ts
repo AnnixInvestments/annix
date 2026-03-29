@@ -12,6 +12,7 @@ import { User } from "../user/entities/user.entity";
 import { SubmitFeedbackDto, SubmitFeedbackResponseDto } from "./dto";
 import { CustomerFeedback, type SubmitterType } from "./entities/customer-feedback.entity";
 import { FeedbackAttachment } from "./entities/feedback-attachment.entity";
+import { FeedbackGithubService } from "./feedback-github.service";
 import type { FeedbackSubmitter } from "./guards/feedback-auth.guard";
 
 interface CustomerInfo {
@@ -47,6 +48,7 @@ export class FeedbackService {
     private readonly configService: ConfigService,
     @Inject(STORAGE_SERVICE)
     private readonly storageService: IStorageService,
+    private readonly feedbackGithubService: FeedbackGithubService,
   ) {}
 
   async submitFeedback(
@@ -91,6 +93,8 @@ export class FeedbackService {
 
     await this.sendEmailNotification(dto, customerInfo);
 
+    this.createGithubIssueAsync(savedFeedback.id);
+
     this.logger.log(
       `Feedback submitted by customer ${customerId}, conversation #${conversationId}`,
     );
@@ -133,6 +137,8 @@ export class FeedbackService {
     }
 
     await this.sendGeneralEmailNotification(submitter, dto, attachments.length);
+
+    this.createGithubIssueAsync(savedFeedback.id);
 
     this.logger.log(
       `Feedback submitted by ${submitter.type} user ${submitter.userId} (${submitter.displayName}), ${attachments.length} attachment(s)`,
@@ -400,6 +406,22 @@ ${feedback.content}
       dto.source,
       dto.pageUrl,
     );
+  }
+
+  private createGithubIssueAsync(feedbackId: number): void {
+    this.feedbackRepository
+      .findOne({ where: { id: feedbackId } })
+      .then((feedback) => {
+        if (feedback) {
+          return this.feedbackGithubService.createIssueFromFeedback(feedback);
+        }
+        return null;
+      })
+      .catch((error) => {
+        this.logger.error(
+          `Background GitHub issue creation failed for feedback #${feedbackId}: ${error}`,
+        );
+      });
   }
 
   private formatInitialMessage(

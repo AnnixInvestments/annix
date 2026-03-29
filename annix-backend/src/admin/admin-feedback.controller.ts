@@ -39,6 +39,13 @@ export class AdminFeedbackController {
     return this.feedbackService.assignFeedback(id, adminUserId);
   }
 
+  @Get(":id/attachments")
+  @ApiOperation({ summary: "Get presigned URLs for feedback attachments" })
+  @ApiResponse({ status: 200, description: "Attachment URLs" })
+  async attachmentUrls(@Param("id", ParseIntPipe) id: number) {
+    return this.feedbackService.attachmentUrls(id);
+  }
+
   @Post(":id/unassign")
   @ApiOperation({ summary: "Unassign feedback from the current admin" })
   @ApiResponse({ status: 200, description: "Feedback unassigned successfully" })

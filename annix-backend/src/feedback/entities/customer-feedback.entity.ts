@@ -23,6 +23,15 @@ export type SubmitterType =
   | "cv-assistant"
   | "annix-rep";
 
+export type FeedbackClassification =
+  | "bug"
+  | "feature-request"
+  | "question"
+  | "ui-issue"
+  | "data-issue";
+
+export type FeedbackStatus = "submitted" | "triaged" | "in_progress" | "resolved";
+
 @Entity("customer_feedback")
 export class CustomerFeedback {
   @PrimaryGeneratedColumn()
@@ -69,6 +78,15 @@ export class CustomerFeedback {
 
   @Column({ name: "app_context", type: "varchar", length: 50, nullable: true })
   appContext: string | null;
+
+  @Column({ name: "github_issue_number", type: "int", nullable: true })
+  githubIssueNumber: number | null;
+
+  @Column({ name: "ai_classification", type: "varchar", length: 30, nullable: true })
+  aiClassification: FeedbackClassification | null;
+
+  @Column({ name: "status", type: "varchar", length: 20, default: "submitted" })
+  status: FeedbackStatus;
 
   @OneToMany(
     () => FeedbackAttachment,
