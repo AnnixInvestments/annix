@@ -15,6 +15,7 @@ on:
           - all
           - prod
           - test
+          - staging
 
 permissions:
   contents: read
@@ -35,7 +36,7 @@ jobs:
       - id: set-matrix
         run: |
           if [ "${{ github.event_name }}" = "push" ] || [ "${{ inputs.environments }}" = "all" ]; then
-            echo 'matrix=["prod","test"]' >> "$GITHUB_OUTPUT"
+            echo 'matrix=["prod","test","staging"]' >> "$GITHUB_OUTPUT"
           else
             echo 'matrix=["${{ inputs.environments }}"]' >> "$GITHUB_OUTPUT"
           fi
@@ -128,6 +129,8 @@ jobs:
             app_name: annix-app
           - environment: test
             app_name: annix-app-test
+          - environment: staging
+            app_name: annix-app-staging
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
