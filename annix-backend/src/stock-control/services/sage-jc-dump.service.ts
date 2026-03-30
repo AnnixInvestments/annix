@@ -101,6 +101,14 @@ interface ParsedPage {
   }>;
 }
 
+function deduplicateLines(text: string): string {
+  const lines = text
+    .split("\n")
+    .map((l) => l.trim())
+    .filter(Boolean);
+  return [...new Set(lines)].join("\n");
+}
+
 function stripItemNoSequence(itemNo: string): string {
   return itemNo.replace(/\s*\(\d+\)\s*$/, "").trim();
 }
@@ -272,7 +280,7 @@ export class SageJcDumpService {
         siteLocation: cpo.siteLocation,
         contactPerson: cpo.contactPerson,
         description: cpo.notes || null,
-        notes: cpo.coatingSpecs || null,
+        notes: cpo.coatingSpecs ? deduplicateLines(cpo.coatingSpecs) : null,
         status: JobCardStatus.DRAFT,
         workflowStatus: WORKFLOW_STATUS_DRAFT,
         versionNumber: 1,
@@ -289,7 +297,7 @@ export class SageJcDumpService {
         parentNeedsUpdate = true;
       }
       if (cpo.coatingSpecs && !parentJc.notes) {
-        parentJc.notes = cpo.coatingSpecs;
+        parentJc.notes = deduplicateLines(cpo.coatingSpecs);
         parentNeedsUpdate = true;
       }
       if (parentNeedsUpdate) {
@@ -359,7 +367,10 @@ export class SageJcDumpService {
           jobName: parentJc.jobName,
           customerName: parentJc.customerName,
           description: parentJc.description || undefined,
-          notes: cpo.coatingSpecs || parentJc.notes || null,
+          notes: (() => {
+            const raw = cpo.coatingSpecs || parentJc.notes || null;
+            return raw ? deduplicateLines(raw) : null;
+          })(),
           poNumber: parentJc.poNumber,
           siteLocation: parentJc.siteLocation,
           contactPerson: parentJc.contactPerson,

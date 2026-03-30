@@ -26,12 +26,23 @@ jest.mock("../../lib/datetime", () => ({
 describe("JobCardService", () => {
   let service: JobCardService;
 
+  const mockQueryBuilderResult: unknown[] = [];
+  const mockQueryBuilder = {
+    where: jest.fn().mockReturnThis(),
+    andWhere: jest.fn().mockReturnThis(),
+    orderBy: jest.fn().mockReturnThis(),
+    take: jest.fn().mockReturnThis(),
+    skip: jest.fn().mockReturnThis(),
+    getMany: jest.fn().mockImplementation(() => Promise.resolve(mockQueryBuilderResult)),
+  };
+
   const mockJobCardRepo = {
     create: jest.fn().mockImplementation((data) => ({ ...data })),
     save: jest.fn().mockImplementation((entity) => Promise.resolve({ id: 1, ...entity })),
     find: jest.fn(),
     findOne: jest.fn(),
     remove: jest.fn().mockResolvedValue(null),
+    createQueryBuilder: jest.fn().mockReturnValue(mockQueryBuilder),
   };
 
   const mockAllocationRepo = {
@@ -132,38 +143,38 @@ describe("JobCardService", () => {
   describe("findAll", () => {
     it("returns job cards for company", async () => {
       const cards = [{ id: 1, companyId: 1 }];
-      mockJobCardRepo.find.mockResolvedValue(cards);
+      mockQueryBuilder.getMany.mockResolvedValue(cards);
 
       const result = await service.findAll(1);
       expect(result).toEqual(cards);
-      expect(mockJobCardRepo.find).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: expect.objectContaining({ companyId: 1 }),
-          order: { createdAt: "DESC" },
-          take: 50,
-          skip: 0,
-        }),
+      expect(mockJobCardRepo.createQueryBuilder).toHaveBeenCalledWith("jc");
+      expect(mockQueryBuilder.where).toHaveBeenCalledWith("jc.companyId = :companyId", {
+        companyId: 1,
+      });
+      expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith("jc.supersededById IS NULL");
+      expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith(
+        "(jc.parentJobCardId IS NULL OR jc.cpoId IS NOT NULL)",
       );
+      expect(mockQueryBuilder.orderBy).toHaveBeenCalledWith("jc.createdAt", "DESC");
+      expect(mockQueryBuilder.take).toHaveBeenCalledWith(50);
+      expect(mockQueryBuilder.skip).toHaveBeenCalledWith(0);
     });
 
     it("filters by status when provided", async () => {
-      mockJobCardRepo.find.mockResolvedValue([]);
+      mockQueryBuilder.getMany.mockResolvedValue([]);
 
       await service.findAll(1, "active");
-      expect(mockJobCardRepo.find).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: expect.objectContaining({ companyId: 1, status: "active" }),
-        }),
-      );
+      expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith("jc.status = :status", {
+        status: "active",
+      });
     });
 
     it("paginates correctly", async () => {
-      mockJobCardRepo.find.mockResolvedValue([]);
+      mockQueryBuilder.getMany.mockResolvedValue([]);
 
       await service.findAll(1, null as unknown as string, 3, 10);
-      expect(mockJobCardRepo.find).toHaveBeenCalledWith(
-        expect.objectContaining({ take: 10, skip: 20 }),
-      );
+      expect(mockQueryBuilder.take).toHaveBeenCalledWith(10);
+      expect(mockQueryBuilder.skip).toHaveBeenCalledWith(20);
     });
   });
 
