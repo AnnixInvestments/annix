@@ -206,6 +206,25 @@ function FittingFormComponent({
     isMalleableStandard ? entry.specs?.malleablePressureClass || null : null,
   );
 
+  useEffect(() => {
+    if (!isAnsiStandard && !isForgedStandard) return;
+    const dims = isAnsiStandard ? ansiDimensionData : forgedDimensionData;
+    const dbWeight = dims ? Number(isAnsiStandard ? dims.weightKg : dims.massKg) || null : null;
+    if (dbWeight !== null && dbWeight !== entry.specs?.dbFittingWeightKg) {
+      onUpdateEntry(entry.id, {
+        specs: { ...entry.specs, dbFittingWeightKg: dbWeight },
+      });
+    }
+  }, [
+    isAnsiStandard,
+    isForgedStandard,
+    ansiDimensionData,
+    forgedDimensionData,
+    entry.id,
+    entry.specs,
+    onUpdateEntry,
+  ]);
+
   const [flangeSpecs, setFlangeSpecs] = useState<FlangeSpecData | null>(null);
   const [dimensionsUnavailable, setDimensionsUnavailable] = useState(false);
   const calculateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -1927,53 +1946,57 @@ function FittingFormComponent({
                 const dims = isAnsiStandard ? ansiDimensionData : forgedDimensionData;
                 if (!dims) return null;
 
-                const dimensionRows: { label: string; value: string }[] = [];
+                const tolerance = isAnsiStandard ? "±2 mm" : "±1.5 mm";
+                const dimensionRows: { label: string; value: string; hasTolerance: boolean }[] = [];
 
                 if (isAnsiStandard) {
                   if (dims.centerToFaceAMm)
                     dimensionRows.push({
                       label: "Center-to-Face A",
                       value: `${Number(dims.centerToFaceAMm).toFixed(1)} mm`,
+                      hasTolerance: true,
                     });
                   if (dims.centerToFaceBMm)
                     dimensionRows.push({
                       label: "Center-to-Face B",
                       value: `${Number(dims.centerToFaceBMm).toFixed(1)} mm`,
+                      hasTolerance: true,
                     });
                   if (dims.centerToEndCMm)
                     dimensionRows.push({
                       label: "Center-to-End C",
                       value: `${Number(dims.centerToEndCMm).toFixed(1)} mm`,
+                      hasTolerance: true,
                     });
                   if (dims.centerToEndMMm)
                     dimensionRows.push({
                       label: "Center-to-End M",
                       value: `${Number(dims.centerToEndMMm).toFixed(1)} mm`,
+                      hasTolerance: true,
                     });
                   if (dims.centerToCenterOMm)
                     dimensionRows.push({
                       label: "Center-to-Center O",
                       value: `${Number(dims.centerToCenterOMm).toFixed(1)} mm`,
+                      hasTolerance: true,
                     });
                   if (dims.backToFaceKMm)
                     dimensionRows.push({
                       label: "Back-to-Face K",
                       value: `${Number(dims.backToFaceKMm).toFixed(1)} mm`,
+                      hasTolerance: true,
                     });
                   if (dims.outsideDiameterMm)
                     dimensionRows.push({
                       label: "OD",
                       value: `${Number(dims.outsideDiameterMm).toFixed(1)} mm`,
+                      hasTolerance: false,
                     });
                   if (dims.wallThicknessMm)
                     dimensionRows.push({
                       label: "Wall Thickness",
                       value: `${Number(dims.wallThicknessMm).toFixed(2)} mm`,
-                    });
-                  if (dims.weightKg)
-                    dimensionRows.push({
-                      label: "Weight",
-                      value: `${Number(dims.weightKg).toFixed(2)} kg`,
+                      hasTolerance: false,
                     });
                 }
 
@@ -1982,51 +2005,70 @@ function FittingFormComponent({
                     dimensionRows.push({
                       label: "Dimension A",
                       value: `${Number(dims.dimensionAMm).toFixed(1)} mm`,
+                      hasTolerance: true,
                     });
                   if (dims.dimensionBMm)
                     dimensionRows.push({
                       label: "Dimension B",
                       value: `${Number(dims.dimensionBMm).toFixed(1)} mm`,
+                      hasTolerance: true,
                     });
                   if (dims.dimensionCMm)
                     dimensionRows.push({
                       label: "Dimension C",
                       value: `${Number(dims.dimensionCMm).toFixed(1)} mm`,
+                      hasTolerance: true,
                     });
                   if (dims.dimensionDMm)
                     dimensionRows.push({
                       label: "Dimension D",
                       value: `${Number(dims.dimensionDMm).toFixed(1)} mm`,
+                      hasTolerance: true,
                     });
                   if (dims.dimensionEMm)
                     dimensionRows.push({
                       label: "Dimension E",
                       value: `${Number(dims.dimensionEMm).toFixed(1)} mm`,
+                      hasTolerance: true,
                     });
                   if (dims.socketDepthMm)
                     dimensionRows.push({
                       label: "Socket Depth (J)",
                       value: `${Number(dims.socketDepthMm).toFixed(1)} mm`,
+                      hasTolerance: true,
                     });
                   if (dims.minWallThicknessMm)
                     dimensionRows.push({
                       label: "Min Wall (G)",
                       value: `${Number(dims.minWallThicknessMm).toFixed(2)} mm`,
-                    });
-                  if (dims.massKg)
-                    dimensionRows.push({
-                      label: "Mass",
-                      value: `${Number(dims.massKg).toFixed(2)} kg`,
+                      hasTolerance: false,
                     });
                 }
 
                 if (dimensionRows.length === 0) return null;
 
+                const dbWeight = isAnsiStandard
+                  ? dims.weightKg
+                    ? Number(dims.weightKg)
+                    : null
+                  : dims.massKg
+                    ? Number(dims.massKg)
+                    : null;
+                const quantity = specs.quantityValue || 1;
+
                 return (
                   <div className="bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 rounded-lg p-3 mb-3">
-                    <h4 className="text-xs font-semibold text-blue-800 dark:text-blue-200 mb-2">
-                      {isAnsiStandard ? "ASME B16.9" : "ASME B16.11"} Dimensions
-                    </h4>
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="text-xs font-semibold text-blue-800 dark:text-blue-200">
+                        {isAnsiStandard ? "ASME B16.9" : "ASME B16.11"} Dimensions
+                      </h4>
+                      <span
+                        className="text-xs text-blue-500 dark:text-blue-400 cursor-help"
+                        title={`Center-to-end/face dimensions: ${tolerance} per ${isAnsiStandard ? "ASME B16.9" : "ASME B16.11"}`}
+                      >
+                        Tolerance: {tolerance}
+                      </span>
+                    </div>
                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
                       {dimensionRows.map((row) => (
                         <div key={row.label} className="text-xs">
@@ -2034,9 +2076,40 @@ function FittingFormComponent({
                           <span className="font-medium text-gray-900 dark:text-gray-100">
                             {row.value}
                           </span>
+                          {row.hasTolerance && (
+                            <span
+                              className="ml-1 text-blue-400 cursor-help"
+                              title={`${tolerance} per standard`}
+                            >
+                              ~
+                            </span>
+                          )}
                         </div>
                       ))}
                     </div>
+                    {dbWeight !== null && (
+                      <div className="mt-2 pt-2 border-t border-blue-200 dark:border-blue-600 flex items-center gap-4">
+                        <div className="text-xs">
+                          <span className="text-blue-600 dark:text-blue-300 font-semibold">
+                            Unit Weight:{" "}
+                          </span>
+                          <span className="font-bold text-blue-900 dark:text-blue-100">
+                            {dbWeight.toFixed(2)} kg
+                          </span>
+                        </div>
+                        {quantity > 1 && (
+                          <div className="text-xs">
+                            <span className="text-blue-600 dark:text-blue-300 font-semibold">
+                              Total ({quantity} pcs):{" "}
+                            </span>
+                            <span className="font-bold text-blue-900 dark:text-blue-100">
+                              {(dbWeight * quantity).toFixed(2)} kg
+                            </span>
+                          </div>
+                        )}
+                        <span className="text-xs text-blue-400 italic">from database</span>
+                      </div>
+                    )}
                   </div>
                 );
               })()}
