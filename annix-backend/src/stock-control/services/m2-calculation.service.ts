@@ -44,6 +44,7 @@ interface RegexParseResult {
 
 const REDUCING_NB_PATTERN = /(\d+)\s*x\s*\d+\s*NB/i;
 const NB_PATTERN = /(\d+)\s*NB/i;
+const NB_PREFIX_PATTERN = /\bNB\s*(\d+)/i;
 const LG_PATTERN = /(\d+)\s*LG/i;
 const LG_METERS_PATTERN = /(\d+(?:\.\d+)?)Lg\b/;
 const MM_PATTERN = /(\d+)\s*mm\b/i;
@@ -135,11 +136,14 @@ export class M2CalculationService {
   private regexParse(description: string): RegexParseResult {
     const reducingMatch = description.match(REDUCING_NB_PATTERN);
     const nbMatch = description.match(NB_PATTERN);
+    const nbPrefixMatch = description.match(NB_PREFIX_PATTERN);
     const diameterMm = reducingMatch
       ? parseInt(reducingMatch[1], 10)
       : nbMatch
         ? parseInt(nbMatch[1], 10)
-        : null;
+        : nbPrefixMatch
+          ? parseInt(nbPrefixMatch[1], 10)
+          : null;
 
     const itemType = ITEM_TYPE_PATTERNS.find((it) => it.pattern.test(description))?.type ?? null;
 

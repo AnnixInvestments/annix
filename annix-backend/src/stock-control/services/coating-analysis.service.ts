@@ -147,7 +147,7 @@ export class CoatingAnalysisService {
 
       const hasMissingM2 = lineItems.some((li) => {
         const desc = li.itemDescription || li.itemCode || "";
-        return /\d+\s*NB/i.test(desc) && (li.m2 === null || li.m2 === 0);
+        return /(?:\d+\s*NB|NB\s*\d+)/i.test(desc) && (li.m2 === null || li.m2 === 0);
       });
 
       let calculatedExtM2 = 0;
@@ -565,7 +565,7 @@ export class CoatingAnalysisService {
 
     const pipeItems = lineItems.filter((li) => {
       const desc = li.itemDescription || li.itemCode || "";
-      return /\d+\s*NB/i.test(desc);
+      return /(?:\d+\s*NB|NB\s*\d+)/i.test(desc);
     });
 
     if (pipeItems.length === 0) {
@@ -601,7 +601,7 @@ export class CoatingAnalysisService {
   ): Promise<{ extM2: number; intM2: number }> {
     const pipeItems = lineItems.filter((li) => {
       const desc = li.itemDescription || li.itemCode || "";
-      return /\d+\s*NB/i.test(desc);
+      return /(?:\d+\s*NB|NB\s*\d+)/i.test(desc);
     });
 
     if (pipeItems.length === 0) {
