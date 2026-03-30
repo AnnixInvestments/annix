@@ -19,6 +19,8 @@
     "./pipe": "./pipe/index.ts",
     "./pipe/*": "./pipe/*.ts",
     "./pvc": "./pvc/index.ts",
-    "./pvc/*": "./pvc/*.ts"
+    "./pvc/*": "./pvc/*.ts",
+    "./hdpe": "./hdpe/index.ts",
+    "./hdpe/*": "./hdpe/*.ts"
   }
 }
