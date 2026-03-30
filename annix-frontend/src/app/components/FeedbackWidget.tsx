@@ -1,6 +1,6 @@
 "use client";
 
-import { toCanvas } from "html-to-image";
+import { toBlob } from "html-to-image";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useFeatureGate } from "@/app/hooks/useFeatureGate";
@@ -79,38 +79,26 @@ export function FeedbackWidget(props: FeedbackWidgetProps) {
       const viewportWidth = window.innerWidth;
       const viewportHeight = window.innerHeight;
 
-      const fullCanvas = await toCanvas(document.body, {
+      const blob = await toBlob(document.body, {
         filter: (node) => {
           if (node instanceof HTMLElement) {
             return node.closest("[data-feedback-widget]") === null;
           }
           return true;
         },
+        width: viewportWidth,
+        height: viewportHeight,
+        canvasWidth: viewportWidth,
+        canvasHeight: viewportHeight,
+        style: {
+          transform: `translate(-${scrollX}px, -${scrollY}px)`,
+          transformOrigin: "top left",
+          overflow: "hidden",
+        },
+        quality: 0.8,
         pixelRatio: 1,
         skipAutoScale: true,
         imagePlaceholder: TRANSPARENT_PIXEL,
-      });
-
-      const croppedCanvas = document.createElement("canvas");
-      croppedCanvas.width = viewportWidth;
-      croppedCanvas.height = viewportHeight;
-      const ctx = croppedCanvas.getContext("2d");
-      if (ctx) {
-        ctx.drawImage(
-          fullCanvas,
-          scrollX,
-          scrollY,
-          viewportWidth,
-          viewportHeight,
-          0,
-          0,
-          viewportWidth,
-          viewportHeight,
-        );
-      }
-
-      const blob = await new Promise<Blob | null>((resolve) => {
-        croppedCanvas.toBlob(resolve, "image/png", 0.8);
       });
 
       if (blob) {
