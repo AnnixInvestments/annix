@@ -2,7 +2,6 @@
   "name": "@annix/product-data",
   "version": "0.1.0",
   "private": true,
-  "type": "module",
   "exports": {
     "./pumps": "./pumps/index.ts",
     "./pumps/*": "./pumps/*.ts",

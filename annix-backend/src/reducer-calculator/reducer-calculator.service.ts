@@ -1,6 +1,6 @@
-import { SABS719_STANDARD_REDUCER_LENGTHS } from "@annix/product-data/pipe";
-import { STEEL_DENSITY_KG_M3 } from "@annix/product-data/steel";
 import { Injectable, Logger } from "@nestjs/common";
+import { SABS719_STANDARD_REDUCER_LENGTHS } from "../lib/pipe-constants";
+import { STEEL_DENSITY_KG_M3 } from "../lib/steel-constants";
 import {
   CalculateReducerAreaDto,
   CalculateReducerMassDto,

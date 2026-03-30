@@ -1,4 +1,3 @@
-import { NACE_MAX_HARDNESS_HRC } from "@annix/product-data/steel";
 import {
   registerDecorator,
   ValidationArguments,
@@ -6,6 +5,7 @@ import {
   ValidatorConstraint,
   ValidatorConstraintInterface,
 } from "class-validator";
+import { NACE_MAX_HARDNESS_HRC } from "../../lib/steel-constants";
 
 @ValidatorConstraint({ name: "psl2RequiresCvn", async: false })
 export class Psl2RequiresCvnConstraint implements ValidatorConstraintInterface {

@@ -1,7 +1,7 @@
-import { NB_MM_TO_NPS } from "@annix/product-data/pipe";
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
+import { NB_MM_TO_NPS } from "../lib/pipe-constants";
 import { CalculatePipeThicknessDto, PipeThicknessResultDto } from "./dto/pipe-schedule.dto";
 import { MaterialAllowableStress } from "./entities/material-allowable-stress.entity";
 import { PipeSchedule } from "./entities/pipe-schedule.entity";

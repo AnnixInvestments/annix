@@ -1,7 +1,7 @@
-import { STEEL_DENSITY_KG_M3 } from "@annix/product-data/steel";
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
+import { STEEL_DENSITY_KG_M3 } from "../lib/steel-constants";
 import { RetainingRingWeight } from "./entities/retaining-ring-weight.entity";
 
 export interface RetainingRingWeightResult {

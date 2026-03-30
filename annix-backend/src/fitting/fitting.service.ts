@@ -1,9 +1,9 @@
-import { STEEL_DENSITY_KG_M3 } from "@annix/product-data/steel";
 import { BadRequestException, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { BoltMass } from "../bolt-mass/entities/bolt-mass.entity";
 import { FlangeDimension } from "../flange-dimension/entities/flange-dimension.entity";
+import { STEEL_DENSITY_KG_M3 } from "../lib/steel-constants";
 import { NbNpsLookup } from "../nb-nps-lookup/entities/nb-nps-lookup.entity";
 import { NutMass } from "../nut-mass/entities/nut-mass.entity";
 import { PipeDimension } from "../pipe-dimension/entities/pipe-dimension.entity";

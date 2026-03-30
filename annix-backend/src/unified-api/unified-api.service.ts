@@ -1,6 +1,6 @@
-import { NB_MM_TO_NPS } from "@annix/product-data/pipe";
 import { Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { DataSource } from "typeorm";
+import { NB_MM_TO_NPS } from "../lib/pipe-constants";
 import {
   AssemblyValidateDto,
   AssemblyValidationResultDto,

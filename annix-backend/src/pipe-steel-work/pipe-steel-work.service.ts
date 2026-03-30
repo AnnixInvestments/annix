@@ -1,7 +1,7 @@
-import { STEEL_DENSITY_KG_M3 as STEEL_DENSITY } from "@annix/product-data/steel";
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
+import { STEEL_DENSITY_KG_M3 as STEEL_DENSITY } from "../lib/steel-constants";
 import {
   BatchCalculationDto,
   BatchCalculationResponseDto,

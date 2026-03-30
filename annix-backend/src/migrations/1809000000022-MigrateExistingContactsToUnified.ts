@@ -29,6 +29,8 @@ export class MigrateExistingContactsToUnified1809000000022 implements MigrationI
           SELECT 1 FROM contacts c
           WHERE c.legacy_sc_supplier_id = scs.id
         )
+      ON CONFLICT (company_id, name, contact_type) DO UPDATE
+        SET legacy_sc_supplier_id = EXCLUDED.legacy_sc_supplier_id
     `);
 
     await queryRunner.query(`
@@ -73,6 +75,8 @@ export class MigrateExistingContactsToUnified1809000000022 implements MigrationI
           SELECT 1 FROM contacts c
           WHERE c.legacy_rubber_company_id = rc.id
         )
+      ON CONFLICT (company_id, name, contact_type) DO UPDATE
+        SET legacy_rubber_company_id = EXCLUDED.legacy_rubber_company_id
     `);
 
     await queryRunner.query(`
