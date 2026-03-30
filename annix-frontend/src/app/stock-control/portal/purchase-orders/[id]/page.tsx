@@ -448,6 +448,9 @@ export default function CpoDetailPage() {
                     JC Number
                   </th>
                   <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    JT Number
+                  </th>
+                  <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Job Name
                   </th>
                   {hasRubberColumn && (
@@ -564,6 +567,9 @@ export default function CpoDetailPage() {
                           <span className="text-gray-400">Unlinked</span>
                         )}
                       </td>
+                      <td className="px-4 py-2 whitespace-nowrap text-gray-600">
+                        {row.jobCard?.jtDnNumber || "—"}
+                      </td>
                       <td className="px-4 py-2 text-gray-600 max-w-[220px] truncate">
                         {row.jobCard?.jobName || "—"}
                       </td>
@@ -644,7 +650,7 @@ export default function CpoDetailPage() {
                         {rt.ordered}
                       </td>
                       {deliveryHistory.deliveries.map((d) => {
-                        const delivery = rt.deliveries.find((rd) => rd.jtDnNumber === d.jtDnNumber);
+                        const delivery = rt.deliveries.find((rd) => rd.jobCardId === d.jobCardId);
                         return (
                           <td key={d.jobCardId} className="px-4 py-3 text-sm text-right">
                             {delivery ? (

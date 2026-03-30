@@ -598,45 +598,71 @@ export class CpoService {
       };
     });
 
-    const runningTotals = cpo.items
+    const consolidatedItems = cpo.items
       .filter((ci) => Number(ci.quantityOrdered) > 0)
-      .map((ci) => {
+      .reduce<
+        {
+          itemCode: string | null;
+          itemDescription: string | null;
+          totalOrdered: number;
+          key: string;
+        }[]
+      >((acc, ci) => {
         const ciCode = (ci.itemCode || "").trim().toLowerCase();
         const ciDesc = (ci.itemDescription || "").trim().toLowerCase();
+        const key = `${ciCode}||${ciDesc}`;
+        const existing = acc.find((a) => a.key === key);
+        if (existing) {
+          existing.totalOrdered += Number(ci.quantityOrdered) || 0;
+          return acc;
+        }
+        return [
+          ...acc,
+          {
+            itemCode: ci.itemCode,
+            itemDescription: ci.itemDescription,
+            totalOrdered: Number(ci.quantityOrdered) || 0,
+            key,
+          },
+        ];
+      }, []);
 
-        const itemDeliveries = deliveries
-          .map((d) => {
-            const matchedQty = d.items
-              .filter((di) => {
-                const diCode = (di.itemCode || "").trim().toLowerCase();
-                const diDesc = (di.description || "").trim().toLowerCase();
-                return matchesCpoItem(diCode, diDesc, ciCode, ciDesc);
-              })
-              .reduce((sum, di) => sum + di.quantity, 0);
+    const runningTotals = consolidatedItems.map((ci) => {
+      const ciCode = (ci.itemCode || "").trim().toLowerCase();
+      const ciDesc = (ci.itemDescription || "").trim().toLowerCase();
 
-            if (matchedQty === 0) return null;
+      const itemDeliveries = deliveries
+        .map((d) => {
+          const matchedQty = d.items
+            .filter((di) => {
+              const diCode = (di.itemCode || "").trim().toLowerCase();
+              const diDesc = (di.description || "").trim().toLowerCase();
+              return matchesCpoItem(diCode, diDesc, ciCode, ciDesc);
+            })
+            .reduce((sum, di) => sum + di.quantity, 0);
 
-            return {
-              jobCardId: d.jobCardId,
-              jtDnNumber: d.jtDnNumber,
-              quantity: matchedQty,
-              date: d.importedAt || "",
-            };
-          })
-          .filter((d): d is NonNullable<typeof d> => d !== null);
+          if (matchedQty === 0) return null;
 
-        const ordered = Number(ci.quantityOrdered) || 0;
-        const fulfilled = itemDeliveries.reduce((sum, d) => sum + d.quantity, 0);
+          return {
+            jobCardId: d.jobCardId,
+            jtDnNumber: d.jtDnNumber,
+            quantity: matchedQty,
+            date: d.importedAt || "",
+          };
+        })
+        .filter((d): d is NonNullable<typeof d> => d !== null);
 
-        return {
-          itemCode: ci.itemCode,
-          description: ci.itemDescription,
-          ordered,
-          fulfilled,
-          remaining: Math.max(0, ordered - fulfilled),
-          deliveries: itemDeliveries,
-        };
-      });
+      const fulfilled = itemDeliveries.reduce((sum, d) => sum + d.quantity, 0);
+
+      return {
+        itemCode: ci.itemCode,
+        description: ci.itemDescription,
+        ordered: ci.totalOrdered,
+        fulfilled,
+        remaining: Math.max(0, ci.totalOrdered - fulfilled),
+        deliveries: itemDeliveries,
+      };
+    });
 
     return { deliveries, runningTotals };
   }

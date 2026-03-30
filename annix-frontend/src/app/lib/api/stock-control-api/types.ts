@@ -1976,7 +1976,7 @@ export interface CpoRunningTotal {
   ordered: number;
   fulfilled: number;
   remaining: number;
-  deliveries: { jtDnNumber: string | null; quantity: number; date: string }[];
+  deliveries: { jobCardId: number; jtDnNumber: string | null; quantity: number; date: string }[];
 }
 
 export interface CpoDeliveryHistory {
