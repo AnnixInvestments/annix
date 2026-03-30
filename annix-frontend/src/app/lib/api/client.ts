@@ -1,7 +1,146 @@
 import { NB_MM_TO_NPS } from "@annix/product-data/pipe";
+import type {
+  AnonymousDraftFullResponse,
+  AnonymousDraftResponse,
+  BendCalculationResult,
+  BnwSetInfoResult,
+  BnwSetWeightRecord,
+  BoqResponse,
+  Commodity,
+  ConsolidatedBoqDataDto,
+  ConsolidatedItemDto,
+  CreateBendRfqDto,
+  CreateBendRfqWithItemDto,
+  CreateBoqDto,
+  CreateRfqDto,
+  CreateSaMineDto,
+  CreateStraightPipeRfqDto,
+  CreateStraightPipeRfqWithItemDto,
+  CreateUnifiedRfqDto,
+  FlangeDimensionLookup,
+  FlangePressureClass,
+  FlangeStandard,
+  FlangeType,
+  FlangeTypeWeightRecord,
+  FlangeTypeWeightResult,
+  GasketWeightRecord,
+  ISO12944DurabilityOption,
+  ISO12944System,
+  ISO12944SystemsByDurabilityResult,
+  LiningCoatingRule,
+  MaterialLimit,
+  MaterialSuitabilityResult,
+  MineWithEnvironmentalData,
+  NbOdLookupRecord,
+  NbOdLookupResult,
+  NominalOutsideDiameter,
+  PipeDimension,
+  PipeEndConfiguration,
+  PipePressure,
+  PipeWallThicknessResult,
+  PtRecommendationResult,
+  PtValidationResult,
+  PumpCalculationParams,
+  PumpCalculationResult,
+  PumpProduct,
+  PumpProductListParams,
+  PumpProductListResponse,
+  RecoveryEmailResponse,
+  RetainingRingWeightRecord,
+  RetainingRingWeightResult,
+  RfqDocument,
+  RfqDraftFullResponse,
+  RfqDraftResponse,
+  RfqDraftStatus,
+  RfqResponse,
+  SaMine,
+  SaveAnonymousDraftDto,
+  SaveRfqDraftDto,
+  SlurryProfile,
+  SteelSpecification,
+  StraightPipeCalculationResult,
+  SubmitBoqDto,
+  SubmitBoqResponseDto,
+  SupplierCounts,
+  UnifiedRfqItemDto,
+  UnifiedTankChuteDto,
+  ValidPressureClassInfo,
+  WeldThicknessResult,
+  WeldType,
+} from "@annix/product-data/rfq";
 import { sessionExpiredEvent } from "@/app/components/SessionExpiredModal";
 import { log } from "@/app/lib/logger";
 import { API_BASE_URL } from "@/lib/api-config";
+
+export type {
+  AnonymousDraftFullResponse,
+  AnonymousDraftResponse,
+  BendCalculationResult,
+  BnwSetInfoResult,
+  BnwSetWeightRecord,
+  BoqResponse,
+  Commodity,
+  ConsolidatedBoqDataDto,
+  ConsolidatedItemDto,
+  CreateBendRfqDto,
+  CreateBendRfqWithItemDto,
+  CreateBoqDto,
+  CreateRfqDto,
+  CreateSaMineDto,
+  CreateStraightPipeRfqDto,
+  CreateStraightPipeRfqWithItemDto,
+  CreateUnifiedRfqDto,
+  FlangeDimensionLookup,
+  FlangePressureClass,
+  FlangeStandard,
+  FlangeType,
+  FlangeTypeWeightRecord,
+  FlangeTypeWeightResult,
+  GasketWeightRecord,
+  ISO12944DurabilityOption,
+  ISO12944System,
+  ISO12944SystemsByDurabilityResult,
+  LiningCoatingRule,
+  MaterialLimit,
+  MaterialSuitabilityResult,
+  MineWithEnvironmentalData,
+  NbOdLookupRecord,
+  NbOdLookupResult,
+  NominalOutsideDiameter,
+  PipeEndConfiguration,
+  PipeDimension,
+  PipePressure,
+  PipeWallThicknessResult,
+  PtRecommendationResult,
+  PtValidationResult,
+  PumpCalculationParams,
+  PumpCalculationResult,
+  PumpProduct,
+  PumpProductListParams,
+  PumpProductListResponse,
+  RecoveryEmailResponse,
+  RetainingRingWeightRecord,
+  RetainingRingWeightResult,
+  RfqDocument,
+  RfqDraftFullResponse,
+  RfqDraftResponse,
+  RfqDraftStatus,
+  RfqResponse,
+  SaMine,
+  SaveAnonymousDraftDto,
+  SaveRfqDraftDto,
+  SlurryProfile,
+  SteelSpecification,
+  StraightPipeCalculationResult,
+  SubmitBoqDto,
+  SubmitBoqResponseDto,
+  SupplierCounts,
+  UnifiedRfqItemDto,
+  UnifiedTankChuteDto,
+  ValidPressureClassInfo,
+  WeldThicknessResult,
+  WeldType,
+};
 
 export class SessionExpiredError extends Error {
   constructor() {
@@ -28,578 +167,6 @@ function authToken(): string | null {
 function authHeaders(): Record<string, string> {
   const token = authToken();
   return token ? { Authorization: `Bearer ${token}` } : {};
-}
-
-// Types based on our backend DTOs
-export interface CreateRfqDto {
-  projectName: string;
-  description?: string;
-  customerName?: string;
-  customerEmail?: string;
-  customerPhone?: string;
-  requiredDate?: string;
-  status?: "draft" | "submitted" | "pending" | "quoted" | "accepted" | "rejected" | "cancelled";
-  notes?: string;
-}
-
-export interface CreateStraightPipeRfqDto {
-  nominalBoreMm: number;
-  scheduleType: "schedule" | "wall_thickness";
-  scheduleNumber?: string;
-  wallThicknessMm?: number;
-  pipeEndConfiguration?: "FBE" | "FOE" | "PE" | "FOE_LF" | "FOE_RF" | "2X_RF"; // NEW FIELD
-  individualPipeLength: number;
-  lengthUnit: "meters" | "feet";
-  quantityType: "total_length" | "number_of_pipes";
-  quantityValue: number;
-  workingPressureBar: number;
-  workingTemperatureC?: number;
-  steelSpecificationId?: number;
-  flangeStandardId?: number;
-  flangePressureClassId?: number;
-  flangeTypeCode?: string; // SABS 1123 flange type code (/1 to /9)
-  pslLevel?: "PSL1" | "PSL2" | null;
-  cvnTestTemperatureC?: number;
-  cvnAverageJoules?: number;
-  cvnMinimumJoules?: number;
-  heatNumber?: string;
-  mtcReference?: string;
-  ndtCoveragePct?: number;
-  lotNumber?: string;
-  naceCompliant?: boolean;
-  h2sZone?: 1 | 2 | 3 | null;
-  maxHardnessHrc?: number;
-  sscTested?: boolean;
-}
-
-export interface PipeEndConfiguration {
-  id: number;
-  configCode: string;
-  configName: string;
-  description: string;
-  weldCount: number;
-}
-
-export interface WeldType {
-  id: number;
-  weldCode: string;
-  weldName: string;
-  category: string;
-  description: string;
-}
-
-export interface CreateStraightPipeRfqWithItemDto {
-  rfq: CreateRfqDto;
-  straightPipe: CreateStraightPipeRfqDto;
-  itemDescription: string;
-  itemNotes?: string;
-}
-
-export interface CreateBendRfqDto {
-  nominalBoreMm: number;
-  scheduleNumber: string;
-  wallThicknessMm?: number;
-  bendType: string;
-  bendDegrees: number;
-  centerToFaceMm?: number;
-  bendRadiusMm?: number;
-  numberOfTangents: number;
-  tangentLengths: number[];
-  quantityValue: number;
-  quantityType: "number_of_items";
-  workingPressureBar: number;
-  workingTemperatureC: number;
-  steelSpecificationId: number;
-}
-
-export interface CreateBendRfqWithItemDto {
-  rfq: CreateRfqDto;
-  bend: CreateBendRfqDto;
-  itemDescription: string;
-  itemNotes?: string;
-}
-
-export interface UnifiedTankChuteDto {
-  assemblyType: string;
-  drawingReference?: string;
-  materialGrade?: string;
-  overallLengthMm?: number;
-  overallWidthMm?: number;
-  overallHeightMm?: number;
-  totalSteelWeightKg?: number;
-  weightSource?: string;
-  quantityValue?: number;
-  liningRequired?: boolean;
-  liningType?: string;
-  liningThicknessMm?: number;
-  liningAreaM2?: number;
-  liningWastagePercent?: number;
-  rubberGrade?: string;
-  rubberHardnessShore?: number;
-  coatingRequired?: boolean;
-  coatingSystem?: string;
-  coatingAreaM2?: number;
-  coatingWastagePercent?: number;
-  surfacePrepStandard?: string;
-  plateBom?: Array<Record<string, unknown>>;
-  bomTotalWeightKg?: number;
-  bomTotalAreaM2?: number;
-  steelPricePerKg?: number;
-  liningPricePerM2?: number;
-  coatingPricePerM2?: number;
-  fabricationCost?: number;
-  totalCost?: number;
-}
-
-export interface UnifiedRfqItemDto {
-  itemType: "straight_pipe" | "bend" | "fitting" | "tank_chute";
-  description: string;
-  notes?: string;
-  totalWeightKg?: number;
-  straightPipe?: CreateStraightPipeRfqDto;
-  bend?: Omit<
-    CreateBendRfqDto,
-    "workingPressureBar" | "workingTemperatureC" | "steelSpecificationId"
-  > & {
-    workingPressureBar?: number;
-    workingTemperatureC?: number;
-    steelSpecificationId?: number;
-    useGlobalFlangeSpecs?: boolean;
-    flangeStandardId?: number;
-    flangePressureClassId?: number;
-    pslLevel?: "PSL1" | "PSL2" | null;
-    cvnTestTemperatureC?: number;
-    cvnAverageJoules?: number;
-    cvnMinimumJoules?: number;
-    heatNumber?: string;
-    mtcReference?: string;
-    ndtCoveragePct?: number;
-    lotNumber?: string;
-    naceCompliant?: boolean;
-    h2sZone?: 1 | 2 | 3 | null;
-    maxHardnessHrc?: number;
-    sscTested?: boolean;
-  };
-  fitting?: {
-    nominalDiameterMm: number;
-    scheduleNumber: string;
-    wallThicknessMm?: number;
-    fittingType: string;
-    fittingStandard?: string;
-    pipeLengthAMm?: number;
-    pipeLengthBMm?: number;
-    pipeEndConfiguration?: string;
-    addBlankFlange?: boolean;
-    blankFlangeCount?: number;
-    blankFlangePositions?: string[];
-    quantityType?: string;
-    quantityValue?: number;
-    workingPressureBar?: number;
-    workingTemperatureC?: number;
-    calculationData?: Record<string, any>;
-    pslLevel?: "PSL1" | "PSL2" | null;
-    cvnTestTemperatureC?: number;
-    cvnAverageJoules?: number;
-    cvnMinimumJoules?: number;
-    heatNumber?: string;
-    mtcReference?: string;
-    ndtCoveragePct?: number;
-    lotNumber?: string;
-    naceCompliant?: boolean;
-    h2sZone?: 1 | 2 | 3 | null;
-    maxHardnessHrc?: number;
-    sscTested?: boolean;
-  };
-  tankChute?: UnifiedTankChuteDto;
-}
-
-export interface CreateUnifiedRfqDto {
-  rfq: CreateRfqDto;
-  items: UnifiedRfqItemDto[];
-}
-
-export interface StraightPipeCalculationResult {
-  outsideDiameterMm: number;
-  wallThicknessMm: number;
-  pipeWeightPerMeter: number;
-  totalPipeWeight: number;
-  totalFlangeWeight: number;
-  totalBoltWeight: number;
-  totalNutWeight: number;
-  totalSystemWeight: number;
-  calculatedPipeCount: number;
-  calculatedTotalLength: number;
-  numberOfFlanges: number;
-  numberOfButtWelds: number;
-  totalButtWeldLength: number;
-  numberOfFlangeWelds: number;
-  totalFlangeWeldLength: number;
-}
-
-export interface BendCalculationResult {
-  totalWeight: number;
-  centerToFaceDimension: number;
-  bendWeight: number;
-  tangentWeight: number;
-  flangeWeight: number;
-  numberOfFlanges: number;
-  numberOfFlangeWelds: number;
-  totalFlangeWeldLength: number;
-  numberOfButtWelds: number;
-  totalButtWeldLength: number;
-  outsideDiameterMm: number;
-  wallThicknessMm: number;
-}
-
-export interface RfqResponse {
-  id: number;
-  rfqNumber: string;
-  projectName: string;
-  description?: string;
-  customerName?: string;
-  customerEmail?: string;
-  customerPhone?: string;
-  requiredDate?: Date;
-  status: string;
-  notes?: string;
-  totalWeightKg?: number;
-  totalCost?: number;
-  createdAt: Date;
-  updatedAt: Date;
-  itemCount: number;
-}
-
-// RFQ Draft Types
-export interface SaveRfqDraftDto {
-  draftId?: number;
-  projectName?: string;
-  currentStep: number;
-  formData: Record<string, any>;
-  globalSpecs?: Record<string, any>;
-  requiredProducts?: string[];
-  straightPipeEntries?: Record<string, any>[];
-  pendingDocuments?: Record<string, any>[];
-}
-
-export type RfqDraftStatus =
-  | "draft"
-  | "submitted"
-  | "pending"
-  | "in_review"
-  | "quoted"
-  | "accepted"
-  | "rejected"
-  | "cancelled";
-
-export interface SupplierCounts {
-  pending: number;
-  declined: number;
-  intendToQuote: number;
-  quoted: number;
-}
-
-export interface RfqDraftResponse {
-  id: number;
-  draftNumber: string;
-  rfqNumber?: string;
-  customerRfqReference?: string;
-  projectName?: string;
-  currentStep: number;
-  completionPercentage: number;
-  status: RfqDraftStatus;
-  createdAt: Date;
-  updatedAt: Date;
-  isConverted: boolean;
-  convertedRfqId?: number;
-  supplierCounts?: SupplierCounts;
-}
-
-export interface RfqDraftFullResponse extends RfqDraftResponse {
-  formData: Record<string, any>;
-  globalSpecs?: Record<string, any>;
-  requiredProducts?: string[];
-  straightPipeEntries?: Record<string, any>[];
-  pendingDocuments?: Record<string, any>[];
-}
-
-export interface RfqDocument {
-  id: number;
-  rfqId: number;
-  filename: string;
-  mimeType: string;
-  fileSizeBytes: number;
-  downloadUrl: string;
-  uploadedBy?: string;
-  createdAt: Date;
-}
-
-export interface SteelSpecification {
-  id: number;
-  steelSpecName: string;
-}
-
-export interface FlangeStandard {
-  id: number;
-  code: string;
-}
-
-export interface FlangePressureClass {
-  id: number;
-  designation: string;
-  standard?: FlangeStandard;
-}
-
-export interface FlangeType {
-  id: number;
-  code: string;
-  name: string;
-  abbreviation: string;
-  description?: string;
-  standardReference?: string;
-}
-
-export interface FlangeDimensionLookup {
-  id: number;
-  D: number;
-  b: number;
-  d4: number;
-  f: number;
-  num_holes: number;
-  d1: number;
-  pcd: number;
-  mass_kg: number;
-  nominalOutsideDiameter: NominalOutsideDiameter;
-  standard: FlangeStandard;
-  pressureClass: FlangePressureClass;
-  bolt?: {
-    id: number;
-    diameter_mm: number;
-    thread_pitch: number;
-    length_mm: number;
-    mass_kg: number;
-  };
-}
-
-export interface NominalOutsideDiameter {
-  id: number;
-  nominal_diameter_mm: number;
-  outside_diameter_mm: number;
-}
-
-export interface PipeDimension {
-  id: number;
-  wallThicknessMm: number;
-  internalDiameterMm?: number;
-  massKgm: number;
-  scheduleDesignation?: string;
-  scheduleNumber?: number;
-  nominalOutsideDiameter: NominalOutsideDiameter;
-  steelSpecification: SteelSpecification;
-}
-
-export interface PipePressure {
-  id: number;
-  temperatureC?: number;
-  maxWorkingPressureMpa?: number;
-  allowableStressMpa: number;
-}
-
-// SA Mines types
-export interface Commodity {
-  id: number;
-  commodityName: string;
-  typicalProcessRoute: string | null;
-  applicationNotes: string | null;
-}
-
-export interface SaMine {
-  id: number;
-  mineName: string;
-  operatingCompany: string;
-  commodityId: number;
-  commodityName?: string;
-  province: string;
-  district: string | null;
-  physicalAddress: string | null;
-  mineType: "Underground" | "Open Cast" | "Both";
-  operationalStatus: "Active" | "Care and Maintenance" | "Closed";
-  latitude: number | null;
-  longitude: number | null;
-}
-
-export interface SlurryProfile {
-  id: number;
-  commodityId: number;
-  commodityName?: string;
-  profileName: string | null;
-  typicalSgMin: number;
-  typicalSgMax: number;
-  solidsConcentrationMin: number;
-  solidsConcentrationMax: number;
-  phMin: number;
-  phMax: number;
-  tempMin: number;
-  tempMax: number;
-  abrasionRisk: "Low" | "Medium" | "High" | "Very High";
-  corrosionRisk: "Low" | "Medium" | "High" | "Very High";
-  primaryFailureMode: string | null;
-  notes: string | null;
-}
-
-export interface LiningCoatingRule {
-  id: number;
-  abrasionLevel: "Low" | "Medium" | "High" | "Very High";
-  corrosionLevel: "Low" | "Medium" | "High" | "Very High";
-  recommendedLining: string;
-  recommendedCoating: string | null;
-  applicationNotes: string | null;
-  priority: number;
-}
-
-export interface MineWithEnvironmentalData {
-  mine: SaMine;
-  slurryProfile: SlurryProfile | null;
-  liningRecommendation: LiningCoatingRule | null;
-}
-
-export interface CreateSaMineDto {
-  mineName: string;
-  operatingCompany: string;
-  commodityId: number;
-  province: string;
-  district?: string;
-  physicalAddress?: string;
-  mineType?: "Underground" | "Open Cast" | "Both";
-  operationalStatus?: "Active" | "Care and Maintenance" | "Closed";
-  latitude?: number;
-  longitude?: number;
-}
-
-// Material Validation Types
-export interface MaterialLimit {
-  id: number;
-  steelSpecificationId: number | null;
-  steelSpecName: string;
-  minTemperatureCelsius: number;
-  maxTemperatureCelsius: number;
-  maxPressureBar: number;
-  materialType: string;
-  recommendedForSourService: boolean;
-  notes: string | null;
-}
-
-export interface MaterialSuitabilityResult {
-  isSuitable: boolean;
-  warnings: string[];
-  recommendation?: string;
-  limits?: {
-    minTempC: number;
-    maxTempC: number;
-    maxPressureBar: number;
-    materialType: string;
-    notes?: string;
-  };
-}
-
-// Weld Thickness Types
-export interface WeldThicknessResult {
-  found: boolean;
-  weldThicknessMm: number | null;
-  fittingClass: string | null;
-  dn: number;
-  odMm: number | null;
-  maxPressureBar: number | null;
-  temperatureC: number;
-  schedule: string;
-  notes?: string;
-}
-
-// Flange Type Weight Types
-export interface FlangeTypeWeightResult {
-  found: boolean;
-  weightKg: number | null;
-  nominalBoreMm: number;
-  pressureClass: string;
-  flangeTypeCode: string;
-  flangeStandardCode: string | null;
-  notes?: string;
-}
-
-export interface BnwSetInfoResult {
-  found: boolean;
-  boltSize: string;
-  weightPerHoleKg: number;
-  numHoles: number;
-  totalWeightKg: number;
-  pressureClass: string;
-  nominalBoreMm: number;
-  notes?: string;
-}
-
-export interface RetainingRingWeightResult {
-  found: boolean;
-  weightKg: number;
-  nominalBoreMm: number;
-  notes?: string;
-}
-
-export interface NbOdLookupResult {
-  found: boolean;
-  nominalBoreMm: number;
-  outsideDiameterMm: number;
-  notes?: string;
-}
-
-export interface PipeWallThicknessResult {
-  found: boolean;
-  wallThicknessMm: number | null;
-  maxPressureBar: number | null;
-  schedule: string;
-  dn: number;
-  temperatureC: number;
-}
-
-export interface FlangeTypeWeightRecord {
-  id: number;
-  flange_standard_id: number | null;
-  pressure_class: string;
-  flange_type_code: string;
-  nominal_bore_mm: number;
-  weight_kg: number;
-}
-
-export interface BnwSetWeightRecord {
-  id: number;
-  pressure_class: string;
-  nominal_bore_mm: number;
-  bolt_size: string;
-  weight_per_hole_kg: number;
-  num_holes: number;
-}
-
-export interface NbOdLookupRecord {
-  id: number;
-  nominal_bore_mm: number;
-  outside_diameter_mm: number;
-}
-
-export interface RetainingRingWeightRecord {
-  id: number;
-  nominal_bore_mm: number;
-  weight_kg: number;
-}
-
-export interface GasketWeightRecord {
-  id: number;
-  gasket_type: string;
-  nominal_bore_mm: number;
-  weight_kg: number;
-  inner_diameter_mm: number | null;
-  outer_diameter_mm: number | null;
-  thickness_mm: number | null;
-  flange_standard: string | null;
-  pressure_class: string | null;
-  material: string | null;
 }
 
 class ApiClient {
@@ -1741,33 +1308,6 @@ export const flangeWeightApi = {
   allGasketWeights: () => apiClient.allGasketWeights(),
 };
 
-// ISO 12944-5 Coating Specification Types
-export interface ISO12944System {
-  id: number;
-  systemCode: string | null;
-  binderType: string | null;
-  primerType: string | null;
-  primerNdftUm: string | null;
-  subsequentBinder: string | null;
-  system: string;
-  coats: string;
-  totalDftUmRange: string;
-  supportedDurabilities: string | null;
-  isRecommended: boolean;
-  applications: string;
-}
-
-export interface ISO12944SystemsByDurabilityResult {
-  recommended: ISO12944System | null;
-  alternatives: ISO12944System[];
-}
-
-export interface ISO12944DurabilityOption {
-  code: string;
-  label: string;
-  years: string;
-}
-
 export const coatingSpecificationApi = {
   getCorrosivityCategories: async (): Promise<{ category: string; description: string }[]> => {
     const response = await fetch(`${API_BASE_URL}/coating-specifications/corrosivity-categories`);
@@ -1852,40 +1392,6 @@ export const draftsApi = {
   },
 };
 
-export interface SaveAnonymousDraftDto {
-  customerEmail?: string;
-  projectName?: string;
-  currentStep: number;
-  formData: Record<string, any>;
-  globalSpecs?: Record<string, any>;
-  requiredProducts?: string[];
-  entries?: Record<string, any>[];
-  browserFingerprint?: string;
-}
-
-export interface AnonymousDraftResponse {
-  id: number;
-  recoveryToken: string;
-  customerEmail?: string;
-  projectName?: string;
-  currentStep: number;
-  expiresAt: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface AnonymousDraftFullResponse extends AnonymousDraftResponse {
-  formData: Record<string, any>;
-  globalSpecs?: Record<string, any>;
-  requiredProducts?: string[];
-  entries?: Record<string, any>[];
-}
-
-export interface RecoveryEmailResponse {
-  message: string;
-  draftFound: boolean;
-}
-
 export const anonymousDraftsApi = {
   save: async (dto: SaveAnonymousDraftDto): Promise<AnonymousDraftResponse> => {
     const response = await fetch(`${API_BASE_URL}/rfq/anonymous-drafts`, {
@@ -1950,94 +1456,6 @@ export const anonymousDraftsApi = {
     return response.json();
   },
 };
-
-// BOQ Distribution API types
-export interface ConsolidatedBoqDataDto {
-  straightPipes?: ConsolidatedItemDto[];
-  bends?: ConsolidatedItemDto[];
-  tees?: ConsolidatedItemDto[];
-  reducers?: ConsolidatedItemDto[];
-  flanges?: ConsolidatedItemDto[];
-  blankFlanges?: ConsolidatedItemDto[];
-  bnwSets?: ConsolidatedItemDto[];
-  gaskets?: ConsolidatedItemDto[];
-  surfaceProtection?: ConsolidatedItemDto[];
-  hdpePipes?: ConsolidatedItemDto[];
-  pvcPipes?: ConsolidatedItemDto[];
-  structuralSteel?: ConsolidatedItemDto[];
-  valves?: ConsolidatedItemDto[];
-  instruments?: ConsolidatedItemDto[];
-  actuators?: ConsolidatedItemDto[];
-  flowMeters?: ConsolidatedItemDto[];
-  pressureInstruments?: ConsolidatedItemDto[];
-  levelInstruments?: ConsolidatedItemDto[];
-  temperatureInstruments?: ConsolidatedItemDto[];
-  pumps?: ConsolidatedItemDto[];
-  pumpParts?: ConsolidatedItemDto[];
-  pumpSpares?: ConsolidatedItemDto[];
-}
-
-export interface ConsolidatedItemDto {
-  description: string;
-  qty: number;
-  unit: string;
-  weightKg: number;
-  entries: number[];
-  welds?: {
-    pipeWeld?: number;
-    flangeWeld?: number;
-    mitreWeld?: number;
-    teeWeld?: number;
-    gussetTeeWeld?: number;
-    latWeld45Plus?: number;
-    latWeldUnder45?: number;
-  };
-  areas?: {
-    intAreaM2?: number;
-    extAreaM2?: number;
-  };
-}
-
-export interface SubmitBoqDto {
-  boqData: ConsolidatedBoqDataDto;
-  customerInfo?: {
-    name: string;
-    email: string;
-    phone?: string;
-    company?: string;
-  };
-  projectInfo?: {
-    name: string;
-    description?: string;
-    requiredDate?: string;
-  };
-}
-
-export interface SubmitBoqResponseDto {
-  boqId: number;
-  boqNumber: string;
-  sectionsCreated: number;
-  suppliersNotified: number;
-  sectionsSummary: {
-    sectionType: string;
-    sectionTitle: string;
-    itemCount: number;
-    totalWeightKg: number;
-  }[];
-}
-
-export interface CreateBoqDto {
-  title: string;
-  description?: string;
-  rfqId?: number;
-}
-
-export interface BoqResponse {
-  id: number;
-  boqNumber: string;
-  title: string;
-  status: string;
-}
 
 export const boqApi = {
   create: async (dto: CreateBoqDto): Promise<BoqResponse> => {
@@ -2113,25 +1531,6 @@ export const boqApi = {
   },
 };
 
-export interface PtValidationResult {
-  isValid: boolean;
-  maxPressureAtTemp: number | null;
-  warningMessage: string | null;
-}
-
-export interface ValidPressureClassInfo {
-  id: number;
-  designation: string;
-  maxPressureAtTemp: number;
-  isAdequate: boolean;
-}
-
-export interface PtRecommendationResult {
-  validation: PtValidationResult;
-  recommendedPressureClassId: number | null;
-  validPressureClasses: ValidPressureClassInfo[];
-}
-
 export const ptRatingApi = {
   recommendations: async (params: {
     standardId: number;
@@ -2164,77 +1563,6 @@ export const ptRatingApi = {
     return response.json();
   },
 };
-
-export interface PumpProductListParams {
-  page?: number;
-  limit?: number;
-  search?: string;
-  category?: "CENTRIFUGAL" | "POSITIVE_DISPLACEMENT" | "SPECIALTY";
-  manufacturer?: string;
-  status?: "ACTIVE" | "DISCONTINUED" | "OUT_OF_STOCK";
-  minFlowRate?: number;
-  maxFlowRate?: number;
-  minHead?: number;
-  maxHead?: number;
-}
-
-export interface PumpProduct {
-  id: number;
-  sku: string;
-  title: string;
-  description?: string;
-  pumpType: string;
-  category: "CENTRIFUGAL" | "POSITIVE_DISPLACEMENT" | "SPECIALTY";
-  status: "ACTIVE" | "DISCONTINUED" | "OUT_OF_STOCK";
-  manufacturer: string;
-  modelNumber?: string;
-  flowRateMin?: number;
-  flowRateMax?: number;
-  headMin?: number;
-  headMax?: number;
-  motorPowerKw?: number;
-  listPrice?: number;
-  stockQuantity?: number;
-  certifications?: string[];
-  applications?: string[];
-  specifications?: Record<string, any>;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface PumpProductListResponse {
-  items: PumpProduct[];
-  total: number;
-  page: number;
-  limit: number;
-  totalPages: number;
-}
-
-export interface PumpCalculationParams {
-  pumpType: string;
-  flowRate?: number;
-  totalHead?: number;
-  specificGravity?: number;
-  viscosity?: number;
-  solidsContent?: number;
-  npshAvailable?: number;
-  isAbrasive?: boolean;
-  isCorrosive?: boolean;
-}
-
-export interface PumpCalculationResult {
-  hydraulicPowerKw: number;
-  estimatedMotorPowerKw: number;
-  estimatedEfficiency: number;
-  specificSpeed: number;
-  recommendedPumpType: string;
-  npshRequired: number;
-  bepFlowRate: number;
-  bepHead: number;
-  operatingPointPercentBep: number;
-  warnings: string[];
-  recommendations: string[];
-}
 
 export const pumpProductApi = {
   list: async (params?: PumpProductListParams): Promise<PumpProductListResponse> => {

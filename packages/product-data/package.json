@@ -21,6 +21,8 @@
     "./pvc": "./pvc/index.ts",
     "./pvc/*": "./pvc/*.ts",
     "./hdpe": "./hdpe/index.ts",
-    "./hdpe/*": "./hdpe/*.ts"
+    "./hdpe/*": "./hdpe/*.ts",
+    "./rfq": "./rfq/index.ts",
+    "./rfq/*": "./rfq/*.ts"
   }
 }
