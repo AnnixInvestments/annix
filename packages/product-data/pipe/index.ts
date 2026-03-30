@@ -21,6 +21,26 @@ export {
   REDUCER_END_OPTIONS,
 } from "./end-options";
 export type {
+  AsmeB169FittingTypeCode,
+  AsmeB1611FittingTypeCode,
+  Bs143FittingTypeCode,
+  FittingStandardCode,
+  FittingStandardMeta,
+} from "./fitting-standards";
+export {
+  ASME_B16_9_FITTING_TYPES,
+  ASME_B16_9_SCHEDULES,
+  ASME_B16_9_SIZES,
+  ASME_B16_11_CLASSES,
+  ASME_B16_11_FITTING_TYPES,
+  ASME_B16_11_SIZES,
+  BS_143_CLASSES,
+  BS_143_FITTING_TYPES,
+  BS_143_SIZES,
+  FITTING_STANDARDS,
+  fittingStandardByCode,
+} from "./fitting-standards";
+export type {
   FittingClass,
   ForgedClassScheduleMapping,
   ForgedFittingClass,
