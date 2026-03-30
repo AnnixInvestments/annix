@@ -302,7 +302,7 @@ export class JobCardsController {
     return this.coatingAnalysisService.unverifiedProducts(req.user.companyId, id);
   }
 
-  @StockControlRoles("manager", "admin")
+  @StockControlRoles("accounts", "manager", "admin")
   @Post(":id/coating-analysis/verify-tds")
   @UseInterceptors(FileInterceptor("file"))
   @ApiOperation({ summary: "Upload TDS to verify coating product volume solids" })
