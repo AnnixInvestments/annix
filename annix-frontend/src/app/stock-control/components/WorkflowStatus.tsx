@@ -338,6 +338,7 @@ const bgNodeClasses = (
   branchColor: string | null,
 ): { circle: string; icon: React.ReactNode; label: string } => {
   const isBlue = branchColor === "#3b82f6";
+  const isViolet = branchColor === "#8b5cf6";
 
   if (state === "skipped") {
     return {
@@ -347,10 +348,12 @@ const bgNodeClasses = (
     };
   }
   if (state === "completed") {
+    const circleClass = isViolet ? "bg-violet-500" : isBlue ? "bg-blue-500" : "bg-amber-500";
+    const labelClass = isViolet ? "text-violet-700" : isBlue ? "text-blue-700" : "text-amber-700";
     return {
-      circle: isBlue ? "bg-blue-500" : "bg-amber-500",
+      circle: circleClass,
       icon: <Check className="h-2.5 w-2.5 text-white" />,
-      label: isBlue ? "text-blue-700" : "text-amber-700",
+      label: labelClass,
     };
   }
   if (state === "active") {
@@ -531,16 +534,41 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
           };
         }
       });
-      bypassSteps.forEach((bp) => {
+      const bypassGroups = bypassSteps.reduce<
+        Record<string, { triggerX: number; rejoinX: number; steps: BackgroundStepStatus[] }>
+      >((acc, bp) => {
         const triggerIdx = allSteps.findIndex((s) => s.key === bp.triggerAfterStep);
         const triggerNode = triggerIdx >= 0 ? fgNodeRefs.current[triggerIdx] : null;
-        if (triggerNode) {
-          const tR = triggerNode.getBoundingClientRect();
-          positions[`bypass-${bp.stepKey}`] = {
-            left: tR.left + tR.width / 2 - rect.left,
-            right: 0,
-          };
-        }
+        if (!triggerNode) return acc;
+
+        const rejoinKey = bp.rejoinAtStep || "";
+        const rejoinNode =
+          bgNodeRefs.current[rejoinKey] ||
+          bgNodeRefs.current[`custom_${rejoinKey}`] ||
+          container.querySelector<HTMLDivElement>(
+            `[data-bg-step="${rejoinKey}"], [data-bg-step="custom_${rejoinKey}"]`,
+          );
+
+        const tR = triggerNode.getBoundingClientRect();
+        const triggerX = tR.left + tR.width / 2 - rect.left;
+        const rejoinX = rejoinNode
+          ? rejoinNode.getBoundingClientRect().left +
+            rejoinNode.getBoundingClientRect().width / 2 -
+            rect.left
+          : triggerX + 100;
+
+        const groupKey = `${bp.triggerAfterStep}→${rejoinKey}`;
+        const existing = acc[groupKey] || { triggerX, rejoinX, steps: [] };
+        return { ...acc, [groupKey]: { ...existing, steps: [...existing.steps, bp] } };
+      }, {});
+
+      Object.values(bypassGroups).forEach((group) => {
+        const count = group.steps.length;
+        group.steps.forEach((bp, idx) => {
+          const fraction = (idx + 1) / (count + 1);
+          const midX = group.triggerX + (group.rejoinX - group.triggerX) * fraction;
+          positions[`bypass-${bp.stepKey}`] = { left: midX, right: 0 };
+        });
       });
 
       if (docUploadStep) {
@@ -564,6 +592,7 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
         }
       }
 
+      const drawnMergeLines = new Set<string>();
       bypassSteps.forEach((bp) => {
         const triggerIdx = allSteps.findIndex((s) => s.key === bp.triggerAfterStep);
         const triggerNode = triggerIdx >= 0 ? fgNodeRefs.current[triggerIdx] : null;
@@ -572,7 +601,7 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
 
         const bpComplete = bp.completedAt !== null;
         const bpActive = !bpComplete && triggerIdx < currentStepIndex;
-        const strokeColor = bpComplete ? "#f59e0b" : bpActive ? "#f59e0b" : "#d1d5db";
+        const activeColor = bpComplete || bpActive ? "#8b5cf6" : "#d1d5db";
 
         const tRect = triggerNode.getBoundingClientRect();
         const bRect = bpNode.getBoundingClientRect();
@@ -583,45 +612,35 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
 
         paths.push({
           key: `bypass-fork-${bp.stepKey}`,
-          color: strokeColor,
+          color: activeColor,
           d: `M ${tx} ${ty} L ${tx} ${by - r} Q ${tx} ${by} ${tx + r} ${by} L ${bx} ${by}`,
         });
 
         if (bp.rejoinAtStep) {
-          const rejoinNode = bgNodeRefs.current[bp.rejoinAtStep];
-          let rx: number | null = null;
-          let ry: number | null = null;
+          const rejoinKey = bp.rejoinAtStep;
+          const mergeLineKey = `${bp.triggerAfterStep}→${rejoinKey}`;
 
-          if (rejoinNode) {
-            const rjRect = rejoinNode.getBoundingClientRect();
-            rx = rjRect.left + rjRect.width / 2 - rect.left;
-            ry = rjRect.top + rjRect.height / 2 - rect.top;
-          } else {
-            const hostBranch = belowBranches.find((b) =>
-              b.bgSteps.some((bg) => bg.stepKey === bp.rejoinAtStep),
-            );
-            const branchPos = hostBranch ? positions[hostBranch.triggerFgKey] : null;
-            if (hostBranch && branchPos) {
-              const branchW = rect.width - branchPos.left - branchPos.right;
-              const stepIdx = hostBranch.bgSteps.findIndex((bg) => bg.stepKey === bp.rejoinAtStep);
-              const stepCount = hostBranch.bgSteps.length;
-              rx = branchPos.left + ((stepIdx + 0.5) / stepCount) * branchW;
-              const branchContainerEl = container.querySelector("[data-branch-container]");
-              const bcRect = branchContainerEl ? branchContainerEl.getBoundingClientRect() : null;
-              const bcTop = bcRect ? bcRect.top - rect.top : ty + 40;
-              const lane = branchLanes[hostBranch.triggerFgKey] || 0;
-              ry = bcTop + lane * 52 + 10;
+          if (!drawnMergeLines.has(mergeLineKey)) {
+            drawnMergeLines.add(mergeLineKey);
+
+            const rejoinNode =
+              bgNodeRefs.current[rejoinKey] ||
+              bgNodeRefs.current[`custom_${rejoinKey}`] ||
+              container.querySelector<HTMLDivElement>(
+                `[data-bg-step="${rejoinKey}"], [data-bg-step="custom_${rejoinKey}"]`,
+              );
+            if (rejoinNode) {
+              const rjRect = rejoinNode.getBoundingClientRect();
+              const rjx = rjRect.left + rjRect.width / 2 - rect.left;
+              const rjy = rjRect.top + rjRect.height / 2 - rect.top;
+              const mergeColor = bpComplete ? "#8b5cf6" : "#d1d5db";
+
+              paths.push({
+                key: `bypass-merge-${bp.stepKey}`,
+                color: mergeColor,
+                d: `M ${bx} ${by} L ${rjx - r} ${by} Q ${rjx} ${by} ${rjx} ${by - r} L ${rjx} ${rjy}`,
+              });
             }
-          }
-
-          if (rx !== null && ry !== null) {
-            const mergeColor = bpComplete ? "#f59e0b" : "#d1d5db";
-            const bottomY = by + 30;
-            paths.push({
-              key: `bypass-merge-${bp.stepKey}`,
-              color: mergeColor,
-              d: `M ${bx} ${by} L ${bx} ${bottomY - r} Q ${bx} ${bottomY} ${bx + r} ${bottomY} L ${rx - r} ${bottomY} Q ${rx} ${bottomY} ${rx} ${bottomY - r} L ${rx} ${ry}`,
-            });
           }
         }
       });
@@ -997,6 +1016,7 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
                         </p>
                       )}
                       <div
+                        data-bg-step={bg.stepKey}
                         ref={(el) => {
                           bgNodeRefs.current[bg.stepKey] = el;
                         }}
@@ -1346,6 +1366,7 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
                   return (
                     <div key={bg.stepKey} className="flex-1 flex flex-col items-center">
                       <div
+                        data-bg-step={bg.stepKey}
                         ref={(el) => {
                           bgNodeRefs.current[bg.stepKey] = el;
                         }}
@@ -1379,7 +1400,7 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
               : bpActive
                 ? ("active" as const)
                 : ("pending" as const);
-            const classes = bgNodeClasses(state, null);
+            const classes = bgNodeClasses(state, "#8b5cf6");
             const bgAssigned = assignedNameForStep(bp.stepKey, stepAssignments);
             const bgDisplayName = state === "completed" ? bp.completedByName : bgAssigned;
             const bpPos = branchPositions[`bypass-${bp.stepKey}`];
@@ -1390,11 +1411,12 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
                 className="absolute flex flex-col items-center"
                 style={{
                   top: `${laneCount * 52}px`,
-                  left: bpPos ? `${bpPos.left + 30}px` : "50%",
+                  left: bpPos ? `${bpPos.left}px` : "50%",
                   transform: "translateX(-50%)",
                 }}
               >
                 <div
+                  data-bg-step={bp.stepKey}
                   ref={(el) => {
                     bgNodeRefs.current[bp.stepKey] = el;
                   }}
