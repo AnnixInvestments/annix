@@ -1944,6 +1944,7 @@ export interface CustomerPurchaseOrder {
   contactPerson: string | null;
   dueDate: string | null;
   notes: string | null;
+  coatingSpecs: string | null;
   reference: string | null;
   customFields: Record<string, string> | null;
   status: string;
@@ -2407,6 +2408,7 @@ export interface SageJcDumpParseResult {
   jobNumber: string;
   customerName: string | null;
   documentNumber: string | null;
+  specNotes: string | null;
   jtGroups: Record<string, SageJcDumpParsedItem[]>;
   asteriskItems: AsteriskItem[];
   skippedJtNumbers: string[];

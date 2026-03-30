@@ -15,6 +15,9 @@ const NON_JT_VALUES = ["pricing"];
 
 const PAGE_HEADER_PATTERN = /JOB CARD AND MATERIAL MOVEMENT/i;
 
+const SPEC_ROW_PATTERN =
+  /INT\s*:|EXT\s*:|R\/L|rubber|lining|lagging|shore|paint|blast|coat|primer|oxide|epoxy|polyurethane|zinc|silicate|nitrile|neoprene|butadiene|ceramic|\bROT\b/i;
+
 const PAGE_PATTERN = /^Page\s+(\d+)\s+of\s+(\d+)$/i;
 
 const ITEM_HEADER_ROW = ["Item Code", "Item Description"];
@@ -56,6 +59,7 @@ export interface SageJcDumpParseResult {
   jobNumber: string;
   customerName: string | null;
   documentNumber: string | null;
+  specNotes: string | null;
   jtGroups: Record<string, SageJcDumpParsedItem[]>;
   asteriskItems: AsteriskItem[];
   skippedJtNumbers: string[];
@@ -87,6 +91,7 @@ interface ParsedPage {
   customerName: string | null;
   customerCode: string | null;
   orderDescription: string | null;
+  specNotes: string[];
   lineItems: Array<{
     itemCode: string;
     itemDescription: string;
@@ -178,6 +183,16 @@ export class SageJcDumpService {
     const jobNumber = cpo.jobNumber;
     const customerName = firstPage.customerName;
 
+    const allSpecNotes = [
+      ...new Set(pages.reduce<string[]>((acc, page) => [...acc, ...page.specNotes], [])),
+    ];
+    const specNotesText = allSpecNotes.length > 0 ? allSpecNotes.join("\n") : null;
+
+    if (specNotesText && specNotesText !== cpo.coatingSpecs) {
+      cpo.coatingSpecs = specNotesText;
+      await this.cpoRepo.save(cpo);
+    }
+
     const allItems = this.classifyItems(pages);
 
     const jtItems = allItems.filter((item) => item.category === "jt");
@@ -221,6 +236,7 @@ export class SageJcDumpService {
       jobNumber,
       customerName,
       documentNumber,
+      specNotes: specNotesText,
       jtGroups: newJtGroups,
       asteriskItems,
       skippedJtNumbers,
@@ -256,6 +272,7 @@ export class SageJcDumpService {
         siteLocation: cpo.siteLocation,
         contactPerson: cpo.contactPerson,
         description: cpo.notes || null,
+        notes: cpo.coatingSpecs || null,
         status: JobCardStatus.DRAFT,
         workflowStatus: WORKFLOW_STATUS_DRAFT,
         versionNumber: 1,
@@ -265,9 +282,19 @@ export class SageJcDumpService {
       });
       parentJc = await this.jobCardRepo.save(newJc);
       this.logger.log(`Auto-created parent JC #${parentJc.id} for CPO ${cpo.cpoNumber}`);
-    } else if (!parentJc.jcNumber && cpoJcNumber) {
-      parentJc.jcNumber = cpoJcNumber;
-      await this.jobCardRepo.save(parentJc);
+    } else {
+      let parentNeedsUpdate = false;
+      if (!parentJc.jcNumber && cpoJcNumber) {
+        parentJc.jcNumber = cpoJcNumber;
+        parentNeedsUpdate = true;
+      }
+      if (cpo.coatingSpecs && !parentJc.notes) {
+        parentJc.notes = cpo.coatingSpecs;
+        parentNeedsUpdate = true;
+      }
+      if (parentNeedsUpdate) {
+        await this.jobCardRepo.save(parentJc);
+      }
     }
 
     const parentJcId = parentJc.id;
@@ -332,6 +359,7 @@ export class SageJcDumpService {
           jobName: parentJc.jobName,
           customerName: parentJc.customerName,
           description: parentJc.description || undefined,
+          notes: cpo.coatingSpecs || parentJc.notes || null,
           poNumber: parentJc.poNumber,
           siteLocation: parentJc.siteLocation,
           contactPerson: parentJc.contactPerson,
@@ -462,6 +490,7 @@ export class SageJcDumpService {
     let orderDescription: string | null = null;
 
     const lineItems: ParsedPage["lineItems"] = [];
+    const specNotes: string[] = [];
 
     rows.forEach((row) => {
       const col0 = String(row[0] || "").trim();
@@ -506,14 +535,21 @@ export class SageJcDumpService {
 
         if (!itemCode || isFooterRow(row)) return;
         if (FOOTER_LABELS.some((label) => itemCode.startsWith(label))) return;
-        if (itemCode === "EXT" || itemCode.startsWith("EXT :") || itemCode.startsWith("EXT:")) {
-          return;
-        }
 
         const itemNo = String(row[4] || "").trim();
         const rawQty = row[5];
         const quantity = typeof rawQty === "number" ? rawQty : parseFloat(String(rawQty || "0"));
         const jtNo = String(row[6] || "").trim();
+        const hasNoData =
+          !itemDesc && !itemNo && !jtNo && (Number.isNaN(quantity) || quantity <= 0);
+
+        if (hasNoData && SPEC_ROW_PATTERN.test(itemCode)) {
+          const specText = itemCode.replace(/\s+PRODUCTION\s*$/i, "").trim();
+          if (specText) {
+            specNotes.push(specText);
+          }
+          return;
+        }
 
         if (Number.isNaN(quantity) || quantity <= 0) return;
 
@@ -535,6 +571,7 @@ export class SageJcDumpService {
       customerName,
       customerCode,
       orderDescription,
+      specNotes,
       lineItems,
     };
   }

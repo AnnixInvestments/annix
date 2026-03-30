@@ -442,6 +442,28 @@ export default function CpoDetailPage() {
         </div>
       )}
 
+      {cpo.coatingSpecs && (
+        <div className="bg-amber-50 border border-amber-200 rounded-lg shadow p-6">
+          <h2 className="text-lg font-medium text-amber-900 mb-3">
+            Coating / Lining Specifications
+          </h2>
+          <div className="space-y-1">
+            {cpo.coatingSpecs.split("\n").map((line, idx) => (
+              <div key={idx} className="flex items-start space-x-2">
+                <span className="text-amber-600 font-mono text-xs mt-0.5">
+                  {line.match(/^(EXT|INT)\s*:/i) ? `${line.split(":")[0].trim()}:` : "\u2022"}
+                </span>
+                <span className="text-sm text-gray-900">
+                  {line.match(/^(EXT|INT)\s*:/i)
+                    ? line.substring(line.indexOf(":") + 1).trim()
+                    : line}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {overdueRecords.length > 0 && (
         <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-start space-x-3">
           <svg

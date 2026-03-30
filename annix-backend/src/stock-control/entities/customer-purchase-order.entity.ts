@@ -75,6 +75,9 @@ export class CustomerPurchaseOrder {
   @Column({ type: "text", nullable: true })
   notes: string | null;
 
+  @Column({ name: "coating_specs", type: "text", nullable: true })
+  coatingSpecs: string | null;
+
   @Column({ type: "varchar", length: 255, nullable: true })
   reference: string | null;
 
