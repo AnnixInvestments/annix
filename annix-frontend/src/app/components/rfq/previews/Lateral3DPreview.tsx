@@ -10,12 +10,12 @@ import {
   FLANGE_MATERIALS,
   GEOMETRY_CONSTANTS,
   LIGHTING_CONFIG,
-  outerDiameterFromNB,
   PIPE_MATERIALS,
   SCENE_CONSTANTS,
   WELD_MATERIALS,
   wallThicknessFromNB,
 } from "@/app/lib/config/rfq/rendering3DStandards";
+import { useNbToOdLookup } from "@/app/lib/query/hooks";
 import {
   getAngleRangeFromDegrees,
   getLateralDimensionsForAngle,
@@ -298,6 +298,7 @@ function LateralScene({
   closureLengthMm = 150,
   stubs = [],
 }: Lateral3DPreviewProps) {
+  const { outerDiameterFromNB } = useNbToOdLookup();
   const effectiveAngleRange = angleRange || getAngleRangeFromDegrees(angleDegrees);
   const lateralDims = getLateralDimensionsForAngle(nominalBore, effectiveAngleRange);
 
@@ -1239,6 +1240,7 @@ export default function Lateral3DPreview(props: Lateral3DPreviewProps) {
     closureLengthMm = 150,
     stubs = [],
   } = props;
+  const { outerDiameterFromNB } = useNbToOdLookup();
 
   const effectiveAngleRange = angleRange || getAngleRangeFromDegrees(angleDegrees);
   const lateralDims = getLateralDimensionsForAngle(nominalBore, effectiveAngleRange);

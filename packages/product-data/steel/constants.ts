@@ -1,0 +1,5 @@
+export const STEEL_DENSITY_KG_M3 = 7850;
+export const STEEL_DENSITY_KG_MM3 = STEEL_DENSITY_KG_M3 / 1e9;
+export const STEEL_DENSITY_KG_CM3 = STEEL_DENSITY_KG_M3 / 1e6;
+
+export const NACE_MAX_HARDNESS_HRC = 22;

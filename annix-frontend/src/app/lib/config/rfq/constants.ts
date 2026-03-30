@@ -1,6 +1,11 @@
-export const STEEL_DENSITY_KG_M3 = 7850;
-export const STEEL_DENSITY_KG_MM3 = STEEL_DENSITY_KG_M3 / 1e9;
-export const STEEL_DENSITY_KG_CM3 = STEEL_DENSITY_KG_M3 / 1e6;
+import {
+  NACE_MAX_HARDNESS_HRC,
+  STEEL_DENSITY_KG_CM3,
+  STEEL_DENSITY_KG_M3,
+  STEEL_DENSITY_KG_MM3,
+} from "@annix/product-data/steel";
+
+export { NACE_MAX_HARDNESS_HRC, STEEL_DENSITY_KG_CM3, STEEL_DENSITY_KG_M3, STEEL_DENSITY_KG_MM3 };
 
 export const steelDensity = {
   kgPerM3: STEEL_DENSITY_KG_M3,

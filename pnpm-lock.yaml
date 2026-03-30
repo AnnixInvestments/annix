@@ -38,6 +38,9 @@ importers:
 
   annix-backend:
     dependencies:
+      '@annix/product-data':
+        specifier: workspace:*
+        version: link:../packages/product-data
       '@aws-sdk/client-s3':
         specifier: ^3.958.0
         version: 3.971.0

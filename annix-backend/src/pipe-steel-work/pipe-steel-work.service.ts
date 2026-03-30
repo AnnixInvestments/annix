@@ -1,3 +1,4 @@
+import { STEEL_DENSITY_KG_M3 as STEEL_DENSITY } from "@annix/product-data/steel";
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
@@ -55,7 +56,7 @@ import { ReinforcementPadStandardEntity } from "./entities/reinforcement-pad-sta
 
 @Injectable()
 export class PipeSteelWorkService {
-  private readonly STEEL_DENSITY_KG_M3 = 7850;
+  private readonly STEEL_DENSITY_KG_M3 = STEEL_DENSITY;
 
   private readonly thermalExpansionCoefficients: Record<PipeMaterialDto, number> = {
     [PipeMaterialDto.CARBON_STEEL]: 0.012,

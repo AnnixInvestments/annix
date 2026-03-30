@@ -199,65 +199,6 @@ export const STEELWORK_STANDARDS = {
 } as const;
 
 // =============================================================================
-// NOMINAL BORE TO OD LOOKUP
-// =============================================================================
-
-export const NB_TO_OD_LOOKUP: Record<number, number> = {
-  15: 21.3,
-  20: 26.7,
-  25: 33.4,
-  32: 42.2,
-  40: 48.3,
-  50: 60.3,
-  65: 73.0,
-  80: 88.9,
-  100: 114.3,
-  125: 139.7,
-  150: 168.3,
-  200: 219.1,
-  250: 273.0,
-  300: 323.9,
-  350: 355.6,
-  400: 406.4,
-  450: 457.2,
-  500: 508.0,
-  550: 559.0,
-  600: 609.6,
-  650: 660.4,
-  700: 711.2,
-  750: 762.0,
-  800: 812.8,
-  850: 863.6,
-  900: 914.4,
-  1000: 1016.0,
-  1050: 1066.8,
-  1200: 1219.2,
-};
-
-export const nbToOd = (nb: number): number => NB_TO_OD_LOOKUP[nb] || nb * 1.05;
-
-const closestLookup = (table: Record<number, number>, nb: number, fallback: number): number => {
-  if (table[nb]) return table[nb];
-  const sizes = Object.keys(table)
-    .map(Number)
-    .sort((a, b) => a - b);
-  let closest = sizes[0];
-  for (const size of sizes) {
-    if (size <= nb) {
-      closest = size;
-    } else {
-      break;
-    }
-  }
-  return table[closest] || fallback;
-};
-
-export const outerDiameterFromNB = (nb: number, providedOD: number = 0): number => {
-  if (providedOD && providedOD > 0) return providedOD;
-  return closestLookup(NB_TO_OD_LOOKUP, nb, nb * 1.05);
-};
-
-// =============================================================================
 // SABS 719 ERW PIPE WALL THICKNESS (Class B - Standard)
 // =============================================================================
 
@@ -284,7 +225,19 @@ export const SABS_719_WALL_THICKNESS: Record<number, number> = {
 
 export const wallThicknessFromNB = (nb: number, providedWT: number = 0): number => {
   if (providedWT && providedWT > 0) return providedWT;
-  return closestLookup(SABS_719_WALL_THICKNESS, nb, 6.4);
+  if (SABS_719_WALL_THICKNESS[nb]) return SABS_719_WALL_THICKNESS[nb];
+  const sizes = Object.keys(SABS_719_WALL_THICKNESS)
+    .map(Number)
+    .sort((a, b) => a - b);
+  let closest = sizes[0];
+  for (const size of sizes) {
+    if (size <= nb) {
+      closest = size;
+    } else {
+      break;
+    }
+  }
+  return SABS_719_WALL_THICKNESS[closest] || 6.4;
 };
 
 // =============================================================================

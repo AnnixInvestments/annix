@@ -15,7 +15,6 @@ import {
   FLANGE_MATERIALS,
   GEOMETRY_CONSTANTS,
   LIGHTING_CONFIG,
-  outerDiameterFromNB,
   PIPE_MATERIALS,
   SCENE_CONSTANTS,
   STEELWORK_MATERIALS,
@@ -23,6 +22,7 @@ import {
   wallThicknessFromNB,
 } from "@/app/lib/config/rfq/rendering3DStandards";
 import { log } from "@/app/lib/logger";
+import { useNbToOdLookup } from "@/app/lib/query/hooks";
 
 const Line = (props: React.ComponentProps<typeof DreiLine>) => {
   const { size } = useThree();
@@ -136,7 +136,6 @@ interface Tee3DPreviewProps {
   flangeTypeCode?: string;
 }
 
-const getOuterDiameter = outerDiameterFromNB;
 const getWallThickness = wallThicknessFromNB;
 
 // Flange lookup table based on nominal bore - SABS 1123 Table 1000/4 (PN16) Slip-on flanges
@@ -939,6 +938,7 @@ function FlangeWeldRing({
 
 // Main Tee Scene component
 function TeeScene(props: Tee3DPreviewProps) {
+  const { outerDiameterFromNB: getOuterDiameter } = useNbToOdLookup();
   const {
     nominalBore,
     outerDiameter,
@@ -2577,6 +2577,7 @@ export default function Tee3DPreview(props: Tee3DPreviewProps) {
   const [isHidden, setIsHidden] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
   const captureRef = useRef<(() => string | null) | null>(null);
+  const { outerDiameterFromNB: getOuterDiameter } = useNbToOdLookup();
 
   const debouncedProps = useDebouncedProps(props, 100);
 

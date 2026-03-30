@@ -19,6 +19,7 @@ import {
 } from "@/app/lib/config/rfq/rendering3DStandards";
 import { FlangeSpecData } from "@/app/lib/hooks/useFlangeSpecs";
 import { log } from "@/app/lib/logger";
+import { useNbToOdLookup } from "@/app/lib/query/hooks";
 
 const Line = (props: React.ComponentProps<typeof DreiLine>) => {
   const { size } = useThree();
@@ -986,6 +987,7 @@ const HollowPipeScene = ({
   puddleFlangeLocationMm,
   flangeSpecs,
 }: Pipe3DPreviewProps) => {
+  const { nbToOdMap } = useNbToOdLookup();
   const safeOD = isValidNumber(outerDiameter) ? outerDiameter : 100;
   const safeWT = isValidNumber(wallThickness) ? wallThickness : 5;
   const safeLen = isValidNumber(length) ? length : 1;
@@ -1468,30 +1470,7 @@ const HollowPipeScene = ({
             (_, i) => distFromEnd + i * spacing,
           );
 
-          // NB to OD lookup for spigot
-          const nbToOd: Record<number, number> = {
-            15: 21.3,
-            20: 26.9,
-            25: 33.7,
-            32: 42.4,
-            40: 48.3,
-            50: 60.3,
-            65: 76.1,
-            80: 88.9,
-            100: 114.3,
-            125: 139.7,
-            150: 168.3,
-            200: 219.1,
-            250: 273.0,
-            300: 323.9,
-            350: 355.6,
-            400: 406.4,
-            450: 457.0,
-            500: 508.0,
-            600: 610.0,
-          };
-
-          const spigotOdMm = nbToOd[spigotNominalBoreMm] || spigotNominalBoreMm * 1.1;
+          const spigotOdMm = nbToOdMap[spigotNominalBoreMm] || spigotNominalBoreMm * 1.1;
           const spigotWtMm = spigotOdMm < 100 ? 3.2 : spigotOdMm < 200 ? 4.5 : 6.0;
           const spigotOuterRadius = spigotOdMm / 1000 / 2;
           const spigotInnerRadius = (spigotOdMm - 2 * spigotWtMm) / 1000 / 2;

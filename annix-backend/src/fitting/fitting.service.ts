@@ -1,3 +1,4 @@
+import { STEEL_DENSITY_KG_M3 } from "@annix/product-data/steel";
 import { BadRequestException, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
@@ -473,7 +474,7 @@ export class FittingService {
     // Calculate fitting body weight based on standard dimensions
     // Using a simplified formula based on fitting dimensions from the table
     // Mass estimation: use density and approximate volume
-    const steelDensityKgM3 = 7850; // kg/m³ (7.85 kg/dm³ = 7850 kg/m³)
+    const steelDensityKgM3 = STEEL_DENSITY_KG_M3;
 
     // Estimate fitting weight based on center-to-face and nominal diameter
     // This is a simplified calculation - in reality, exact volumes would be used

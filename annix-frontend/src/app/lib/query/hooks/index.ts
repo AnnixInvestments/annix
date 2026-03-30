@@ -579,6 +579,7 @@ export {
   flangeWeight,
   gasketWeightLookup,
   nbToOd,
+  outerDiameterFromNB,
   retainingRingWeightLookup,
   sansBlankFlangeWeight,
   useAllBnwSetWeights,
@@ -586,6 +587,7 @@ export {
   useAllFlangeTypeWeights,
   useAllGasketWeights,
   useAllRetainingRingWeights,
+  useNbToOdLookup,
   useNbToOdMap,
 } from "./rfq/useFlangeData";
 export type {

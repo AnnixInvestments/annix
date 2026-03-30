@@ -1,3 +1,4 @@
+import { NACE_MAX_HARDNESS_HRC } from "@annix/product-data/steel";
 import {
   registerDecorator,
   ValidationArguments,
@@ -64,11 +65,11 @@ export class NaceRequiresHardnessLimitConstraint implements ValidatorConstraintI
       return true;
     }
 
-    return maxHardnessHrc <= 22;
+    return maxHardnessHrc <= NACE_MAX_HARDNESS_HRC;
   }
 
   defaultMessage(): string {
-    return "NACE MR0175 compliant materials require maximum hardness ≤22 HRC for sour service";
+    return `NACE MR0175 compliant materials require maximum hardness ≤${NACE_MAX_HARDNESS_HRC} HRC for sour service`;
   }
 }
 

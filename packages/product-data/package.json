@@ -12,6 +12,8 @@
     "./rubber/*": "./rubber/*.ts",
     "./ceramic": "./ceramic/index.ts",
     "./ceramic/*": "./ceramic/*.ts",
+    "./steel": "./steel/index.ts",
+    "./steel/*": "./steel/*.ts",
     "./valves-instruments": "./valves-instruments/index.ts",
     "./valves-instruments/*": "./valves-instruments/*.ts"
   }

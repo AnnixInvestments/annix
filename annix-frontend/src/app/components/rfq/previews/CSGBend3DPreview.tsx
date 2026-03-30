@@ -31,12 +31,12 @@ import {
   calculateVisualWallThickness,
   FLANGE_MATERIALS,
   GEOMETRY_CONSTANTS,
-  nbToOd,
   PIPE_MATERIALS,
   WELD_MATERIALS,
 } from "@/app/lib/config/rfq/rendering3DStandards";
 import { FlangeSpecData } from "@/app/lib/hooks/useFlangeSpecs";
 import { log } from "@/app/lib/logger";
+import { useNbToOdLookup } from "@/app/lib/query/hooks";
 
 interface SimpleLineProps {
   points: Array<[number, number, number]>;
@@ -302,6 +302,8 @@ const Scene = (props: Props) => {
     sweepTeePipeALengthMm,
     closureLengthMm = 0,
   } = props;
+
+  const { nbToOd } = useNbToOdLookup();
 
   log.debug("CSGBend3DPreview Scene props", {
     nominalBore,
@@ -2909,6 +2911,7 @@ export default function CSGBend3DPreview(props: Props) {
   const [currentZoom, setCurrentZoom] = useState(0);
   const [liveCamera, setLiveCamera] = useState<[number, number, number]>([0, 0, 0]);
   const captureRef = useRef<(() => string | null) | null>(null);
+  const { nbToOd } = useNbToOdLookup();
 
   if (hidden) {
     return (

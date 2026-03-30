@@ -1,3 +1,4 @@
+import { STEEL_DENSITY_KG_M3 } from "@annix/product-data/steel";
 import { Injectable, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
@@ -19,9 +20,6 @@ import { ShopLaborRate } from "./entities/shop-labor-rate.entity";
 import { StructuralSteelGrade } from "./entities/structural-steel-grade.entity";
 import { StructuralSteelSection } from "./entities/structural-steel-section.entity";
 import { StructuralSteelType } from "./entities/structural-steel-type.entity";
-
-// Steel density in kg/m³
-const STEEL_DENSITY_KG_M3 = 7850;
 
 @Injectable()
 export class StructuralSteelService {

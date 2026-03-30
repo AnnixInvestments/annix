@@ -1,5 +1,6 @@
 "use client";
 
+import { NACE_MAX_HARDNESS_HRC, STEEL_DENSITY_KG_M3 } from "@annix/product-data/steel";
 import Link from "next/link";
 import React, { memo, useCallback, useEffect, useMemo, useState } from "react";
 import { SpigotConfigurationSection } from "@/app/components/rfq/sections/SpigotConfigurationSection";
@@ -1185,9 +1186,10 @@ function StraightPipeFormComponent({
                       {/* Sour service validation warning */}
                       {specs.naceCompliant &&
                         specs.maxHardnessHrc &&
-                        entry.specs.maxHardnessHrc > 22 && (
+                        entry.specs.maxHardnessHrc > NACE_MAX_HARDNESS_HRC && (
                           <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded text-xs text-red-700">
-                            Sour service materials require hardness ≤22 HRC per NACE MR0175
+                            Sour service materials require hardness ≤{NACE_MAX_HARDNESS_HRC} HRC per
+                            NACE MR0175
                           </div>
                         )}
                     </div>
@@ -3094,36 +3096,14 @@ function StraightPipeFormComponent({
                     const spigotHeight = specs.spigotHeightMm || 150;
                     const spigotFlangeConfig = specs.spigotFlangeConfig || "PE";
                     const spigotBlankFlanges = specs.spigotBlankFlanges || [];
-                    const nbToOdLookup: Record<number, number> = {
-                      15: 21.3,
-                      20: 26.9,
-                      25: 33.7,
-                      32: 42.4,
-                      40: 48.3,
-                      50: 60.3,
-                      65: 76.1,
-                      80: 88.9,
-                      100: 114.3,
-                      125: 139.7,
-                      150: 168.3,
-                      200: 219.1,
-                      250: 273.0,
-                      300: 323.9,
-                      350: 355.6,
-                      400: 406.4,
-                      450: 457.0,
-                      500: 508.0,
-                      600: 610.0,
-                    };
-                    const spigotOd = nbToOdLookup[spigotNb] || spigotNb * 1.1;
+                    const spigotOd = nbToOdMap[spigotNb] || spigotNb * 1.1;
                     const spigotWt = spigotOd < 100 ? 3.2 : spigotOd < 200 ? 4.5 : 6.0;
                     const spigotId = spigotOd - 2 * spigotWt;
-                    const steelDensity = 7850; // kg/m³
                     const singleSpigotWeight =
                       isSpigotPipe && spigotNb > 0
                         ? (((Math.PI * (spigotOd ** 2 - spigotId ** 2)) / 4) *
                             (spigotHeight / 1000) *
-                            steelDensity) /
+                            STEEL_DENSITY_KG_M3) /
                           1000000
                         : 0;
                     const totalSpigotWeight =
@@ -3222,7 +3202,7 @@ function StraightPipeFormComponent({
                         ? Math.PI *
                           ((puddleFlangeOd / 2000) ** 2 - (pipeOdMm / 2000) ** 2) *
                           (puddleFlangeThickness / 1000) *
-                          steelDensity
+                          STEEL_DENSITY_KG_M3
                         : 0;
                     const totalPuddleFlangeWeight =
                       singlePuddleFlangeWeight * (entry.calculation?.calculatedPipeCount || 0);
@@ -3355,7 +3335,7 @@ function StraightPipeFormComponent({
                     const puddleHoleId = specs.puddleFlangeHoleIdMm;
                     const pipeOd = entry.calculation?.outsideDiameterMm || 0;
                     const numPipes = entry.calculation?.calculatedPipeCount || 1;
-                    const steelDensityKgM3 = 7850;
+                    const steelDensityKgM3 = STEEL_DENSITY_KG_M3;
                     const singlePuddleWeight =
                       hasPuddleFlange && pipeOd > 0
                         ? Math.PI *
@@ -3578,28 +3558,7 @@ function StraightPipeFormComponent({
                     const isSpigotPipe = specs.pipeType === "spigot";
                     const spigotCount = specs.numberOfSpigots || 0;
                     const spigotNb = specs.spigotNominalBoreMm || 0;
-                    const nbToOd: Record<number, number> = {
-                      15: 21.3,
-                      20: 26.9,
-                      25: 33.7,
-                      32: 42.4,
-                      40: 48.3,
-                      50: 60.3,
-                      65: 76.1,
-                      80: 88.9,
-                      100: 114.3,
-                      125: 139.7,
-                      150: 168.3,
-                      200: 219.1,
-                      250: 273.0,
-                      300: 323.9,
-                      350: 355.6,
-                      400: 406.4,
-                      450: 457.0,
-                      500: 508.0,
-                      600: 610.0,
-                    };
-                    const spigotOdMm = nbToOd[spigotNb] || spigotNb * 1.1;
+                    const spigotOdMm = nbToOdMap[spigotNb] || spigotNb * 1.1;
                     const spigotCircumferenceMm = Math.PI * spigotOdMm;
                     const totalSpigotWelds =
                       isSpigotPipe && spigotNb > 0 ? spigotCount * numPipes : 0;

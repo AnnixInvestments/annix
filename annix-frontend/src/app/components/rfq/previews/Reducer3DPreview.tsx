@@ -17,12 +17,12 @@ import {
   FLANGE_MATERIALS,
   GEOMETRY_CONSTANTS,
   LIGHTING_CONFIG,
-  outerDiameterFromNB,
   PIPE_MATERIALS,
   SCENE_CONSTANTS,
   WELD_MATERIALS,
   wallThicknessFromNB,
 } from "@/app/lib/config/rfq/rendering3DStandards";
+import { useNbToOdLookup } from "@/app/lib/query/hooks";
 
 const SCALE_FACTOR = GEOMETRY_CONSTANTS.SCALE;
 const PREVIEW_SCALE = SCENE_CONSTANTS.PREVIEW_SCALE;
@@ -359,6 +359,7 @@ function ReducerScene({
   stubAngleDegrees = 0,
   closureLengthMm = 150,
 }: Reducer3DPreviewProps) {
+  const { outerDiameterFromNB } = useNbToOdLookup();
   const largeOD = largeDiameterMm ?? outerDiameterFromNB(largeNominalBore);
   const smallOD = smallDiameterMm ?? outerDiameterFromNB(smallNominalBore);
   const wt = wallThickness ?? wallThicknessFromNB(largeNominalBore);
@@ -646,6 +647,7 @@ function DimensionLines({
   lengthMm: number;
   reducerType: ReducerType;
 }) {
+  const { outerDiameterFromNB } = useNbToOdLookup();
   const largeOD = largeDiameterMm ?? outerDiameterFromNB(largeNominalBore);
   const smallOD = smallDiameterMm ?? outerDiameterFromNB(smallNominalBore);
 
@@ -778,6 +780,7 @@ export default function Reducer3DPreview(props: Reducer3DPreviewProps) {
     smallEndFlangeType,
     closureLengthMm = 150,
   } = props;
+  const { outerDiameterFromNB } = useNbToOdLookup();
 
   const largeOD = largeDiameterMm ?? outerDiameterFromNB(largeNominalBore);
   const smallOD = smallDiameterMm ?? outerDiameterFromNB(smallNominalBore);

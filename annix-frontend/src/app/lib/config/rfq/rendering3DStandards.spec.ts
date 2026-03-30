@@ -8,9 +8,6 @@ import {
   FLANGE_MATERIALS,
   GEOMETRY_CONSTANTS,
   LIGHTING_CONFIG,
-  NB_TO_OD_LOOKUP,
-  nbToOd,
-  outerDiameterFromNB,
   PIPE_MATERIALS,
   SABS_719_WALL_THICKNESS,
   SCENE_CONSTANTS,
@@ -153,66 +150,6 @@ describe("rendering3DStandards", () => {
       const result1 = calculateEffectiveWeldLength(length1);
       const result2 = calculateEffectiveWeldLength(length2);
       expect(result2).toBe(result1 * 2);
-    });
-  });
-
-  describe("nbToOd", () => {
-    it("should return correct OD for known NB values", () => {
-      expect(nbToOd(100)).toBe(114.3);
-      expect(nbToOd(200)).toBe(219.1);
-      expect(nbToOd(300)).toBe(323.9);
-      expect(nbToOd(400)).toBe(406.4);
-      expect(nbToOd(500)).toBe(508.0);
-    });
-
-    it("should return all standard NB to OD mappings correctly", () => {
-      Object.entries(NB_TO_OD_LOOKUP).forEach(([nb, expectedOd]) => {
-        expect(nbToOd(Number(nb))).toBe(expectedOd);
-      });
-    });
-
-    it("should return fallback value for unknown NB", () => {
-      const unknownNb = 999;
-      const result = nbToOd(unknownNb);
-      expect(result).toBe(unknownNb * 1.05);
-    });
-
-    it("should handle small NB values", () => {
-      expect(nbToOd(15)).toBe(21.3);
-      expect(nbToOd(20)).toBe(26.7);
-      expect(nbToOd(25)).toBe(33.4);
-    });
-
-    it("should handle large NB values", () => {
-      expect(nbToOd(800)).toBe(812.8);
-      expect(nbToOd(850)).toBe(863.6);
-      expect(nbToOd(900)).toBe(914.4);
-    });
-
-    it("should include extended range (1000+)", () => {
-      expect(nbToOd(1000)).toBe(1016.0);
-      expect(nbToOd(1050)).toBe(1066.8);
-      expect(nbToOd(1200)).toBe(1219.2);
-    });
-  });
-
-  describe("outerDiameterFromNB", () => {
-    it("should return provided OD when given", () => {
-      expect(outerDiameterFromNB(200, 220)).toBe(220);
-    });
-
-    it("should return lookup value when no OD provided", () => {
-      expect(outerDiameterFromNB(200)).toBe(219.1);
-      expect(outerDiameterFromNB(300)).toBe(323.9);
-    });
-
-    it("should return closest smaller NB for non-exact matches", () => {
-      expect(outerDiameterFromNB(225)).toBe(219.1);
-      expect(outerDiameterFromNB(999)).toBe(914.4);
-    });
-
-    it("should ignore zero or negative provided OD", () => {
-      expect(outerDiameterFromNB(200, 0)).toBe(219.1);
     });
   });
 

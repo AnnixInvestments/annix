@@ -15,10 +15,10 @@ import { FLANGE_DATA } from "@/app/lib/3d/flangeData";
 import {
   GEOMETRY_CONSTANTS,
   LIGHTING_CONFIG,
-  outerDiameterFromNB,
   SCENE_CONSTANTS,
   wallThicknessFromNB,
 } from "@/app/lib/config/rfq/rendering3DStandards";
+import { useNbToOdLookup } from "@/app/lib/query/hooks";
 
 const SCALE_FACTOR = GEOMETRY_CONSTANTS.SCALE;
 const PREVIEW_SCALE = SCENE_CONSTANTS.PREVIEW_SCALE;
@@ -95,6 +95,7 @@ function OffsetBendScene({
   endFlangeType = "fixed",
   closureLengthMm = 150,
 }: OffsetBend3DPreviewProps) {
+  const { outerDiameterFromNB } = useNbToOdLookup();
   const od = outerDiameter ?? outerDiameterFromNB(nominalBore);
   const wt = wallThickness ?? wallThicknessFromNB(nominalBore);
   const id = od - 2 * wt;
@@ -426,6 +427,7 @@ export default function OffsetBend3DPreview(props: OffsetBend3DPreviewProps) {
     endFlangeType = "fixed",
     closureLengthMm = 150,
   } = props;
+  const { outerDiameterFromNB } = useNbToOdLookup();
 
   const od = outerDiameter ?? outerDiameterFromNB(nominalBore);
   const wt = wallThickness ?? wallThicknessFromNB(nominalBore);

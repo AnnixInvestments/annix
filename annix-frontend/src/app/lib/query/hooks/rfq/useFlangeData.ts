@@ -127,6 +127,37 @@ export function nbToOd(nbToOdMap: Record<number, number>, nb: number): number {
   return nbToOdMap[nb] || nb * 1.1;
 }
 
+export function outerDiameterFromNB(
+  nbToOdMap: Record<number, number>,
+  nb: number,
+  providedOD: number = 0,
+): number {
+  if (providedOD && providedOD > 0) return providedOD;
+  if (nbToOdMap[nb]) return nbToOdMap[nb];
+  const sizes = Object.keys(nbToOdMap)
+    .map(Number)
+    .sort((a, b) => a - b);
+  let closest = sizes[0];
+  for (const size of sizes) {
+    if (size <= nb) {
+      closest = size;
+    } else {
+      break;
+    }
+  }
+  return nbToOdMap[closest] || nb * 1.05;
+}
+
+export function useNbToOdLookup() {
+  const { data: nbToOdMap = {} } = useNbToOdMap();
+  return {
+    nbToOd: (nb: number) => nbToOd(nbToOdMap, nb),
+    outerDiameterFromNB: (nb: number, providedOD: number = 0) =>
+      outerDiameterFromNB(nbToOdMap, nb, providedOD),
+    nbToOdMap,
+  };
+}
+
 export function flangeWeight(
   allWeights: FlangeTypeWeightRecord[],
   nominalBoreMm: number,

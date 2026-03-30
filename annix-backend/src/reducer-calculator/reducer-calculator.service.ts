@@ -1,3 +1,4 @@
+import { STEEL_DENSITY_KG_M3 } from "@annix/product-data/steel";
 import { Injectable, Logger } from "@nestjs/common";
 import {
   CalculateReducerAreaDto,
@@ -27,7 +28,7 @@ import {
 export class ReducerCalculatorService {
   private readonly logger = new Logger(ReducerCalculatorService.name);
 
-  private static readonly DEFAULT_STEEL_DENSITY_KG_M3 = 7850;
+  private static readonly DEFAULT_STEEL_DENSITY_KG_M3 = STEEL_DENSITY_KG_M3;
   private static readonly PI_OVER_12 = Math.PI / 12;
 
   /**

@@ -1,5 +1,6 @@
 "use client";
 
+import { STEEL_DENSITY_KG_M3 } from "@annix/product-data/steel";
 import { useMemo } from "react";
 import {
   BEND_END_OPTIONS,
@@ -22,7 +23,6 @@ import {
 import { calculateBendWeldVolume } from "@/app/lib/utils/pipeCalculations";
 import { roundToWeldIncrement } from "@/app/lib/utils/weldThicknessLookup";
 
-const STEEL_DENSITY_KG_M3 = 7850;
 const STEINMETZ_FACTOR = 2.7;
 
 export interface BendEntry {

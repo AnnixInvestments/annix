@@ -6,8 +6,8 @@ import { resolveFlangeData } from "@/app/lib/3d/flangeData";
 import {
   calculateVisualWallThickness,
   GEOMETRY_CONSTANTS,
-  nbToOd,
 } from "@/app/lib/config/rfq/rendering3DStandards";
+import { useNbToOdLookup } from "@/app/lib/query/hooks";
 
 const FLANGE_THICKNESS_RATIO = GEOMETRY_CONSTANTS.FLANGE_THICKNESS_RATIO;
 
@@ -157,6 +157,7 @@ export function use3DSceneSetup(props: Use3DSceneSetupProps): Use3DSceneSetupRet
     sweepTeePipeALengthMm,
     flangeSpecs: apiFlangeSpecs,
   } = props;
+  const { nbToOd } = useNbToOdLookup();
   const odMm = outerDiameter || nbToOd(nominalBore);
   const wtMm = calculateVisualWallThickness(odMm, wallThickness || 6);
 

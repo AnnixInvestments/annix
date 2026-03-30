@@ -1,3 +1,4 @@
+import { STEEL_DENSITY_KG_M3 } from "@annix/product-data/steel";
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
@@ -12,7 +13,7 @@ export interface RetainingRingWeightResult {
 
 @Injectable()
 export class RetainingRingWeightService {
-  private readonly STEEL_DENSITY_KG_M3 = 7850;
+  private readonly STEEL_DENSITY_KG_M3 = STEEL_DENSITY_KG_M3;
 
   constructor(
     @InjectRepository(RetainingRingWeight)

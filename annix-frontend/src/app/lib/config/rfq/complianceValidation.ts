@@ -1,3 +1,5 @@
+import { NACE_MAX_HARDNESS_HRC } from "@annix/product-data/steel";
+
 export interface Psl2ComplianceData {
   pslLevel?: string | null;
   cvnTestTemperatureC?: number | null;
@@ -115,13 +117,13 @@ export const validateNACECompliance = (data: NaceComplianceData): NaceValidation
 
   if (data.maxHardnessHrc === null || data.maxHardnessHrc === undefined) {
     errors.push("NACE compliance requires maximum hardness (HRC) to be specified");
-  } else if (data.maxHardnessHrc > 22) {
+  } else if (data.maxHardnessHrc > NACE_MAX_HARDNESS_HRC) {
     errors.push(
-      `Maximum hardness ${data.maxHardnessHrc} HRC exceeds NACE limit of 22 HRC for carbon and low-alloy steels`,
+      `Maximum hardness ${data.maxHardnessHrc} HRC exceeds NACE limit of ${NACE_MAX_HARDNESS_HRC} HRC for carbon and low-alloy steels`,
     );
-  } else if (data.maxHardnessHrc > 20) {
+  } else if (data.maxHardnessHrc > NACE_MAX_HARDNESS_HRC - 2) {
     warnings.push(
-      `Maximum hardness ${data.maxHardnessHrc} HRC is close to NACE limit of 22 HRC - ensure proper testing`,
+      `Maximum hardness ${data.maxHardnessHrc} HRC is close to NACE limit of ${NACE_MAX_HARDNESS_HRC} HRC - ensure proper testing`,
     );
   }
 

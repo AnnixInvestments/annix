@@ -1,5 +1,6 @@
 "use client";
 
+import { NACE_MAX_HARDNESS_HRC } from "@annix/product-data/steel";
 import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { WorkingConditionsSection } from "@/app/components/rfq/sections/WorkingConditionsSection";
 import { ClosureLengthSelector } from "@/app/components/rfq/selectors/ClosureLengthSelector";
@@ -859,9 +860,10 @@ function FittingFormComponent({
                     {/* Sour service validation warning */}
                     {specs.naceCompliant &&
                       specs.maxHardnessHrc &&
-                      entry.specs.maxHardnessHrc > 22 && (
+                      entry.specs.maxHardnessHrc > NACE_MAX_HARDNESS_HRC && (
                         <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded text-xs text-red-700">
-                          Sour service materials require hardness ≤22 HRC per NACE MR0175
+                          Sour service materials require hardness ≤{NACE_MAX_HARDNESS_HRC} HRC per
+                          NACE MR0175
                         </div>
                       )}
                   </div>

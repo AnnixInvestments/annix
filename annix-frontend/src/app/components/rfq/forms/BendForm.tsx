@@ -1,5 +1,6 @@
 "use client";
 
+import { NACE_MAX_HARDNESS_HRC, STEEL_DENSITY_KG_M3 } from "@annix/product-data/steel";
 import Link from "next/link";
 import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { TangentExtensionsSection } from "@/app/components/rfq/sections/TangentExtensionsSection";
@@ -947,9 +948,10 @@ function BendFormComponent(props: BendFormProps) {
                     {/* Sour service validation warning */}
                     {specs.naceCompliant &&
                       specs.maxHardnessHrc &&
-                      entry.specs.maxHardnessHrc > 22 && (
+                      entry.specs.maxHardnessHrc > NACE_MAX_HARDNESS_HRC && (
                         <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded text-xs text-red-700">
-                          Sour service materials require hardness ≤22 HRC per NACE MR0175
+                          Sour service materials require hardness ≤{NACE_MAX_HARDNESS_HRC} HRC per
+                          NACE MR0175
                         </div>
                       )}
                   </div>
@@ -5035,7 +5037,6 @@ function BendFormComponent(props: BendFormProps) {
                         bendQuantity
                       : 0;
 
-                  const STEEL_DENSITY_KG_M3 = 7850;
                   const stub1OD = stub1NB ? nbToOdMap[stub1NB] || stub1NB * 1.05 : 0;
                   const stub1ID = stub1OD - 2 * (pipeWallThickness || 0);
                   const stub1CrossSection =
