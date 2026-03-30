@@ -183,6 +183,19 @@ export class AdminScheduledJobsService implements OnApplicationBootstrap {
     return this.jobToDto(name, job);
   }
 
+  private normalizeCronToFiveField(cronSource: string): string {
+    const parts = cronSource.trim().split(/\s+/);
+    const fiveField = parts.length === 6 ? parts.slice(1).join(" ") : parts.join(" ");
+
+    const equivalents: Record<string, string> = {
+      "0 0-23/1 * * *": "0 * * * *",
+      "*/1 * * * *": "* * * * *",
+    };
+
+    const mapped = equivalents[fiveField] || fiveField;
+    return mapped.replace(/\b0(\d)\b/g, "$1");
+  }
+
   private jobToDto(name: string, job: any): ScheduledJobDto {
     const meta = JOB_METADATA[name] || { description: name, module: "Unknown" };
     return {
@@ -190,7 +203,7 @@ export class AdminScheduledJobsService implements OnApplicationBootstrap {
       description: meta.description,
       module: meta.module,
       active: job.isActive,
-      cronTime: String(job.cronTime.source),
+      cronTime: this.normalizeCronToFiveField(String(job.cronTime.source)),
       lastExecution: job.lastExecution ? job.lastExecution.toISOString() : null,
       nextExecution: String(job.nextDate().toISO()),
     };

@@ -28,10 +28,21 @@ const PRESET_FREQUENCIES = [
   { label: "Weekly (Sunday midnight)", value: "0 0 * * 0" },
 ];
 
+function normalizeCronToFiveField(cronTime: string): string {
+  const parts = cronTime.trim().split(/\s+/);
+  const fiveField = parts.length === 6 ? parts.slice(1).join(" ") : parts.join(" ");
+
+  const equivalents: Record<string, string> = {
+    "0 0-23/1 * * *": "0 * * * *",
+    "*/1 * * * *": "* * * * *",
+  };
+
+  const mapped = equivalents[fiveField] || fiveField;
+  return mapped.replace(/\b0(\d)\b/g, "$1");
+}
+
 function friendlyCron(cron: string): string {
-  const normalized = cron.replace(/^0\s+/, "").trim();
-  const sixFieldMatch = cron.match(/^(\d+)\s+(.+)$/);
-  const fiveField = sixFieldMatch ? sixFieldMatch[2] : cron;
+  const fiveField = normalizeCronToFiveField(cron);
 
   const preset = PRESET_FREQUENCIES.find((p) => p.value === fiveField);
   if (preset) {
@@ -78,7 +89,7 @@ function friendlyCron(cron: string): string {
     }
   }
 
-  return normalized;
+  return fiveField;
 }
 
 function formatHourMinute(hour: string, minute: string): string {
@@ -116,8 +127,7 @@ const MODULE_COLORS: Record<string, string> = {
 };
 
 function currentCronToPresetValue(cronTime: string): string {
-  const sixFieldMatch = cronTime.match(/^(\d+)\s+(.+)$/);
-  const fiveField = sixFieldMatch ? sixFieldMatch[2] : cronTime;
+  const fiveField = normalizeCronToFiveField(cronTime);
   const match = PRESET_FREQUENCIES.find((p) => p.value === fiveField);
   return match ? match.value : fiveField;
 }
@@ -147,6 +157,9 @@ function JobRow(props: { job: ScheduledJobDto }) {
   const moduleColor =
     MODULE_COLORS[job.module] || "bg-gray-100 text-gray-700 dark:bg-gray-700/50 dark:text-gray-300";
 
+  const currentValue = currentCronToPresetValue(job.cronTime);
+  const isCustomCron = !PRESET_FREQUENCIES.some((p) => p.value === currentValue);
+
   return (
     <tr className="hover:bg-gray-50 dark:hover:bg-slate-700/30">
       <td className="px-4 py-3 text-sm">
@@ -171,11 +184,14 @@ function JobRow(props: { job: ScheduledJobDto }) {
       </td>
       <td className="whitespace-nowrap px-4 py-3 text-sm">
         <select
-          value={currentCronToPresetValue(job.cronTime)}
+          value={currentValue}
           onChange={(e) => handleFrequencyChange(e.target.value)}
           disabled={isMutating}
           className="rounded-md border border-gray-300 bg-white px-2 py-1 text-sm text-gray-700 hover:border-gray-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 disabled:opacity-50 dark:border-slate-600 dark:bg-slate-700 dark:text-gray-200"
         >
+          {isCustomCron ? (
+            <option value={currentValue}>{friendlyCron(job.cronTime)} (custom)</option>
+          ) : null}
           {PRESET_FREQUENCIES.map((preset) => (
             <option key={preset.value} value={preset.value}>
               {preset.label}
