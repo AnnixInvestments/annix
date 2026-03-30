@@ -45,6 +45,7 @@ interface RegexParseResult {
 const REDUCING_NB_PATTERN = /(\d+)\s*x\s*\d+\s*NB/i;
 const NB_PATTERN = /(\d+)\s*NB/i;
 const NB_PREFIX_PATTERN = /\bNB\s*(\d+)/i;
+const BARE_REDUCING_PATTERN = /^(\d{2,4})\s*x\s*\d{2,4}\b/;
 const LG_PATTERN = /(\d+)\s*LG/i;
 const LG_METERS_PATTERN = /(\d+(?:\.\d+)?)Lg\b/;
 const MM_PATTERN = /(\d+)\s*mm\b/i;
@@ -95,6 +96,7 @@ const ITEM_TYPE_PATTERNS: { pattern: RegExp; type: string }[] = [
   { pattern: /\bELBOW\b/i, type: "bend" },
   { pattern: /\bREDUCER\b/i, type: "reducer" },
   { pattern: /\bTEE\b/i, type: "tee" },
+  { pattern: /\bT[- ]?PIECE\b/i, type: "tee" },
   { pattern: /\bLATERAL\b/i, type: "lateral" },
   { pattern: /\bFLANGE\b/i, type: "flange" },
   { pattern: /\bOFFSET\b/i, type: "offset" },
@@ -137,13 +139,16 @@ export class M2CalculationService {
     const reducingMatch = description.match(REDUCING_NB_PATTERN);
     const nbMatch = description.match(NB_PATTERN);
     const nbPrefixMatch = description.match(NB_PREFIX_PATTERN);
+    const bareReducingMatch = description.match(BARE_REDUCING_PATTERN);
     const diameterMm = reducingMatch
       ? parseInt(reducingMatch[1], 10)
       : nbMatch
         ? parseInt(nbMatch[1], 10)
         : nbPrefixMatch
           ? parseInt(nbPrefixMatch[1], 10)
-          : null;
+          : bareReducingMatch
+            ? parseInt(bareReducingMatch[1], 10)
+            : null;
 
     const itemType = ITEM_TYPE_PATTERNS.find((it) => it.pattern.test(description))?.type ?? null;
 

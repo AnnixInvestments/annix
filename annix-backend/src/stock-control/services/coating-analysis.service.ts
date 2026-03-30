@@ -17,6 +17,7 @@ import { JobCardExtractionCorrection } from "../entities/job-card-extraction-cor
 import { JobCardLineItem } from "../entities/job-card-line-item.entity";
 import { StockControlCompany } from "../entities/stock-control-company.entity";
 import { StockItem } from "../entities/stock-item.entity";
+import { INVALID_LINE_ITEM_PATTERNS } from "../lib/line-item-validation";
 import {
   validateCoatingExtraction,
   validPercentage,
@@ -141,13 +142,34 @@ export class CoatingAnalysisService {
         return this.markFailed(analysis, `Job card ${jobCardId} not found`);
       }
 
-      const lineItems = await this.lineItemRepo.find({
+      const allLineItems = await this.lineItemRepo.find({
         where: { jobCardId, companyId },
       });
 
+      const junkItemIds = allLineItems
+        .filter((li) => {
+          const code = (li.itemCode || "").trim();
+          const desc = (li.itemDescription || "").trim();
+          const texts = [code, desc].filter(Boolean);
+          return texts.some((t) => INVALID_LINE_ITEM_PATTERNS.some((p) => p.test(t)));
+        })
+        .map((li) => li.id);
+
+      if (junkItemIds.length > 0) {
+        await this.lineItemRepo.delete(junkItemIds);
+        this.logger.log(
+          `Removed ${junkItemIds.length} junk line item(s) from job card ${jobCardId}`,
+        );
+      }
+
+      const lineItems = allLineItems.filter((li) => !junkItemIds.includes(li.id));
+
       const hasMissingM2 = lineItems.some((li) => {
         const desc = li.itemDescription || li.itemCode || "";
-        return /(?:\d+\s*NB|NB\s*\d+)/i.test(desc) && (li.m2 === null || li.m2 === 0);
+        return (
+          /(?:\d+\s*NB|NB\s*\d+|^\d{2,4}\s*x\s*\d{2,4}\b)/i.test(desc) &&
+          (li.m2 === null || li.m2 === 0)
+        );
       });
 
       let calculatedExtM2 = 0;
@@ -565,7 +587,7 @@ export class CoatingAnalysisService {
 
     const pipeItems = lineItems.filter((li) => {
       const desc = li.itemDescription || li.itemCode || "";
-      return /(?:\d+\s*NB|NB\s*\d+)/i.test(desc);
+      return /(?:\d+\s*NB|NB\s*\d+|^\d{2,4}\s*x\s*\d{2,4}\b)/i.test(desc);
     });
 
     if (pipeItems.length === 0) {
@@ -601,7 +623,7 @@ export class CoatingAnalysisService {
   ): Promise<{ extM2: number; intM2: number }> {
     const pipeItems = lineItems.filter((li) => {
       const desc = li.itemDescription || li.itemCode || "";
-      return /(?:\d+\s*NB|NB\s*\d+)/i.test(desc);
+      return /(?:\d+\s*NB|NB\s*\d+|^\d{2,4}\s*x\s*\d{2,4}\b)/i.test(desc);
     });
 
     if (pipeItems.length === 0) {
