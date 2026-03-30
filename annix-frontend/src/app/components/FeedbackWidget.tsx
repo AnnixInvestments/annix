@@ -237,7 +237,9 @@ export function FeedbackWidget(props: FeedbackWidgetProps) {
       const viewportWidth = window.innerWidth;
       const viewportHeight = window.innerHeight;
 
-      const capturePromise = toBlob(document.body, {
+      const contentRoot = document.getElementById("__next") || document.body;
+
+      const capturePromise = toBlob(contentRoot, {
         filter: (node) => {
           try {
             if (node instanceof HTMLElement) {
@@ -245,7 +247,7 @@ export function FeedbackWidget(props: FeedbackWidgetProps) {
                 return false;
               }
               const tag = node.tagName.toLowerCase();
-              if (tag === "iframe" || tag === "video") {
+              if (tag === "iframe" || tag === "video" || tag === "script" || tag === "noscript") {
                 return false;
               }
             }
@@ -267,14 +269,15 @@ export function FeedbackWidget(props: FeedbackWidgetProps) {
         pixelRatio: 1,
         skipAutoScale: true,
         skipFonts: true,
-        cacheBust: true,
+        cacheBust: false,
+        fetchRequestInit: { credentials: "include" },
         imagePlaceholder: TRANSPARENT_PIXEL,
       });
 
       const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), 8000));
       const blob = await Promise.race([capturePromise, timeoutPromise]);
 
-      if (blob) {
+      if (blob && blob.size > 5000) {
         return new File([blob], "auto-screenshot.png", { type: "image/png" });
       }
       return null;
