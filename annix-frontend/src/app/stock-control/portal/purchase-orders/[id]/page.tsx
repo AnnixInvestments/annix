@@ -87,6 +87,38 @@ export default function CpoDetailPage() {
   const [updatingRecordId, setUpdatingRecordId] = useState<number | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const deliveryScrollRef = useRef<HTMLDivElement>(null);
+  const deliveryDragState = useRef({ isDragging: false, startX: 0, scrollLeft: 0 });
+
+  const handleDeliveryDragStart = useCallback((e: React.MouseEvent) => {
+    const container = deliveryScrollRef.current;
+    if (!container) return;
+    if ((e.target as HTMLElement).closest("a, button")) return;
+
+    deliveryDragState.current = {
+      isDragging: true,
+      startX: e.pageX - container.offsetLeft,
+      scrollLeft: container.scrollLeft,
+    };
+
+    const handleMove = (moveEvent: MouseEvent) => {
+      if (!deliveryDragState.current.isDragging) return;
+      moveEvent.preventDefault();
+      const x = moveEvent.pageX - container.offsetLeft;
+      const walk = x - deliveryDragState.current.startX;
+      container.scrollLeft = deliveryDragState.current.scrollLeft - walk;
+    };
+
+    const handleUp = () => {
+      deliveryDragState.current.isDragging = false;
+      document.removeEventListener("mousemove", handleMove);
+      document.removeEventListener("mouseup", handleUp);
+    };
+
+    document.addEventListener("mousemove", handleMove);
+    document.addEventListener("mouseup", handleUp);
+  }, []);
+
   const [sageParseResult, setSageParseResult] = useState<SageJcDumpParseResult | null>(null);
   const [sageImportResult, setSageImportResult] = useState<SageJcDumpImportResult | null>(null);
   const [sageParsing, setSageParsing] = useState(false);
@@ -601,8 +633,12 @@ export default function CpoDetailPage() {
                 {deliveryHistory.deliveries.length !== 1 ? "s" : ""})
               </h2>
             </div>
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
+            <div
+              ref={deliveryScrollRef}
+              onMouseDown={handleDeliveryDragStart}
+              className="overflow-x-auto scrollbar-hide cursor-grab active:cursor-grabbing"
+            >
+              <table className="min-w-full divide-y divide-gray-200 select-none">
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
