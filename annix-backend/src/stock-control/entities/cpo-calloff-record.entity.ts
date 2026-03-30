@@ -5,6 +5,7 @@ import {
   JoinColumn,
   ManyToOne,
   PrimaryGeneratedColumn,
+  Unique,
   UpdateDateColumn,
 } from "typeorm";
 import { CustomerPurchaseOrder } from "./customer-purchase-order.entity";
@@ -26,6 +27,7 @@ export enum CalloffStatus {
 }
 
 @Entity("cpo_calloff_records")
+@Unique("uq_calloff_company_cpo_jc_type", ["companyId", "cpoId", "jobCardId", "calloffType"])
 export class CpoCalloffRecord {
   @PrimaryGeneratedColumn()
   id: number;

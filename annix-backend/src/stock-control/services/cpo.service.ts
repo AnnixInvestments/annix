@@ -524,6 +524,20 @@ export class CpoService {
       order: { createdAt: "ASC" },
     });
 
+    const matchesCpoItem = (
+      liCode: string,
+      liDesc: string,
+      ciCode: string,
+      ciDesc: string,
+    ): boolean => {
+      const hasCode = ciCode.length > 0 && liCode.length > 0;
+      const hasDesc = ciDesc.length > 0 && liDesc.length > 0;
+      if (hasCode && hasDesc) return ciCode === liCode && ciDesc === liDesc;
+      if (hasCode) return ciCode === liCode;
+      if (hasDesc) return ciDesc === liDesc;
+      return false;
+    };
+
     const deliveries = linkedJobCards.map((jc) => {
       const matchedItems = (jc.lineItems || [])
         .filter((li) => {
@@ -532,7 +546,7 @@ export class CpoService {
           return cpo.items.some((ci) => {
             const ciCode = (ci.itemCode || "").trim().toLowerCase();
             const ciDesc = (ci.itemDescription || "").trim().toLowerCase();
-            return (ciCode && code && ciCode === code) || (ciDesc && desc && ciDesc === desc);
+            return matchesCpoItem(code, desc, ciCode, ciDesc);
           });
         })
         .map((li) => ({
@@ -566,9 +580,7 @@ export class CpoService {
               .filter((di) => {
                 const diCode = (di.itemCode || "").trim().toLowerCase();
                 const diDesc = (di.description || "").trim().toLowerCase();
-                return (
-                  (ciCode && diCode && ciCode === diCode) || (ciDesc && diDesc && ciDesc === diDesc)
-                );
+                return matchesCpoItem(diCode, diDesc, ciCode, ciDesc);
               })
               .reduce((sum, di) => sum + di.quantity, 0);
 
