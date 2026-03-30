@@ -1,6 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { log } from "@/app/lib/logger";
+import { annixIconPack } from "./custom-icon-pack";
+
+let iconsRegistered = false;
 
 interface MermaidBlockProps {
   chart: string;
@@ -23,6 +27,22 @@ export default function MermaidBlock({ chart }: MermaidBlockProps) {
           securityLevel: "loose",
         });
 
+        if (!iconsRegistered && mermaid.registerIconPacks) {
+          log.info("[MermaidBlock] registering annix icon pack:", Object.keys(annixIconPack.icons));
+          mermaid.registerIconPacks([{ name: "annix", icons: annixIconPack }]);
+          try {
+            const logosModule = await import("@iconify-json/logos");
+            log.info(
+              "[MermaidBlock] registering logos icon pack, prefix:",
+              logosModule.icons?.prefix,
+            );
+            mermaid.registerIconPacks([{ name: "logos", icons: logosModule.icons }]);
+          } catch (err) {
+            log.warn("[MermaidBlock] failed to load logos icon pack:", err);
+          }
+          iconsRegistered = true;
+        }
+
         const id = `mermaid-${Math.random().toString(36).slice(2, 10)}`;
         const { svg: rendered } = await mermaid.render(id, chart);
 
@@ -31,6 +51,8 @@ export default function MermaidBlock({ chart }: MermaidBlockProps) {
           setError(null);
         }
       } catch (err) {
+        log.error("[MermaidBlock] render failed:", err);
+        log.error("[MermaidBlock] chart input:", chart.slice(0, 200));
         if (!cancelled) {
           setError(err instanceof Error ? err.message : "Failed to render diagram");
           setSvg(null);

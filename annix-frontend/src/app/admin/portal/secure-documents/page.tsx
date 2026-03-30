@@ -373,17 +373,19 @@ export default function SecureDocumentsPage() {
     queryClient.invalidateQueries({ queryKey: adminKeys.secureDocuments.all });
   };
 
-  useEffect(() => {
-    const expandedParam = searchParams.get("expanded");
-    const expandedFromUrl = expandedParam ? new Set(expandedParam.split(",")) : new Set<string>();
+  const folderKey = [
+    ...sortedSecureFolders.filter((f) => f !== "."),
+    ...sortedLocalFolders.map((f) => `local:${f}`),
+  ].join(",");
 
-    const allFolders = [
-      ...sortedSecureFolders.filter((f) => f !== "."),
-      ...sortedLocalFolders.map((f) => `local:${f}`),
-    ];
+  const expandedParam = searchParams.get("expanded");
+
+  useEffect(() => {
+    const expandedFromUrl = expandedParam ? new Set(expandedParam.split(",")) : new Set<string>();
+    const allFolders = folderKey ? folderKey.split(",") : [];
     const collapsed = allFolders.filter((f) => !expandedFromUrl.has(f));
     setCollapsedFolders(new Set(collapsed));
-  }, [documents, localDocuments, searchParams]);
+  }, [folderKey, expandedParam]);
 
   useEffect(() => {
     const docSlug = searchParams.get("doc");
