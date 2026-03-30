@@ -1,407 +1,19 @@
-export const PIPE_END_OPTIONS = [
-  {
-    value: "PE",
-    label: "PE - Plain ended (0 welds)",
-    weldCount: 0,
-    flangeWeldCount: 0,
-    tackWeldEnds: 0,
-    flangeCount: 0,
-  },
-  {
-    value: "TOE_NPT",
-    label: "TOE NPT - Threaded one end NPT (0 welds)",
-    weldCount: 0,
-    flangeWeldCount: 0,
-    tackWeldEnds: 0,
-    flangeCount: 0,
-    threadType: "NPT",
-    threadedEnds: 1,
-  },
-  {
-    value: "TBE_NPT",
-    label: "TBE NPT - Threaded both ends NPT (0 welds)",
-    weldCount: 0,
-    flangeWeldCount: 0,
-    tackWeldEnds: 0,
-    flangeCount: 0,
-    threadType: "NPT",
-    threadedEnds: 2,
-  },
-  {
-    value: "TOE_BSP",
-    label: "TOE BSP - Threaded one end BSP (0 welds)",
-    weldCount: 0,
-    flangeWeldCount: 0,
-    tackWeldEnds: 0,
-    flangeCount: 0,
-    threadType: "BSP",
-    threadedEnds: 1,
-  },
-  {
-    value: "TBE_BSP",
-    label: "TBE BSP - Threaded both ends BSP (0 welds)",
-    weldCount: 0,
-    flangeWeldCount: 0,
-    tackWeldEnds: 0,
-    flangeCount: 0,
-    threadType: "BSP",
-    threadedEnds: 2,
-  },
-  {
-    value: "GOE",
-    label: "GOE - Grooved one end (0 welds)",
-    weldCount: 0,
-    flangeWeldCount: 0,
-    tackWeldEnds: 0,
-    flangeCount: 0,
-    groovedEnds: 1,
-  },
-  {
-    value: "GBE",
-    label: "GBE - Grooved both ends (0 welds)",
-    weldCount: 0,
-    flangeWeldCount: 0,
-    tackWeldEnds: 0,
-    flangeCount: 0,
-    groovedEnds: 2,
-  },
-  {
-    value: "FOE_GOE",
-    label: "FOE + GOE - Flanged one end + grooved (1 weld)",
-    weldCount: 1,
-    flangeWeldCount: 1,
-    tackWeldEnds: 0,
-    flangeCount: 1,
-    groovedEnds: 1,
-  },
-  {
-    value: "FOE_TOE",
-    label: "FOE + TOE - Flanged one end + threaded (1 weld)",
-    weldCount: 1,
-    flangeWeldCount: 1,
-    tackWeldEnds: 0,
-    flangeCount: 1,
-    threadedEnds: 1,
-  },
-  {
-    value: "FOE",
-    label: "FOE - Flanged one end (1 weld)",
-    weldCount: 1,
-    flangeWeldCount: 1,
-    tackWeldEnds: 0,
-    flangeCount: 1,
-  },
-  {
-    value: "FBE",
-    label: "FBE - Flanged both ends (2 flange welds)",
-    weldCount: 2,
-    flangeWeldCount: 2,
-    tackWeldEnds: 0,
-    flangeCount: 2,
-  },
-  {
-    value: "FOE_LF",
-    label: "FOE + L/F - Flanged one end + loose flange (1 flange weld + tack)",
-    weldCount: 1,
-    flangeWeldCount: 1,
-    tackWeldEnds: 1,
-    flangeCount: 2,
-  },
-  {
-    value: "FOE_RF",
-    label: "FOE + R/F - Flanged one end + rotating flange (2 flange welds)",
-    weldCount: 2,
-    flangeWeldCount: 2,
-    tackWeldEnds: 0,
-    flangeCount: 2,
-  },
-  {
-    value: "2X_RF",
-    label: "2 x R/F - Rotating flanges both ends (2 flange welds)",
-    weldCount: 2,
-    flangeWeldCount: 2,
-    tackWeldEnds: 0,
-    flangeCount: 2,
-  },
-] as const;
+import type { FlangeType } from "@annix/product-data/pipe";
+import {
+  BEND_END_OPTIONS,
+  FITTING_END_OPTIONS,
+  PIPE_END_OPTIONS,
+  REDUCER_END_OPTIONS,
+} from "@annix/product-data/pipe";
 
-export const BEND_END_OPTIONS = [
-  {
-    value: "PE",
-    label: "PE - Plain ended (0 welds)",
-    weldCount: 0,
-    flangeWeldCount: 0,
-    tackWeldEnds: 0,
-    flangeCount: 0,
-  },
-  {
-    value: "FOE",
-    label: "FOE - Flanged one end (1 weld)",
-    weldCount: 1,
-    flangeWeldCount: 1,
-    tackWeldEnds: 0,
-    flangeCount: 1,
-  },
-  {
-    value: "FBE",
-    label: "FBE - Flanged both ends (2 flange welds)",
-    weldCount: 2,
-    flangeWeldCount: 2,
-    tackWeldEnds: 0,
-    flangeCount: 2,
-  },
-  {
-    value: "FOE_LF",
-    label: "FOE + L/F - Flanged one end + loose flange (1 flange weld + tack)",
-    weldCount: 1,
-    flangeWeldCount: 1,
-    tackWeldEnds: 1,
-    flangeCount: 2,
-  },
-  {
-    value: "2xLF",
-    label: "L/F Both Ends - Loose flanges both ends (tack welds only)",
-    weldCount: 0,
-    flangeWeldCount: 0,
-    tackWeldEnds: 2,
-    flangeCount: 2,
-  },
-  {
-    value: "FOE_RF",
-    label: "FOE + R/F - Flanged one end + rotating flange (2 flange welds)",
-    weldCount: 2,
-    flangeWeldCount: 2,
-    tackWeldEnds: 0,
-    flangeCount: 2,
-  },
-  {
-    value: "2X_RF",
-    label: "2 x R/F - Rotating flanges both ends (2 flange welds)",
-    weldCount: 2,
-    flangeWeldCount: 2,
-    tackWeldEnds: 0,
-    flangeCount: 2,
-  },
-] as const;
-
-export const REDUCER_END_OPTIONS = [
-  {
-    value: "PE",
-    label: "PE - Plain ended (0 welds)",
-    weldCount: 0,
-    flangeWeldCount: 0,
-    tackWeldEnds: 0,
-    flangeCount: 0,
-    hasLargeEnd: false,
-    hasSmallEnd: false,
-  },
-  {
-    value: "FOE",
-    label: "FOE - Flanged one end (1 weld)",
-    weldCount: 1,
-    flangeWeldCount: 1,
-    tackWeldEnds: 0,
-    flangeCount: 1,
-    hasLargeEnd: true,
-    hasSmallEnd: false,
-  },
-  {
-    value: "FBE",
-    label: "FBE - Flanged both ends (2 welds)",
-    weldCount: 2,
-    flangeWeldCount: 2,
-    tackWeldEnds: 0,
-    flangeCount: 2,
-    hasLargeEnd: true,
-    hasSmallEnd: true,
-  },
-  {
-    value: "2X_RF",
-    label: "R/F x 2 - Rotating flanges both ends (2 welds)",
-    weldCount: 2,
-    flangeWeldCount: 2,
-    tackWeldEnds: 0,
-    flangeCount: 2,
-    hasLargeEnd: true,
-    hasSmallEnd: true,
-  },
-  {
-    value: "2X_LF",
-    label: "L/F x 2 - Loose flanges both ends (tack welds only)",
-    weldCount: 0,
-    flangeWeldCount: 0,
-    tackWeldEnds: 2,
-    flangeCount: 2,
-    hasLargeEnd: true,
-    hasSmallEnd: true,
-  },
-  {
-    value: "FOE_RF",
-    label: "FOE + R/F - Fixed + rotating flange (2 welds)",
-    weldCount: 2,
-    flangeWeldCount: 2,
-    tackWeldEnds: 0,
-    flangeCount: 2,
-    hasLargeEnd: true,
-    hasSmallEnd: true,
-  },
-  {
-    value: "FOE_LF",
-    label: "FOE + L/F - Fixed + loose flange (1 weld + tack)",
-    weldCount: 1,
-    flangeWeldCount: 1,
-    tackWeldEnds: 1,
-    flangeCount: 2,
-    hasLargeEnd: true,
-    hasSmallEnd: true,
-  },
-  {
-    value: "RF_LF",
-    label: "R/F + L/F - Rotating + loose flange (1 weld + tack)",
-    weldCount: 1,
-    flangeWeldCount: 1,
-    tackWeldEnds: 1,
-    flangeCount: 2,
-    hasLargeEnd: true,
-    hasSmallEnd: true,
-  },
-] as const;
-
-export const FITTING_END_OPTIONS = [
-  {
-    value: "PE",
-    label: "PE - Plain ended (0 welds)",
-    weldCount: 0,
-    flangeWeldCount: 0,
-    tackWeldEnds: 0,
-    flangeCount: 0,
-    hasInlet: false,
-    hasOutlet: false,
-    hasBranch: false,
-    inletType: null,
-    outletType: null,
-    branchType: null,
-  },
-  {
-    value: "FAE",
-    label: "FAE - Flanged All Ends (3 welds)",
-    weldCount: 3,
-    flangeWeldCount: 3,
-    tackWeldEnds: 0,
-    flangeCount: 3,
-    hasInlet: true,
-    hasOutlet: true,
-    hasBranch: true,
-    inletType: "fixed",
-    outletType: "fixed",
-    branchType: "fixed",
-  },
-  {
-    value: "F2E",
-    label: "F2E - Flanged 2 ends (2 welds) - Main pipe flanged, Tee OE",
-    weldCount: 2,
-    flangeWeldCount: 2,
-    tackWeldEnds: 0,
-    flangeCount: 2,
-    hasInlet: true,
-    hasOutlet: true,
-    hasBranch: false,
-    inletType: "fixed",
-    outletType: "fixed",
-    branchType: null,
-  },
-  {
-    value: "F2E_LF",
-    label: "F2E + L/F - Flanged 2 ends + L/F on inlet, Tee flanged (2 welds + tack)",
-    weldCount: 2,
-    flangeWeldCount: 2,
-    tackWeldEnds: 1,
-    flangeCount: 3,
-    hasInlet: true,
-    hasOutlet: true,
-    hasBranch: true,
-    inletType: "loose",
-    outletType: "fixed",
-    branchType: "fixed",
-  },
-  {
-    value: "F2E_RF",
-    label: "F2E + R/F - Flanged 2 ends + R/F on Tee Section B (3 welds)",
-    weldCount: 3,
-    flangeWeldCount: 3,
-    tackWeldEnds: 0,
-    flangeCount: 3,
-    hasInlet: true,
-    hasOutlet: true,
-    hasBranch: true,
-    inletType: "fixed",
-    outletType: "fixed",
-    branchType: "rotating",
-  },
-  {
-    value: "3X_RF",
-    label: "3 x R/F - Rotating flanges all 3 ends (3 welds)",
-    weldCount: 3,
-    flangeWeldCount: 3,
-    tackWeldEnds: 0,
-    flangeCount: 3,
-    hasInlet: true,
-    hasOutlet: true,
-    hasBranch: true,
-    inletType: "rotating",
-    outletType: "rotating",
-    branchType: "rotating",
-  },
-  {
-    value: "3X_LF",
-    label: "3 x L/F - Loose flanges all 3 ends (3 tack welds)",
-    weldCount: 0,
-    flangeWeldCount: 0,
-    tackWeldEnds: 3,
-    flangeCount: 3,
-    hasInlet: true,
-    hasOutlet: true,
-    hasBranch: true,
-    inletType: "loose",
-    outletType: "loose",
-    branchType: "loose",
-  },
-  {
-    value: "2X_LF_FOE",
-    label: "2 x L/F + FOE - 2 loose flanges + 1 fixed (1 weld + 2 tacks)",
-    weldCount: 1,
-    flangeWeldCount: 1,
-    tackWeldEnds: 2,
-    flangeCount: 3,
-    hasInlet: true,
-    hasOutlet: true,
-    hasBranch: true,
-    inletType: "dynamic",
-    outletType: "dynamic",
-    branchType: "dynamic",
-  },
-  {
-    value: "2X_RF_FOE",
-    label: "2 x R/F + FOE - R/F main pipe, FOE on Tee Section B (3 welds)",
-    weldCount: 3,
-    flangeWeldCount: 3,
-    tackWeldEnds: 0,
-    flangeCount: 3,
-    hasInlet: true,
-    hasOutlet: true,
-    hasBranch: true,
-    inletType: "rotating",
-    outletType: "rotating",
-    branchType: "fixed",
-  },
-] as const;
-
-export type FlangeType = "fixed" | "loose" | "rotating" | "dynamic" | null;
-
-export type PipeEndOption = (typeof PIPE_END_OPTIONS)[number];
-export type BendEndOption = (typeof BEND_END_OPTIONS)[number];
-export type FittingEndOption = (typeof FITTING_END_OPTIONS)[number];
-export type ReducerEndOption = (typeof REDUCER_END_OPTIONS)[number];
+export type {
+  BendEndOption,
+  FittingEndOption,
+  FlangeType,
+  PipeEndOption,
+  ReducerEndOption,
+} from "@annix/product-data/pipe";
+export { BEND_END_OPTIONS, FITTING_END_OPTIONS, PIPE_END_OPTIONS, REDUCER_END_OPTIONS };
 
 export const weldCountPerBend = (bendEndConfig: string): number => {
   const config = BEND_END_OPTIONS.find((opt) => opt.value === bendEndConfig);
@@ -562,14 +174,6 @@ export const weldCountPerPipe = (pipeEndConfig: string): number => {
   return config?.weldCount || 0;
 };
 
-/**
- * Returns the number of flanged connections at pipe ends.
- * This represents how many flanged openings/joints exist, NOT the number of physical pieces.
- *
- * Use this for: weld calculations, joint counts, connection specifications
- *
- * Example: 2xLF (loose flange both ends) = 2 connections (one at each end)
- */
 export const flangesPerPipe = (pipeEndConfig: string): number => {
   switch (pipeEndConfig) {
     case "PE":
@@ -591,19 +195,6 @@ export const flangesPerPipe = (pipeEndConfig: string): number => {
   }
 };
 
-/**
- * Returns the total number of physical flange pieces needed.
- * This accounts for assemblies that require multiple pieces per connection.
- *
- * Use this for: weight calculations, material ordering, BOM generation
- *
- * Key difference from flangesPerPipe:
- * - 2xLF (loose flange both ends) = 4 pieces (2 plate flanges + 2 backing rings)
- * - FOE_RF (fixed + rotating) = 2 pieces (1 fixed flange + 1 backing ring)
- *
- * Note: For rotating flanges (RF), the backing ring is counted but the loose
- * plate flange weight is calculated separately as it's a standard catalog item.
- */
 export const physicalFlangeCount = (pipeEndConfig: string): number => {
   switch (pipeEndConfig) {
     case "PE":
@@ -625,10 +216,6 @@ export const physicalFlangeCount = (pipeEndConfig: string): number => {
   }
 };
 
-// Bolt set count for bends - total flanged openings minus 1
-// A bend has 2 openings, so FBE = 2-1 = 1 bolt set
-// FOE has 1 flanged opening = 1 bolt set (minimum when flanged)
-// Additional stubs = extra bolt sets (handled separately)
 export const boltSetCountPerBend = (bendEndConfig: string): number => {
   switch (bendEndConfig) {
     case "PE":
@@ -650,9 +237,6 @@ export const boltSetCountPerBend = (bendEndConfig: string): number => {
   }
 };
 
-// Bolt set count for pipes - total flanged openings minus 1
-// A pipe has 2 openings, so FBE = 2-1 = 1 bolt set
-// FOE has 1 flanged opening = 1 bolt set (minimum when flanged)
 export const boltSetCountPerPipe = (pipeEndConfig: string): number => {
   switch (pipeEndConfig) {
     case "PE":
@@ -740,9 +324,6 @@ export const formatEndConfigForDescription = (
   return `${mainLabel} + ${stubDescriptions.join(" + ")}`;
 };
 
-// Bolt set count for fittings (tees/laterals) - total flanged openings minus 1
-// Equal tee has 3 openings, so FAE = 3-1 = 2 bolt sets
-// F2E (2 flanged ends) = 2-1 = 1 bolt set
 export const boltSetCountPerFitting = (
   fittingEndConfig: string,
   hasEqualBranch: boolean = true,
@@ -750,19 +331,15 @@ export const boltSetCountPerFitting = (
   const config = FITTING_END_OPTIONS.find((opt) => opt.value === fittingEndConfig);
   if (!config) return { mainBoltSets: 0, branchBoltSets: 0 };
 
-  // Count flanged main ends (inlet + outlet)
   const mainFlangeCount = (config.hasInlet ? 1 : 0) + (config.hasOutlet ? 1 : 0);
-  // Count branch flanges
   const branchFlangeCount = config.hasBranch ? 1 : 0;
 
   if (hasEqualBranch) {
-    // All ends same size: total openings - 1
     const totalFlangedEnds = mainFlangeCount + branchFlangeCount;
     const totalBoltSets = totalFlangedEnds > 1 ? totalFlangedEnds - 1 : totalFlangedEnds;
     return { mainBoltSets: totalBoltSets, branchBoltSets: 0 };
   }
 
-  // Different branch size: main run has 2 openings = 1 bolt set, branch has 1 opening = 1 bolt set
   const mainBoltSets = mainFlangeCount > 1 ? mainFlangeCount - 1 : mainFlangeCount;
   return { mainBoltSets, branchBoltSets: branchFlangeCount };
 };

@@ -1,3 +1,6 @@
+export type { FittingClass } from "@annix/product-data/pipe";
+export { FITTING_CLASS_WALL_THICKNESS, fittingClassWallThickness } from "@annix/product-data/pipe";
+
 export const FALLBACK_PIPE_SCHEDULES: Record<
   number,
   Array<{ id: number; scheduleDesignation: string; wallThicknessMm: number }>
@@ -431,82 +434,6 @@ export const ALL_FITTING_SIZES = [
 // Fitting class wall thickness (mm) by NB - used for weld thickness calculations
 // For ASTM/ASME specs, uses fitting class (STD/XH/XXH) wall thickness
 // STD = Standard, XH = Extra Heavy (Schedule 80), XXH = Double Extra Heavy
-export const FITTING_CLASS_WALL_THICKNESS: Record<"STD" | "XH" | "XXH", Record<number, number>> = {
-  STD: {
-    15: 2.77,
-    20: 2.87,
-    25: 3.38,
-    32: 3.56,
-    40: 3.68,
-    50: 3.91,
-    65: 5.16,
-    80: 5.49,
-    90: 5.74,
-    100: 6.02,
-    125: 6.55,
-    150: 7.11,
-    200: 8.18,
-    250: 9.27,
-    300: 9.53,
-    350: 9.53,
-    400: 9.53,
-    450: 9.53,
-    500: 9.53,
-    600: 9.53,
-    750: 9.53,
-    900: 9.53,
-    1000: 9.53,
-    1050: 9.53,
-    1200: 9.53,
-  },
-  XH: {
-    15: 3.73,
-    20: 3.91,
-    25: 4.55,
-    32: 4.85,
-    40: 5.08,
-    50: 5.54,
-    65: 7.01,
-    80: 7.62,
-    100: 8.56,
-    125: 9.53,
-    150: 10.97,
-    200: 12.7,
-    250: 12.7,
-    300: 12.7,
-    350: 12.7,
-    400: 12.7,
-    450: 12.7,
-    500: 12.7,
-    600: 12.7,
-    750: 12.7,
-    900: 12.7,
-    1000: 12.7,
-    1050: 12.7,
-    1200: 12.7,
-  },
-  XXH: {
-    15: 7.47,
-    20: 7.82,
-    25: 9.09,
-    32: 9.7,
-    40: 10.16,
-    50: 11.07,
-    65: 14.02,
-    80: 15.24,
-    100: 17.12,
-    125: 19.05,
-    150: 22.23,
-    200: 22.23,
-    250: 25.4,
-    300: 25.4,
-    350: 25.4,
-    400: 25.4,
-    450: 25.4,
-    500: 25.4,
-    600: 25.4,
-  },
-};
 
 // Standard closure length options (mm) for bent pipe closures
 export const CLOSURE_LENGTH_OPTIONS = [100, 150, 200, 250] as const;
@@ -519,17 +446,6 @@ export const PRESSURE_CALC_SAFETY_FACTOR = 1.2;
 // Bend angle limits (degrees)
 export const MIN_BEND_DEGREES = 0;
 export const MAX_BEND_DEGREES = 180;
-
-// Helper to get fitting class wall thickness with fallback
-export const fittingClassWallThickness = (
-  fittingClass: "STD" | "XH" | "XXH" | string | null,
-  nb: number,
-): number | null => {
-  const classKey =
-    fittingClass === "STD" || fittingClass === "XH" || fittingClass === "XXH" ? fittingClass : null;
-  if (!classKey) return null;
-  return FITTING_CLASS_WALL_THICKNESS[classKey][nb] || null;
-};
 
 // Valid NB ranges for each steel spec type
 export const STEEL_SPEC_NB_RANGES: Record<string, number[]> = {

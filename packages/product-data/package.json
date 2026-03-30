@@ -17,6 +17,8 @@
     "./valves-instruments": "./valves-instruments/index.ts",
     "./valves-instruments/*": "./valves-instruments/*.ts",
     "./pipe": "./pipe/index.ts",
-    "./pipe/*": "./pipe/*.ts"
+    "./pipe/*": "./pipe/*.ts",
+    "./pvc": "./pvc/index.ts",
+    "./pvc/*": "./pvc/*.ts"
   }
 }
