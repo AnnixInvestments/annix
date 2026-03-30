@@ -1,6 +1,7 @@
 "use client";
 
 import type { ScheduledJobDto } from "@/app/lib/api/adminApi";
+import { fromISO } from "@/app/lib/datetime";
 import {
   usePauseJob,
   useResumeJob,
@@ -108,11 +109,8 @@ function formatHourMinute(hour: string, minute: string): string {
 
 function formatDate(iso: string | null): string {
   if (!iso) return "Never";
-  const d = new Date(iso);
-  return d.toLocaleString("en-ZA", {
-    dateStyle: "short",
-    timeStyle: "medium",
-  });
+  const dt = fromISO(iso);
+  return dt.toFormat("yyyy/MM/dd, HH:mm:ss");
 }
 
 const MODULE_COLORS: Record<string, string> = {

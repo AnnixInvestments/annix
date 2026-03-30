@@ -644,7 +644,7 @@ export default function CpoDetailPage() {
                         {rt.ordered}
                       </td>
                       {deliveryHistory.deliveries.map((d) => {
-                        const delivery = rt.deliveries.find((rd) => rd.jobCardId === d.jobCardId);
+                        const delivery = rt.deliveries.find((rd) => rd.jtDnNumber === d.jtDnNumber);
                         return (
                           <td key={d.jobCardId} className="px-4 py-3 text-sm text-right">
                             {delivery ? (

@@ -40,6 +40,22 @@ jobs:
       id-token: write
       actions: read
     steps:
+      - name: Add eyes reaction
+        if: github.event_name == 'issue_comment'
+        env:
+          GH_TOKEN: ${{ secrets.PROJECT_TOKEN }}
+        run: |
+          gh api repos/${{ github.repository }}/issues/comments/${{ github.event.comment.id }}/reactions \
+            -f content=eyes --silent || true
+
+      - name: Add eyes reaction to issue
+        if: github.event_name == 'issues'
+        env:
+          GH_TOKEN: ${{ secrets.PROJECT_TOKEN }}
+        run: |
+          gh api repos/${{ github.repository }}/issues/${{ github.event.issue.number }}/reactions \
+            -f content=eyes --silent || true
+
       - name: Checkout repository
         uses: actions/checkout@v4
         with:

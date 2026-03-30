@@ -8,6 +8,20 @@ import { useVoiceDictation } from "@/app/hooks/useVoiceDictation";
 import { type FeedbackAuthContext, submitFeedbackWithAttachments } from "@/app/lib/api/feedbackApi";
 
 type FeedbackSource = "text" | "voice";
+type ResizeEdge = "n" | "e" | "w" | "s" | "nw" | "ne" | "sw" | "se" | null;
+
+const MIN_WIDTH = 320;
+const MIN_HEIGHT = 300;
+const DEFAULT_WIDTH = 340;
+const DEFAULT_HEIGHT = 420;
+const GEOMETRY_KEY = "feedback-widget-geometry";
+
+interface PanelGeometry {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
 
 interface Attachment {
   file: File;
@@ -17,6 +31,25 @@ interface Attachment {
 
 interface FeedbackWidgetProps {
   authContext: FeedbackAuthContext;
+}
+
+function savedGeometry(): PanelGeometry | null {
+  try {
+    const raw = localStorage.getItem(GEOMETRY_KEY);
+    return raw ? (JSON.parse(raw) as PanelGeometry) : null;
+  } catch {
+    return null;
+  }
+}
+
+function defaultPosition(): { x: number; y: number } {
+  if (typeof window === "undefined") {
+    return { x: 0, y: 0 };
+  }
+  return {
+    x: window.innerWidth - DEFAULT_WIDTH - 16,
+    y: window.innerHeight - DEFAULT_HEIGHT - 80,
+  };
 }
 
 export function FeedbackWidget(props: FeedbackWidgetProps) {
@@ -32,6 +65,132 @@ export function FeedbackWidget(props: FeedbackWidgetProps) {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const [position, setPosition] = useState(() => {
+    const geo = savedGeometry();
+    return geo ? { x: geo.x, y: geo.y } : defaultPosition();
+  });
+  const [size, setSize] = useState(() => {
+    const geo = savedGeometry();
+    return geo
+      ? { width: geo.width, height: geo.height }
+      : { width: DEFAULT_WIDTH, height: DEFAULT_HEIGHT };
+  });
+
+  const dragOffset = useRef({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [resizeEdge, setResizeEdge] = useState<ResizeEdge>(null);
+  const resizeStart = useRef({ mouseX: 0, mouseY: 0, width: 0, height: 0, panelX: 0, panelY: 0 });
+
+  const isInteracting = isDragging || resizeEdge !== null;
+
+  const handleDragStart = useCallback(
+    (e: React.MouseEvent) => {
+      e.preventDefault();
+      dragOffset.current = { x: e.clientX - position.x, y: e.clientY - position.y };
+      setIsDragging(true);
+    },
+    [position],
+  );
+
+  useEffect(() => {
+    if (!isDragging) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const x = Math.max(
+        0,
+        Math.min(e.clientX - dragOffset.current.x, window.innerWidth - size.width),
+      );
+      const y = Math.max(
+        0,
+        Math.min(e.clientY - dragOffset.current.y, window.innerHeight - size.height),
+      );
+      setPosition({ x, y });
+    };
+
+    const handleMouseUp = () => setIsDragging(false);
+
+    document.addEventListener("mousemove", handleMouseMove);
+    document.addEventListener("mouseup", handleMouseUp);
+    return () => {
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, [isDragging, size]);
+
+  const handleResizeStart = useCallback(
+    (edge: ResizeEdge) => (e: React.MouseEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      resizeStart.current = {
+        mouseX: e.clientX,
+        mouseY: e.clientY,
+        width: size.width,
+        height: size.height,
+        panelX: position.x,
+        panelY: position.y,
+      };
+      setResizeEdge(edge);
+    },
+    [size, position],
+  );
+
+  useEffect(() => {
+    if (!resizeEdge) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const { mouseX, mouseY, width, height, panelX, panelY } = resizeStart.current;
+      const dx = e.clientX - mouseX;
+      const dy = e.clientY - mouseY;
+
+      let newWidth = width;
+      let newHeight = height;
+      let newX = panelX;
+      let newY = panelY;
+
+      if (resizeEdge.includes("w")) {
+        newWidth = Math.max(MIN_WIDTH, width - dx);
+        newX = panelX + (width - newWidth);
+      } else if (resizeEdge.includes("e")) {
+        newWidth = Math.max(MIN_WIDTH, width + dx);
+      }
+
+      if (resizeEdge.includes("n")) {
+        newHeight = Math.max(MIN_HEIGHT, height - dy);
+        newY = panelY + (height - newHeight);
+      } else if (resizeEdge.includes("s")) {
+        newHeight = Math.max(MIN_HEIGHT, height + dy);
+      }
+
+      setSize({ width: newWidth, height: newHeight });
+      setPosition({ x: newX, y: newY });
+    };
+
+    const handleMouseUp = () => setResizeEdge(null);
+
+    document.addEventListener("mousemove", handleMouseMove);
+    document.addEventListener("mouseup", handleMouseUp);
+    return () => {
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, [resizeEdge]);
+
+  useEffect(() => {
+    if (isInteracting || !isExpanded) return;
+
+    const geometry: PanelGeometry = {
+      x: position.x,
+      y: position.y,
+      width: size.width,
+      height: size.height,
+    };
+    try {
+      localStorage.setItem(GEOMETRY_KEY, JSON.stringify(geometry));
+    } catch {
+      // storage full or unavailable
+    }
+  }, [position.x, position.y, size.width, size.height, isInteracting, isExpanded]);
 
   const handleTranscriptChange = useCallback((transcript: string, isFinal: boolean) => {
     if (isFinal) {
@@ -261,9 +420,55 @@ export function FeedbackWidget(props: FeedbackWidgetProps) {
   return (
     <div
       data-feedback-widget
-      className="fixed bottom-20 right-4 z-50 w-80 bg-white rounded-lg shadow-lg border border-gray-200 overflow-hidden"
+      className="fixed z-50 bg-white rounded-lg shadow-xl border border-gray-200 overflow-hidden flex flex-col"
+      style={{
+        left: position.x,
+        top: position.y,
+        width: size.width,
+        height: size.height,
+        userSelect: isInteracting ? "none" : undefined,
+      }}
     >
-      <div className="px-4 py-3 bg-blue-600 flex items-center justify-between">
+      {/* Resize edges */}
+      <div
+        className="absolute -top-1 left-3 right-3 h-2 cursor-n-resize z-10"
+        onMouseDown={handleResizeStart("n")}
+      />
+      <div
+        className="absolute -bottom-1 left-3 right-3 h-2 cursor-s-resize z-10"
+        onMouseDown={handleResizeStart("s")}
+      />
+      <div
+        className="absolute -left-1 top-3 bottom-3 w-2 cursor-w-resize z-10"
+        onMouseDown={handleResizeStart("w")}
+      />
+      <div
+        className="absolute -right-1 top-3 bottom-3 w-2 cursor-e-resize z-10"
+        onMouseDown={handleResizeStart("e")}
+      />
+      {/* Resize corners */}
+      <div
+        className="absolute -top-1 -left-1 w-3 h-3 cursor-nw-resize z-20"
+        onMouseDown={handleResizeStart("nw")}
+      />
+      <div
+        className="absolute -top-1 -right-1 w-3 h-3 cursor-ne-resize z-20"
+        onMouseDown={handleResizeStart("ne")}
+      />
+      <div
+        className="absolute -bottom-1 -left-1 w-3 h-3 cursor-sw-resize z-20"
+        onMouseDown={handleResizeStart("sw")}
+      />
+      <div
+        className="absolute -bottom-1 -right-1 w-3 h-3 cursor-se-resize z-20"
+        onMouseDown={handleResizeStart("se")}
+      />
+
+      {/* Header — draggable */}
+      <div
+        className="px-4 py-3 bg-blue-600 flex items-center justify-between cursor-grab active:cursor-grabbing shrink-0"
+        onMouseDown={handleDragStart}
+      >
         <div className="flex items-center gap-2">
           <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path
@@ -275,7 +480,11 @@ export function FeedbackWidget(props: FeedbackWidgetProps) {
           </svg>
           <span className="font-medium text-white">Send Feedback</span>
         </div>
-        <button onClick={handleClose} className="text-white/80 hover:text-white">
+        <button
+          onClick={handleClose}
+          onMouseDown={(e) => e.stopPropagation()}
+          className="text-white/80 hover:text-white"
+        >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path
               strokeLinecap="round"
@@ -287,7 +496,8 @@ export function FeedbackWidget(props: FeedbackWidgetProps) {
         </button>
       </div>
 
-      <div className="p-4">
+      {/* Body */}
+      <div className="p-4 flex-1 overflow-y-auto">
         {showSuccess ? (
           <div className="text-center py-4">
             <svg

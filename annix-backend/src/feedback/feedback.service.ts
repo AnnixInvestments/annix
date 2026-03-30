@@ -7,6 +7,7 @@ import { EmailService } from "../email/email.service";
 import { formatDateTime, now } from "../lib/datetime";
 import { ConversationType, RelatedEntityType } from "../messaging/entities";
 import { MessagingService } from "../messaging/messaging.service";
+import { PuppeteerPoolService } from "../shared/services/puppeteer-pool.service";
 import { type IStorageService, STORAGE_SERVICE, StorageArea } from "../storage/storage.interface";
 import { User } from "../user/entities/user.entity";
 import { SubmitFeedbackDto, SubmitFeedbackResponseDto } from "./dto";
@@ -49,6 +50,7 @@ export class FeedbackService {
     @Inject(STORAGE_SERVICE)
     private readonly storageService: IStorageService,
     private readonly feedbackGithubService: FeedbackGithubService,
+    private readonly puppeteerPool: PuppeteerPoolService,
   ) {}
 
   async submitFeedback(
@@ -123,7 +125,12 @@ export class FeedbackService {
 
     const savedFeedback = await this.feedbackRepository.save(feedback);
 
-    const attachments = await this.uploadAttachments(savedFeedback.id, files);
+    const hasAutoScreenshot = files.some((f) => f.originalname === "auto-screenshot.png");
+    const allFiles = hasAutoScreenshot
+      ? files
+      : [...files, ...(await this.captureServerScreenshot(dto.pageUrl))];
+
+    const attachments = await this.uploadAttachments(savedFeedback.id, allFiles);
 
     const conversationId = await this.createGeneralFeedbackConversation(
       savedFeedback,
@@ -436,6 +443,51 @@ ${feedback.content}
       dto.source,
       dto.pageUrl,
     );
+  }
+
+  private async captureServerScreenshot(pageUrl: string | null): Promise<Express.Multer.File[]> {
+    if (!pageUrl) {
+      return [];
+    }
+
+    try {
+      const frontendUrl =
+        this.configService.get<string>("FRONTEND_URL") || "https://annix-app.fly.dev";
+      const fullUrl = pageUrl.startsWith("http") ? pageUrl : `${frontendUrl}${pageUrl}`;
+
+      const screenshotBuffer = await this.puppeteerPool.executeWithPage({
+        url: fullUrl,
+        waitUntil: "networkidle2",
+        timeout: 20000,
+        execute: async (page) => {
+          await page.setViewport({ width: 1280, height: 800 });
+          return Buffer.from(await page.screenshot({ type: "png", fullPage: false }));
+        },
+      });
+
+      const multerFile: Express.Multer.File = {
+        fieldname: "files",
+        originalname: "auto-screenshot.png",
+        encoding: "7bit",
+        mimetype: "image/png",
+        buffer: screenshotBuffer,
+        size: screenshotBuffer.length,
+        stream: null as never,
+        destination: "",
+        filename: "auto-screenshot.png",
+        path: "",
+      };
+
+      this.logger.log(
+        `Server-side screenshot captured for ${pageUrl} (${screenshotBuffer.length} bytes)`,
+      );
+      return [multerFile];
+    } catch (error) {
+      this.logger.warn(
+        `Server-side screenshot failed for ${pageUrl}: ${error instanceof Error ? error.message : "Unknown"}`,
+      );
+      return [];
+    }
   }
 
   private createGithubIssueAsync(feedbackId: number): void {
