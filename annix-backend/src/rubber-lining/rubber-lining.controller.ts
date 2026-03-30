@@ -2939,11 +2939,20 @@ Formula: totalPrice = totalKg × salePricePerKg
     @Query("dateTo") dateTo?: string,
     @Query("excludeExported") excludeExported?: string,
   ): Promise<{ invoiceCount: number; lineItemCount: number; totalAmount: number }> {
-    return this.rubberSageAdapterService.previewCount({
-      dateFrom: dateFrom || undefined,
-      dateTo: dateTo || undefined,
-      excludeExported: excludeExported !== "false",
-    });
+    const context = { companyId: null, appKey: "au-rubber" };
+    const preview = await this.rubberSageAdapterService.previewCount(
+      {
+        dateFrom: dateFrom || undefined,
+        dateTo: dateTo || undefined,
+        excludeExported: excludeExported !== "false",
+      },
+      context,
+    );
+    return {
+      invoiceCount: preview.count,
+      lineItemCount: preview.lineItemCount,
+      totalAmount: preview.totalAmount,
+    };
   }
 
   @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
@@ -2959,17 +2968,20 @@ Formula: totalPrice = totalKg × salePricePerKg
     @Query("excludeExported") excludeExported?: string,
     @Res() res?: Response,
   ): Promise<void> {
+    const context = { companyId: null, appKey: "au-rubber" };
     const filters: SageExportFilterDto = {
       dateFrom: dateFrom || undefined,
       dateTo: dateTo || undefined,
       excludeExported: excludeExported !== "false",
     };
 
-    const { invoices, invoiceIds } =
-      await this.rubberSageAdapterService.exportableInvoices(filters);
+    const { invoices, entityIds } = await this.rubberSageAdapterService.exportableInvoices(
+      filters,
+      context,
+    );
     const csvBuffer = this.sageExportService.generateCsv(invoices);
 
-    await this.rubberSageAdapterService.markExported(invoiceIds);
+    await this.rubberSageAdapterService.markExported(entityIds, context);
 
     res!.set({
       "Content-Type": "text/csv",
@@ -3294,12 +3306,21 @@ Formula: totalPrice = totalKg × salePricePerKg
     @Query("dateTo") dateTo?: string,
     @Query("excludeExported") excludeExported?: string,
   ): Promise<{ invoiceCount: number; lineItemCount: number; totalAmount: number }> {
-    return this.rubberSageAdapterService.previewCount({
-      dateFrom: dateFrom || undefined,
-      dateTo: dateTo || undefined,
-      excludeExported: excludeExported !== "false",
-      invoiceType: "CUSTOMER",
-    });
+    const context = { companyId: null, appKey: "au-rubber" };
+    const preview = await this.rubberSageAdapterService.previewCount(
+      {
+        dateFrom: dateFrom || undefined,
+        dateTo: dateTo || undefined,
+        excludeExported: excludeExported !== "false",
+        invoiceType: "CUSTOMER",
+      },
+      context,
+    );
+    return {
+      invoiceCount: preview.count,
+      lineItemCount: preview.lineItemCount,
+      totalAmount: preview.totalAmount,
+    };
   }
 
   @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
@@ -3315,6 +3336,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     @Query("excludeExported") excludeExported?: string,
     @Res() res?: Response,
   ): Promise<void> {
+    const context = { companyId: null, appKey: "au-rubber" };
     const filters: SageExportFilterDto = {
       dateFrom: dateFrom || undefined,
       dateTo: dateTo || undefined,
@@ -3322,11 +3344,13 @@ Formula: totalPrice = totalKg × salePricePerKg
       invoiceType: "CUSTOMER",
     };
 
-    const { invoices, invoiceIds } =
-      await this.rubberSageAdapterService.exportableInvoices(filters);
+    const { invoices, entityIds } = await this.rubberSageAdapterService.exportableInvoices(
+      filters,
+      context,
+    );
     const csvBuffer = this.sageExportService.generateCsv(invoices);
 
-    await this.rubberSageAdapterService.markExported(invoiceIds);
+    await this.rubberSageAdapterService.markExported(entityIds, context);
 
     res!.set({
       "Content-Type": "text/csv",

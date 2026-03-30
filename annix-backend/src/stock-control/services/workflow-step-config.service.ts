@@ -382,6 +382,8 @@ export class WorkflowStepConfigService {
         branchColor: step.branchColor,
         phaseActionLabels: step.phaseActionLabels,
         stepOutcomes: step.stepOutcomes,
+        branchType: step.branchType,
+        rejoinAtStep: step.rejoinAtStep,
       }),
     );
 

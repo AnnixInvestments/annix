@@ -3,7 +3,13 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { In, Repository } from "typeorm";
 import { now } from "../lib/datetime";
 import type { SageExportFilterDto } from "../sage-export/dto/sage-export.dto";
-import type { SageExportInvoice, SageExportLineItem } from "../sage-export/interfaces/sage-invoice";
+import type { SageExportLineItem } from "../sage-export/interfaces/sage-invoice";
+import type {
+  SageAdapterContext,
+  SageExportPreview,
+  SageExportResult,
+  SageInvoiceAdapter,
+} from "../sage-export/interfaces/sage-invoice-adapter.interface";
 import {
   RubberTaxInvoice,
   TaxInvoiceStatus,
@@ -14,7 +20,7 @@ const DEFAULT_VAT_RATE = 15;
 const DEFAULT_ACCOUNT_CODE = "5000";
 
 @Injectable()
-export class RubberSageInvoiceAdapterService {
+export class RubberSageInvoiceAdapterService implements SageInvoiceAdapter {
   constructor(
     @InjectRepository(RubberTaxInvoice)
     private readonly invoiceRepo: Repository<RubberTaxInvoice>,
@@ -22,7 +28,8 @@ export class RubberSageInvoiceAdapterService {
 
   async exportableInvoices(
     filters: SageExportFilterDto,
-  ): Promise<{ invoices: SageExportInvoice[]; invoiceIds: number[] }> {
+    _context: SageAdapterContext,
+  ): Promise<SageExportResult> {
     const invoiceType =
       filters.invoiceType === "CUSTOMER" ? TaxInvoiceType.CUSTOMER : TaxInvoiceType.SUPPLIER;
 
@@ -48,14 +55,14 @@ export class RubberSageInvoiceAdapterService {
 
     const entities = await qb.getMany();
 
-    const invoices = entities.map((entity) => toSageInvoice(entity));
-    const invoiceIds = entities.map((entity) => entity.id);
-
-    return { invoices, invoiceIds };
+    return {
+      invoices: entities.map((entity) => toSageInvoice(entity)),
+      entityIds: entities.map((entity) => entity.id),
+    };
   }
 
-  async markExported(invoiceIds: number[]): Promise<void> {
-    if (invoiceIds.length === 0) {
+  async markExported(entityIds: number[], _context: SageAdapterContext): Promise<void> {
+    if (entityIds.length === 0) {
       return;
     }
 
@@ -63,29 +70,25 @@ export class RubberSageInvoiceAdapterService {
       .createQueryBuilder()
       .update(RubberTaxInvoice)
       .set({ exportedToSageAt: now().toJSDate() } as unknown as RubberTaxInvoice)
-      .where({ id: In(invoiceIds) })
+      .where({ id: In(entityIds) })
       .execute();
   }
 
-  async previewCount(filters: SageExportFilterDto): Promise<{
-    invoiceCount: number;
-    lineItemCount: number;
-    totalAmount: number;
-  }> {
-    const { invoices } = await this.exportableInvoices(filters);
-
-    const lineItemCount = invoices.reduce((sum, inv) => sum + inv.lineItems.length, 0);
-    const totalAmount = invoices.reduce((sum, inv) => sum + (inv.totalAmount ?? 0), 0);
+  async previewCount(
+    filters: SageExportFilterDto,
+    context: SageAdapterContext,
+  ): Promise<SageExportPreview> {
+    const { invoices } = await this.exportableInvoices(filters, context);
 
     return {
-      invoiceCount: invoices.length,
-      lineItemCount,
-      totalAmount,
+      count: invoices.length,
+      lineItemCount: invoices.reduce((sum, inv) => sum + inv.lineItems.length, 0),
+      totalAmount: invoices.reduce((sum, inv) => sum + (inv.totalAmount ?? 0), 0),
     };
   }
 }
 
-function toSageInvoice(entity: RubberTaxInvoice): SageExportInvoice {
+function toSageInvoice(entity: RubberTaxInvoice) {
   const extractedItems = entity.extractedData?.lineItems ?? [];
 
   const lineItems: SageExportLineItem[] =

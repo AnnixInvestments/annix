@@ -65,7 +65,8 @@ export class InvoicesController {
   @Get("export/sage-preview")
   @ApiOperation({ summary: "Preview Sage export: count and totals" })
   async sageExportPreview(@Req() req: any, @Query() filters: SageExportFilterDto) {
-    return this.sageAdapter.previewCount(req.user.companyId, filters);
+    const context = { companyId: req.user.companyId, appKey: "stock-control" };
+    return this.sageAdapter.previewCount(filters, context);
   }
 
   @StockControlRoles("manager", "admin")
@@ -77,12 +78,10 @@ export class InvoicesController {
     @Query() filters: SageExportFilterDto,
     @Res() res: Response,
   ) {
-    const { invoices, invoiceIds } = await this.sageAdapter.exportableInvoices(
-      req.user.companyId,
-      filters,
-    );
+    const context = { companyId: req.user.companyId, appKey: "stock-control" };
+    const { invoices, entityIds } = await this.sageAdapter.exportableInvoices(filters, context);
     const csv = this.sageExportService.generateCsv(invoices);
-    await this.sageAdapter.markExported(req.user.companyId, invoiceIds);
+    await this.sageAdapter.markExported(entityIds, context);
 
     res.setHeader("Content-Type", "text/csv");
     res.setHeader("Content-Disposition", 'attachment; filename="sage-export.csv"');

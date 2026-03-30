@@ -24,6 +24,7 @@ import { InboundEmailModule } from "./inbound-email/inbound-email.module";
 import { MessagingModule } from "./messaging/messaging.module";
 import { NominalOutsideDiameterMmModule } from "./nominal-outside-diameter-mm/nominal-outside-diameter-mm.module";
 import { PipeSteelWorkModule } from "./pipe-steel-work/pipe-steel-work.module";
+import { PlatformModule } from "./platform/platform.module";
 import { PublicModule } from "./public/public.module";
 import { PvcModule } from "./pvc/pvc.module";
 import { RbacModule } from "./rbac/rbac.module";
@@ -107,6 +108,7 @@ import { WorkflowModule } from "./workflow/workflow.module";
 
     UserSyncModule,
 
+    PlatformModule,
     HeavyFeaturesModule,
 
     ...(process.env.DISABLE_COMPLY_SA === "true" ? [] : [ComplySaModule]),

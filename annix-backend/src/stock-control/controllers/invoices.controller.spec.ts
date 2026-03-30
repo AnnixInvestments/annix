@@ -121,14 +121,15 @@ describe("InvoicesController", () => {
   });
 
   describe("GET /export/sage-preview", () => {
-    it("should delegate to sageAdapter.previewCount with filters", async () => {
+    it("should delegate to sageAdapter.previewCount with filters and context", async () => {
       const filters = { from: "2026-01-01", to: "2026-01-31" } as any;
-      const preview = { count: 5, total: 10000 };
+      const preview = { count: 5, lineItemCount: 10, totalAmount: 10000 };
       sageAdapter.previewCount.mockResolvedValue(preview as any);
 
       const result = await controller.sageExportPreview(mockReq(), filters);
 
-      expect(sageAdapter.previewCount).toHaveBeenCalledWith(1, filters);
+      const expectedContext = { companyId: 1, appKey: "stock-control" };
+      expect(sageAdapter.previewCount).toHaveBeenCalledWith(filters, expectedContext);
       expect(result).toBe(preview);
     });
   });
@@ -137,8 +138,8 @@ describe("InvoicesController", () => {
     it("should generate CSV, mark exported, and send response", async () => {
       const filters = {} as any;
       const invoices = [{ id: 1 }];
-      const invoiceIds = [1];
-      sageAdapter.exportableInvoices.mockResolvedValue({ invoices, invoiceIds } as any);
+      const entityIds = [1];
+      sageAdapter.exportableInvoices.mockResolvedValue({ invoices, entityIds } as any);
       sageExportService.generateCsv.mockReturnValue(Buffer.from("csv-data"));
 
       const res = {
@@ -148,9 +149,10 @@ describe("InvoicesController", () => {
 
       await controller.sageExportCsv(mockReq(), filters, res);
 
-      expect(sageAdapter.exportableInvoices).toHaveBeenCalledWith(1, filters);
+      const expectedContext = { companyId: 1, appKey: "stock-control" };
+      expect(sageAdapter.exportableInvoices).toHaveBeenCalledWith(filters, expectedContext);
       expect(sageExportService.generateCsv).toHaveBeenCalledWith(invoices);
-      expect(sageAdapter.markExported).toHaveBeenCalledWith(1, invoiceIds);
+      expect(sageAdapter.markExported).toHaveBeenCalledWith(entityIds, expectedContext);
       expect(res.setHeader).toHaveBeenCalledWith("Content-Type", "text/csv");
       expect(res.setHeader).toHaveBeenCalledWith(
         "Content-Disposition",

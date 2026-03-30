@@ -588,23 +588,33 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
         });
 
         if (bp.rejoinAtStep) {
-          const hostBranch = belowBranches.find((b) =>
-            b.bgSteps.some((bg) => bg.stepKey === bp.rejoinAtStep),
-          );
-          const branchPos = hostBranch ? positions[hostBranch.triggerFgKey] : null;
+          const rejoinNode = bgNodeRefs.current[bp.rejoinAtStep];
+          let rx: number | null = null;
+          let ry: number | null = null;
 
-          if (hostBranch && branchPos) {
-            const branchW = rect.width - branchPos.left - branchPos.right;
-            const stepIdx = hostBranch.bgSteps.findIndex((bg) => bg.stepKey === bp.rejoinAtStep);
-            const stepCount = hostBranch.bgSteps.length;
-            const rx = branchPos.left + ((stepIdx + 0.5) / stepCount) * branchW;
+          if (rejoinNode) {
+            const rjRect = rejoinNode.getBoundingClientRect();
+            rx = rjRect.left + rjRect.width / 2 - rect.left;
+            ry = rjRect.top + rjRect.height / 2 - rect.top;
+          } else {
+            const hostBranch = belowBranches.find((b) =>
+              b.bgSteps.some((bg) => bg.stepKey === bp.rejoinAtStep),
+            );
+            const branchPos = hostBranch ? positions[hostBranch.triggerFgKey] : null;
+            if (hostBranch && branchPos) {
+              const branchW = rect.width - branchPos.left - branchPos.right;
+              const stepIdx = hostBranch.bgSteps.findIndex((bg) => bg.stepKey === bp.rejoinAtStep);
+              const stepCount = hostBranch.bgSteps.length;
+              rx = branchPos.left + ((stepIdx + 0.5) / stepCount) * branchW;
+              const branchContainerEl = container.querySelector("[data-branch-container]");
+              const bcRect = branchContainerEl ? branchContainerEl.getBoundingClientRect() : null;
+              const bcTop = bcRect ? bcRect.top - rect.top : ty + 40;
+              const lane = branchLanes[hostBranch.triggerFgKey] || 0;
+              ry = bcTop + lane * 52 + 10;
+            }
+          }
 
-            const branchContainerEl = container.querySelector("[data-branch-container]");
-            const bcRect = branchContainerEl ? branchContainerEl.getBoundingClientRect() : null;
-            const bcTop = bcRect ? bcRect.top - rect.top : ty + 40;
-            const lane = branchLanes[hostBranch.triggerFgKey] || 0;
-            const ry = bcTop + lane * 52 + 10;
-
+          if (rx !== null && ry !== null) {
             const mergeColor = bpComplete ? "#f59e0b" : "#d1d5db";
             const bottomY = by + 30;
             paths.push({
@@ -1830,38 +1840,44 @@ export function WorkflowStepper(props: WorkflowStepperProps) {
   const docUploadApproval = approvalByStep["document_upload"];
   const docUploadFromBg = backgroundSteps.find((bg) => bg.stepKey === "document_upload");
 
-  const effectiveBgSteps: BackgroundStepStatus[] = isDocUploadFg
-    ? backgroundSteps
-    : [
-        {
-          ...(docUploadFromBg || {
-            stepKey: "document_upload",
-            label: "Doc Upload",
-            completedByName: null,
-            notes: null,
-            actionLabel: null,
-            completionType: null,
-            branchColor: null,
-            stepOutcomes: null,
-            rejoinAtStep: null,
-          }),
-          triggerAfterStep: null,
-          completedAt: docUploadFromBg?.completedAt || docUploadApproval?.approvedAt || null,
-          completedByName:
-            docUploadFromBg?.completedByName || docUploadApproval?.approvedByName || null,
-        },
-        ...backgroundSteps.filter((bg) => bg.stepKey !== "document_upload"),
-      ];
+  const effectiveBgSteps: BackgroundStepStatus[] = useMemo(
+    () =>
+      isDocUploadFg
+        ? backgroundSteps
+        : [
+            {
+              ...(docUploadFromBg || {
+                stepKey: "document_upload",
+                label: "Doc Upload",
+                completedByName: null,
+                notes: null,
+                actionLabel: null,
+                completionType: null,
+                branchColor: null,
+                stepOutcomes: null,
+                rejoinAtStep: null,
+              }),
+              triggerAfterStep: null,
+              completedAt: docUploadFromBg?.completedAt || docUploadApproval?.approvedAt || null,
+              completedByName:
+                docUploadFromBg?.completedByName || docUploadApproval?.approvedByName || null,
+            },
+            ...backgroundSteps.filter((bg) => bg.stepKey !== "document_upload"),
+          ],
+    [isDocUploadFg, backgroundSteps, docUploadFromBg, docUploadApproval],
+  );
 
-  const fgKeySet = new Set(allSteps.map((s) => s.key));
-  const bgKeySet = new Set(effectiveBgSteps.map((s) => s.stepKey));
-  const bgByTrigger = effectiveBgSteps.reduce<Record<string, BackgroundStepStatus[]>>((acc, bg) => {
-    const raw = bg.triggerAfterStep;
-    const isFgTrigger = raw !== null && fgKeySet.has(raw);
-    const isBgChain = raw !== null && bgKeySet.has(raw);
-    const trigger = isFgTrigger || isBgChain ? raw : firstFgKey;
-    return { ...acc, [trigger]: [...(acc[trigger] || []), bg] };
-  }, {});
+  const bgByTrigger = useMemo(() => {
+    const fgKeys = new Set(allSteps.map((s) => s.key));
+    const bgKeys = new Set(effectiveBgSteps.map((s) => s.stepKey));
+    return effectiveBgSteps.reduce<Record<string, BackgroundStepStatus[]>>((acc, bg) => {
+      const raw = bg.triggerAfterStep;
+      const isFgTrigger = raw !== null && fgKeys.has(raw);
+      const isBgChain = raw !== null && bgKeys.has(raw);
+      const trigger = isFgTrigger || isBgChain ? raw : firstFgKey;
+      return { ...acc, [trigger]: [...(acc[trigger] || []), bg] };
+    }, {});
+  }, [effectiveBgSteps, allSteps, firstFgKey]);
 
   const [diagramKey, setDiagramKey] = useState(0);
   const [mapHidden, setMapHidden] = useState(false);
