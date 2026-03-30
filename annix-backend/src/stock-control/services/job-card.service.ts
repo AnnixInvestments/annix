@@ -59,16 +59,20 @@ export class JobCardService {
     page: number = 1,
     limit: number = 50,
   ): Promise<JobCard[]> {
-    const where: Record<string, unknown> = { companyId, supersededById: IsNull() };
+    const qb = this.jobCardRepo
+      .createQueryBuilder("jc")
+      .where("jc.companyId = :companyId", { companyId })
+      .andWhere("jc.supersededById IS NULL")
+      .andWhere("(jc.parentJobCardId IS NULL OR jc.cpoId IS NOT NULL)")
+      .orderBy("jc.createdAt", "DESC")
+      .take(limit)
+      .skip((page - 1) * limit);
+
     if (status) {
-      where.status = status;
+      qb.andWhere("jc.status = :status", { status });
     }
-    const jobCards = await this.jobCardRepo.find({
-      where,
-      order: { createdAt: "DESC" },
-      take: limit,
-      skip: (page - 1) * limit,
-    });
+
+    const jobCards = await qb.getMany();
 
     const idsWithoutJtDn = jobCards.filter((jc) => !jc.jtDnNumber).map((jc) => jc.id);
 
