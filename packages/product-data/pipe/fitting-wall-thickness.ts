@@ -77,6 +77,36 @@ export const FITTING_CLASS_WALL_THICKNESS: Record<FittingClass, Record<number, n
   },
 };
 
+export type ForgedFittingClass = 2000 | 3000 | 6000 | 9000;
+
+export interface ForgedClassScheduleMapping {
+  pressureClass: ForgedFittingClass;
+  equivalentSchedule: string;
+  connectionTypes: string[];
+  maxNbMm: number;
+}
+
+export const FORGED_CLASS_SCHEDULE_MAPPINGS: ForgedClassScheduleMapping[] = [
+  { pressureClass: 2000, equivalentSchedule: "Sch 80/XS", connectionTypes: ["THD"], maxNbMm: 100 },
+  {
+    pressureClass: 3000,
+    equivalentSchedule: "Sch 80/XS",
+    connectionTypes: ["SW", "THD"],
+    maxNbMm: 100,
+  },
+  {
+    pressureClass: 6000,
+    equivalentSchedule: "Sch 160",
+    connectionTypes: ["SW", "THD"],
+    maxNbMm: 100,
+  },
+  { pressureClass: 9000, equivalentSchedule: "XXS", connectionTypes: ["SW"], maxNbMm: 50 },
+];
+
+export const forgedClassToSchedule = (pressureClass: ForgedFittingClass): string | null =>
+  FORGED_CLASS_SCHEDULE_MAPPINGS.find((m) => m.pressureClass === pressureClass)
+    ?.equivalentSchedule || null;
+
 export const fittingClassWallThickness = (
   fittingClass: FittingClass | string | null,
   nb: number,

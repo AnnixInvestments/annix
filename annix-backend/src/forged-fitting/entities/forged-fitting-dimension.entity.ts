@@ -84,4 +84,22 @@ export class ForgedFittingDimension {
     nullable: true,
   })
   massKg: number | null;
+
+  @Column({
+    name: "socket_depth_mm",
+    type: "decimal",
+    precision: 10,
+    scale: 2,
+    nullable: true,
+  })
+  socketDepthMm: number | null;
+
+  @Column({
+    name: "min_wall_thickness_mm",
+    type: "decimal",
+    precision: 10,
+    scale: 2,
+    nullable: true,
+  })
+  minWallThicknessMm: number | null;
 }

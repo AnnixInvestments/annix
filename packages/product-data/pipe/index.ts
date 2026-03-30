@@ -20,10 +20,16 @@ export {
   PIPE_END_OPTIONS,
   REDUCER_END_OPTIONS,
 } from "./end-options";
-export type { FittingClass } from "./fitting-wall-thickness";
+export type {
+  FittingClass,
+  ForgedClassScheduleMapping,
+  ForgedFittingClass,
+} from "./fitting-wall-thickness";
 export {
   FITTING_CLASS_WALL_THICKNESS,
+  FORGED_CLASS_SCHEDULE_MAPPINGS,
   fittingClassWallThickness,
+  forgedClassToSchedule,
 } from "./fitting-wall-thickness";
 export type { ReducerSizeCombination } from "./reducer-sizes";
 export {
