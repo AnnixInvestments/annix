@@ -44,6 +44,16 @@ import {
   useAllFlangeTypes,
   useAllFlangeTypeWeights,
   useAllRetainingRingWeights,
+  useAnsiFittingDimensions,
+  useAnsiFittingSchedules,
+  useAnsiFittingSizes,
+  useAnsiFittingTypes,
+  useForgedFittingDimensions,
+  useForgedFittingSeries,
+  useForgedFittingSizes,
+  useForgedFittingTypes,
+  useMalleableFittingSizes,
+  useMalleableFittingTypes,
   useNbToOdMap,
 } from "@/app/lib/query/hooks";
 import type { GlobalSpecs, MasterData } from "@/app/lib/types/rfqTypes";
@@ -146,6 +156,55 @@ function FittingFormComponent({
   const { data: allWeights = [] } = useAllFlangeTypeWeights();
   const { data: allRetainingRings = [] } = useAllRetainingRingWeights();
   const { data: allFlangeTypes = [] } = useAllFlangeTypes();
+
+  const effectiveFittingStandard = useMemo(() => {
+    if (entry.specs?.fittingStandard) return entry.specs.fittingStandard;
+    const isSABS719Steel =
+      (entry.specs?.steelSpecificationId || globalSpecs?.steelSpecificationId) === 8;
+    return isSABS719Steel ? "SABS719" : "SABS62";
+  }, [
+    entry.specs?.fittingStandard,
+    entry.specs?.steelSpecificationId,
+    globalSpecs?.steelSpecificationId,
+  ]);
+
+  const isAnsiStandard = effectiveFittingStandard === "ASME_B16_9";
+  const isForgedStandard = effectiveFittingStandard === "ASME_B16_11";
+  const isMalleableStandard = effectiveFittingStandard === "BS_143";
+
+  const { data: ansiFittingTypes = [] } = useAnsiFittingTypes();
+  const { data: ansiSchedules = [] } = useAnsiFittingSchedules(
+    isAnsiStandard ? entry.specs?.fittingType || null : null,
+  );
+  const { data: ansiSizes = [] } = useAnsiFittingSizes(
+    isAnsiStandard ? entry.specs?.fittingType || null : null,
+    isAnsiStandard ? entry.specs?.ansiSchedule || undefined : undefined,
+  );
+  const { data: ansiDimensionData } = useAnsiFittingDimensions(
+    isAnsiStandard ? entry.specs?.fittingType || null : null,
+    isAnsiStandard ? entry.specs?.nominalDiameterMm || null : null,
+    isAnsiStandard ? entry.specs?.ansiSchedule || null : null,
+  );
+
+  const { data: forgedFittingTypes = [] } = useForgedFittingTypes();
+  const { data: forgedSeries = [] } = useForgedFittingSeries();
+  const { data: forgedSizes = [] } = useForgedFittingSizes(
+    isForgedStandard ? entry.specs?.fittingType || null : null,
+    isForgedStandard ? entry.specs?.forgedPressureClass || null : null,
+    isForgedStandard ? entry.specs?.forgedConnectionType || null : null,
+  );
+  const { data: forgedDimensionData } = useForgedFittingDimensions(
+    isForgedStandard ? entry.specs?.fittingType || null : null,
+    isForgedStandard ? entry.specs?.nominalDiameterMm || null : null,
+    isForgedStandard ? entry.specs?.forgedPressureClass || null : null,
+    isForgedStandard ? entry.specs?.forgedConnectionType || null : null,
+  );
+
+  const { data: malleableFittingTypes = [] } = useMalleableFittingTypes();
+  const { data: malleableSizes = [] } = useMalleableFittingSizes(
+    isMalleableStandard ? entry.specs?.fittingType || null : null,
+    isMalleableStandard ? entry.specs?.malleablePressureClass || null : null,
+  );
 
   const [flangeSpecs, setFlangeSpecs] = useState<FlangeSpecData | null>(null);
   const [dimensionsUnavailable, setDimensionsUnavailable] = useState(false);
@@ -877,8 +936,45 @@ function FittingFormComponent({
                 Fitting Specifications
               </h4>
               <div
-                className={`grid grid-cols-1 sm:grid-cols-2 gap-3 ${isReducer ? "md:grid-cols-5" : "md:grid-cols-4"}`}
+                className={`grid grid-cols-1 sm:grid-cols-2 gap-3 ${isReducer ? "md:grid-cols-6" : isForgedStandard ? "md:grid-cols-6" : "md:grid-cols-5"}`}
               >
+                {/* Fitting Standard */}
+                <div>
+                  <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">
+                    Fitting Standard
+                  </label>
+                  <Select
+                    id={`fitting-standard-${entry.id}`}
+                    value={effectiveFittingStandard}
+                    onChange={(standard) => {
+                      if (!standard) return;
+                      onUpdateEntry(entry.id, {
+                        specs: {
+                          ...entry.specs,
+                          fittingStandard: standard,
+                          fittingType: null,
+                          nominalDiameterMm: null,
+                          ansiSchedule: null,
+                          forgedPressureClass: null,
+                          forgedConnectionType: null,
+                          malleablePressureClass: null,
+                          pipeLengthAMm: null,
+                          pipeLengthBMm: null,
+                          scheduleNumber: null,
+                          wallThicknessMm: null,
+                        },
+                      });
+                    }}
+                    options={[
+                      { value: "SABS62", label: "SABS 62 (Cast)" },
+                      { value: "SABS719", label: "SABS 719 (Fabricated)" },
+                      { value: "ASME_B16_9", label: "ASME B16.9 (Butt-Weld)" },
+                      { value: "ASME_B16_11", label: "ASME B16.11 (Forged)" },
+                      { value: "BS_143", label: "BS 143 (Malleable Iron)" },
+                    ]}
+                  />
+                </div>
+
                 {/* Fitting Type */}
                 <div>
                   <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">
@@ -912,10 +1008,29 @@ function FittingFormComponent({
                       { value: "ECCENTRIC_REDUCER", label: "Eccentric Reducer" },
                       { value: "OFFSET_BEND", label: "Offset Bend" },
                     ];
-                    const options =
-                      effectiveStandard === "SABS62"
-                        ? [...sabs62Options, ...commonOptions]
-                        : [...sabs719Options, ...commonOptions];
+                    const ansiOptions = ansiFittingTypes.map((t) => ({
+                      value: t.code,
+                      label: t.name,
+                    }));
+                    const forgedOptions = forgedFittingTypes.map((t) => ({
+                      value: t.code,
+                      label: t.name,
+                    }));
+                    const malleableOptions = malleableFittingTypes.map((t) => ({
+                      value: t,
+                      label: t.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()),
+                    }));
+                    const optionsByStandard: Record<string, { value: string; label: string }[]> = {
+                      SABS62: [...sabs62Options, ...commonOptions],
+                      SABS719: [...sabs719Options, ...commonOptions],
+                      ASME_B16_9: ansiOptions,
+                      ASME_B16_11: forgedOptions,
+                      BS_143: malleableOptions,
+                    };
+                    const options = optionsByStandard[effectiveStandard] || [
+                      ...sabs62Options,
+                      ...commonOptions,
+                    ];
 
                     return (
                       <Select
@@ -1099,10 +1214,16 @@ function FittingFormComponent({
                           (specs.steelSpecificationId || globalSpecs?.steelSpecificationId) === 8;
                         const effectiveStandard =
                           specs.fittingStandard || (isSABS719 ? "SABS719" : "SABS62");
-                        const sizes =
-                          effectiveStandard === "SABS719"
-                            ? [...SABS719_FITTING_SIZES]
-                            : [...SABS62_FITTING_SIZES];
+                        const sizesByStandard: Record<string, number[]> = {
+                          SABS62: [...SABS62_FITTING_SIZES],
+                          SABS719: [...SABS719_FITTING_SIZES],
+                          ASME_B16_9: [...ansiSizes],
+                          ASME_B16_11: [...forgedSizes],
+                          BS_143: [...malleableSizes],
+                        };
+                        const sizes = sizesByStandard[effectiveStandard] || [
+                          ...SABS62_FITTING_SIZES,
+                        ];
                         const options = sizes.map((nb: number) => ({
                           value: String(nb),
                           label: `${nb}mm`,
@@ -1276,15 +1397,18 @@ function FittingFormComponent({
                       {(() => {
                         const isSABS719 =
                           (specs.steelSpecificationId || globalSpecs?.steelSpecificationId) === 8;
-                        const effectiveStandard =
-                          specs.fittingStandard || (isSABS719 ? "SABS719" : "SABS62");
-                        const sizes =
-                          effectiveStandard === "SABS719"
-                            ? [...SABS719_FITTING_SIZES]
-                            : [...SABS62_FITTING_SIZES];
+                        const eff = specs.fittingStandard || (isSABS719 ? "SABS719" : "SABS62");
+                        const sizesByStd: Record<string, number[]> = {
+                          SABS62: [...SABS62_FITTING_SIZES],
+                          SABS719: [...SABS719_FITTING_SIZES],
+                          ASME_B16_9: [...ansiSizes],
+                          ASME_B16_11: [...forgedSizes],
+                          BS_143: [...malleableSizes],
+                        };
+                        const nbSizes = sizesByStd[eff] || [...SABS62_FITTING_SIZES];
                         return (
                           <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                            {sizes.length} sizes available ({effectiveStandard})
+                            {nbSizes.length} sizes available ({eff})
                           </p>
                         );
                       })()}
@@ -1296,6 +1420,125 @@ function FittingFormComponent({
                     </div>
                   );
                 })()}
+
+                {/* ANSI B16.9 Schedule Selector */}
+                {isAnsiStandard && (
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">
+                      Schedule *
+                    </label>
+                    <Select
+                      id={`fitting-ansi-schedule-${entry.id}`}
+                      value={specs.ansiSchedule || ""}
+                      onChange={(schedule) => {
+                        if (!schedule) return;
+                        onUpdateEntry(entry.id, {
+                          specs: {
+                            ...entry.specs,
+                            ansiSchedule: schedule,
+                            nominalDiameterMm: null,
+                          },
+                        });
+                      }}
+                      options={ansiSchedules.map((s) => ({ value: s, label: s }))}
+                      placeholder="Select schedule..."
+                    />
+                  </div>
+                )}
+
+                {/* Forged Fitting Pressure Class + Connection Type */}
+                {isForgedStandard && (
+                  <>
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">
+                        Pressure Class *
+                      </label>
+                      <Select
+                        id={`fitting-forged-class-${entry.id}`}
+                        value={specs.forgedPressureClass ? String(specs.forgedPressureClass) : ""}
+                        onChange={(pc) => {
+                          if (!pc) return;
+                          onUpdateEntry(entry.id, {
+                            specs: {
+                              ...entry.specs,
+                              forgedPressureClass: Number(pc),
+                              nominalDiameterMm: null,
+                            },
+                          });
+                        }}
+                        options={[...new Set(forgedSeries.map((s) => s.pressureClass))]
+                          .sort((a, b) => a - b)
+                          .map((pc) => ({
+                            value: String(pc),
+                            label: `Class ${pc}`,
+                          }))}
+                        placeholder="Select class..."
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">
+                        Connection Type *
+                      </label>
+                      <Select
+                        id={`fitting-forged-conn-${entry.id}`}
+                        value={specs.forgedConnectionType || ""}
+                        onChange={(ct) => {
+                          if (!ct) return;
+                          onUpdateEntry(entry.id, {
+                            specs: {
+                              ...entry.specs,
+                              forgedConnectionType: ct,
+                              nominalDiameterMm: null,
+                            },
+                          });
+                        }}
+                        options={forgedSeries
+                          .filter(
+                            (s) =>
+                              !specs.forgedPressureClass ||
+                              s.pressureClass === specs.forgedPressureClass,
+                          )
+                          .map((s) => s.connectionType)
+                          .filter((ct, idx, arr) => arr.indexOf(ct) === idx)
+                          .map((ct) => ({
+                            value: ct,
+                            label: ct === "SW" ? "Socket Weld (SW)" : "Threaded (THD)",
+                          }))}
+                        placeholder="Select type..."
+                      />
+                    </div>
+                  </>
+                )}
+
+                {/* Malleable Iron Pressure Class */}
+                {isMalleableStandard && (
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">
+                      Pressure Class *
+                    </label>
+                    <Select
+                      id={`fitting-malleable-class-${entry.id}`}
+                      value={
+                        specs.malleablePressureClass ? String(specs.malleablePressureClass) : ""
+                      }
+                      onChange={(pc) => {
+                        if (!pc) return;
+                        onUpdateEntry(entry.id, {
+                          specs: {
+                            ...entry.specs,
+                            malleablePressureClass: Number(pc),
+                            nominalDiameterMm: null,
+                          },
+                        });
+                      }}
+                      options={[
+                        { value: "150", label: "Class 150" },
+                        { value: "300", label: "Class 300" },
+                      ]}
+                      placeholder="Select class..."
+                    />
+                  </div>
+                )}
 
                 {/* Small NB (Outlet) - For Reducers Only */}
                 {isReducer && (
@@ -1676,6 +1919,127 @@ function FittingFormComponent({
                 </div>
               </div>
             </div>
+
+            {/* Dimension Summary Card - ANSI/Forged/Malleable */}
+            {(isAnsiStandard || isForgedStandard) &&
+              specs.nominalDiameterMm &&
+              (() => {
+                const dims = isAnsiStandard ? ansiDimensionData : forgedDimensionData;
+                if (!dims) return null;
+
+                const dimensionRows: { label: string; value: string }[] = [];
+
+                if (isAnsiStandard) {
+                  if (dims.centerToFaceAMm)
+                    dimensionRows.push({
+                      label: "Center-to-Face A",
+                      value: `${Number(dims.centerToFaceAMm).toFixed(1)} mm`,
+                    });
+                  if (dims.centerToFaceBMm)
+                    dimensionRows.push({
+                      label: "Center-to-Face B",
+                      value: `${Number(dims.centerToFaceBMm).toFixed(1)} mm`,
+                    });
+                  if (dims.centerToEndCMm)
+                    dimensionRows.push({
+                      label: "Center-to-End C",
+                      value: `${Number(dims.centerToEndCMm).toFixed(1)} mm`,
+                    });
+                  if (dims.centerToEndMMm)
+                    dimensionRows.push({
+                      label: "Center-to-End M",
+                      value: `${Number(dims.centerToEndMMm).toFixed(1)} mm`,
+                    });
+                  if (dims.centerToCenterOMm)
+                    dimensionRows.push({
+                      label: "Center-to-Center O",
+                      value: `${Number(dims.centerToCenterOMm).toFixed(1)} mm`,
+                    });
+                  if (dims.backToFaceKMm)
+                    dimensionRows.push({
+                      label: "Back-to-Face K",
+                      value: `${Number(dims.backToFaceKMm).toFixed(1)} mm`,
+                    });
+                  if (dims.outsideDiameterMm)
+                    dimensionRows.push({
+                      label: "OD",
+                      value: `${Number(dims.outsideDiameterMm).toFixed(1)} mm`,
+                    });
+                  if (dims.wallThicknessMm)
+                    dimensionRows.push({
+                      label: "Wall Thickness",
+                      value: `${Number(dims.wallThicknessMm).toFixed(2)} mm`,
+                    });
+                  if (dims.weightKg)
+                    dimensionRows.push({
+                      label: "Weight",
+                      value: `${Number(dims.weightKg).toFixed(2)} kg`,
+                    });
+                }
+
+                if (isForgedStandard) {
+                  if (dims.dimensionAMm)
+                    dimensionRows.push({
+                      label: "Dimension A",
+                      value: `${Number(dims.dimensionAMm).toFixed(1)} mm`,
+                    });
+                  if (dims.dimensionBMm)
+                    dimensionRows.push({
+                      label: "Dimension B",
+                      value: `${Number(dims.dimensionBMm).toFixed(1)} mm`,
+                    });
+                  if (dims.dimensionCMm)
+                    dimensionRows.push({
+                      label: "Dimension C",
+                      value: `${Number(dims.dimensionCMm).toFixed(1)} mm`,
+                    });
+                  if (dims.dimensionDMm)
+                    dimensionRows.push({
+                      label: "Dimension D",
+                      value: `${Number(dims.dimensionDMm).toFixed(1)} mm`,
+                    });
+                  if (dims.dimensionEMm)
+                    dimensionRows.push({
+                      label: "Dimension E",
+                      value: `${Number(dims.dimensionEMm).toFixed(1)} mm`,
+                    });
+                  if (dims.socketDepthMm)
+                    dimensionRows.push({
+                      label: "Socket Depth (J)",
+                      value: `${Number(dims.socketDepthMm).toFixed(1)} mm`,
+                    });
+                  if (dims.minWallThicknessMm)
+                    dimensionRows.push({
+                      label: "Min Wall (G)",
+                      value: `${Number(dims.minWallThicknessMm).toFixed(2)} mm`,
+                    });
+                  if (dims.massKg)
+                    dimensionRows.push({
+                      label: "Mass",
+                      value: `${Number(dims.massKg).toFixed(2)} kg`,
+                    });
+                }
+
+                if (dimensionRows.length === 0) return null;
+
+                return (
+                  <div className="bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 rounded-lg p-3 mb-3">
+                    <h4 className="text-xs font-semibold text-blue-800 dark:text-blue-200 mb-2">
+                      {isAnsiStandard ? "ASME B16.9" : "ASME B16.11"} Dimensions
+                    </h4>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+                      {dimensionRows.map((row) => (
+                        <div key={row.label} className="text-xs">
+                          <span className="text-gray-500 dark:text-gray-400">{row.label}: </span>
+                          <span className="font-medium text-gray-900 dark:text-gray-100">
+                            {row.value}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
 
             {/* ROW 2: Flange Specifications - Horizontal Layout */}
             <div className="bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-700 rounded-lg p-3 mb-3">

@@ -10,6 +10,7 @@ export { cvAssistantKeys } from "./cvAssistantKeys";
 export type { DrawingQueryParams } from "./drawingKeys";
 export { drawingKeys } from "./drawingKeys";
 export { featureFlagKeys } from "./featureFlagKeys";
+export { fittingKeys } from "./fittingKeys";
 export { flangeWeightKeys } from "./flangeWeightKeys";
 export { materialValidationKeys } from "./materialValidationKeys";
 export { messagingKeys } from "./messagingKeys";

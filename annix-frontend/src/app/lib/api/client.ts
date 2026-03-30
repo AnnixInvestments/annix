@@ -788,6 +788,98 @@ class ApiClient {
     });
   }
 
+  // ANSI B16.9 Fitting API
+  async ansiFittingTypes(): Promise<{ code: string; name: string }[]> {
+    return this.request("/ansi-fittings/types");
+  }
+
+  async ansiFittingSizes(fittingType: string, schedule?: string): Promise<number[]> {
+    const params = new URLSearchParams({ fittingType });
+    if (schedule) params.append("schedule", schedule);
+    return this.request<number[]>(`/ansi-fittings/sizes?${params.toString()}`);
+  }
+
+  async ansiFittingSchedules(fittingType: string): Promise<string[]> {
+    return this.request<string[]>(`/ansi-fittings/schedules?fittingType=${fittingType}`);
+  }
+
+  async ansiFittingDimensions(
+    fittingType: string,
+    nbMm: number,
+    schedule: string,
+    branchNbMm?: number,
+  ): Promise<any> {
+    const params = new URLSearchParams({
+      fittingType,
+      nbMm: nbMm.toString(),
+      schedule,
+    });
+    if (branchNbMm !== null && branchNbMm !== undefined) {
+      params.append("branchNbMm", branchNbMm.toString());
+    }
+    return this.request(`/ansi-fittings/dimensions?${params.toString()}`);
+  }
+
+  // Forged Fitting (ASME B16.11) API
+  async forgedFittingTypes(): Promise<{ code: string; name: string }[]> {
+    return this.request("/forged-fittings/types");
+  }
+
+  async forgedFittingSeries(): Promise<
+    { id: number; pressureClass: number; connectionType: string }[]
+  > {
+    return this.request("/forged-fittings/series");
+  }
+
+  async forgedFittingSizes(
+    fittingType: string,
+    pressureClass: number,
+    connectionType: string,
+  ): Promise<number[]> {
+    const params = new URLSearchParams({
+      fittingType,
+      pressureClass: pressureClass.toString(),
+      connectionType,
+    });
+    return this.request<number[]>(`/forged-fittings/sizes?${params.toString()}`);
+  }
+
+  async forgedFittingDimensions(
+    fittingType: string,
+    nominalBoreMm: number,
+    pressureClass: number,
+    connectionType: string,
+  ): Promise<any> {
+    const params = new URLSearchParams({
+      fittingType,
+      nominalBoreMm: nominalBoreMm.toString(),
+      pressureClass: pressureClass.toString(),
+      connectionType,
+    });
+    return this.request(`/forged-fittings/dimensions?${params.toString()}`);
+  }
+
+  // Malleable Iron Fitting API
+  async malleableFittingTypes(): Promise<string[]> {
+    return this.request<string[]>("/malleable-fittings/types");
+  }
+
+  async malleableFittingSizes(fittingType: string, pressureClass: number): Promise<number[]> {
+    const params = new URLSearchParams({
+      fittingType,
+      pressureClass: pressureClass.toString(),
+    });
+    return this.request<number[]>(`/malleable-fittings/sizes?${params.toString()}`);
+  }
+
+  async malleableFittingDimensions(fittingType: string, pressureClass?: number): Promise<any[]> {
+    const params = new URLSearchParams({ fittingType });
+    if (pressureClass !== null && pressureClass !== undefined) {
+      params.append("pressureClass", pressureClass.toString());
+    }
+    return this.request(`/malleable-fittings/dimensions?${params.toString()}`);
+  }
+
   // Reducer Calculator API
   async calculateReducerMass(data: {
     largeDiameterMm: number;
@@ -1244,6 +1336,37 @@ export const masterDataApi = {
     apiClient.getAvailableAngleRanges(fittingType, nominalDiameterMm),
   calculateFitting: (data: Parameters<typeof apiClient.calculateFitting>[0]) =>
     apiClient.calculateFitting(data),
+
+  // ANSI B16.9 Fitting API
+  ansiFittingTypes: () => apiClient.ansiFittingTypes(),
+  ansiFittingSizes: (fittingType: string, schedule?: string) =>
+    apiClient.ansiFittingSizes(fittingType, schedule),
+  ansiFittingSchedules: (fittingType: string) => apiClient.ansiFittingSchedules(fittingType),
+  ansiFittingDimensions: (
+    fittingType: string,
+    nbMm: number,
+    schedule: string,
+    branchNbMm?: number,
+  ) => apiClient.ansiFittingDimensions(fittingType, nbMm, schedule, branchNbMm),
+
+  // Forged Fitting (ASME B16.11) API
+  forgedFittingTypes: () => apiClient.forgedFittingTypes(),
+  forgedFittingSeries: () => apiClient.forgedFittingSeries(),
+  forgedFittingSizes: (fittingType: string, pressureClass: number, connectionType: string) =>
+    apiClient.forgedFittingSizes(fittingType, pressureClass, connectionType),
+  forgedFittingDimensions: (
+    fittingType: string,
+    nominalBoreMm: number,
+    pressureClass: number,
+    connectionType: string,
+  ) => apiClient.forgedFittingDimensions(fittingType, nominalBoreMm, pressureClass, connectionType),
+
+  // Malleable Iron Fitting API
+  malleableFittingTypes: () => apiClient.malleableFittingTypes(),
+  malleableFittingSizes: (fittingType: string, pressureClass: number) =>
+    apiClient.malleableFittingSizes(fittingType, pressureClass),
+  malleableFittingDimensions: (fittingType: string, pressureClass?: number) =>
+    apiClient.malleableFittingDimensions(fittingType, pressureClass),
 
   // Reducer Calculator API
   calculateReducerMass: (data: Parameters<typeof apiClient.calculateReducerMass>[0]) =>

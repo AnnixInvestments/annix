@@ -562,6 +562,19 @@ export {
   useReviewAction,
   useReviews,
 } from "./review/useReviews";
+export {
+  useAnsiFittingDimensions,
+  useAnsiFittingSchedules,
+  useAnsiFittingSizes,
+  useAnsiFittingTypes,
+  useForgedFittingDimensions,
+  useForgedFittingSeries,
+  useForgedFittingSizes,
+  useForgedFittingTypes,
+  useMalleableFittingDimensions,
+  useMalleableFittingSizes,
+  useMalleableFittingTypes,
+} from "./rfq/useFittingData";
 export type {
   BnwSetResult,
   FlangeLookupContext,
