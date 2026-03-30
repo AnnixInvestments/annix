@@ -9,7 +9,7 @@ export class MigrateExistingContactsToUnified1809000000022 implements MigrationI
         contact_person, address_text,
         legacy_sc_supplier_id, created_at, updated_at
       )
-      SELECT
+      SELECT DISTINCT ON (sc_co.unified_company_id, scs.name)
         sc_co.unified_company_id,
         scs.name,
         'SUPPLIER',
@@ -29,6 +29,7 @@ export class MigrateExistingContactsToUnified1809000000022 implements MigrationI
           SELECT 1 FROM contacts c
           WHERE c.legacy_sc_supplier_id = scs.id
         )
+      ORDER BY sc_co.unified_company_id, scs.name, scs.updated_at DESC
       ON CONFLICT (company_id, name, contact_type) DO UPDATE
         SET legacy_sc_supplier_id = EXCLUDED.legacy_sc_supplier_id
     `);
@@ -43,7 +44,7 @@ export class MigrateExistingContactsToUnified1809000000022 implements MigrationI
         sage_contact_id, sage_contact_type,
         legacy_rubber_company_id, created_at, updated_at
       )
-      SELECT
+      SELECT DISTINCT ON (parent_co.id, rc.name, rc.company_type)
         parent_co.id,
         rc.name,
         rc.company_type,
@@ -75,6 +76,7 @@ export class MigrateExistingContactsToUnified1809000000022 implements MigrationI
           SELECT 1 FROM contacts c
           WHERE c.legacy_rubber_company_id = rc.id
         )
+      ORDER BY parent_co.id, rc.name, rc.company_type, rc.updated_at DESC
       ON CONFLICT (company_id, name, contact_type) DO UPDATE
         SET legacy_rubber_company_id = EXCLUDED.legacy_rubber_company_id
     `);
