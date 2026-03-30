@@ -1,3 +1,4 @@
+import { NB_MM_TO_NPS } from "@annix/product-data/pipe";
 import { sessionExpiredEvent } from "@/app/components/SessionExpiredModal";
 import { log } from "@/app/lib/logger";
 import { API_BASE_URL } from "@/lib/api-config";
@@ -1378,37 +1379,7 @@ class ApiClient {
   }> {
     const queryParams = new URLSearchParams();
 
-    // Convert NB mm to NPS (approximate)
-    const nbToNps: { [key: number]: string } = {
-      15: "1/2",
-      20: "3/4",
-      25: "1",
-      32: "1-1/4",
-      40: "1-1/2",
-      50: "2",
-      65: "2-1/2",
-      80: "3",
-      100: "4",
-      125: "5",
-      150: "6",
-      200: "8",
-      250: "10",
-      300: "12",
-      350: "14",
-      400: "16",
-      450: "18",
-      500: "20",
-      600: "24",
-      700: "28",
-      750: "30",
-      800: "32",
-      900: "36",
-      1000: "40",
-      1050: "42",
-      1200: "48",
-    };
-
-    const nps = nbToNps[params.nbMm] || `${Math.round(params.nbMm / 25.4)}`;
+    const nps = NB_MM_TO_NPS[params.nbMm] || `${Math.round(params.nbMm / 25.4)}`;
 
     queryParams.append("nps", nps);
     queryParams.append("pressureBar", params.pressureBar.toString());

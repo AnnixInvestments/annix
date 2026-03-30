@@ -15,6 +15,8 @@
     "./steel": "./steel/index.ts",
     "./steel/*": "./steel/*.ts",
     "./valves-instruments": "./valves-instruments/index.ts",
-    "./valves-instruments/*": "./valves-instruments/*.ts"
+    "./valves-instruments/*": "./valves-instruments/*.ts",
+    "./pipe": "./pipe/index.ts",
+    "./pipe/*": "./pipe/*.ts"
   }
 }

@@ -1,3 +1,4 @@
+import { SABS719_STANDARD_REDUCER_LENGTHS } from "@annix/product-data/pipe";
 import { STEEL_DENSITY_KG_M3 } from "@annix/product-data/steel";
 import { Injectable, Logger } from "@nestjs/common";
 import {
@@ -232,25 +233,10 @@ export class ReducerCalculatorService {
    * concentric and eccentric reducers.
    */
   standardReducerLength(largeNbMm: number, smallNbMm: number): number {
-    const standardLengths: Record<number, number> = {
-      200: 180,
-      250: 205,
-      300: 230,
-      350: 255,
-      400: 280,
-      450: 305,
-      500: 330,
-      550: 355,
-      600: 380,
-      650: 405,
-      700: 430,
-      750: 455,
-      800: 485,
-      850: 510,
-      900: 535,
-    };
-
-    return standardLengths[largeNbMm] ?? this.estimateReducerLength(largeNbMm, smallNbMm);
+    return (
+      SABS719_STANDARD_REDUCER_LENGTHS[largeNbMm] ??
+      this.estimateReducerLength(largeNbMm, smallNbMm)
+    );
   }
 
   /**

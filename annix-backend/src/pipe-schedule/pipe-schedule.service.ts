@@ -1,3 +1,4 @@
+import { NB_MM_TO_NPS } from "@annix/product-data/pipe";
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
@@ -5,8 +6,7 @@ import { CalculatePipeThicknessDto, PipeThicknessResultDto } from "./dto/pipe-sc
 import { MaterialAllowableStress } from "./entities/material-allowable-stress.entity";
 import { PipeSchedule } from "./entities/pipe-schedule.entity";
 
-// NPS to OD mapping (inches) - ASME B36.10
-const NPS_OD_INCH: { [key: string]: number } = {
+const NPS_OD_INCH: Record<string, number> = {
   "1/8": 0.405,
   "1/4": 0.54,
   "3/8": 0.675,
@@ -40,48 +40,6 @@ const NPS_OD_INCH: { [key: string]: number } = {
   "42": 42.0,
   "48": 48.0,
 };
-
-// NPS to NB (mm) mapping
-const NPS_TO_NB_MM: { [key: string]: number } = {
-  "1/8": 6,
-  "1/4": 8,
-  "3/8": 10,
-  "1/2": 15,
-  "3/4": 20,
-  "1": 25,
-  "1-1/4": 32,
-  "1-1/2": 40,
-  "2": 50,
-  "2-1/2": 65,
-  "3": 80,
-  "3-1/2": 90,
-  "4": 100,
-  "5": 125,
-  "6": 150,
-  "8": 200,
-  "10": 250,
-  "12": 300,
-  "14": 350,
-  "16": 400,
-  "18": 450,
-  "20": 500,
-  "22": 550,
-  "24": 600,
-  "26": 650,
-  "28": 700,
-  "30": 750,
-  "32": 800,
-  "34": 850,
-  "36": 900,
-  "42": 1050,
-  "48": 1200,
-};
-
-// Reverse mapping: NB (mm) to NPS
-const NB_MM_TO_NPS: { [key: number]: string } = Object.entries(NPS_TO_NB_MM).reduce(
-  (acc, [nps, nb]) => ({ ...acc, [nb]: nps }),
-  {},
-);
 
 @Injectable()
 export class PipeScheduleService {

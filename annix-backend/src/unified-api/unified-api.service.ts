@@ -1,3 +1,4 @@
+import { NB_MM_TO_NPS } from "@annix/product-data/pipe";
 import { Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { DataSource } from "typeorm";
 import {
@@ -286,28 +287,7 @@ export class UnifiedApiService {
   }
 
   private nominalBoreToNps(nominalBoreMm: number): string {
-    const nbToNpsMap: Record<number, string> = {
-      15: "1/2",
-      20: "3/4",
-      25: "1",
-      32: "1-1/4",
-      40: "1-1/2",
-      50: "2",
-      65: "2-1/2",
-      80: "3",
-      100: "4",
-      125: "5",
-      150: "6",
-      200: "8",
-      250: "10",
-      300: "12",
-      350: "14",
-      400: "16",
-      450: "18",
-      500: "20",
-      600: "24",
-    };
-    return nbToNpsMap[nominalBoreMm] || String(nominalBoreMm);
+    return NB_MM_TO_NPS[nominalBoreMm] || String(nominalBoreMm);
   }
 
   async materialSearch(query: MaterialSearchQueryDto): Promise<MaterialSearchResponseDto> {
