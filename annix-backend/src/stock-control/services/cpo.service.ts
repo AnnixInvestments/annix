@@ -457,7 +457,13 @@ export class CpoService {
       where: { cpoId: cpo.id, companyId, isCalloffOrder: true },
     });
 
-    const records = [CalloffType.RUBBER, CalloffType.PAINT, CalloffType.SOLUTION].map((type) =>
+    const analysis = await this.coatingAnalysisService.findByJobCard(companyId, jobCardId);
+    const applicableTypes =
+      analysis && !analysis.hasInternalLining
+        ? [CalloffType.PAINT]
+        : [CalloffType.RUBBER, CalloffType.PAINT, CalloffType.SOLUTION];
+
+    const records = applicableTypes.map((type) =>
       this.calloffRepo.create({
         companyId,
         cpoId: cpo.id,
@@ -480,10 +486,29 @@ export class CpoService {
   }
 
   async calloffRecordsForCpo(companyId: number, cpoId: number): Promise<CpoCalloffRecord[]> {
-    return this.calloffRepo.find({
+    const records = await this.calloffRepo.find({
       where: { cpoId, companyId },
       relations: ["jobCard"],
       order: { createdAt: "DESC" },
+    });
+
+    const jobCardIds = [...new Set(records.filter((r) => r.jobCardId).map((r) => r.jobCardId!))];
+
+    const analyses = await Promise.all(
+      jobCardIds.map((jcId) => this.coatingAnalysisService.findByJobCard(companyId, jcId)),
+    );
+
+    const analysisMap = new Map(jobCardIds.map((jcId, idx) => [jcId, analyses[idx]]));
+
+    return records.filter((record) => {
+      if (!record.jobCardId) {
+        return true;
+      }
+      const analysis = analysisMap.get(record.jobCardId);
+      if (analysis && !analysis.hasInternalLining) {
+        return record.calloffType === CalloffType.PAINT;
+      }
+      return true;
     });
   }
 
@@ -506,7 +531,12 @@ export class CpoService {
       ordered: number;
       fulfilled: number;
       remaining: number;
-      deliveries: { jtDnNumber: string | null; quantity: number; date: string }[];
+      deliveries: {
+        jobCardId: number;
+        jtDnNumber: string | null;
+        quantity: number;
+        date: string;
+      }[];
     }[];
   }> {
     const cpo = await this.cpoRepo.findOne({
@@ -587,6 +617,7 @@ export class CpoService {
             if (matchedQty === 0) return null;
 
             return {
+              jobCardId: d.jobCardId,
               jtDnNumber: d.jtDnNumber,
               quantity: matchedQty,
               date: d.importedAt || "",

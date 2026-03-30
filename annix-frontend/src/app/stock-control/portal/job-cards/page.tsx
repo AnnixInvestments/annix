@@ -443,7 +443,7 @@ export default function JobCardsPage() {
         </div>
       </div>
 
-      <div className="bg-white shadow rounded-lg overflow-x-auto">
+      <div className="bg-white shadow rounded-lg overflow-hidden">
         {jobCards.length === 0 ? (
           <div className="text-center py-12">
             <svg
@@ -463,90 +463,15 @@ export default function JobCardsPage() {
             <p className="mt-1 text-sm text-gray-500">Create a new job card to get started.</p>
           </div>
         ) : (
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                {(
-                  [
-                    { key: "jobNumber" as SortKey, label: "Job Number" },
-                    { key: "jcNumber" as SortKey, label: "JC Number" },
-                    { key: "pageNumber" as SortKey, label: "Page" },
-                    { key: "jobName" as SortKey, label: "Job Name" },
-                    { key: "customerName" as SortKey, label: "Customer" },
-                    { key: "status" as SortKey, label: "Status" },
-                  ] as const
-                ).map((col) => (
-                  <th
-                    key={col.key}
-                    scope="col"
-                    onClick={() => toggleSort(col.key)}
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer select-none hover:text-gray-700"
-                  >
-                    <span className="inline-flex items-center gap-1">
-                      {col.label}
-                      {sortKey === col.key ? (
-                        <svg className="h-3 w-3" fill="currentColor" viewBox="0 0 20 20">
-                          {sortDir === "asc" ? (
-                            <path d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L10 6.414l-3.293 3.293a1 1 0 01-1.414 0z" />
-                          ) : (
-                            <path d="M14.707 10.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L10 13.586l3.293-3.293a1 1 0 011.414 0z" />
-                          )}
-                        </svg>
-                      ) : (
-                        <svg
-                          className="h-3 w-3 opacity-0 group-hover:opacity-30"
-                          fill="currentColor"
-                          viewBox="0 0 20 20"
-                        >
-                          <path d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L10 6.414l-3.293 3.293a1 1 0 01-1.414 0z" />
-                        </svg>
-                      )}
-                    </span>
-                  </th>
-                ))}
-                <th
-                  scope="col"
-                  className="hidden xl:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  Workflow
-                </th>
-                <th
-                  scope="col"
-                  className="hidden lg:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  Quality
-                </th>
-                <th
-                  scope="col"
-                  onClick={() => toggleSort("createdAt")}
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer select-none hover:text-gray-700"
-                >
-                  <span className="inline-flex items-center gap-1">
-                    Created
-                    {sortKey === "createdAt" ? (
-                      <svg className="h-3 w-3" fill="currentColor" viewBox="0 0 20 20">
-                        {sortDir === "asc" ? (
-                          <path d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L10 6.414l-3.293 3.293a1 1 0 01-1.414 0z" />
-                        ) : (
-                          <path d="M14.707 10.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L10 13.586l3.293-3.293a1 1 0 011.414 0z" />
-                        )}
-                      </svg>
-                    ) : null}
-                  </span>
-                </th>
-                <th scope="col" className="relative px-6 py-3">
-                  <span className="sr-only">Actions</span>
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+          <>
+            <div className="sm:hidden divide-y divide-gray-200">
               {jobCards.map((job) => (
-                <tr
+                <div
                   key={job.id}
-                  className="hover:bg-gray-50 cursor-pointer"
+                  className="p-4 hover:bg-gray-50 cursor-pointer"
                   onClick={() => router.push(`/stock-control/portal/job-cards/${job.id}`)}
                 >
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <div className="flex items-center justify-between mb-2">
                     <Link
                       href={`/stock-control/portal/job-cards/${job.id}`}
                       className="text-sm font-medium text-teal-700 hover:text-teal-900"
@@ -554,112 +479,340 @@ export default function JobCardsPage() {
                       {job.jobNumber}
                       {job.jtDnNumber ? ` / ${job.jtDnNumber}` : ""}
                     </Link>
-                    {job.parentJobCardId ? (
-                      <span className="ml-1.5 inline-flex px-1.5 py-0.5 text-[10px] font-medium rounded bg-indigo-50 text-indigo-600">
-                        Delivery
-                      </span>
-                    ) : null}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {job.jcNumber || "-"}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {job.pageNumber || "-"}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {job.jobName}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {job.customerName || "-"}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
                     <StatusBadge status={job.status} />
-                    {job.cpoId ? (
-                      <span className="ml-1 px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-purple-100 text-purple-800">
-                        CPO
-                      </span>
-                    ) : null}
-                  </td>
-                  <td className="hidden xl:table-cell px-6 py-4 whitespace-nowrap">
-                    <CompactWorkflowStepper
-                      workflowStatus={
-                        job.effectiveWorkflowStatus || job.workflowStatus || job.status
-                      }
-                    />
-                  </td>
-                  <td className="hidden lg:table-cell px-6 py-4 whitespace-nowrap">
-                    {dataBookStatuses[job.id] ? (
-                      <span className="inline-flex items-center gap-1.5">
-                        {dataBookStatuses[job.id].exists && !dataBookStatuses[job.id].isStale ? (
-                          <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                            Compiled
-                          </span>
-                        ) : dataBookStatuses[job.id].exists && dataBookStatuses[job.id].isStale ? (
-                          <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-amber-100 text-amber-800">
-                            Stale
-                          </span>
-                        ) : null}
-                        {dataBookStatuses[job.id].certificateCount > 0 ? (
-                          <span className="px-2 inline-flex text-xs leading-5 font-medium rounded-full bg-blue-100 text-blue-700">
-                            {dataBookStatuses[job.id].certificateCount} cert
-                            {dataBookStatuses[job.id].certificateCount !== 1 ? "s" : ""}
-                          </span>
-                        ) : null}
-                      </span>
-                    ) : (
-                      <span className="text-xs text-gray-400">-</span>
-                    )}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {formatDateZA(job.createdAt)}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setConfirmDelete({ id: job.id, jobNumber: job.jobNumber });
-                      }}
-                      disabled={deletingId === job.id}
-                      className="text-gray-400 hover:text-red-600 disabled:opacity-50"
-                      title="Delete job card"
-                    >
-                      {deletingId === job.id ? (
-                        <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
-                          <circle
-                            className="opacity-25"
-                            cx="12"
-                            cy="12"
-                            r="10"
+                  </div>
+                  <p className="text-sm text-gray-900 truncate">{job.jobName}</p>
+                  {job.customerName ? (
+                    <p className="text-xs text-gray-500 mt-1 truncate">{job.customerName}</p>
+                  ) : null}
+                  <div className="flex items-center justify-between mt-2">
+                    <span className="text-xs text-gray-400">{formatDateZA(job.createdAt)}</span>
+                    <div className="flex items-center gap-2">
+                      {job.parentJobCardId ? (
+                        <span className="inline-flex px-1.5 py-0.5 text-[10px] font-medium rounded bg-indigo-50 text-indigo-600">
+                          Delivery
+                        </span>
+                      ) : null}
+                      {job.cpoId ? (
+                        <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-purple-100 text-purple-800">
+                          CPO
+                        </span>
+                      ) : null}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setConfirmDelete({ id: job.id, jobNumber: job.jobNumber });
+                        }}
+                        disabled={deletingId === job.id}
+                        className="text-gray-400 hover:text-red-600 disabled:opacity-50"
+                      >
+                        {deletingId === job.id ? (
+                          <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                            <circle
+                              className="opacity-25"
+                              cx="12"
+                              cy="12"
+                              r="10"
+                              stroke="currentColor"
+                              strokeWidth="4"
+                            />
+                            <path
+                              className="opacity-75"
+                              fill="currentColor"
+                              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                            />
+                          </svg>
+                        ) : (
+                          <svg
+                            className="w-4 h-4"
+                            fill="none"
                             stroke="currentColor"
-                            strokeWidth="4"
-                          />
-                          <path
-                            className="opacity-75"
-                            fill="currentColor"
-                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
-                          />
-                        </svg>
-                      ) : (
-                        <svg
-                          className="w-5 h-5"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                          />
-                        </svg>
-                      )}
-                    </button>
-                  </td>
-                </tr>
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                            />
+                          </svg>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                </div>
               ))}
-            </tbody>
-          </table>
+            </div>
+
+            <table className="hidden sm:table w-full table-fixed divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th
+                    scope="col"
+                    onClick={() => toggleSort("jobNumber")}
+                    className="w-[15%] px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer select-none hover:text-gray-700"
+                  >
+                    <span className="inline-flex items-center gap-1">
+                      Job No.
+                      {sortKey === "jobNumber" ? (
+                        <svg className="h-3 w-3" fill="currentColor" viewBox="0 0 20 20">
+                          {sortDir === "asc" ? (
+                            <path d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L10 6.414l-3.293 3.293a1 1 0 01-1.414 0z" />
+                          ) : (
+                            <path d="M14.707 10.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L10 13.586l3.293-3.293a1 1 0 011.414 0z" />
+                          )}
+                        </svg>
+                      ) : null}
+                    </span>
+                  </th>
+                  <th
+                    scope="col"
+                    onClick={() => toggleSort("jcNumber")}
+                    className="hidden lg:table-cell w-[8%] px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer select-none hover:text-gray-700"
+                  >
+                    <span className="inline-flex items-center gap-1">
+                      JC No.
+                      {sortKey === "jcNumber" ? (
+                        <svg className="h-3 w-3" fill="currentColor" viewBox="0 0 20 20">
+                          {sortDir === "asc" ? (
+                            <path d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L10 6.414l-3.293 3.293a1 1 0 01-1.414 0z" />
+                          ) : (
+                            <path d="M14.707 10.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L10 13.586l3.293-3.293a1 1 0 011.414 0z" />
+                          )}
+                        </svg>
+                      ) : null}
+                    </span>
+                  </th>
+                  <th
+                    scope="col"
+                    onClick={() => toggleSort("pageNumber")}
+                    className="hidden xl:table-cell w-[6%] px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer select-none hover:text-gray-700"
+                  >
+                    <span className="inline-flex items-center gap-1">
+                      Page
+                      {sortKey === "pageNumber" ? (
+                        <svg className="h-3 w-3" fill="currentColor" viewBox="0 0 20 20">
+                          {sortDir === "asc" ? (
+                            <path d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L10 6.414l-3.293 3.293a1 1 0 01-1.414 0z" />
+                          ) : (
+                            <path d="M14.707 10.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L10 13.586l3.293-3.293a1 1 0 011.414 0z" />
+                          )}
+                        </svg>
+                      ) : null}
+                    </span>
+                  </th>
+                  <th
+                    scope="col"
+                    onClick={() => toggleSort("jobName")}
+                    className="w-[20%] px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer select-none hover:text-gray-700"
+                  >
+                    <span className="inline-flex items-center gap-1">
+                      Job Name
+                      {sortKey === "jobName" ? (
+                        <svg className="h-3 w-3" fill="currentColor" viewBox="0 0 20 20">
+                          {sortDir === "asc" ? (
+                            <path d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L10 6.414l-3.293 3.293a1 1 0 01-1.414 0z" />
+                          ) : (
+                            <path d="M14.707 10.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L10 13.586l3.293-3.293a1 1 0 011.414 0z" />
+                          )}
+                        </svg>
+                      ) : null}
+                    </span>
+                  </th>
+                  <th
+                    scope="col"
+                    onClick={() => toggleSort("customerName")}
+                    className="hidden md:table-cell w-[14%] px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer select-none hover:text-gray-700"
+                  >
+                    <span className="inline-flex items-center gap-1">
+                      Customer
+                      {sortKey === "customerName" ? (
+                        <svg className="h-3 w-3" fill="currentColor" viewBox="0 0 20 20">
+                          {sortDir === "asc" ? (
+                            <path d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L10 6.414l-3.293 3.293a1 1 0 01-1.414 0z" />
+                          ) : (
+                            <path d="M14.707 10.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L10 13.586l3.293-3.293a1 1 0 011.414 0z" />
+                          )}
+                        </svg>
+                      ) : null}
+                    </span>
+                  </th>
+                  <th
+                    scope="col"
+                    onClick={() => toggleSort("status")}
+                    className="w-[10%] px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer select-none hover:text-gray-700"
+                  >
+                    <span className="inline-flex items-center gap-1">
+                      Status
+                      {sortKey === "status" ? (
+                        <svg className="h-3 w-3" fill="currentColor" viewBox="0 0 20 20">
+                          {sortDir === "asc" ? (
+                            <path d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L10 6.414l-3.293 3.293a1 1 0 01-1.414 0z" />
+                          ) : (
+                            <path d="M14.707 10.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L10 13.586l3.293-3.293a1 1 0 011.414 0z" />
+                          )}
+                        </svg>
+                      ) : null}
+                    </span>
+                  </th>
+                  <th
+                    scope="col"
+                    className="hidden xl:table-cell w-[14%] px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  >
+                    Workflow
+                  </th>
+                  <th
+                    scope="col"
+                    className="hidden lg:table-cell w-[10%] px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  >
+                    Quality
+                  </th>
+                  <th
+                    scope="col"
+                    onClick={() => toggleSort("createdAt")}
+                    className="w-[10%] px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer select-none hover:text-gray-700"
+                  >
+                    <span className="inline-flex items-center gap-1">
+                      Created
+                      {sortKey === "createdAt" ? (
+                        <svg className="h-3 w-3" fill="currentColor" viewBox="0 0 20 20">
+                          {sortDir === "asc" ? (
+                            <path d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L10 6.414l-3.293 3.293a1 1 0 01-1.414 0z" />
+                          ) : (
+                            <path d="M14.707 10.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L10 13.586l3.293-3.293a1 1 0 011.414 0z" />
+                          )}
+                        </svg>
+                      ) : null}
+                    </span>
+                  </th>
+                  <th scope="col" className="w-[3%] relative px-3 py-3">
+                    <span className="sr-only">Actions</span>
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {jobCards.map((job) => (
+                  <tr
+                    key={job.id}
+                    className="hover:bg-gray-50 cursor-pointer"
+                    onClick={() => router.push(`/stock-control/portal/job-cards/${job.id}`)}
+                  >
+                    <td className="px-3 py-3 whitespace-nowrap">
+                      <Link
+                        href={`/stock-control/portal/job-cards/${job.id}`}
+                        className="text-sm font-medium text-teal-700 hover:text-teal-900 truncate block"
+                      >
+                        {job.jobNumber}
+                        {job.jtDnNumber ? ` / ${job.jtDnNumber}` : ""}
+                      </Link>
+                      {job.parentJobCardId ? (
+                        <span className="ml-1.5 inline-flex px-1.5 py-0.5 text-[10px] font-medium rounded bg-indigo-50 text-indigo-600">
+                          Delivery
+                        </span>
+                      ) : null}
+                    </td>
+                    <td className="hidden lg:table-cell px-3 py-3 whitespace-nowrap text-sm text-gray-500 truncate">
+                      {job.jcNumber || "-"}
+                    </td>
+                    <td className="hidden xl:table-cell px-3 py-3 whitespace-nowrap text-sm text-gray-500">
+                      {job.pageNumber || "-"}
+                    </td>
+                    <td className="px-3 py-3 text-sm text-gray-900 truncate max-w-0">
+                      {job.jobName}
+                    </td>
+                    <td className="hidden md:table-cell px-3 py-3 text-sm text-gray-500 truncate max-w-0">
+                      {job.customerName || "-"}
+                    </td>
+                    <td className="px-3 py-3 whitespace-nowrap">
+                      <StatusBadge status={job.status} />
+                      {job.cpoId ? (
+                        <span className="ml-1 px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-purple-100 text-purple-800">
+                          CPO
+                        </span>
+                      ) : null}
+                    </td>
+                    <td className="hidden xl:table-cell px-3 py-3 whitespace-nowrap">
+                      <CompactWorkflowStepper
+                        workflowStatus={
+                          job.effectiveWorkflowStatus || job.workflowStatus || job.status
+                        }
+                      />
+                    </td>
+                    <td className="hidden lg:table-cell px-3 py-3 whitespace-nowrap">
+                      {dataBookStatuses[job.id] ? (
+                        <span className="inline-flex items-center gap-1.5">
+                          {dataBookStatuses[job.id].exists && !dataBookStatuses[job.id].isStale ? (
+                            <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                              Compiled
+                            </span>
+                          ) : dataBookStatuses[job.id].exists &&
+                            dataBookStatuses[job.id].isStale ? (
+                            <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-amber-100 text-amber-800">
+                              Stale
+                            </span>
+                          ) : null}
+                          {dataBookStatuses[job.id].certificateCount > 0 ? (
+                            <span className="px-2 inline-flex text-xs leading-5 font-medium rounded-full bg-blue-100 text-blue-700">
+                              {dataBookStatuses[job.id].certificateCount} cert
+                              {dataBookStatuses[job.id].certificateCount !== 1 ? "s" : ""}
+                            </span>
+                          ) : null}
+                        </span>
+                      ) : (
+                        <span className="text-xs text-gray-400">-</span>
+                      )}
+                    </td>
+                    <td className="px-3 py-3 whitespace-nowrap text-sm text-gray-500">
+                      {formatDateZA(job.createdAt)}
+                    </td>
+                    <td className="px-3 py-3 whitespace-nowrap text-right text-sm">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setConfirmDelete({ id: job.id, jobNumber: job.jobNumber });
+                        }}
+                        disabled={deletingId === job.id}
+                        className="text-gray-400 hover:text-red-600 disabled:opacity-50"
+                        title="Delete job card"
+                      >
+                        {deletingId === job.id ? (
+                          <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                            <circle
+                              className="opacity-25"
+                              cx="12"
+                              cy="12"
+                              r="10"
+                              stroke="currentColor"
+                              strokeWidth="4"
+                            />
+                            <path
+                              className="opacity-75"
+                              fill="currentColor"
+                              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                            />
+                          </svg>
+                        ) : (
+                          <svg
+                            className="w-5 h-5"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                            />
+                          </svg>
+                        )}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </>
         )}
       </div>
 

@@ -31,12 +31,12 @@ function statusBadgeColor(status: string): string {
 
 function calloffStatusColor(status: string): string {
   const colors: Record<string, string> = {
-    pending: "bg-yellow-100 text-yellow-800",
-    called_off: "bg-blue-100 text-blue-800",
-    delivered: "bg-green-100 text-green-800",
-    invoiced: "bg-purple-100 text-purple-800",
+    pending: "bg-amber-100 text-amber-800 border-amber-200",
+    called_off: "bg-blue-100 text-blue-800 border-blue-200",
+    delivered: "bg-green-100 text-green-800 border-green-200",
+    invoiced: "bg-teal-100 text-teal-800 border-teal-200",
   };
-  return colors[status] || "bg-gray-100 text-gray-800";
+  return colors[status] || "bg-gray-100 text-gray-800 border-gray-200";
 }
 
 function calloffStatusLabel(status: string): string {
@@ -47,15 +47,6 @@ function calloffStatusLabel(status: string): string {
     invoiced: "Invoiced",
   };
   return labels[status] || status;
-}
-
-function calloffTypeLabel(type: string): string {
-  const labels: Record<string, string> = {
-    rubber: "Rubber",
-    paint: "Paint",
-    solution: "Solution",
-  };
-  return labels[type] || type;
 }
 
 const CALLOFF_STATUS_FLOW = ["pending", "called_off", "delivered", "invoiced"] as const;
@@ -247,6 +238,19 @@ export default function CpoDetailPage() {
     {},
   );
 
+  const hasRubberColumn = calloffRecords.some((r) => r.calloffType === "rubber");
+  const hasPaintColumn = calloffRecords.some((r) => r.calloffType === "paint");
+  const hasSolutionColumn = calloffRecords.some((r) => r.calloffType === "solution");
+
+  const calloffRows = Object.entries(recordsByJobCard).map(([key, records]) => ({
+    key,
+    jobCard: records[0]?.jobCard || null,
+    rubber: records.find((r) => r.calloffType === "rubber") || null,
+    paint: records.find((r) => r.calloffType === "paint") || null,
+    solution: records.find((r) => r.calloffType === "solution") || null,
+    hasOverdue: records.some(isCalloffOverdue),
+  }));
+
   const overdueRecords = calloffRecords.filter(isCalloffOverdue);
 
   return (
@@ -436,81 +440,147 @@ export default function CpoDetailPage() {
           <div className="px-6 py-4 border-b border-gray-200">
             <h2 className="text-lg font-medium text-gray-900">Call-Off Tracking</h2>
           </div>
-          <div className="divide-y divide-gray-200">
-            {Object.entries(recordsByJobCard).map(([key, records]) => {
-              const jobCard = records[0]?.jobCard;
-              return (
-                <div key={key} className="px-6 py-4">
-                  <div className="flex items-center space-x-2 mb-3">
-                    {jobCard ? (
-                      <Link
-                        href={`/stock-control/portal/job-cards/${jobCard.id}`}
-                        className="text-sm font-medium text-teal-700 hover:text-teal-900"
-                      >
-                        JC {jobCard.jobNumber}
-                      </Link>
-                    ) : (
-                      <span className="text-sm font-medium text-gray-500">Unlinked</span>
-                    )}
-                    {jobCard?.jobName && (
-                      <span className="text-sm text-gray-500">{jobCard.jobName}</span>
-                    )}
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    {records.map((record) => {
-                      const next = nextCalloffStatus(record.status);
-                      const overdue = isCalloffOverdue(record);
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200 text-sm">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    JC Number
+                  </th>
+                  <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Job Name
+                  </th>
+                  {hasRubberColumn && (
+                    <th className="px-4 py-2.5 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Rubber
+                    </th>
+                  )}
+                  {hasPaintColumn && (
+                    <th className="px-4 py-2.5 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Paint
+                    </th>
+                  )}
+                  {hasSolutionColumn && (
+                    <th className="px-4 py-2.5 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Solution
+                    </th>
+                  )}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {calloffRows.map((row) => {
+                  const renderCell = (record: CpoCalloffRecord | null) => {
+                    if (!record) {
+                      return <span className="text-gray-300">—</span>;
+                    }
+                    const next = nextCalloffStatus(record.status);
+                    const overdue = isCalloffOverdue(record);
+                    const timestamp = [
+                      record.calledOffAt ? `Called off: ${formatDateZA(record.calledOffAt)}` : null,
+                      record.deliveredAt ? `Delivered: ${formatDateZA(record.deliveredAt)}` : null,
+                      record.invoicedAt ? `Invoiced: ${formatDateZA(record.invoicedAt)}` : null,
+                    ]
+                      .filter(Boolean)
+                      .join("\n");
+
+                    if (!next) {
                       return (
-                        <div
-                          key={record.id}
-                          className={`border rounded-lg p-3 flex flex-col space-y-2 ${overdue ? "border-red-300 bg-red-50" : ""}`}
-                        >
-                          <div className="flex items-center justify-between">
-                            <span className="text-sm font-medium text-gray-900">
-                              {calloffTypeLabel(record.calloffType)}
-                            </span>
-                            <div className="flex items-center space-x-1">
-                              {overdue && (
-                                <span className="px-2 py-0.5 text-xs font-semibold rounded-full bg-red-100 text-red-800">
-                                  Overdue
-                                </span>
-                              )}
-                              <span
-                                className={`px-2 py-0.5 text-xs font-semibold rounded-full ${calloffStatusColor(record.status)}`}
-                              >
-                                {calloffStatusLabel(record.status)}
-                              </span>
-                            </div>
-                          </div>
-                          <div className="text-xs text-gray-500 space-y-0.5">
-                            {record.calledOffAt && (
-                              <div>Called off: {formatDateZA(record.calledOffAt)}</div>
-                            )}
-                            {record.deliveredAt && (
-                              <div>Delivered: {formatDateZA(record.deliveredAt)}</div>
-                            )}
-                            {record.invoicedAt && (
-                              <div>Invoiced: {formatDateZA(record.invoicedAt)}</div>
-                            )}
-                          </div>
-                          {next && (
-                            <button
-                              onClick={() => handleCalloffAdvance(record)}
-                              disabled={updatingRecordId === record.id}
-                              className="mt-auto text-xs px-2 py-1 rounded bg-purple-600 text-white hover:bg-purple-700 disabled:opacity-50"
-                            >
-                              {updatingRecordId === record.id
-                                ? "Updating..."
-                                : `Mark ${calloffStatusLabel(next)}`}
-                            </button>
+                        <div className="flex items-center justify-center gap-1.5">
+                          {overdue && (
+                            <span className="w-2 h-2 rounded-full bg-red-500 flex-shrink-0" />
                           )}
+                          <span
+                            className={`inline-flex items-center px-2 py-0.5 text-xs font-medium rounded border ${calloffStatusColor(record.status)}`}
+                            title={timestamp}
+                          >
+                            {calloffStatusLabel(record.status)}
+                          </span>
                         </div>
                       );
-                    })}
-                  </div>
-                </div>
-              );
-            })}
+                    }
+
+                    return (
+                      <div className="flex items-center justify-center gap-1.5">
+                        {overdue && (
+                          <span className="w-2 h-2 rounded-full bg-red-500 flex-shrink-0" />
+                        )}
+                        <button
+                          onClick={() => handleCalloffAdvance(record)}
+                          disabled={updatingRecordId === record.id}
+                          className={`inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded border cursor-pointer hover:shadow-sm disabled:opacity-50 transition-shadow ${calloffStatusColor(record.status)}`}
+                          title={`${timestamp ? `${timestamp}\n` : ""}Click to advance to: ${calloffStatusLabel(next)}`}
+                        >
+                          {updatingRecordId === record.id ? (
+                            <svg className="animate-spin h-3 w-3" viewBox="0 0 24 24">
+                              <circle
+                                className="opacity-25"
+                                cx="12"
+                                cy="12"
+                                r="10"
+                                stroke="currentColor"
+                                strokeWidth="4"
+                                fill="none"
+                              />
+                              <path
+                                className="opacity-75"
+                                fill="currentColor"
+                                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                              />
+                            </svg>
+                          ) : (
+                            <>
+                              {calloffStatusLabel(record.status)}
+                              <svg
+                                className="w-3 h-3 opacity-60"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M9 5l7 7-7 7"
+                                />
+                              </svg>
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    );
+                  };
+
+                  return (
+                    <tr key={row.key} className={row.hasOverdue ? "bg-red-50" : "hover:bg-gray-50"}>
+                      <td className="px-4 py-2 whitespace-nowrap">
+                        {row.jobCard ? (
+                          <Link
+                            href={`/stock-control/portal/job-cards/${row.jobCard.id}`}
+                            className="font-medium text-teal-700 hover:text-teal-900"
+                          >
+                            {row.jobCard.jobNumber}
+                          </Link>
+                        ) : (
+                          <span className="text-gray-400">Unlinked</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-2 text-gray-600 max-w-[220px] truncate">
+                        {row.jobCard?.jobName || "—"}
+                      </td>
+                      {hasRubberColumn && (
+                        <td className="px-4 py-2 text-center">{renderCell(row.rubber)}</td>
+                      )}
+                      {hasPaintColumn && (
+                        <td className="px-4 py-2 text-center">{renderCell(row.paint)}</td>
+                      )}
+                      {hasSolutionColumn && (
+                        <td className="px-4 py-2 text-center">{renderCell(row.solution)}</td>
+                      )}
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         </div>
       )}
@@ -574,7 +644,7 @@ export default function CpoDetailPage() {
                         {rt.ordered}
                       </td>
                       {deliveryHistory.deliveries.map((d) => {
-                        const delivery = rt.deliveries.find((rd) => rd.jtDnNumber === d.jtDnNumber);
+                        const delivery = rt.deliveries.find((rd) => rd.jobCardId === d.jobCardId);
                         return (
                           <td key={d.jobCardId} className="px-4 py-3 text-sm text-right">
                             {delivery ? (
