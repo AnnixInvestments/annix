@@ -611,12 +611,6 @@ export class WorkflowNotificationService {
     step: string,
     users: StockControlUser[],
   ): Promise<StockControlUser[]> {
-    const company = await this.companyRepo.findOne({ where: { id: companyId } });
-    if (!company?.staffLeaveEnabled) {
-      return users;
-    }
-
-    const today = DateTime.now();
     const assignments = await this.assignmentService.assignmentsForStep(companyId, step);
     const primaryAssignment =
       assignments.find((a) => a.isPrimary) || (assignments.length === 1 ? assignments[0] : null);
@@ -625,6 +619,15 @@ export class WorkflowNotificationService {
       return users;
     }
 
+    const primaryUser = users.find((u) => u.id === primaryAssignment.userId);
+
+    const company = await this.companyRepo.findOne({ where: { id: companyId } });
+    if (!company?.staffLeaveEnabled) {
+      return primaryUser ? [primaryUser] : users;
+    }
+
+    const today = DateTime.now();
+
     const primaryOnLeave = await this.staffLeaveService.activeLeaveForUser(
       companyId,
       primaryAssignment.userId,
@@ -632,7 +635,7 @@ export class WorkflowNotificationService {
     );
 
     if (!primaryOnLeave) {
-      return users;
+      return primaryUser ? [primaryUser] : users;
     }
 
     const secondaryUser = await this.assignmentService.secondaryUserForStep(companyId, step);
@@ -661,18 +664,7 @@ export class WorkflowNotificationService {
       `Delegating step "${step}" notifications from primary user ${primaryAssignment.userId} (on leave) to secondary user ${secondaryUser.id}`,
     );
 
-    const delegatedUsers = users
-      .filter((u) => u.id !== primaryAssignment.userId)
-      .concat([secondaryUser]);
-
-    const uniqueUserIds = new Set<number>();
-    return delegatedUsers.filter((u) => {
-      if (uniqueUserIds.has(u.id)) {
-        return false;
-      }
-      uniqueUserIds.add(u.id);
-      return true;
-    });
+    return [secondaryUser];
   }
 
   private stepDisplayName(step: string): string {

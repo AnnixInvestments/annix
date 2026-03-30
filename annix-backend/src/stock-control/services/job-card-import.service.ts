@@ -1112,6 +1112,16 @@ export class JobCardImportService {
       await this.lineItemRepo.save(entities);
     }
 
+    const combinedNotes = entities
+      .map((e) => e.notes)
+      .filter((n): n is string => n !== null && n.trim().length > 0)
+      .join("\n");
+
+    if (combinedNotes.length > 0) {
+      jobCard.notes = combinedNotes;
+      await this.jobCardRepo.save(jobCard);
+    }
+
     this.logger.log(
       `Re-extracted line items for job card ${jobCardId}: ${oldCount} -> ${entities.length}`,
     );
