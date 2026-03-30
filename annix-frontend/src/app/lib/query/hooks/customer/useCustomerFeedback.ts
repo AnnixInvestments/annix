@@ -10,6 +10,7 @@ import {
 export function useSubmitFeedback() {
   return useMutation<SubmitFeedbackResponse, Error, SubmitFeedbackDto>({
     mutationFn: (dto: SubmitFeedbackDto) => customerFeedbackApi.submitFeedback(dto),
+    retry: false,
   });
 }
 
@@ -23,5 +24,6 @@ export function useSubmitGeneralFeedback() {
   return useMutation<SubmitFeedbackResponse, Error, GeneralFeedbackVars>({
     mutationFn: (vars: GeneralFeedbackVars) =>
       submitFeedbackWithAttachments(vars.dto, vars.files, vars.authContext),
+    retry: false,
   });
 }

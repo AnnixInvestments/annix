@@ -5,8 +5,7 @@ import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useFeatureGate } from "@/app/hooks/useFeatureGate";
 import { useVoiceDictation } from "@/app/hooks/useVoiceDictation";
-import type { FeedbackAuthContext } from "@/app/lib/api/feedbackApi";
-import { useSubmitGeneralFeedback } from "@/app/lib/query/hooks";
+import { type FeedbackAuthContext, submitFeedbackWithAttachments } from "@/app/lib/api/feedbackApi";
 
 type FeedbackSource = "text" | "voice";
 
@@ -30,9 +29,9 @@ export function FeedbackWidget(props: FeedbackWidgetProps) {
   const [showSuccess, setShowSuccess] = useState(false);
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [isCapturingScreenshot, setIsCapturingScreenshot] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const submitFeedback = useSubmitGeneralFeedback();
 
   const handleTranscriptChange = useCallback((transcript: string, isFinal: boolean) => {
     if (isFinal) {
@@ -79,12 +78,22 @@ export function FeedbackWidget(props: FeedbackWidgetProps) {
       const viewportWidth = window.innerWidth;
       const viewportHeight = window.innerHeight;
 
-      const blob = await toBlob(document.body, {
+      const capturePromise = toBlob(document.body, {
         filter: (node) => {
-          if (node instanceof HTMLElement) {
-            return node.closest("[data-feedback-widget]") === null;
+          try {
+            if (node instanceof HTMLElement) {
+              if (node.closest("[data-feedback-widget]") !== null) {
+                return false;
+              }
+              const tag = node.tagName.toLowerCase();
+              if (tag === "iframe" || tag === "video") {
+                return false;
+              }
+            }
+            return true;
+          } catch {
+            return true;
           }
-          return true;
         },
         width: viewportWidth,
         height: viewportHeight,
@@ -95,11 +104,16 @@ export function FeedbackWidget(props: FeedbackWidgetProps) {
           transformOrigin: "top left",
           overflow: "hidden",
         },
-        quality: 0.8,
+        quality: 0.7,
         pixelRatio: 1,
         skipAutoScale: true,
+        skipFonts: true,
+        cacheBust: true,
         imagePlaceholder: TRANSPARENT_PIXEL,
       });
+
+      const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), 8000));
+      const blob = await Promise.race([capturePromise, timeoutPromise]);
 
       if (blob) {
         return new File([blob], "auto-screenshot.png", { type: "image/png" });
@@ -118,24 +132,27 @@ export function FeedbackWidget(props: FeedbackWidgetProps) {
       return;
     }
 
-    const screenshotFile = await captureScreenshot();
-
-    const allFiles = [
-      ...attachments.map((a) => a.file),
-      ...(screenshotFile ? [screenshotFile] : []),
-    ];
+    setSubmitError(null);
+    setIsSubmitting(true);
 
     try {
-      await submitFeedback.mutateAsync({
-        dto: {
+      const screenshotFile = await captureScreenshot();
+
+      const allFiles = [
+        ...attachments.map((a) => a.file),
+        ...(screenshotFile ? [screenshotFile] : []),
+      ];
+
+      await submitFeedbackWithAttachments(
+        {
           content: content.trim(),
           source: feedbackSource,
           pageUrl: pathname,
           appContext: authContext,
         },
-        files: allFiles,
+        allFiles,
         authContext,
-      });
+      );
 
       attachments.forEach((att) => URL.revokeObjectURL(att.preview));
       setAttachments([]);
@@ -146,8 +163,11 @@ export function FeedbackWidget(props: FeedbackWidgetProps) {
         setShowSuccess(false);
         setIsExpanded(false);
       }, 3000);
-    } catch {
-      // Error is captured in submitFeedback.error and displayed in the UI
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to submit feedback";
+      setSubmitError(message);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -163,8 +183,8 @@ export function FeedbackWidget(props: FeedbackWidgetProps) {
   const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setContent(e.target.value);
     setFeedbackSource("text");
-    if (submitFeedback.error) {
-      submitFeedback.reset();
+    if (submitError) {
+      setSubmitError(null);
     }
   };
 
@@ -206,7 +226,7 @@ export function FeedbackWidget(props: FeedbackWidgetProps) {
     attachments.forEach((att) => URL.revokeObjectURL(att.preview));
     setAttachments([]);
     resetTranscript();
-    submitFeedback.reset();
+    setSubmitError(null);
     if (isListening) {
       stopListening();
     }
@@ -341,12 +361,12 @@ export function FeedbackWidget(props: FeedbackWidgetProps) {
 
             {voiceError && <p className="text-xs text-red-600 mt-1">{voiceError}</p>}
 
-            {submitFeedback.error && (
-              <div className="flex items-center justify-between mt-1">
-                <p className="text-xs text-red-600">{submitFeedback.error.message}</p>
+            {submitError && (
+              <div className="flex items-center justify-between mt-1 p-2 bg-red-50 rounded border border-red-200">
+                <p className="text-xs text-red-600 font-medium">{submitError}</p>
                 <button
-                  onClick={() => submitFeedback.reset()}
-                  className="text-xs text-red-400 hover:text-red-600 underline ml-2"
+                  onClick={() => setSubmitError(null)}
+                  className="text-xs text-red-400 hover:text-red-600 underline ml-2 shrink-0"
                 >
                   Dismiss
                 </button>
@@ -426,13 +446,13 @@ export function FeedbackWidget(props: FeedbackWidgetProps) {
                 disabled={
                   !content.trim() ||
                   content.length < 10 ||
-                  submitFeedback.isPending ||
+                  isSubmitting ||
                   isListening ||
                   isCapturingScreenshot
                 }
                 className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
               >
-                {submitFeedback.isPending || isCapturingScreenshot ? (
+                {isSubmitting ? (
                   <>
                     <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24">
                       <circle
@@ -450,7 +470,7 @@ export function FeedbackWidget(props: FeedbackWidgetProps) {
                         d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                       />
                     </svg>
-                    {isCapturingScreenshot ? "Capturing..." : "Sending..."}
+                    Sending...
                   </>
                 ) : (
                   <>

@@ -35,7 +35,8 @@ function resolveToken(authContext: FeedbackAuthContext): string | null {
   if (typeof window === "undefined") {
     return null;
   }
-  return localStorage.getItem(AUTH_TOKEN_KEYS[authContext]);
+  const key = AUTH_TOKEN_KEYS[authContext];
+  return localStorage.getItem(key) || sessionStorage.getItem(key);
 }
 
 function customerAuthHeaders(): Record<string, string> {
