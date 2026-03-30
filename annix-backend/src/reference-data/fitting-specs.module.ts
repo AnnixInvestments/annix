@@ -4,6 +4,7 @@ import { FittingBoreModule } from "../fitting-bore/fitting-bore.module";
 import { FittingDimensionModule } from "../fitting-dimension/fitting-dimension.module";
 import { FittingTypeModule } from "../fitting-type/fitting-type.module";
 import { FittingVariantModule } from "../fitting-variant/fitting-variant.module";
+import { MalleableFittingModule } from "../malleable-fitting/malleable-fitting.module";
 
 @Module({
   imports: [
@@ -12,6 +13,7 @@ import { FittingVariantModule } from "../fitting-variant/fitting-variant.module"
     FittingDimensionModule,
     FittingTypeModule,
     FittingVariantModule,
+    MalleableFittingModule,
   ],
   exports: [
     FittingModule,
@@ -19,6 +21,7 @@ import { FittingVariantModule } from "../fitting-variant/fitting-variant.module"
     FittingDimensionModule,
     FittingTypeModule,
     FittingVariantModule,
+    MalleableFittingModule,
   ],
 })
 export class FittingSpecsModule {}
