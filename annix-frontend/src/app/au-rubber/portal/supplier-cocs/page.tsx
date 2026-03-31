@@ -891,7 +891,7 @@ export default function SupplierCocsPage() {
         <div className="fixed inset-0 z-50 overflow-y-auto">
           <div className="flex min-h-screen items-center justify-center p-4">
             <div
-              className="fixed inset-0 bg-black/40 backdrop-blur-sm"
+              className="fixed inset-0 bg-black/10 backdrop-blur-md"
               onClick={() => setShowUploadModal(false)}
             />
             <div className="relative bg-white rounded-lg shadow-xl max-w-lg w-full p-6">
@@ -1015,7 +1015,7 @@ export default function SupplierCocsPage() {
       {showAnalysisModal && (
         <div className="fixed inset-x-0 top-16 bottom-16 z-[9999] flex items-center justify-center px-4">
           <div
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            className="absolute inset-0 bg-black/10 backdrop-blur-md"
             onClick={(e) => e.stopPropagation()}
           />
 
@@ -1236,7 +1236,7 @@ export default function SupplierCocsPage() {
         <div className="fixed inset-0 z-50 overflow-y-auto">
           <div className="flex min-h-screen items-center justify-center p-4">
             <div
-              className="fixed inset-0 bg-black/40 backdrop-blur-sm"
+              className="fixed inset-0 bg-black/10 backdrop-blur-md"
               onClick={() => setShowDeleteModal(false)}
             />
             <div className="relative bg-white rounded-lg shadow-xl max-w-md w-full p-6">

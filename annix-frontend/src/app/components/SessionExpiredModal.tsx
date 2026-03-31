@@ -66,7 +66,7 @@ export default function SessionExpiredModal(props: SessionExpiredModalProps) {
     <div className="fixed inset-0 z-[9999] flex items-center justify-center">
       {/* Backdrop with blur */}
       <div
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+        className="absolute inset-0 bg-black/10 backdrop-blur-md"
         onClick={(e) => e.stopPropagation()}
       />
 

@@ -3570,7 +3570,7 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
 
       {/* LocalStorage Draft Restoration Prompt */}
       {showDraftRestorePrompt && pendingLocalDraft && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/10 backdrop-blur-md">
           <div className="bg-slate-800 rounded-xl shadow-2xl border border-slate-700 max-w-md w-full mx-4 overflow-hidden">
             <div className="p-6">
               <div className="flex items-start gap-4">
@@ -3633,7 +3633,7 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
 
       {/* Save Progress Dialog for Unregistered Users */}
       {showSaveProgressDialog && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/10 backdrop-blur-md">
           <div className="bg-slate-800 rounded-xl shadow-2xl border border-slate-700 max-w-md w-full mx-4 overflow-hidden">
             {saveProgressStep === "confirm" ? (
               <>
@@ -4109,7 +4109,7 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
       {showCloseConfirmation && (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center">
           <div
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            className="absolute inset-0 bg-black/10 backdrop-blur-md"
             onClick={() => setShowCloseConfirmation(false)}
           />
           <div className="relative bg-white rounded-2xl shadow-2xl max-w-md w-full mx-4 overflow-hidden">

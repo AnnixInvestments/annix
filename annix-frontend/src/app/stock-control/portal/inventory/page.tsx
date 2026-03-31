@@ -264,7 +264,7 @@ export default function InventoryPage() {
         <div className="fixed inset-0 z-50 overflow-y-auto print:relative print:overflow-visible">
           <div className="flex items-start justify-center min-h-screen px-4 py-8 print:p-0 print:m-0">
             <div
-              className="fixed inset-0 bg-gray-500/75 print:hidden"
+              className="fixed inset-0 bg-black/10 backdrop-blur-md print:hidden"
               onClick={closePrintPreview}
             />
             <div className="relative bg-white rounded-lg shadow-xl max-w-6xl w-full print:shadow-none print:max-w-none print:rounded-none">

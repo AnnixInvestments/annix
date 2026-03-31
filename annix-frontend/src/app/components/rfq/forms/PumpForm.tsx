@@ -1633,7 +1633,7 @@ export default function PumpForm(props: PumpFormProps) {
         <div className="fixed inset-0 z-50 overflow-y-auto">
           <div className="flex items-center justify-center min-h-screen px-4 py-8">
             <div
-              className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
+              className="fixed inset-0 bg-black/10 backdrop-blur-md transition-opacity"
               onClick={() => setShowSelectionWizard(false)}
             />
             <div className="relative bg-white rounded-lg max-w-3xl w-full shadow-xl">
@@ -1666,7 +1666,7 @@ export default function PumpForm(props: PumpFormProps) {
         <div className="fixed inset-0 z-50 overflow-y-auto">
           <div className="flex items-center justify-center min-h-screen px-4 py-8">
             <div
-              className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
+              className="fixed inset-0 bg-black/10 backdrop-blur-md transition-opacity"
               onClick={() => setShowApi610Wizard(false)}
             />
             <div className="relative bg-white rounded-lg max-w-4xl w-full shadow-xl max-h-[90vh] overflow-y-auto">
@@ -1704,7 +1704,7 @@ export default function PumpForm(props: PumpFormProps) {
         <div className="fixed inset-0 z-50 overflow-y-auto">
           <div className="flex items-center justify-center min-h-screen px-4 py-8">
             <div
-              className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
+              className="fixed inset-0 bg-black/10 backdrop-blur-md transition-opacity"
               onClick={() => setShowMaterialChecker(false)}
             />
             <div className="relative bg-white rounded-lg max-w-3xl w-full shadow-xl max-h-[90vh] overflow-y-auto">

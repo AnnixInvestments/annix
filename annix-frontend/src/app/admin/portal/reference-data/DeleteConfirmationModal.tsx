@@ -16,7 +16,7 @@ export function DeleteConfirmationModal(props: DeleteConfirmationModalProps) {
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex min-h-screen items-center justify-center p-4">
-        <div className="fixed inset-0 bg-gray-500 bg-opacity-75" onClick={onCancel} />
+        <div className="fixed inset-0 bg-black/10 backdrop-blur-md" onClick={onCancel} />
         <div className="relative bg-white rounded-lg shadow-xl max-w-md w-full p-6">
           <div className="flex items-center mb-4">
             <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center mr-3">

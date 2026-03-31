@@ -260,7 +260,7 @@ export function DocumentUploadGate(props: DocumentUploadGateProps) {
       </div>
 
       {viewingUrl && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/10 backdrop-blur-md">
           <div className="relative h-[90vh] w-[90vw] max-w-5xl rounded-lg bg-white shadow-xl">
             <button
               onClick={() => setViewingUrl(null)}

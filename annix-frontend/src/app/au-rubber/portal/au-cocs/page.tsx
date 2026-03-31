@@ -678,7 +678,7 @@ export default function AuCocsPage() {
         <div className="fixed inset-0 z-50 overflow-y-auto">
           <div className="flex min-h-screen items-center justify-center p-4">
             <div
-              className="fixed inset-0 bg-black/40 backdrop-blur-sm"
+              className="fixed inset-0 bg-black/10 backdrop-blur-md"
               onClick={() => setShowSendModal(false)}
             />
             <div className="relative bg-white rounded-lg shadow-xl max-w-md w-full p-6">
@@ -718,7 +718,7 @@ export default function AuCocsPage() {
       {pdfPreviewUrl && (
         <div className="fixed inset-0 z-50 overflow-y-auto">
           <div className="flex min-h-screen items-center justify-center p-4">
-            <div className="fixed inset-0 bg-black/40 backdrop-blur-sm" onClick={closePdfPreview} />
+            <div className="fixed inset-0 bg-black/10 backdrop-blur-md" onClick={closePdfPreview} />
             <div className="relative bg-white rounded-lg shadow-xl max-w-5xl w-full h-[85vh] flex flex-col">
               <div className="flex items-center justify-between px-6 py-4 border-b">
                 <h3 className="text-lg font-medium text-gray-900">
@@ -746,7 +746,7 @@ export default function AuCocsPage() {
       {progressModal.visible && (
         <div className="fixed inset-0 z-50 overflow-y-auto">
           <div className="flex min-h-screen items-center justify-center p-4">
-            <div className="fixed inset-0 bg-black/40 backdrop-blur-sm" />
+            <div className="fixed inset-0 bg-black/10 backdrop-blur-md" />
             <div className="relative bg-white rounded-lg shadow-xl max-w-md w-full p-6">
               <h3 className="text-lg font-medium text-gray-900 mb-4">{progressModal.title}</h3>
               <div className="space-y-4">
@@ -819,7 +819,7 @@ export default function AuCocsPage() {
         <div className="fixed inset-0 z-50 overflow-y-auto">
           <div className="flex min-h-screen items-center justify-center p-4">
             <div
-              className="fixed inset-0 bg-black/40 backdrop-blur-sm"
+              className="fixed inset-0 bg-black/10 backdrop-blur-md"
               onClick={() => setShowDeleteModal(false)}
             />
             <div className="relative bg-white rounded-lg shadow-xl max-w-md w-full p-6">

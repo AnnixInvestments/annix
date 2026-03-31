@@ -844,7 +844,7 @@ export default function IssueStockPage() {
       )}
 
       {showLinkStaffModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/10 backdrop-blur-md">
           <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 max-h-[80vh] overflow-hidden">
             <div className="p-4 border-b">
               <h3 className="text-lg font-medium text-gray-900">Link Your Staff Profile</h3>

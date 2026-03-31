@@ -190,7 +190,7 @@ function AddClientModal({ open, onClose }: { open: boolean; onClose: () => void 
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/10 backdrop-blur-md">
       <div className="bg-slate-800 border border-slate-700 rounded-xl p-6 w-full max-w-md space-y-4">
         <h2 className="text-lg font-semibold text-white">Add Client</h2>
         <div>

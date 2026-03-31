@@ -835,7 +835,7 @@ export default function JobCardsPage() {
         <div className="fixed inset-0 z-50 overflow-y-auto">
           <div className="flex items-center justify-center min-h-screen px-4">
             <div
-              className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
+              className="fixed inset-0 bg-black/10 backdrop-blur-md transition-opacity"
               onClick={() => setShowCreateForm(false)}
             ></div>
             <div

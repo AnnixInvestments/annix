@@ -73,7 +73,7 @@ export function InviteUserModal(props: InviteUserModalProps) {
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex min-h-screen items-center justify-center p-4">
-        <div className="fixed inset-0 bg-black/50" onClick={onClose} />
+        <div className="fixed inset-0 bg-black/10 backdrop-blur-md" onClick={onClose} />
 
         <div className="relative bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-hidden">
           <div className="px-6 py-4 border-b border-gray-200">

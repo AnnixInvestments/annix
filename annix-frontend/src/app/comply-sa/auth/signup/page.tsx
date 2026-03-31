@@ -484,7 +484,7 @@ function TermsAndConditions(props: { onScrolledToBottom: () => void }) {
 
 function WhyInfoModal(props: { onClose: () => void }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/10 backdrop-blur-md px-4">
       <div className="bg-slate-800 border border-slate-700 rounded-xl p-6 max-w-md w-full relative">
         <button
           type="button"
@@ -533,7 +533,7 @@ function SuccessModal(props: {
         : "Company";
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/10 backdrop-blur-md px-4">
       <div className="bg-slate-800 border border-slate-700 rounded-xl p-8 max-w-md w-full text-center">
         <div className="w-16 h-16 bg-teal-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
           <CheckCircle2 className="h-8 w-8 text-teal-400" />

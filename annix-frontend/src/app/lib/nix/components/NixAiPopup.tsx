@@ -16,7 +16,7 @@ export default function NixAiPopup(props: NixAiPopupProps) {
   return (
     <div className="fixed inset-x-0 top-16 bottom-16 z-[9999] flex items-center justify-center px-4">
       <div
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+        className="absolute inset-0 bg-black/10 backdrop-blur-md"
         onClick={(e) => e.stopPropagation()}
       />
 

@@ -602,7 +602,7 @@ function AddDeviceModal({ onClose, onAdded }: { onClose: () => void; onAdded: ()
   };
 
   return (
-    <div className="fixed inset-0 z-[9999] overflow-y-auto bg-black/50">
+    <div className="fixed inset-0 z-[9999] overflow-y-auto bg-black/10 backdrop-blur-md">
       <div className="flex min-h-full items-center justify-center p-4">
         <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl">
           <h2 className="mb-4 text-lg font-semibold text-gray-900">Register PosiTector Device</h2>
@@ -874,7 +874,7 @@ function ImportWizardModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/10 backdrop-blur-md">
       <div className="w-full max-w-lg rounded-lg bg-white p-6 shadow-xl">
         <h2 className="mb-1 text-lg font-semibold text-gray-900">Import Batch to Job Card</h2>
         <p className="mb-4 text-sm text-gray-500">

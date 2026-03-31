@@ -133,7 +133,7 @@ function InviteMemberModal({ onClose }: { onClose: () => void }) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+    <div className="fixed inset-0 bg-black/10 backdrop-blur-md flex items-center justify-center p-4 z-50">
       <div className="bg-white dark:bg-slate-800 rounded-lg shadow-xl max-w-md w-full">
         <div className="p-6">
           <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
@@ -217,7 +217,7 @@ function ChangeRoleModal({ member, onClose }: { member: TeamMember; onClose: () 
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+    <div className="fixed inset-0 bg-black/10 backdrop-blur-md flex items-center justify-center p-4 z-50">
       <div className="bg-white dark:bg-slate-800 rounded-lg shadow-xl max-w-md w-full">
         <div className="p-6">
           <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">Change Role</h2>

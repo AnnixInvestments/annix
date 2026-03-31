@@ -1258,7 +1258,7 @@ export default function CustomerRegistrationPage() {
 
       {nixState.isVerifying && (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center px-4">
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+          <div className="absolute inset-0 bg-black/10 backdrop-blur-md" />
           <div className="relative bg-white rounded-xl shadow-2xl max-w-md w-full overflow-hidden">
             <div
               className="px-4 py-3 flex items-center justify-center"
@@ -1312,7 +1312,7 @@ export default function CustomerRegistrationPage() {
       {showSkipConfirmation && (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center px-4">
           <div
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            className="absolute inset-0 bg-black/10 backdrop-blur-md"
             onClick={() => setShowSkipConfirmation(false)}
           />
           <div className="relative bg-white rounded-xl shadow-2xl max-w-md w-full overflow-hidden">

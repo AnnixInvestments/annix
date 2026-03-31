@@ -85,7 +85,10 @@ function FeedbackDetailPanel(props: { feedback: FeedbackItem; onClose: () => voi
     : null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-end bg-black/30" onClick={onClose}>
+    <div
+      className="fixed inset-0 z-50 flex items-start justify-end bg-black/10 backdrop-blur-md"
+      onClick={onClose}
+    >
       <div
         className="h-full w-full max-w-lg overflow-y-auto bg-white shadow-xl dark:bg-slate-800"
         onClick={(e) => e.stopPropagation()}

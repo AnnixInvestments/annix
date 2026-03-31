@@ -53,7 +53,7 @@ export function RbacConfigPanel(props: RbacConfigPanelProps) {
 
   return (
     <>
-      <div className="fixed inset-0 bg-black/20 backdrop-blur-sm z-50" />
+      <div className="fixed inset-0 bg-black/10 backdrop-blur-md z-50" />
       <div className="fixed top-0 right-0 h-full w-full max-w-lg bg-white shadow-xl z-50 flex flex-col">
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
           <h2 className="text-lg font-semibold text-gray-900">Menu Visibility by Role</h2>

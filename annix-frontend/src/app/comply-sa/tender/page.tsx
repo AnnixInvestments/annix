@@ -219,7 +219,7 @@ export default function TenderPage() {
         {checklistItems.map((item) => (
           <div key={item.id} className="relative">
             {uploading === item.id && (
-              <div className="absolute inset-0 bg-slate-900/50 rounded-xl flex items-center justify-center z-10">
+              <div className="absolute inset-0 bg-black/10 backdrop-blur-md rounded-xl flex items-center justify-center z-10">
                 <Loader2 className="h-6 w-6 animate-spin text-teal-400" />
               </div>
             )}

@@ -228,7 +228,7 @@ function CreateMeetingModal({
     <div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex min-h-full items-end justify-center p-4 sm:items-center sm:p-0">
         <div
-          className="fixed inset-0 bg-gray-500/75 dark:bg-gray-900/75 transition-opacity"
+          className="fixed inset-0 bg-black/10 backdrop-blur-md transition-opacity"
           onClick={onClose}
         />
         <div className="relative transform overflow-hidden rounded-lg bg-white dark:bg-slate-800 px-4 pb-4 pt-5 text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg sm:p-6 max-h-[90vh] overflow-y-auto">

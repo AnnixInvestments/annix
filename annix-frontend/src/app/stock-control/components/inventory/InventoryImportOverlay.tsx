@@ -68,7 +68,7 @@ export function InventoryImportOverlay({
       )}
 
       {importStep === "parsing" && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-500/75">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/10 backdrop-blur-md">
           <div className="bg-white rounded-lg shadow-xl p-8 text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-600 mx-auto"></div>
             <p className="mt-4 text-gray-700 font-medium">Parsing {importFileName}...</p>
@@ -93,7 +93,7 @@ export function InventoryImportOverlay({
       )}
 
       {importStep === "importing" && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-500/75">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/10 backdrop-blur-md">
           <div className="bg-white rounded-lg shadow-xl p-8 text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-600 mx-auto"></div>
             <p className="mt-4 text-gray-700 font-medium">Importing items...</p>
@@ -106,7 +106,7 @@ export function InventoryImportOverlay({
       )}
 
       {isPrintingLabels && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/10 backdrop-blur-md">
           <div className="bg-white rounded-lg shadow-xl p-6 max-w-sm w-full mx-4">
             <div className="flex flex-col items-center">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-600 mb-4"></div>
@@ -190,7 +190,7 @@ function ImportPreviewModal({
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex items-start justify-center min-h-screen px-4 py-8">
-        <div className="fixed inset-0 bg-black/20 backdrop-blur-sm"></div>
+        <div className="fixed inset-0 bg-black/10 backdrop-blur-md"></div>
         <div className="relative bg-white rounded-lg shadow-xl max-w-4xl w-full">
           <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
             <div>
@@ -368,7 +368,7 @@ function ImportResultModal({ importResult, onDismiss }: ImportResultModalProps) 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex items-center justify-center min-h-screen px-4">
-        <div className="fixed inset-0 bg-black/20 backdrop-blur-sm"></div>
+        <div className="fixed inset-0 bg-black/10 backdrop-blur-md"></div>
         <div className="relative bg-white rounded-lg shadow-xl max-w-md w-full p-6">
           <h3 className="text-lg font-medium text-gray-900 mb-4">Import Complete</h3>
           <div className="grid grid-cols-3 gap-4 mb-6">

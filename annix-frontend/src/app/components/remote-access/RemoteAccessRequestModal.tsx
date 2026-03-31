@@ -80,7 +80,7 @@ export default function RemoteAccessRequestModal(props: RemoteAccessRequestModal
 
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
+      <div className="absolute inset-0 bg-black/10 backdrop-blur-md" onClick={onClose} />
 
       <div className="relative bg-white rounded-2xl shadow-2xl max-w-md w-full mx-4 overflow-hidden animate-in fade-in zoom-in duration-300">
         <div

@@ -1150,7 +1150,7 @@ export default function JobCardImportPage() {
   return (
     <div className="space-y-6">
       {showMicronModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/10 backdrop-blur-md">
           <div className="bg-white rounded-lg shadow-xl p-6 max-w-lg w-full mx-4">
             <h3 className="text-lg font-semibold text-gray-900 mb-2">No microns detected</h3>
             <p className="text-sm text-gray-600 mb-4">

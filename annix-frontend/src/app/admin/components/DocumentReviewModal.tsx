@@ -535,7 +535,7 @@ export function DocumentReviewModal(props: DocumentReviewModalProps) {
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex items-center justify-center min-h-screen px-4">
-        <div className="fixed inset-0 bg-black/20 backdrop-blur-sm" onClick={onClose} />
+        <div className="fixed inset-0 bg-black/10 backdrop-blur-md" onClick={onClose} />
 
         <div className="relative bg-white rounded-lg shadow-xl max-w-7xl w-full max-h-[95vh] flex flex-col">
           <div className="flex items-center justify-between p-4 border-b">

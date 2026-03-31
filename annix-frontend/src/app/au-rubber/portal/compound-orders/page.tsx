@@ -417,7 +417,7 @@ export default function CompoundOrdersPage() {
         <div className="fixed inset-0 z-50 overflow-y-auto">
           <div className="flex min-h-screen items-center justify-center p-4">
             <div
-              className="fixed inset-0 bg-black/40 backdrop-blur-sm"
+              className="fixed inset-0 bg-black/10 backdrop-blur-md"
               onClick={() => setShowNewModal(false)}
             />
             <div className="relative bg-white rounded-lg shadow-xl max-w-md w-full p-6">
@@ -507,7 +507,7 @@ export default function CompoundOrdersPage() {
         <div className="fixed inset-0 z-50 overflow-y-auto">
           <div className="flex min-h-screen items-center justify-center p-4">
             <div
-              className="fixed inset-0 bg-black/40 backdrop-blur-sm"
+              className="fixed inset-0 bg-black/10 backdrop-blur-md"
               onClick={() => setShowReceiveModal(false)}
             />
             <div className="relative bg-white rounded-lg shadow-xl max-w-md w-full p-6">

@@ -1001,7 +1001,7 @@ export default function CustomerDetailPage() {
 
       {/* Suspend Dialog */}
       {suspendDialogOpen && (
-        <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-black/10 backdrop-blur-md flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 max-w-md w-full">
             <h3 className="text-lg font-medium text-gray-900 mb-4">Suspend Customer Account</h3>
             <p className="text-sm text-gray-500 mb-4">
@@ -1039,7 +1039,7 @@ export default function CustomerDetailPage() {
       )}
 
       {approveDialogOpen && (
-        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-black/10 backdrop-blur-md flex items-center justify-center z-50">
           <div className="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4 overflow-hidden">
             <div className="bg-gradient-to-r from-green-600 to-emerald-600 px-6 py-4">
               <div className="flex items-center gap-3">

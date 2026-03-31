@@ -205,7 +205,7 @@ export function ShoreHardnessForm({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/10 backdrop-blur-md p-4">
       <div className="w-full max-w-3xl rounded-lg bg-white p-6 shadow-xl max-h-[90vh] overflow-y-auto">
         <h2 className="mb-4 text-lg font-semibold text-gray-900">
           {existing ? "Edit Shore Hardness Record" : "New Shore Hardness Record"}

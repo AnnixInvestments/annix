@@ -535,7 +535,7 @@ export default function NixRegistrationVerifier(props: NixRegistrationVerifierPr
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center px-4">
       <div
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+        className="absolute inset-0 bg-black/10 backdrop-blur-md"
         onClick={(e) => e.stopPropagation()}
       />
 

@@ -84,7 +84,7 @@ export default function InvoiceClarificationPopup(props: InvoiceClarificationPop
 
   return (
     <div className="fixed inset-x-0 top-16 bottom-16 z-[9999] flex items-center justify-center px-4">
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+      <div className="absolute inset-0 bg-black/10 backdrop-blur-md" />
 
       <div className="relative bg-white rounded-xl shadow-2xl max-w-2xl w-full overflow-hidden animate-in fade-in zoom-in duration-300 max-h-full flex flex-col">
         <div className="px-4 py-3 flex items-center justify-between flex-shrink-0 bg-teal-700">

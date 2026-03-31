@@ -788,7 +788,7 @@ function AccessControlTab() {
       </div>
 
       {editingRole && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-black/10 backdrop-blur-md flex items-center justify-center z-50">
           <div className="bg-white rounded-lg shadow-xl w-full max-w-lg max-h-[80vh] overflow-y-auto m-4">
             <div className="px-6 py-4 border-b flex items-center justify-between">
               <h3 className="text-lg font-medium">Edit Role: {editingRole.name}</h3>
@@ -853,7 +853,7 @@ function AccessControlTab() {
       )}
 
       {showInviteModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-black/10 backdrop-blur-md flex items-center justify-center z-50">
           <div className="bg-white rounded-lg shadow-xl w-full max-w-md m-4">
             <div className="px-6 py-4 border-b flex items-center justify-between">
               <h3 className="text-lg font-medium">Invite User</h3>
@@ -940,7 +940,7 @@ function AccessControlTab() {
       )}
 
       {showNewRoleModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-black/10 backdrop-blur-md flex items-center justify-center z-50">
           <div className="bg-white rounded-lg shadow-xl w-full max-w-md m-4">
             <div className="px-6 py-4 border-b flex items-center justify-between">
               <h3 className="text-lg font-medium">Add New Role</h3>
@@ -1013,7 +1013,7 @@ function AccessControlTab() {
       )}
 
       {editingUserAccess && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-black/10 backdrop-blur-md flex items-center justify-center z-50">
           <div className="bg-white rounded-lg shadow-xl w-full max-w-md m-4">
             <div className="px-6 py-4 border-b flex items-center justify-between">
               <h3 className="text-lg font-medium">Edit User Role</h3>

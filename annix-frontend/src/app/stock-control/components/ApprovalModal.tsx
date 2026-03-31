@@ -98,7 +98,7 @@ export function ApprovalModal(props: ApprovalModalProps) {
       aria-labelledby="approval-modal-title"
     >
       <div className="flex min-h-screen items-center justify-center p-4">
-        <div className="fixed inset-0 bg-black/20 backdrop-blur-sm" />
+        <div className="fixed inset-0 bg-black/10 backdrop-blur-md" />
 
         <div className="relative bg-white rounded-lg shadow-xl max-w-lg w-full">
           <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">

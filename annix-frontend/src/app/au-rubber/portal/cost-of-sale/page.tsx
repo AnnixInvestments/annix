@@ -671,7 +671,7 @@ export default function CostOfSalePage() {
       )}
 
       {showAddCompound && (
-        <div className="fixed inset-0 z-50 overflow-y-auto bg-black/50 flex items-center justify-center">
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-black/10 backdrop-blur-md flex items-center justify-center">
           <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 p-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Add Compound Cost Rate</h3>
             <div className="space-y-4">

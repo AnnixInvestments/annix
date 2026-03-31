@@ -164,7 +164,7 @@ export function RoleManagementPanel(props: RoleManagementPanelProps) {
 
   return (
     <div className="fixed inset-0 z-50 overflow-hidden">
-      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
+      <div className="absolute inset-0 bg-black/10 backdrop-blur-md" onClick={onClose} />
 
       <div className="absolute inset-y-0 right-0 flex max-w-full">
         <div className="relative w-screen max-w-2xl">

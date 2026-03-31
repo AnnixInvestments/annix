@@ -426,7 +426,7 @@ export default function DispatchTab(props: DispatchTabProps) {
         <div className="fixed inset-0 z-50 overflow-y-auto">
           <div className="flex min-h-screen items-center justify-center p-4">
             <div
-              className="fixed inset-0 bg-black bg-opacity-50"
+              className="fixed inset-0 bg-black/10 backdrop-blur-md"
               onClick={() => setShowCdnPreview(null)}
             />
             <div className="relative bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] flex flex-col">
@@ -466,7 +466,7 @@ export default function DispatchTab(props: DispatchTabProps) {
         <div className="fixed inset-0 z-50 overflow-y-auto">
           <div className="flex min-h-screen items-center justify-center p-4">
             <div
-              className="fixed inset-0 bg-black bg-opacity-50"
+              className="fixed inset-0 bg-black/10 backdrop-blur-md"
               onClick={() => setShowPhotoPreview(null)}
             />
             <div className="relative bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] flex flex-col">

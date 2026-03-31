@@ -1790,7 +1790,7 @@ export default function SecureDocumentsPage() {
         <div className="fixed inset-0 z-50 overflow-y-auto">
           <div className="flex min-h-screen items-center justify-center p-4">
             <div
-              className="fixed inset-0 bg-black/30 backdrop-blur-sm"
+              className="fixed inset-0 bg-black/10 backdrop-blur-md"
               onClick={() => setShowDeleteConfirm(null)}
             />
             <div className="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full p-6">
@@ -1824,7 +1824,7 @@ export default function SecureDocumentsPage() {
         <div className="fixed inset-0 z-50 overflow-y-auto">
           <div className="flex min-h-screen items-center justify-center p-4">
             <div
-              className="fixed inset-0 bg-black/30 backdrop-blur-sm"
+              className="fixed inset-0 bg-black/10 backdrop-blur-md"
               onClick={() => setShowBulkDeleteConfirm(false)}
             />
             <div className="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full p-6">
@@ -1859,7 +1859,7 @@ export default function SecureDocumentsPage() {
         <div className="fixed inset-0 z-50 overflow-y-auto">
           <div className="flex min-h-screen items-center justify-center p-4">
             <div
-              className="fixed inset-0 bg-black/30 backdrop-blur-sm"
+              className="fixed inset-0 bg-black/10 backdrop-blur-md"
               onClick={() => setPendingBinaryFiles([])}
             />
             <div className="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-3xl w-full overflow-hidden">
@@ -2096,7 +2096,7 @@ export default function SecureDocumentsPage() {
         <div className="fixed inset-0 z-50 overflow-y-auto">
           <div className="flex min-h-screen items-center justify-center p-4">
             <div
-              className="fixed inset-0 bg-black/30 backdrop-blur-sm"
+              className="fixed inset-0 bg-black/10 backdrop-blur-md"
               onClick={() => setNixUploadResult(null)}
             />
             <div className="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-3xl w-full overflow-hidden">
@@ -2361,7 +2361,7 @@ export default function SecureDocumentsPage() {
       )}
 
       {nixUploadResult && !nixUploadResult.success && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-black/10 backdrop-blur-md flex items-center justify-center z-50">
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-lg w-full mx-4">
             <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
               <div className="flex items-center">

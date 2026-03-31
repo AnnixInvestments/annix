@@ -46,7 +46,7 @@ export function ConfirmModal(props: ConfirmModalProps) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/50" onClick={onCancel} />
+      <div className="absolute inset-0 bg-black/10 backdrop-blur-md" onClick={onCancel} />
       <div className="relative bg-white rounded-lg shadow-xl max-w-md w-full mx-4 overflow-hidden">
         <div className="p-6">
           <div className="flex items-start space-x-4">

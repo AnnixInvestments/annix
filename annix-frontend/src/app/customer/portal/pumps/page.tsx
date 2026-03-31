@@ -296,7 +296,7 @@ function CustomerPumpsContent() {
         <div className="fixed inset-0 z-50 overflow-y-auto">
           <div className="flex items-center justify-center min-h-screen px-4">
             <div
-              className="fixed inset-0 bg-gray-500 bg-opacity-75"
+              className="fixed inset-0 bg-black/10 backdrop-blur-md"
               onClick={() => setShowQuoteModal(false)}
             />
             <div className="relative bg-white rounded-lg max-w-2xl w-full p-6 shadow-xl">

@@ -35,7 +35,10 @@ export function RecurrenceModal(props: RecurrenceModalProps) {
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex min-h-full items-center justify-center p-4">
-        <div className="fixed inset-0 bg-black/50 transition-opacity" onClick={onClose} />
+        <div
+          className="fixed inset-0 bg-black/10 backdrop-blur-md transition-opacity"
+          onClick={onClose}
+        />
 
         <div className="relative bg-white dark:bg-slate-800 rounded-lg shadow-xl max-w-md w-full p-6">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">{title}</h3>

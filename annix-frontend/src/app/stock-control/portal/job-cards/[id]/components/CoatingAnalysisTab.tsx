@@ -714,7 +714,7 @@ export function CoatingAnalysisTab(props: CoatingAnalysisTabProps) {
 
       {showTeachNix && (
         <div className="fixed inset-0 z-50 overflow-hidden">
-          <div className="fixed inset-0 bg-black/20 backdrop-blur-sm transition-opacity"></div>
+          <div className="fixed inset-0 bg-black/10 backdrop-blur-md transition-opacity"></div>
           <div className="fixed inset-y-0 right-0 max-w-2xl w-full bg-white shadow-xl flex flex-col">
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
               <h3 className="text-lg font-medium text-gray-900">Teach Nix</h3>
@@ -837,7 +837,7 @@ export function CoatingAnalysisTab(props: CoatingAnalysisTabProps) {
       {showTdsModal && (
         <div className="fixed inset-0 z-50 overflow-y-auto">
           <div className="flex items-center justify-center min-h-screen px-4">
-            <div className="fixed inset-0 bg-black/20 backdrop-blur-sm transition-opacity"></div>
+            <div className="fixed inset-0 bg-black/10 backdrop-blur-md transition-opacity"></div>
             <div className="relative bg-white rounded-lg shadow-xl max-w-lg w-full p-6">
               <h3 className="text-lg font-medium text-gray-900 mb-2">
                 Unverified Coating Products

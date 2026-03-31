@@ -60,7 +60,7 @@ export function ConfirmDialog(props: ConfirmDialogProps) {
     >
       <div className="flex min-h-full items-center justify-center p-4">
         <div
-          className="fixed inset-0 bg-black bg-opacity-50"
+          className="fixed inset-0 bg-black/10 backdrop-blur-md"
           onClick={onCancel}
           aria-hidden="true"
         />

@@ -705,7 +705,7 @@ function CustomerSuppliersContent() {
         <div className="fixed inset-0 z-50 overflow-y-auto">
           <div className="flex items-center justify-center min-h-screen px-4">
             <div
-              className="fixed inset-0 bg-black bg-opacity-30"
+              className="fixed inset-0 bg-black/10 backdrop-blur-md"
               onClick={() => {
                 setShowAddModal(false);
                 resetAddForm();
@@ -807,7 +807,7 @@ function CustomerSuppliersContent() {
         <div className="fixed inset-0 z-50 overflow-y-auto">
           <div className="flex items-center justify-center min-h-screen px-4">
             <div
-              className="fixed inset-0 bg-black bg-opacity-30"
+              className="fixed inset-0 bg-black/10 backdrop-blur-md"
               onClick={() => {
                 setShowInviteModal(false);
                 resetInviteForm();
@@ -897,7 +897,7 @@ function CustomerSuppliersContent() {
         <div className="fixed inset-0 z-50 overflow-y-auto">
           <div className="flex items-center justify-center min-h-screen px-4">
             <div
-              className="fixed inset-0 bg-black bg-opacity-30"
+              className="fixed inset-0 bg-black/10 backdrop-blur-md"
               onClick={() => {
                 setShowBlockModal(false);
                 setBlockingSupplier(null);
@@ -956,7 +956,7 @@ function CustomerSuppliersContent() {
         <div className="fixed inset-0 z-50 overflow-y-auto">
           <div className="flex items-center justify-center min-h-screen px-4">
             <div
-              className="fixed inset-0 bg-black bg-opacity-30"
+              className="fixed inset-0 bg-black/10 backdrop-blur-md"
               onClick={() => {
                 setShowProductsModal(false);
                 setProductsModalSupplier(null);

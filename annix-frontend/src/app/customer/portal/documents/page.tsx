@@ -551,7 +551,7 @@ function CustomerDocumentsContent() {
         <div className="fixed inset-0 z-50 overflow-y-auto">
           <div className="flex items-center justify-center min-h-screen px-4">
             <div
-              className="fixed inset-0 bg-black/10 backdrop-blur-sm"
+              className="fixed inset-0 bg-black/10 backdrop-blur-md"
               onClick={() => {
                 setShowUploadModal(false);
                 resetUploadForm();
