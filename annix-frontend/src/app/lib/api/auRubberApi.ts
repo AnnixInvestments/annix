@@ -2617,6 +2617,15 @@ class AuRubberApiClient {
     });
   }
 
+  async bulkSendAuCocs(
+    email: string,
+  ): Promise<{ sent: number; total: number; cocNumbers: string[] }> {
+    return this.request("/rubber-lining/portal/au-cocs/bulk-send", {
+      method: "POST",
+      body: JSON.stringify({ email }),
+    });
+  }
+
   async createAuCocFromDeliveryNote(deliveryNoteId: number): Promise<RubberAuCocDto> {
     return this.request(
       `/rubber-lining/portal/au-cocs/create-from-delivery-note/${deliveryNoteId}`,

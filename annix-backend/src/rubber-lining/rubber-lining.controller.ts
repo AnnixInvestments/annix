@@ -2349,6 +2349,16 @@ Formula: totalPrice = totalKg × salePricePerKg
 
   @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
   @ApiBearerAuth()
+  @Post("portal/au-cocs/bulk-send")
+  @ApiOperation({ summary: "Send all generated AU CoCs to customer in one email" })
+  async bulkSendAuCocs(
+    @Body() dto: SendAuCocDto,
+  ): Promise<{ sent: number; total: number; cocNumbers: string[] }> {
+    return this.rubberAuCocService.bulkSendToCustomer(dto);
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
   @Delete("portal/au-cocs/:id")
   @ApiOperation({ summary: "Delete AU CoC" })
   @ApiParam({ name: "id", description: "AU CoC ID" })

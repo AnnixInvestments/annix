@@ -505,6 +505,63 @@ export class RubberAuCocService {
     return this.mapAuCocToDto(coc);
   }
 
+  async bulkSendToCustomer(
+    dto: SendAuCocDto,
+  ): Promise<{ sent: number; total: number; cocNumbers: string[] }> {
+    const generatedCocs = await this.auCocRepository.find({
+      where: { status: AuCocStatus.GENERATED },
+      relations: ["customerCompany"],
+      order: { cocNumber: "ASC" },
+    });
+
+    if (generatedCocs.length === 0) {
+      throw new BadRequestException("No generated CoCs to send");
+    }
+
+    const attachments: { filename: string; content: Buffer; contentType: string }[] = [];
+    const cocNumbers: string[] = [];
+
+    for (const coc of generatedCocs) {
+      const { buffer: pdfBuffer } = await this.pdfBuffer(coc.id);
+      attachments.push({
+        filename: `${coc.cocNumber}.pdf`,
+        content: pdfBuffer,
+        contentType: "application/pdf",
+      });
+      cocNumbers.push(coc.cocNumber);
+    }
+
+    const customerName = generatedCocs[0].customerCompany?.name || "Customer";
+    const cocList = cocNumbers.map((n) => `<li>${n}</li>`).join("\n");
+
+    await this.emailService.sendEmail({
+      to: dto.email,
+      subject: `Certificates of Conformance - ${cocNumbers.length} CoC(s)`,
+      fromName: "AU Industries",
+      html: [
+        `<p>Dear ${customerName},</p>`,
+        `<p>Please find attached ${cocNumbers.length} Certificate(s) of Conformance:</p>`,
+        `<ul>${cocList}</ul>`,
+        "<p>Kind regards,<br/>AU Industries</p>",
+      ].join("\n"),
+      attachments,
+    });
+
+    const sentAt = now().toJSDate();
+    for (const coc of generatedCocs) {
+      coc.sentToEmail = dto.email;
+      coc.sentAt = sentAt;
+      coc.status = AuCocStatus.SENT;
+    }
+    await this.auCocRepository.save(generatedCocs);
+
+    this.logger.log(
+      `Bulk sent ${generatedCocs.length} AU CoCs to ${dto.email}: ${cocNumbers.join(", ")}`,
+    );
+
+    return { sent: generatedCocs.length, total: generatedCocs.length, cocNumbers };
+  }
+
   async deleteAuCoc(id: number): Promise<boolean> {
     const coc = await this.auCocRepository.findOne({
       where: { id },
