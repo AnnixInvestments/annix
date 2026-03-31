@@ -2913,17 +2913,20 @@ Formula: totalPrice = totalKg × salePricePerKg
   @ApiQuery({ name: "status", required: false })
   @ApiQuery({ name: "companyId", required: false })
   @ApiQuery({ name: "includeAllVersions", required: false })
+  @ApiQuery({ name: "isCreditNote", required: false })
   async taxInvoices(
     @Query("invoiceType") invoiceType?: TaxInvoiceType,
     @Query("status") status?: TaxInvoiceStatus,
     @Query("companyId") companyId?: string,
     @Query("includeAllVersions") includeAllVersions?: string,
+    @Query("isCreditNote") isCreditNote?: string,
   ): Promise<RubberTaxInvoiceDto[]> {
     return this.rubberTaxInvoiceService.allTaxInvoices({
       invoiceType,
       status,
       companyId: companyId ? Number(companyId) : undefined,
       includeAllVersions: includeAllVersions === "true",
+      isCreditNote: isCreditNote != null ? isCreditNote === "true" : undefined,
     });
   }
 
@@ -3018,6 +3021,16 @@ Formula: totalPrice = totalKg × salePricePerKg
       invoice.companyName,
     );
 
+    const isCreditNote = invoice.isCreditNote;
+    const extractText = (text: string) =>
+      isCreditNote
+        ? this.rubberCocExtractionService.extractCreditNote(text, correctionHints)
+        : this.rubberCocExtractionService.extractTaxInvoice(text, correctionHints);
+    const extractImages = (buffer: Buffer) =>
+      isCreditNote
+        ? this.rubberCocExtractionService.extractCreditNoteFromImages(buffer, correctionHints)
+        : this.rubberCocExtractionService.extractTaxInvoiceFromImages(buffer, correctionHints);
+
     const extractionResult: {
       data: import("./entities/rubber-tax-invoice.entity").ExtractedTaxInvoiceData;
       tokensUsed?: number;
@@ -3029,7 +3042,7 @@ Formula: totalPrice = totalKg × salePricePerKg
         if (docText.length < 20) {
           throw new BadRequestException("Word document appears to be empty or unreadable");
         }
-        return this.rubberCocExtractionService.extractTaxInvoice(docText, correctionHints);
+        return extractText(docText);
       } else if (ext === "xlsx" || ext === "xls") {
         const workbook = XLSX.read(docBuffer, { type: "buffer" });
         const sheetTexts = workbook.SheetNames.map((name: string) => {
@@ -3040,7 +3053,7 @@ Formula: totalPrice = totalKg × salePricePerKg
         if (excelText.length < 20) {
           throw new BadRequestException("Excel document appears to be empty or unreadable");
         }
-        return this.rubberCocExtractionService.extractTaxInvoice(excelText, correctionHints);
+        return extractText(excelText);
       } else {
         const pdfText = await (async () => {
           try {
@@ -3052,12 +3065,9 @@ Formula: totalPrice = totalKg × salePricePerKg
         })();
 
         if (pdfText.length >= 50) {
-          return this.rubberCocExtractionService.extractTaxInvoice(pdfText, correctionHints);
+          return extractText(pdfText);
         } else {
-          return this.rubberCocExtractionService.extractTaxInvoiceFromImages(
-            docBuffer,
-            correctionHints,
-          );
+          return extractImages(docBuffer);
         }
       }
     })();

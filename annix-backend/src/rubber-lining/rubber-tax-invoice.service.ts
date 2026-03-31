@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable, Logger } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
+import { In, Repository } from "typeorm";
 import { formatISODate, fromISO, generateUniqueId } from "../lib/datetime";
 import {
   DOCUMENT_VERSION_STATUS_LABELS,
@@ -11,6 +11,7 @@ import { CompoundMovementReferenceType } from "./entities/rubber-compound-moveme
 import { RubberDeliveryNote } from "./entities/rubber-delivery-note.entity";
 import { RubberProduct } from "./entities/rubber-product.entity";
 import { ProductCodingType, RubberProductCoding } from "./entities/rubber-product-coding.entity";
+import { RollStockStatus, RubberRollStock } from "./entities/rubber-roll-stock.entity";
 import {
   ExtractedTaxInvoiceData,
   RubberTaxInvoice,
@@ -61,6 +62,10 @@ export interface RubberTaxInvoiceDto {
   versionStatus: DocumentVersionStatus;
   versionStatusLabel: string;
   previousVersionId: number | null;
+  isCreditNote: boolean;
+  originalInvoiceId: number | null;
+  originalInvoiceNumber: string | null;
+  creditNoteRollNumbers: string[];
 }
 
 export interface CreateTaxInvoiceDto {
@@ -71,6 +76,7 @@ export interface CreateTaxInvoiceDto {
   documentPath?: string;
   totalAmount?: number;
   vatAmount?: number;
+  isCreditNote?: boolean;
 }
 
 export interface UpdateTaxInvoiceDto {
@@ -106,6 +112,8 @@ export class RubberTaxInvoiceService {
     private productRepository: Repository<RubberProduct>,
     @InjectRepository(RubberDeliveryNote)
     private deliveryNoteRepository: Repository<RubberDeliveryNote>,
+    @InjectRepository(RubberRollStock)
+    private rollStockRepository: Repository<RubberRollStock>,
     private rubberStockService: RubberStockService,
     private versioningService: RubberDocumentVersioningService,
   ) {}
@@ -115,10 +123,12 @@ export class RubberTaxInvoiceService {
     status?: TaxInvoiceStatus;
     companyId?: number;
     includeAllVersions?: boolean;
+    isCreditNote?: boolean;
   }): Promise<RubberTaxInvoiceDto[]> {
     const query = this.taxInvoiceRepository
       .createQueryBuilder("ti")
       .leftJoinAndSelect("ti.company", "company")
+      .leftJoinAndSelect("ti.originalInvoice", "originalInvoice")
       .orderBy("ti.created_at", "DESC");
 
     if (!filters?.includeAllVersions) {
@@ -136,6 +146,11 @@ export class RubberTaxInvoiceService {
     if (filters?.companyId) {
       query.andWhere("ti.company_id = :companyId", { companyId: filters.companyId });
     }
+    if (filters?.isCreditNote !== undefined) {
+      query.andWhere("ti.is_credit_note = :isCreditNote", {
+        isCreditNote: filters.isCreditNote,
+      });
+    }
 
     const invoices = await query.getMany();
     return invoices.map((inv) => this.mapToDto(inv));
@@ -144,7 +159,7 @@ export class RubberTaxInvoiceService {
   async taxInvoiceById(id: number): Promise<RubberTaxInvoiceDto | null> {
     const invoice = await this.taxInvoiceRepository.findOne({
       where: { id },
-      relations: ["company"],
+      relations: ["company", "originalInvoice"],
     });
     return invoice ? this.mapToDto(invoice) : null;
   }
@@ -186,6 +201,7 @@ export class RubberTaxInvoiceService {
       versionStatus: isDuplicate
         ? DocumentVersionStatus.PENDING_AUTHORIZATION
         : DocumentVersionStatus.ACTIVE,
+      isCreditNote: dto.isCreditNote ?? false,
     });
 
     if (isDuplicate) {
@@ -354,7 +370,9 @@ export class RubberTaxInvoiceService {
     invoice.status = TaxInvoiceStatus.APPROVED;
     await this.taxInvoiceRepository.save(invoice);
 
-    if (invoice.invoiceType === TaxInvoiceType.SUPPLIER) {
+    if (invoice.isCreditNote) {
+      await this.processCreditNoteRollRejections(invoice);
+    } else if (invoice.invoiceType === TaxInvoiceType.SUPPLIER) {
       const isCalendarer = await this.isCalendarerCompany(invoice.companyId);
       if (isCalendarer) {
         await this.processCalendarerRollDeduction(invoice);
@@ -801,6 +819,35 @@ export class RubberTaxInvoiceService {
       }
     }
 
+    if (invoice.isCreditNote) {
+      if (data.originalInvoiceRef) {
+        const normalizedRef = data.originalInvoiceRef.replace(/[-\s]/g, "");
+        const originalInvoice = await this.taxInvoiceRepository
+          .createQueryBuilder("ti")
+          .where("REPLACE(REPLACE(ti.invoice_number, '-', ''), ' ', '') = :ref", {
+            ref: normalizedRef,
+          })
+          .andWhere("ti.company_id = :companyId", { companyId: invoice.companyId })
+          .andWhere("ti.is_credit_note = false")
+          .getOne();
+
+        if (originalInvoice) {
+          invoice.originalInvoiceId = originalInvoice.id;
+          this.logger.log(
+            `Linked credit note ${invoice.invoiceNumber} to original invoice #${originalInvoice.id} (${originalInvoice.invoiceNumber})`,
+          );
+        } else {
+          this.logger.warn(
+            `Could not find original invoice "${data.originalInvoiceRef}" for credit note ${invoice.invoiceNumber}`,
+          );
+        }
+      }
+
+      if (data.rollNumbers && data.rollNumbers.length > 0) {
+        invoice.creditNoteRollNumbers = data.rollNumbers;
+      }
+    }
+
     await this.taxInvoiceRepository.save(invoice);
     return this.mapToDto(invoice);
   }
@@ -881,6 +928,43 @@ export class RubberTaxInvoiceService {
     return { quantity: aiQuantity, unit: aiUnit };
   }
 
+  private async processCreditNoteRollRejections(invoice: RubberTaxInvoice): Promise<void> {
+    const rollNumbers = invoice.creditNoteRollNumbers;
+    if (!rollNumbers || rollNumbers.length === 0) {
+      this.logger.log(`Credit note ${invoice.invoiceNumber} has no roll numbers to reject`);
+      return;
+    }
+
+    const rolls = await this.rollStockRepository.find({
+      where: { rollNumber: In(rollNumbers) },
+    });
+
+    const rejectedCount = await rolls.reduce(async (prevPromise, roll) => {
+      const count = await prevPromise;
+      if (roll.status === RollStockStatus.REJECTED) {
+        this.logger.log(`Roll ${roll.rollNumber} already rejected, skipping`);
+        return count;
+      }
+      roll.status = RollStockStatus.REJECTED;
+      await this.rollStockRepository.save(roll);
+      this.logger.log(
+        `Rejected roll ${roll.rollNumber} (id=${roll.id}) via credit note ${invoice.invoiceNumber}`,
+      );
+      return count + 1;
+    }, Promise.resolve(0));
+
+    const unmatched = rollNumbers.filter((rn) => !rolls.some((r) => r.rollNumber === rn));
+    if (unmatched.length > 0) {
+      this.logger.warn(
+        `Credit note ${invoice.invoiceNumber}: could not find rolls in stock: ${unmatched.join(", ")}`,
+      );
+    }
+
+    this.logger.log(
+      `Credit note ${invoice.invoiceNumber}: rejected ${rejectedCount} roll(s), ${unmatched.length} not found in stock`,
+    );
+  }
+
   private mapToDto(invoice: RubberTaxInvoice): RubberTaxInvoiceDto {
     const productSummary = this.extractProductSummary(invoice.extractedData);
 
@@ -913,6 +997,10 @@ export class RubberTaxInvoiceService {
       versionStatus: invoice.versionStatus,
       versionStatusLabel: DOCUMENT_VERSION_STATUS_LABELS[invoice.versionStatus],
       previousVersionId: invoice.previousVersionId,
+      isCreditNote: invoice.isCreditNote ?? false,
+      originalInvoiceId: invoice.originalInvoiceId ?? null,
+      originalInvoiceNumber: invoice.originalInvoice?.invoiceNumber ?? null,
+      creditNoteRollNumbers: invoice.creditNoteRollNumbers ?? [],
     };
   }
 

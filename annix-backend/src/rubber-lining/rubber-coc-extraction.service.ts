@@ -15,11 +15,13 @@ import {
   CALENDARER_COC_SYSTEM_PROMPT,
   CALENDER_ROLL_COC_SYSTEM_PROMPT,
   COMPOUNDER_COC_SYSTEM_PROMPT,
+  CREDIT_NOTE_SYSTEM_PROMPT,
   CUSTOMER_DELIVERY_NOTE_OCR_PROMPT,
   CUSTOMER_DELIVERY_NOTE_SYSTEM_PROMPT,
   calendererCocExtractionPrompt,
   calenderRollCocExtractionPrompt,
   compounderCocExtractionPrompt,
+  creditNoteExtractionPrompt,
   customerDeliveryNoteExtractionPrompt,
   DELIVERY_NOTE_SYSTEM_PROMPT,
   deliveryNoteExtractionPrompt,
@@ -580,6 +582,80 @@ export class RubberCocExtractionService {
 
     const processingTimeMs = nowMillis() - startTime;
     this.logger.log(`Tax invoice extracted via OCR in ${processingTimeMs}ms`);
+
+    return {
+      data: response.data as unknown as ExtractedTaxInvoiceData,
+      tokensUsed: response.tokensUsed,
+      processingTimeMs,
+    };
+  }
+
+  async extractCreditNote(
+    pdfText: string,
+    correctionHints?: string | null,
+  ): Promise<{
+    data: ExtractedTaxInvoiceData;
+    tokensUsed?: number;
+    processingTimeMs: number;
+  }> {
+    const startTime = nowMillis();
+    this.logger.log("Extracting credit note data...");
+
+    if (!this.apiKey) {
+      throw new Error("GEMINI_API_KEY not configured");
+    }
+
+    const systemPrompt = correctionHints
+      ? `${CREDIT_NOTE_SYSTEM_PROMPT}\n\n${correctionHints}`
+      : CREDIT_NOTE_SYSTEM_PROMPT;
+
+    const response = await this.callGemini(
+      systemPrompt,
+      creditNoteExtractionPrompt(pdfText),
+      "credit-note-extraction",
+    );
+
+    const processingTimeMs = nowMillis() - startTime;
+    this.logger.log(`Credit note extracted in ${processingTimeMs}ms`);
+
+    return {
+      data: response.data as unknown as ExtractedTaxInvoiceData,
+      tokensUsed: response.tokensUsed,
+      processingTimeMs,
+    };
+  }
+
+  async extractCreditNoteFromImages(
+    pdfBuffer: Buffer,
+    correctionHints?: string | null,
+  ): Promise<{
+    data: ExtractedTaxInvoiceData;
+    tokensUsed?: number;
+    processingTimeMs: number;
+  }> {
+    const startTime = nowMillis();
+    this.logger.log("Extracting credit note data using OCR...");
+
+    if (!this.apiKey) {
+      throw new Error("GEMINI_API_KEY not configured");
+    }
+
+    const systemPrompt = correctionHints
+      ? `${CREDIT_NOTE_SYSTEM_PROMPT}\n\n${correctionHints}`
+      : CREDIT_NOTE_SYSTEM_PROMPT;
+
+    const images = await this.convertPdfToImages(pdfBuffer);
+    this.logger.log(`Converted credit note PDF to ${images.length} image(s) for OCR extraction`);
+
+    const response = await this.callGeminiWithImages(
+      systemPrompt,
+      "Please extract structured data from this supplier credit note image. Return ONLY a valid JSON object with the extracted data.",
+      images,
+      "credit-note-ocr-extraction",
+    );
+
+    const processingTimeMs = nowMillis() - startTime;
+    this.logger.log(`Credit note extracted via OCR in ${processingTimeMs}ms`);
 
     return {
       data: response.data as unknown as ExtractedTaxInvoiceData,

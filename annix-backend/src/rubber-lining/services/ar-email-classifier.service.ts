@@ -8,12 +8,14 @@ import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
 export enum ArDocumentType {
   COC = "coc",
   TAX_INVOICE = "tax_invoice",
+  CREDIT_NOTE = "credit_note",
   DELIVERY_NOTE = "delivery_note",
   ORDER = "order",
   UNKNOWN = "unknown",
 }
 
 const SUBJECT_KEYWORDS: [RegExp, ArDocumentType][] = [
+  [/\b(?:credit\s*note|debit\s*note)\b/i, ArDocumentType.CREDIT_NOTE],
   [/\b(?:tax\s*inv|invoice)\b/i, ArDocumentType.TAX_INVOICE],
   [/\bproforma\b/i, ArDocumentType.UNKNOWN],
   [/\b(?:delivery|dn\b|despatch|dispatch)\b/i, ArDocumentType.DELIVERY_NOTE],
@@ -26,9 +28,10 @@ const CLASSIFICATION_PROMPT = `You are an AI document classifier for a rubber li
 DOCUMENT TYPES:
 1. coc - Certificate of Conformance from rubber compound suppliers (compounder or calenderer). Contains batch numbers, test results (Shore A, tensile, elongation, rheometer data), compound codes, roll numbers.
 2. tax_invoice - Tax invoices from suppliers or for customers. Contains invoice number, line items, amounts, VAT.
-3. delivery_note - Delivery notes for rubber compounds or rolls. Contains delivery date, quantities, roll/batch details.
-4. order - Purchase orders or compound orders. Contains order number, quantities, compound specifications.
-5. unknown - Cannot confidently classify.
+3. credit_note - Credit notes from suppliers for returned goods. Document title says "CREDIT NOTE". Contains reference to original invoice, roll numbers being returned, credit amounts.
+4. delivery_note - Delivery notes for rubber compounds or rolls. Contains delivery date, quantities, roll/batch details.
+5. order - Purchase orders or compound orders. Contains order number, quantities, compound specifications.
+6. unknown - Cannot confidently classify.
 
 Also identify the supplier type if it's a CoC:
 - COMPOUNDER: Produces rubber compounds (batch data, rheometer specs like S-min, S-max, Ts2, Tc90)
@@ -36,7 +39,7 @@ Also identify the supplier type if it's a CoC:
 - CALENDER_ROLL: Per-roll quality certificates with individual Shore A values
 
 Respond ONLY with JSON:
-{"documentType": "coc"|"tax_invoice"|"delivery_note"|"order"|"unknown", "supplierName": "string or null", "supplierType": "COMPOUNDER"|"CALENDARER"|"CALENDER_ROLL"|null, "confidence": 0.0-1.0}`;
+{"documentType": "coc"|"tax_invoice"|"credit_note"|"delivery_note"|"order"|"unknown", "supplierName": "string or null", "supplierType": "COMPOUNDER"|"CALENDARER"|"CALENDER_ROLL"|null, "confidence": 0.0-1.0}`;
 
 @Injectable()
 export class ArEmailClassifierService implements IDocumentClassifier {
@@ -112,6 +115,10 @@ ${truncated}`;
   private refineFromContent(text: string): ArDocumentType | null {
     const upper = text.toUpperCase();
 
+    if (upper.includes("CREDIT NOTE")) {
+      return ArDocumentType.CREDIT_NOTE;
+    }
+
     if (upper.includes("TAX INVOICE")) {
       return ArDocumentType.TAX_INVOICE;
     }
@@ -140,7 +147,7 @@ From email: ${fromEmail}
 Subject: ${subject}
 
 Respond ONLY with JSON:
-{"documentType": "coc"|"tax_invoice"|"delivery_note"|"order"|"unknown", "supplierName": "string or null", "supplierType": "COMPOUNDER"|"CALENDARER"|"CALENDER_ROLL"|null, "confidence": 0.0-1.0}`;
+{"documentType": "coc"|"tax_invoice"|"credit_note"|"delivery_note"|"order"|"unknown", "supplierName": "string or null", "supplierType": "COMPOUNDER"|"CALENDARER"|"CALENDER_ROLL"|null, "confidence": 0.0-1.0}`;
 
     const response = await this.aiChatService.chatWithImage(
       imageBase64,

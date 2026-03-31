@@ -65,6 +65,7 @@ export default function SupplierCocDetailPage() {
     productionDate: "",
     orderNumber: "",
     ticketNumber: "",
+    createdAt: "",
   });
   const [editingBatchId, setEditingBatchId] = useState<number | null>(null);
   const [editBatchFields, setEditBatchFields] = useState<Record<string, string>>({});
@@ -182,6 +183,7 @@ export default function SupplierCocDetailPage() {
       productionDate: coc.productionDate ? coc.productionDate.split("T")[0] : "",
       orderNumber: coc.orderNumber || "",
       ticketNumber: coc.ticketNumber || "",
+      createdAt: coc.createdAt ? coc.createdAt.split("T")[0] : "",
     });
     setIsEditing(true);
   };
@@ -197,6 +199,7 @@ export default function SupplierCocDetailPage() {
         productionDate: editFields.productionDate || null,
         orderNumber: editFields.orderNumber || null,
         ticketNumber: editFields.ticketNumber || null,
+        createdAt: editFields.createdAt || null,
       });
       showToast("CoC details updated", "success");
       setIsEditing(false);
@@ -282,6 +285,10 @@ export default function SupplierCocDetailPage() {
     },
     [],
   );
+
+  const handleDeleteExtractedBatch = useCallback((batchIdx: number) => {
+    setEditedBatches((prev) => prev.filter((_, i) => i !== batchIdx));
+  }, []);
 
   const handleSaveExtracted = useCallback(async () => {
     if (!coc) return;
@@ -552,6 +559,15 @@ export default function SupplierCocDetailPage() {
                   </div>
                 </>
               )}
+              <div>
+                <label className="block text-sm font-medium text-gray-500">Created</label>
+                <input
+                  type="date"
+                  value={editFields.createdAt}
+                  onChange={(e) => setEditFields({ ...editFields, createdAt: e.target.value })}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 text-sm"
+                />
+              </div>
               <div className="col-span-2 flex space-x-3 pt-2">
                 <button
                   onClick={handleSaveDetails}
@@ -718,6 +734,35 @@ export default function SupplierCocDetailPage() {
                     ) : null}
                   </div>
 
+                  {(() => {
+                    const rolls = (extracted.rollNumbers || []) as string[];
+                    const rejected = coc.rejectedRollNumbers || [];
+                    if (rolls.length === 0) return null;
+                    return (
+                      <div className="mb-4">
+                        <h3 className="text-sm font-medium text-gray-700 mb-2">Roll Numbers</h3>
+                        <div className="flex flex-wrap gap-1.5">
+                          {rolls.map((rn) => {
+                            const isRejected = rejected.includes(String(rn));
+                            return (
+                              <span
+                                key={String(rn)}
+                                className={`px-2 py-0.5 text-xs font-medium rounded ${
+                                  isRejected
+                                    ? "bg-red-50 text-red-600 line-through"
+                                    : "bg-gray-100 text-gray-800"
+                                }`}
+                                title={isRejected ? "Rejected — cannot be issued" : ""}
+                              >
+                                {String(rn)}
+                              </span>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })()}
+
                   {Object.values(specs).some((v) => v != null) && (
                     <div className="mb-4">
                       <h3 className="text-sm font-medium text-gray-700 mb-2">Specifications</h3>
@@ -795,6 +840,9 @@ export default function SupplierCocDetailPage() {
                             <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
                               Tc90
                             </th>
+                            {isEditingExtracted && (
+                              <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase w-10" />
+                            )}
                           </tr>
                         </thead>
                         <tbody className="bg-white divide-y divide-gray-200">
@@ -960,6 +1008,16 @@ export default function SupplierCocDetailPage() {
                                     }
                                     className="w-16 rounded border-gray-300 text-xs px-1.5 py-1"
                                   />
+                                </td>
+                                <td className="px-3 py-1.5 text-center">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeleteExtractedBatch(bIdx)}
+                                    className="text-red-400 hover:text-red-600"
+                                    title="Delete row"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
                                 </td>
                               </tr>
                             ) : (

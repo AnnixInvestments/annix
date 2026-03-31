@@ -648,6 +648,7 @@ export class RubberRollStockService {
       versionStatus: coc.versionStatus,
       versionStatusLabel: DOCUMENT_VERSION_STATUS_LABELS[coc.versionStatus],
       previousVersionId: coc.previousVersionId,
+      rejectedRollNumbers: [],
     };
   }
 }

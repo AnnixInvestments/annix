@@ -141,6 +141,7 @@ export class RubberEmailMonitorService implements OnModuleInit {
         coc: "cocs",
         delivery_note: "delivery-notes",
         tax_invoice: "tax-invoices",
+        credit_note: "credit-notes",
       };
 
       await pdfAttachments.reduce(async (prev, attachment) => {
@@ -231,6 +232,22 @@ export class RubberEmailMonitorService implements OnModuleInit {
 
             await this.extractAndLinkCoc(coc.id, supplierInfo.cocType, pdfText);
           }
+        } else if (documentType === "credit_note") {
+          const creditNoteNumber =
+            this.extractInvoiceNumber(pdfText, subject) || `CN-EMAIL-${nowMillis()}`;
+          const creditNote = await this.taxInvoiceService.createTaxInvoice(
+            {
+              invoiceNumber: creditNoteNumber,
+              invoiceType: TaxInvoiceType.SUPPLIER,
+              companyId: supplierInfo.company.id,
+              documentPath: storageResult.path,
+              isCreditNote: true,
+            },
+            `imap:${messageId}`,
+          );
+          this.logger.log(
+            `Created Credit Note ${creditNote.id} (${creditNote.invoiceNumber}) from email: ${filename}`,
+          );
         } else if (documentType === "tax_invoice") {
           const invoiceNumber =
             this.extractInvoiceNumber(pdfText, subject) || `INV-EMAIL-${nowMillis()}`;
@@ -675,8 +692,14 @@ ${truncatedText}`;
     }
   }
 
-  private determineDocumentType(subject: string): "coc" | "delivery_note" | "tax_invoice" {
+  private determineDocumentType(
+    subject: string,
+  ): "coc" | "delivery_note" | "tax_invoice" | "credit_note" {
     const subjectLower = subject.toLowerCase();
+
+    if (subjectLower.includes("credit note") || subjectLower.includes("credit memo")) {
+      return "credit_note";
+    }
 
     if (subjectLower.includes("invoice") && !subjectLower.includes("proforma")) {
       return "tax_invoice";
@@ -699,10 +722,14 @@ ${truncatedText}`;
   }
 
   private refineDocumentType(
-    subjectType: "coc" | "delivery_note" | "tax_invoice",
+    subjectType: "coc" | "delivery_note" | "tax_invoice" | "credit_note",
     pdfText: string,
-  ): "coc" | "delivery_note" | "tax_invoice" {
+  ): "coc" | "delivery_note" | "tax_invoice" | "credit_note" {
     const pdfTextUpper = pdfText.toUpperCase();
+
+    if (pdfTextUpper.includes("CREDIT NOTE")) {
+      return "credit_note";
+    }
 
     if (pdfTextUpper.includes("TAX INVOICE")) {
       return "tax_invoice";

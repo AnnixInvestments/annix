@@ -18,6 +18,7 @@ import { RubberCocBatchCorrection } from "./entities/rubber-coc-batch-correction
 import { RubberCompany } from "./entities/rubber-company.entity";
 import { BatchPassFailStatus, RubberCompoundBatch } from "./entities/rubber-compound-batch.entity";
 import { RubberCompoundStock } from "./entities/rubber-compound-stock.entity";
+import { RubberRollRejection } from "./entities/rubber-roll-rejection.entity";
 import {
   CocProcessingStatus,
   ExtractedCocData,
@@ -63,6 +64,8 @@ export class RubberCocService {
     private compoundStockRepository: Repository<RubberCompoundStock>,
     @InjectRepository(RubberCocBatchCorrection)
     private batchCorrectionRepository: Repository<RubberCocBatchCorrection>,
+    @InjectRepository(RubberRollRejection)
+    private rollRejectionRepository: Repository<RubberRollRejection>,
     @Inject(forwardRef(() => RubberQualityTrackingService))
     private qualityTrackingService: RubberQualityTrackingService,
     private auCocReadinessService: RubberAuCocReadinessService,
@@ -104,7 +107,8 @@ export class RubberCocService {
     }
 
     const cocs = await query.getMany();
-    return cocs.map((coc) => this.mapSupplierCocToDto(coc));
+    const rejectionMap = await this.rejectedRollNumbersByCocIds(cocs.map((c) => c.id));
+    return cocs.map((coc) => this.mapSupplierCocToDto(coc, rejectionMap.get(coc.id) || []));
   }
 
   async supplierCocById(id: number): Promise<RubberSupplierCocDto | null> {
@@ -112,7 +116,9 @@ export class RubberCocService {
       where: { id },
       relations: ["supplierCompany"],
     });
-    return coc ? this.mapSupplierCocToDto(coc) : null;
+    if (!coc) return null;
+    const rejectionMap = await this.rejectedRollNumbersByCocIds([id]);
+    return this.mapSupplierCocToDto(coc, rejectionMap.get(id) || []);
   }
 
   async createSupplierCoc(
@@ -180,6 +186,9 @@ export class RubberCocService {
     if (dto.orderNumber !== undefined) coc.orderNumber = dto.orderNumber;
     if (dto.ticketNumber !== undefined) coc.ticketNumber = dto.ticketNumber;
     if (dto.processingStatus !== undefined) coc.processingStatus = dto.processingStatus;
+    if (dto.createdAt !== undefined && dto.createdAt) {
+      coc.createdAt = fromISO(dto.createdAt).toJSDate();
+    }
 
     const extracted = (coc.extractedData || {}) as Record<string, unknown>;
     if (dto.cocNumber !== undefined) extracted.cocNumber = dto.cocNumber;
@@ -1258,7 +1267,25 @@ export class RubberCocService {
     };
   }
 
-  private mapSupplierCocToDto(coc: RubberSupplierCoc): RubberSupplierCocDto {
+  private async rejectedRollNumbersByCocIds(cocIds: number[]): Promise<Map<number, string[]>> {
+    if (cocIds.length === 0) return new Map();
+    const rejections = await this.rollRejectionRepository
+      .createQueryBuilder("r")
+      .select(["r.originalSupplierCocId", "r.rollNumber"])
+      .where("r.original_supplier_coc_id IN (:...cocIds)", { cocIds })
+      .getMany();
+    const map = new Map<number, string[]>();
+    rejections.forEach((r) => {
+      const existing = map.get(r.originalSupplierCocId) || [];
+      map.set(r.originalSupplierCocId, [...existing, r.rollNumber]);
+    });
+    return map;
+  }
+
+  private mapSupplierCocToDto(
+    coc: RubberSupplierCoc,
+    rejectedRollNumbers: string[] = [],
+  ): RubberSupplierCocDto {
     return {
       id: coc.id,
       firebaseUid: coc.firebaseUid,
@@ -1292,6 +1319,7 @@ export class RubberCocService {
       versionStatus: coc.versionStatus,
       versionStatusLabel: DOCUMENT_VERSION_STATUS_LABELS[coc.versionStatus],
       previousVersionId: coc.previousVersionId,
+      rejectedRollNumbers,
     };
   }
 

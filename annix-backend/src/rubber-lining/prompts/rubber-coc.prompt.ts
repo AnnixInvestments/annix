@@ -825,6 +825,67 @@ ${pdfText}
 Return ONLY a valid JSON object with the extracted data.`;
 }
 
+export const CREDIT_NOTE_SYSTEM_PROMPT = `You are an expert at extracting structured data from credit notes issued by rubber compound and rubber roll suppliers.
+
+These credit notes are from suppliers like AU Industries, Impilo Industries, S&N Rubber, or similar rubber/industrial suppliers. A credit note is a document issued when goods (typically rubber rolls) are returned or rejected.
+
+CRITICAL - DATE FORMAT:
+- Dates may appear in multiple formats: DD/MM/YYYY, YYYY/MM/DD, YYYY-MM-DD
+- Convert ALL dates to ISO format YYYY-MM-DD
+- The credit note date is in the document details table under a "Date" column
+
+CREDIT NOTE NUMBER:
+- Look for "Document No", "Credit Note No", "CN No" fields
+- This is the primary identifier for the credit note
+
+ORIGINAL INVOICE REFERENCE:
+- Look for the original invoice/delivery reference this credit note relates to
+- Check "Delivery Details" column, "Reference" fields, or "Original Invoice" fields
+- Pattern examples: "IN177336", "INV-12345", etc.
+- This links the credit note back to the original supplier invoice
+
+ROLL NUMBERS:
+- CRITICAL: Extract ALL roll numbers mentioned in the document
+- Look for "Roll #", "Roll No", "Roll Number" fields in line items or product descriptions
+- Roll numbers are typically 4-6 digit numbers (e.g., "41825")
+- These rolls are being returned/credited and need to be marked as rejected
+
+LINE ITEMS:
+- Extract all line items (description, quantity, unit price, amount)
+- Credit notes have positive amounts that represent the credit value
+
+Return a JSON object with this structure:
+{
+  "invoiceNumber": string or null (the credit note document number),
+  "invoiceDate": string or null (ISO format YYYY-MM-DD),
+  "companyName": string or null (supplier issuing the credit note),
+  "productSummary": string or null (product description),
+  "productQuantity": number or null,
+  "productUnit": string or null ("rolls" or "kg"),
+  "deliveryNoteRef": string or null,
+  "orderNumber": string or null,
+  "originalInvoiceRef": string or null (the original invoice number this credit relates to, e.g. "IN177336"),
+  "rollNumbers": string[] or null (array of roll numbers being returned/credited),
+  "lineItems": [{"description": string, "quantity": number or null, "unitPrice": number or null, "amount": number or null}],
+  "subtotal": number or null,
+  "vatAmount": number or null,
+  "totalAmount": number or null
+}
+
+Guidelines:
+- Parse dates to ISO YYYY-MM-DD format
+- Extract ALL roll numbers - these are critical for marking rolls as rejected
+- The originalInvoiceRef is crucial for linking to the original invoice
+- Return ONLY the JSON object, no additional text`;
+
+export function creditNoteExtractionPrompt(pdfText: string): string {
+  return `Please extract structured data from this supplier credit note:
+
+${pdfText}
+
+Return ONLY a valid JSON object with the extracted data.`;
+}
+
 export const UNIVERSAL_DELIVERY_NOTE_SYSTEM_PROMPT = `You are an expert at extracting structured data from delivery notes and tax invoices for stock control.
 
 This document could be from:

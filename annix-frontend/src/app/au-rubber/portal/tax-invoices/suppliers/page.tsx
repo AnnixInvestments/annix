@@ -49,6 +49,7 @@ export default function SupplierTaxInvoicesPage() {
   const { showToast } = useToast();
   const { confirm, ConfirmDialog } = useConfirm();
   const [invoices, setInvoices] = useState<RubberTaxInvoiceDto[]>([]);
+  const [creditNotes, setCreditNotes] = useState<RubberTaxInvoiceDto[]>([]);
   const [suppliers, setSuppliers] = useState<RubberCompanyDto[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
@@ -64,6 +65,7 @@ export default function SupplierTaxInvoicesPage() {
   const [uploadInvoiceDate, setUploadInvoiceDate] = useState("");
   const [uploadFiles, setUploadFiles] = useState<File[]>([]);
   const [isUploading, setIsUploading] = useState(false);
+  const [uploadIsCreditNote, setUploadIsCreditNote] = useState(false);
   const [showSageExportModal, setShowSageExportModal] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [selectedForApproval, setSelectedForApproval] = useState<Set<number>>(new Set());
@@ -240,7 +242,9 @@ export default function SupplierTaxInvoicesPage() {
       const allCompanies = Array.isArray(companiesData) ? companiesData : [];
       const supplierCompanies = allCompanies.filter((c) => c.companyType === "SUPPLIER");
 
-      setInvoices(Array.isArray(invoiceData) ? invoiceData : []);
+      const allInvoices = Array.isArray(invoiceData) ? invoiceData : [];
+      setInvoices(allInvoices.filter((inv) => !inv.isCreditNote));
+      setCreditNotes(allInvoices.filter((inv) => inv.isCreditNote));
       setSuppliers(supplierCompanies);
       setError(null);
     } catch (err) {
@@ -354,14 +358,16 @@ export default function SupplierTaxInvoicesPage() {
           companyId: uploadSupplierId,
           invoiceNumber: uploadInvoiceNumber || "Untitled",
           invoiceDate: uploadInvoiceDate || undefined,
+          isCreditNote: uploadIsCreditNote || undefined,
         });
-        showToast("Tax invoice created", "success");
+        showToast(uploadIsCreditNote ? "Credit note created" : "Tax invoice created", "success");
       }
       setShowUploadModal(false);
       setUploadSupplierId(null);
       setUploadInvoiceNumber("");
       setUploadInvoiceDate("");
       setUploadFiles([]);
+      setUploadIsCreditNote(false);
       fetchData();
     } catch (err) {
       showToast(err instanceof Error ? err.message : "Failed to create tax invoice", "error");
@@ -465,6 +471,23 @@ export default function SupplierTaxInvoicesPage() {
               />
             </svg>
             Add Tax Invoice
+          </button>
+          <button
+            onClick={() => {
+              setUploadIsCreditNote(true);
+              setShowUploadModal(true);
+            }}
+            className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700"
+          >
+            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 4v16m8-8H4"
+              />
+            </svg>
+            Add Credit Note
           </button>
         </div>
       </div>
@@ -818,15 +841,201 @@ export default function SupplierTaxInvoicesPage() {
         />
       </div>
 
+      {creditNotes.length > 0 && (
+        <div className="bg-white rounded-lg shadow overflow-hidden">
+          <div className="px-4 py-3 border-b border-gray-200">
+            <h2 className="text-lg font-semibold text-gray-900 flex items-center">
+              <span className="w-3 h-3 bg-red-500 rounded-full mr-3" />
+              Supplier Credit Notes
+            </h2>
+            <p className="mt-1 text-sm text-gray-500">
+              Credit notes for returned goods. Approving a credit note marks referenced rolls as
+              rejected.
+            </p>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    Credit Note #
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    Supplier
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    Date
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    Original Invoice
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    Rolls
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    Amount
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    Status
+                  </th>
+                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {creditNotes.map((cn) => (
+                  <tr key={cn.id} className="hover:bg-gray-50">
+                    <td className="px-4 py-3 text-sm">
+                      <Link
+                        href={`/au-rubber/portal/tax-invoices/${cn.id}`}
+                        className="text-amber-700 hover:text-amber-900 font-medium"
+                      >
+                        {cn.invoiceNumber}
+                      </Link>
+                    </td>
+                    <td className="px-4 py-3 text-sm text-gray-600">{cn.companyName}</td>
+                    <td className="px-4 py-3 text-sm text-gray-600">
+                      {cn.invoiceDate ? formatDateZA(cn.invoiceDate) : "-"}
+                    </td>
+                    <td className="px-4 py-3 text-sm">
+                      {cn.originalInvoiceId ? (
+                        <Link
+                          href={`/au-rubber/portal/tax-invoices/${cn.originalInvoiceId}`}
+                          className="text-amber-700 hover:text-amber-900"
+                        >
+                          {cn.originalInvoiceNumber || `#${cn.originalInvoiceId}`}
+                        </Link>
+                      ) : (
+                        <span className="text-gray-400">
+                          {cn.extractedData?.originalInvoiceRef || "-"}
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-sm">
+                      {cn.creditNoteRollNumbers.length > 0 ? (
+                        <span className="text-red-600 font-medium">
+                          {cn.creditNoteRollNumbers.join(", ")}
+                        </span>
+                      ) : (
+                        <span className="text-gray-400">-</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-gray-600">
+                      {cn.totalAmount != null
+                        ? `R ${Number(cn.totalAmount).toLocaleString("en-ZA", { minimumFractionDigits: 2 })}`
+                        : "-"}
+                    </td>
+                    <td className="px-4 py-3 text-sm">{statusBadge(cn.status)}</td>
+                    <td className="px-4 py-3 text-sm text-right">
+                      <div className="flex items-center justify-end gap-1">
+                        <Link
+                          href={`/au-rubber/portal/tax-invoices/${cn.id}`}
+                          className="p-1 text-gray-400 hover:text-amber-600"
+                          title="View"
+                        >
+                          <FileText className="w-4 h-4" />
+                        </Link>
+                        {cn.status === "PENDING" && (
+                          <button
+                            onClick={async () => {
+                              try {
+                                await auRubberApiClient.extractTaxInvoice(cn.id);
+                                showToast("Credit note extracted", "success");
+                                fetchData();
+                              } catch (err) {
+                                showToast(
+                                  err instanceof Error ? err.message : "Extraction failed",
+                                  "error",
+                                );
+                              }
+                            }}
+                            className="p-1 text-gray-400 hover:text-blue-600"
+                            title="Extract"
+                          >
+                            <FileText className="w-4 h-4" />
+                          </button>
+                        )}
+                        {cn.status !== "APPROVED" && (
+                          <button
+                            onClick={async () => {
+                              const rollCount = cn.creditNoteRollNumbers.length;
+                              const message =
+                                rollCount > 0
+                                  ? `Approving this credit note will mark ${rollCount} roll(s) as REJECTED. Continue?`
+                                  : "Approve this credit note?";
+                              const confirmed = await confirm({
+                                title: "Approve Credit Note",
+                                message,
+                              });
+                              if (!confirmed) return;
+                              try {
+                                await auRubberApiClient.approveTaxInvoice(cn.id);
+                                showToast(
+                                  "Credit note approved — rolls marked as rejected",
+                                  "success",
+                                );
+                                fetchData();
+                              } catch (err) {
+                                showToast(
+                                  err instanceof Error ? err.message : "Approval failed",
+                                  "error",
+                                );
+                              }
+                            }}
+                            className="p-1 text-gray-400 hover:text-green-600"
+                            title="Approve"
+                          >
+                            <CheckCircle className="w-4 h-4" />
+                          </button>
+                        )}
+                        <button
+                          onClick={async () => {
+                            const confirmed = await confirm({
+                              title: "Delete Credit Note",
+                              message: "Delete this credit note?",
+                            });
+                            if (!confirmed) return;
+                            try {
+                              await auRubberApiClient.deleteTaxInvoice(cn.id);
+                              showToast("Credit note deleted", "success");
+                              fetchData();
+                            } catch (err) {
+                              showToast(
+                                err instanceof Error ? err.message : "Failed to delete",
+                                "error",
+                              );
+                            }
+                          }}
+                          className="p-1 text-gray-400 hover:text-red-600"
+                          title="Delete"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
       {showUploadModal && (
         <div className="fixed inset-0 z-50 overflow-y-auto">
           <div className="flex min-h-screen items-center justify-center p-4">
             <div
               className="fixed inset-0 bg-black/10 backdrop-blur-md"
-              onClick={() => setShowUploadModal(false)}
+              onClick={() => {
+                setShowUploadModal(false);
+                setUploadIsCreditNote(false);
+              }}
             />
             <div className="relative bg-white rounded-lg shadow-xl max-w-lg w-full p-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Add Supplier Tax Invoice</h3>
+              <h3 className="text-lg font-medium text-gray-900 mb-4">
+                {uploadIsCreditNote ? "Add Supplier Credit Note" : "Add Supplier Tax Invoice"}
+              </h3>
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">

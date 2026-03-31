@@ -41,6 +41,8 @@ export interface ExtractedTaxInvoiceData {
   subtotal: number | null;
   vatAmount: number | null;
   totalAmount: number | null;
+  originalInvoiceRef?: string | null;
+  rollNumbers?: string[] | null;
 }
 
 @Entity("rubber_tax_invoices")
@@ -120,6 +122,19 @@ export class RubberTaxInvoice {
     default: DocumentVersionStatus.ACTIVE,
   })
   versionStatus: DocumentVersionStatus;
+
+  @Column({ name: "is_credit_note", type: "boolean", default: false })
+  isCreditNote: boolean;
+
+  @Column({ name: "original_invoice_id", type: "int", nullable: true })
+  originalInvoiceId: number | null;
+
+  @ManyToOne(() => RubberTaxInvoice, { nullable: true })
+  @JoinColumn({ name: "original_invoice_id" })
+  originalInvoice: RubberTaxInvoice | null;
+
+  @Column({ name: "credit_note_roll_numbers", type: "jsonb", default: "[]" })
+  creditNoteRollNumbers: string[];
 
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;

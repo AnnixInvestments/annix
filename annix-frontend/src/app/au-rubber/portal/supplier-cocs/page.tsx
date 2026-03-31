@@ -792,6 +792,19 @@ export default function SupplierCocsPage() {
                                 </span>
                               )}
                             </div>
+                            {coc.rejectedRollNumbers.length > 0 && (
+                              <div className="mt-1 flex flex-wrap gap-1">
+                                {coc.rejectedRollNumbers.map((rn) => (
+                                  <span
+                                    key={rn}
+                                    className="px-1.5 py-0.5 text-xs font-medium rounded bg-red-50 text-red-600 line-through"
+                                    title="Rejected roll"
+                                  >
+                                    {rn}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                             {coc.compoundCode || "-"}
