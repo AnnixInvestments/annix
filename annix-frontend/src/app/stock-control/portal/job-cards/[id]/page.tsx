@@ -916,10 +916,18 @@ export default function JobCardDetailPage() {
     }
   };
 
-  const requisitionIsPending = useMemo(
-    () => userPendingBgSteps.some(isRequisitionStep),
-    [userPendingBgSteps, isRequisitionStep],
-  );
+  const requisitionIsPending = useMemo(() => {
+    if (userPendingBgSteps.some(isRequisitionStep)) return true;
+    if (!workflowStatus || !user?.name) return false;
+    const reqStep = backgroundSteps.find(
+      (bg) =>
+        (bg.stepKey === "requisition" || bg.label?.toLowerCase() === "requisition") &&
+        bg.completedAt === null,
+    );
+    if (!reqStep) return false;
+    const assigned = workflowStatus.stepAssignments?.[reqStep.stepKey];
+    return !!assigned && assigned.some((u) => u.name === user.name);
+  }, [userPendingBgSteps, isRequisitionStep, workflowStatus, backgroundSteps, user?.name]);
 
   const [batchesSavedLocal, setBatchesSaved] = useState(false);
   const batchesSaved =
