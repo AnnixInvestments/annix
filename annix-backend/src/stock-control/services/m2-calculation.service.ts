@@ -65,12 +65,16 @@ const BEND_CF_BARE_PATTERN = /(\d{3,})\s*x\s*(\d{3,})\s+(?:BEND|ELBOW)/i;
 const FLANGE_STANDARD_ASME_PATTERN = /\bASME\s+B16\.5\s+(\d+)\b/i;
 const FLANGE_STANDARD_SABS_PATTERN = /\bSABS\s+1123\s+(\d+(?:\/\d+)?)\b/i;
 const FLANGE_STANDARD_BS_PATTERN = /\bBS\s+4504\s+PN(\d+)\b/i;
+const FLANGE_SABS_BARE_CLASS_PATTERN = /\b(1000|1600|2500|4000)\s*\/\s*\d+\b/;
+const FLANGE_CLASS_BARE_PATTERN = /\bCLASS\s+(\d+)\b/i;
 
 const FLANGE_COUNT_PATTERNS: { pattern: RegExp; count: number }[] = [
   { pattern: /(\d+)\s*[Xx]\s*R\/F\s*,\s*(\d+)\s*[Xx]\s*L\/F/i, count: -1 },
   { pattern: /(\d+)\s*[Xx]\s*L\/F\s*,\s*(\d+)\s*[Xx]\s*R\/F/i, count: -1 },
   { pattern: /(\d+)\s*[Xx]\s*R\/F/i, count: -1 },
   { pattern: /(\d+)\s*[Xx]\s*L\/F/i, count: -1 },
+  { pattern: /\bBLANK\s+FLANGE\b/i, count: 1 },
+  { pattern: /\bBLIND\s+FLANGE\b/i, count: 1 },
   { pattern: /\bFBE\b/i, count: 2 },
   { pattern: /\bF2E\b/i, count: 2 },
   { pattern: /\bFFE\b/i, count: 2 },
@@ -79,6 +83,8 @@ const FLANGE_COUNT_PATTERNS: { pattern: RegExp; count: number }[] = [
 ];
 
 const FLANGE_CONFIG_PATTERNS: { pattern: RegExp; config: string }[] = [
+  { pattern: /\bBLANK\s+FLANGE\b/i, config: "blank_flange" },
+  { pattern: /\bBLIND\s+FLANGE\b/i, config: "blind_flange" },
   { pattern: /\bFBE\b/i, config: "both_ends" },
   { pattern: /\bF(?:OE|1E)\b/i, config: "one_end" },
   { pattern: /\bFFE\b/i, config: "both_ends" },
@@ -316,6 +322,16 @@ export class M2CalculationService {
       return { standard: "BS 4504", pressureClass: `PN${bsMatch[1]}` };
     }
 
+    const sabsBareMatch = description.match(FLANGE_SABS_BARE_CLASS_PATTERN);
+    if (sabsBareMatch) {
+      return { standard: "SABS 1123", pressureClass: sabsBareMatch[1] };
+    }
+
+    const classBareMatch = description.match(FLANGE_CLASS_BARE_PATTERN);
+    if (classBareMatch) {
+      return { standard: null, pressureClass: classBareMatch[1] };
+    }
+
     return { standard: null, pressureClass: null };
   }
 
@@ -456,6 +472,39 @@ export class M2CalculationService {
     return {
       external: overlapExternal * flangeCount,
       internal: overlapInternal * flangeCount,
+    };
+  }
+
+  private async calculateStandaloneFlangeM2(
+    nbMm: number,
+    flangeCount: number,
+    flangeStandard: string | null,
+    pressureClass: string | null,
+  ): Promise<{ external: number; internal: number } | null> {
+    if (flangeCount === 0) {
+      return null;
+    }
+
+    const dims = await this.flangeDimension.flangeDimensionsForM2(
+      nbMm,
+      flangeStandard,
+      pressureClass,
+    );
+
+    if (!dims) {
+      return null;
+    }
+
+    const flangeOdMm = dims.D;
+    const flangeBoreMm = dims.d4;
+    const flangeThicknessMm = dims.b;
+
+    const faceArea = ((Math.PI / 4) * (flangeOdMm ** 2 - flangeBoreMm ** 2)) / 1_000_000;
+    const edgeArea = Math.PI * (flangeOdMm / 1000) * (flangeThicknessMm / 1000);
+
+    return {
+      external: (faceArea + edgeArea) * flangeCount,
+      internal: faceArea * flangeCount,
     };
   }
 
@@ -619,21 +668,34 @@ export class M2CalculationService {
         const reducerResult = this.calculateReducerM2(odMm, idMm, lengthM || 0);
         externalM2 = reducerResult.external;
         internalM2 = reducerResult.internal;
+      } else if (itemType === "flange" && regex.flangeCount > 0) {
+        const standaloneResult = await this.calculateStandaloneFlangeM2(
+          diameterMm,
+          regex.flangeCount,
+          regex.flangeStandard,
+          regex.pressureClass,
+        );
+        if (standaloneResult) {
+          externalM2 = standaloneResult.external;
+          internalM2 = standaloneResult.internal;
+        }
       } else {
         externalM2 = Math.PI * (odMm / 1000) * (lengthM || 0);
         internalM2 = Math.PI * (idMm / 1000) * (lengthM || 0);
       }
 
-      const flangeArea = await this.calculateFlangeAreaM2(
-        odMm,
-        idMm,
-        diameterMm,
-        regex.flangeCount,
-        regex.flangeStandard,
-        regex.pressureClass,
-      );
-      externalM2 += flangeArea.external;
-      internalM2 += flangeArea.internal;
+      if (itemType !== "flange" || regex.flangeCount === 0) {
+        const flangeArea = await this.calculateFlangeAreaM2(
+          odMm,
+          idMm,
+          diameterMm,
+          regex.flangeCount,
+          regex.flangeStandard,
+          regex.pressureClass,
+        );
+        externalM2 += flangeArea.external;
+        internalM2 += flangeArea.internal;
+      }
 
       const totalM2 = externalM2 + internalM2;
 
