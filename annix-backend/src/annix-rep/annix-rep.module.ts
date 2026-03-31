@@ -141,7 +141,7 @@ import {
       TeamsBotSession,
     ]),
     StorageModule,
-    ScheduleModule.forRoot(),
+    ScheduleModule,
     AdminModule,
     EmailModule,
     RepProfileModule,
