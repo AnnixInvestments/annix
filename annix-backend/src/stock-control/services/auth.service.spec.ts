@@ -13,6 +13,7 @@ import * as bcrypt from "bcrypt";
 import { EmailService } from "../../email/email.service";
 import { now } from "../../lib/datetime";
 import { S3StorageService } from "../../storage/s3-storage.service";
+import { PushSubscription } from "../entities/push-subscription.entity";
 import { StaffMember } from "../entities/staff-member.entity";
 import { StockControlAdminTransfer } from "../entities/stock-control-admin-transfer.entity";
 import { BrandingType, StockControlCompany } from "../entities/stock-control-company.entity";
@@ -160,6 +161,13 @@ describe("StockControlAuthService", () => {
         { provide: getRepositoryToken(StockControlInvitation), useValue: mockInvitationRepo },
         { provide: getRepositoryToken(StockControlAdminTransfer), useValue: mockAdminTransferRepo },
         { provide: getRepositoryToken(StaffMember), useValue: mockStaffRepo },
+        {
+          provide: getRepositoryToken(PushSubscription),
+          useValue: {
+            find: jest.fn().mockResolvedValue([]),
+            delete: jest.fn().mockResolvedValue(null),
+          },
+        },
         { provide: JwtService, useValue: mockJwtService },
         { provide: EmailService, useValue: mockEmailService },
         { provide: S3StorageService, useValue: mockS3StorageService },
