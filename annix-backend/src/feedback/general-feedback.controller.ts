@@ -45,6 +45,9 @@ export class GeneralFeedbackController {
 
     const source = body.source === "voice" ? ("voice" as const) : ("text" as const);
 
+    const authHeader = req.headers.authorization;
+    const bearerToken = authHeader?.startsWith("Bearer ") ? authHeader.substring(7) : null;
+
     return this.feedbackService.submitGeneralFeedback(
       submitter,
       {
@@ -54,6 +57,7 @@ export class GeneralFeedbackController {
         appContext: body.appContext || null,
       },
       files || [],
+      bearerToken,
     );
   }
 }

@@ -43,7 +43,7 @@ jobs:
       - name: Add eyes reaction
         if: github.event_name == 'issue_comment'
         env:
-          GH_TOKEN: ${{ secrets.PROJECT_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           gh api repos/${{ github.repository }}/issues/comments/${{ github.event.comment.id }}/reactions \
             -f content=eyes --silent || true
@@ -51,7 +51,7 @@ jobs:
       - name: Add eyes reaction to issue
         if: github.event_name == 'issues'
         env:
-          GH_TOKEN: ${{ secrets.PROJECT_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           gh api repos/${{ github.repository }}/issues/${{ github.event.issue.number }}/reactions \
             -f content=eyes --silent || true

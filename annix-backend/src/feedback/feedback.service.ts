@@ -111,6 +111,7 @@ export class FeedbackService {
     submitter: FeedbackSubmitter,
     dto: GeneralFeedbackDto,
     files: Express.Multer.File[],
+    bearerToken: string | null = null,
   ): Promise<SubmitFeedbackResponseDto> {
     const feedback = this.feedbackRepository.create({
       customerProfileId: null,
@@ -128,7 +129,10 @@ export class FeedbackService {
     const hasAutoScreenshot = files.some((f) => f.originalname === "auto-screenshot.png");
     const allFiles = hasAutoScreenshot
       ? files
-      : [...files, ...(await this.captureServerScreenshot(dto.pageUrl))];
+      : [
+          ...files,
+          ...(await this.captureServerScreenshot(dto.pageUrl, dto.appContext, bearerToken)),
+        ];
 
     const attachments = await this.uploadAttachments(savedFeedback.id, allFiles);
 
@@ -445,7 +449,21 @@ ${feedback.content}
     );
   }
 
-  private async captureServerScreenshot(pageUrl: string | null): Promise<Express.Multer.File[]> {
+  private readonly TOKEN_KEYS: Record<string, string> = {
+    customer: "customerAccessToken",
+    admin: "adminAccessToken",
+    "stock-control": "stockControlAccessToken",
+    "au-rubber": "auRubberAccessToken",
+    supplier: "supplierAccessToken",
+    "cv-assistant": "cvAssistantAccessToken",
+    "annix-rep": "annixRepAccessToken",
+  };
+
+  private async captureServerScreenshot(
+    pageUrl: string | null,
+    appContext: string | null = null,
+    bearerToken: string | null = null,
+  ): Promise<Express.Multer.File[]> {
     if (!pageUrl) {
       return [];
     }
@@ -454,13 +472,28 @@ ${feedback.content}
       const frontendUrl =
         this.configService.get<string>("FRONTEND_URL") || "https://annix-app.fly.dev";
       const fullUrl = pageUrl.startsWith("http") ? pageUrl : `${frontendUrl}${pageUrl}`;
+      const tokenKey = appContext ? this.TOKEN_KEYS[appContext] || null : null;
 
       const screenshotBuffer = await this.puppeteerPool.executeWithPage({
-        url: fullUrl,
-        waitUntil: "networkidle2",
         timeout: 20000,
         execute: async (page) => {
           await page.setViewport({ width: 1280, height: 800 });
+
+          if (bearerToken && tokenKey) {
+            await page.goto(fullUrl.split("/").slice(0, 3).join("/"), {
+              waitUntil: "domcontentloaded",
+              timeout: 10000,
+            });
+            await page.evaluate(
+              (key: string, token: string) => {
+                localStorage.setItem(key, token);
+              },
+              tokenKey,
+              bearerToken,
+            );
+          }
+
+          await page.goto(fullUrl, { waitUntil: "networkidle2", timeout: 15000 });
           return Buffer.from(await page.screenshot({ type: "png", fullPage: false }));
         },
       });
