@@ -160,21 +160,35 @@ export class JobCardService {
   }
 
   async remove(companyId: number, id: number): Promise<void> {
-    this.logger.log(`Attempting to delete job card ${id} for company ${companyId}`);
-    const jobCard = await this.findById(companyId, id);
-    this.logger.log(`Found job card ${jobCard.jobNumber} (id=${id}), proceeding with delete`);
+    const numericId = Number(id);
+    this.logger.log(`Attempting to delete job card ${numericId} for company ${companyId}`);
+    const jobCard = await this.findById(companyId, numericId);
+    this.logger.log(
+      `Found job card ${jobCard.jobNumber} (id=${numericId}), proceeding with delete`,
+    );
     await this.dataSource.transaction(async (em) => {
+      await em.query("DELETE FROM stock_returns WHERE job_card_id = $1 AND company_id = $2", [
+        numericId,
+        companyId,
+      ]);
       await em.query("DELETE FROM stock_allocations WHERE job_card_id = $1 AND company_id = $2", [
-        id,
+        numericId,
         companyId,
       ]);
       await em.query(
-        "DELETE FROM reconciliation_documents WHERE job_card_id = $1 AND company_id = $2",
-        [id, companyId],
+        "DELETE FROM reconciliation_items WHERE job_card_id = $1 AND company_id = $2",
+        [numericId, companyId],
       );
-      await em.remove(jobCard);
+      await em.query(
+        "DELETE FROM reconciliation_documents WHERE job_card_id = $1 AND company_id = $2",
+        [numericId, companyId],
+      );
+      await em.query("DELETE FROM job_cards WHERE id = $1 AND company_id = $2", [
+        numericId,
+        companyId,
+      ]);
     });
-    this.logger.log(`Successfully deleted job card ${id}`);
+    this.logger.log(`Successfully deleted job card ${numericId}`);
   }
 
   async allocateStock(
