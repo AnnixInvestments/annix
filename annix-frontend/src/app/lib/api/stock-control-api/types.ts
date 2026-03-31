@@ -2388,6 +2388,7 @@ export interface SageJcDumpParsedItem {
   jtNo: string | null;
   category: "jt" | "asterisk" | "undelivered";
   pageNumber: number;
+  specNotes: string | null;
 }
 
 export interface AsteriskItem {

@@ -39,6 +39,7 @@ export interface SageJcDumpParsedItem {
   jtNo: string | null;
   category: "jt" | "asterisk" | "undelivered";
   pageNumber: number;
+  specNotes: string | null;
 }
 
 export interface AsteriskItem {
@@ -98,6 +99,7 @@ interface ParsedPage {
     itemNo: string;
     quantity: number;
     jtNo: string;
+    specNotes: string | null;
   }>;
 }
 
@@ -336,6 +338,7 @@ export class SageJcDumpService {
           jtNo: a.jtNumber.trim(),
           category: "jt",
           pageNumber: 0,
+          specNotes: null,
         };
         mergedGroups[jtKey] = [...(mergedGroups[jtKey] || []), syntheticItem];
       });
@@ -360,6 +363,17 @@ export class SageJcDumpService {
         const itemPages = items.map((item) => item.pageNumber).filter((p) => p > 0);
         const pageNumber = itemPages.length > 0 ? String(Math.min(...itemPages)) : null;
 
+        const jtSpecNotes = [
+          ...new Set(items.map((item) => item.specNotes).filter((s): s is string => s !== null)),
+        ];
+        const jtNotes =
+          jtSpecNotes.length > 0
+            ? deduplicateLines(jtSpecNotes.join("\n"))
+            : (() => {
+                const raw = cpo.coatingSpecs || parentJc.notes || null;
+                return raw ? deduplicateLines(raw) : null;
+              })();
+
         const deliveryJc = this.jobCardRepo.create({
           jobNumber: parentJc.jobNumber,
           jcNumber: cpoJcNumber || parentJc.jcNumber || undefined,
@@ -367,10 +381,7 @@ export class SageJcDumpService {
           jobName: parentJc.jobName,
           customerName: parentJc.customerName,
           description: parentJc.description || undefined,
-          notes: (() => {
-            const raw = cpo.coatingSpecs || parentJc.notes || null;
-            return raw ? deduplicateLines(raw) : null;
-          })(),
+          notes: jtNotes,
           poNumber: parentJc.poNumber,
           siteLocation: parentJc.siteLocation,
           contactPerson: parentJc.contactPerson,
@@ -396,6 +407,7 @@ export class SageJcDumpService {
             jtNo: jtNumber,
             sortOrder: idx,
             companyId,
+            notes: item.specNotes,
           }),
         );
 
@@ -540,6 +552,32 @@ export class SageJcDumpService {
 
     if (itemHeaderIdx >= 0) {
       const itemRows = rows.slice(itemHeaderIdx + 1);
+
+      const pendingItems: Array<{
+        itemCode: string;
+        itemDescription: string;
+        itemNo: string;
+        quantity: number;
+        jtNo: string;
+      }> = [];
+      const pendingSpecLines: string[] = [];
+      let collectingSpecs = false;
+
+      const flushGroup = () => {
+        const specText = pendingSpecLines.length > 0 ? pendingSpecLines.join("\n") : null;
+        pendingItems.forEach((item) => {
+          lineItems.push({ ...item, specNotes: specText });
+        });
+        if (specText) {
+          pendingSpecLines.forEach((line) => {
+            specNotes.push(line);
+          });
+        }
+        pendingItems.length = 0;
+        pendingSpecLines.length = 0;
+        collectingSpecs = false;
+      };
+
       itemRows.forEach((row) => {
         const itemCode = String(row[0] || "").trim();
         const itemDesc = String(row[1] || "").trim();
@@ -557,14 +595,19 @@ export class SageJcDumpService {
         if (hasNoData && SPEC_ROW_PATTERN.test(itemCode)) {
           const specText = itemCode.replace(/\s+PRODUCTION\s*$/i, "").trim();
           if (specText) {
-            specNotes.push(specText);
+            pendingSpecLines.push(specText);
+            collectingSpecs = true;
           }
           return;
         }
 
         if (Number.isNaN(quantity) || quantity <= 0) return;
 
-        lineItems.push({
+        if (collectingSpecs) {
+          flushGroup();
+        }
+
+        pendingItems.push({
           itemCode,
           itemDescription: itemDesc,
           itemNo,
@@ -572,6 +615,8 @@ export class SageJcDumpService {
           jtNo,
         });
       });
+
+      flushGroup();
     }
 
     return {
@@ -608,6 +653,7 @@ export class SageJcDumpService {
           jtNo: category === "jt" ? li.jtNo : null,
           category,
           pageNumber: page.pageNumber,
+          specNotes: li.specNotes,
         };
       });
 
