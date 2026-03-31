@@ -498,12 +498,7 @@ ${feedback.content}
           await page.setViewport({ width: 1280, height: 800 });
 
           if (bearerToken && tokenKey) {
-            const origin = fullUrl.split("/").slice(0, 3).join("/");
-            await page.goto(origin, {
-              waitUntil: "domcontentloaded",
-              timeout: 15000,
-            });
-            await page.evaluate(
+            await page.evaluateOnNewDocument(
               (key: string, token: string) => {
                 localStorage.setItem(key, token);
               },
