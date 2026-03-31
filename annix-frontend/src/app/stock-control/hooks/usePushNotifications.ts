@@ -1,7 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
+
+const PUSH_DISMISS_KEY = "stock-control-push-dismissed";
 
 interface PushNotificationState {
   permissionState: NotificationPermission | "unsupported";
@@ -23,11 +26,13 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array<ArrayBuffer> {
 }
 
 export function usePushNotifications(): PushNotificationState {
+  const { profile } = useStockControlAuth();
   const [permissionState, setPermissionState] = useState<NotificationPermission | "unsupported">(
     "default",
   );
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const prevEnabledRef = useRef<boolean | undefined>(undefined);
 
   useEffect(() => {
     const checkState = async () => {
@@ -54,6 +59,36 @@ export function usePushNotifications(): PushNotificationState {
 
     checkState();
   }, []);
+
+  useEffect(() => {
+    const enabled = profile?.notificationsEnabled;
+    const prev = prevEnabledRef.current;
+    prevEnabledRef.current = enabled;
+
+    if (prev === undefined) return;
+
+    if (prev === true && enabled === false) {
+      (async () => {
+        try {
+          const registration = await navigator.serviceWorker.ready;
+          const subscription = await registration.pushManager.getSubscription();
+          if (subscription) {
+            const endpoint = subscription.endpoint;
+            await subscription.unsubscribe();
+            await stockControlApiClient.unsubscribePush(endpoint);
+          }
+          setIsSubscribed(false);
+        } catch {
+          setIsSubscribed(false);
+        }
+      })();
+    }
+
+    if (prev === false && enabled === true) {
+      localStorage.removeItem(PUSH_DISMISS_KEY);
+      setIsSubscribed(false);
+    }
+  }, [profile?.notificationsEnabled]);
 
   const requestPermissionAndSubscribe = useCallback(async () => {
     if (!("Notification" in window) || !("serviceWorker" in navigator)) {

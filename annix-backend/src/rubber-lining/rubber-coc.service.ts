@@ -180,9 +180,6 @@ export class RubberCocService {
     if (dto.orderNumber !== undefined) coc.orderNumber = dto.orderNumber;
     if (dto.ticketNumber !== undefined) coc.ticketNumber = dto.ticketNumber;
     if (dto.processingStatus !== undefined) coc.processingStatus = dto.processingStatus;
-    if (dto.createdAt !== undefined && dto.createdAt) {
-      coc.createdAt = fromISO(dto.createdAt).toJSDate();
-    }
 
     const extracted = (coc.extractedData || {}) as Record<string, unknown>;
     if (dto.cocNumber !== undefined) extracted.cocNumber = dto.cocNumber;

@@ -18,11 +18,11 @@ export function PushNotificationBanner() {
     const dismissedAt = localStorage.getItem(DISMISS_KEY);
     if (dismissedAt) {
       const elapsed = nowMillis() - Number(dismissedAt);
-      if (elapsed < DISMISS_DAYS * 24 * 60 * 60 * 1000) {
-        setDismissed(true);
-      }
+      setDismissed(elapsed < DISMISS_DAYS * 24 * 60 * 60 * 1000);
+    } else {
+      setDismissed(false);
     }
-  }, []);
+  }, [profile?.notificationsEnabled]);
 
   if (
     isLoading ||
