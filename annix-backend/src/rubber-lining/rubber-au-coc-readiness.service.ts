@@ -249,16 +249,6 @@ export class RubberAuCocReadinessService {
       };
     }
 
-    const readiness = await this.checkReadiness(auCocId);
-
-    if (!readiness.ready) {
-      return {
-        generated: false,
-        auCocId,
-        reason: `Not ready: ${readiness.missingDocuments.join(", ")}`,
-      };
-    }
-
     try {
       const { buffer, filename } = await this.auCocService.generatePdf(auCocId);
 
@@ -267,10 +257,7 @@ export class RubberAuCocReadinessService {
       });
 
       this.logger.log(
-        `Auto-generated AU CoC ${auCoc.cocNumber} (${filename}, ${buffer.length} bytes) — ` +
-          `calenderer=${readiness.details.calendererCocId}, ` +
-          `compounder=${readiness.details.compounderCocId}, ` +
-          `graph=${readiness.details.graphPdfPath}`,
+        `Auto-generated AU CoC ${auCoc.cocNumber} (${filename}, ${buffer.length} bytes)`,
       );
 
       this.notifyAdminForVerification(auCoc);
@@ -311,18 +298,6 @@ export class RubberAuCocReadinessService {
     const results = await draftCocs.reduce(
       async (accPromise, auCoc) => {
         const acc = await accPromise;
-        const readiness = await this.checkReadiness(auCoc.id);
-
-        if (!readiness.ready) {
-          return {
-            ...acc,
-            details: [
-              ...acc.details,
-              `${auCoc.cocNumber}: not ready (${readiness.missingDocuments.join(", ")})`,
-            ],
-          };
-        }
-
         const result = await this.autoGenerateAuCoc(auCoc.id);
         if (result.generated) {
           return {

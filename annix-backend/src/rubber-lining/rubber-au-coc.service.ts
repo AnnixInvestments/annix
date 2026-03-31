@@ -124,8 +124,9 @@ export class RubberAuCocService {
 
     const rawResults = await query.getRawAndEntities();
     return rawResults.entities.map((coc, idx) => {
-      const itemCount = parseInt(rawResults.raw[idx]?.item_count || "0", 10);
-      return this.mapAuCocToDto(coc, itemCount);
+      const linkedItemCount = parseInt(rawResults.raw[idx]?.item_count || "0", 10);
+      const extractedRollCount = coc.extractedRollData?.length || 0;
+      return this.mapAuCocToDto(coc, Math.max(linkedItemCount, extractedRollCount));
     });
   }
 
@@ -145,7 +146,8 @@ export class RubberAuCocService {
       });
 
       this.logger.debug(`Found ${items.length} items, mapping to DTO...`);
-      const dto = this.mapAuCocToDto(coc, items.length);
+      const extractedRollCount = coc.extractedRollData?.length || 0;
+      const dto = this.mapAuCocToDto(coc, Math.max(items.length, extractedRollCount));
       dto.items = items.map((item) => this.mapAuCocItemToDto(item));
       return dto;
     } catch (error) {
@@ -305,7 +307,12 @@ export class RubberAuCocService {
         relations: ["rollStock", "rollStock.compoundCoding"],
       });
 
-      const hasExtractedRollData = coc.extractedRollData && coc.extractedRollData.length > 0;
+      let hasExtractedRollData = coc.extractedRollData && coc.extractedRollData.length > 0;
+
+      if (items.length === 0 && !hasExtractedRollData && coc.sourceDeliveryNoteId) {
+        await this.populateRollDataFromDeliveryNote(coc);
+        hasExtractedRollData = coc.extractedRollData && coc.extractedRollData.length > 0;
+      }
 
       if (items.length === 0 && !hasExtractedRollData) {
         throw new BadRequestException("No rolls found for this CoC");
@@ -319,19 +326,8 @@ export class RubberAuCocService {
           ? await this.preparePdfData(coc, items)
           : await this.preparePdfDataFromExtractedRolls(coc);
       if (pdfData.batches.length === 0) {
-        coc.readinessStatus = AuCocReadinessStatus.GENERATION_FAILED;
-        coc.readinessDetails = {
-          calendererCocId: coc.readinessDetails?.calendererCocId ?? null,
-          compounderCocId: coc.readinessDetails?.compounderCocId ?? null,
-          graphPdfPath: coc.readinessDetails?.graphPdfPath ?? null,
-          calendererApproved: coc.readinessDetails?.calendererApproved ?? false,
-          compounderApproved: coc.readinessDetails?.compounderApproved ?? false,
-          missingDocuments: ["No batch test data found for lab analysis table"],
-          lastCheckedAt: nowISO(),
-        };
-        await this.auCocRepository.save(coc);
-        throw new BadRequestException(
-          "Cannot generate PDF: no batch test data found for laboratory analysis table",
+        this.logger.warn(
+          `AU CoC ${coc.cocNumber}: no batch test data found — generating PDF with empty lab analysis table`,
         );
       }
 
@@ -1037,6 +1033,35 @@ export class RubberAuCocService {
       qualityConfig,
       graphPdfPath,
     };
+  }
+
+  private async populateRollDataFromDeliveryNote(coc: RubberAuCoc): Promise<void> {
+    if (!coc.sourceDeliveryNoteId) return;
+
+    const deliveryNote = await this.deliveryNoteRepository.findOne({
+      where: { id: coc.sourceDeliveryNoteId },
+    });
+
+    if (!deliveryNote) return;
+
+    const rolls = deliveryNote.extractedData?.rolls || [];
+    if (rolls.length === 0) return;
+
+    const extractedRollData: ExtractedRollData[] = rolls.map((roll) => ({
+      rollNumber: roll.rollNumber ?? "",
+      thicknessMm: roll.thicknessMm ?? null,
+      widthMm: roll.widthMm ?? null,
+      lengthM: roll.lengthM ?? null,
+      weightKg: roll.weightKg ?? null,
+      areaSqM: roll.areaSqM ?? null,
+    }));
+
+    coc.extractedRollData = extractedRollData;
+    await this.auCocRepository.update(coc.id, { extractedRollData });
+
+    this.logger.log(
+      `Populated ${extractedRollData.length} rolls from DN ${deliveryNote.deliveryNoteNumber} for AU CoC ${coc.cocNumber}`,
+    );
   }
 
   private async findCompounderForCandidate(
