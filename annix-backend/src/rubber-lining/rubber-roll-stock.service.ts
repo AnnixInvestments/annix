@@ -379,6 +379,7 @@ export class RubberRollStockService {
           readinessDetails: auCocRecord.readinessDetails ?? null,
           createdAt: auCocRecord.createdAt.toISOString(),
           updatedAt: auCocRecord.updatedAt.toISOString(),
+          itemCount: 0,
         };
       }
     }

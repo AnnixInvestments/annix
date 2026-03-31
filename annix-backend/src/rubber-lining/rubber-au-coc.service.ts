@@ -103,6 +103,14 @@ export class RubberAuCocService {
     const query = this.auCocRepository
       .createQueryBuilder("coc")
       .leftJoinAndSelect("coc.customerCompany", "customer")
+      .addSelect(
+        (sub) =>
+          sub
+            .select("COUNT(item.id)")
+            .from("rubber_au_coc_items", "item")
+            .where("item.au_coc_id = coc.id"),
+        "item_count",
+      )
       .orderBy("coc.created_at", "DESC");
 
     if (filters?.status) {
@@ -114,8 +122,11 @@ export class RubberAuCocService {
       });
     }
 
-    const cocs = await query.getMany();
-    return cocs.map((coc) => this.mapAuCocToDto(coc));
+    const rawResults = await query.getRawAndEntities();
+    return rawResults.entities.map((coc, idx) => {
+      const itemCount = parseInt(rawResults.raw[idx]?.item_count || "0", 10);
+      return this.mapAuCocToDto(coc, itemCount);
+    });
   }
 
   async auCocById(id: number): Promise<RubberAuCocDto | null> {
@@ -134,7 +145,7 @@ export class RubberAuCocService {
       });
 
       this.logger.debug(`Found ${items.length} items, mapping to DTO...`);
-      const dto = this.mapAuCocToDto(coc);
+      const dto = this.mapAuCocToDto(coc, items.length);
       dto.items = items.map((item) => this.mapAuCocItemToDto(item));
       return dto;
     } catch (error) {
@@ -1346,7 +1357,7 @@ export class RubberAuCocService {
     }
   }
 
-  private mapAuCocToDto(coc: RubberAuCoc): RubberAuCocDto {
+  private mapAuCocToDto(coc: RubberAuCoc, itemCount?: number): RubberAuCocDto {
     return {
       id: coc.id,
       firebaseUid: coc.firebaseUid,
@@ -1370,6 +1381,7 @@ export class RubberAuCocService {
       readinessDetails: coc.readinessDetails ?? null,
       createdAt: coc.createdAt.toISOString(),
       updatedAt: coc.updatedAt.toISOString(),
+      itemCount: itemCount ?? 0,
     };
   }
 

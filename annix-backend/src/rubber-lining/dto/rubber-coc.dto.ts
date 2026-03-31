@@ -631,6 +631,7 @@ export class RubberAuCocDto {
   } | null;
   createdAt: string;
   updatedAt: string;
+  itemCount: number;
   items?: RubberAuCocItemDto[];
 }
 

@@ -862,6 +862,7 @@ export interface RubberAuCocDto {
   } | null;
   createdAt: string;
   updatedAt: string;
+  itemCount: number;
   items: RubberAuCocItemDto[];
 }
 
@@ -2389,11 +2390,13 @@ class AuRubberApiClient {
     });
   }
 
-  async deliveryNotePageUrl(id: number, pageNumber: number): Promise<string> {
-    const response = await this.request<{ url: string }>(
+  async deliveryNotePageUrl(
+    id: number,
+    pageNumber: number,
+  ): Promise<{ url: string; totalPages: number }> {
+    return this.request<{ url: string; totalPages: number }>(
       `/rubber-lining/portal/delivery-notes/${id}/page/${pageNumber}`,
     );
-    return response.url;
   }
 
   async replaceDeliveryNoteDocument(id: number, file: File): Promise<RubberDeliveryNoteDto> {

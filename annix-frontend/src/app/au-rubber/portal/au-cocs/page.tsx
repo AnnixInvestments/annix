@@ -159,7 +159,7 @@ export default function AuCocsPage() {
         return direction * (a.deliveryNoteRef || "").localeCompare(b.deliveryNoteRef || "");
       }
       if (sortColumn === "rolls") {
-        return direction * ((a.items?.length || 0) - (b.items?.length || 0));
+        return direction * ((a.itemCount || 0) - (b.itemCount || 0));
       }
       if (sortColumn === "createdAt") {
         return direction * a.createdAt.localeCompare(b.createdAt);
@@ -587,7 +587,7 @@ export default function AuCocsPage() {
                     )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {coc.items?.length || 0}
+                    {coc.itemCount || 0}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     {statusBadge(coc.status)}
