@@ -64,7 +64,13 @@ export default function JobCardsPage() {
   );
   const [isModalDragging, setIsModalDragging] = useState(false);
   const [isBulkReanalysing, setIsBulkReanalysing] = useState(false);
-  const [bulkResult, setBulkResult] = useState<{ processed: number; failed: number } | null>(null);
+  const [bulkProgress, setBulkProgress] = useState<{
+    current: number;
+    total: number;
+    currentJc: string;
+    processed: number;
+    failed: number;
+  } | null>(null);
   const modalFileInputRef = useRef<HTMLInputElement>(null);
 
   const toggleSort = (key: SortKey) => {
@@ -330,11 +336,45 @@ export default function JobCardsPage() {
           {isAdmin && (
             <button
               onClick={async () => {
+                const eligible = rawJobCards.filter(
+                  (jc) => jc.status === "draft" || jc.status === "active",
+                );
+                if (eligible.length === 0) return;
                 try {
                   setIsBulkReanalysing(true);
-                  setBulkResult(null);
-                  const result = await stockControlApiClient.bulkReanalyseJobCards();
-                  setBulkResult(result);
+                  setBulkProgress({
+                    current: 0,
+                    total: eligible.length,
+                    currentJc: eligible[0].jobNumber,
+                    processed: 0,
+                    failed: 0,
+                  });
+                  let processed = 0;
+                  let failed = 0;
+                  for (let i = 0; i < eligible.length; i++) {
+                    const jc = eligible[i];
+                    setBulkProgress({
+                      current: i + 1,
+                      total: eligible.length,
+                      currentJc: jc.jobNumber,
+                      processed,
+                      failed,
+                    });
+                    try {
+                      await stockControlApiClient.triggerCoatingAnalysis(jc.id);
+                      processed++;
+                    } catch {
+                      failed++;
+                    }
+                  }
+                  setBulkProgress({
+                    current: eligible.length,
+                    total: eligible.length,
+                    currentJc: "Complete",
+                    processed,
+                    failed,
+                  });
+                  queryClient.invalidateQueries({ queryKey: stockControlKeys.jobCards.all });
                 } finally {
                   setIsBulkReanalysing(false);
                 }
@@ -376,18 +416,56 @@ export default function JobCardsPage() {
         </div>
       </div>
 
-      {bulkResult && (
-        <div className="bg-purple-50 border border-purple-200 rounded-lg p-3 flex items-center justify-between">
-          <span className="text-sm text-purple-800">
-            Bulk re-analysis complete: {bulkResult.processed} processed
-            {bulkResult.failed > 0 ? `, ${bulkResult.failed} failed` : ""}
-          </span>
-          <button
-            onClick={() => setBulkResult(null)}
-            className="text-purple-600 hover:text-purple-800 text-sm"
-          >
-            Dismiss
-          </button>
+      {bulkProgress && (
+        <div className="fixed inset-0 z-50 overflow-y-auto" role="dialog" aria-modal="true">
+          <div className="flex min-h-full items-center justify-center p-4">
+            <div className="fixed inset-0 bg-black/10 backdrop-blur-md" aria-hidden="true" />
+            <div className="relative w-full max-w-sm rounded-lg bg-white p-6 shadow-xl">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-purple-100">
+                  <span className="text-lg font-bold text-purple-700">N</span>
+                </div>
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-900">Nix Coating Analysis</h3>
+                  <p className="text-xs text-gray-500">
+                    {isBulkReanalysing
+                      ? `Analysing ${bulkProgress.current} of ${bulkProgress.total}`
+                      : `Complete — ${bulkProgress.processed} processed${bulkProgress.failed > 0 ? `, ${bulkProgress.failed} failed` : ""}`}
+                  </p>
+                </div>
+              </div>
+              {isBulkReanalysing && (
+                <p className="text-sm text-gray-700 mb-3 truncate">
+                  Checking{" "}
+                  <span className="font-medium text-purple-700">{bulkProgress.currentJc}</span>
+                </p>
+              )}
+              <div className="w-full bg-gray-200 rounded-full h-2 mb-2">
+                <div
+                  className="bg-purple-600 h-2 rounded-full transition-all duration-300"
+                  style={{
+                    width: `${bulkProgress.total > 0 ? (bulkProgress.current / bulkProgress.total) * 100 : 0}%`,
+                  }}
+                />
+              </div>
+              <div className="flex items-center justify-between text-xs text-gray-500">
+                <span>
+                  {bulkProgress.current}/{bulkProgress.total} job cards
+                </span>
+                {bulkProgress.failed > 0 && (
+                  <span className="text-red-600">{bulkProgress.failed} failed</span>
+                )}
+              </div>
+              {!isBulkReanalysing && (
+                <button
+                  onClick={() => setBulkProgress(null)}
+                  className="mt-4 w-full rounded-md bg-purple-600 px-4 py-2 text-sm font-medium text-white hover:bg-purple-700"
+                >
+                  Done
+                </button>
+              )}
+            </div>
+          </div>
         </div>
       )}
 

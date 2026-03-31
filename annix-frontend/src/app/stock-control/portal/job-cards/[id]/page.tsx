@@ -2028,6 +2028,7 @@ export default function JobCardDetailPage() {
           <TabPanel tabId="coating" activeTab={activeTab} visited={visitedTabs.has("coating")}>
             <CoatingAnalysisTab
               jobId={jobId}
+              jobNumber={jobCard?.jobNumber || ""}
               coatingAnalysis={coating.coatingAnalysis}
               isAnalysing={coating.isAnalysing}
               onRunAnalysis={coating.handleRunAnalysis}
