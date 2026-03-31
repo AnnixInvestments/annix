@@ -27,6 +27,7 @@ interface CoatingAnalysisTabProps {
   isUploadingTds: boolean;
   onTdsUpload: () => void;
   tdsUploadError: string | null;
+  onSkipTds: () => void;
   isAdmin: boolean;
   sourceFileUrl: string | null;
   lineItems: JobCardLineItem[];
@@ -968,6 +969,12 @@ export function CoatingAnalysisTab(props: CoatingAnalysisTabProps) {
                   className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
                 >
                   Cancel
+                </button>
+                <button
+                  onClick={props.onSkipTds}
+                  className="px-4 py-2 text-sm font-medium text-amber-700 bg-amber-50 border border-amber-300 rounded-md hover:bg-amber-100"
+                >
+                  Skip & Activate
                 </button>
                 <button
                   onClick={onTdsUpload}

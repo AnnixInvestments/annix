@@ -27,7 +27,10 @@ declare module "./base" {
     jobCardById(id: number): Promise<JobCard>;
     jobCardAdjacentIds(id: number): Promise<{ previousId: number | null; nextId: number | null }>;
     createJobCard(data: Partial<JobCard>): Promise<JobCard>;
-    updateJobCard(id: number, data: Partial<JobCard>): Promise<JobCard>;
+    updateJobCard(
+      id: number,
+      data: Partial<JobCard> & { skipTdsCheck?: boolean },
+    ): Promise<JobCard>;
     deleteJobCard(id: number): Promise<void>;
     allocateStock(
       jobCardId: number,

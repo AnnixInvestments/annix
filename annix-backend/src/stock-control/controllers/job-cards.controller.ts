@@ -183,7 +183,7 @@ export class JobCardsController {
   @Put(":id")
   @ApiOperation({ summary: "Update a job card" })
   async update(@Req() req: any, @Param("id") id: number, @Body() dto: UpdateJobCardDto) {
-    if (dto.status === "active") {
+    if (dto.status === "active" && !dto.skipTdsCheck) {
       const unverified = await this.coatingAnalysisService.unverifiedProducts(
         req.user.companyId,
         id,

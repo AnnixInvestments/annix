@@ -257,6 +257,22 @@ describe("JobCardsController", () => {
       expect(coatingAnalysisService.unverifiedProducts).toHaveBeenCalledWith(1, 5);
     });
 
+    it("should skip TDS check when skipTdsCheck is true", async () => {
+      const dto = { status: "active", skipTdsCheck: true } as any;
+      coatingAnalysisService.unverifiedProducts.mockResolvedValue([
+        { product: "Product A" },
+      ] as any);
+      jobCardService.update.mockResolvedValue({ id: 5 } as any);
+      workflowService.initializeWorkflow.mockResolvedValue(undefined as any);
+      requisitionService.createFromJobCard.mockResolvedValue(undefined as any);
+      cpoService.createCalloffRecords.mockResolvedValue(undefined as any);
+
+      const result = await controller.update(mockReq(), 5, dto);
+
+      expect(coatingAnalysisService.unverifiedProducts).not.toHaveBeenCalled();
+      expect(result).toEqual({ id: 5 });
+    });
+
     it("should initialize workflow, requisition, and CPO on activation", async () => {
       const dto = { status: "active" } as any;
       coatingAnalysisService.unverifiedProducts.mockResolvedValue([]);

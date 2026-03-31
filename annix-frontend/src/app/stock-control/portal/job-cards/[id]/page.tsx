@@ -282,10 +282,13 @@ export default function JobCardDetailPage() {
     }
   };
 
-  const activateJobCard = async () => {
+  const activateJobCard = async (skipTdsCheck?: boolean) => {
     try {
       setIsUpdatingStatus(true);
-      await stockControlApiClient.updateJobCard(jobId, { status: "active" });
+      await stockControlApiClient.updateJobCard(jobId, {
+        status: "active",
+        ...(skipTdsCheck ? { skipTdsCheck: true } : {}),
+      });
       invalidateJobCardsList();
       fetchData();
     } catch (err) {
@@ -296,13 +299,19 @@ export default function JobCardDetailPage() {
   };
 
   const handleDraftAccepted = async () => {
-    const hasUnverified = await coating.checkUnverifiedProducts(activateJobCard);
+    const hasUnverified = await coating.checkUnverifiedProducts(() => activateJobCard());
     if (hasUnverified) {
       handleTabChange("coating");
       return;
     }
 
     await activateJobCard();
+  };
+
+  const handleSkipTdsAndActivate = async () => {
+    coating.setShowTdsModal(false);
+    coating.setUnverifiedProducts([]);
+    await activateJobCard(true);
   };
 
   const handleApprove = async (signatureDataUrl?: string, comments?: string) => {
@@ -2043,6 +2052,7 @@ export default function JobCardDetailPage() {
               isUploadingTds={coating.isUploadingTds}
               onTdsUpload={coating.handleTdsUpload}
               tdsUploadError={coating.tdsUploadError}
+              onSkipTds={handleSkipTdsAndActivate}
               isAdmin={userRole === "admin"}
               sourceFileUrl={jobCard?.sourceFilePath || null}
               lineItems={jobCard?.lineItems || []}
