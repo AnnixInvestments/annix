@@ -285,12 +285,21 @@ export function FeedbackWidget(props: FeedbackWidgetProps) {
       return;
     }
 
+    const ALLOWED_TYPES = [
+      "image/",
+      "application/pdf",
+      "application/msword",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "application/vnd.ms-excel",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    ];
+
     const newAttachments = Array.from(selectedFiles)
-      .filter((f) => f.type.startsWith("image/"))
+      .filter((f) => ALLOWED_TYPES.some((t) => f.type.startsWith(t)))
       .slice(0, 5 - attachments.length)
       .map((file) => ({
         file,
-        preview: URL.createObjectURL(file),
+        preview: file.type.startsWith("image/") ? URL.createObjectURL(file) : "",
         isAutoScreenshot: false,
       }));
 
@@ -479,12 +488,36 @@ export function FeedbackWidget(props: FeedbackWidgetProps) {
             {attachments.length > 0 && (
               <div className="flex gap-2 mt-2 overflow-x-auto pb-1">
                 {attachments.map((att, idx) => (
-                  <div key={att.preview} className="relative shrink-0 w-14 h-14">
-                    <img
-                      src={att.preview}
-                      alt={`Attachment ${idx + 1}`}
-                      className="w-14 h-14 object-cover rounded border border-gray-200"
-                    />
+                  <div key={att.preview || att.file.name} className="relative shrink-0 w-14 h-14">
+                    {att.file.type.startsWith("image/") ? (
+                      <img
+                        src={att.preview}
+                        alt={`Attachment ${idx + 1}`}
+                        className="w-14 h-14 object-cover rounded border border-gray-200"
+                      />
+                    ) : (
+                      <div
+                        className="w-14 h-14 rounded border border-gray-200 bg-gray-50 flex flex-col items-center justify-center"
+                        title={att.file.name}
+                      >
+                        <svg
+                          className="w-5 h-5 text-gray-400"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                          />
+                        </svg>
+                        <span className="text-[8px] text-gray-500 mt-0.5 truncate max-w-[3rem]">
+                          {att.file.name.split(".").pop()?.toUpperCase()}
+                        </span>
+                      </div>
+                    )}
                     <button
                       type="button"
                       onClick={() => handleRemoveAttachment(idx)}
@@ -558,7 +591,7 @@ export function FeedbackWidget(props: FeedbackWidgetProps) {
                   onClick={() => fileInputRef.current?.click()}
                   disabled={attachments.length >= 5}
                   className="p-2 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                  title="Attach image"
+                  title="Attach file"
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path
@@ -573,7 +606,7 @@ export function FeedbackWidget(props: FeedbackWidgetProps) {
                 <input
                   ref={fileInputRef}
                   type="file"
-                  accept="image/*"
+                  accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                   multiple
                   onChange={handleFileSelect}
                   className="hidden"
