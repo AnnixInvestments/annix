@@ -126,39 +126,57 @@ export class FeedbackService {
 
     const savedFeedback = await this.feedbackRepository.save(feedback);
 
-    const hasAutoScreenshot = files.some((f) => f.originalname === "auto-screenshot.png");
-    const allFiles = hasAutoScreenshot
-      ? files
-      : [
-          ...files,
-          ...(await this.captureServerScreenshot(dto.pageUrl, dto.appContext, bearerToken)),
-        ];
-
-    const attachments = await this.uploadAttachments(savedFeedback.id, allFiles);
-
-    const conversationId = await this.createGeneralFeedbackConversation(
-      savedFeedback,
-      submitter,
-      attachments,
-    );
-
-    if (conversationId) {
-      savedFeedback.conversationId = conversationId;
-      await this.feedbackRepository.save(savedFeedback);
-    }
-
-    await this.sendGeneralEmailNotification(submitter, dto, attachments.length);
-
-    this.createGithubIssueAsync(savedFeedback.id);
-
-    this.logger.log(
-      `Feedback submitted by ${submitter.type} user ${submitter.userId} (${submitter.displayName}), ${attachments.length} attachment(s)`,
-    );
+    this.processGeneralFeedbackAsync(savedFeedback, submitter, dto, files, bearerToken);
 
     return {
       id: savedFeedback.id,
       message: "Feedback submitted successfully",
     };
+  }
+
+  private processGeneralFeedbackAsync(
+    feedback: CustomerFeedback,
+    submitter: FeedbackSubmitter,
+    dto: GeneralFeedbackDto,
+    files: Express.Multer.File[],
+    bearerToken: string | null,
+  ): void {
+    const run = async () => {
+      const hasAutoScreenshot = files.some((f) => f.originalname === "auto-screenshot.png");
+      const allFiles = hasAutoScreenshot
+        ? files
+        : [
+            ...files,
+            ...(await this.captureServerScreenshot(dto.pageUrl, dto.appContext, bearerToken)),
+          ];
+
+      const attachments = await this.uploadAttachments(feedback.id, allFiles);
+
+      const conversationId = await this.createGeneralFeedbackConversation(
+        feedback,
+        submitter,
+        attachments,
+      );
+
+      if (conversationId) {
+        feedback.conversationId = conversationId;
+        await this.feedbackRepository.save(feedback);
+      }
+
+      await this.sendGeneralEmailNotification(submitter, dto, attachments.length);
+
+      this.createGithubIssueAsync(feedback.id);
+
+      this.logger.log(
+        `Feedback processed for ${submitter.type} user ${submitter.userId} (${submitter.displayName}), ${attachments.length} attachment(s)`,
+      );
+    };
+
+    run().catch((error) => {
+      this.logger.error(
+        `Background feedback processing failed for #${feedback.id}: ${error instanceof Error ? error.message : error}`,
+      );
+    });
   }
 
   private async uploadAttachments(
@@ -494,6 +512,22 @@ ${feedback.content}
           }
 
           await page.goto(fullUrl, { waitUntil: "networkidle2", timeout: 15000 });
+
+          await page
+            .waitForFunction(
+              () => {
+                const body = document.body.innerText || "";
+                const hasLoading =
+                  body.includes("Loading") ||
+                  !!document.querySelector('[role="progressbar"]') ||
+                  !!document.querySelector(".animate-spin") ||
+                  !!document.querySelector('[data-loading="true"]');
+                return !hasLoading;
+              },
+              { timeout: 8000 },
+            )
+            .catch(() => {});
+
           return Buffer.from(await page.screenshot({ type: "png", fullPage: false }));
         },
       });
