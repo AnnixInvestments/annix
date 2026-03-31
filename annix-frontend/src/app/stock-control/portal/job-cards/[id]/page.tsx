@@ -745,7 +745,28 @@ export default function JobCardDetailPage() {
     [],
   );
 
+  const isDocUploadStep = useCallback(
+    (bg: BackgroundStepStatus) => bg.stepKey === "upload_source_documents",
+    [],
+  );
+
   const [jobFileGateSatisfied, setJobFileGateSatisfied] = useState(false);
+  const [docUploadGateSatisfied, setDocUploadGateSatisfied] = useState(false);
+
+  const docUploadStepPending = useMemo(
+    () =>
+      backgroundSteps.some(
+        (bg) => bg.stepKey === "upload_source_documents" && bg.completedAt === null,
+      ),
+    [backgroundSteps],
+  );
+
+  const docUploadStepActive = useMemo(
+    () =>
+      docUploadStepPending &&
+      backgroundSteps.some((bg) => bg.stepKey === "reception" && bg.completedAt !== null),
+    [docUploadStepPending, backgroundSteps],
+  );
 
   useEffect(() => {
     const pendingFileReview = backgroundSteps.some(
@@ -757,6 +778,14 @@ export default function JobCardDetailPage() {
       .then((gate) => setJobFileGateSatisfied(gate.satisfied))
       .catch(() => setJobFileGateSatisfied(false));
   }, [backgroundSteps, jobId]);
+
+  useEffect(() => {
+    if (!docUploadStepActive) return;
+    stockControlApiClient
+      .reconciliationGateStatus(jobId)
+      .then((gate) => setDocUploadGateSatisfied(gate.satisfied))
+      .catch(() => setDocUploadGateSatisfied(false));
+  }, [docUploadStepActive, jobId]);
 
   const hasReadyPhoto = useMemo(
     () =>
@@ -1532,6 +1561,39 @@ export default function JobCardDetailPage() {
                         </button>
                       )}
                     </div>
+                  ) : isDocUploadStep(bg) ? (
+                    <div key={bg.stepKey} className="flex flex-wrap gap-2">
+                      <button
+                        onClick={() => handleTabChange("job-files")}
+                        className="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-md bg-blue-600 text-white hover:bg-blue-700 transition-colors"
+                      >
+                        <svg
+                          className="w-4 h-4 mr-1"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"
+                          />
+                        </svg>
+                        Upload Docs
+                      </button>
+                      {docUploadGateSatisfied && (
+                        <button
+                          onClick={() => handleCompleteBackgroundStep(bg.stepKey)}
+                          disabled={completingStepKey === bg.stepKey}
+                          className="px-3 py-1.5 text-xs font-medium rounded-md bg-amber-600 text-white hover:bg-amber-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+                        >
+                          {completingStepKey === bg.stepKey
+                            ? "..."
+                            : bg.actionLabel || "Docs Uploaded"}
+                        </button>
+                      )}
+                    </div>
                   ) : bg.stepOutcomes && bg.stepOutcomes.length > 1 ? (
                     bg.stepOutcomes.map((outcome) => {
                       const styleMap: Record<string, string> = {
@@ -1723,13 +1785,6 @@ export default function JobCardDetailPage() {
           currentUserName={user?.name || null}
         />
       )}
-
-      {backgroundSteps.some(
-        (bg) => bg.stepKey === "upload_source_documents" && bg.completedAt === null,
-      ) &&
-        backgroundSteps.some((bg) => bg.stepKey === "reception" && bg.completedAt !== null) && (
-          <DocumentUploadGate jobCardId={jobId} onGateSatisfied={() => refreshWorkflowState()} />
-        )}
 
       {!specsNeedReview &&
         !prevStepBgPending &&
@@ -1937,6 +1992,17 @@ export default function JobCardDetailPage() {
           </TabPanel>
 
           <TabPanel tabId="job-files" activeTab={activeTab} visited={visitedTabs.has("job-files")}>
+            {docUploadStepActive && (
+              <div className="mb-4">
+                <DocumentUploadGate
+                  jobCardId={jobId}
+                  onGateSatisfied={() => {
+                    setDocUploadGateSatisfied(true);
+                    refreshWorkflowState();
+                  }}
+                />
+              </div>
+            )}
             <JobFileTab
               jobFiles={jobFilesHook.jobFiles}
               stagedFiles={jobFilesHook.stagedFiles}
