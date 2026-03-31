@@ -244,11 +244,16 @@ export default function JobCardsPage() {
     }
   };
 
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
   const handleDelete = async (id: number) => {
     try {
       setDeletingId(id);
+      setDeleteError(null);
       await deleteJobCard.mutateAsync(id);
-    } catch (_err) {
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Delete failed";
+      setDeleteError(msg);
       setDeletingId(null);
     } finally {
       setConfirmDelete(null);
@@ -830,6 +835,20 @@ export default function JobCardsPage() {
         }}
         onCancel={() => setConfirmDelete(null)}
       />
+
+      {deleteError && (
+        <div className="fixed bottom-4 right-4 z-50 max-w-md rounded-lg border border-red-200 bg-red-50 p-4 shadow-lg">
+          <div className="flex items-start gap-2">
+            <span className="text-sm text-red-800">{deleteError}</span>
+            <button
+              onClick={() => setDeleteError(null)}
+              className="ml-auto text-red-500 hover:text-red-700 font-medium text-xs"
+            >
+              Dismiss
+            </button>
+          </div>
+        </div>
+      )}
 
       {showCreateForm && (
         <div className="fixed inset-0 z-50 overflow-y-auto">

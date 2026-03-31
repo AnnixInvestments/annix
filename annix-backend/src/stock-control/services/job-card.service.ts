@@ -160,8 +160,21 @@ export class JobCardService {
   }
 
   async remove(companyId: number, id: number): Promise<void> {
+    this.logger.log(`Attempting to delete job card ${id} for company ${companyId}`);
     const jobCard = await this.findById(companyId, id);
-    await this.jobCardRepo.remove(jobCard);
+    this.logger.log(`Found job card ${jobCard.jobNumber} (id=${id}), proceeding with delete`);
+    await this.dataSource.transaction(async (em) => {
+      await em.query("DELETE FROM stock_allocations WHERE job_card_id = $1 AND company_id = $2", [
+        id,
+        companyId,
+      ]);
+      await em.query(
+        "DELETE FROM reconciliation_documents WHERE job_card_id = $1 AND company_id = $2",
+        [id, companyId],
+      );
+      await em.remove(jobCard);
+    });
+    this.logger.log(`Successfully deleted job card ${id}`);
   }
 
   async allocateStock(
