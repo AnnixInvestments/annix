@@ -72,6 +72,7 @@ export default function SupplierCocDetailPage() {
   const [documentUrl, setDocumentUrl] = useState<string | null>(null);
   const [isEditingExtracted, setIsEditingExtracted] = useState(false);
   const [editedBatches, setEditedBatches] = useState<ExtractedBatch[]>([]);
+  const [editedExtractedFields, setEditedExtractedFields] = useState<Record<string, string>>({});
   const [isSavingExtracted, setIsSavingExtracted] = useState(false);
   const [splitPercent, setSplitPercent] = useState(50);
   const splitContainerRef = useRef<HTMLDivElement>(null);
@@ -256,6 +257,13 @@ export default function SupplierCocDetailPage() {
     const extracted = coc?.extractedData as Record<string, unknown> | null;
     const rawBatches = (extracted?.batches || []) as ExtractedBatch[];
     setEditedBatches(rawBatches.map((b) => ({ ...b })));
+    setEditedExtractedFields({
+      compoundCode: String(extracted?.compoundCode || extracted?.compoundDescription || ""),
+      cocNumber: String(extracted?.cocNumber || ""),
+      productionDate: String(extracted?.productionDate || ""),
+      orderNumber: String(extracted?.orderNumber || ""),
+      ticketNumber: String(extracted?.ticketNumber || ""),
+    });
     setIsEditingExtracted(true);
   }, [coc]);
 
@@ -280,7 +288,15 @@ export default function SupplierCocDetailPage() {
     try {
       setIsSavingExtracted(true);
       const existing = (coc.extractedData || {}) as Record<string, unknown>;
-      const updatedData = { ...existing, batches: editedBatches };
+      const updatedData = {
+        ...existing,
+        batches: editedBatches,
+        compoundCode: editedExtractedFields.compoundCode || null,
+        cocNumber: editedExtractedFields.cocNumber || null,
+        productionDate: editedExtractedFields.productionDate || null,
+        orderNumber: editedExtractedFields.orderNumber || null,
+        ticketNumber: editedExtractedFields.ticketNumber || null,
+      };
       await auRubberApiClient.reviewSupplierCoc(cocId, { extractedData: updatedData });
       showToast("Extracted data updated", "success");
       setIsEditingExtracted(false);
@@ -290,7 +306,7 @@ export default function SupplierCocDetailPage() {
     } finally {
       setIsSavingExtracted(false);
     }
-  }, [coc, cocId, editedBatches, showToast]);
+  }, [coc, cocId, editedBatches, editedExtractedFields, showToast]);
 
   const statusBadge = (status: CocProcessingStatus) => {
     const colors: Record<CocProcessingStatus, string> = {
@@ -650,30 +666,57 @@ export default function SupplierCocDetailPage() {
                 ? editedBatches
                 : ((extracted.batches || []) as ExtractedBatch[]);
 
-              const summaryFields = [
+              const editableFields = [
                 {
                   label: "Compound",
+                  key: "compoundCode",
                   value: extracted.compoundCode || extracted.compoundDescription,
                 },
-                { label: "CoC Number", value: extracted.cocNumber },
-                { label: "Production Date", value: extracted.productionDate },
-                { label: "Order Number", value: extracted.orderNumber },
-                { label: "Ticket Number", value: extracted.ticketNumber },
-                { label: "Has Graph", value: extracted.hasGraph ? "Yes" : null },
-              ].filter((f) => f.value);
+                { label: "CoC Number", key: "cocNumber", value: extracted.cocNumber },
+                {
+                  label: "Production Date",
+                  key: "productionDate",
+                  value: extracted.productionDate,
+                },
+                { label: "Order Number", key: "orderNumber", value: extracted.orderNumber },
+                { label: "Ticket Number", key: "ticketNumber", value: extracted.ticketNumber },
+              ];
+              const hasGraphField = extracted.hasGraph
+                ? { label: "Has Graph", value: "Yes" }
+                : null;
 
               return (
                 <>
-                  {summaryFields.length > 0 && (
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4">
-                      {summaryFields.map((f) => (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4">
+                    {editableFields
+                      .filter((f) => isEditingExtracted || f.value)
+                      .map((f) => (
                         <div key={f.label}>
                           <dt className="text-xs font-medium text-gray-500">{f.label}</dt>
-                          <dd className="mt-0.5 text-sm text-gray-900">{String(f.value)}</dd>
+                          {isEditingExtracted ? (
+                            <input
+                              type="text"
+                              value={editedExtractedFields[f.key] || ""}
+                              onChange={(e) =>
+                                setEditedExtractedFields((prev) => ({
+                                  ...prev,
+                                  [f.key]: e.target.value,
+                                }))
+                              }
+                              className="mt-0.5 w-full rounded border border-gray-300 px-2 py-1 text-sm"
+                            />
+                          ) : (
+                            <dd className="mt-0.5 text-sm text-gray-900">{String(f.value)}</dd>
+                          )}
                         </div>
                       ))}
-                    </div>
-                  )}
+                    {hasGraphField && !isEditingExtracted ? (
+                      <div>
+                        <dt className="text-xs font-medium text-gray-500">{hasGraphField.label}</dt>
+                        <dd className="mt-0.5 text-sm text-gray-900">{hasGraphField.value}</dd>
+                      </div>
+                    ) : null}
+                  </div>
 
                   {Object.values(specs).some((v) => v != null) && (
                     <div className="mb-4">

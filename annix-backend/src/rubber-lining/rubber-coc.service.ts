@@ -180,7 +180,14 @@ export class RubberCocService {
     if (dto.orderNumber !== undefined) coc.orderNumber = dto.orderNumber;
     if (dto.ticketNumber !== undefined) coc.ticketNumber = dto.ticketNumber;
     if (dto.processingStatus !== undefined) coc.processingStatus = dto.processingStatus;
-    if (dto.cocType !== undefined) coc.cocType = dto.cocType;
+
+    const extracted = (coc.extractedData || {}) as Record<string, unknown>;
+    if (dto.cocNumber !== undefined) extracted.cocNumber = dto.cocNumber;
+    if (dto.compoundCode !== undefined) extracted.compoundCode = dto.compoundCode;
+    if (dto.productionDate !== undefined) extracted.productionDate = dto.productionDate;
+    if (dto.orderNumber !== undefined) extracted.orderNumber = dto.orderNumber;
+    if (dto.ticketNumber !== undefined) extracted.ticketNumber = dto.ticketNumber;
+    coc.extractedData = extracted as any;
 
     await this.supplierCocRepository.save(coc);
     const refreshed = await this.supplierCocRepository.findOne({
