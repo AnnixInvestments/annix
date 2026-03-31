@@ -40,3 +40,21 @@ export function useUpdateJobFrequency() {
     },
   });
 }
+
+export function useSyncScheduledJobs() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => adminApiClient.syncScheduledJobs(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: adminKeys.scheduledJobs.all });
+    },
+  });
+}
+
+export function useScheduledJobsSyncStatus() {
+  return useQuery({
+    queryKey: [...adminKeys.scheduledJobs.all, "sync-status"],
+    queryFn: () => adminApiClient.scheduledJobsSyncStatus(),
+    refetchInterval: 30_000,
+  });
+}

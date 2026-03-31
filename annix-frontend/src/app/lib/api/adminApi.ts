@@ -1372,6 +1372,16 @@ class AdminApiClient {
     );
   }
 
+  async syncScheduledJobs(): Promise<SyncResultDto> {
+    return this.request<SyncResultDto>("/admin/scheduled-jobs/sync", {
+      method: "POST",
+    });
+  }
+
+  async scheduledJobsSyncStatus(): Promise<SyncStatusDto> {
+    return this.request<SyncStatusDto>("/admin/scheduled-jobs/sync-status");
+  }
+
   async aiUsageLogs(params?: AiUsageQueryParams): Promise<AiUsageListResponse> {
     const searchParams = new URLSearchParams();
     if (params?.app) searchParams.append("app", params.app);
@@ -1850,6 +1860,17 @@ export interface ScheduledJobDto {
   cronTime: string;
   lastExecution: string | null;
   nextExecution: string | null;
+}
+
+export interface SyncResultDto {
+  synced: number;
+  source: string;
+  timestamp: string;
+}
+
+export interface SyncStatusDto {
+  syncSource: string | null;
+  lastSyncTimestamp: string | null;
 }
 
 export interface DirectorResponse {

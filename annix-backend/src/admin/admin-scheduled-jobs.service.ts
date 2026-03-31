@@ -1,5 +1,6 @@
 import { Injectable, Logger, type OnApplicationBootstrap } from "@nestjs/common";
-import { SchedulerRegistry } from "@nestjs/schedule";
+import { ConfigService } from "@nestjs/config";
+import { Cron, CronExpression, SchedulerRegistry } from "@nestjs/schedule";
 import { InjectRepository } from "@nestjs/typeorm";
 import { CronTime } from "cron";
 import { Repository } from "typeorm";
@@ -13,6 +14,18 @@ export interface ScheduledJobDto {
   cronTime: string;
   lastExecution: string | null;
   nextExecution: string | null;
+}
+
+export interface ScheduledJobExportDto {
+  jobName: string;
+  active: boolean;
+  cronExpression: string | null;
+}
+
+export interface SyncResultDto {
+  synced: number;
+  source: string;
+  timestamp: string;
 }
 
 const JOB_METADATA: Record<string, { description: string; module: string }> = {
@@ -84,6 +97,10 @@ const JOB_METADATA: Record<string, { description: string; module: string }> = {
     description: "Check document expiry and send warnings",
     module: "Comply SA",
   },
+  "comply-sa:data-retention-cleanup": {
+    description: "Monthly POPIA data retention cleanup for Comply SA",
+    module: "Comply SA",
+  },
   "inbound-email:poll-all": {
     description: "Poll all configured inbound email accounts",
     module: "Inbound Email",
@@ -104,19 +121,40 @@ const JOB_METADATA: Record<string, { description: string; module: string }> = {
     description: "Check for CPO arrivals without matching invoices",
     module: "Stock Control",
   },
+  "scheduled-jobs:sync-from-prod": {
+    description: "Sync scheduled job settings from production server",
+    module: "Admin",
+  },
 };
 
 @Injectable()
 export class AdminScheduledJobsService implements OnApplicationBootstrap {
   private readonly logger = new Logger(AdminScheduledJobsService.name);
+  private readonly syncSource: string | null;
+  private readonly syncToken: string | null;
+  private lastSyncTimestamp: string | null = null;
 
   constructor(
     private readonly schedulerRegistry: SchedulerRegistry,
     @InjectRepository(ScheduledJobOverride)
     private readonly overrideRepo: Repository<ScheduledJobOverride>,
-  ) {}
+    private readonly configService: ConfigService,
+  ) {
+    this.syncSource = this.configService.get<string>("SCHEDULED_JOBS_SYNC_SOURCE") || null;
+    this.syncToken = this.configService.get<string>("SCHEDULED_JOBS_SYNC_TOKEN") || null;
+  }
 
   async onApplicationBootstrap(): Promise<void> {
+    if (this.syncSource) {
+      try {
+        await this.syncFromSource();
+      } catch (err) {
+        this.logger.warn(
+          `Failed to sync scheduled jobs from ${this.syncSource} on startup: ${err instanceof Error ? err.message : "unknown"}`,
+        );
+      }
+    }
+
     const overrides = await this.overrideRepo.find();
 
     overrides.forEach((override) => {
@@ -163,6 +201,94 @@ export class AdminScheduledJobsService implements OnApplicationBootstrap {
     await this.overrideRepo.save({ jobName: name, active: true });
     this.logger.log(`Resumed cron job: ${name}`);
     return this.jobToDto(name, job);
+  }
+
+  validateSyncToken(token: string | null): boolean {
+    return Boolean(this.syncToken) && token === this.syncToken;
+  }
+
+  async exportOverrides(): Promise<ScheduledJobExportDto[]> {
+    const cronJobs = this.schedulerRegistry.getCronJobs();
+    return Array.from(cronJobs.entries()).map(([name, job]) => ({
+      jobName: name,
+      active: job.isActive,
+      cronExpression: this.normalizeCronToFiveField(String(job.cronTime.source)),
+    }));
+  }
+
+  async syncFromSource(): Promise<SyncResultDto> {
+    if (!this.syncSource) {
+      throw new Error("SCHEDULED_JOBS_SYNC_SOURCE is not configured");
+    }
+
+    const url = `${this.syncSource}/admin/scheduled-jobs/export`;
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    if (this.syncToken) {
+      headers["x-sync-token"] = this.syncToken;
+    }
+
+    const response = await fetch(url, { headers });
+    if (!response.ok) {
+      throw new Error(`Sync failed: ${response.status} ${response.statusText}`);
+    }
+
+    const remoteOverrides: ScheduledJobExportDto[] = await response.json();
+    let synced = 0;
+
+    for (const remote of remoteOverrides) {
+      try {
+        const job = this.schedulerRegistry.getCronJob(remote.jobName);
+
+        await this.overrideRepo.save({
+          jobName: remote.jobName,
+          active: remote.active,
+          cronExpression: remote.cronExpression,
+        });
+
+        if (remote.cronExpression) {
+          job.setTime(new CronTime(remote.cronExpression));
+        }
+
+        if (remote.active) {
+          job.start();
+        } else {
+          job.stop();
+        }
+
+        synced++;
+      } catch {
+        this.logger.warn(`Skipping sync for unknown local job: ${remote.jobName}`);
+      }
+    }
+
+    this.lastSyncTimestamp = new Date().toISOString();
+    this.logger.log(`Synced ${synced} scheduled job override(s) from ${this.syncSource}`);
+
+    return {
+      synced,
+      source: this.syncSource,
+      timestamp: this.lastSyncTimestamp,
+    };
+  }
+
+  syncStatus(): { syncSource: string | null; lastSyncTimestamp: string | null } {
+    return {
+      syncSource: this.syncSource,
+      lastSyncTimestamp: this.lastSyncTimestamp,
+    };
+  }
+
+  @Cron(CronExpression.EVERY_10_MINUTES, { name: "scheduled-jobs:sync-from-prod" })
+  async periodicSync(): Promise<void> {
+    if (!this.syncSource) {
+      return;
+    }
+
+    try {
+      await this.syncFromSource();
+    } catch (err) {
+      this.logger.warn(`Periodic sync failed: ${err instanceof Error ? err.message : "unknown"}`);
+    }
   }
 
   async updateFrequency(name: string, cronExpression: string): Promise<ScheduledJobDto> {

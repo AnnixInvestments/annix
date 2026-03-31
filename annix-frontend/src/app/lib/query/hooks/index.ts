@@ -86,6 +86,8 @@ export {
   usePauseJob,
   useResumeJob,
   useScheduledJobs,
+  useScheduledJobsSyncStatus,
+  useSyncScheduledJobs,
   useUpdateJobFrequency,
 } from "./admin/useScheduledJobs";
 export {

@@ -45,6 +45,7 @@ import { PublicCompanyProfileController } from "./public-company-profile.control
 
 @Module({
   imports: [
+    ConfigModule,
     forwardRef(() => RfqModule),
     TypeOrmModule.forFeature([
       AdminSession,

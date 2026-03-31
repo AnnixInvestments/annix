@@ -6,6 +6,8 @@ import {
   usePauseJob,
   useResumeJob,
   useScheduledJobs,
+  useScheduledJobsSyncStatus,
+  useSyncScheduledJobs,
   useUpdateJobFrequency,
 } from "@/app/lib/query/hooks";
 
@@ -122,6 +124,7 @@ const MODULE_COLORS: Record<string, string> = {
   Customers: "bg-pink-100 text-pink-700 dark:bg-pink-900/50 dark:text-pink-300",
   "Inbound Email": "bg-cyan-100 text-cyan-700 dark:bg-cyan-900/50 dark:text-cyan-300",
   "Secure Docs": "bg-gray-100 text-gray-700 dark:bg-gray-700/50 dark:text-gray-300",
+  Admin: "bg-slate-100 text-slate-700 dark:bg-slate-700/50 dark:text-slate-300",
 };
 
 function currentCronToPresetValue(cronTime: string): string {
@@ -220,6 +223,35 @@ function JobRow(props: { job: ScheduledJobDto }) {
   );
 }
 
+function SyncBar() {
+  const { data: syncStatus } = useScheduledJobsSyncStatus();
+  const syncMutation = useSyncScheduledJobs();
+
+  if (!syncStatus?.syncSource) {
+    return null;
+  }
+
+  return (
+    <div className="flex items-center justify-between rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 dark:border-blue-800 dark:bg-blue-900/20">
+      <div className="text-sm text-blue-700 dark:text-blue-300">
+        <span className="font-medium">Sync source:</span> {syncStatus.syncSource}
+        {syncStatus.lastSyncTimestamp ? (
+          <span className="ml-3 text-blue-500 dark:text-blue-400">
+            Last synced: {formatDate(syncStatus.lastSyncTimestamp)}
+          </span>
+        ) : null}
+      </div>
+      <button
+        onClick={() => syncMutation.mutate()}
+        disabled={syncMutation.isPending}
+        className="rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50 dark:bg-blue-700 dark:hover:bg-blue-600"
+      >
+        {syncMutation.isPending ? "Syncing..." : "Sync from Production"}
+      </button>
+    </div>
+  );
+}
+
 export default function ScheduledJobsPage() {
   const { data: jobs, isLoading } = useScheduledJobs();
 
@@ -234,6 +266,8 @@ export default function ScheduledJobsPage() {
           resumed. All changes persist across deployments.
         </p>
       </div>
+
+      <SyncBar />
 
       <div className="overflow-hidden rounded-lg bg-white shadow dark:bg-slate-800">
         <div className="overflow-x-auto">
