@@ -493,14 +493,15 @@ ${feedback.content}
       const tokenKey = appContext ? this.TOKEN_KEYS[appContext] || null : null;
 
       const screenshotBuffer = await this.puppeteerPool.executeWithPage({
-        timeout: 20000,
+        timeout: 60000,
         execute: async (page) => {
           await page.setViewport({ width: 1280, height: 800 });
 
           if (bearerToken && tokenKey) {
-            await page.goto(fullUrl.split("/").slice(0, 3).join("/"), {
+            const origin = fullUrl.split("/").slice(0, 3).join("/");
+            await page.goto(origin, {
               waitUntil: "domcontentloaded",
-              timeout: 10000,
+              timeout: 15000,
             });
             await page.evaluate(
               (key: string, token: string) => {
@@ -511,22 +512,8 @@ ${feedback.content}
             );
           }
 
-          await page.goto(fullUrl, { waitUntil: "networkidle2", timeout: 15000 });
-
-          await page
-            .waitForFunction(
-              () => {
-                const body = document.body.innerText || "";
-                const hasLoading =
-                  body.includes("Loading") ||
-                  !!document.querySelector('[role="progressbar"]') ||
-                  !!document.querySelector(".animate-spin") ||
-                  !!document.querySelector('[data-loading="true"]');
-                return !hasLoading;
-              },
-              { timeout: 8000 },
-            )
-            .catch(() => {});
+          await page.goto(fullUrl, { waitUntil: "networkidle0", timeout: 30000 });
+          await new Promise((resolve) => setTimeout(resolve, 3000));
 
           return Buffer.from(await page.screenshot({ type: "png", fullPage: false }));
         },
