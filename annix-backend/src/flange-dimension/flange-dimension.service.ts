@@ -267,6 +267,41 @@ export class FlangeDimensionService {
     return result;
   }
 
+  async flangeDimensionsForM2(
+    nbMm: number,
+    standardCode?: string | null,
+    classDesignation?: string | null,
+  ): Promise<{ D: number; d4: number; b: number } | null> {
+    const standardCodes = standardCode ? [standardCode] : ["SABS 1123", "ASME B16.5", "BS 4504"];
+
+    const defaultClasses: Record<string, string[]> = {
+      "SABS 1123": ["1000", "1600"],
+      "ASME B16.5": ["150", "300"],
+      "BS 4504": ["PN16", "PN25"],
+    };
+
+    for (const code of standardCodes) {
+      const designations = classDesignation ? [classDesignation] : defaultClasses[code] || [];
+
+      for (const designation of designations) {
+        const flange = await this.flangeRepo.findOne({
+          where: {
+            nominalOutsideDiameter: { nominal_diameter_mm: nbMm },
+            standard: { code },
+            pressureClass: { designation },
+          },
+          relations: ["nominalOutsideDiameter", "standard", "pressureClass"],
+        });
+
+        if (flange) {
+          return { D: flange.D, d4: flange.d4, b: flange.b };
+        }
+      }
+    }
+
+    return null;
+  }
+
   private extractDiameterFromDesignation(designation: string): number {
     const match = designation.match(/M(\d+)/i);
     return match ? parseInt(match[1], 10) : 16;

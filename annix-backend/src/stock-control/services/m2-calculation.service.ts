@@ -1,4 +1,5 @@
 import { Injectable, Logger } from "@nestjs/common";
+import { FlangeDimensionService } from "../../flange-dimension/flange-dimension.service";
 import { NbOdLookupService } from "../../nb-od-lookup/nb-od-lookup.service";
 import { NixItemParserService } from "../../nix/services/nix-item-parser.service";
 import { PipeScheduleService } from "../../pipe-schedule/pipe-schedule.service";
@@ -116,8 +117,6 @@ const FITTING_TYPE_PATTERNS: { pattern: RegExp; fittingType: string }[] = [
   { pattern: /\bTEE\b/i, fittingType: "equal_tee" },
 ];
 
-const FLANGE_OD_MULTIPLIER_CLASS_150 = 1.8;
-const RAISED_FACE_MULTIPLIER = 1.2;
 const FLANGE_OVERLAP_ALLOWANCE_MM = 100;
 const STEINMETZ_FACTOR_EQUAL_TEE = 2.7;
 
@@ -129,6 +128,7 @@ export class M2CalculationService {
     private readonly nixItemParser: NixItemParserService,
     private readonly nbOdLookup: NbOdLookupService,
     private readonly pipeSchedule: PipeScheduleService,
+    private readonly flangeDimension: FlangeDimensionService,
   ) {}
 
   async calculateM2ForItems(descriptions: string[]): Promise<M2Result[]> {
@@ -411,30 +411,51 @@ export class M2CalculationService {
     };
   }
 
-  private calculateFlangeAreaM2(
+  private async calculateFlangeAreaM2(
     odMm: number,
     idMm: number,
+    nbMm: number,
     flangeCount: number,
-  ): { external: number; internal: number } {
+    flangeStandard: string | null,
+    pressureClass: string | null,
+  ): Promise<{ external: number; internal: number }> {
     if (flangeCount === 0) {
       return { external: 0, internal: 0 };
     }
 
-    const flangeOd = FLANGE_OD_MULTIPLIER_CLASS_150 * odMm;
-    const raisedFaceDia = RAISED_FACE_MULTIPLIER * odMm;
+    const dims = await this.flangeDimension.flangeDimensionsForM2(
+      nbMm,
+      flangeStandard,
+      pressureClass,
+    );
 
-    const backAnnularArea = (Math.PI / 4) * (flangeOd ** 2 - odMm ** 2);
-    const faceAnnularArea = (Math.PI / 4) * (raisedFaceDia ** 2 - idMm ** 2);
+    if (dims) {
+      const flangeOdMm = dims.D;
+      const flangeBoreMm = dims.d4;
+      const flangeThicknessMm = dims.b;
 
+      const backAnnularArea = (Math.PI / 4) * (flangeOdMm ** 2 - odMm ** 2);
+      const faceAnnularArea = (Math.PI / 4) * (flangeOdMm ** 2 - flangeBoreMm ** 2);
+      const boreInternal = Math.PI * (flangeBoreMm / 1000) * (flangeThicknessMm / 1000);
+
+      const externalPerFlange = backAnnularArea / 1_000_000;
+      const internalPerFlange = faceAnnularArea / 1_000_000 + boreInternal;
+
+      return {
+        external: externalPerFlange * flangeCount,
+        internal: internalPerFlange * flangeCount,
+      };
+    }
+
+    this.logger.warn(
+      `No flange dimensions found for NB ${nbMm}mm, falling back to overlap allowance`,
+    );
     const overlapExternal = Math.PI * (odMm / 1000) * (FLANGE_OVERLAP_ALLOWANCE_MM / 1000);
     const overlapInternal = Math.PI * (idMm / 1000) * (FLANGE_OVERLAP_ALLOWANCE_MM / 1000);
 
-    const externalPerFlange = backAnnularArea / 1_000_000 + overlapExternal;
-    const internalPerFlange = faceAnnularArea / 1_000_000 + overlapInternal;
-
     return {
-      external: externalPerFlange * flangeCount,
-      internal: internalPerFlange * flangeCount,
+      external: overlapExternal * flangeCount,
+      internal: overlapInternal * flangeCount,
     };
   }
 
@@ -603,7 +624,14 @@ export class M2CalculationService {
         internalM2 = Math.PI * (idMm / 1000) * (lengthM || 0);
       }
 
-      const flangeArea = this.calculateFlangeAreaM2(odMm, idMm, regex.flangeCount);
+      const flangeArea = await this.calculateFlangeAreaM2(
+        odMm,
+        idMm,
+        diameterMm,
+        regex.flangeCount,
+        regex.flangeStandard,
+        regex.pressureClass,
+      );
       externalM2 += flangeArea.external;
       internalM2 += flangeArea.internal;
 

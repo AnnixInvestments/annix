@@ -1,4 +1,5 @@
 import { Test, TestingModule } from "@nestjs/testing";
+import { FlangeDimensionService } from "../../flange-dimension/flange-dimension.service";
 import { NbOdLookupService } from "../../nb-od-lookup/nb-od-lookup.service";
 import { NixItemParserService } from "../../nix/services/nix-item-parser.service";
 import { PipeScheduleService } from "../../pipe-schedule/pipe-schedule.service";
@@ -19,6 +20,10 @@ describe("M2CalculationService", () => {
     parseUserIntent: jest.fn(),
   };
 
+  const mockFlangeDimension = {
+    flangeDimensionsForM2: jest.fn(),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -26,6 +31,7 @@ describe("M2CalculationService", () => {
         { provide: NbOdLookupService, useValue: mockNbOdLookup },
         { provide: PipeScheduleService, useValue: mockPipeSchedule },
         { provide: NixItemParserService, useValue: mockNixItemParser },
+        { provide: FlangeDimensionService, useValue: mockFlangeDimension },
       ],
     }).compile();
 
@@ -43,6 +49,7 @@ describe("M2CalculationService", () => {
       { schedule: "40", wallThicknessMm: wallThickness },
       { schedule: "Std", wallThicknessMm: wallThickness },
     ]);
+    mockFlangeDimension.flangeDimensionsForM2.mockResolvedValue(null);
   }
 
   describe("regex parsing NB", () => {
@@ -162,6 +169,7 @@ describe("M2CalculationService", () => {
     it("uses OD * 0.9 as ID when no wall thickness found", async () => {
       mockNbOdLookup.nbToOd.mockResolvedValue({ outsideDiameterMm: 114.3 });
       mockPipeSchedule.getSchedulesByNbMm.mockResolvedValue([]);
+      mockFlangeDimension.flangeDimensionsForM2.mockResolvedValue(null);
 
       const [result] = await service.calculateM2ForItems(["100 NB PIPE 6000 LG"]);
 
@@ -382,6 +390,43 @@ describe("M2CalculationService", () => {
       const [plainResult] = await service.calculateM2ForItems(["100NB Pipe PE 6000 LG"]);
       const [flangedResult] = await service.calculateM2ForItems(["100NB Pipe FBE 6000 LG"]);
       expect(flangedResult.totalM2!).toBeGreaterThan(plainResult.totalM2!);
+    });
+
+    it("uses real flange dimensions from DB when available", async () => {
+      setupStandardMocks();
+      mockFlangeDimension.flangeDimensionsForM2.mockResolvedValue({
+        D: 220,
+        d4: 115.0,
+        b: 14,
+      });
+
+      const [result] = await service.calculateM2ForItems(["100NB Pipe FBE 6000 LG"]);
+      expect(mockFlangeDimension.flangeDimensionsForM2).toHaveBeenCalledWith(100, null, null);
+      expect(result.totalM2).toBeGreaterThan(0);
+    });
+
+    it("falls back to overlap allowance when DB has no flange data", async () => {
+      setupStandardMocks();
+      mockFlangeDimension.flangeDimensionsForM2.mockResolvedValue(null);
+
+      const [result] = await service.calculateM2ForItems(["100NB Pipe FBE 6000 LG"]);
+      expect(result.totalM2).toBeGreaterThan(0);
+    });
+
+    it("passes parsed flange standard and class to lookup", async () => {
+      setupStandardMocks();
+      mockFlangeDimension.flangeDimensionsForM2.mockResolvedValue({
+        D: 220,
+        d4: 115.0,
+        b: 14,
+      });
+
+      await service.calculateM2ForItems(["100NB Pipe FBE 6000 LG ASME B16.5 150"]);
+      expect(mockFlangeDimension.flangeDimensionsForM2).toHaveBeenCalledWith(
+        100,
+        "ASME B16.5",
+        "150",
+      );
     });
   });
 

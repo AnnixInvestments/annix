@@ -4,6 +4,7 @@ import { JwtModule } from "@nestjs/jwt";
 import { MulterModule } from "@nestjs/platform-express";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { EmailModule } from "../email/email.module";
+import { FlangeDimensionModule } from "../flange-dimension/flange-dimension.module";
 import { NbOdLookupModule } from "../nb-od-lookup/nb-od-lookup.module";
 import { NixModule } from "../nix/nix.module";
 import { PipeScheduleModule } from "../pipe-schedule/pipe-schedule.module";
@@ -237,6 +238,7 @@ import { WorkflowStepConfigService } from "./services/workflow-step-config.servi
       StockReturn,
     ]),
     EmailModule,
+    FlangeDimensionModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
