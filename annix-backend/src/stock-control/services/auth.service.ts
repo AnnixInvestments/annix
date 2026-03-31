@@ -16,6 +16,7 @@ import { EmailService } from "../../email/email.service";
 import { now } from "../../lib/datetime";
 import { S3StorageService } from "../../storage/s3-storage.service";
 import { UpdateCompanyDetailsDto } from "../dto/update-company-details.dto";
+import { PushSubscription } from "../entities/push-subscription.entity";
 import { StaffMember } from "../entities/staff-member.entity";
 import {
   AdminTransferStatus,
@@ -47,6 +48,8 @@ export class StockControlAuthService {
     private readonly adminTransferRepo: Repository<StockControlAdminTransfer>,
     @InjectRepository(StaffMember)
     private readonly staffRepo: Repository<StaffMember>,
+    @InjectRepository(PushSubscription)
+    private readonly pushSubscriptionRepo: Repository<PushSubscription>,
     private readonly jwtService: JwtService,
     private readonly emailService: EmailService,
     private readonly s3StorageService: S3StorageService,
@@ -345,6 +348,7 @@ export class StockControlAuthService {
       messagingEnabled: user.company?.messagingEnabled ?? false,
       staffLeaveEnabled: user.company?.staffLeaveEnabled ?? false,
       workflowEnabled: user.company?.workflowEnabled ?? true,
+      notificationsEnabled: user.company?.notificationsEnabled ?? true,
       linkedStaffId: user.linkedStaffId ?? null,
       createdAt: user.createdAt,
       companyUpdatedAt: user.company?.updatedAt ?? null,
@@ -464,8 +468,13 @@ export class StockControlAuthService {
     if (dto.messagingEnabled != null) company.messagingEnabled = dto.messagingEnabled;
     if (dto.staffLeaveEnabled != null) company.staffLeaveEnabled = dto.staffLeaveEnabled;
     if (dto.workflowEnabled != null) company.workflowEnabled = dto.workflowEnabled;
+    if (dto.notificationsEnabled != null) company.notificationsEnabled = dto.notificationsEnabled;
 
     await this.companyRepo.save(company);
+
+    if (dto.notificationsEnabled === false) {
+      await this.pushSubscriptionRepo.delete({ companyId });
+    }
 
     return { message: "Company details updated successfully." };
   }

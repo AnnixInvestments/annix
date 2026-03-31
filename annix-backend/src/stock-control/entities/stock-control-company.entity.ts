@@ -106,6 +106,9 @@ export class StockControlCompany {
   @Column({ name: "workflow_enabled", type: "boolean", default: true })
   workflowEnabled: boolean;
 
+  @Column({ name: "notifications_enabled", type: "boolean", default: true })
+  notificationsEnabled: boolean;
+
   @Column({ name: "sage_username", type: "varchar", length: 255, nullable: true })
   sageUsername: string | null;
 

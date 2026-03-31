@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
 import { nowMillis } from "@/app/lib/datetime";
 import { usePushNotifications } from "../../hooks/usePushNotifications";
 
@@ -8,6 +9,7 @@ const DISMISS_KEY = "stock-control-push-dismissed";
 const DISMISS_DAYS = 7;
 
 export function PushNotificationBanner() {
+  const { profile } = useStockControlAuth();
   const { permissionState, isSubscribed, isLoading, requestPermissionAndSubscribe } =
     usePushNotifications();
   const [dismissed, setDismissed] = useState(false);
@@ -25,6 +27,7 @@ export function PushNotificationBanner() {
   if (
     isLoading ||
     dismissed ||
+    profile?.notificationsEnabled === false ||
     (isSubscribed && permissionState === "granted") ||
     permissionState === "denied" ||
     permissionState === "unsupported"

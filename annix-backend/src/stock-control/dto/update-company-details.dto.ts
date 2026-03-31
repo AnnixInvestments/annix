@@ -93,4 +93,8 @@ export class UpdateCompanyDetailsDto {
   @IsOptional()
   @IsBoolean()
   workflowEnabled?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  notificationsEnabled?: boolean;
 }

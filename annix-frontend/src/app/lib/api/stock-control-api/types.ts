@@ -44,6 +44,7 @@ export interface StockControlUserProfile {
   messagingEnabled: boolean;
   staffLeaveEnabled: boolean;
   workflowEnabled: boolean;
+  notificationsEnabled: boolean;
   linkedStaffId: number | null;
   createdAt: string;
   companyUpdatedAt: string | null;
@@ -105,6 +106,7 @@ export interface CompanyDetailsUpdate {
   messagingEnabled?: boolean;
   staffLeaveEnabled?: boolean;
   workflowEnabled?: boolean;
+  notificationsEnabled?: boolean;
 }
 
 export interface SmtpConfigResponse {

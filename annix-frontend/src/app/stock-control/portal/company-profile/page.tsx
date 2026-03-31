@@ -138,6 +138,7 @@ export default function CompanyProfilePage() {
   const [messagingEnabled, setMessagingEnabled] = useState(false);
   const [workflowEnabled, setWorkflowEnabled] = useState(true);
   const [staffLeaveEnabled, setStaffLeaveEnabled] = useState(false);
+  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [featuresSaving, setFeaturesSaving] = useState(false);
   const [featuresSuccess, setFeaturesSuccess] = useState(false);
   const [featuresError, setFeaturesError] = useState("");
@@ -227,6 +228,10 @@ export default function CompanyProfilePage() {
       setStaffLeaveEnabled(profile.staffLeaveEnabled);
     }
 
+    if (profile?.notificationsEnabled !== undefined) {
+      setNotificationsEnabled(profile.notificationsEnabled);
+    }
+
     if (profile?.brandingType) {
       setBrandingSelection(profile.brandingType as BrandingSelection);
     }
@@ -307,6 +312,7 @@ export default function CompanyProfilePage() {
         messagingEnabled,
         workflowEnabled,
         staffLeaveEnabled,
+        notificationsEnabled,
       });
       setFeaturesSuccess(true);
       await refreshProfile();
@@ -838,6 +844,32 @@ export default function CompanyProfilePage() {
               <span
                 className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
                   staffLeaveEnabled ? "translate-x-5" : "translate-x-0"
+                }`}
+              />
+            </button>
+          </label>
+
+          <label className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-700">Push Notifications</p>
+              <p className="text-xs text-gray-500 mt-0.5">
+                Send push notifications to staff devices for approvals, dispatches, and alerts.
+                Disabling removes all device subscriptions — users will be re-prompted when
+                re-enabled.
+              </p>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={notificationsEnabled}
+              onClick={() => setNotificationsEnabled(!notificationsEnabled)}
+              className={`relative inline-flex h-6 w-11 flex-shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 ${
+                notificationsEnabled ? "bg-teal-600" : "bg-gray-200"
+              }`}
+            >
+              <span
+                className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                  notificationsEnabled ? "translate-x-5" : "translate-x-0"
                 }`}
               />
             </button>

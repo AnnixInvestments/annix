@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { nowMillis } from "@/app/lib/datetime";
 
@@ -84,6 +85,7 @@ async function ensurePushSubscription(registration: ServiceWorkerRegistration): 
 
 export function PwaProvider(props: { children: React.ReactNode }) {
   const { children } = props;
+  const { profile } = useStockControlAuth();
   const [swState, setSwState] = useState<ServiceWorkerState>({
     isRegistered: false,
     isUpdateAvailable: false,
@@ -155,9 +157,11 @@ export function PwaProvider(props: { children: React.ReactNode }) {
           60 * 60 * 1000,
         );
 
-        ensurePushSubscription(registration).catch((err) =>
-          console.error("Push subscription setup failed:", err),
-        );
+        if (profile?.notificationsEnabled !== false) {
+          ensurePushSubscription(registration).catch((err) =>
+            console.error("Push subscription setup failed:", err),
+          );
+        }
       } catch (error) {
         console.error("Stock Control service worker registration failed:", error);
       }

@@ -4,6 +4,7 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import * as webpush from "web-push";
 import { PushSubscription } from "../entities/push-subscription.entity";
+import { StockControlCompany } from "../entities/stock-control-company.entity";
 
 interface PushPayload {
   title: string;
@@ -28,6 +29,8 @@ export class WebPushService {
   constructor(
     @InjectRepository(PushSubscription)
     private readonly subscriptionRepo: Repository<PushSubscription>,
+    @InjectRepository(StockControlCompany)
+    private readonly companyRepo: Repository<StockControlCompany>,
     private readonly configService: ConfigService,
   ) {
     const publicKey = this.configService.get<string>("VAPID_PUBLIC_KEY");
@@ -89,6 +92,15 @@ export class WebPushService {
 
     if (subscriptions.length === 0) {
       this.logger.warn(`No push subscriptions found for user ${userId}`);
+      return;
+    }
+
+    const companyId = subscriptions[0].companyId;
+    const company = await this.companyRepo.findOne({ where: { id: companyId } });
+    if (company && !company.notificationsEnabled) {
+      this.logger.log(
+        `Push notifications disabled for company ${companyId}, skipping user ${userId}`,
+      );
       return;
     }
 

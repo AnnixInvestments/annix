@@ -136,6 +136,7 @@ describe("StockControlAuthService", () => {
       messagingEnabled: false,
       staffLeaveEnabled: false,
       workflowEnabled: true,
+      notificationsEnabled: true,
       sageUsername: null,
       sagePassEncrypted: null,
       sageCompanyId: null,
