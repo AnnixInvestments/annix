@@ -651,6 +651,22 @@ export default function JobCardDetailPage() {
 
   const hasBlueLineTasks = currentStepPhaseInfo.isMultiPhase;
 
+  const fgActionAssignedToOther = useMemo(() => {
+    if (!workflowStatus || !currentStep || !user?.name) return false;
+    if (!currentStepActionLabel) return false;
+    const assignments = workflowStatus.stepAssignments || {};
+    const bgSteps: BackgroundStepStatus[] = workflowStatus.backgroundSteps || [];
+    const currentStepBgTasks = bgSteps.filter(
+      (bg) => bg.triggerAfterStep === currentStep && bg.completedAt === null,
+    );
+    if (currentStepBgTasks.length === 0) return false;
+    return currentStepBgTasks.some((bg) => {
+      const assigned = assignments[bg.stepKey];
+      if (!assigned || assigned.length === 0) return true;
+      return !assigned.some((u) => u.name === user.name);
+    });
+  }, [workflowStatus, currentStep, currentStepActionLabel, user?.name]);
+
   const isReceptionStep = useCallback(
     (bg: BackgroundStepStatus) =>
       bg.stepKey === "reception" || bg.label?.toLowerCase() === "reception",
@@ -1203,6 +1219,7 @@ export default function JobCardDetailPage() {
                 currentStep &&
                 !specsNeedReview &&
                 !prevStepBgPending &&
+                !fgActionAssignedToOther &&
                 !currentStepActionCompleted &&
                 currentStepActionLabel && (
                   <button
