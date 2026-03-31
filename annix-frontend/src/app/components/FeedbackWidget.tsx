@@ -1,6 +1,5 @@
 "use client";
 
-import { toBlob } from "html-to-image";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useFeatureGate } from "@/app/hooks/useFeatureGate";
@@ -61,7 +60,6 @@ export function FeedbackWidget(props: FeedbackWidgetProps) {
   const [feedbackSource, setFeedbackSource] = useState<FeedbackSource>("text");
   const [showSuccess, setShowSuccess] = useState(false);
   const [attachments, setAttachments] = useState<Attachment[]>([]);
-  const [isCapturingScreenshot, setIsCapturingScreenshot] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -225,70 +223,6 @@ export function FeedbackWidget(props: FeedbackWidgetProps) {
     };
   }, []);
 
-  const captureScreenshot = async (): Promise<File | null> => {
-    try {
-      setIsCapturingScreenshot(true);
-
-      const TRANSPARENT_PIXEL =
-        "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==";
-
-      const scrollX = window.scrollX;
-      const scrollY = window.scrollY;
-      const viewportWidth = window.innerWidth;
-      const viewportHeight = window.innerHeight;
-
-      const contentRoot = document.getElementById("__next") || document.body;
-
-      const capturePromise = toBlob(contentRoot, {
-        filter: (node) => {
-          try {
-            if (node instanceof HTMLElement) {
-              if (node.closest("[data-feedback-widget]") !== null) {
-                return false;
-              }
-              const tag = node.tagName.toLowerCase();
-              if (tag === "iframe" || tag === "video" || tag === "script" || tag === "noscript") {
-                return false;
-              }
-            }
-            return true;
-          } catch {
-            return true;
-          }
-        },
-        width: viewportWidth,
-        height: viewportHeight,
-        canvasWidth: viewportWidth,
-        canvasHeight: viewportHeight,
-        style: {
-          transform: `translate(-${scrollX}px, -${scrollY}px)`,
-          transformOrigin: "top left",
-          overflow: "hidden",
-        },
-        quality: 0.7,
-        pixelRatio: 1,
-        skipAutoScale: true,
-        skipFonts: true,
-        cacheBust: false,
-        fetchRequestInit: { credentials: "include" },
-        imagePlaceholder: TRANSPARENT_PIXEL,
-      });
-
-      const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), 8000));
-      const blob = await Promise.race([capturePromise, timeoutPromise]);
-
-      if (blob && blob.size > 5000) {
-        return new File([blob], "auto-screenshot.png", { type: "image/png" });
-      }
-      return null;
-    } catch (error) {
-      console.error("Screenshot capture failed:", error);
-      return null;
-    } finally {
-      setIsCapturingScreenshot(false);
-    }
-  };
-
   const handleSubmit = async () => {
     if (!content.trim() || content.length < 10) {
       return;
@@ -298,12 +232,7 @@ export function FeedbackWidget(props: FeedbackWidgetProps) {
     setIsSubmitting(true);
 
     try {
-      const screenshotFile = await captureScreenshot();
-
-      const allFiles = [
-        ...attachments.map((a) => a.file),
-        ...(screenshotFile ? [screenshotFile] : []),
-      ];
+      const userFiles = attachments.map((a) => a.file);
 
       await submitFeedbackWithAttachments(
         {
@@ -312,7 +241,7 @@ export function FeedbackWidget(props: FeedbackWidgetProps) {
           pageUrl: pathname,
           appContext: authContext,
         },
-        allFiles,
+        userFiles,
         authContext,
       );
 
@@ -403,6 +332,7 @@ export function FeedbackWidget(props: FeedbackWidgetProps) {
   if (!isExpanded) {
     return (
       <button
+        type="button"
         onClick={() => setIsExpanded(true)}
         className="fixed bottom-20 right-4 z-50 p-3 bg-blue-600 text-white rounded-full shadow-lg hover:bg-blue-700 transition-colors"
         title="Give Feedback"
@@ -484,6 +414,7 @@ export function FeedbackWidget(props: FeedbackWidgetProps) {
           <span className="font-medium text-white">Send Feedback</span>
         </div>
         <button
+          type="button"
           onClick={handleClose}
           onMouseDown={(e) => e.stopPropagation()}
           className="text-white/80 hover:text-white"
@@ -518,7 +449,7 @@ export function FeedbackWidget(props: FeedbackWidgetProps) {
             </svg>
             <p className="text-green-700 font-medium">Thank you for your feedback!</p>
             <p className="text-sm text-gray-500 mt-1">
-              A screenshot of this page was included automatically.
+              A screenshot of this page will be captured automatically.
             </p>
           </div>
         ) : (
@@ -568,7 +499,7 @@ export function FeedbackWidget(props: FeedbackWidgetProps) {
 
             <div className="flex items-center gap-1 mt-1">
               <span className="text-[10px] text-gray-400 italic">
-                A screenshot is captured automatically when you send
+                A screenshot of the page is captured automatically
               </span>
             </div>
 
@@ -578,6 +509,7 @@ export function FeedbackWidget(props: FeedbackWidgetProps) {
               <div className="flex items-center justify-between mt-1 p-2 bg-red-50 rounded border border-red-200">
                 <p className="text-xs text-red-600 font-medium">{submitError}</p>
                 <button
+                  type="button"
                   onClick={() => setSubmitError(null)}
                   className="text-xs text-red-400 hover:text-red-600 underline ml-2 shrink-0"
                 >
@@ -590,6 +522,7 @@ export function FeedbackWidget(props: FeedbackWidgetProps) {
               <div className="flex items-center gap-1.5">
                 {voiceSupported && (
                   <button
+                    type="button"
                     onClick={handleVoiceToggle}
                     className={`p-2 rounded-full transition-colors ${
                       isListening
@@ -655,14 +588,9 @@ export function FeedbackWidget(props: FeedbackWidgetProps) {
               </div>
 
               <button
+                type="button"
                 onClick={handleSubmit}
-                disabled={
-                  !content.trim() ||
-                  content.length < 10 ||
-                  isSubmitting ||
-                  isListening ||
-                  isCapturingScreenshot
-                }
+                disabled={!content.trim() || content.length < 10 || isSubmitting || isListening}
                 className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
               >
                 {isSubmitting ? (

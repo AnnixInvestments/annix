@@ -406,7 +406,7 @@ export default function JobCardDetailPage() {
     if (!workflowStatus || workflowStatus.jobCardStatus !== "draft") return false;
     if (!user?.name) return false;
     const assigned = workflowStatus.stepAssignments?.["document_upload"];
-    if (!assigned || assigned.length === 0) return true;
+    if (!assigned || assigned.length === 0) return false;
     return assigned.some((u) => u.name === user.name);
   }, [workflowStatus, user?.name]);
   const pipingLossPct = profile?.pipingLossFactorPct || 45;
@@ -536,9 +536,8 @@ export default function JobCardDetailPage() {
       }
 
       const assigned = assignments[bg.stepKey];
-      if (assigned && assigned.length > 0) {
-        const isAssigned = assigned.some((u) => u.name === user.name);
-        if (!isAssigned) return false;
+      if (!assigned || assigned.length === 0 || !assigned.some((u) => u.name === user.name)) {
+        return false;
       }
 
       return true;

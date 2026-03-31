@@ -631,7 +631,7 @@ export class JobCardWorkflowService {
       currentStep !== null && requestingUserId
         ? (() => {
             const assigned = allAssignments.find((sa) => sa.step === currentStep.key);
-            if (!assigned || assigned.users.length === 0) return true;
+            if (!assigned || assigned.users.length === 0) return false;
             return assigned.users.some((u) => u.id === requestingUserId);
           })()
         : true;
@@ -721,15 +721,14 @@ export class JobCardWorkflowService {
       user.companyId,
       currentStep.key,
     );
-    if (hasExplicit) {
-      const assignedIds = await this.assignmentService.assignedUserIdsForStep(
-        user.companyId,
-        currentStep.key,
-      );
-      return assignedIds.includes(user.id);
+    if (!hasExplicit) {
+      return false;
     }
-
-    return true;
+    const assignedIds = await this.assignmentService.assignedUserIdsForStep(
+      user.companyId,
+      currentStep.key,
+    );
+    return assignedIds.includes(user.id);
   }
 
   async initializeWorkflow(
