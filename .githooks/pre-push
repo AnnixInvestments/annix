@@ -59,13 +59,67 @@ cd "$ROOT_DIR"
 timed_step "legal risk check" legal_risk_check
 timed_step "git pull --rebase" pull_rebase
 timed_step "biome check" biome_check
-timed_step "test suite" run_tests
 
-cd "$ROOT_DIR/annix-backend"
-timed_step "backend build" pnpm run build
+# Run tests and builds in parallel (they are independent)
+TEST_LOG=$(mktemp)
+BUILD_BE_LOG=$(mktemp)
+BUILD_FE_LOG=$(mktemp)
+trap 'rm -f "$TEST_LOG" "$BUILD_BE_LOG" "$BUILD_FE_LOG"' EXIT
 
-cd "$ROOT_DIR/annix-frontend"
-timed_step "frontend build" pnpm run build
+test_start=$(_timer_ms)
+( cd "$ROOT_DIR" && pnpm test:all > "$TEST_LOG" 2>&1 ) &
+TEST_PID=$!
+
+build_be_start=$(_timer_ms)
+( cd "$ROOT_DIR/annix-backend" && pnpm run build > "$BUILD_BE_LOG" 2>&1 ) &
+BUILD_BE_PID=$!
+
+build_fe_start=$(_timer_ms)
+( cd "$ROOT_DIR/annix-frontend" && pnpm run build > "$BUILD_FE_LOG" 2>&1 ) &
+BUILD_FE_PID=$!
+
+TEST_EXIT=0
+BUILD_BE_EXIT=0
+BUILD_FE_EXIT=0
+
+wait $TEST_PID || TEST_EXIT=$?
+test_end=$(_timer_ms)
+test_elapsed=$((test_end - test_start))
+if [ "$TEST_EXIT" -ne 0 ]; then
+  TIMED_STEPS+=("test suite|${test_elapsed}|failed")
+  echo ""
+  echo ">> test suite output:"
+  cat "$TEST_LOG"
+  print_timing_summary
+  exit 1
+fi
+TIMED_STEPS+=("test suite|${test_elapsed}|ok")
+
+wait $BUILD_BE_PID || BUILD_BE_EXIT=$?
+build_be_end=$(_timer_ms)
+build_be_elapsed=$((build_be_end - build_be_start))
+if [ "$BUILD_BE_EXIT" -ne 0 ]; then
+  TIMED_STEPS+=("backend build|${build_be_elapsed}|failed")
+  echo ""
+  echo ">> backend build output:"
+  cat "$BUILD_BE_LOG"
+  print_timing_summary
+  exit 1
+fi
+TIMED_STEPS+=("backend build|${build_be_elapsed}|ok")
+
+wait $BUILD_FE_PID || BUILD_FE_EXIT=$?
+build_fe_end=$(_timer_ms)
+build_fe_elapsed=$((build_fe_end - build_fe_start))
+if [ "$BUILD_FE_EXIT" -ne 0 ]; then
+  TIMED_STEPS+=("frontend build|${build_fe_elapsed}|failed")
+  echo ""
+  echo ">> frontend build output:"
+  cat "$BUILD_FE_LOG"
+  print_timing_summary
+  exit 1
+fi
+TIMED_STEPS+=("frontend build|${build_fe_elapsed}|ok")
 
 print_timing_summary
 

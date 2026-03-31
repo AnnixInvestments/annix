@@ -145,7 +145,7 @@
     ],
     "coverageDirectory": "../coverage",
     "testEnvironment": "node",
-    "maxWorkers": "50%",
+    "maxWorkers": "75%",
     "cache": true,
     "cacheDirectory": "../node_modules/.cache/jest"
   }
