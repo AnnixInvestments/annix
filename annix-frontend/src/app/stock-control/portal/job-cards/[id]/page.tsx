@@ -761,12 +761,7 @@ export default function JobCardDetailPage() {
     [backgroundSteps],
   );
 
-  const docUploadStepActive = useMemo(
-    () =>
-      docUploadStepPending &&
-      backgroundSteps.some((bg) => bg.stepKey === "reception" && bg.completedAt !== null),
-    [docUploadStepPending, backgroundSteps],
-  );
+  const docUploadStepActive = docUploadStepPending;
 
   useEffect(() => {
     const pendingFileReview = backgroundSteps.some(
