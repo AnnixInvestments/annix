@@ -64,6 +64,9 @@ export class JobCardService {
       .where("jc.companyId = :companyId", { companyId })
       .andWhere("jc.supersededById IS NULL")
       .andWhere("(jc.parentJobCardId IS NULL OR jc.cpoId IS NOT NULL)")
+      .andWhere(
+        "jc.id NOT IN (SELECT parent_job_card_id FROM job_cards WHERE parent_job_card_id IS NOT NULL)",
+      )
       .orderBy("jc.createdAt", "DESC")
       .take(limit)
       .skip((page - 1) * limit);
@@ -71,7 +74,6 @@ export class JobCardService {
     if (status) {
       qb.andWhere("jc.status = :status", { status });
     }
-
     const jobCards = await qb.getMany();
 
     const idsWithoutJtDn = jobCards.filter((jc) => !jc.jtDnNumber).map((jc) => jc.id);
