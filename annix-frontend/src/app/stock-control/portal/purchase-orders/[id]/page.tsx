@@ -274,14 +274,16 @@ export default function CpoDetailPage() {
   const hasPaintColumn = calloffRecords.some((r) => r.calloffType === "paint");
   const hasSolutionColumn = calloffRecords.some((r) => r.calloffType === "solution");
 
-  const calloffRows = Object.entries(recordsByJobCard).map(([key, records]) => ({
-    key,
-    jobCard: records[0]?.jobCard || null,
-    rubber: records.find((r) => r.calloffType === "rubber") || null,
-    paint: records.find((r) => r.calloffType === "paint") || null,
-    solution: records.find((r) => r.calloffType === "solution") || null,
-    hasOverdue: records.some(isCalloffOverdue),
-  }));
+  const calloffRows = Object.entries(recordsByJobCard)
+    .map(([key, records]) => ({
+      key,
+      jobCard: records[0]?.jobCard || null,
+      rubber: records.find((r) => r.calloffType === "rubber") || null,
+      paint: records.find((r) => r.calloffType === "paint") || null,
+      solution: records.find((r) => r.calloffType === "solution") || null,
+      hasOverdue: records.some(isCalloffOverdue),
+    }))
+    .filter((row) => row.jobCard?.parentJobCardId !== null);
 
   const overdueRecords = calloffRecords.filter(isCalloffOverdue);
 
