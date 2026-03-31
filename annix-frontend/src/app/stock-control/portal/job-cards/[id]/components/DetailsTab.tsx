@@ -49,15 +49,15 @@ interface DetailsTabProps {
 }
 
 function cleanedNotes(notes: string | null): string {
-  return (notes || "")
+  const lines = (notes || "")
     .split("\n")
     .filter((line) => {
       const trimmed = line.trim();
       if (!trimmed) return false;
       return !INVALID_LINE_ITEM_PATTERNS.some((pattern) => pattern.test(trimmed));
     })
-    .join("\n")
-    .trim();
+    .map((line) => line.trim());
+  return [...new Set(lines)].join("\n").trim();
 }
 
 export function DetailsTab({

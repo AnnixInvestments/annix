@@ -6,7 +6,6 @@ export class DeduplicateJobCardNotes1810400000000 implements MigrationInterface 
       SELECT id, notes FROM job_cards
       WHERE notes IS NOT NULL
         AND notes != ''
-        AND is_cpo_calloff = true
     `);
 
     const updates = jobCards
