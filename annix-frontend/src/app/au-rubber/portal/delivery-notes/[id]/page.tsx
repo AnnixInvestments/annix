@@ -77,6 +77,13 @@ export default function DeliveryNoteDetailPage() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isCustomerDn, setIsCustomerDn] = useState(false);
 
+  const [showDocViewer, setShowDocViewer] = useState(false);
+  const [docPageNumber, setDocPageNumber] = useState(1);
+  const [docTotalPages, setDocTotalPages] = useState(0);
+  const [docPageUrl, setDocPageUrl] = useState<string | null>(null);
+  const [isLoadingDoc, setIsLoadingDoc] = useState(false);
+  const docViewer = useImageViewer();
+
   const noteId = Number(params.id);
 
   const fetchData = async () => {
@@ -284,6 +291,38 @@ export default function DeliveryNoteDetailPage() {
     }
   };
 
+  const loadDocPage = async (pageNumber: number) => {
+    try {
+      setIsLoadingDoc(true);
+      setDocPageNumber(pageNumber);
+      docViewer.reset();
+      const result = await auRubberApiClient.deliveryNotePageUrl(noteId, pageNumber);
+      setDocPageUrl(result.url);
+      setDocTotalPages(result.totalPages);
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : "Failed to load document page", "error");
+    } finally {
+      setIsLoadingDoc(false);
+    }
+  };
+
+  const handleOpenDocViewer = async () => {
+    if (!note?.documentPath) return;
+    setShowDocViewer(true);
+    if (!editedData) {
+      handleStartEditing();
+    }
+    await loadDocPage(1);
+  };
+
+  const handleCloseDocViewer = () => {
+    setShowDocViewer(false);
+    setDocPageUrl(null);
+    setDocPageNumber(1);
+    setDocTotalPages(0);
+    docViewer.reset();
+  };
+
   const handleViewPod = async (pageNumber: number) => {
     if (!note?.documentPath) return;
 
@@ -291,8 +330,8 @@ export default function DeliveryNoteDetailPage() {
       setIsLoadingPod(true);
       setPodPageNumber(pageNumber);
       setShowPodModal(true);
-      const url = await auRubberApiClient.deliveryNotePageUrl(noteId, pageNumber);
-      setPodPageUrl(url);
+      const result = await auRubberApiClient.deliveryNotePageUrl(noteId, pageNumber);
+      setPodPageUrl(result.url);
     } catch (err) {
       showToast(err instanceof Error ? err.message : "Failed to load POD page", "error");
       setShowPodModal(false);
@@ -485,6 +524,26 @@ export default function DeliveryNoteDetailPage() {
           </div>
         </div>
         <div className="flex space-x-3">
+          {note.documentPath && (
+            <button
+              onClick={showDocViewer ? handleCloseDocViewer : handleOpenDocViewer}
+              className={`inline-flex items-center px-4 py-2 border rounded-md shadow-sm text-sm font-medium transition-colors ${
+                showDocViewer
+                  ? "border-purple-300 text-purple-700 bg-purple-50 hover:bg-purple-100"
+                  : "border-gray-300 text-gray-700 bg-white hover:bg-gray-50"
+              }`}
+            >
+              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                />
+              </svg>
+              {showDocViewer ? "Hide Document" : "View Document"}
+            </button>
+          )}
           {(note.status === "PENDING" || note.status === "EXTRACTED") && (
             <button
               onClick={handleExtract}
@@ -576,6 +635,89 @@ export default function DeliveryNoteDetailPage() {
           </div>
         )}
       </div>
+
+      {showDocViewer && (
+        <div className="bg-white shadow rounded-lg overflow-hidden">
+          <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+            <h2 className="text-lg font-medium text-gray-900">Scanned Document</h2>
+            <div className="flex items-center space-x-2">
+              <ImageViewerToolbar
+                state={docViewer.state}
+                onZoomIn={docViewer.zoomIn}
+                onZoomOut={docViewer.zoomOut}
+                onRotate={docViewer.rotateClockwise}
+                onReset={docViewer.reset}
+              />
+              {docTotalPages > 1 && (
+                <div className="flex items-center space-x-1 ml-2">
+                  <button
+                    onClick={() => loadDocPage(docPageNumber - 1)}
+                    disabled={docPageNumber <= 1 || isLoadingDoc}
+                    className="p-1.5 rounded hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M15 19l-7-7 7-7"
+                      />
+                    </svg>
+                  </button>
+                  <span className="text-sm text-gray-600 min-w-[60px] text-center">
+                    {docPageNumber} / {docTotalPages}
+                  </span>
+                  <button
+                    onClick={() => loadDocPage(docPageNumber + 1)}
+                    disabled={docPageNumber >= docTotalPages || isLoadingDoc}
+                    className="p-1.5 rounded hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M9 5l7 7-7 7"
+                      />
+                    </svg>
+                  </button>
+                </div>
+              )}
+              <button
+                onClick={handleCloseDocViewer}
+                className="ml-2 text-gray-400 hover:text-gray-500"
+              >
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </button>
+            </div>
+          </div>
+          <div className="p-4 bg-gray-50 overflow-auto" style={{ maxHeight: "70vh" }}>
+            {isLoadingDoc ? (
+              <div className="flex items-center justify-center py-12">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-yellow-600" />
+              </div>
+            ) : docPageUrl ? (
+              <img
+                src={docPageUrl}
+                alt={`Document Page ${docPageNumber}`}
+                className="max-w-full w-auto h-auto mx-auto object-contain select-none"
+                style={imageViewerTransform(docViewer.state)}
+                onMouseDown={docViewer.handleMouseDown}
+                draggable={false}
+              />
+            ) : (
+              <div className="text-center py-12 text-gray-500">No document loaded</div>
+            )}
+          </div>
+        </div>
+      )}
 
       {hasExtractedData && (
         <div className="bg-white shadow rounded-lg overflow-hidden">

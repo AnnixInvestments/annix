@@ -1903,7 +1903,7 @@ Formula: totalPrice = totalKg × salePricePerKg
   async deliveryNotePageImage(
     @Param("id") id: string,
     @Param("pageNumber") pageNumber: string,
-  ): Promise<{ url: string }> {
+  ): Promise<{ url: string; totalPages: number }> {
     const note = await this.rubberDeliveryNoteService.deliveryNoteById(Number(id));
     if (!note) throw new NotFoundException("Delivery note not found");
 
@@ -1927,7 +1927,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     const base64 = imageBuffer.toString("base64");
     const url = `data:image/png;base64,${base64}`;
 
-    return { url };
+    return { url, totalPages: images.length };
   }
 
   @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
