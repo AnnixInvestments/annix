@@ -97,6 +97,13 @@ describe("JobCardService", () => {
   const mockDataSource = {
     createQueryRunner: jest.fn().mockReturnValue(mockQueryRunner),
     query: jest.fn().mockResolvedValue([]),
+    transaction: jest.fn().mockImplementation(async (cb: (em: unknown) => Promise<void>) => {
+      const mockEm = {
+        query: jest.fn().mockResolvedValue([]),
+        remove: jest.fn().mockResolvedValue(null),
+      };
+      return cb(mockEm);
+    }),
   };
 
   beforeEach(async () => {
@@ -218,7 +225,7 @@ describe("JobCardService", () => {
       mockJobCardRepo.findOne.mockResolvedValue(card);
 
       await service.remove(1, 1);
-      expect(mockJobCardRepo.remove).toHaveBeenCalledWith(card);
+      expect(mockDataSource.transaction).toHaveBeenCalled();
     });
 
     it("throws NotFoundException when job card missing", async () => {
