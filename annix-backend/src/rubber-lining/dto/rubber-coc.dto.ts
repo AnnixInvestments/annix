@@ -114,6 +114,10 @@ export class UpdateSupplierCocDto {
   @IsOptional()
   @IsEnum(CocProcessingStatus)
   processingStatus?: CocProcessingStatus;
+
+  @IsOptional()
+  @IsDateString()
+  createdAt?: string | null;
 }
 
 export class ReviewExtractionDto {

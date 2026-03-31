@@ -95,6 +95,8 @@ export interface ExtractedTaxInvoiceData {
   subtotal: number | null;
   vatAmount: number | null;
   totalAmount: number | null;
+  originalInvoiceRef?: string | null;
+  rollNumbers?: string[] | null;
 }
 
 export interface RubberTaxInvoiceDto {
@@ -126,6 +128,10 @@ export interface RubberTaxInvoiceDto {
   versionStatus: string;
   versionStatusLabel: string;
   previousVersionId: number | null;
+  isCreditNote: boolean;
+  originalInvoiceId: number | null;
+  originalInvoiceNumber: string | null;
+  creditNoteRollNumbers: string[];
 }
 
 export interface MetricStats {
@@ -2098,6 +2104,7 @@ class AuRubberApiClient {
       productionDate?: string | null;
       orderNumber?: string | null;
       ticketNumber?: string | null;
+      createdAt?: string | null;
     },
   ): Promise<RubberSupplierCocDto> {
     return this.request(`/rubber-lining/portal/supplier-cocs/${id}`, {
@@ -3044,12 +3051,15 @@ class AuRubberApiClient {
     status?: TaxInvoiceStatus;
     companyId?: number;
     includeAllVersions?: boolean;
+    isCreditNote?: boolean;
   }): Promise<RubberTaxInvoiceDto[]> {
     const params = new URLSearchParams();
     if (filters?.invoiceType) params.set("invoiceType", filters.invoiceType);
     if (filters?.status) params.set("status", filters.status);
     if (filters?.companyId) params.set("companyId", String(filters.companyId));
     if (filters?.includeAllVersions) params.set("includeAllVersions", "true");
+    if (filters?.isCreditNote !== undefined)
+      params.set("isCreditNote", String(filters.isCreditNote));
     const qs = params.toString();
     return this.request(`/rubber-lining/portal/tax-invoices${qs ? `?${qs}` : ""}`);
   }
@@ -3071,6 +3081,7 @@ class AuRubberApiClient {
     companyId: number;
     totalAmount?: number;
     vatAmount?: number;
+    isCreditNote?: boolean;
   }): Promise<RubberTaxInvoiceDto> {
     return this.request("/rubber-lining/portal/tax-invoices", {
       method: "POST",
