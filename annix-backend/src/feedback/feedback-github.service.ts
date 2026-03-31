@@ -118,12 +118,7 @@ export class FeedbackGithubService {
       const appContext = feedback.appContext || "admin";
       const issueNumber = APP_ISSUE_MAP[appContext] || APP_ISSUE_MAP["admin"];
 
-      const shouldTriggerClaude =
-        classification !== "question" && classification !== "feature-request";
-
-      const fullComment = shouldTriggerClaude
-        ? `${commentBody}\n\n---\n@claude Please investigate and fix this issue. The feedback includes screenshots showing the current state.`
-        : commentBody;
+      const fullComment = `${commentBody}\n\n---\n@claude This feedback was classified as \`${classification}\`. Please investigate and either fix the issue (create a branch and PR) or comment explaining what you found and whether human intervention is needed. The feedback includes screenshots showing the current state.`;
 
       await this.octokit.issues.createComment({
         owner: this.owner,
@@ -138,7 +133,7 @@ export class FeedbackGithubService {
       await this.feedbackRepository.save(feedback);
 
       this.logger.log(
-        `Added comment to GitHub issue #${issueNumber} for feedback #${feedback.id} (${classification})${shouldTriggerClaude ? " — Claude auto-fix triggered" : ""}`,
+        `Added comment to GitHub issue #${issueNumber} for feedback #${feedback.id} (${classification}) — Claude triggered`,
       );
 
       return issueNumber;
