@@ -67,26 +67,57 @@ export default function AuCocsPage() {
     title: string;
     status: "running" | "done" | "error";
     message: string;
+    current?: number;
+    total?: number;
+    currentLabel?: string;
   }>({ visible: false, title: "", status: "running", message: "" });
 
   const handleBulkAutoGenerate = async () => {
-    try {
-      setIsAutoGenerating(true);
-      setProgressModal({
-        visible: true,
-        title: "Auto-Generating CoCs",
-        status: "running",
-        message: "Checking draft CoCs and generating those that are ready...",
-      });
-      const result = await auRubberApiClient.bulkAutoGenerateAuCocs();
-      const summary =
-        result.generated > 0
-          ? `Auto-generated ${result.generated} of ${result.checked} draft CoC(s).`
-          : `Checked ${result.checked} draft CoC(s) — none ready for generation.`;
+    const draftCocs = cocs.filter((c) => c.status === "DRAFT");
+    if (draftCocs.length === 0) {
       setProgressModal({
         visible: true,
         title: "Auto-Generation Complete",
         status: "done",
+        message: "No draft CoCs found.",
+      });
+      return;
+    }
+    try {
+      setIsAutoGenerating(true);
+      let generated = 0;
+      const failures: string[] = [];
+      for (let i = 0; i < draftCocs.length; i++) {
+        const coc = draftCocs[i];
+        setProgressModal({
+          visible: true,
+          title: "Auto-Generating CoCs",
+          status: "running",
+          message: `Generating ${coc.cocNumber}...`,
+          current: i + 1,
+          total: draftCocs.length,
+          currentLabel: coc.cocNumber,
+        });
+        try {
+          const result = await auRubberApiClient.autoGenerateAuCoc(coc.id);
+          if (result.generated) {
+            generated++;
+          } else {
+            failures.push(`${coc.cocNumber}: ${result.reason}`);
+          }
+        } catch (err) {
+          failures.push(`${coc.cocNumber}: ${err instanceof Error ? err.message : "failed"}`);
+        }
+      }
+      const failedInfo = failures.length > 0 ? `\n${failures.join("\n")}` : "";
+      const summary =
+        generated > 0
+          ? `Auto-generated ${generated} of ${draftCocs.length} draft CoC(s).${failedInfo}`
+          : `Checked ${draftCocs.length} draft CoC(s) — none ready for generation.${failedInfo}`;
+      setProgressModal({
+        visible: true,
+        title: "Auto-Generation Complete",
+        status: failures.length > 0 && generated === 0 ? "error" : "done",
         message: summary,
       });
       await cocsQuery.refetch();
@@ -139,21 +170,43 @@ export default function AuCocsPage() {
       showToast("Please enter an email address", "error");
       return;
     }
+    const generatedCocs = cocs.filter((c) => c.status === "GENERATED");
+    if (generatedCocs.length === 0) {
+      showToast("No generated CoCs to send", "error");
+      return;
+    }
+    const email = bulkSendEmail;
     try {
       setIsBulkSending(true);
       setShowBulkSendModal(false);
-      setProgressModal({
-        visible: true,
-        title: "Sending CoCs",
-        status: "running",
-        message: `Sending all generated CoCs to ${bulkSendEmail}...`,
-      });
-      const result = await auRubberApiClient.bulkSendAuCocs(bulkSendEmail);
+      let sent = 0;
+      const sentNumbers: string[] = [];
+      const failures: string[] = [];
+      for (let i = 0; i < generatedCocs.length; i++) {
+        const coc = generatedCocs[i];
+        setProgressModal({
+          visible: true,
+          title: "Sending CoCs",
+          status: "running",
+          message: `Sending ${coc.cocNumber} to ${email}...`,
+          current: i + 1,
+          total: generatedCocs.length,
+          currentLabel: coc.cocNumber,
+        });
+        try {
+          await auRubberApiClient.sendAuCoc(coc.id, email);
+          sent++;
+          sentNumbers.push(coc.cocNumber);
+        } catch (err) {
+          failures.push(`${coc.cocNumber}: ${err instanceof Error ? err.message : "failed"}`);
+        }
+      }
+      const failedInfo = failures.length > 0 ? `\nFailed: ${failures.join(", ")}` : "";
       setProgressModal({
         visible: true,
         title: "Bulk Send Complete",
-        status: "done",
-        message: `Sent ${result.sent} CoC(s) to ${bulkSendEmail}: ${result.cocNumbers.join(", ")}`,
+        status: failures.length > 0 && sent === 0 ? "error" : "done",
+        message: `Sent ${sent} of ${generatedCocs.length} CoC(s) to ${email}: ${sentNumbers.join(", ")}${failedInfo}`,
       });
       setBulkSendEmail("");
       await cocsQuery.refetch();
@@ -847,9 +900,29 @@ export default function AuCocsPage() {
               <h3 className="text-lg font-medium text-gray-900 mb-4">{progressModal.title}</h3>
               <div className="space-y-4">
                 {progressModal.status === "running" && (
-                  <div className="flex items-center space-x-3">
-                    <Loader2 className="w-6 h-6 text-yellow-600 animate-spin" />
-                    <p className="text-sm text-gray-600">{progressModal.message}</p>
+                  <div className="space-y-3">
+                    <div className="flex items-center space-x-3">
+                      <Loader2 className="w-6 h-6 text-yellow-600 animate-spin flex-shrink-0" />
+                      <p className="text-sm text-gray-600">{progressModal.message}</p>
+                    </div>
+                    {progressModal.total != null && progressModal.current != null && (
+                      <div>
+                        <div className="flex justify-between text-xs text-gray-500 mb-1">
+                          <span>{progressModal.currentLabel}</span>
+                          <span>
+                            {progressModal.current} / {progressModal.total}
+                          </span>
+                        </div>
+                        <div className="w-full bg-gray-200 rounded-full h-2.5">
+                          <div
+                            className="bg-yellow-500 h-2.5 rounded-full transition-all duration-300"
+                            style={{
+                              width: `${(progressModal.current / progressModal.total) * 100}%`,
+                            }}
+                          />
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
                 {progressModal.status === "done" && (
