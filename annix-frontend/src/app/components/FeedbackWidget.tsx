@@ -1,5 +1,6 @@
 "use client";
 
+import { toPng } from "html-to-image";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useFeatureGate } from "@/app/hooks/useFeatureGate";
@@ -274,6 +275,41 @@ export function FeedbackWidget(props: FeedbackWidgetProps) {
     };
   }, []);
 
+  const captureScreenshot = useCallback(async () => {
+    try {
+      const widgetEl = document.querySelector("[data-feedback-panel]");
+      const dataUrl = await toPng(document.body, {
+        cacheBust: true,
+        width: window.innerWidth,
+        height: window.innerHeight,
+        filter: (node) => {
+          if (node === widgetEl) return false;
+          if (node instanceof HTMLElement && node.hasAttribute("data-feedback-widget"))
+            return false;
+          return true;
+        },
+      });
+      const response = await fetch(dataUrl);
+      const blob = await response.blob();
+      const file = new File([blob], "auto-screenshot.png", { type: "image/png" });
+      const preview = URL.createObjectURL(blob);
+      setAttachments((prev) => {
+        const withoutOldScreenshot = prev.filter((a) => !a.isAutoScreenshot);
+        return [{ file, preview, isAutoScreenshot: true }, ...withoutOldScreenshot];
+      });
+    } catch (err) {
+      console.warn("Client screenshot capture failed:", err);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (isExpanded && !showSuccess) {
+      const timeoutId = setTimeout(captureScreenshot, 100);
+      return () => clearTimeout(timeoutId);
+    }
+    return undefined;
+  }, [isExpanded, showSuccess, captureScreenshot]);
+
   const handleSubmit = async () => {
     if (!content.trim() || content.length < 10) {
       return;
@@ -413,6 +449,7 @@ export function FeedbackWidget(props: FeedbackWidgetProps) {
   return (
     <div
       data-feedback-widget
+      data-feedback-panel
       className="fixed z-50 bg-white rounded-lg shadow-xl border border-gray-200 overflow-hidden flex flex-col"
       style={{
         left: position.x,
@@ -593,7 +630,7 @@ export function FeedbackWidget(props: FeedbackWidgetProps) {
 
             <div className="flex items-center gap-1 mt-1">
               <span className="text-[10px] text-gray-400 italic">
-                A screenshot of the page is captured automatically
+                A screenshot of the page is attached automatically
               </span>
             </div>
 
