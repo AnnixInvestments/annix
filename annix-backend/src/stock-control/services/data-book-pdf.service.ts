@@ -384,16 +384,8 @@ export class DataBookPdfService {
       this.renderControlPlan(doc, ctx, plan, tocEntries);
     });
 
-    ctx.itemsReleases.forEach((release) => {
-      this.renderItemsRelease(doc, ctx, release, tocEntries);
-    });
-
-    ctx.releaseCertificates.forEach((cert) => {
-      this.renderReleaseCertificate(doc, ctx, cert, tocEntries);
-    });
-
-    ctx.shoreHardness.forEach((rec) => {
-      this.renderShoreHardness(doc, ctx, rec, tocEntries);
+    ctx.blastProfiles.forEach((rec) => {
+      this.renderBlastProfile(doc, ctx, rec, tocEntries);
     });
 
     ctx.primerDft.forEach((rec) => {
@@ -404,16 +396,16 @@ export class DataBookPdfService {
       this.renderDftReport(doc, ctx, rec, "Final", tocEntries);
     });
 
-    ctx.blastProfiles.forEach((rec) => {
-      this.renderBlastProfile(doc, ctx, rec, tocEntries);
+    ctx.shoreHardness.forEach((rec) => {
+      this.renderShoreHardness(doc, ctx, rec, tocEntries);
     });
 
-    ctx.dustDebrisTests.forEach((rec) => {
-      this.renderDustDebris(doc, ctx, rec, tocEntries);
+    ctx.itemsReleases.forEach((release) => {
+      this.renderItemsRelease(doc, ctx, release, tocEntries);
     });
 
-    ctx.pullTests.forEach((rec) => {
-      this.renderPullTest(doc, ctx, rec, tocEntries);
+    ctx.releaseCertificates.forEach((cert) => {
+      this.renderReleaseCertificate(doc, ctx, cert, tocEntries);
     });
 
     this.renderTocPage(doc, ctx, tocPageIndex, tocEntries);

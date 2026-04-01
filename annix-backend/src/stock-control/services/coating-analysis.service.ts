@@ -164,12 +164,11 @@ export class CoatingAnalysisService {
 
       const lineItems = allLineItems.filter((li) => !junkItemIds.includes(li.id));
 
+      const PIPE_ITEM_PATTERN =
+        /(?:\d+\s*NB|NB\s*\d+|^\d{2,4}\s*x\s*\d{2,4}\b|\bPIPE\b|\bBEND\b|\bELBOW\b|\bTEE\b|\bT[- ]?PIECE\b|\bREDUCER\b|\bLATERAL\b|\bFLANGE\b|\bOFFSET\b|\bVALVE\b|\bSCH(?:EDULE)?\s*\d+|\d+\s*LG\b)/i;
       const hasMissingM2 = lineItems.some((li) => {
         const desc = li.itemDescription || li.itemCode || "";
-        return (
-          /(?:\d+\s*NB|NB\s*\d+|^\d{2,4}\s*x\s*\d{2,4}\b)/i.test(desc) &&
-          (li.m2 === null || li.m2 === 0)
-        );
+        return PIPE_ITEM_PATTERN.test(desc) && (li.m2 === null || li.m2 === 0);
       });
 
       let calculatedExtM2 = 0;
@@ -585,9 +584,11 @@ export class CoatingAnalysisService {
       where: { jobCardId, companyId },
     });
 
+    const PIPE_ITEM_PATTERN =
+      /(?:\d+\s*NB|NB\s*\d+|^\d{2,4}\s*x\s*\d{2,4}\b|\bPIPE\b|\bBEND\b|\bELBOW\b|\bTEE\b|\bT[- ]?PIECE\b|\bREDUCER\b|\bLATERAL\b|\bFLANGE\b|\bOFFSET\b|\bVALVE\b|\bSCH(?:EDULE)?\s*\d+|\d+\s*LG\b)/i;
     const pipeItems = lineItems.filter((li) => {
       const desc = li.itemDescription || li.itemCode || "";
-      return /(?:\d+\s*NB|NB\s*\d+|^\d{2,4}\s*x\s*\d{2,4}\b)/i.test(desc);
+      return PIPE_ITEM_PATTERN.test(desc);
     });
 
     if (pipeItems.length === 0) {
@@ -621,9 +622,11 @@ export class CoatingAnalysisService {
   private async calculatePipeM2(
     lineItems: JobCardLineItem[],
   ): Promise<{ extM2: number; intM2: number }> {
+    const PIPE_ITEM_PATTERN =
+      /(?:\d+\s*NB|NB\s*\d+|^\d{2,4}\s*x\s*\d{2,4}\b|\bPIPE\b|\bBEND\b|\bELBOW\b|\bTEE\b|\bT[- ]?PIECE\b|\bREDUCER\b|\bLATERAL\b|\bFLANGE\b|\bOFFSET\b|\bVALVE\b|\bSCH(?:EDULE)?\s*\d+|\d+\s*LG\b)/i;
     const pipeItems = lineItems.filter((li) => {
       const desc = li.itemDescription || li.itemCode || "";
-      return /(?:\d+\s*NB|NB\s*\d+|^\d{2,4}\s*x\s*\d{2,4}\b)/i.test(desc);
+      return PIPE_ITEM_PATTERN.test(desc);
     });
 
     if (pipeItems.length === 0) {
