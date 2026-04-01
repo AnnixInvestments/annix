@@ -110,6 +110,17 @@ export class JobCardService {
     if (!jobCard) {
       throw new NotFoundException("Job card not found");
     }
+
+    if (!jobCard.notes && jobCard.parentJobCardId) {
+      const parent = await this.jobCardRepo.findOne({
+        where: { id: jobCard.parentJobCardId, companyId },
+        select: ["id", "notes"],
+      });
+      if (parent?.notes) {
+        jobCard.notes = parent.notes;
+      }
+    }
+
     return jobCard;
   }
 

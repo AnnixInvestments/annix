@@ -166,6 +166,7 @@ export class CpoService {
           contactPerson: row.contactPerson || null,
           dueDate: row.dueDate || null,
           notes: row.notes || null,
+          coatingSpecs: row.notes || null,
           reference: row.reference || null,
           customFields,
           status: CpoStatus.ACTIVE,

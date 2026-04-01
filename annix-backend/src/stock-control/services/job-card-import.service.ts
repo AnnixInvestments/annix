@@ -1202,7 +1202,7 @@ export class JobCardImportService {
       siteLocation: row.siteLocation || parentJobCard.siteLocation,
       contactPerson: row.contactPerson || parentJobCard.contactPerson,
       dueDate: row.dueDate || null,
-      notes: sanitizeNotes(row.notes),
+      notes: sanitizeNotes(row.notes) || parentJobCard.notes || null,
       reference: row.reference || null,
       customFields,
       status: JobCardStatus.DRAFT,
