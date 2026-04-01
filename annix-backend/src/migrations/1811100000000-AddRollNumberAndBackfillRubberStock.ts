@@ -26,15 +26,12 @@ export class AddRollNumberAndBackfillRubberStock1811100000000 implements Migrati
       " roll_number = rrs.roll_number" +
       " FROM rubber_roll_stock rrs" +
       " LEFT JOIN rubber_product_coding rpc ON rpc.id = rrs.compound_coding_id" +
-      " WHERE rrs.roll_number = (" +
-      "   REGEXP_REPLACE(" +
-      "     CASE" +
-      "       WHEN si.name ~* 'ROLL[\\s#-]*(\\d{4,6})' THEN (REGEXP_MATCHES(si.name, '(\\d{4,6})'))[1]" +
-      "       WHEN si.sku ~* 'Roll\\s*#?\\s*(\\d{4,6})' THEN (REGEXP_MATCHES(si.sku, '(\\d{4,6})'))[1]" +
-      "       ELSE NULL" +
-      "     END," +
-      "     '^\\s+|\\s+$', '', 'g')" +
-      " )" +
+      " WHERE rrs.roll_number = TRIM(" +
+      "   CASE" +
+      "     WHEN si.name ~* 'ROLL[\\s#-]*(\\d{4,6})' THEN SUBSTRING(si.name FROM '(\\d{4,6})')" +
+      "     WHEN si.sku ~* 'Roll\\s*#?\\s*(\\d{4,6})' THEN SUBSTRING(si.sku FROM '(\\d{4,6})')" +
+      "     ELSE NULL" +
+      "   END)" +
       " AND si.roll_number IS NULL";
 
     await queryRunner.query(backfillSql);
