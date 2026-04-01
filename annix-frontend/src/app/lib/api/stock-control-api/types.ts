@@ -665,6 +665,7 @@ export interface SectionStatus {
   status: "complete" | "partial" | "missing";
   count: number;
   warnings: string[];
+  group: string | null;
 }
 
 export interface DataBookCompleteness {

@@ -63,6 +63,7 @@ export interface SectionStatus {
   status: "complete" | "partial" | "missing";
   count: number;
   warnings: string[];
+  group: string | null;
 }
 
 export interface DataBookCompleteness {
@@ -633,11 +634,15 @@ export class CertificateService {
     const company = await this.companyRepo.findOne({ where: { id: companyId } });
     const qcEnabled = company?.qcEnabled ?? false;
 
-    const [certs, calCerts, batchRecords] = await Promise.all([
+    const [certs, calCerts, batchRecords, coatingAnalysis] = await Promise.all([
       this.certificatesForJobCard(companyId, jobCardId),
       this.calCertRepo.find({ where: { companyId, isActive: true } }),
       this.batchRecordsForJobCard(companyId, jobCardId),
+      this.coatingRepo.findOne({ where: { companyId, jobCardId } }),
     ]);
+
+    const hasRubber = coatingAnalysis?.hasInternalLining === true;
+    const hasPaint = (coatingAnalysis?.coats ?? []).length > 0;
 
     const qcResult = qcEnabled
       ? await (async () => {
@@ -645,7 +650,7 @@ export class CertificateService {
             this.qcMeasurementService.allMeasurementsForJobCard(companyId, jobCardId),
             this.qcMeasurementService.itemsReleasesForJobCard(companyId, jobCardId),
           ]);
-          return this.qcSections(qcData, itemsReleases);
+          return this.qcSections(qcData, itemsReleases, hasRubber, hasPaint);
         })()
       : { sections: [], warnings: [] };
 
@@ -734,6 +739,8 @@ export class CertificateService {
   private qcSections(
     qcData: Awaited<ReturnType<QcMeasurementService["allMeasurementsForJobCard"]>>,
     itemsReleases: Awaited<ReturnType<QcMeasurementService["itemsReleasesForJobCard"]>>,
+    hasRubber: boolean,
+    hasPaint: boolean,
   ): { sections: SectionStatus[]; warnings: string[] } {
     const qcpWarnings = qcData.controlPlans.flatMap((plan) =>
       plan.approvalSignatures
@@ -810,42 +817,131 @@ export class CertificateService {
     ): SectionStatus =>
       sectionWarnings.length > 0 ? { ...section, warnings: sectionWarnings } : section;
 
-    const sections: SectionStatus[] = [
-      sectionWithWarnings(
-        this.sectionFromCount("controlPlans", "Quality Control Plans", qcData.controlPlans.length),
-        qcpWarnings,
+    const rubberQcps = qcData.controlPlans.filter((p) => p.planType === "rubber");
+    const paintQcps = qcData.controlPlans.filter(
+      (p) => p.planType === "paint_external" || p.planType === "paint_internal",
+    );
+
+    const sharedItemsRelease = sectionWithWarnings(
+      this.sectionFromCount("itemsRelease", "Items Release", itemsReleases.length),
+      releaseWarnings,
+    );
+    const sharedReleaseCerts = sectionWithWarnings(
+      this.sectionFromCount(
+        "releaseCertificates",
+        "QC Release Certificates",
+        qcData.releaseCertificates.length,
       ),
-      sectionWithWarnings(
-        this.sectionFromCount(
-          "blastProfiles",
-          "Blast Profile Reports",
-          qcData.blastProfiles.length,
+      releaseCertWarnings,
+    );
+
+    const sections: SectionStatus[] = [];
+
+    if (hasRubber) {
+      const rubberGroup = hasRubber && hasPaint ? "Rubber" : null;
+      sections.push(
+        {
+          ...sectionWithWarnings(
+            this.sectionFromCount("rubberQcp", "Quality Control Plans", rubberQcps.length),
+            qcpWarnings.filter((w) => w.startsWith("rubber")),
+          ),
+          group: rubberGroup,
+        },
+        {
+          ...sectionWithWarnings(
+            this.sectionFromCount(
+              "blastProfiles",
+              "Blast Profile Reports",
+              qcData.blastProfiles.length,
+            ),
+            blastWarnings,
+          ),
+          group: rubberGroup,
+        },
+        {
+          ...sectionWithWarnings(
+            this.sectionFromCount(
+              "shoreHardness",
+              "Shore Hardness Reports",
+              qcData.shoreHardness.length,
+            ),
+            shoreWarnings,
+          ),
+          group: rubberGroup,
+        },
+        { ...sharedItemsRelease, group: rubberGroup },
+        { ...sharedReleaseCerts, group: rubberGroup },
+      );
+    }
+
+    if (hasPaint) {
+      const paintGroup = hasRubber && hasPaint ? "Paint" : null;
+      sections.push(
+        {
+          ...sectionWithWarnings(
+            this.sectionFromCount("paintQcp", "Quality Control Plans", paintQcps.length),
+            qcpWarnings.filter(
+              (w) => w.startsWith("paint_external") || w.startsWith("paint_internal"),
+            ),
+          ),
+          group: paintGroup,
+        },
+        {
+          ...sectionWithWarnings(
+            this.sectionFromCount(
+              "blastProfiles",
+              "Blast Profile Reports",
+              qcData.blastProfiles.length,
+            ),
+            blastWarnings,
+          ),
+          group: paintGroup,
+        },
+        {
+          ...this.sectionFromCount("primerDft", "Primer DFT Reports", primerDft.length),
+          group: paintGroup,
+        },
+        {
+          ...this.sectionFromCount("finalDft", "Final DFT Reports", finalDft.length),
+          group: paintGroup,
+        },
+        { ...sharedItemsRelease, group: paintGroup },
+        { ...sharedReleaseCerts, group: paintGroup },
+      );
+    }
+
+    if (!hasRubber && !hasPaint) {
+      sections.push(
+        sectionWithWarnings(
+          this.sectionFromCount(
+            "controlPlans",
+            "Quality Control Plans",
+            qcData.controlPlans.length,
+          ),
+          qcpWarnings,
         ),
-        blastWarnings,
-      ),
-      this.sectionFromCount("primerDft", "Primer DFT Reports", primerDft.length),
-      this.sectionFromCount("finalDft", "Final DFT Reports", finalDft.length),
-      sectionWithWarnings(
-        this.sectionFromCount(
-          "shoreHardness",
-          "Shore Hardness Reports",
-          qcData.shoreHardness.length,
+        sectionWithWarnings(
+          this.sectionFromCount(
+            "blastProfiles",
+            "Blast Profile Reports",
+            qcData.blastProfiles.length,
+          ),
+          blastWarnings,
         ),
-        shoreWarnings,
-      ),
-      sectionWithWarnings(
-        this.sectionFromCount("itemsRelease", "Items Release", itemsReleases.length),
-        releaseWarnings,
-      ),
-      sectionWithWarnings(
-        this.sectionFromCount(
-          "releaseCertificates",
-          "QC Release Certificates",
-          qcData.releaseCertificates.length,
+        this.sectionFromCount("primerDft", "Primer DFT Reports", primerDft.length),
+        this.sectionFromCount("finalDft", "Final DFT Reports", finalDft.length),
+        sectionWithWarnings(
+          this.sectionFromCount(
+            "shoreHardness",
+            "Shore Hardness Reports",
+            qcData.shoreHardness.length,
+          ),
+          shoreWarnings,
         ),
-        releaseCertWarnings,
-      ),
-    ];
+        sharedItemsRelease,
+        sharedReleaseCerts,
+      );
+    }
 
     const warnings = [
       ...qcpWarnings,
@@ -861,9 +957,9 @@ export class CertificateService {
 
   private sectionFromCount(key: string, label: string, count: number): SectionStatus {
     if (count === 0) {
-      return { key, label, status: "missing", count, warnings: [] };
+      return { key, label, status: "missing", count, warnings: [], group: null };
     }
-    return { key, label, status: "complete", count, warnings: [] };
+    return { key, label, status: "complete", count, warnings: [], group: null };
   }
 
   private async extractPdfPages(

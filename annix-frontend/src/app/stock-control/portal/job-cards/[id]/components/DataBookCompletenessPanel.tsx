@@ -238,9 +238,32 @@ export function DataBookCompletenessPanel({
       )}
 
       <div className="divide-y divide-gray-100">
-        {completeness.sections.map((section) => (
-          <SectionRow key={section.key} section={section} />
-        ))}
+        {
+          completeness.sections.reduce<{ lastGroup: string | null; elements: React.ReactNode[] }>(
+            (acc, section, idx) => {
+              if (section.group && section.group !== acc.lastGroup) {
+                acc.elements.push(
+                  <div
+                    key={`group-${section.group}`}
+                    className="border-t border-gray-200 bg-gray-50 px-4 py-2"
+                  >
+                    <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                      {section.group}
+                    </span>
+                  </div>,
+                );
+              }
+              acc.elements.push(
+                <SectionRow
+                  key={`${section.group || "default"}-${section.key}-${idx}`}
+                  section={section}
+                />,
+              );
+              return { lastGroup: section.group, elements: acc.elements };
+            },
+            { lastGroup: null, elements: [] },
+          ).elements
+        }
       </div>
     </div>
   );
