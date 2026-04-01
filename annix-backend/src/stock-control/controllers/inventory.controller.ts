@@ -168,6 +168,13 @@ export class InventoryController {
     );
   }
 
+  @StockControlRoles("admin")
+  @Post("backfill-rubber")
+  @ApiOperation({ summary: "Backfill stock items with rubber roll data from AU Rubber" })
+  async backfillRubber(@Req() req: any) {
+    return this.inventoryService.backfillRubberRollStock(req.user.companyId);
+  }
+
   @Get(":id/price-history")
   @ApiOperation({ summary: "Price history for a stock item" })
   async priceHistory(@Req() req: any, @Param("id") id: number) {

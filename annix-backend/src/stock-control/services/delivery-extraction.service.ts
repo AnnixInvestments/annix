@@ -1,6 +1,6 @@
 import { BadRequestException, Inject, Injectable, Logger } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
+import { ILike, Repository } from "typeorm";
 import { nowMillis } from "../../lib/datetime";
 import { RubberProductCoding } from "../../rubber-lining/entities/rubber-product-coding.entity";
 import { RubberRollStock } from "../../rubber-lining/entities/rubber-roll-stock.entity";
@@ -379,10 +379,15 @@ export class DeliveryExtractionService {
       return null;
     }
 
-    const roll = await this.rubberRollStockRepo.findOne({
-      where: { rollNumber },
-      relations: ["compoundCoding"],
-    });
+    const roll =
+      (await this.rubberRollStockRepo.findOne({
+        where: { rollNumber },
+        relations: ["compoundCoding"],
+      })) ||
+      (await this.rubberRollStockRepo.findOne({
+        where: { rollNumber: ILike(`%-${rollNumber}`) },
+        relations: ["compoundCoding"],
+      }));
 
     if (!roll) {
       this.logger.log(`Roll #${rollNumber} not found in AU Rubber roll stock`);
