@@ -1,6 +1,5 @@
 import { StockControlApiClient } from "./base";
 import type {
-  AddCpoItemRequest,
   CpoCalloffBreakdown,
   CpoCalloffRecord,
   CpoDeliveryHistory,
@@ -24,7 +23,6 @@ import type {
   SageJcDumpImportResult,
   SageJcDumpParseResult,
   StockControlSupplierDto,
-  UpdateCpoItemRequest,
 } from "./types";
 
 declare module "./base" {
@@ -88,12 +86,6 @@ declare module "./base" {
       cpoId: number,
       request: SageJcDumpConfirmRequest,
     ): Promise<SageJcDumpImportResult>;
-    addCpoItem(cpoId: number, data: AddCpoItemRequest): Promise<CustomerPurchaseOrderItem>;
-    updateCpoItem(
-      cpoId: number,
-      itemId: number,
-      data: UpdateCpoItemRequest,
-    ): Promise<CustomerPurchaseOrderItem>;
     globalSearch(query: string, limit?: number): Promise<GlobalSearchResponse>;
     glossaryTerms(): Promise<GlossaryTerm[]>;
     upsertGlossaryTerm(
@@ -243,20 +235,6 @@ proto.confirmSageJcDump = async function (cpoId, request) {
   return this.request(`/stock-control/cpos/${cpoId}/sage-jc-dump/confirm`, {
     method: "POST",
     body: JSON.stringify(request),
-  });
-};
-
-proto.addCpoItem = async function (cpoId, data) {
-  return this.request(`/stock-control/cpos/${cpoId}/items`, {
-    method: "POST",
-    body: JSON.stringify(data),
-  });
-};
-
-proto.updateCpoItem = async function (cpoId, itemId, data) {
-  return this.request(`/stock-control/cpos/${cpoId}/items/${itemId}`, {
-    method: "PUT",
-    body: JSON.stringify(data),
   });
 };
 

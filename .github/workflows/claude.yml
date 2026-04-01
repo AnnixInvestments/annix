@@ -168,6 +168,55 @@ jobs:
             3. After fixing, run `npx biome check .` again to verify zero errors remain
             Do NOT commit or push code that fails these checks. If biome reports errors after --write, manually fix them.
 
+      - name: Create PR if Claude pushed a branch but didn't open one
+        if: |
+          github.event_name != 'workflow_dispatch' &&
+          steps.feedback-check.outputs.is_feedback == 'true' &&
+          always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ISSUE_NUM=""
+          if [ "${{ github.event_name }}" = "issues" ]; then
+            ISSUE_NUM="${{ github.event.issue.number }}"
+          elif [ "${{ github.event_name }}" = "issue_comment" ]; then
+            ISSUE_NUM="${{ github.event.issue.number }}"
+          fi
+
+          if [ -z "$ISSUE_NUM" ]; then
+            echo "No issue number found, skipping PR creation"
+            exit 0
+          fi
+
+          BRANCHES=$(git branch -r --no-merged origin/main | grep -v HEAD | sed 's/origin\///' | xargs)
+          for BRANCH in $BRANCHES; do
+            COMMIT_MSG=$(git log "origin/$BRANCH" --not origin/main --oneline | head -1)
+            if echo "$COMMIT_MSG" | grep -q "#$ISSUE_NUM"; then
+              EXISTING_PR=$(gh pr list --head "$BRANCH" --state open --json number -q '.[0].number' 2>/dev/null || echo "")
+              if [ -z "$EXISTING_PR" ]; then
+                echo "Creating PR for branch $BRANCH (ref #$ISSUE_NUM)"
+                ISSUE_TITLE=$(gh issue view "$ISSUE_NUM" --json title -q '.title' 2>/dev/null || echo "Fix for #$ISSUE_NUM")
+                PR_TITLE=$(echo "$COMMIT_MSG" | sed 's/^[a-f0-9]* //')
+                gh pr create \
+                  --head "$BRANCH" \
+                  --base main \
+                  --title "$PR_TITLE" \
+                  --body "$(cat <<EOF
+          ## Summary
+          Auto-generated PR from feedback fix on issue #$ISSUE_NUM.
+
+          ## Changes
+          $(git log "origin/$BRANCH" --not origin/main --format='- %s')
+
+          Ref #$ISSUE_NUM
+          EOF
+          )" || echo "Failed to create PR for $BRANCH"
+              else
+                echo "PR #$EXISTING_PR already exists for branch $BRANCH"
+              fi
+            fi
+          done
+
       - name: Run Claude Code (event triggered)
         if: |
           github.event_name != 'workflow_dispatch' &&
