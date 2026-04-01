@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type {
+  AddCpoItemRequest,
   CalibrationCertificate,
   CostByJob,
   CpoCalloffBreakdown,
@@ -8,6 +9,7 @@ import type {
   CpoFulfillmentReportItem,
   CpoOverdueInvoiceItem,
   CustomerPurchaseOrder,
+  CustomerPurchaseOrderItem,
   DeliveryNote,
   DispatchProgress,
   DispatchScan,
@@ -28,6 +30,7 @@ import type {
   StockValuation,
   SupplierCertificate,
   SupplierInvoice,
+  UpdateCpoItemRequest,
   WorkflowNotification,
   WorkflowStatus,
 } from "@/app/lib/api/stockControlApi";
@@ -338,6 +341,35 @@ export function useUpdateCalloffRecordStatus() {
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({
         queryKey: stockControlKeys.cpos.calloffRecords(variables.cpoId),
+      });
+    },
+  });
+}
+
+export function useAddCpoItem() {
+  const queryClient = useQueryClient();
+  return useMutation<CustomerPurchaseOrderItem, Error, { cpoId: number; data: AddCpoItemRequest }>({
+    mutationFn: ({ cpoId, data }) => stockControlApiClient.addCpoItem(cpoId, data),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: stockControlKeys.cpos.detail(variables.cpoId),
+      });
+    },
+  });
+}
+
+export function useUpdateCpoItem() {
+  const queryClient = useQueryClient();
+  return useMutation<
+    CustomerPurchaseOrderItem,
+    Error,
+    { cpoId: number; itemId: number; data: UpdateCpoItemRequest }
+  >({
+    mutationFn: ({ cpoId, itemId, data }) =>
+      stockControlApiClient.updateCpoItem(cpoId, itemId, data),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: stockControlKeys.cpos.detail(variables.cpoId),
       });
     },
   });

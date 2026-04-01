@@ -646,6 +646,7 @@ export {
 } from "./rfq/useRfqs";
 export {
   useActionCompletions,
+  useAddCpoItem,
   useAddLineItem,
   useAllocateStock,
   useAnalyzeDeliveryNote,
@@ -756,6 +757,7 @@ export {
   useStockValuationReport,
   useTestInboundEmailConnection,
   useUpdateCalloffRecordStatus,
+  useUpdateCpoItem,
   useUpdateCpoStatus,
   useUpdateDashboardPreferences,
   useUpdateInboundEmailConfig,

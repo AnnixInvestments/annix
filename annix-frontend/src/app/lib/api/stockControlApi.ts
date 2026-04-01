@@ -1,5 +1,6 @@
 export type {
   AccountsDashboard,
+  AddCpoItemRequest,
   AdminDashboard,
   AllocationPlanItem,
   AllocationPlanResponse,
@@ -196,6 +197,7 @@ export type {
   SupplierInvoice,
   SupplierInvoiceItem,
   UnverifiedProduct,
+  UpdateCpoItemRequest,
   UserLocationSummary,
   WorkflowLaneCounts,
   WorkflowNotification,

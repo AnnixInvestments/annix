@@ -22,6 +22,7 @@ export {
 } from "./useStockControlDashboard";
 export {
   useActionCompletions,
+  useAddCpoItem,
   useAddLineItem,
   useAllocateStock,
   useAnalyzeDeliveryNote,
@@ -105,6 +106,7 @@ export {
   useStockMovements,
   useStockValuationReport,
   useUpdateCalloffRecordStatus,
+  useUpdateCpoItem,
   useUpdateCpoStatus,
   useUpdateJobCardStatus,
   useUpdateRequisitionItem,

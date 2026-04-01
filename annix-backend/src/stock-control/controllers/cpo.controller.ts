@@ -19,9 +19,11 @@ import { FileInterceptor } from "@nestjs/platform-express";
 import { ApiOperation, ApiTags } from "@nestjs/swagger";
 import type { Response } from "express";
 import {
+  AddCpoItemDto,
   ConfirmCpoImportDto,
   ConfirmSageJcDumpDto,
   UpdateCalloffStatusDto,
+  UpdateCpoItemDto,
   UpdateCpoStatusDto,
 } from "../dto/additional.dto";
 import { CalloffStatus } from "../entities/cpo-calloff-record.entity";
@@ -195,6 +197,27 @@ export class CpoController {
   @ApiOperation({ summary: "List overdue (uninvoiced 21+ days) call-off records for a CPO" })
   async overdueRecords(@Req() req: any, @Param("id", ParseIntPipe) id: number) {
     return this.cpoService.overdueCalloffRecordsForCpo(req.user.companyId, id);
+  }
+
+  @Post(":id/items")
+  @ApiOperation({ summary: "Add a line item to a CPO" })
+  async addItem(
+    @Req() req: any,
+    @Param("id", ParseIntPipe) id: number,
+    @Body() dto: AddCpoItemDto,
+  ) {
+    return this.cpoService.addItem(req.user.companyId, id, dto);
+  }
+
+  @Put(":id/items/:itemId")
+  @ApiOperation({ summary: "Update a CPO line item" })
+  async updateItem(
+    @Req() req: any,
+    @Param("id", ParseIntPipe) id: number,
+    @Param("itemId", ParseIntPipe) itemId: number,
+    @Body() dto: UpdateCpoItemDto,
+  ) {
+    return this.cpoService.updateItem(req.user.companyId, id, itemId, dto);
   }
 
   @Delete(":id")
