@@ -688,14 +688,12 @@ export class CertificateService {
         ? (() => {
             const qcSectionKeys = [
               "controlPlans",
-              "itemsRelease",
-              "releaseCertificates",
-              "shoreHardness",
+              "blastProfiles",
               "primerDft",
               "finalDft",
-              "blastProfiles",
-              "dustDebris",
-              "pullTests",
+              "shoreHardness",
+              "itemsRelease",
+              "releaseCertificates",
             ];
             const hasAnyQcData = sections
               .filter((s) => qcSectionKeys.includes(s.key))
@@ -799,17 +797,6 @@ export class CertificateService {
           `Blast Profile: avg ${Number(rec.averageMicrons).toFixed(1)} μm below spec ${rec.specMicrons} μm`,
       );
 
-    const dustFailures = qcData.dustDebrisTests
-      .filter((rec) => rec.tests.some((t) => t.result === "fail"))
-      .map((rec) => {
-        const failCount = rec.tests.filter((t) => t.result === "fail").length;
-        return `Dust & Debris: ${failCount} test(s) failed`;
-      });
-
-    const pullWarnings = qcData.pullTests
-      .filter((rec) => rec.areaReadings.some((r) => r.result === "fail"))
-      .map(() => "Pull Test: has failed area readings");
-
     const sectionWithWarnings = (
       section: SectionStatus,
       sectionWarnings: string[],
@@ -820,6 +807,24 @@ export class CertificateService {
       sectionWithWarnings(
         this.sectionFromCount("controlPlans", "Quality Control Plans", qcData.controlPlans.length),
         qcpWarnings,
+      ),
+      sectionWithWarnings(
+        this.sectionFromCount(
+          "blastProfiles",
+          "Blast Profile Reports",
+          qcData.blastProfiles.length,
+        ),
+        blastWarnings,
+      ),
+      this.sectionFromCount("primerDft", "Primer DFT Reports", primerDft.length),
+      this.sectionFromCount("finalDft", "Final DFT Reports", finalDft.length),
+      sectionWithWarnings(
+        this.sectionFromCount(
+          "shoreHardness",
+          "Shore Hardness Reports",
+          qcData.shoreHardness.length,
+        ),
+        shoreWarnings,
       ),
       sectionWithWarnings(
         this.sectionFromCount("itemsRelease", "Items Release", itemsReleases.length),
@@ -833,47 +838,15 @@ export class CertificateService {
         ),
         releaseCertWarnings,
       ),
-      sectionWithWarnings(
-        this.sectionFromCount(
-          "shoreHardness",
-          "Shore Hardness Reports",
-          qcData.shoreHardness.length,
-        ),
-        shoreWarnings,
-      ),
-      this.sectionFromCount("primerDft", "Primer DFT Reports", primerDft.length),
-      this.sectionFromCount("finalDft", "Final DFT Reports", finalDft.length),
-      sectionWithWarnings(
-        this.sectionFromCount(
-          "blastProfiles",
-          "Blast Profile Reports",
-          qcData.blastProfiles.length,
-        ),
-        blastWarnings,
-      ),
-      sectionWithWarnings(
-        this.sectionFromCount(
-          "dustDebris",
-          "Dust & Debris Test Reports",
-          qcData.dustDebrisTests.length,
-        ),
-        dustFailures,
-      ),
-      sectionWithWarnings(
-        this.sectionFromCount("pullTests", "Pull Test Certificates", qcData.pullTests.length),
-        pullWarnings,
-      ),
     ];
 
     const warnings = [
       ...qcpWarnings,
+      ...blastWarnings,
+      ...dftWarnings,
+      ...shoreWarnings,
       ...releaseWarnings,
       ...releaseCertWarnings,
-      ...shoreWarnings,
-      ...dftWarnings,
-      ...blastWarnings,
-      ...dustFailures,
-      ...pullWarnings,
     ];
 
     return { sections, warnings };
