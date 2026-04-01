@@ -667,86 +667,258 @@ export class DataBookPdfService {
     const planLabels: Record<string, string> = {
       paint_external: "Paint External",
       paint_internal: "Paint Internal",
-      rubber: "Rubber",
+      rubber: "Rubber Lining",
       hdpe: "HDPE",
     };
     const label = planLabels[plan.planType] ?? plan.planType;
+    const isRubber = plan.planType === "rubber";
     const docKey = QCP_PLAN_TYPE_DOC_KEYS[plan.planType] ?? "qcp_paint_ext";
     const docEntry = {
       ...DOC_NUMBERS[docKey],
       revision: plan.revision ?? DOC_NUMBERS[docKey].revision,
     };
-    this.sectionHeader(
-      doc,
-      ctx,
-      `Quality Control Plan - ${label}`,
-      docEntry,
-      tocEntries,
-      plan.documentRef ?? undefined,
-    );
 
-    doc.fontSize(8).font(FONT.REGULAR);
+    doc.addPage();
+    const brandColor = ctx.company?.primaryColor ?? "#dc2626";
+    const companyName = ctx.company?.name ?? "Polymer Lining System (Pty) Ltd";
 
-    const infoRows: Array<[string, string]> = [
-      ["QCP Number", plan.qcpNumber ?? "-"],
-      ["Revision", plan.revision ?? "-"],
-      ["Customer", plan.customerName ?? "-"],
-      ["Order Number", plan.orderNumber ?? "-"],
-      ["Specification", plan.specification ?? "-"],
-    ];
-
-    infoRows.forEach(([lbl, val]) => {
-      doc.font(FONT.BOLD).text(`${lbl}: `, A4.margin, doc.y, { continued: true });
-      doc.font(FONT.REGULAR).text(val);
+    const pageIndex = doc.bufferedPageRange().count - 1;
+    tocEntries.push({
+      title: `Quality Control Plan - ${label}`,
+      docNumber: docEntry.docNumber,
+      pageIndex,
+      revision: docEntry.revision,
+      edition: docEntry.edition,
     });
 
-    doc.moveDown(1);
+    let y = A4.margin;
 
-    const cols = [
-      { label: "Op #", x: A4.margin, width: 30, align: "center" as const },
-      { label: "Description", x: A4.margin + 30, width: 140, align: "left" as const },
-      { label: "Spec Ref", x: A4.margin + 170, width: 70, align: "left" as const },
-      { label: "PLS", x: A4.margin + 240, width: 60, align: "center" as const },
-      { label: "MPS", x: A4.margin + 300, width: 60, align: "center" as const },
-      { label: "Client", x: A4.margin + 360, width: 60, align: "center" as const },
-      { label: "Remarks", x: A4.margin + 420, width: 95, align: "left" as const },
+    doc.fontSize(11).font(FONT.BOLD).fillColor("#000000");
+    doc.text(companyName, A4.margin, y, { width: A4.contentWidth * 0.65 });
+
+    doc
+      .fontSize(7)
+      .font(FONT.REGULAR)
+      .fillColor("#6b7280")
+      .text(
+        `Doc: ${docEntry.docNumber}  |  Ed: ${docEntry.edition} Rev: ${docEntry.revision}`,
+        A4.margin,
+        y + 2,
+        { align: "right", width: A4.contentWidth },
+      );
+
+    y += 18;
+    doc.rect(A4.margin, y, A4.contentWidth, 2).fill(brandColor);
+    y += 8;
+
+    doc
+      .fontSize(14)
+      .font(FONT.BOLD)
+      .fillColor("#000000")
+      .text(`Quality Control Plan - ${label}`, A4.margin, y, {
+        align: "center",
+        width: A4.contentWidth,
+      });
+    y += 20;
+
+    const jobInfo = [
+      `Job Card: ${ctx.jobCard.jobNumber || ctx.jobCard.id}`,
+      ctx.jobCard.customerName ? `Customer: ${ctx.jobCard.customerName}` : null,
+      ctx.jobCard.poNumber ? `PO: ${ctx.jobCard.poNumber}` : null,
+    ]
+      .filter(Boolean)
+      .join("  |  ");
+
+    doc
+      .fontSize(7)
+      .font(FONT.REGULAR)
+      .fillColor("#6b7280")
+      .text(jobInfo, A4.margin, y, { align: "center", width: A4.contentWidth });
+    y += 14;
+
+    doc
+      .moveTo(A4.margin, y)
+      .lineTo(A4.margin + A4.contentWidth, y)
+      .lineWidth(0.5)
+      .stroke("#d1d5db");
+    doc.lineWidth(1);
+    y += 12;
+    doc.fillColor("#000000");
+
+    const leftCol = A4.margin;
+    const rightCol = A4.margin + A4.contentWidth * 0.45;
+    const labelW = 85;
+    const valW = A4.contentWidth * 0.45 - labelW;
+
+    const infoLeft: Array<[string, string]> = [
+      ["QCP Number:", plan.qcpNumber ?? "-"],
+      [isRubber ? "Job Card No:" : "Job Number:", ctx.jobCard.jobNumber || "-"],
+      ["Description:", plan.itemDescription ?? "-"],
+    ];
+    const infoRight: Array<[string, string]> = [
+      ["Customer:", plan.customerName ?? "-"],
+      ["Order Number:", plan.orderNumber ?? "-"],
+      ["Specification:", plan.specification ?? "-"],
     ];
 
-    let y = this.tableHeader(doc, cols);
+    const infoStartY = y;
+    doc.fontSize(7.5);
+    infoLeft.forEach(([lbl, val]) => {
+      doc.font(FONT.BOLD).text(lbl, leftCol, y, { width: labelW, continued: false });
+      doc.font(FONT.REGULAR).text(val, leftCol + labelW, y - 10, { width: valW });
+      y += 13;
+    });
+
+    y = infoStartY;
+    infoRight.forEach(([lbl, val]) => {
+      doc.font(FONT.BOLD).text(lbl, rightCol, y, { width: labelW, continued: false });
+      doc.font(FONT.REGULAR).text(val, rightCol + labelW, y - 10, { width: valW });
+      y += 13;
+    });
+
+    y = infoStartY + infoLeft.length * 13 + 8;
+
+    const opW = 28;
+    const descW = 130;
+    const specW = 75;
+    const procW = 70;
+    const partyW = 55;
+    const signW = 0;
+    const remarkW = A4.contentWidth - opW - descW - specW - procW - partyW * 3 - signW * 3;
+
+    const opX = A4.margin;
+    const descX = opX + opW;
+    const specX = descX + descW;
+    const procX = specX + specW;
+    const plsX = procX + procW;
+    const mpsX = plsX + partyW;
+    const clientX = mpsX + partyW;
+    const remarkX = clientX + partyW;
+
+    doc.rect(A4.margin, y - 2, A4.contentWidth, 24).fill("#f3f4f6");
+    doc.fillColor("#000000");
+
+    doc.fontSize(6.5).font(FONT.BOLD);
+    doc.text("OP", opX + 2, y, { width: opW - 4, align: "center" });
+    doc.text("ACTIVITY DESCRIPTION", descX + 2, y, { width: descW - 4 });
+    doc.text("SPECIFICATION", specX + 2, y, { width: specW - 4 });
+    doc.text("PROCEDURE /\nREQUIRED", procX + 2, y, { width: procW - 4 });
+
+    doc.text("INTERVENTIONS", plsX, y - 2, {
+      width: partyW * 3,
+      align: "center",
+    });
+
+    const subY = y + 11;
+    doc.fontSize(6).font(FONT.BOLD);
+    doc.text("PLS", plsX + 2, subY, { width: partyW - 4, align: "center" });
+    doc.text(this.qcpClientAbbrev(plan), mpsX + 2, subY, { width: partyW - 4, align: "center" });
+    doc.text("Client", clientX + 2, subY, { width: partyW - 4, align: "center" });
+    doc.text("REMARKS", remarkX + 2, y + 4, { width: remarkW - 4 });
+
+    y += 26;
+
+    doc
+      .moveTo(A4.margin, y - 1)
+      .lineTo(A4.margin + A4.contentWidth, y - 1)
+      .lineWidth(0.5)
+      .stroke("#d1d5db");
+    doc.lineWidth(1);
 
     plan.activities.forEach((activity) => {
-      if (y > 750) {
+      if (y > 720) {
         doc.addPage();
         y = A4.margin + 20;
-        y = this.tableHeader(doc, cols);
       }
 
-      const plsInfo = activity.pls.interventionType ?? "-";
-      const mpsInfo = activity.mps.interventionType ?? "-";
-      const clientInfo = activity.client.interventionType ?? "-";
+      const rowH = 13;
+      doc
+        .moveTo(A4.margin, y + rowH - 1)
+        .lineTo(A4.margin + A4.contentWidth, y + rowH - 1)
+        .lineWidth(0.3)
+        .stroke("#e5e7eb");
+      doc.lineWidth(1);
 
-      y = this.tableRow(doc, y, [
-        { text: String(activity.operationNumber), x: A4.margin, width: 30, align: "center" },
-        { text: activity.description, x: A4.margin + 30, width: 140 },
-        { text: activity.specification ?? "-", x: A4.margin + 170, width: 70 },
-        { text: plsInfo, x: A4.margin + 240, width: 60, align: "center" },
-        { text: mpsInfo, x: A4.margin + 300, width: 60, align: "center" },
-        { text: clientInfo, x: A4.margin + 360, width: 60, align: "center" },
-        { text: activity.remarks ?? "", x: A4.margin + 420, width: 95 },
-      ]);
+      doc.fontSize(6.5).font(FONT.REGULAR).fillColor("#000000");
+      doc.text(String(activity.operationNumber), opX + 2, y + 2, {
+        width: opW - 4,
+        align: "center",
+      });
+      doc.text(activity.description, descX + 2, y + 2, { width: descW - 4 });
+      doc.text(activity.specification ?? "-", specX + 2, y + 2, { width: specW - 4 });
+      doc.text(activity.procedureRequired ?? "-", procX + 2, y + 2, { width: procW - 4 });
+
+      doc.font(FONT.BOLD);
+      doc.text(activity.pls.interventionType ?? "-", plsX + 2, y + 2, {
+        width: partyW - 4,
+        align: "center",
+      });
+      doc.text(activity.mps.interventionType ?? "-", mpsX + 2, y + 2, {
+        width: partyW - 4,
+        align: "center",
+      });
+      doc.text(activity.client.interventionType ?? "-", clientX + 2, y + 2, {
+        width: partyW - 4,
+        align: "center",
+      });
+      doc.font(FONT.REGULAR);
+      doc.text(activity.remarks ?? "", remarkX + 2, y + 2, { width: remarkW - 4 });
+
+      y += rowH;
     });
 
-    if (plan.approvalSignatures.length > 0) {
-      doc.moveDown(1);
-      doc.y = y + 10;
-      doc.fontSize(9).font(FONT.BOLD).text("Approval Signatures", A4.margin, doc.y);
-      doc.moveDown(0.5);
-
-      plan.approvalSignatures.forEach((sig) => {
-        doc.fontSize(8).font(FONT.REGULAR);
-        doc.text(`${sig.party}: ${sig.name ?? "-"}  |  Date: ${sig.date ?? "-"}`, A4.margin, doc.y);
-      });
+    y += 16;
+    if (y > 700) {
+      doc.addPage();
+      y = A4.margin + 20;
     }
+
+    doc.fontSize(8).font(FONT.BOLD).text("Approval Signatures", A4.margin, y);
+    y += 14;
+
+    const sigColW = A4.contentWidth / Math.max(plan.approvalSignatures.length, 3);
+    plan.approvalSignatures.forEach((sig, idx) => {
+      const sx = A4.margin + idx * sigColW;
+      doc.fontSize(7).font(FONT.BOLD).text(`Approved By: ${sig.party}`, sx, y, { width: sigColW });
+      doc
+        .fontSize(7)
+        .font(FONT.REGULAR)
+        .text(`Name: ${sig.name ?? ""}`, sx, y + 12, { width: sigColW });
+      doc.text("Signed: ________________", sx, y + 24, { width: sigColW });
+      doc.text(`Date: ${sig.date ?? ""}`, sx, y + 36, { width: sigColW });
+    });
+
+    y += 56;
+
+    doc.fontSize(6.5).font(FONT.BOLD).text("Legend", A4.margin, y);
+    y += 10;
+    doc.fontSize(6).font(FONT.REGULAR);
+    const legendItems = [
+      ["H = Hold", "I = Inspection", "W = Witness"],
+      ["R = Review", "S = Surveillance", "V = Verify"],
+    ];
+    legendItems.forEach((row) => {
+      row.forEach((item, idx) => {
+        doc.text(item, A4.margin + idx * 120, y, { width: 120 });
+      });
+      y += 10;
+    });
+  }
+
+  private qcpClientAbbrev(plan: QcControlPlan): string {
+    const name = plan.customerName ?? "";
+    const words = name.split(/\s+/).filter((w) => w.length > 0);
+    if (words.length <= 3) {
+      return words
+        .map((w) => w[0])
+        .join("")
+        .toUpperCase();
+    }
+    return words
+      .filter((w) => w.toUpperCase() !== "(PTY)" && w.toUpperCase() !== "LTD")
+      .map((w) => w[0])
+      .join("")
+      .toUpperCase();
   }
 
   private renderItemsRelease(
