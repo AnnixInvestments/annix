@@ -82,6 +82,14 @@ export function FeedbackWidget(props: FeedbackWidgetProps) {
 
   const isInteracting = isDragging || resizeEdge !== null;
 
+  const clampPosition = useCallback(
+    (clientX: number, clientY: number) => ({
+      x: Math.max(0, Math.min(clientX - dragOffset.current.x, window.innerWidth - size.width)),
+      y: Math.max(0, Math.min(clientY - dragOffset.current.y, window.innerHeight - size.height)),
+    }),
+    [size],
+  );
+
   const handleDragStart = useCallback(
     (e: React.MouseEvent) => {
       e.preventDefault();
@@ -91,38 +99,49 @@ export function FeedbackWidget(props: FeedbackWidgetProps) {
     [position],
   );
 
+  const handleTouchDragStart = useCallback(
+    (e: React.TouchEvent) => {
+      const touch = e.touches[0];
+      if (!touch) return;
+      dragOffset.current = { x: touch.clientX - position.x, y: touch.clientY - position.y };
+      setIsDragging(true);
+    },
+    [position],
+  );
+
   useEffect(() => {
     if (!isDragging) return;
 
     const handleMouseMove = (e: MouseEvent) => {
-      const x = Math.max(
-        0,
-        Math.min(e.clientX - dragOffset.current.x, window.innerWidth - size.width),
-      );
-      const y = Math.max(
-        0,
-        Math.min(e.clientY - dragOffset.current.y, window.innerHeight - size.height),
-      );
-      setPosition({ x, y });
+      setPosition(clampPosition(e.clientX, e.clientY));
     };
 
-    const handleMouseUp = () => setIsDragging(false);
+    const handleTouchMove = (e: TouchEvent) => {
+      const touch = e.touches[0];
+      if (!touch) return;
+      e.preventDefault();
+      setPosition(clampPosition(touch.clientX, touch.clientY));
+    };
+
+    const handleEnd = () => setIsDragging(false);
 
     document.addEventListener("mousemove", handleMouseMove);
-    document.addEventListener("mouseup", handleMouseUp);
+    document.addEventListener("mouseup", handleEnd);
+    document.addEventListener("touchmove", handleTouchMove, { passive: false });
+    document.addEventListener("touchend", handleEnd);
     return () => {
       document.removeEventListener("mousemove", handleMouseMove);
-      document.removeEventListener("mouseup", handleMouseUp);
+      document.removeEventListener("mouseup", handleEnd);
+      document.removeEventListener("touchmove", handleTouchMove);
+      document.removeEventListener("touchend", handleEnd);
     };
-  }, [isDragging, size]);
+  }, [isDragging, clampPosition]);
 
-  const handleResizeStart = useCallback(
-    (edge: ResizeEdge) => (e: React.MouseEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
+  const startResize = useCallback(
+    (edge: ResizeEdge, clientX: number, clientY: number) => {
       resizeStart.current = {
-        mouseX: e.clientX,
-        mouseY: e.clientY,
+        mouseX: clientX,
+        mouseY: clientY,
         width: size.width,
         height: size.height,
         panelX: position.x,
@@ -133,13 +152,32 @@ export function FeedbackWidget(props: FeedbackWidgetProps) {
     [size, position],
   );
 
+  const handleResizeStart = useCallback(
+    (edge: ResizeEdge) => (e: React.MouseEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      startResize(edge, e.clientX, e.clientY);
+    },
+    [startResize],
+  );
+
+  const handleTouchResizeStart = useCallback(
+    (edge: ResizeEdge) => (e: React.TouchEvent) => {
+      e.stopPropagation();
+      const touch = e.touches[0];
+      if (!touch) return;
+      startResize(edge, touch.clientX, touch.clientY);
+    },
+    [startResize],
+  );
+
   useEffect(() => {
     if (!resizeEdge) return;
 
-    const handleMouseMove = (e: MouseEvent) => {
+    const applyResize = (clientX: number, clientY: number) => {
       const { mouseX, mouseY, width, height, panelX, panelY } = resizeStart.current;
-      const dx = e.clientX - mouseX;
-      const dy = e.clientY - mouseY;
+      const dx = clientX - mouseX;
+      const dy = clientY - mouseY;
 
       let newWidth = width;
       let newHeight = height;
@@ -164,13 +202,26 @@ export function FeedbackWidget(props: FeedbackWidgetProps) {
       setPosition({ x: newX, y: newY });
     };
 
-    const handleMouseUp = () => setResizeEdge(null);
+    const handleMouseMove = (e: MouseEvent) => applyResize(e.clientX, e.clientY);
+
+    const handleTouchMove = (e: TouchEvent) => {
+      const touch = e.touches[0];
+      if (!touch) return;
+      e.preventDefault();
+      applyResize(touch.clientX, touch.clientY);
+    };
+
+    const handleEnd = () => setResizeEdge(null);
 
     document.addEventListener("mousemove", handleMouseMove);
-    document.addEventListener("mouseup", handleMouseUp);
+    document.addEventListener("mouseup", handleEnd);
+    document.addEventListener("touchmove", handleTouchMove, { passive: false });
+    document.addEventListener("touchend", handleEnd);
     return () => {
       document.removeEventListener("mousemove", handleMouseMove);
-      document.removeEventListener("mouseup", handleMouseUp);
+      document.removeEventListener("mouseup", handleEnd);
+      document.removeEventListener("touchmove", handleTouchMove);
+      document.removeEventListener("touchend", handleEnd);
     };
   }, [resizeEdge]);
 
@@ -375,41 +426,50 @@ export function FeedbackWidget(props: FeedbackWidgetProps) {
       <div
         className="absolute -top-1 left-3 right-3 h-2 cursor-n-resize z-10"
         onMouseDown={handleResizeStart("n")}
+        onTouchStart={handleTouchResizeStart("n")}
       />
       <div
         className="absolute -bottom-1 left-3 right-3 h-2 cursor-s-resize z-10"
         onMouseDown={handleResizeStart("s")}
+        onTouchStart={handleTouchResizeStart("s")}
       />
       <div
         className="absolute -left-1 top-3 bottom-3 w-2 cursor-w-resize z-10"
         onMouseDown={handleResizeStart("w")}
+        onTouchStart={handleTouchResizeStart("w")}
       />
       <div
         className="absolute -right-1 top-3 bottom-3 w-2 cursor-e-resize z-10"
         onMouseDown={handleResizeStart("e")}
+        onTouchStart={handleTouchResizeStart("e")}
       />
       {/* Resize corners */}
       <div
         className="absolute -top-1 -left-1 w-3 h-3 cursor-nw-resize z-20"
         onMouseDown={handleResizeStart("nw")}
+        onTouchStart={handleTouchResizeStart("nw")}
       />
       <div
         className="absolute -top-1 -right-1 w-3 h-3 cursor-ne-resize z-20"
         onMouseDown={handleResizeStart("ne")}
+        onTouchStart={handleTouchResizeStart("ne")}
       />
       <div
         className="absolute -bottom-1 -left-1 w-3 h-3 cursor-sw-resize z-20"
         onMouseDown={handleResizeStart("sw")}
+        onTouchStart={handleTouchResizeStart("sw")}
       />
       <div
         className="absolute -bottom-1 -right-1 w-3 h-3 cursor-se-resize z-20"
         onMouseDown={handleResizeStart("se")}
+        onTouchStart={handleTouchResizeStart("se")}
       />
 
       {/* Header — draggable */}
       <div
         className="px-4 py-3 bg-blue-600 flex items-center justify-between cursor-grab active:cursor-grabbing shrink-0"
         onMouseDown={handleDragStart}
+        onTouchStart={handleTouchDragStart}
       >
         <div className="flex items-center gap-2">
           <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -426,6 +486,7 @@ export function FeedbackWidget(props: FeedbackWidgetProps) {
           type="button"
           onClick={handleClose}
           onMouseDown={(e) => e.stopPropagation()}
+          onTouchStart={(e) => e.stopPropagation()}
           className="text-white/80 hover:text-white"
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

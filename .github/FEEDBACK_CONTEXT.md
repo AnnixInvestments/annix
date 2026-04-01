@@ -77,7 +77,7 @@ These actions are NEVER allowed when fixing feedback issues:
 If you cannot determine the root cause or the fix requires actions you cannot safely take:
 
 1. **Do NOT create an empty or incorrect PR** — no guessing at fixes
-2. **Comment on the issue** explaining:
+2. **Edit the issue body** to append your findings under a `## Investigation` heading at the bottom. Use `gh issue edit <number> --body` to append your investigation to the existing body. Include:
    - What you investigated
    - What you found (or didn't find)
    - Why you cannot fix it (e.g. "data issue requiring manual intervention", "need screenshot to see the problem", "requires access to production database")
