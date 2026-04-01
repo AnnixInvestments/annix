@@ -477,6 +477,7 @@ export class RubberAuCocReadinessService {
               <td style="padding: 8px 0;">${auCoc.deliveryNoteRef || "—"}</td>
             </tr>
           </table>
+          <p style="margin-bottom: 20px; color: #555;">The CoC PDF is attached for your convenience.</p>
           <a href="${cocLink}" style="display: inline-block; padding: 10px 20px; background-color: #f97316; color: white; text-decoration: none; border-radius: 6px; font-weight: 500;">
             Review AU CoC
           </a>
@@ -485,12 +486,16 @@ export class RubberAuCocReadinessService {
       </html>
     `;
 
-    this.emailService
-      .sendEmail({
-        to: adminEmail,
-        subject: `AU CoC Auto-Generated — ${auCoc.cocNumber} — Verification Required`,
-        html,
-      })
+    this.auCocService
+      .pdfBuffer(auCoc.id)
+      .then(({ buffer, filename }) =>
+        this.emailService.sendEmail({
+          to: adminEmail,
+          subject: `AU CoC Auto-Generated — ${auCoc.cocNumber} — Verification Required`,
+          html,
+          attachments: [{ filename, content: buffer, contentType: "application/pdf" }],
+        }),
+      )
       .then(() => {
         this.logger.log(`Verification notification sent to ${adminEmail} for ${auCoc.cocNumber}`);
       })
