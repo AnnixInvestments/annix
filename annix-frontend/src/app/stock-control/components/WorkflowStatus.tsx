@@ -1025,6 +1025,7 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
       ref={containerRef}
       className="relative min-h-[80px]"
       style={{
+        minWidth: `${Math.max(800, allSteps.length * 100)}px`,
         paddingLeft: hasDocPre ? "60px" : undefined,
         paddingTop: hasLoopBranches ? "130px" : "60px",
       }}
@@ -2048,7 +2049,7 @@ export function WorkflowStepper(props: WorkflowStepperProps) {
 
       {!mapHidden && (
         <>
-          <div className="hidden md:block">
+          <div className="hidden md:block overflow-x-auto">
             <DesktopTransitMap
               key={`desktop-${diagramKey}`}
               allSteps={allSteps}
