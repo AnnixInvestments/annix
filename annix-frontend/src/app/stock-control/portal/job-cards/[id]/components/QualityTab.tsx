@@ -410,83 +410,10 @@ export function QualityTab(props: QualityTabProps) {
             )}
           </div>
 
-          <ItemsReleaseSection jobCardId={jobCardId} />
-
-          <QcReleaseCertificateSection jobCardId={jobCardId} />
-
-          <ReleaseDocumentGenerator
-            jobCardId={jobCardId}
-            backgroundSteps={backgroundSteps}
-            onGenerated={fetchQualityData}
-          />
-
-          {batchRecords.length > 0 && (
-            <div className="rounded-lg border border-gray-200 bg-white shadow-sm">
-              <div className="border-b border-gray-200 px-5 py-3">
-                <h3 className="text-sm font-semibold text-gray-900">Batch Records</h3>
-              </div>
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
-                        Batch
-                      </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
-                        Product
-                      </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
-                        Qty
-                      </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
-                        Certificate
-                      </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
-                        Date
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-200">
-                    {batchRecords.map((record) => (
-                      <tr key={record.id} className="hover:bg-gray-50">
-                        <td className="whitespace-nowrap px-4 py-3 text-sm font-medium text-gray-900">
-                          {record.batchNumber}
-                        </td>
-                        <td className="px-4 py-3 text-sm text-gray-600">
-                          {record.stockItem?.name || "-"}
-                        </td>
-                        <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-600">
-                          {record.quantity}
-                        </td>
-                        <td className="px-4 py-3 text-sm">
-                          {record.supplierCertificate ? (
-                            <button
-                              onClick={() => handleViewCertificate(record.supplierCertificate!.id)}
-                              className="inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800 hover:bg-green-200"
-                            >
-                              Linked - {record.supplierCertificate.certificateType}
-                            </button>
-                          ) : (
-                            <span className="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">
-                              No cert
-                            </span>
-                          )}
-                        </td>
-                        <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-500">
-                          {formatDateZA(record.createdAt)}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-
           {certificates.length > 0 && (
             <div className="rounded-lg border border-gray-200 bg-white shadow-sm">
               <div className="border-b border-gray-200 px-5 py-3">
-                <h3 className="text-sm font-semibold text-gray-900">Linked Certificates</h3>
+                <h3 className="text-sm font-semibold text-gray-900">Supplier Certificates</h3>
               </div>
               <div className="divide-y divide-gray-200">
                 {certificates.map((cert) => (
@@ -572,6 +499,79 @@ export function QualityTab(props: QualityTabProps) {
                     </div>
                   );
                 })}
+              </div>
+            </div>
+          )}
+
+          <ItemsReleaseSection jobCardId={jobCardId} />
+
+          <QcReleaseCertificateSection jobCardId={jobCardId} />
+
+          <ReleaseDocumentGenerator
+            jobCardId={jobCardId}
+            backgroundSteps={backgroundSteps}
+            onGenerated={fetchQualityData}
+          />
+
+          {batchRecords.length > 0 && (
+            <div className="rounded-lg border border-gray-200 bg-white shadow-sm">
+              <div className="border-b border-gray-200 px-5 py-3">
+                <h3 className="text-sm font-semibold text-gray-900">Batch Records</h3>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                        Batch
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                        Product
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                        Qty
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                        Certificate
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                        Date
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200">
+                    {batchRecords.map((record) => (
+                      <tr key={record.id} className="hover:bg-gray-50">
+                        <td className="whitespace-nowrap px-4 py-3 text-sm font-medium text-gray-900">
+                          {record.batchNumber}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-600">
+                          {record.stockItem?.name || "-"}
+                        </td>
+                        <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-600">
+                          {record.quantity}
+                        </td>
+                        <td className="px-4 py-3 text-sm">
+                          {record.supplierCertificate ? (
+                            <button
+                              onClick={() => handleViewCertificate(record.supplierCertificate!.id)}
+                              className="inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800 hover:bg-green-200"
+                            >
+                              Linked - {record.supplierCertificate.certificateType}
+                            </button>
+                          ) : (
+                            <span className="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">
+                              No cert
+                            </span>
+                          )}
+                        </td>
+                        <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-500">
+                          {formatDateZA(record.createdAt)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             </div>
           )}

@@ -669,7 +669,14 @@ export class CertificateService {
       ...(expiredMsg ? { warnings: [expiredMsg] } : {}),
     };
 
-    const sections: SectionStatus[] = [...qcResult.sections, supplierCertSection, calCertSection];
+    const shoreIdx = qcResult.sections.findIndex((s) => s.key === "shoreHardness");
+    const insertAt = shoreIdx >= 0 ? shoreIdx + 1 : qcResult.sections.length;
+    const sections: SectionStatus[] = [
+      ...qcResult.sections.slice(0, insertAt),
+      supplierCertSection,
+      calCertSection,
+      ...qcResult.sections.slice(insertAt),
+    ];
 
     const warnings: string[] = [
       ...qcResult.warnings,
