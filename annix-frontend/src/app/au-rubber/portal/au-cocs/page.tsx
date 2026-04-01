@@ -60,6 +60,9 @@ export default function AuCocsPage() {
   const [isBulkSending, setIsBulkSending] = useState(false);
   const [showBulkSendModal, setShowBulkSendModal] = useState(false);
   const [bulkSendEmail, setBulkSendEmail] = useState("");
+  const [isResending, setIsResending] = useState(false);
+  const [showResendModal, setShowResendModal] = useState(false);
+  const [resendEmail, setResendEmail] = useState("");
   const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string | null>(null);
   const [pdfPreviewCocNumber, setPdfPreviewCocNumber] = useState<string | null>(null);
   const [progressModal, setProgressModal] = useState<{
@@ -219,6 +222,63 @@ export default function AuCocsPage() {
       });
     } finally {
       setIsBulkSending(false);
+    }
+  };
+
+  const handleResendAll = async () => {
+    if (!resendEmail) {
+      showToast("Please enter an email address", "error");
+      return;
+    }
+    const sentCocs = cocs.filter((c) => c.status === "SENT");
+    if (sentCocs.length === 0) {
+      showToast("No sent CoCs to resend", "error");
+      return;
+    }
+    const email = resendEmail;
+    try {
+      setIsResending(true);
+      setShowResendModal(false);
+      let sent = 0;
+      const sentNumbers: string[] = [];
+      const failures: string[] = [];
+      for (let i = 0; i < sentCocs.length; i++) {
+        const coc = sentCocs[i];
+        setProgressModal({
+          visible: true,
+          title: "Resending CoCs",
+          status: "running",
+          message: `Resending ${coc.cocNumber} to ${email}...`,
+          current: i + 1,
+          total: sentCocs.length,
+          currentLabel: coc.cocNumber,
+        });
+        try {
+          await auRubberApiClient.sendAuCoc(coc.id, email);
+          sent++;
+          sentNumbers.push(coc.cocNumber);
+        } catch (err) {
+          failures.push(`${coc.cocNumber}: ${err instanceof Error ? err.message : "failed"}`);
+        }
+      }
+      const failedInfo = failures.length > 0 ? `\nFailed: ${failures.join(", ")}` : "";
+      setProgressModal({
+        visible: true,
+        title: "Resend Complete",
+        status: failures.length > 0 && sent === 0 ? "error" : "done",
+        message: `Resent ${sent} of ${sentCocs.length} CoC(s) to ${email}: ${sentNumbers.join(", ")}${failedInfo}`,
+      });
+      setResendEmail("");
+      await cocsQuery.refetch();
+    } catch (err) {
+      setProgressModal({
+        visible: true,
+        title: "Resend Failed",
+        status: "error",
+        message: err instanceof Error ? err.message : "An unexpected error occurred.",
+      });
+    } finally {
+      setIsResending(false);
     }
   };
 
@@ -483,6 +543,20 @@ export default function AuCocsPage() {
                 <Mail className="w-4 h-4 mr-2" />
               )}
               {isBulkSending ? "Sending..." : `Send All (${generatedCount})`}
+            </button>
+          )}
+          {sentCount > 0 && (
+            <button
+              onClick={() => setShowResendModal(true)}
+              disabled={isResending}
+              className="inline-flex items-center px-4 py-2 border border-orange-500 rounded-md shadow-sm text-sm font-medium text-orange-600 bg-white hover:bg-orange-50 disabled:opacity-50"
+            >
+              {isResending ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <Mail className="w-4 h-4 mr-2" />
+              )}
+              {isResending ? "Resending..." : `Resend All (${sentCount})`}
             </button>
           )}
           <Link
@@ -857,6 +931,50 @@ export default function AuCocsPage() {
                   className="px-4 py-2 text-sm font-medium text-white bg-purple-600 rounded-md hover:bg-purple-700 disabled:opacity-50"
                 >
                   Send All
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showResendModal && (
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+          <div className="flex min-h-screen items-center justify-center p-4">
+            <div
+              className="fixed inset-0 bg-black/10 backdrop-blur-md"
+              onClick={() => setShowResendModal(false)}
+            />
+            <div className="relative bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Resend All CoCs</h3>
+              <p className="text-sm text-gray-500 mb-4">
+                Resend all {sentCount} previously sent CoC(s) to the specified email address.
+              </p>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Recipient Email</label>
+                  <input
+                    type="email"
+                    value={resendEmail}
+                    onChange={(e) => setResendEmail(e.target.value)}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 sm:text-sm border p-2"
+                    placeholder="customer@example.com"
+                  />
+                </div>
+              </div>
+              <div className="mt-6 flex justify-end space-x-3">
+                <button
+                  onClick={() => setShowResendModal(false)}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleResendAll}
+                  disabled={isResending || !resendEmail}
+                  className="px-4 py-2 text-sm font-medium text-white bg-orange-500 rounded-md hover:bg-orange-600 disabled:opacity-50"
+                >
+                  Resend All
                 </button>
               </div>
             </div>
