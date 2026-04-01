@@ -287,7 +287,9 @@ export class DeliveryExtractionService {
     const inferredLocationId = await this.inferLocationForCategory(companyId, category);
 
     const rubberData = await this.enrichFromRubberRollStock(item, sku);
-    const finalSku = rubberData?.sku || sku;
+    const rollNumber = this.extractRollNumber(item, sku);
+    const isRubberItem = rubberData !== null || rollNumber !== null || category === "RUBBER";
+    const finalSku = rubberData?.sku || (rollNumber ? `ROLL-${rollNumber}` : sku);
 
     const existingByEnrichedSku = rubberData
       ? await this.stockItemRepo.findOne({ where: { sku: finalSku, companyId } })
@@ -302,11 +304,19 @@ export class DeliveryExtractionService {
       return existingByEnrichedSku;
     }
 
+    const itemName =
+      rubberData?.name ||
+      (item.productCode ? item.productCode : null) ||
+      item.description ||
+      "Unknown Item";
+    const itemDescription =
+      rubberData?.description || (rollNumber ? `Roll #${rollNumber}` : null) || null;
+
     const created = this.stockItemRepo.create({
       sku: finalSku,
-      name: (rubberData?.name || item.description || "Unknown Item").slice(0, 255),
-      description: rubberData?.description || null,
-      category: rubberData ? "RUBBER" : category,
+      name: itemName.slice(0, 255),
+      description: itemDescription,
+      category: isRubberItem ? "RUBBER" : category,
       unitOfMeasure,
       costPerUnit: safeCost,
       quantity,
@@ -318,7 +328,7 @@ export class DeliveryExtractionService {
       widthMm: rubberData?.widthMm || null,
       lengthM: rubberData?.lengthM || null,
       compoundCode: rubberData?.compoundCode || null,
-      rollNumber: rubberData?.rollNumber || null,
+      rollNumber: rubberData?.rollNumber || rollNumber || null,
     });
     await this.stockItemRepo.save(created);
     const locLabel = inferredLocationId ? `location=${inferredLocationId}` : "no location";

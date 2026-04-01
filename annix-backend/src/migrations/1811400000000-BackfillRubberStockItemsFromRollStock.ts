@@ -28,12 +28,26 @@ export class BackfillRubberStockItemsFromRollStock1811400000000 implements Migra
         roll_number = rrs.roll_number
       FROM rubber_roll_stock rrs
       LEFT JOIN rubber_product_coding rpc ON rpc.id = rrs.compound_coding_id
-      WHERE si.category IS DISTINCT FROM 'RUBBER'
-        AND (si.name ~* 'ROLL[\\s#-]*(\\d{4,6})' OR si.sku ~* 'Roll\\s*#?\\s*(\\d{4,6})')
+      WHERE (si.name ~* 'ROLL[\\s#-]*(\\d{4,6})' OR si.sku ~* 'Roll\\s*#?\\s*(\\d{4,6})')
+        AND si.roll_number IS NULL
         AND (
           rrs.roll_number = SUBSTRING(si.name FROM '(\\d{4,6})')
           OR rrs.roll_number LIKE '%-' || SUBSTRING(si.name FROM '(\\d{4,6})')
         )
+    `);
+
+    await queryRunner.query(`
+      UPDATE stock_items
+      SET
+        category = 'RUBBER',
+        roll_number = SUBSTRING(name FROM '(\\d{4,6})'),
+        description = COALESCE(
+          NULLIF(description, ''),
+          'Roll #' || SUBSTRING(name FROM '(\\d{4,6})')
+        )
+      WHERE (name ~* 'ROLL[\\s#-]*(\\d{4,6})' OR sku ~* 'Roll\\s*#?\\s*(\\d{4,6})')
+        AND category IS DISTINCT FROM 'RUBBER'
+        AND roll_number IS NULL
     `);
   }
 
