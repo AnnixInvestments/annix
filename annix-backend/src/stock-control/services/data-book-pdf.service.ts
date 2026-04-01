@@ -572,23 +572,17 @@ export class DataBookPdfService {
     if (ctx.controlPlans.some((p) => p.planType === "rubber")) {
       entries.push(["Quality Control Plan - Rubber", "QCP"]);
     }
-    if (ctx.shoreHardness.length > 0) {
-      entries.push(["Shore Hardness Test Report", `${ctx.shoreHardness.length} record(s)`]);
-    }
     if (ctx.blastProfiles.length > 0) {
       entries.push(["Blast Profile Report", `${ctx.blastProfiles.length} record(s)`]);
     }
-    if (ctx.dustDebrisTests.length > 0) {
-      entries.push(["Dust and Debris Test Report", `${ctx.dustDebrisTests.length} record(s)`]);
-    }
-    if (ctx.pullTests.length > 0) {
-      entries.push(["Pull Test Certificate", `${ctx.pullTests.length} record(s)`]);
-    }
-    if (ctx.releaseCertificates.length > 0) {
-      entries.push(["QC Release Certificate", `${ctx.releaseCertificates.length} record(s)`]);
+    if (ctx.shoreHardness.length > 0) {
+      entries.push(["Shore Hardness Test Report", `${ctx.shoreHardness.length} record(s)`]);
     }
     if (ctx.itemsReleases.length > 0) {
       entries.push(["Items Release", `${ctx.itemsReleases.length} record(s)`]);
+    }
+    if (ctx.releaseCertificates.length > 0) {
+      entries.push(["QC Release Certificate", `${ctx.releaseCertificates.length} record(s)`]);
     }
 
     if (entries.length === 0) {
@@ -640,9 +634,6 @@ export class DataBookPdfService {
     }
     if (ctx.blastProfiles.length > 0) {
       entries.push(["Blast Profile Report", `${ctx.blastProfiles.length} record(s)`]);
-    }
-    if (ctx.dustDebrisTests.length > 0) {
-      entries.push(["Dust and Debris Test Report", `${ctx.dustDebrisTests.length} record(s)`]);
     }
 
     if (entries.length === 0) {
