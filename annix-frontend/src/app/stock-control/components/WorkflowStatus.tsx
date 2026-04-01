@@ -240,6 +240,7 @@ const bgNodeState = (
 ): "completed" | "skipped" | "active" | "pending" => {
   if (bg.completedAt !== null) {
     if (bg.completionType === "skipped") return "skipped";
+    if ((bg.notes || "").toLowerCase().includes("current stock")) return "skipped";
     return "completed";
   }
   const hasColoredBranch = branchBgSteps.some((b) => b.branchColor !== null);
@@ -404,7 +405,10 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const fgNodeRefs = useRef<Record<number, HTMLDivElement | null>>({});
   const bgNodeRefs = useRef<Record<string, HTMLDivElement | null>>({});
-  const [svgPaths, setSvgPaths] = useState<Array<{ d: string; color: string; key: string }>>([]);
+  const bypassPathRef = useRef<SVGPathElement>(null);
+  const [svgPaths, setSvgPaths] = useState<
+    Array<{ d: string; color: string; key: string; dashArray?: string; strokeWidth?: number }>
+  >([]);
   const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
   const [branchPositions, setBranchPositions] = useState<
     Record<string, { left: number; right: number }>
@@ -488,7 +492,13 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
       const rect = container.getBoundingClientRect();
       setContainerSize({ width: rect.width, height: rect.height });
 
-      const paths: Array<{ d: string; color: string; key: string }> = [];
+      const paths: Array<{
+        d: string;
+        color: string;
+        key: string;
+        dashArray?: string;
+        strokeWidth?: number;
+      }> = [];
       const loopBottomPos: Record<
         string,
         {
@@ -925,6 +935,85 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
     backgroundSteps,
   ]);
 
+  useEffect(() => {
+    const pathEl = bypassPathRef.current;
+    const container = containerRef.current;
+    if (!pathEl || !container) return;
+
+    const managerFgIdx = allSteps.findIndex((s) => s.key === "manager_approval");
+    const shouldShow = managerFgIdx >= 0 && managerFgIdx <= currentStepIndex;
+
+    const isReqStep = (key: string) =>
+      [
+        "requisition",
+        "requisition_sent",
+        "req_auth",
+        "custom_req_auth",
+        "order_placement",
+        "custom_order_placement",
+      ].includes(key);
+    const reqBgSteps = backgroundSteps.filter((bg) => isReqStep(bg.stepKey));
+    const isBypassed =
+      reqBgSteps.length > 0 &&
+      reqBgSteps.every(
+        (bg) => bg.completedAt !== null && (bg.notes || "").toLowerCase().includes("current stock"),
+      );
+
+    const updateBypassPath = () => {
+      const recEl =
+        container.querySelector<HTMLElement>('[data-bg-step="reception"]') ||
+        container.querySelector<HTMLElement>('[data-bg-step="custom_reception"]');
+      const saEl =
+        container.querySelector<HTMLElement>('[data-bg-step="stock_allocation"]') ||
+        container.querySelector<HTMLElement>('[data-bg-step="custom_stock_allocation"]');
+
+      if (!shouldShow || !recEl || !saEl) return;
+
+      const cRect = container.getBoundingClientRect();
+      const recRect = recEl.getBoundingClientRect();
+      const saRect = saEl.getBoundingClientRect();
+      const rx = recRect.left + recRect.width / 2 - cRect.left;
+      const ry = recRect.top + recRect.height / 2 - cRect.top;
+      const sax = saRect.left + saRect.width / 2 - cRect.left;
+      const say = saRect.top + saRect.height / 2 - cRect.top;
+
+      if (rx === 0 && ry === 0) return;
+
+      const r = 14;
+      const bypassY = Math.max(ry, say) + 42;
+      const goRight = sax > rx;
+      const d = goRight
+        ? `M ${rx} ${ry} L ${rx} ${bypassY - r} Q ${rx} ${bypassY} ${rx + r} ${bypassY} L ${sax - r} ${bypassY} Q ${sax} ${bypassY} ${sax} ${bypassY - r} L ${sax} ${say}`
+        : `M ${rx} ${ry} L ${rx} ${bypassY - r} Q ${rx} ${bypassY} ${rx - r} ${bypassY} L ${sax + r} ${bypassY} Q ${sax} ${bypassY} ${sax} ${bypassY - r} L ${sax} ${say}`;
+
+      pathEl.setAttribute("d", d);
+      pathEl.setAttribute("stroke", isBypassed ? "#f59e0b" : "#d1d5db");
+    };
+
+    updateBypassPath();
+
+    const settledId = setTimeout(updateBypassPath, 200);
+    const repositionId = setTimeout(updateBypassPath, 600);
+
+    const observer = new MutationObserver(updateBypassPath);
+    observer.observe(container, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ["style"],
+    });
+
+    const resizeObserver = new ResizeObserver(updateBypassPath);
+    resizeObserver.observe(container);
+
+    return () => {
+      clearTimeout(settledId);
+      clearTimeout(repositionId);
+      observer.disconnect();
+      resizeObserver.disconnect();
+    };
+  }, [allSteps, currentStepIndex, backgroundSteps]);
+
   if (allSteps.length === 0) {
     return <p className="text-sm text-gray-500">No workflow steps configured</p>;
   }
@@ -953,12 +1042,26 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
               d={path.d}
               fill="none"
               stroke={path.color}
-              strokeWidth={2.5}
+              strokeWidth={path.strokeWidth || 2.5}
               strokeLinecap="round"
+              strokeDasharray={path.dashArray || undefined}
             />
           ))}
         </svg>
       )}
+      <svg
+        className="absolute inset-0 pointer-events-none z-10"
+        style={{ overflow: "visible", width: "100%", height: "100%" }}
+      >
+        <path
+          ref={bypassPathRef}
+          fill="none"
+          stroke="#d1d5db"
+          strokeWidth={2}
+          strokeLinecap="round"
+          strokeDasharray="6 4"
+        />
+      </svg>
 
       {loopBranches.map((branch) => {
         const triggerPos = branchPositions[`loop-${branch.triggerFgKey}`];
@@ -1334,7 +1437,7 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
           data-branch-container
           className="mt-2 relative"
           style={{
-            height: `${(laneCount + (bypassSteps.length > 0 ? 1 : 0)) * 52 + (bypassSteps.length > 0 ? 30 : 0)}px`,
+            height: `${(laneCount + (bypassSteps.length > 0 ? 1 : 0)) * 52 + (bypassSteps.length > 0 ? 30 : 0) + 30}px`,
           }}
         >
           {belowBranches.map((branch) => {

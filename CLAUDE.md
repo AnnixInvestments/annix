@@ -170,6 +170,12 @@ All code changes must avoid introducing content that could create legal exposure
 - **Public/unauthenticated access**: Use `GET /public/company-profile` endpoint
 - **`corpId.ts` is only for static branding**: Colors, fonts, logos — not legal/contact details
 
+### Workflow SVG Lines (WorkflowStatus.tsx)
+- **Custom step key prefix**: Companies can have steps with a `custom_` prefix (e.g. `custom_reception` instead of `reception`). When querying DOM nodes by `data-bg-step`, always check both `stepKey` and `custom_${stepKey}` variants
+- **SVG path rendering**: The main `computePaths` useEffect draws branch lines via `setSvgPaths` state. Adding new overlay lines (like the req-bypass line) should use a **separate SVG element with direct DOM manipulation** (`pathEl.setAttribute("d", ...)`) via its own useEffect — NOT through the main `computePaths` flow. The main flow has timing issues where rapid parent re-renders cancel rAF/setTimeout callbacks before they fire
+- **MutationObserver for deferred nodes**: Background step nodes render inside conditionally-positioned branch rows. Use `MutationObserver` + `ResizeObserver` to detect when nodes appear/move, since they may not exist when the effect first runs
+- **Key file**: `annix-frontend/src/app/stock-control/components/WorkflowStatus.tsx`
+
 ### File Storage Architecture
 - **Default storage**: S3 (AWS) - files persist across deployments
 - **Local storage**: Deprecated, only for development - files lost on redeploy
