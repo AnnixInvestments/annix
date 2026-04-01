@@ -17,6 +17,7 @@ import {
   useCpoCalloffRecords,
   useCpoDeliveryHistory,
   useCpoDetail,
+  useDeleteCpoItem,
   useUpdateCalloffRecordStatus,
   useUpdateCpoItem,
   useUpdateCpoStatus,
@@ -74,6 +75,30 @@ function itemFulfillmentPercent(ordered: number, fulfilled: number): number {
   return Math.min(100, Math.round((fulfilled / ordered) * 100));
 }
 
+interface ItemEditDraft {
+  itemCode: string;
+  itemDescription: string;
+  itemNo: string;
+  jtNo: string;
+  quantityOrdered: string;
+  m2: string;
+}
+
+function blankDraft(): ItemEditDraft {
+  return { itemCode: "", itemDescription: "", itemNo: "", jtNo: "", quantityOrdered: "", m2: "" };
+}
+
+function draftFromItem(item: CustomerPurchaseOrderItem): ItemEditDraft {
+  return {
+    itemCode: item.itemCode || "",
+    itemDescription: item.itemDescription || "",
+    itemNo: item.itemNo || "",
+    jtNo: item.jtNo || "",
+    quantityOrdered: item.quantityOrdered != null ? String(item.quantityOrdered) : "",
+    m2: item.m2 != null ? String(item.m2) : "",
+  };
+}
+
 export default function CpoDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -85,9 +110,15 @@ export default function CpoDetailPage() {
 
   const updateCpoStatusMutation = useUpdateCpoStatus();
   const updateCalloffRecordStatusMutation = useUpdateCalloffRecordStatus();
+  const deleteCpoItemMutation = useDeleteCpoItem();
 
   const [mutationError, setMutationError] = useState<string | null>(null);
   const [updatingRecordId, setUpdatingRecordId] = useState<number | null>(null);
+  const [editingItemId, setEditingItemId] = useState<number | null>(null);
+  const [editDraft, setEditDraft] = useState<ItemEditDraft>(blankDraft());
+  const [addingItem, setAddingItem] = useState(false);
+  const [addDraft, setAddDraft] = useState<ItemEditDraft>(blankDraft());
+  const [itemError, setItemError] = useState<string | null>(null);
 
   const addCpoItemMutation = useAddCpoItem();
   const updateCpoItemMutation = useUpdateCpoItem();
@@ -264,6 +295,71 @@ export default function CpoDetailPage() {
       ? cpoError.message
       : "Failed to load CPO"
     : mutationError;
+
+  const handleEditItem = (item: CustomerPurchaseOrderItem) => {
+    setEditingItemId(item.id);
+    setEditDraft(draftFromItem(item));
+    setItemError(null);
+  };
+
+  const handleCancelEdit = () => {
+    setEditingItemId(null);
+    setEditDraft(blankDraft());
+    setItemError(null);
+  };
+
+  const handleSaveEdit = async () => {
+    if (editingItemId === null) return;
+    try {
+      setItemError(null);
+      await updateCpoItemMutation.mutateAsync({
+        cpoId: id,
+        itemId: editingItemId,
+        data: {
+          itemCode: editDraft.itemCode || null,
+          itemDescription: editDraft.itemDescription || null,
+          itemNo: editDraft.itemNo || null,
+          jtNo: editDraft.jtNo || null,
+          quantityOrdered: editDraft.quantityOrdered ? parseFloat(editDraft.quantityOrdered) : 0,
+          m2: editDraft.m2 ? parseFloat(editDraft.m2) : null,
+        },
+      });
+      setEditingItemId(null);
+      setEditDraft(blankDraft());
+    } catch (err) {
+      setItemError(err instanceof Error ? err.message : "Failed to update item");
+    }
+  };
+
+  const handleDeleteItem = async (itemId: number) => {
+    try {
+      setItemError(null);
+      await deleteCpoItemMutation.mutateAsync({ cpoId: id, itemId });
+    } catch (err) {
+      setItemError(err instanceof Error ? err.message : "Failed to delete item");
+    }
+  };
+
+  const handleAddItem = async () => {
+    try {
+      setItemError(null);
+      await addCpoItemMutation.mutateAsync({
+        cpoId: id,
+        data: {
+          itemCode: addDraft.itemCode || null,
+          itemDescription: addDraft.itemDescription || null,
+          itemNo: addDraft.itemNo || null,
+          jtNo: addDraft.jtNo || null,
+          quantityOrdered: addDraft.quantityOrdered ? parseFloat(addDraft.quantityOrdered) : 0,
+          m2: addDraft.m2 ? parseFloat(addDraft.m2) : null,
+        },
+      });
+      setAddingItem(false);
+      setAddDraft(blankDraft());
+    } catch (err) {
+      setItemError(err instanceof Error ? err.message : "Failed to add item");
+    }
+  };
 
   const handleStatusChange = async (newStatus: string) => {
     if (!cpo) return;
@@ -842,88 +938,139 @@ export default function CpoDetailPage() {
       <div className="bg-white rounded-lg shadow overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
           <h2 className="text-lg font-medium text-gray-900">Line Items ({sortedItems.length})</h2>
-          {cpo.status === "active" && (
+          {cpo.status === "active" && !addingItem && editingItemId === null && (
             <button
-              onClick={openAddItemModal}
+              onClick={() => {
+                setAddDraft(blankDraft());
+                setAddingItem(true);
+                setItemError(null);
+              }}
               className="px-3 py-1.5 text-sm font-medium text-white bg-teal-600 rounded-md hover:bg-teal-700"
             >
-              Add Line
+              + Add Line Item
             </button>
           )}
         </div>
-        {sortedItems.length === 0 ? (
-          <div className="p-6 text-center text-sm text-gray-500">No line items</div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+        {itemError && (
+          <div className="mx-6 mt-4 p-3 bg-red-50 border border-red-200 rounded text-sm text-red-700">
+            {itemError}
+          </div>
+        )}
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  #
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Item Code
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Description
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  JT No
+                </th>
+                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Ordered
+                </th>
+                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Fulfilled
+                </th>
+                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Remaining
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Progress
+                </th>
+                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  m2
+                </th>
+                {cpo.status === "active" && (
+                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Actions
+                  </th>
+                )}
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {sortedItems.length === 0 && !addingItem && (
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    #
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Item Code
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Description
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    JT No
-                  </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Ordered
-                  </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Fulfilled
-                  </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Remaining
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Progress
-                  </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    m2
-                  </th>
-                  {cpo.status === "active" && (
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Actions
-                    </th>
-                  )}
+                  <td
+                    colSpan={cpo.status === "active" ? 10 : 9}
+                    className="px-6 py-6 text-center text-sm text-gray-500"
+                  >
+                    No line items
+                  </td>
                 </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {sortedItems.map((item, idx) => {
-                  const ordered = Number(item.quantityOrdered) || 0;
-                  const fulfilled = Number(item.quantityFulfilled) || 0;
-                  const remaining = Math.max(0, ordered - fulfilled);
-                  const pct = itemFulfillmentPercent(ordered, fulfilled);
+              )}
+              {sortedItems.map((item, idx) => {
+                const ordered = Number(item.quantityOrdered) || 0;
+                const fulfilled = Number(item.quantityFulfilled) || 0;
+                const remaining = Math.max(0, ordered - fulfilled);
+                const pct = itemFulfillmentPercent(ordered, fulfilled);
+                const isEditing = editingItemId === item.id;
+
+                if (isEditing) {
                   return (
-                    <tr key={item.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-400">
+                    <tr key={item.id} className="bg-teal-50">
+                      <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-400">
                         {idx + 1}
                       </td>
-                      <td className="px-6 py-3 whitespace-nowrap text-sm font-mono text-gray-900">
-                        {item.itemCode || "-"}
+                      <td className="px-4 py-2">
+                        <input
+                          type="text"
+                          value={editDraft.itemCode}
+                          onChange={(e) =>
+                            setEditDraft((d) => ({ ...d, itemCode: e.target.value }))
+                          }
+                          placeholder="Item code"
+                          className="w-full text-sm border border-gray-300 rounded px-2 py-1 font-mono"
+                        />
                       </td>
-                      <td className="px-6 py-3 text-sm text-gray-900 max-w-xs truncate">
-                        {item.itemDescription || "-"}
+                      <td className="px-4 py-2">
+                        <input
+                          type="text"
+                          value={editDraft.itemDescription}
+                          onChange={(e) =>
+                            setEditDraft((d) => ({ ...d, itemDescription: e.target.value }))
+                          }
+                          placeholder="Description"
+                          className="w-full text-sm border border-gray-300 rounded px-2 py-1"
+                        />
                       </td>
-                      <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-500">
-                        {item.jtNo || "-"}
+                      <td className="px-4 py-2">
+                        <input
+                          type="text"
+                          value={editDraft.jtNo}
+                          onChange={(e) => setEditDraft((d) => ({ ...d, jtNo: e.target.value }))}
+                          placeholder="JT No"
+                          className="w-28 text-sm border border-gray-300 rounded px-2 py-1"
+                        />
                       </td>
-                      <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-900 text-right">
-                        {ordered}
+                      <td className="px-4 py-2">
+                        <input
+                          type="number"
+                          value={editDraft.quantityOrdered}
+                          onChange={(e) =>
+                            setEditDraft((d) => ({ ...d, quantityOrdered: e.target.value }))
+                          }
+                          placeholder="0"
+                          min="0"
+                          step="any"
+                          className="w-20 text-sm border border-gray-300 rounded px-2 py-1 text-right"
+                        />
                       </td>
-                      <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-900 text-right">
+                      <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900 text-right">
                         {fulfilled}
                       </td>
-                      <td className="px-6 py-3 whitespace-nowrap text-sm font-medium text-right">
+                      <td className="px-4 py-2 whitespace-nowrap text-sm text-right">
                         <span className={remaining > 0 ? "text-amber-600" : "text-green-600"}>
                           {remaining}
                         </span>
                       </td>
-                      <td className="px-6 py-3 whitespace-nowrap">
+                      <td className="px-4 py-2 whitespace-nowrap">
                         <div className="flex items-center space-x-2">
                           <div className="w-16 h-2 bg-gray-200 rounded-full overflow-hidden">
                             <div
@@ -934,8 +1081,33 @@ export default function CpoDetailPage() {
                           <span className="text-xs text-gray-500">{pct}%</span>
                         </div>
                       </td>
-                      <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-500 text-right">
-                        {item.m2 != null ? Number(item.m2).toFixed(2) : "-"}
+                      <td className="px-4 py-2">
+                        <input
+                          type="number"
+                          value={editDraft.m2}
+                          onChange={(e) => setEditDraft((d) => ({ ...d, m2: e.target.value }))}
+                          placeholder="m2"
+                          min="0"
+                          step="any"
+                          className="w-20 text-sm border border-gray-300 rounded px-2 py-1 text-right"
+                        />
+                      </td>
+                      <td className="px-4 py-2 whitespace-nowrap text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <button
+                            onClick={handleSaveEdit}
+                            disabled={updateCpoItemMutation.isPending}
+                            className="px-2 py-1 text-xs font-medium text-white bg-teal-600 rounded hover:bg-teal-700 disabled:opacity-50"
+                          >
+                            Save
+                          </button>
+                          <button
+                            onClick={handleCancelEdit}
+                            className="px-2 py-1 text-xs font-medium text-gray-600 bg-gray-100 rounded hover:bg-gray-200"
+                          >
+                            Cancel
+                          </button>
+                        </div>
                       </td>
                       {cpo.status === "active" && (
                         <td className="px-6 py-3 whitespace-nowrap text-right">
@@ -949,11 +1121,165 @@ export default function CpoDetailPage() {
                       )}
                     </tr>
                   );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
+                }
+
+                return (
+                  <tr key={item.id} className="hover:bg-gray-50">
+                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-400">{idx + 1}</td>
+                    <td className="px-4 py-3 whitespace-nowrap text-sm font-mono text-gray-900">
+                      {item.itemCode || "-"}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-gray-900 max-w-xs truncate">
+                      {item.itemDescription || "-"}
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
+                      {item.jtNo || "-"}
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 text-right">
+                      {ordered}
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 text-right">
+                      {fulfilled}
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-right">
+                      <span className={remaining > 0 ? "text-amber-600" : "text-green-600"}>
+                        {remaining}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <div className="flex items-center space-x-2">
+                        <div className="w-16 h-2 bg-gray-200 rounded-full overflow-hidden">
+                          <div
+                            className={`h-full rounded-full ${pct >= 100 ? "bg-blue-500" : "bg-teal-500"}`}
+                            style={{ width: `${pct}%` }}
+                          />
+                        </div>
+                        <span className="text-xs text-gray-500">{pct}%</span>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500 text-right">
+                      {item.m2 != null ? Number(item.m2).toFixed(2) : "-"}
+                    </td>
+                    {cpo.status === "active" && (
+                      <td className="px-4 py-3 whitespace-nowrap text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          <button
+                            onClick={() => handleEditItem(item)}
+                            disabled={editingItemId !== null || addingItem}
+                            className="px-2 py-1 text-xs font-medium text-teal-700 bg-teal-50 rounded hover:bg-teal-100 disabled:opacity-40"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => handleDeleteItem(item.id)}
+                            disabled={
+                              deleteCpoItemMutation.isPending ||
+                              editingItemId !== null ||
+                              addingItem
+                            }
+                            className="px-2 py-1 text-xs font-medium text-red-700 bg-red-50 rounded hover:bg-red-100 disabled:opacity-40"
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </td>
+                    )}
+                  </tr>
+                );
+              })}
+              {addingItem && (
+                <tr className="bg-teal-50">
+                  <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-400">
+                    {sortedItems.length + 1}
+                  </td>
+                  <td className="px-4 py-2">
+                    <input
+                      type="text"
+                      value={addDraft.itemCode}
+                      onChange={(e) => setAddDraft((d) => ({ ...d, itemCode: e.target.value }))}
+                      placeholder="Item code"
+                      className="w-full text-sm border border-gray-300 rounded px-2 py-1 font-mono"
+                    />
+                  </td>
+                  <td className="px-4 py-2">
+                    <input
+                      type="text"
+                      value={addDraft.itemDescription}
+                      onChange={(e) =>
+                        setAddDraft((d) => ({ ...d, itemDescription: e.target.value }))
+                      }
+                      placeholder="Description"
+                      className="w-full text-sm border border-gray-300 rounded px-2 py-1"
+                    />
+                  </td>
+                  <td className="px-4 py-2">
+                    <input
+                      type="text"
+                      value={addDraft.jtNo}
+                      onChange={(e) => setAddDraft((d) => ({ ...d, jtNo: e.target.value }))}
+                      placeholder="JT No"
+                      className="w-28 text-sm border border-gray-300 rounded px-2 py-1"
+                    />
+                  </td>
+                  <td className="px-4 py-2">
+                    <input
+                      type="number"
+                      value={addDraft.quantityOrdered}
+                      onChange={(e) =>
+                        setAddDraft((d) => ({ ...d, quantityOrdered: e.target.value }))
+                      }
+                      placeholder="0"
+                      min="0"
+                      step="any"
+                      className="w-20 text-sm border border-gray-300 rounded px-2 py-1 text-right"
+                    />
+                  </td>
+                  <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-400 text-right">
+                    0
+                  </td>
+                  <td className="px-4 py-2 whitespace-nowrap text-sm text-right text-amber-600">
+                    {addDraft.quantityOrdered ? parseFloat(addDraft.quantityOrdered) || 0 : 0}
+                  </td>
+                  <td className="px-4 py-2 whitespace-nowrap">
+                    <span className="text-xs text-gray-400">0%</span>
+                  </td>
+                  <td className="px-4 py-2">
+                    <input
+                      type="number"
+                      value={addDraft.m2}
+                      onChange={(e) => setAddDraft((d) => ({ ...d, m2: e.target.value }))}
+                      placeholder="m2"
+                      min="0"
+                      step="any"
+                      className="w-20 text-sm border border-gray-300 rounded px-2 py-1 text-right"
+                    />
+                  </td>
+                  <td className="px-4 py-2 whitespace-nowrap text-right">
+                    <div className="flex items-center justify-end gap-2">
+                      <button
+                        onClick={handleAddItem}
+                        disabled={addCpoItemMutation.isPending}
+                        className="px-2 py-1 text-xs font-medium text-white bg-teal-600 rounded hover:bg-teal-700 disabled:opacity-50"
+                      >
+                        Add
+                      </button>
+                      <button
+                        onClick={() => {
+                          setAddingItem(false);
+                          setAddDraft(blankDraft());
+                          setItemError(null);
+                        }}
+                        className="px-2 py-1 text-xs font-medium text-gray-600 bg-gray-100 rounded hover:bg-gray-200"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {itemModalOpen && (

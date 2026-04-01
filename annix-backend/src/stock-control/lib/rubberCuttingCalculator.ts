@@ -399,16 +399,29 @@ function roundUpToNearest(value: number, increment: number): number {
 const COMMON_STOCK_THICKNESSES = [3, 4, 5, 6, 8, 10, 12];
 
 export function parseRubberSpecNote(notes: string): RubberSpec | null {
-  const match = notes.match(
+  const rlMatch = notes.match(
     /R\/L\s+(\w+)?\s*(\d+)\s*SHORE\s+(\w+)\s*[-–]?\s*(\d+(?:\.\d+)?)\s*mm\s*(\w+)?/i,
   );
-  if (match) {
+  if (rlMatch) {
     return {
-      compound: match[1] || null,
-      shore: parseInt(match[2], 10),
-      color: match[3] || null,
-      thicknessMm: parseFloat(match[4]),
-      pattern: match[5] || null,
+      compound: rlMatch[1] || null,
+      shore: parseInt(rlMatch[2], 10),
+      color: rlMatch[3] || null,
+      thicknessMm: parseFloat(rlMatch[4]),
+      pattern: rlMatch[5] || null,
+    };
+  }
+
+  const irlMatch = notes.match(
+    /IRL\s+(\w+)?\s*(\d+)\s*SHORE\s+(\w+)\s*[-–]?\s*(\d+(?:\.\d+)?)\s*mm/i,
+  );
+  if (irlMatch) {
+    return {
+      compound: irlMatch[1] || null,
+      shore: parseInt(irlMatch[2], 10),
+      color: irlMatch[3] || null,
+      thicknessMm: parseFloat(irlMatch[4]),
+      pattern: null,
     };
   }
 

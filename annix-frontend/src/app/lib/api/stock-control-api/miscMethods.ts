@@ -52,6 +52,30 @@ declare module "./base" {
     confirmCpoImport(rows: JobCardImportRow[]): Promise<CpoImportResult>;
     updateCpoStatus(id: number, status: string): Promise<CustomerPurchaseOrder>;
     deleteCpo(id: number): Promise<void>;
+    addCpoItem(
+      cpoId: number,
+      data: {
+        itemCode?: string | null;
+        itemDescription?: string | null;
+        itemNo?: string | null;
+        quantityOrdered?: number;
+        jtNo?: string | null;
+        m2?: number | null;
+      },
+    ): Promise<CustomerPurchaseOrderItem>;
+    updateCpoItem(
+      cpoId: number,
+      itemId: number,
+      data: {
+        itemCode?: string | null;
+        itemDescription?: string | null;
+        itemNo?: string | null;
+        quantityOrdered?: number;
+        jtNo?: string | null;
+        m2?: number | null;
+      },
+    ): Promise<CustomerPurchaseOrderItem>;
+    deleteCpoItem(cpoId: number, itemId: number): Promise<void>;
     cpoCalloffRecords(cpoId: number): Promise<CpoCalloffRecord[]>;
     cpoDeliveryHistory(cpoId: number): Promise<CpoDeliveryHistory>;
     updateCalloffRecordStatus(recordId: number, status: string): Promise<CpoCalloffRecord>;
@@ -155,6 +179,24 @@ proto.updateCpoStatus = async function (id, status) {
 
 proto.deleteCpo = async function (id) {
   return this.request(`/stock-control/cpos/${id}`, { method: "DELETE" });
+};
+
+proto.addCpoItem = async function (cpoId, data) {
+  return this.request(`/stock-control/cpos/${cpoId}/items`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+};
+
+proto.updateCpoItem = async function (cpoId, itemId, data) {
+  return this.request(`/stock-control/cpos/${cpoId}/items/${itemId}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+};
+
+proto.deleteCpoItem = async function (cpoId, itemId) {
+  return this.request(`/stock-control/cpos/${cpoId}/items/${itemId}`, { method: "DELETE" });
 };
 
 proto.cpoCalloffRecords = async function (cpoId) {

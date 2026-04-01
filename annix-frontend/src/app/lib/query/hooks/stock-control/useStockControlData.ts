@@ -326,6 +326,17 @@ export function useUpdateCpoStatus() {
   });
 }
 
+export function useDeleteCpoItem() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ cpoId, itemId }: { cpoId: number; itemId: number }) =>
+      stockControlApiClient.deleteCpoItem(cpoId, itemId),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: stockControlKeys.cpos.detail(variables.cpoId) });
+    },
+  });
+}
+
 export function useUpdateCalloffRecordStatus() {
   const queryClient = useQueryClient();
   return useMutation({

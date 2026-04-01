@@ -681,6 +681,7 @@ export {
   useDeleteCalibrationCertificate,
   useDeleteCertificate,
   useDeleteCpo,
+  useDeleteCpoItem,
   useDeleteDeliveryNote,
   useDeleteInvoice,
   useDeleteJobCard,

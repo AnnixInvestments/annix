@@ -200,24 +200,38 @@ export class CpoController {
   }
 
   @Post(":id/items")
+  @StockControlRoles("accounts", "manager", "admin")
   @ApiOperation({ summary: "Add a line item to a CPO" })
-  async addItem(
+  async addCpoItem(
     @Req() req: any,
     @Param("id", ParseIntPipe) id: number,
     @Body() dto: AddCpoItemDto,
   ) {
-    return this.cpoService.addItem(req.user.companyId, id, dto);
+    return this.cpoService.addCpoItem(req.user.companyId, id, dto);
   }
 
   @Put(":id/items/:itemId")
+  @StockControlRoles("accounts", "manager", "admin")
   @ApiOperation({ summary: "Update a CPO line item" })
-  async updateItem(
+  async updateCpoItem(
     @Req() req: any,
     @Param("id", ParseIntPipe) id: number,
     @Param("itemId", ParseIntPipe) itemId: number,
     @Body() dto: UpdateCpoItemDto,
   ) {
-    return this.cpoService.updateItem(req.user.companyId, id, itemId, dto);
+    return this.cpoService.updateCpoItem(req.user.companyId, id, itemId, dto);
+  }
+
+  @Delete(":id/items/:itemId")
+  @StockControlRoles("accounts", "manager", "admin")
+  @ApiOperation({ summary: "Delete a CPO line item" })
+  async deleteCpoItem(
+    @Req() req: any,
+    @Param("id", ParseIntPipe) id: number,
+    @Param("itemId", ParseIntPipe) itemId: number,
+  ) {
+    await this.cpoService.deleteCpoItem(req.user.companyId, id, itemId);
+    return { deleted: true };
   }
 
   @Delete(":id")

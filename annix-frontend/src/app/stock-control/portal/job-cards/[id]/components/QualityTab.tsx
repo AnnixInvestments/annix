@@ -485,6 +485,9 @@ export function QualityTab(props: QualityTabProps) {
 
           <QcReleaseCertificateSection jobCardId={jobCardId} />
 
+          <ItemsReleaseSection jobCardId={jobCardId} />
+
+
           <QcpSection jobCardId={jobCardId} />
 
           <div className="rounded-lg border border-gray-200 bg-white shadow-sm">

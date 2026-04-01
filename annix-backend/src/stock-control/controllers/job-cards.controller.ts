@@ -402,7 +402,21 @@ export class JobCardsController {
       .filter(Boolean);
 
     const combined = lineItemNotes.join("\n");
-    const cleaned = sanitizeNotes(combined);
+    const fromLineItems = sanitizeNotes(combined);
+
+    let cleaned = fromLineItems;
+    if (!cleaned && jobCard.cpoId) {
+      try {
+        const cpo = await this.cpoService.findById(req.user.companyId, jobCard.cpoId);
+        if (cpo?.coatingSpecs) {
+          cleaned = sanitizeNotes(cpo.coatingSpecs);
+        }
+      } catch (err) {
+        this.logger.warn(
+          `Re-extract notes: CPO ${jobCard.cpoId} not found for job card ${id}: ${err instanceof Error ? err.message : err}`,
+        );
+      }
+    }
 
     await this.jobCardService.update(req.user.companyId, id, { notes: cleaned });
     return { notes: cleaned };

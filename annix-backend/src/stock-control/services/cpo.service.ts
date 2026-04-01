@@ -234,54 +234,10 @@ export class CpoService {
     return this.cpoRepo.save(cpo);
   }
 
-  async addItem(
+  async addCpoItem(
     companyId: number,
     cpoId: number,
-    dto: {
-      itemCode?: string | null;
-      itemDescription?: string | null;
-      itemNo?: string | null;
-      quantityOrdered: number;
-      jtNo?: string | null;
-      m2?: number | null;
-    },
-  ): Promise<CustomerPurchaseOrderItem> {
-    const cpo = await this.cpoRepo.findOne({
-      where: { id: cpoId, companyId },
-      relations: ["items"],
-    });
-    if (!cpo) {
-      throw new NotFoundException(`CPO ${cpoId} not found`);
-    }
-    const maxSortOrder = cpo.items.reduce((max, item) => Math.max(max, item.sortOrder), 0);
-    const item = this.cpoItemRepo.create({
-      cpoId,
-      companyId,
-      itemCode: dto.itemCode || null,
-      itemDescription: dto.itemDescription || null,
-      itemNo: dto.itemNo || null,
-      quantityOrdered: dto.quantityOrdered,
-      quantityFulfilled: 0,
-      jtNo: dto.jtNo || null,
-      m2: dto.m2 || null,
-      sortOrder: maxSortOrder + 1,
-    });
-    const saved = await this.cpoItemRepo.save(item);
-    await this.cpoRepo.update(
-      { id: cpoId, companyId },
-      {
-        totalItems: cpo.items.length + 1,
-        totalQuantity: Number(cpo.totalQuantity) + Number(dto.quantityOrdered),
-      },
-    );
-    return saved;
-  }
-
-  async updateItem(
-    companyId: number,
-    cpoId: number,
-    itemId: number,
-    dto: {
+    data: {
       itemCode?: string | null;
       itemDescription?: string | null;
       itemNo?: string | null;
@@ -297,27 +253,98 @@ export class CpoService {
     if (!cpo) {
       throw new NotFoundException(`CPO ${cpoId} not found`);
     }
+
+    const maxSortOrder = cpo.items.reduce((max, item) => Math.max(max, item.sortOrder), -1);
+    const qty = data.quantityOrdered ?? 0;
+
+    const item = this.cpoItemRepo.create({
+      cpoId,
+      companyId,
+      itemCode: data.itemCode || null,
+      itemDescription: data.itemDescription || null,
+      itemNo: data.itemNo || null,
+      quantityOrdered: qty,
+      quantityFulfilled: 0,
+      jtNo: data.jtNo || null,
+      m2: data.m2 ?? null,
+      sortOrder: maxSortOrder + 1,
+    });
+    const saved = await this.cpoItemRepo.save(item);
+
+    await this.cpoRepo.update(cpoId, {
+      totalItems: cpo.items.length + 1,
+      totalQuantity: Number(cpo.totalQuantity) + qty,
+    });
+
+    return saved;
+  }
+
+  async updateCpoItem(
+    companyId: number,
+    cpoId: number,
+    itemId: number,
+    data: {
+      itemCode?: string | null;
+      itemDescription?: string | null;
+      itemNo?: string | null;
+      quantityOrdered?: number;
+      jtNo?: string | null;
+      m2?: number | null;
+    },
+  ): Promise<CustomerPurchaseOrderItem> {
     const item = await this.cpoItemRepo.findOne({
       where: { id: itemId, cpoId, companyId },
     });
     if (!item) {
-      throw new NotFoundException(`Item ${itemId} not found on CPO ${cpoId}`);
+      throw new NotFoundException(`CPO item ${itemId} not found`);
     }
-    const prevQuantity = Number(item.quantityOrdered);
-    if (dto.itemCode !== undefined) item.itemCode = dto.itemCode;
-    if (dto.itemDescription !== undefined) item.itemDescription = dto.itemDescription;
-    if (dto.itemNo !== undefined) item.itemNo = dto.itemNo;
-    if (dto.jtNo !== undefined) item.jtNo = dto.jtNo;
-    if (dto.m2 !== undefined) item.m2 = dto.m2;
-    if (dto.quantityOrdered !== undefined) {
-      item.quantityOrdered = dto.quantityOrdered;
-      const quantityDelta = Number(dto.quantityOrdered) - prevQuantity;
-      await this.cpoRepo.update(
-        { id: cpoId, companyId },
-        { totalQuantity: Number(cpo.totalQuantity) + quantityDelta },
-      );
+
+    const oldQty = Number(item.quantityOrdered);
+    const newQty = data.quantityOrdered !== undefined ? data.quantityOrdered : oldQty;
+
+    if (data.itemCode !== undefined) item.itemCode = data.itemCode || null;
+    if (data.itemDescription !== undefined) item.itemDescription = data.itemDescription || null;
+    if (data.itemNo !== undefined) item.itemNo = data.itemNo || null;
+    if (data.quantityOrdered !== undefined) item.quantityOrdered = newQty;
+    if (data.jtNo !== undefined) item.jtNo = data.jtNo || null;
+    if (data.m2 !== undefined) item.m2 = data.m2 ?? null;
+
+    const saved = await this.cpoItemRepo.save(item);
+
+    if (oldQty !== newQty) {
+      const cpo = await this.cpoRepo.findOne({ where: { id: cpoId, companyId } });
+      if (cpo) {
+        const delta = newQty - oldQty;
+        await this.cpoRepo.update(cpoId, {
+          totalQuantity: Math.max(0, Number(cpo.totalQuantity) + delta),
+        });
+      }
     }
-    return this.cpoItemRepo.save(item);
+
+    return saved;
+  }
+
+  async deleteCpoItem(companyId: number, cpoId: number, itemId: number): Promise<void> {
+    const item = await this.cpoItemRepo.findOne({
+      where: { id: itemId, cpoId, companyId },
+    });
+    if (!item) {
+      throw new NotFoundException(`CPO item ${itemId} not found`);
+    }
+
+    const qty = Number(item.quantityOrdered);
+    await this.cpoItemRepo.remove(item);
+
+    const cpo = await this.cpoRepo.findOne({
+      where: { id: cpoId, companyId },
+      relations: ["items"],
+    });
+    if (cpo) {
+      await this.cpoRepo.update(cpoId, {
+        totalItems: cpo.items.length,
+        totalQuantity: Math.max(0, Number(cpo.totalQuantity) - qty),
+      });
+    }
   }
 
   async matchJobCardToCpo(companyId: number, jobCardId: number): Promise<CpoMatchResult> {
