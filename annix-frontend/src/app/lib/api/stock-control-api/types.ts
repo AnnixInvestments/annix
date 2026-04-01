@@ -1935,6 +1935,24 @@ export interface CpoPreviousVersion {
   }[];
 }
 
+export interface AddCpoItemRequest {
+  itemCode?: string | null;
+  itemDescription?: string | null;
+  itemNo?: string | null;
+  quantityOrdered: number;
+  jtNo?: string | null;
+  m2?: number | null;
+}
+
+export interface UpdateCpoItemRequest {
+  itemCode?: string | null;
+  itemDescription?: string | null;
+  itemNo?: string | null;
+  quantityOrdered?: number;
+  jtNo?: string | null;
+  m2?: number | null;
+}
+
 export interface CustomerPurchaseOrder {
   id: number;
   companyId: number;

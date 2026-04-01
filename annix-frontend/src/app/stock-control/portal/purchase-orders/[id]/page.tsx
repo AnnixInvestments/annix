@@ -6,16 +6,19 @@ import { useCallback, useRef, useState } from "react";
 import type {
   AsteriskAllocation,
   CpoCalloffRecord,
+  CustomerPurchaseOrderItem,
   SageJcDumpImportResult,
   SageJcDumpParseResult,
 } from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { formatDateZA, fromISO, now } from "@/app/lib/datetime";
 import {
+  useAddCpoItem,
   useCpoCalloffRecords,
   useCpoDeliveryHistory,
   useCpoDetail,
   useUpdateCalloffRecordStatus,
+  useUpdateCpoItem,
   useUpdateCpoStatus,
 } from "@/app/lib/query/hooks";
 import { AsteriskAllocationModal } from "../../../components/AsteriskAllocationModal";
@@ -85,6 +88,20 @@ export default function CpoDetailPage() {
 
   const [mutationError, setMutationError] = useState<string | null>(null);
   const [updatingRecordId, setUpdatingRecordId] = useState<number | null>(null);
+
+  const addCpoItemMutation = useAddCpoItem();
+  const updateCpoItemMutation = useUpdateCpoItem();
+  const [itemModalOpen, setItemModalOpen] = useState(false);
+  const [editingItem, setEditingItem] = useState<CustomerPurchaseOrderItem | null>(null);
+  const [itemFormError, setItemFormError] = useState<string | null>(null);
+  const [itemForm, setItemForm] = useState({
+    itemCode: "",
+    itemDescription: "",
+    itemNo: "",
+    quantityOrdered: "",
+    jtNo: "",
+    m2: "",
+  });
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const deliveryScrollRef = useRef<HTMLDivElement>(null);
@@ -190,6 +207,57 @@ export default function CpoDetailPage() {
     },
     [id, sageParseResult, router],
   );
+
+  const openAddItemModal = () => {
+    setEditingItem(null);
+    setItemForm({
+      itemCode: "",
+      itemDescription: "",
+      itemNo: "",
+      quantityOrdered: "",
+      jtNo: "",
+      m2: "",
+    });
+    setItemFormError(null);
+    setItemModalOpen(true);
+  };
+
+  const openEditItemModal = (item: CustomerPurchaseOrderItem) => {
+    setEditingItem(item);
+    setItemForm({
+      itemCode: item.itemCode || "",
+      itemDescription: item.itemDescription || "",
+      itemNo: item.itemNo || "",
+      quantityOrdered: String(item.quantityOrdered),
+      jtNo: item.jtNo || "",
+      m2: item.m2 != null ? String(item.m2) : "",
+    });
+    setItemFormError(null);
+    setItemModalOpen(true);
+  };
+
+  const handleItemFormSubmit = async () => {
+    const qty = parseFloat(itemForm.quantityOrdered);
+    if (Number.isNaN(qty) || qty < 0) {
+      setItemFormError("Quantity ordered must be a valid number (0 or more)");
+      return;
+    }
+    setItemFormError(null);
+    const data = {
+      itemCode: itemForm.itemCode.trim() || null,
+      itemDescription: itemForm.itemDescription.trim() || null,
+      itemNo: itemForm.itemNo.trim() || null,
+      quantityOrdered: qty,
+      jtNo: itemForm.jtNo.trim() || null,
+      m2: itemForm.m2.trim() ? parseFloat(itemForm.m2) : null,
+    };
+    if (editingItem) {
+      await updateCpoItemMutation.mutateAsync({ cpoId: id, itemId: editingItem.id, data });
+    } else {
+      await addCpoItemMutation.mutateAsync({ cpoId: id, data });
+    }
+    setItemModalOpen(false);
+  };
 
   const error = cpoError
     ? cpoError instanceof Error
@@ -772,8 +840,16 @@ export default function CpoDetailPage() {
         )}
 
       <div className="bg-white rounded-lg shadow overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-200">
+        <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
           <h2 className="text-lg font-medium text-gray-900">Line Items ({sortedItems.length})</h2>
+          {cpo.status === "active" && (
+            <button
+              onClick={openAddItemModal}
+              className="px-3 py-1.5 text-sm font-medium text-white bg-teal-600 rounded-md hover:bg-teal-700"
+            >
+              Add Line
+            </button>
+          )}
         </div>
         {sortedItems.length === 0 ? (
           <div className="p-6 text-center text-sm text-gray-500">No line items</div>
@@ -809,6 +885,11 @@ export default function CpoDetailPage() {
                   <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                     m2
                   </th>
+                  {cpo.status === "active" && (
+                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Actions
+                    </th>
+                  )}
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
@@ -856,6 +937,16 @@ export default function CpoDetailPage() {
                       <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-500 text-right">
                         {item.m2 != null ? Number(item.m2).toFixed(2) : "-"}
                       </td>
+                      {cpo.status === "active" && (
+                        <td className="px-6 py-3 whitespace-nowrap text-right">
+                          <button
+                            onClick={() => openEditItemModal(item)}
+                            className="text-xs text-teal-600 hover:text-teal-800 font-medium"
+                          >
+                            Edit
+                          </button>
+                        </td>
+                      )}
                     </tr>
                   );
                 })}
@@ -864,6 +955,104 @@ export default function CpoDetailPage() {
           </div>
         )}
       </div>
+
+      {itemModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4 p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">
+              {editingItem ? "Edit Line Item" : "Add Line Item"}
+            </h3>
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Item Code</label>
+                <input
+                  type="text"
+                  value={itemForm.itemCode}
+                  onChange={(e) => setItemForm((f) => ({ ...f, itemCode: e.target.value }))}
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Description</label>
+                <input
+                  type="text"
+                  value={itemForm.itemDescription}
+                  onChange={(e) => setItemForm((f) => ({ ...f, itemDescription: e.target.value }))}
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Item No</label>
+                  <input
+                    type="text"
+                    value={itemForm.itemNo}
+                    onChange={(e) => setItemForm((f) => ({ ...f, itemNo: e.target.value }))}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">JT No</label>
+                  <input
+                    type="text"
+                    value={itemForm.jtNo}
+                    onChange={(e) => setItemForm((f) => ({ ...f, jtNo: e.target.value }))}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                    Quantity Ordered <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="any"
+                    value={itemForm.quantityOrdered}
+                    onChange={(e) =>
+                      setItemForm((f) => ({ ...f, quantityOrdered: e.target.value }))
+                    }
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">m2</label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="any"
+                    value={itemForm.m2}
+                    onChange={(e) => setItemForm((f) => ({ ...f, m2: e.target.value }))}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+                  />
+                </div>
+              </div>
+              {itemFormError && <p className="text-sm text-red-600">{itemFormError}</p>}
+            </div>
+            <div className="mt-5 flex justify-end gap-3">
+              <button
+                onClick={() => setItemModalOpen(false)}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleItemFormSubmit}
+                disabled={addCpoItemMutation.isPending || updateCpoItemMutation.isPending}
+                className="px-4 py-2 text-sm font-medium text-white bg-teal-600 rounded-md hover:bg-teal-700 disabled:opacity-50"
+              >
+                {addCpoItemMutation.isPending || updateCpoItemMutation.isPending
+                  ? "Saving..."
+                  : editingItem
+                    ? "Save Changes"
+                    : "Add Item"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {cpo.previousVersions && cpo.previousVersions.length > 0 && (
         <div className="bg-white rounded-lg shadow overflow-hidden">

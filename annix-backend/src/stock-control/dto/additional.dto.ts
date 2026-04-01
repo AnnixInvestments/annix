@@ -90,6 +90,59 @@ export class ConfirmCpoImportDto {
   rows: any[];
 }
 
+export class AddCpoItemDto {
+  @IsOptional()
+  @IsString()
+  itemCode?: string | null;
+
+  @IsOptional()
+  @IsString()
+  itemDescription?: string | null;
+
+  @IsOptional()
+  @IsString()
+  itemNo?: string | null;
+
+  @IsNumber()
+  @Min(0)
+  quantityOrdered: number;
+
+  @IsOptional()
+  @IsString()
+  jtNo?: string | null;
+
+  @IsOptional()
+  @IsNumber()
+  m2?: number | null;
+}
+
+export class UpdateCpoItemDto {
+  @IsOptional()
+  @IsString()
+  itemCode?: string | null;
+
+  @IsOptional()
+  @IsString()
+  itemDescription?: string | null;
+
+  @IsOptional()
+  @IsString()
+  itemNo?: string | null;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  quantityOrdered?: number;
+
+  @IsOptional()
+  @IsString()
+  jtNo?: string | null;
+
+  @IsOptional()
+  @IsNumber()
+  m2?: number | null;
+}
+
 export class UpdateCalloffStatusDto {
   @IsString()
   status: string;
