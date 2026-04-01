@@ -181,9 +181,10 @@ export function QualityTab(props: QualityTabProps) {
   const totalQcRecords =
     (qcData?.shoreHardness.length || 0) +
     (qcData?.dftReadings.length || 0) +
-    (qcData?.blastProfiles.length || 0) +
     (qcData?.dustDebrisTests.length || 0) +
     (qcData?.pullTests.length || 0);
+
+  const blastProfileCount = qcData?.blastProfiles.length || 0;
 
   return (
     <div className="space-y-6">
@@ -255,12 +256,6 @@ export function QualityTab(props: QualityTabProps) {
                   className="rounded-md bg-teal-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-teal-700"
                 >
                   + DFT
-                </button>
-                <button
-                  onClick={() => setActiveForm("blast-profile")}
-                  className="rounded-md bg-teal-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-teal-700"
-                >
-                  + Blast Profile
                 </button>
                 <button
                   onClick={() => setActiveForm("dust-debris")}
@@ -366,51 +361,6 @@ export function QualityTab(props: QualityTabProps) {
                       </button>
                       <button
                         onClick={() => handleDeleteQc("dft", rec.id)}
-                        className="text-xs text-red-600 hover:text-red-800"
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  </div>
-                ))}
-
-                {(qcData?.blastProfiles || []).map((rec) => (
-                  <div
-                    key={`bp-${rec.id}`}
-                    className="flex items-center justify-between px-5 py-3 hover:bg-gray-50"
-                  >
-                    <div className="flex items-center gap-3">
-                      <span className="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-800">
-                        Blast
-                      </span>
-                      <span className="text-sm text-gray-500">
-                        Avg: {rec.averageMicrons?.toFixed(1) || "-"} μm / Spec: {rec.specMicrons} μm
-                      </span>
-                      {rec.abrasiveBatchNumber && (
-                        <span className="text-xs text-gray-500">
-                          Batch: {rec.abrasiveBatchNumber}
-                        </span>
-                      )}
-                      {rec.temperature !== null && (
-                        <span className="text-xs text-gray-400">{rec.temperature}°C</span>
-                      )}
-                      {rec.humidity !== null && (
-                        <span className="text-xs text-gray-400">{rec.humidity}% RH</span>
-                      )}
-                      <span className="text-xs text-gray-400">{rec.readingDate}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => {
-                          setEditingBlast(rec);
-                          setActiveForm("blast-profile");
-                        }}
-                        className="text-xs text-teal-600 hover:text-teal-800"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        onClick={() => handleDeleteQc("blast-profile", rec.id)}
                         className="text-xs text-red-600 hover:text-red-800"
                       >
                         Delete
@@ -535,9 +485,73 @@ export function QualityTab(props: QualityTabProps) {
 
           <QcReleaseCertificateSection jobCardId={jobCardId} />
 
-          <ItemsReleaseSection jobCardId={jobCardId} />
-
           <QcpSection jobCardId={jobCardId} />
+
+          <div className="rounded-lg border border-gray-200 bg-white shadow-sm">
+            <div className="flex items-center justify-between border-b border-gray-200 px-5 py-3">
+              <h3 className="text-sm font-semibold text-gray-900">Blast Profile Reports</h3>
+              <button
+                onClick={() => setActiveForm("blast-profile")}
+                className="rounded-md bg-teal-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-teal-700"
+              >
+                + Blast Profile
+              </button>
+            </div>
+            {blastProfileCount === 0 ? (
+              <div className="py-8 text-center text-sm text-gray-500">
+                No blast profile records yet. Use the button above to add records.
+              </div>
+            ) : (
+              <div className="divide-y divide-gray-200">
+                {(qcData?.blastProfiles || []).map((rec) => (
+                  <div
+                    key={`bp-${rec.id}`}
+                    className="flex items-center justify-between px-5 py-3 hover:bg-gray-50"
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-800">
+                        Blast
+                      </span>
+                      <span className="text-sm text-gray-500">
+                        Avg: {rec.averageMicrons?.toFixed(1) || "-"} μm / Spec: {rec.specMicrons} μm
+                      </span>
+                      {rec.abrasiveBatchNumber && (
+                        <span className="text-xs text-gray-500">
+                          Batch: {rec.abrasiveBatchNumber}
+                        </span>
+                      )}
+                      {rec.temperature !== null && (
+                        <span className="text-xs text-gray-400">{rec.temperature}°C</span>
+                      )}
+                      {rec.humidity !== null && (
+                        <span className="text-xs text-gray-400">{rec.humidity}% RH</span>
+                      )}
+                      <span className="text-xs text-gray-400">{rec.readingDate}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => {
+                          setEditingBlast(rec);
+                          setActiveForm("blast-profile");
+                        }}
+                        className="text-xs text-teal-600 hover:text-teal-800"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => handleDeleteQc("blast-profile", rec.id)}
+                        className="text-xs text-red-600 hover:text-red-800"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <ItemsReleaseSection jobCardId={jobCardId} />
 
           {batchRecords.length > 0 && (
             <div className="rounded-lg border border-gray-200 bg-white shadow-sm">
@@ -698,7 +712,8 @@ export function QualityTab(props: QualityTabProps) {
           {certificates.length === 0 &&
             batchRecords.length === 0 &&
             calibrationCerts.length === 0 &&
-            totalQcRecords === 0 && (
+            totalQcRecords === 0 &&
+            blastProfileCount === 0 && (
               <div className="rounded-lg border-2 border-dashed border-gray-300 py-12 text-center">
                 <p className="text-gray-500">No quality records for this job card yet</p>
                 <p className="mt-1 text-sm text-gray-400">
