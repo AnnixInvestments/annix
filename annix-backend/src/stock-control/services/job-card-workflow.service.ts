@@ -147,6 +147,28 @@ export class JobCardWorkflowService {
 
     await this.validateUserIsAssigned(user, currentStep.key);
 
+    const currentIdx = fgSteps.findIndex((s) => s.key === currentStep.key);
+    if (currentIdx > 0) {
+      const prevFgKey = fgSteps[currentIdx - 1].key;
+      const prevBgSteps = await this.stepConfigService.backgroundStepsForTrigger(
+        companyId,
+        prevFgKey,
+      );
+      const prevRequired = prevBgSteps.filter((s) => s.rejoinAtStep === null);
+      if (prevRequired.length > 0) {
+        const completions = await this.bgCompletionRepo.find({
+          where: { jobCardId, companyId },
+        });
+        const completedKeys = new Set(completions.map((c) => c.stepKey));
+        const incomplete = prevRequired.filter((s) => !completedKeys.has(s.key));
+        if (incomplete.length > 0) {
+          throw new BadRequestException(
+            `Background steps from the previous stage must be completed first: ${incomplete.map((s) => s.label).join(", ")}`,
+          );
+        }
+      }
+    }
+
     const phases = await this.stepConfigService.phasesForFgStep(companyId, currentStep.key);
     if (phases.length > 1) {
       const phase1Keys = phases[0].bgStepKeys;
