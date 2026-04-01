@@ -1293,106 +1293,70 @@ export default function JobCardDetailPage() {
                   {isUpdatingStatus ? "..." : "Draft Accepted"}
                 </button>
               )}
-              {userPendingBgSteps.length > 0 &&
+              {receptionIsPending && (
+                <button
+                  onClick={async () => {
+                    const receptionStep = userPendingBgSteps.find(isReceptionStep);
+                    if (receptionStep) {
+                      await handlePrintQr();
+                      handleCompleteBackgroundStep(receptionStep.stepKey);
+                    }
+                  }}
+                  disabled={
+                    isDownloadingQr ||
+                    completingStepKey === userPendingBgSteps.find(isReceptionStep)?.stepKey
+                  }
+                  className="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-md bg-amber-600 text-white hover:bg-amber-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+                >
+                  <svg
+                    className="w-4 h-4 mr-2"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"
+                    />
+                  </svg>
+                  {isDownloadingQr ? "Generating..." : "Print JC"}
+                </button>
+              )}
+              {userPendingBgSteps.filter((bg) => !isReceptionStep(bg)).length > 0 &&
                 (!canApprove || prevStepBgPending || currentStepBlueBgPending) &&
-                userPendingBgSteps.map((bg) =>
-                  isReceptionStep(bg) ? (
-                    <button
-                      key={bg.stepKey}
-                      onClick={async () => {
-                        await handlePrintQr();
-                        handleCompleteBackgroundStep(bg.stepKey);
-                      }}
-                      disabled={isDownloadingQr || completingStepKey === bg.stepKey}
-                      className="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-md bg-amber-600 text-white hover:bg-amber-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
-                    >
-                      <svg
-                        className="w-4 h-4 mr-2"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"
-                        />
-                      </svg>
-                      {isDownloadingQr ? "Generating..." : "Print JC"}
-                    </button>
-                  ) : isRequisitionStep(bg) ? (
-                    <button
-                      key={bg.stepKey}
-                      onClick={() => handleTabChange("coating")}
-                      className="px-3 py-1.5 text-xs font-medium rounded-md bg-teal-600 text-white hover:bg-teal-700 transition-colors"
-                    >
-                      Stock Assessment
-                    </button>
-                  ) : (isReqAuthStep(bg) || isOrderPlacementStep(bg)) && requisition ? (
-                    <button
-                      key={bg.stepKey}
-                      onClick={() =>
-                        router.push(
-                          `/stock-control/portal/requisitions/${requisition.id}?fromJobCard=${jobId}&completeStep=${bg.stepKey}`,
-                        )
-                      }
-                      className="px-3 py-1.5 text-xs font-medium rounded-md bg-teal-600 text-white hover:bg-teal-700 transition-colors"
-                    >
-                      View Requisition
-                    </button>
-                  ) : isStockAllocStep(bg) ? (
-                    <div key={bg.stepKey} className="flex flex-wrap gap-2">
+                userPendingBgSteps
+                  .filter((bg) => !isReceptionStep(bg))
+                  .map((bg) =>
+                    isRequisitionStep(bg) ? (
                       <button
-                        onClick={() => handleTabChange("stock-issues")}
-                        className="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-md bg-teal-600 text-white hover:bg-teal-700 transition-colors"
+                        key={bg.stepKey}
+                        onClick={() => handleTabChange("coating")}
+                        className="px-3 py-1.5 text-xs font-medium rounded-md bg-teal-600 text-white hover:bg-teal-700 transition-colors"
                       >
-                        <svg
-                          className="w-4 h-4 mr-1"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
-                          />
-                        </svg>
-                        Allocate Stock
+                        Stock Assessment
                       </button>
-                      {hasUnissuedAllocations && (
+                    ) : (isReqAuthStep(bg) || isOrderPlacementStep(bg)) && requisition ? (
+                      <button
+                        key={bg.stepKey}
+                        onClick={() =>
+                          router.push(
+                            `/stock-control/portal/requisitions/${requisition.id}?fromJobCard=${jobId}&completeStep=${bg.stepKey}`,
+                          )
+                        }
+                        className="px-3 py-1.5 text-xs font-medium rounded-md bg-teal-600 text-white hover:bg-teal-700 transition-colors"
+                      >
+                        View Requisition
+                      </button>
+                    ) : isStockAllocStep(bg) ? (
+                      <div key={bg.stepKey} className="flex flex-wrap gap-2">
                         <button
-                          onClick={handleConfirmIssuance}
-                          disabled={isConfirmingIssuance}
-                          className="px-3 py-1.5 text-xs font-medium rounded-md bg-green-600 text-white hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
-                        >
-                          {isConfirmingIssuance ? "Issuing..." : "Issue Allocated"}
-                        </button>
-                      )}
-                      {hasAllocations && (
-                        <button
-                          onClick={() => handleCompleteBackgroundStep(bg.stepKey)}
-                          disabled={completingStepKey === bg.stepKey}
-                          className="px-3 py-1.5 text-xs font-medium rounded-md bg-amber-600 text-white hover:bg-amber-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
-                        >
-                          {completingStepKey === bg.stepKey
-                            ? "..."
-                            : bg.actionLabel || `Complete ${bg.label}`}
-                        </button>
-                      )}
-                    </div>
-                  ) : isReadyStep(bg) ? (
-                    <div key={bg.stepKey} className="flex flex-wrap gap-2">
-                      {!hasReadyPhoto ? (
-                        <button
-                          onClick={() => setShowReadyPhotoModal(true)}
-                          disabled={isUploadingReadyPhoto}
-                          className="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-md bg-blue-600 text-white hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+                          onClick={() => handleTabChange("stock-issues")}
+                          className="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-md bg-teal-600 text-white hover:bg-teal-700 transition-colors"
                         >
                           <svg
-                            className="w-4 h-4 mr-2"
+                            className="w-4 h-4 mr-1"
                             fill="none"
                             stroke="currentColor"
                             viewBox="0 0 24 24"
@@ -1401,244 +1365,289 @@ export default function JobCardDetailPage() {
                               strokeLinecap="round"
                               strokeLinejoin="round"
                               strokeWidth={2}
-                              d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"
+                              d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
                             />
+                          </svg>
+                          Allocate Stock
+                        </button>
+                        {hasUnissuedAllocations && (
+                          <button
+                            onClick={handleConfirmIssuance}
+                            disabled={isConfirmingIssuance}
+                            className="px-3 py-1.5 text-xs font-medium rounded-md bg-green-600 text-white hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+                          >
+                            {isConfirmingIssuance ? "Issuing..." : "Issue Allocated"}
+                          </button>
+                        )}
+                        {hasAllocations && (
+                          <button
+                            onClick={() => handleCompleteBackgroundStep(bg.stepKey)}
+                            disabled={completingStepKey === bg.stepKey}
+                            className="px-3 py-1.5 text-xs font-medium rounded-md bg-amber-600 text-white hover:bg-amber-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+                          >
+                            {completingStepKey === bg.stepKey
+                              ? "..."
+                              : bg.actionLabel || `Complete ${bg.label}`}
+                          </button>
+                        )}
+                      </div>
+                    ) : isReadyStep(bg) ? (
+                      <div key={bg.stepKey} className="flex flex-wrap gap-2">
+                        {!hasReadyPhoto ? (
+                          <button
+                            onClick={() => setShowReadyPhotoModal(true)}
+                            disabled={isUploadingReadyPhoto}
+                            className="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-md bg-blue-600 text-white hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+                          >
+                            <svg
+                              className="w-4 h-4 mr-2"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"
+                              />
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"
+                              />
+                            </svg>
+                            {isUploadingReadyPhoto ? "Uploading..." : "Upload / Take Photo"}
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => handleCompleteBackgroundStep(bg.stepKey)}
+                            disabled={completingStepKey === bg.stepKey}
+                            className="px-3 py-1.5 text-xs font-medium rounded-md bg-amber-600 text-white hover:bg-amber-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+                          >
+                            {completingStepKey === bg.stepKey ? "..." : "Complete Ready"}
+                          </button>
+                        )}
+                      </div>
+                    ) : isQaReviewStep(bg) ? (
+                      <button
+                        key={bg.stepKey}
+                        onClick={() => {
+                          handleTabChange("quality");
+                          const scrollToReview = (attempts: number) => {
+                            const el = document.getElementById("qa-review-section");
+                            if (el) {
+                              el.scrollIntoView({ behavior: "smooth", block: "start" });
+                            } else if (attempts > 0) {
+                              setTimeout(() => scrollToReview(attempts - 1), 150);
+                            }
+                          };
+                          setTimeout(() => scrollToReview(20), 100);
+                        }}
+                        className="px-3 py-1.5 text-xs font-medium rounded-md bg-teal-600 text-white hover:bg-teal-700 transition-colors"
+                      >
+                        QA Review
+                      </button>
+                    ) : isQcRepairsStep(bg) ? (
+                      <button
+                        key={bg.stepKey}
+                        onClick={() => {
+                          handleTabChange("quality");
+                          const scrollToReview = (attempts: number) => {
+                            const el = document.getElementById("qa-review-section");
+                            if (el) {
+                              el.scrollIntoView({ behavior: "smooth", block: "start" });
+                            } else if (attempts > 0) {
+                              setTimeout(() => scrollToReview(attempts - 1), 150);
+                            }
+                          };
+                          setTimeout(() => scrollToReview(20), 100);
+                        }}
+                        className="px-3 py-1.5 text-xs font-medium rounded-md bg-teal-600 text-white hover:bg-teal-700 transition-colors"
+                      >
+                        View QA Repairs
+                      </button>
+                    ) : bg.branchColor &&
+                      !batchesSaved &&
+                      !isQaChainStep(bg) &&
+                      !isInspectionBookingStep(bg) &&
+                      !isDataBookStep(bg) ? (
+                      <button
+                        key={bg.stepKey}
+                        onClick={() => {
+                          handleTabChange("quality");
+                          const scrollToBatch = (attempts: number) => {
+                            const el = document.getElementById("defelsko-batch-section");
+                            if (el) {
+                              el.scrollIntoView({ behavior: "smooth", block: "start" });
+                            } else if (attempts > 0) {
+                              setTimeout(() => scrollToBatch(attempts - 1), 150);
+                            }
+                          };
+                          setTimeout(() => scrollToBatch(20), 100);
+                        }}
+                        className="px-3 py-1.5 text-xs font-medium rounded-md bg-blue-600 text-white hover:bg-blue-700 transition-colors"
+                      >
+                        Input Batches
+                      </button>
+                    ) : bg.branchColor &&
+                      batchesSaved &&
+                      !isQaChainStep(bg) &&
+                      !isInspectionBookingStep(bg) &&
+                      !isDataBookStep(bg) ? (
+                      <button
+                        key={bg.stepKey}
+                        onClick={() => handleCompleteBackgroundStep(bg.stepKey)}
+                        disabled={completingStepKey === bg.stepKey}
+                        className="px-3 py-1.5 text-xs font-medium rounded-md bg-amber-600 text-white hover:bg-amber-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+                      >
+                        {completingStepKey === bg.stepKey ? "..." : "Batches Completed"}
+                      </button>
+                    ) : isQaFinalCheckStep(bg) && !finalPhotosSaved ? (
+                      <button
+                        key={bg.stepKey}
+                        onClick={() => {
+                          handleTabChange("quality");
+                          const scrollToPhotos = (attempts: number) => {
+                            const el = document.getElementById("qa-final-photos-section");
+                            if (el) {
+                              el.scrollIntoView({ behavior: "smooth", block: "start" });
+                            } else if (attempts > 0) {
+                              setTimeout(() => scrollToPhotos(attempts - 1), 150);
+                            }
+                          };
+                          setTimeout(() => scrollToPhotos(20), 100);
+                        }}
+                        className="px-3 py-1.5 text-xs font-medium rounded-md bg-teal-600 text-white hover:bg-teal-700 transition-colors"
+                      >
+                        Upload Final Photos
+                      </button>
+                    ) : isInspectionBookingStep(bg) ? (
+                      <button
+                        key={bg.stepKey}
+                        onClick={() => setShowInspectionModal(true)}
+                        className="px-3 py-1.5 text-xs font-medium rounded-md bg-teal-600 text-white hover:bg-teal-700 transition-colors"
+                      >
+                        Book Inspection
+                      </button>
+                    ) : isDataBookStep(bg) ? (
+                      <button
+                        key={bg.stepKey}
+                        onClick={() => {
+                          handleTabChange("quality");
+                          const scrollToDataBook = (attempts: number) => {
+                            const el = document.getElementById("data-book-section");
+                            if (el) {
+                              el.scrollIntoView({ behavior: "smooth", block: "start" });
+                            } else if (attempts > 0) {
+                              setTimeout(() => scrollToDataBook(attempts - 1), 150);
+                            }
+                          };
+                          setTimeout(() => scrollToDataBook(20), 100);
+                        }}
+                        className="px-3 py-1.5 text-xs font-medium rounded-md bg-teal-600 text-white hover:bg-teal-700 transition-colors"
+                      >
+                        Review Data Book
+                      </button>
+                    ) : isJobFileReviewStep(bg) ? (
+                      <div key={bg.stepKey} className="flex flex-wrap gap-2">
+                        <button
+                          onClick={() => handleTabChange("job-files")}
+                          className="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-md bg-blue-600 text-white hover:bg-blue-700 transition-colors"
+                        >
+                          <svg
+                            className="w-4 h-4 mr-1"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
                             <path
                               strokeLinecap="round"
                               strokeLinejoin="round"
                               strokeWidth={2}
-                              d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"
+                              d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"
                             />
                           </svg>
-                          {isUploadingReadyPhoto ? "Uploading..." : "Upload / Take Photo"}
+                          Upload Docs
                         </button>
-                      ) : (
+                        {jobFileGateSatisfied && (
+                          <button
+                            onClick={() => handleCompleteBackgroundStep(bg.stepKey)}
+                            disabled={completingStepKey === bg.stepKey}
+                            className="px-3 py-1.5 text-xs font-medium rounded-md bg-green-600 text-white hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+                          >
+                            {completingStepKey === bg.stepKey ? "..." : "Complete File Review"}
+                          </button>
+                        )}
+                      </div>
+                    ) : isDocUploadStep(bg) ? (
+                      <div key={bg.stepKey} className="flex flex-wrap gap-2">
                         <button
-                          onClick={() => handleCompleteBackgroundStep(bg.stepKey)}
-                          disabled={completingStepKey === bg.stepKey}
-                          className="px-3 py-1.5 text-xs font-medium rounded-md bg-amber-600 text-white hover:bg-amber-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+                          onClick={() => handleTabChange("job-files")}
+                          className="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-md bg-blue-600 text-white hover:bg-blue-700 transition-colors"
                         >
-                          {completingStepKey === bg.stepKey ? "..." : "Complete Ready"}
+                          <svg
+                            className="w-4 h-4 mr-1"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"
+                            />
+                          </svg>
+                          Upload Docs
                         </button>
-                      )}
-                    </div>
-                  ) : isQaReviewStep(bg) ? (
-                    <button
-                      key={bg.stepKey}
-                      onClick={() => {
-                        handleTabChange("quality");
-                        const scrollToReview = (attempts: number) => {
-                          const el = document.getElementById("qa-review-section");
-                          if (el) {
-                            el.scrollIntoView({ behavior: "smooth", block: "start" });
-                          } else if (attempts > 0) {
-                            setTimeout(() => scrollToReview(attempts - 1), 150);
-                          }
+                        {docUploadGateSatisfied && (
+                          <button
+                            onClick={() => handleCompleteBackgroundStep(bg.stepKey)}
+                            disabled={completingStepKey === bg.stepKey}
+                            className="px-3 py-1.5 text-xs font-medium rounded-md bg-amber-600 text-white hover:bg-amber-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+                          >
+                            {completingStepKey === bg.stepKey
+                              ? "..."
+                              : bg.actionLabel || "Docs Uploaded"}
+                          </button>
+                        )}
+                      </div>
+                    ) : bg.stepOutcomes && bg.stepOutcomes.length > 1 ? (
+                      bg.stepOutcomes.map((outcome) => {
+                        const styleMap: Record<string, string> = {
+                          green: "bg-green-600 hover:bg-green-700",
+                          red: "bg-red-600 hover:bg-red-700",
+                          amber: "bg-amber-600 hover:bg-amber-700",
+                          blue: "bg-blue-600 hover:bg-blue-700",
                         };
-                        setTimeout(() => scrollToReview(20), 100);
-                      }}
-                      className="px-3 py-1.5 text-xs font-medium rounded-md bg-teal-600 text-white hover:bg-teal-700 transition-colors"
-                    >
-                      QA Review
-                    </button>
-                  ) : isQcRepairsStep(bg) ? (
-                    <button
-                      key={bg.stepKey}
-                      onClick={() => {
-                        handleTabChange("quality");
-                        const scrollToReview = (attempts: number) => {
-                          const el = document.getElementById("qa-review-section");
-                          if (el) {
-                            el.scrollIntoView({ behavior: "smooth", block: "start" });
-                          } else if (attempts > 0) {
-                            setTimeout(() => scrollToReview(attempts - 1), 150);
-                          }
-                        };
-                        setTimeout(() => scrollToReview(20), 100);
-                      }}
-                      className="px-3 py-1.5 text-xs font-medium rounded-md bg-teal-600 text-white hover:bg-teal-700 transition-colors"
-                    >
-                      View QA Repairs
-                    </button>
-                  ) : bg.branchColor &&
-                    !batchesSaved &&
-                    !isQaChainStep(bg) &&
-                    !isInspectionBookingStep(bg) &&
-                    !isDataBookStep(bg) ? (
-                    <button
-                      key={bg.stepKey}
-                      onClick={() => {
-                        handleTabChange("quality");
-                        const scrollToBatch = (attempts: number) => {
-                          const el = document.getElementById("defelsko-batch-section");
-                          if (el) {
-                            el.scrollIntoView({ behavior: "smooth", block: "start" });
-                          } else if (attempts > 0) {
-                            setTimeout(() => scrollToBatch(attempts - 1), 150);
-                          }
-                        };
-                        setTimeout(() => scrollToBatch(20), 100);
-                      }}
-                      className="px-3 py-1.5 text-xs font-medium rounded-md bg-blue-600 text-white hover:bg-blue-700 transition-colors"
-                    >
-                      Input Batches
-                    </button>
-                  ) : bg.branchColor &&
-                    batchesSaved &&
-                    !isQaChainStep(bg) &&
-                    !isInspectionBookingStep(bg) &&
-                    !isDataBookStep(bg) ? (
-                    <button
-                      key={bg.stepKey}
-                      onClick={() => handleCompleteBackgroundStep(bg.stepKey)}
-                      disabled={completingStepKey === bg.stepKey}
-                      className="px-3 py-1.5 text-xs font-medium rounded-md bg-amber-600 text-white hover:bg-amber-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
-                    >
-                      {completingStepKey === bg.stepKey ? "..." : "Batches Completed"}
-                    </button>
-                  ) : isQaFinalCheckStep(bg) && !finalPhotosSaved ? (
-                    <button
-                      key={bg.stepKey}
-                      onClick={() => {
-                        handleTabChange("quality");
-                        const scrollToPhotos = (attempts: number) => {
-                          const el = document.getElementById("qa-final-photos-section");
-                          if (el) {
-                            el.scrollIntoView({ behavior: "smooth", block: "start" });
-                          } else if (attempts > 0) {
-                            setTimeout(() => scrollToPhotos(attempts - 1), 150);
-                          }
-                        };
-                        setTimeout(() => scrollToPhotos(20), 100);
-                      }}
-                      className="px-3 py-1.5 text-xs font-medium rounded-md bg-teal-600 text-white hover:bg-teal-700 transition-colors"
-                    >
-                      Upload Final Photos
-                    </button>
-                  ) : isInspectionBookingStep(bg) ? (
-                    <button
-                      key={bg.stepKey}
-                      onClick={() => setShowInspectionModal(true)}
-                      className="px-3 py-1.5 text-xs font-medium rounded-md bg-teal-600 text-white hover:bg-teal-700 transition-colors"
-                    >
-                      Book Inspection
-                    </button>
-                  ) : isDataBookStep(bg) ? (
-                    <button
-                      key={bg.stepKey}
-                      onClick={() => {
-                        handleTabChange("quality");
-                        const scrollToDataBook = (attempts: number) => {
-                          const el = document.getElementById("data-book-section");
-                          if (el) {
-                            el.scrollIntoView({ behavior: "smooth", block: "start" });
-                          } else if (attempts > 0) {
-                            setTimeout(() => scrollToDataBook(attempts - 1), 150);
-                          }
-                        };
-                        setTimeout(() => scrollToDataBook(20), 100);
-                      }}
-                      className="px-3 py-1.5 text-xs font-medium rounded-md bg-teal-600 text-white hover:bg-teal-700 transition-colors"
-                    >
-                      Review Data Book
-                    </button>
-                  ) : isJobFileReviewStep(bg) ? (
-                    <div key={bg.stepKey} className="flex flex-wrap gap-2">
+                        const btnClass =
+                          styleMap[outcome.style] || "bg-amber-600 hover:bg-amber-700";
+                        return (
+                          <button
+                            key={`${bg.stepKey}-${outcome.key}`}
+                            onClick={() => handleCompleteBackgroundStep(bg.stepKey, outcome.key)}
+                            disabled={completingStepKey === bg.stepKey}
+                            className={`px-3 py-1.5 text-xs font-medium rounded-md text-white disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors ${btnClass}`}
+                          >
+                            {completingStepKey === bg.stepKey ? "..." : outcome.label}
+                          </button>
+                        );
+                      })
+                    ) : (
                       <button
-                        onClick={() => handleTabChange("job-files")}
-                        className="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-md bg-blue-600 text-white hover:bg-blue-700 transition-colors"
+                        key={bg.stepKey}
+                        onClick={() => handleCompleteBackgroundStep(bg.stepKey)}
+                        disabled={completingStepKey === bg.stepKey}
+                        className="px-3 py-1.5 text-xs font-medium rounded-md bg-amber-600 text-white hover:bg-amber-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
                       >
-                        <svg
-                          className="w-4 h-4 mr-1"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"
-                          />
-                        </svg>
-                        Upload Docs
+                        {completingStepKey === bg.stepKey
+                          ? "..."
+                          : bg.actionLabel || `Complete ${bg.label}`}
                       </button>
-                      {jobFileGateSatisfied && (
-                        <button
-                          onClick={() => handleCompleteBackgroundStep(bg.stepKey)}
-                          disabled={completingStepKey === bg.stepKey}
-                          className="px-3 py-1.5 text-xs font-medium rounded-md bg-green-600 text-white hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
-                        >
-                          {completingStepKey === bg.stepKey ? "..." : "Complete File Review"}
-                        </button>
-                      )}
-                    </div>
-                  ) : isDocUploadStep(bg) ? (
-                    <div key={bg.stepKey} className="flex flex-wrap gap-2">
-                      <button
-                        onClick={() => handleTabChange("job-files")}
-                        className="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-md bg-blue-600 text-white hover:bg-blue-700 transition-colors"
-                      >
-                        <svg
-                          className="w-4 h-4 mr-1"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"
-                          />
-                        </svg>
-                        Upload Docs
-                      </button>
-                      {docUploadGateSatisfied && (
-                        <button
-                          onClick={() => handleCompleteBackgroundStep(bg.stepKey)}
-                          disabled={completingStepKey === bg.stepKey}
-                          className="px-3 py-1.5 text-xs font-medium rounded-md bg-amber-600 text-white hover:bg-amber-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
-                        >
-                          {completingStepKey === bg.stepKey
-                            ? "..."
-                            : bg.actionLabel || "Docs Uploaded"}
-                        </button>
-                      )}
-                    </div>
-                  ) : bg.stepOutcomes && bg.stepOutcomes.length > 1 ? (
-                    bg.stepOutcomes.map((outcome) => {
-                      const styleMap: Record<string, string> = {
-                        green: "bg-green-600 hover:bg-green-700",
-                        red: "bg-red-600 hover:bg-red-700",
-                        amber: "bg-amber-600 hover:bg-amber-700",
-                        blue: "bg-blue-600 hover:bg-blue-700",
-                      };
-                      const btnClass = styleMap[outcome.style] || "bg-amber-600 hover:bg-amber-700";
-                      return (
-                        <button
-                          key={`${bg.stepKey}-${outcome.key}`}
-                          onClick={() => handleCompleteBackgroundStep(bg.stepKey, outcome.key)}
-                          disabled={completingStepKey === bg.stepKey}
-                          className={`px-3 py-1.5 text-xs font-medium rounded-md text-white disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors ${btnClass}`}
-                        >
-                          {completingStepKey === bg.stepKey ? "..." : outcome.label}
-                        </button>
-                      );
-                    })
-                  ) : (
-                    <button
-                      key={bg.stepKey}
-                      onClick={() => handleCompleteBackgroundStep(bg.stepKey)}
-                      disabled={completingStepKey === bg.stepKey}
-                      className="px-3 py-1.5 text-xs font-medium rounded-md bg-amber-600 text-white hover:bg-amber-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
-                    >
-                      {completingStepKey === bg.stepKey
-                        ? "..."
-                        : bg.actionLabel || `Complete ${bg.label}`}
-                    </button>
-                  ),
-                )}
+                    ),
+                  )}
               {bgStepError && (
                 <span className="text-xs text-red-600">
                   {bgStepError}
