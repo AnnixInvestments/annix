@@ -87,10 +87,19 @@ Return JSON only:
     {
       "description": "PENGUARD EXPRESS MIO BUFF 20L",
       "quantity": 5,
-      "sku": "PEM-001"
+      "sku": "PEM-001",
+      "itemCode": "ABC-123",
+      "productCode": "PROD-456"
     }
   ]
 }
+
+IMPORTANT extraction rules:
+- "itemCode" is the supplier's item/stock/material code (often in the first column or a "Code" / "Item No" / "Stock Code" column)
+- "productCode" is the product code, compound code, or product reference number
+- "sku" is any short reference or part number shown for the line item
+- For rubber rolls, extract the compound/product code separately from the roll number. The roll number usually appears as "Roll #41553" or "186-41553" in the description — do NOT use the roll number as the itemCode or productCode.
+- Always capture all codes/references shown on each line item — do not leave itemCode or productCode blank if any code is visible on the document.
 
 Return valid JSON only, no additional text.`;
 

@@ -287,9 +287,23 @@ export class DeliveryExtractionService {
     const inferredLocationId = await this.inferLocationForCategory(companyId, category);
 
     const rubberData = await this.enrichFromRubberRollStock(item, sku);
+    const finalSku = rubberData?.sku || sku;
+
+    const existingByEnrichedSku = rubberData
+      ? await this.stockItemRepo.findOne({ where: { sku: finalSku, companyId } })
+      : null;
+    if (existingByEnrichedSku) {
+      existingByEnrichedSku.quantity = existingByEnrichedSku.quantity + quantity;
+      if (Number.isFinite(costPerUnit) && costPerUnit > 0) {
+        existingByEnrichedSku.costPerUnit = costPerUnit;
+      }
+      await this.stockItemRepo.save(existingByEnrichedSku);
+      this.logger.log(`Updated existing enriched stock item ${finalSku}: +${quantity}`);
+      return existingByEnrichedSku;
+    }
 
     const created = this.stockItemRepo.create({
-      sku,
+      sku: finalSku,
       name: (rubberData?.name || item.description || "Unknown Item").slice(0, 255),
       description: rubberData?.description || null,
       category: rubberData ? "RUBBER" : category,
@@ -367,6 +381,7 @@ export class DeliveryExtractionService {
     sku: string,
   ): Promise<{
     name: string;
+    sku: string;
     description: string;
     thicknessMm: number | null;
     widthMm: number | null;
@@ -394,25 +409,30 @@ export class DeliveryExtractionService {
       return null;
     }
 
+    const compoundCode = roll.compoundCoding?.code || null;
     const compoundName = roll.compoundCoding?.name || item.description || "Rubber Roll";
+    const enrichedSku = compoundCode ? `${compoundCode}-R${rollNumber}` : `ROLL-${rollNumber}`;
     const dimensionParts = [
       roll.thicknessMm ? `${roll.thicknessMm}mm thick` : null,
       roll.widthMm ? `${roll.widthMm}mm wide` : null,
       roll.lengthM ? `${roll.lengthM}m long` : null,
     ].filter((p): p is string => p !== null);
-    const description = dimensionParts.length > 0 ? dimensionParts.join(" x ") : null;
+    const rollLabel = `Roll #${rollNumber}`;
+    const description =
+      dimensionParts.length > 0 ? `${rollLabel} — ${dimensionParts.join(" x ")}` : rollLabel;
 
     this.logger.log(
-      `Enriched roll #${rollNumber} from AU Rubber: ${compoundName} (${description || "no dimensions"})`,
+      `Enriched roll #${rollNumber} from AU Rubber: ${compoundName} / ${enrichedSku} (${description})`,
     );
 
     return {
       name: compoundName,
-      description: description || "",
+      sku: enrichedSku,
+      description,
       thicknessMm: roll.thicknessMm ? Number(roll.thicknessMm) : null,
       widthMm: roll.widthMm ? Number(roll.widthMm) : null,
       lengthM: roll.lengthM ? Number(roll.lengthM) : null,
-      compoundCode: roll.compoundCoding?.code || null,
+      compoundCode,
       rollNumber,
     };
   }

@@ -383,21 +383,30 @@ export class InventoryService {
           roll.length_m ? `${roll.length_m}m long` : null,
         ].filter((p): p is string => p !== null);
 
+        const enrichedSku = roll.compound_code
+          ? `${roll.compound_code}-R${extractedRoll}`
+          : item.sku;
+        const rollLabel = `Roll #${extractedRoll}`;
+        const description =
+          dimensionParts.length > 0 ? `${rollLabel} — ${dimensionParts.join(" x ")}` : rollLabel;
+
         await this.dataSource.query(
           `UPDATE stock_items SET
             name = COALESCE($2, name),
-            description = CASE WHEN $3 != '' THEN $3 ELSE description END,
+            sku = $3,
+            description = CASE WHEN $4 != '' THEN $4 ELSE description END,
             category = 'RUBBER',
-            compound_code = COALESCE($4, compound_code),
-            thickness_mm = COALESCE($5, thickness_mm),
-            width_mm = COALESCE($6, width_mm),
-            length_m = COALESCE($7, length_m),
-            roll_number = $8
+            compound_code = COALESCE($5, compound_code),
+            thickness_mm = COALESCE($6, thickness_mm),
+            width_mm = COALESCE($7, width_mm),
+            length_m = COALESCE($8, length_m),
+            roll_number = $9
            WHERE id = $1`,
           [
             item.id,
             roll.compound_name,
-            dimensionParts.join(" x "),
+            enrichedSku,
+            description,
             roll.compound_code,
             roll.thickness_mm,
             roll.width_mm,
