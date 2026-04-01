@@ -41,4 +41,8 @@ export class CreateStockItemDto {
   @IsOptional()
   @IsString()
   photoUrl?: string;
+
+  @IsOptional()
+  @IsString()
+  rollNumber?: string;
 }

@@ -2,6 +2,8 @@ import { BadRequestException, Inject, Injectable, Logger } from "@nestjs/common"
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { nowMillis } from "../../lib/datetime";
+import { RubberProductCoding } from "../../rubber-lining/entities/rubber-product-coding.entity";
+import { RubberRollStock } from "../../rubber-lining/entities/rubber-roll-stock.entity";
 import { IStorageService, STORAGE_SERVICE } from "../../storage/storage.interface";
 import { DeliveryNote } from "../entities/delivery-note.entity";
 import { DeliveryNoteItem } from "../entities/delivery-note-item.entity";
@@ -42,6 +44,10 @@ export class DeliveryExtractionService {
     private readonly stockItemRepo: Repository<StockItem>,
     @InjectRepository(StockMovement)
     private readonly movementRepo: Repository<StockMovement>,
+    @InjectRepository(RubberRollStock)
+    private readonly rubberRollStockRepo: Repository<RubberRollStock>,
+    @InjectRepository(RubberProductCoding)
+    private readonly rubberProductCodingRepo: Repository<RubberProductCoding>,
     @Inject(STORAGE_SERVICE)
     private readonly storageService: IStorageService,
     private readonly extractionService: InvoiceExtractionService,
@@ -280,11 +286,13 @@ export class DeliveryExtractionService {
     const category = this.inferCategory(item);
     const inferredLocationId = await this.inferLocationForCategory(companyId, category);
 
+    const rubberData = await this.enrichFromRubberRollStock(item, sku);
+
     const created = this.stockItemRepo.create({
       sku,
-      name: (item.description || "Unknown Item").slice(0, 255),
-      description: null,
-      category,
+      name: (rubberData?.name || item.description || "Unknown Item").slice(0, 255),
+      description: rubberData?.description || null,
+      category: rubberData ? "RUBBER" : category,
       unitOfMeasure,
       costPerUnit: safeCost,
       quantity,
@@ -292,11 +300,16 @@ export class DeliveryExtractionService {
       needsQrPrint: true,
       companyId,
       locationId: inferredLocationId,
+      thicknessMm: rubberData?.thicknessMm || null,
+      widthMm: rubberData?.widthMm || null,
+      lengthM: rubberData?.lengthM || null,
+      compoundCode: rubberData?.compoundCode || null,
+      rollNumber: rubberData?.rollNumber || null,
     });
     await this.stockItemRepo.save(created);
     const locLabel = inferredLocationId ? `location=${inferredLocationId}` : "no location";
     this.logger.log(
-      `Created new stock item ${sku}: ${item.description} @ R${safeCost.toFixed(2)} (${locLabel})`,
+      `Created new stock item ${sku}: ${created.name} @ R${safeCost.toFixed(2)} (${locLabel})`,
     );
     return created;
   }
@@ -338,6 +351,65 @@ export class DeliveryExtractionService {
       return rows[0].location_id;
     }
     return null;
+  }
+
+  private extractRollNumber(item: ExtractedLineItem, sku: string): string | null {
+    const combined = `${item.description || ""} ${item.itemCode || ""} ${sku}`;
+    const match = combined.match(/ROLL[\s#-]*(\d{4,6})/i);
+    if (match) {
+      return match[1];
+    }
+    return null;
+  }
+
+  private async enrichFromRubberRollStock(
+    item: ExtractedLineItem,
+    sku: string,
+  ): Promise<{
+    name: string;
+    description: string;
+    thicknessMm: number | null;
+    widthMm: number | null;
+    lengthM: number | null;
+    compoundCode: string | null;
+    rollNumber: string;
+  } | null> {
+    const rollNumber = this.extractRollNumber(item, sku);
+    if (!rollNumber) {
+      return null;
+    }
+
+    const roll = await this.rubberRollStockRepo.findOne({
+      where: { rollNumber },
+      relations: ["compoundCoding"],
+    });
+
+    if (!roll) {
+      this.logger.log(`Roll #${rollNumber} not found in AU Rubber roll stock`);
+      return null;
+    }
+
+    const compoundName = roll.compoundCoding?.name || item.description || "Rubber Roll";
+    const dimensionParts = [
+      roll.thicknessMm ? `${roll.thicknessMm}mm thick` : null,
+      roll.widthMm ? `${roll.widthMm}mm wide` : null,
+      roll.lengthM ? `${roll.lengthM}m long` : null,
+    ].filter((p): p is string => p !== null);
+    const description = dimensionParts.length > 0 ? dimensionParts.join(" x ") : null;
+
+    this.logger.log(
+      `Enriched roll #${rollNumber} from AU Rubber: ${compoundName} (${description || "no dimensions"})`,
+    );
+
+    return {
+      name: compoundName,
+      description: description || "",
+      thicknessMm: roll.thicknessMm ? Number(roll.thicknessMm) : null,
+      widthMm: roll.widthMm ? Number(roll.widthMm) : null,
+      lengthM: roll.lengthM ? Number(roll.lengthM) : null,
+      compoundCode: roll.compoundCoding?.code || null,
+      rollNumber,
+    };
   }
 
   private async handleReturnedItem(

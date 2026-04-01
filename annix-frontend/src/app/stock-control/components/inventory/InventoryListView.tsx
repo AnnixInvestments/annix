@@ -107,6 +107,12 @@ export function InventoryListView({
                 </th>
                 <th
                   scope="col"
+                  className="hidden lg:table-cell px-3 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
+                  Roll #
+                </th>
+                <th
+                  scope="col"
                   className="px-3 lg:px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
                 >
                   SOH
@@ -252,6 +258,9 @@ function ListTableRow({
       </td>
       <td className="hidden lg:table-cell px-3 lg:px-6 py-4 whitespace-nowrap text-sm text-gray-500">
         {item.category || "-"}
+      </td>
+      <td className="hidden lg:table-cell px-3 lg:px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-mono">
+        {item.rollNumber || "-"}
       </td>
       <td className="px-3 lg:px-6 py-4 whitespace-nowrap text-sm text-right font-semibold text-gray-900">
         {item.quantity}

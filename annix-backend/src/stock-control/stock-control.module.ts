@@ -8,6 +8,8 @@ import { FlangeDimensionModule } from "../flange-dimension/flange-dimension.modu
 import { NbOdLookupModule } from "../nb-od-lookup/nb-od-lookup.module";
 import { NixModule } from "../nix/nix.module";
 import { PipeScheduleModule } from "../pipe-schedule/pipe-schedule.module";
+import { RubberProductCoding } from "../rubber-lining/entities/rubber-product-coding.entity";
+import { RubberRollStock } from "../rubber-lining/entities/rubber-roll-stock.entity";
 import { RubberLiningModule } from "../rubber-lining/rubber-lining.module";
 import { SageExportModule } from "../sage-export/sage-export.module";
 import { SharedModule } from "../shared/shared.module";
@@ -236,6 +238,8 @@ import { WorkflowStepConfigService } from "./services/workflow-step-config.servi
       ReconciliationItem,
       ReconciliationEvent,
       StockReturn,
+      RubberRollStock,
+      RubberProductCoding,
     ]),
     EmailModule,
     FlangeDimensionModule,
