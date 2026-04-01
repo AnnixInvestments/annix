@@ -79,9 +79,10 @@ export class WorkflowNotificationService {
     );
 
     await this.notificationRepo.save(notifications);
+    const pushUsers = users.filter((u) => u.pushNotificationsEnabled !== false);
     this.webPushService
       .sendToUsers(
-        users.map((u) => u.id),
+        pushUsers.map((u) => u.id),
         {
           title: `Approval Required: ${jobCard.jobName}`,
           body: `Job card ${jobCard.jobNumber} requires your approval for ${this.stepDisplayName(step)}.`,
@@ -94,8 +95,9 @@ export class WorkflowNotificationService {
       `Created ${notifications.length} approval notifications for job card ${jobCardId}`,
     );
 
+    const emailUsers = users.filter((u) => u.emailNotificationsEnabled !== false);
     await Promise.all(
-      users.map((user) =>
+      emailUsers.map((user) =>
         this.sendApprovalRequiredEmail(
           companyId,
           user.email,
@@ -149,9 +151,10 @@ export class WorkflowNotificationService {
     );
 
     await this.notificationRepo.save(notifications);
+    const pushUsers = users.filter((u) => u.pushNotificationsEnabled !== false);
     this.webPushService
       .sendToUsers(
-        users.map((u) => u.id),
+        pushUsers.map((u) => u.id),
         {
           title: `Approved: ${jobCard.jobName}`,
           body: `${sender.name} approved ${this.stepDisplayName(step)} for job card ${jobCard.jobNumber}.`,
@@ -201,9 +204,10 @@ export class WorkflowNotificationService {
     );
 
     await this.notificationRepo.save(notifications);
+    const pushUsers = users.filter((u) => u.pushNotificationsEnabled !== false);
     this.webPushService
       .sendToUsers(
-        users.map((u) => u.id),
+        pushUsers.map((u) => u.id),
         {
           title: `Rejected: ${jobCard.jobName}`,
           body: `${sender.name} rejected job card ${jobCard.jobNumber}. Reason: ${reason}`,
@@ -213,8 +217,9 @@ export class WorkflowNotificationService {
       )
       .catch((err) => this.logger.warn(`Push notification failed: ${err.message}`));
 
+    const emailUsers = users.filter((u) => u.emailNotificationsEnabled !== false);
     await Promise.all(
-      users.map((user) =>
+      emailUsers.map((user) =>
         this.sendRejectionEmail(
           companyId,
           user.email,
@@ -273,9 +278,10 @@ export class WorkflowNotificationService {
     );
 
     await this.notificationRepo.save(notifications);
+    const pushManagers = managers.filter((u) => u.pushNotificationsEnabled !== false);
     this.webPushService
       .sendToUsers(
-        managers.map((u) => u.id),
+        pushManagers.map((u) => u.id),
         {
           title: `Over-Allocation Approval: ${jobCard.jobName}`,
           body: `Stock allocation for ${productName} exceeds limit by ${overBy}L.`,
@@ -288,8 +294,9 @@ export class WorkflowNotificationService {
       `Created ${notifications.length} over-allocation notifications for job card ${jobCardId}`,
     );
 
+    const emailManagers = managers.filter((u) => u.emailNotificationsEnabled !== false);
     await Promise.all(
-      managers.map((user) =>
+      emailManagers.map((user) =>
         this.sendOverAllocationEmail(
           companyId,
           user.email,
@@ -335,9 +342,10 @@ export class WorkflowNotificationService {
     );
 
     await this.notificationRepo.save(notifications);
+    const pushStoremen = storemen.filter((u) => u.pushNotificationsEnabled !== false);
     this.webPushService
       .sendToUsers(
-        storemen.map((u) => u.id),
+        pushStoremen.map((u) => u.id),
         {
           title: `Ready for Dispatch: ${jobCard.jobName}`,
           body: `Job card ${jobCard.jobNumber} is ready for physical dispatch.`,
@@ -430,18 +438,18 @@ export class WorkflowNotificationService {
       `Created ${notifications.length} import notifications for ${jobCards.length} job cards`,
     );
 
+    const emailRecipients = recipientUsers.filter((u) => u.emailNotificationsEnabled !== false);
     await Promise.all(
-      recipientEmails.map((email) => {
-        const user = recipientUsers.find((u) => u.email.toLowerCase() === email.toLowerCase());
-        return this.sendJobCardsImportedEmail(
+      emailRecipients.map((user) =>
+        this.sendJobCardsImportedEmail(
           companyId,
-          email,
-          user?.name ?? email,
+          user.email,
+          user.name,
           jobCards,
           detailUrl,
           sender?.name,
-        );
-      }),
+        ),
+      ),
     );
   }
 
@@ -533,8 +541,9 @@ export class WorkflowNotificationService {
       `Created ${notifications.length} CPO call-off notifications for JC ${jobCard.jobNumber} / CPO ${cpo.cpoNumber}`,
     );
 
+    const emailManagers = managers.filter((u) => u.emailNotificationsEnabled !== false);
     await Promise.all(
-      managers.map((user) =>
+      emailManagers.map((user) =>
         this.sendCpoCalloffEmail(companyId, user.email, user.name, jobCard, cpo, actionUrl),
       ),
     );
@@ -592,8 +601,9 @@ export class WorkflowNotificationService {
       `Created ${notifications.length} overdue invoice notifications for CPO ${cpo.cpoNumber}`,
     );
 
+    const emailRecipients = recipients.filter((u) => u.emailNotificationsEnabled !== false);
     await Promise.all(
-      recipients.map((user) =>
+      emailRecipients.map((user) =>
         this.sendCpoOverdueInvoiceEmail(
           companyId,
           user.email,
@@ -1216,8 +1226,9 @@ export class WorkflowNotificationService {
       `Created ${notifications.length} document arrived notifications for ${typeLabel} from ${fromEmail}`,
     );
 
+    const emailUsers = fallbackUsers.filter((u) => u.emailNotificationsEnabled !== false);
     await Promise.all(
-      fallbackUsers.map((user) =>
+      emailUsers.map((user) =>
         this.sendDocumentArrivedEmail(
           companyId,
           user.email,
@@ -1349,8 +1360,9 @@ export class WorkflowNotificationService {
       `Created ${notifications.length} QA rejection escalation notifications for job card ${jobCardId} (cycle ${cycleNumber})`,
     );
 
+    const emailManagers = managers.filter((u) => u.emailNotificationsEnabled !== false);
     await Promise.all(
-      managers.map((user) =>
+      emailManagers.map((user) =>
         this.sendQaEscalationEmail(
           companyId,
           user.email,

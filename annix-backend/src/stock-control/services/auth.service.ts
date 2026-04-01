@@ -353,6 +353,8 @@ export class StockControlAuthService {
       createdAt: user.createdAt,
       companyUpdatedAt: user.company?.updatedAt ?? null,
       hideTooltips: user.hideTooltips ?? false,
+      emailNotificationsEnabled: user.emailNotificationsEnabled ?? true,
+      pushNotificationsEnabled: user.pushNotificationsEnabled ?? true,
     };
   }
 
@@ -380,6 +382,25 @@ export class StockControlAuthService {
   ): Promise<{ hideTooltips: boolean }> {
     await this.userRepo.update(userId, { hideTooltips });
     return { hideTooltips };
+  }
+
+  async updateNotificationPreferences(
+    userId: number,
+    prefs: { emailNotificationsEnabled?: boolean; pushNotificationsEnabled?: boolean },
+  ): Promise<{ emailNotificationsEnabled: boolean; pushNotificationsEnabled: boolean }> {
+    const updates: Record<string, boolean> = {};
+    if (prefs.emailNotificationsEnabled !== undefined) {
+      updates.emailNotificationsEnabled = prefs.emailNotificationsEnabled;
+    }
+    if (prefs.pushNotificationsEnabled !== undefined) {
+      updates.pushNotificationsEnabled = prefs.pushNotificationsEnabled;
+    }
+    await this.userRepo.update(userId, updates);
+    const user = await this.userRepo.findOneOrFail({ where: { id: userId } });
+    return {
+      emailNotificationsEnabled: user.emailNotificationsEnabled,
+      pushNotificationsEnabled: user.pushNotificationsEnabled,
+    };
   }
 
   async refreshToken(refreshToken: string) {

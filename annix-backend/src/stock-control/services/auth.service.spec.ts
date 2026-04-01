@@ -148,6 +148,8 @@ describe("StockControlAuthService", () => {
     },
     linkedStaff: null,
     linkedStaffId: null,
+    emailNotificationsEnabled: true,
+    pushNotificationsEnabled: true,
     createdAt: now().toJSDate(),
     updatedAt: now().toJSDate(),
   };

@@ -117,6 +117,10 @@ declare module "./base" {
     deleteCompanyRole(id: number): Promise<void>;
     reorderCompanyRoles(orderedIds: number[]): Promise<CompanyRole[]>;
     updateTooltipPreference(hideTooltips: boolean): Promise<{ hideTooltips: boolean }>;
+    updateNotificationPreferences(prefs: {
+      emailNotificationsEnabled?: boolean;
+      pushNotificationsEnabled?: boolean;
+    }): Promise<{ emailNotificationsEnabled: boolean; pushNotificationsEnabled: boolean }>;
   }
 }
 
@@ -409,5 +413,12 @@ proto.updateTooltipPreference = async function (hideTooltips) {
   return this.request("/stock-control/auth/me/tooltip-preference", {
     method: "PATCH",
     body: JSON.stringify({ hideTooltips }),
+  });
+};
+
+proto.updateNotificationPreferences = async function (prefs) {
+  return this.request("/stock-control/auth/me/notification-preferences", {
+    method: "PATCH",
+    body: JSON.stringify(prefs),
   });
 };

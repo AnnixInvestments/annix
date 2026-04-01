@@ -5,6 +5,7 @@ import { Repository } from "typeorm";
 import * as webpush from "web-push";
 import { PushSubscription } from "../entities/push-subscription.entity";
 import { StockControlCompany } from "../entities/stock-control-company.entity";
+import { StockControlUser } from "../entities/stock-control-user.entity";
 
 interface PushPayload {
   title: string;
@@ -31,6 +32,8 @@ export class WebPushService {
     private readonly subscriptionRepo: Repository<PushSubscription>,
     @InjectRepository(StockControlCompany)
     private readonly companyRepo: Repository<StockControlCompany>,
+    @InjectRepository(StockControlUser)
+    private readonly userRepo: Repository<StockControlUser>,
     private readonly configService: ConfigService,
   ) {
     const publicKey = this.configService.get<string>("VAPID_PUBLIC_KEY");
@@ -85,6 +88,11 @@ export class WebPushService {
 
   async sendToUser(userId: number, payload: PushPayload): Promise<void> {
     if (!this.enabled) {
+      return;
+    }
+
+    const user = await this.userRepo.findOne({ where: { id: userId } });
+    if (user && user.pushNotificationsEnabled === false) {
       return;
     }
 

@@ -52,6 +52,12 @@ export class StockControlUser {
   @Column({ name: "hide_tooltips", type: "boolean", default: false })
   hideTooltips: boolean;
 
+  @Column({ name: "email_notifications_enabled", type: "boolean", default: true })
+  emailNotificationsEnabled: boolean;
+
+  @Column({ name: "push_notifications_enabled", type: "boolean", default: true })
+  pushNotificationsEnabled: boolean;
+
   @ManyToOne(() => StockControlCompany, { onDelete: "CASCADE" })
   @JoinColumn({ name: "company_id" })
   company: StockControlCompany;

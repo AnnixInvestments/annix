@@ -195,6 +195,16 @@ export class StockControlAuthController {
     return this.authService.updateTooltipPreference(req.user.id, body.hideTooltips);
   }
 
+  @UseGuards(StockControlAuthGuard)
+  @Patch("me/notification-preferences")
+  @ApiOperation({ summary: "Update email and push notification preferences" })
+  async updateNotificationPreferences(
+    @Req() req: any,
+    @Body() body: { emailNotificationsEnabled?: boolean; pushNotificationsEnabled?: boolean },
+  ) {
+    return this.authService.updateNotificationPreferences(req.user.id, body);
+  }
+
   @UseGuards(StockControlAuthGuard, StockControlRoleGuard)
   @StockControlRoles("admin")
   @Get("team")

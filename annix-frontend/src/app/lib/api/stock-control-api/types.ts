@@ -49,6 +49,8 @@ export interface StockControlUserProfile {
   createdAt: string;
   companyUpdatedAt: string | null;
   hideTooltips: boolean;
+  emailNotificationsEnabled: boolean;
+  pushNotificationsEnabled: boolean;
 }
 
 export interface GlossaryTerm {

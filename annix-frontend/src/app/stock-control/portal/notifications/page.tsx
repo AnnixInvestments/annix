@@ -1,9 +1,11 @@
 "use client";
 
-import { Bell, Check, CheckCheck, ClipboardCheck, Filter } from "lucide-react";
+import { Bell, Check, CheckCheck, ClipboardCheck, Filter, Mail, Smartphone } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCallback, useState } from "react";
+import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
 import type { WorkflowNotification } from "@/app/lib/api/stockControlApi";
+import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { formatDateTimeZA } from "@/app/lib/datetime";
 import {
   useCompleteBackgroundStep,
@@ -16,9 +18,11 @@ type FilterType = "all" | "unread";
 
 export default function NotificationsPage() {
   const router = useRouter();
+  const { profile, refreshProfile } = useStockControlAuth();
   const [filter, setFilter] = useState<FilterType>("all");
   const [completingBgStep, setCompletingBgStep] = useState<number | null>(null);
   const [bgNotes, setBgNotes] = useState("");
+  const [savingPrefs, setSavingPrefs] = useState(false);
 
   const { data: notifications = [], isLoading: loading } = useWorkflowNotifications(filter);
   const markAsRead = useMarkNotificationAsRead();
@@ -109,6 +113,21 @@ export default function NotificationsPage() {
     return colors[actionType] || "bg-gray-100 text-gray-800";
   };
 
+  const handleTogglePreference = useCallback(
+    async (key: "emailNotificationsEnabled" | "pushNotificationsEnabled", value: boolean) => {
+      setSavingPrefs(true);
+      try {
+        await stockControlApiClient.updateNotificationPreferences({ [key]: value });
+        await refreshProfile();
+      } catch {
+        /* profile will reflect actual state on next refresh */
+      } finally {
+        setSavingPrefs(false);
+      }
+    },
+    [refreshProfile],
+  );
+
   const unreadCount = notifications.filter((n) => !n.readAt).length;
 
   return (
@@ -146,6 +165,52 @@ export default function NotificationsPage() {
           )}
         </div>
       </div>
+
+      {profile && (
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-5">
+          <h2 className="text-sm font-semibold text-gray-700 mb-3">Notification Preferences</h2>
+          <div className="flex flex-col sm:flex-row gap-4">
+            <label className="flex items-center gap-3 cursor-pointer">
+              <div className="relative">
+                <input
+                  type="checkbox"
+                  checked={profile.emailNotificationsEnabled !== false}
+                  onChange={(e) =>
+                    handleTogglePreference("emailNotificationsEnabled", e.target.checked)
+                  }
+                  disabled={savingPrefs}
+                  className="sr-only peer"
+                />
+                <div className="w-10 h-5 bg-gray-200 peer-focus:ring-2 peer-focus:ring-teal-300 rounded-full peer peer-checked:bg-teal-500 transition-colors" />
+                <div className="absolute left-0.5 top-0.5 bg-white w-4 h-4 rounded-full transition-transform peer-checked:translate-x-5" />
+              </div>
+              <div className="flex items-center gap-1.5">
+                <Mail className="h-4 w-4 text-gray-500" />
+                <span className="text-sm text-gray-700">Email notifications</span>
+              </div>
+            </label>
+            <label className="flex items-center gap-3 cursor-pointer">
+              <div className="relative">
+                <input
+                  type="checkbox"
+                  checked={profile.pushNotificationsEnabled !== false}
+                  onChange={(e) =>
+                    handleTogglePreference("pushNotificationsEnabled", e.target.checked)
+                  }
+                  disabled={savingPrefs}
+                  className="sr-only peer"
+                />
+                <div className="w-10 h-5 bg-gray-200 peer-focus:ring-2 peer-focus:ring-teal-300 rounded-full peer peer-checked:bg-teal-500 transition-colors" />
+                <div className="absolute left-0.5 top-0.5 bg-white w-4 h-4 rounded-full transition-transform peer-checked:translate-x-5" />
+              </div>
+              <div className="flex items-center gap-1.5">
+                <Smartphone className="h-4 w-4 text-gray-500" />
+                <span className="text-sm text-gray-700">Push notifications</span>
+              </div>
+            </label>
+          </div>
+        </div>
+      )}
 
       <div className="bg-white rounded-lg shadow-sm border border-gray-200">
         {loading ? (
