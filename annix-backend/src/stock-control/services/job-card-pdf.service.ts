@@ -50,7 +50,7 @@ export class JobCardPdfService {
   ): Promise<{ buffer: Buffer; filename: string }> {
     const jobCard = await this.jobCardRepo.findOne({
       where: { id: jobCardId, companyId },
-      relations: ["allocations", "allocations.stockItem", "lineItems"],
+      relations: ["allocations", "allocations.stockItem", "lineItems", "cpo"],
     });
 
     if (!jobCard) {
@@ -128,6 +128,7 @@ export class JobCardPdfService {
       let currentY = Math.max(280, detailsEndY);
       currentY = this.drawLineItems(doc, jobCard, currentY);
       currentY = this.drawRubberAllocationSync(doc, jobCard, rubberAllocationResult, currentY);
+      currentY = this.drawCpoCoatingSpecs(doc, jobCard.cpo?.coatingSpecs || null, currentY);
       currentY = this.drawCoatingSpecification(
         doc,
         coatingAnalysis,
@@ -336,6 +337,39 @@ export class JobCardPdfService {
     }
 
     return y + 10;
+  }
+
+  private drawCpoCoatingSpecs(
+    doc: typeof PDFDocument,
+    coatingSpecs: string | null,
+    startY: number,
+  ): number {
+    if (!coatingSpecs || !coatingSpecs.trim()) return startY;
+
+    const lines = coatingSpecs.split("\n").filter((line) => line.trim());
+    if (lines.length === 0) return startY;
+
+    doc
+      .moveTo(50, startY - 10)
+      .lineTo(545, startY - 10)
+      .stroke();
+    doc.fontSize(12).font("Helvetica-Bold").text("Coating / Lining Specifications", 50, startY);
+
+    return (
+      lines.reduce((y, line) => {
+        const colonIdx = line.indexOf(":");
+        const isLabelled = /^(EXT|INT)\s*:/i.test(line) && colonIdx > -1;
+        if (isLabelled) {
+          const label = line.slice(0, colonIdx).trim().toUpperCase();
+          const value = line.slice(colonIdx + 1).trim();
+          doc.fontSize(9).font("Helvetica-Bold").text(`${label}:`, 50, y);
+          doc.font("Helvetica").text(value, 100, y, { width: 445 });
+        } else {
+          doc.fontSize(9).font("Helvetica").text(line, 50, y, { width: 495 });
+        }
+        return y + 14;
+      }, startY + 16) + 6
+    );
   }
 
   private drawCoatingSpecification(
