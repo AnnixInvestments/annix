@@ -118,7 +118,7 @@ export function LineItemsTab(props: LineItemsTabProps) {
   function renderAddForm() {
     return (
       <div className="px-4 py-3 bg-teal-50 border-b border-teal-200">
-        <div className="grid grid-cols-2 sm:grid-cols-6 gap-2 mb-2">
+        <div className="grid grid-cols-2 sm:grid-cols-7 gap-2 mb-2">
           <input
             type="text"
             value={addForm.itemCode}
@@ -145,6 +145,13 @@ export function LineItemsTab(props: LineItemsTabProps) {
             value={addForm.quantity}
             onChange={(e) => setAddForm({ ...addForm, quantity: e.target.value })}
             placeholder="Qty"
+            className="px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-teal-500 focus:border-teal-500"
+          />
+          <input
+            type="text"
+            value={addForm.jtNo}
+            onChange={(e) => setAddForm({ ...addForm, jtNo: e.target.value })}
+            placeholder="JT No (scan/paste)"
             className="px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-teal-500 focus:border-teal-500"
           />
           <input

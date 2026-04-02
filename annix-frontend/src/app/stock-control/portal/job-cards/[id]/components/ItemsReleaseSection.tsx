@@ -400,7 +400,8 @@ function ItemsReleaseForm({ jobCardId, existing, onSaved, onCancel }: ItemsRelea
                     type="text"
                     value={item.jtNumber ?? ""}
                     onChange={(e) => updateItem(index, "jtNumber", e.target.value)}
-                    className="w-20 rounded border border-gray-300 px-2 py-1 text-sm"
+                    placeholder="Paste JT"
+                    className="w-24 rounded border border-gray-300 px-2 py-1 text-sm"
                   />
                 </td>
                 <td className="px-3 py-2">
