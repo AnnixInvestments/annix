@@ -427,8 +427,6 @@ export class DataBookPdfService {
       shoreHardness.length > 0 ||
       dftReadings.length > 0 ||
       blastProfiles.length > 0 ||
-      dustDebrisTests.length > 0 ||
-      pullTests.length > 0 ||
       controlPlans.length > 0 ||
       releaseCertificates.length > 0 ||
       itemsReleases.length > 0;

@@ -944,7 +944,7 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
     const recBgStep = backgroundSteps.find(
       (bg) => bg.stepKey === "reception" || bg.stepKey === "custom_reception",
     );
-    const receptionDone = !recBgStep || recBgStep.completedAt !== null;
+    const receptionDone = recBgStep ? recBgStep.completedAt !== null : false;
     const shouldShow = managerFgIdx >= 0 && managerFgIdx <= currentStepIndex && receptionDone;
 
     const isReqStep = (key: string) =>
@@ -957,11 +957,13 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
         "custom_order_placement",
       ].includes(key);
     const reqBgSteps = backgroundSteps.filter((bg) => isReqStep(bg.stepKey));
-    const isBypassed =
-      reqBgSteps.length > 0 &&
-      reqBgSteps.every(
-        (bg) => bg.completedAt !== null && (bg.notes || "").toLowerCase().includes("current stock"),
-      );
+    const isReqSkippedOrBypassed = (bg: BackgroundStepStatus) => {
+      if (bg.completedAt === null) return false;
+      if (bg.completionType === "skipped") return true;
+      const notes = (bg.notes || "").toLowerCase();
+      return notes.includes("current stock") || notes.includes("soh");
+    };
+    const isBypassed = reqBgSteps.length > 0 && reqBgSteps.every(isReqSkippedOrBypassed);
 
     const updateBypassPath = () => {
       const recEl =
@@ -971,7 +973,10 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
         container.querySelector<HTMLElement>('[data-bg-step="stock_allocation"]') ||
         container.querySelector<HTMLElement>('[data-bg-step="custom_stock_allocation"]');
 
-      if (!shouldShow || !recEl || !saEl) return;
+      if (!shouldShow || !recEl || !saEl) {
+        pathEl.removeAttribute("d");
+        return;
+      }
 
       const cRect = container.getBoundingClientRect();
       const recRect = recEl.getBoundingClientRect();

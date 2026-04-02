@@ -30,6 +30,7 @@ import { CalloffStatus } from "../entities/cpo-calloff-record.entity";
 import { CpoStatus } from "../entities/customer-purchase-order.entity";
 import { StockControlAuthGuard } from "../guards/stock-control-auth.guard";
 import { StockControlRoleGuard, StockControlRoles } from "../guards/stock-control-role.guard";
+import { CoatingAnalysisService } from "../services/coating-analysis.service";
 import { CpoService } from "../services/cpo.service";
 import { JobCardImportService } from "../services/job-card-import.service";
 import { SageJcDumpService } from "../services/sage-jc-dump.service";
@@ -43,6 +44,7 @@ export class CpoController {
 
   constructor(
     private readonly cpoService: CpoService,
+    private readonly coatingAnalysisService: CoatingAnalysisService,
     private readonly jobCardImportService: JobCardImportService,
     private readonly sageJcDumpService: SageJcDumpService,
   ) {}
@@ -140,11 +142,22 @@ export class CpoController {
     @Param("id", ParseIntPipe) id: number,
     @Body() dto: ConfirmSageJcDumpDto,
   ) {
-    return this.sageJcDumpService.confirmSageJcDump(
+    const result = await this.sageJcDumpService.confirmSageJcDump(
       req.user.companyId,
       { ...dto, cpoId: id },
       req.user.name || null,
     );
+
+    if (result.createdJobCards && result.createdJobCards.length > 0) {
+      const jobCardIds = result.createdJobCards.map((jc: { id: number }) => jc.id);
+      this.coatingAnalysisService
+        .analyseJobCards(jobCardIds, req.user.companyId)
+        .catch((err: Error) => {
+          this.logger.error(`Background coating analysis failed: ${err.message}`);
+        });
+    }
+
+    return result;
   }
 
   @Put("calloff-records/:recordId/status")

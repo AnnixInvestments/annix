@@ -106,7 +106,7 @@ const DEFAULT_STEPS: ReadonlyArray<{
   {
     key: "stock_allocation",
     label: "Stock Alloc",
-    sortOrder: 2,
+    sortOrder: 3,
     isBackground: true,
     triggerAfterStep: "admin_approval",
     actionLabel: "Complete Stock Alloc",
@@ -132,7 +132,7 @@ const DEFAULT_STEPS: ReadonlyArray<{
   {
     key: "reception",
     label: "Reception",
-    sortOrder: 4,
+    sortOrder: 3,
     isBackground: true,
     triggerAfterStep: "manager_approval",
     actionLabel: "Print JC",

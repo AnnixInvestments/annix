@@ -674,13 +674,17 @@ export class CertificateService {
       ...(expiredMsg ? { warnings: [expiredMsg] } : {}),
     };
 
-    const shoreIdx = qcResult.sections.findIndex((s) => s.key === "shoreHardness");
-    const insertAt = shoreIdx >= 0 ? shoreIdx + 1 : qcResult.sections.length;
+    const coreQcSections = qcResult.sections.filter(
+      (s) => !["itemsRelease", "releaseCertificates"].includes(s.key),
+    );
+    const releaseQcSections = qcResult.sections.filter((s) =>
+      ["itemsRelease", "releaseCertificates"].includes(s.key),
+    );
     const sections: SectionStatus[] = [
-      ...qcResult.sections.slice(0, insertAt),
-      supplierCertSection,
+      ...coreQcSections,
       calCertSection,
-      ...qcResult.sections.slice(insertAt),
+      supplierCertSection,
+      ...releaseQcSections,
     ];
 
     const warnings: string[] = [
