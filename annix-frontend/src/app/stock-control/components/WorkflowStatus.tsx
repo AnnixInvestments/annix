@@ -944,8 +944,8 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
     const recBgStep = backgroundSteps.find(
       (bg) => bg.stepKey === "reception" || bg.stepKey === "custom_reception",
     );
-    const receptionDone = recBgStep ? recBgStep.completedAt !== null : false;
-    const shouldShow = managerFgIdx >= 0 && managerFgIdx <= currentStepIndex && receptionDone;
+    const receptionDone = !recBgStep || recBgStep.completedAt !== null;
+    const shouldShow = managerFgIdx >= 0 && managerFgIdx <= currentStepIndex;
 
     const isReqStep = (key: string) =>
       [
