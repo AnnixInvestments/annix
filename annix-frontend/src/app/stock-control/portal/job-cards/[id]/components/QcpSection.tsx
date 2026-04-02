@@ -1,9 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type {
   InterventionType,
   QcControlPlanRecord,
+  QcpActivity,
   QcpPlanType,
 } from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
@@ -39,6 +40,43 @@ const INTERVENTION_LABELS: Record<InterventionType, string> = {
   V: "Verify",
 };
 
+const INTERVENTION_OPTIONS: Array<{ value: string; label: string }> = [
+  { value: "", label: "-" },
+  { value: "H", label: "H" },
+  { value: "I", label: "I" },
+  { value: "W", label: "W" },
+  { value: "R", label: "R" },
+  { value: "S", label: "S" },
+  { value: "V", label: "V" },
+];
+
+const IGNORED_WORDS = new Set([
+  "pty",
+  "ltd",
+  "proprietary",
+  "limited",
+  "the",
+  "and",
+  "of",
+  "cc",
+  "inc",
+  "incorporated",
+  "sa",
+  "group",
+]);
+
+function customerShortName(name: string | null): string {
+  if (!name) return "Client";
+  const cleaned = name.replace(/\(.*?\)/g, "").trim();
+  const words = cleaned.split(/\s+/).filter((w) => !IGNORED_WORDS.has(w.toLowerCase()));
+  if (words.length === 0) return "Client";
+  if (words.length === 1) return words[0];
+  return words
+    .map((w) => w[0])
+    .join("")
+    .toUpperCase();
+}
+
 function signOffProgress(plan: QcControlPlanRecord): { signed: number; total: number } {
   const total = plan.activities.reduce((acc, a) => {
     const count =
@@ -69,6 +107,63 @@ function interventionSummary(plan: QcControlPlanRecord): string {
     .join(", ");
 }
 
+type PartyKey = "pls" | "mps" | "client" | "thirdParty";
+
+function PartyCell(props: {
+  activity: QcpActivity;
+  activityIndex: number;
+  party: PartyKey;
+  editable: boolean;
+  onChangeIntervention: (idx: number, party: PartyKey, value: InterventionType | null) => void;
+  onChangeInitial: (idx: number, party: PartyKey, value: string) => void;
+}) {
+  const so = props.activity[props.party];
+  if (!props.editable) {
+    if (!so.interventionType) {
+      return <td className="px-2 py-1.5 text-center text-gray-300">-</td>;
+    }
+    return (
+      <td className="px-2 py-1.5 text-center">
+        <span className="font-medium">{so.interventionType}</span>
+        {so.initial && <span className="ml-1 text-gray-500">{so.initial}</span>}
+      </td>
+    );
+  }
+
+  return (
+    <td className="px-1 py-1 text-center">
+      <div className="flex items-center justify-center gap-0.5">
+        <select
+          value={so.interventionType || ""}
+          onChange={(e) => {
+            const val = e.target.value;
+            props.onChangeIntervention(
+              props.activityIndex,
+              props.party,
+              val ? (val as InterventionType) : null,
+            );
+          }}
+          className="w-10 rounded border border-gray-300 px-0.5 py-0.5 text-xs text-center focus:border-teal-500 focus:ring-1 focus:ring-teal-500"
+        >
+          {INTERVENTION_OPTIONS.map((opt) => (
+            <option key={opt.value} value={opt.value}>
+              {opt.label}
+            </option>
+          ))}
+        </select>
+        <input
+          type="text"
+          value={so.initial || ""}
+          onChange={(e) => props.onChangeInitial(props.activityIndex, props.party, e.target.value)}
+          maxLength={5}
+          placeholder="init"
+          className="w-10 rounded border border-gray-300 px-0.5 py-0.5 text-xs text-center text-gray-500 focus:border-teal-500 focus:ring-1 focus:ring-teal-500"
+        />
+      </div>
+    </td>
+  );
+}
+
 export function QcpSection({ jobCardId }: QcpSectionProps) {
   const [plans, setPlans] = useState<QcControlPlanRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -79,6 +174,7 @@ export function QcpSection({ jobCardId }: QcpSectionProps) {
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [isAutoGenerating, setIsAutoGenerating] = useState(false);
   const [editorPlan, setEditorPlan] = useState<QcControlPlanRecord | null>(null);
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const fetchPlans = useCallback(async () => {
     try {
@@ -96,6 +192,62 @@ export function QcpSection({ jobCardId }: QcpSectionProps) {
   useEffect(() => {
     fetchPlans();
   }, [fetchPlans]);
+
+  const debouncedSave = useCallback(
+    (planId: number, activities: QcpActivity[]) => {
+      if (saveTimerRef.current) {
+        clearTimeout(saveTimerRef.current);
+      }
+      saveTimerRef.current = setTimeout(async () => {
+        try {
+          await stockControlApiClient.updateControlPlan(jobCardId, planId, { activities });
+        } catch (err) {
+          setError(err instanceof Error ? err.message : "Failed to save changes");
+        }
+      }, 600);
+    },
+    [jobCardId],
+  );
+
+  const handlePartyInterventionChange = useCallback(
+    (planId: number, activityIdx: number, party: PartyKey, value: InterventionType | null) => {
+      setPlans((prev) =>
+        prev.map((p) => {
+          if (p.id !== planId) return p;
+          const updatedActivities = p.activities.map((a, i) => {
+            if (i !== activityIdx) return a;
+            return {
+              ...a,
+              [party]: { ...a[party], interventionType: value },
+            };
+          });
+          debouncedSave(planId, updatedActivities);
+          return { ...p, activities: updatedActivities };
+        }),
+      );
+    },
+    [debouncedSave],
+  );
+
+  const handlePartyInitialChange = useCallback(
+    (planId: number, activityIdx: number, party: PartyKey, value: string) => {
+      setPlans((prev) =>
+        prev.map((p) => {
+          if (p.id !== planId) return p;
+          const updatedActivities = p.activities.map((a, i) => {
+            if (i !== activityIdx) return a;
+            return {
+              ...a,
+              [party]: { ...a[party], initial: value || null },
+            };
+          });
+          debouncedSave(planId, updatedActivities);
+          return { ...p, activities: updatedActivities };
+        }),
+      );
+    },
+    [debouncedSave],
+  );
 
   const handleDelete = async (id: number) => {
     try {
@@ -203,6 +355,7 @@ export function QcpSection({ jobCardId }: QcpSectionProps) {
           {plans.map((plan) => {
             const progress = signOffProgress(plan);
             const isExpanded = expandedId === plan.id;
+            const custLabel = customerShortName(plan.customerName);
             return (
               <div key={plan.id}>
                 <div
@@ -304,7 +457,9 @@ export function QcpSection({ jobCardId }: QcpSectionProps) {
                           </th>
                           <th className="px-2 py-1.5 text-left font-medium text-gray-500">Doc</th>
                           <th className="px-2 py-1.5 text-center font-medium text-gray-500">PLS</th>
-                          <th className="px-2 py-1.5 text-center font-medium text-gray-500">MPS</th>
+                          <th className="px-2 py-1.5 text-center font-medium text-gray-500">
+                            {custLabel}
+                          </th>
                           <th className="px-2 py-1.5 text-center font-medium text-gray-500">
                             Client
                           </th>
@@ -322,24 +477,50 @@ export function QcpSection({ jobCardId }: QcpSectionProps) {
                             <td className="px-2 py-1.5 text-gray-500">
                               {(a as any).documentation || a.procedureRequired || "-"}
                             </td>
-                            {(["pls", "mps", "client", "thirdParty"] as const).map((party) => {
-                              const so = (a as any)[party] || {};
-                              if (!so.interventionType) {
-                                return (
-                                  <td key={party} className="px-2 py-1.5 text-center text-gray-300">
-                                    -
-                                  </td>
-                                );
+                            <PartyCell
+                              activity={a}
+                              activityIndex={i}
+                              party="pls"
+                              editable={true}
+                              onChangeIntervention={(idx, party, val) =>
+                                handlePartyInterventionChange(plan.id, idx, party, val)
                               }
-                              return (
-                                <td key={party} className="px-2 py-1.5 text-center">
-                                  <span className="font-medium">{so.interventionType}</span>
-                                  {so.initial && (
-                                    <span className="ml-1 text-gray-500">{so.initial}</span>
-                                  )}
-                                </td>
-                              );
-                            })}
+                              onChangeInitial={(idx, party, val) =>
+                                handlePartyInitialChange(plan.id, idx, party, val)
+                              }
+                            />
+                            <PartyCell
+                              activity={a}
+                              activityIndex={i}
+                              party="mps"
+                              editable={true}
+                              onChangeIntervention={(idx, party, val) =>
+                                handlePartyInterventionChange(plan.id, idx, party, val)
+                              }
+                              onChangeInitial={(idx, party, val) =>
+                                handlePartyInitialChange(plan.id, idx, party, val)
+                              }
+                            />
+                            <PartyCell
+                              activity={a}
+                              activityIndex={i}
+                              party="client"
+                              editable={true}
+                              onChangeIntervention={(idx, party, val) =>
+                                handlePartyInterventionChange(plan.id, idx, party, val)
+                              }
+                              onChangeInitial={(idx, party, val) =>
+                                handlePartyInitialChange(plan.id, idx, party, val)
+                              }
+                            />
+                            <PartyCell
+                              activity={a}
+                              activityIndex={i}
+                              party="thirdParty"
+                              editable={false}
+                              onChangeIntervention={() => {}}
+                              onChangeInitial={() => {}}
+                            />
                           </tr>
                         ))}
                       </tbody>
