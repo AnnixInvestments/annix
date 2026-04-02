@@ -3,15 +3,21 @@
 import Link from "next/link";
 import { useState } from "react";
 import { useToast } from "@/app/components/Toast";
-import type { DeliveryNote, StockItem } from "@/app/lib/api/stockControlApi";
-import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
+import type {
+  AnalyzedDeliveryNoteData,
+  DeliveryNote,
+  StockItem,
+} from "@/app/lib/api/stockControlApi";
+import { SdnStatus, stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { formatDateZA } from "@/app/lib/datetime";
 import {
+  useConfirmDeliveryNote,
   useCreateDeliveryNote,
   useDeleteDeliveryNote,
   useDeliveryNotes,
   useLinkDeliveryNoteToStock,
 } from "@/app/lib/query/hooks";
+import { DeliveryNoteConfirmationModal } from "@/app/stock-control/components/DeliveryNoteConfirmationModal";
 
 function itemsCount(delivery: DeliveryNote): { count: number; isExtracted: boolean } {
   const linkedCount = delivery.items ? delivery.items.length : 0;
@@ -30,6 +36,29 @@ function needsStockLink(delivery: DeliveryNote): boolean {
   return (extractedData?.lineItems?.length || 0) > 0;
 }
 
+function sdnStatusBadge(status: string) {
+  if (status === SdnStatus.PENDING_REVIEW) {
+    return (
+      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-medium bg-amber-100 text-amber-800">
+        Pending Review
+      </span>
+    );
+  } else if (status === SdnStatus.CONFIRMED) {
+    return (
+      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-medium bg-blue-100 text-blue-800">
+        Confirmed
+      </span>
+    );
+  } else if (status === SdnStatus.STOCK_LINKED) {
+    return (
+      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-medium bg-green-100 text-green-800">
+        Stock Linked
+      </span>
+    );
+  }
+  return <span className="text-gray-400">-</span>;
+}
+
 interface DeliveryFormItem {
   stockItemId: number;
   quantityReceived: number;
@@ -41,6 +70,7 @@ export default function DeliveriesPage() {
   const createMutation = useCreateDeliveryNote();
   const deleteMutation = useDeleteDeliveryNote();
   const linkMutation = useLinkDeliveryNoteToStock();
+  const confirmMutation = useConfirmDeliveryNote();
 
   const [stockItems, setStockItems] = useState<StockItem[]>([]);
   const [showModal, setShowModal] = useState(false);
@@ -57,6 +87,8 @@ export default function DeliveriesPage() {
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [isBulkAdding, setIsBulkAdding] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<DeliveryNote | null>(null);
+  const [reviewTarget, setReviewTarget] = useState<DeliveryNote | null>(null);
+  const [isReviewSubmitting, setIsReviewSubmitting] = useState(false);
 
   const fetchStockItems = async () => {
     try {
@@ -160,6 +192,96 @@ export default function DeliveriesPage() {
       onSuccess: () => setDeleteTarget(null),
       onError: () => showToast("Failed to delete delivery note", "error"),
     });
+  };
+
+  const handleReviewConfirmAndAddToStock = async (editedData: AnalyzedDeliveryNoteData) => {
+    if (!reviewTarget) return;
+    setIsReviewSubmitting(true);
+    try {
+      await confirmMutation.mutateAsync({
+        id: reviewTarget.id,
+        confirmedData: editedData as unknown as Record<string, unknown>,
+      });
+      await linkMutation.mutateAsync(reviewTarget.id);
+      showToast(
+        `Delivery note ${reviewTarget.deliveryNumber} confirmed and added to stock`,
+        "success",
+      );
+      setReviewTarget(null);
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : "Failed to confirm delivery note", "error");
+    } finally {
+      setIsReviewSubmitting(false);
+    }
+  };
+
+  const handleReviewSaveConfirmed = async (editedData: AnalyzedDeliveryNoteData) => {
+    if (!reviewTarget) return;
+    setIsReviewSubmitting(true);
+    try {
+      await confirmMutation.mutateAsync({
+        id: reviewTarget.id,
+        confirmedData: editedData as unknown as Record<string, unknown>,
+      });
+      showToast(`Delivery note ${reviewTarget.deliveryNumber} confirmed`, "success");
+      setReviewTarget(null);
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : "Failed to confirm delivery note", "error");
+    } finally {
+      setIsReviewSubmitting(false);
+    }
+  };
+
+  const handleAddToStock = (delivery: DeliveryNote) => {
+    linkMutation.mutate(delivery.id, {
+      onSuccess: () => showToast(`${delivery.deliveryNumber} added to stock`, "success"),
+      onError: () => showToast("Failed to add to stock", "error"),
+    });
+  };
+
+  const buildAnalyzedDataFromExtracted = (
+    delivery: DeliveryNote,
+  ): AnalyzedDeliveryNoteData | null => {
+    const extracted = delivery.extractedData as Record<string, unknown> | null;
+    if (!extracted) return null;
+    return {
+      documentType:
+        (extracted.documentType as AnalyzedDeliveryNoteData["documentType"]) || "SUPPLIER_DELIVERY",
+      deliveryNoteNumber:
+        (extracted.deliveryNoteNumber as string) || delivery.deliveryNumber || null,
+      invoiceNumber: (extracted.invoiceNumber as string) || null,
+      deliveryDate: (extracted.deliveryDate as string) || null,
+      purchaseOrderNumber: (extracted.purchaseOrderNumber as string) || null,
+      customerReference: (extracted.customerReference as string) || null,
+      fromCompany: (extracted.fromCompany as AnalyzedDeliveryNoteData["fromCompany"]) || {
+        name: delivery.supplierName || null,
+        address: null,
+        vatNumber: null,
+        contactPerson: null,
+        phone: null,
+        email: null,
+      },
+      toCompany: (extracted.toCompany as AnalyzedDeliveryNoteData["toCompany"]) || {
+        name: null,
+        address: null,
+        vatNumber: null,
+        contactPerson: null,
+        phone: null,
+        email: null,
+      },
+      lineItems: (extracted.lineItems as AnalyzedDeliveryNoteData["lineItems"]) || [],
+      totals: (extracted.totals as AnalyzedDeliveryNoteData["totals"]) || {
+        totalQuantity: null,
+        totalWeightKg: null,
+        numberOfRolls: null,
+        subtotalExclVat: null,
+        vatTotal: null,
+        grandTotalInclVat: null,
+      },
+      notes: (extracted.notes as string) || null,
+      receivedBySignature: false,
+      receivedDate: null,
+    };
   };
 
   if (isLoading && deliveries.length === 0) {
@@ -324,21 +446,15 @@ export default function DeliveriesPage() {
                 </th>
                 <th
                   scope="col"
-                  className="hidden lg:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  className="hidden sm:table-cell px-3 sm:px-6 py-3 text-left text-[10px] sm:text-xs font-medium text-gray-500 uppercase tracking-wider"
                 >
-                  Received By
+                  Status
                 </th>
                 <th
                   scope="col"
                   className="hidden sm:table-cell px-3 sm:px-6 py-3 text-right text-[10px] sm:text-xs font-medium text-gray-500 uppercase tracking-wider"
                 >
                   Items
-                </th>
-                <th
-                  scope="col"
-                  className="hidden sm:table-cell px-3 sm:px-6 py-3 text-left text-[10px] sm:text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  Stock Status
                 </th>
                 <th
                   scope="col"
@@ -375,8 +491,8 @@ export default function DeliveriesPage() {
                   <td className="hidden md:table-cell px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {formatDateZA(delivery.receivedDate)}
                   </td>
-                  <td className="hidden lg:table-cell px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {delivery.receivedBy || "-"}
+                  <td className="hidden sm:table-cell px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm">
+                    {sdnStatusBadge(delivery.sdnStatus)}
                   </td>
                   <td className="hidden sm:table-cell px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-right text-gray-900">
                     {(() => {
@@ -393,48 +509,53 @@ export default function DeliveriesPage() {
                       );
                     })()}
                   </td>
-                  <td className="hidden sm:table-cell px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm">
-                    {(() => {
-                      const linkedCount = delivery.items ? delivery.items.length : 0;
-                      if (linkedCount > 0) {
-                        return (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-medium bg-green-100 text-green-800">
-                            In Stock
-                          </span>
-                        );
-                      } else if (needsStockLink(delivery)) {
-                        return (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-medium bg-yellow-100 text-yellow-800">
-                            Not in Stock
-                          </span>
-                        );
-                      } else {
-                        return <span className="text-gray-400">-</span>;
-                      }
-                    })()}
-                  </td>
                   <td className="px-2 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-sm text-right">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setDeleteTarget(delivery);
-                      }}
-                      className="text-gray-400 hover:text-red-600"
-                    >
-                      <svg
-                        className="w-4 h-4 sm:w-5 sm:h-5"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
+                    <div className="flex items-center justify-end gap-2">
+                      {delivery.sdnStatus === SdnStatus.PENDING_REVIEW && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setReviewTarget(delivery);
+                          }}
+                          className="text-xs px-2 py-1 rounded bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100"
+                        >
+                          Review
+                        </button>
+                      )}
+                      {delivery.sdnStatus === SdnStatus.CONFIRMED && needsStockLink(delivery) && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleAddToStock(delivery);
+                          }}
+                          disabled={linkMutation.isPending}
+                          className="text-xs px-2 py-1 rounded bg-green-50 text-green-700 border border-green-200 hover:bg-green-100 disabled:opacity-50"
+                        >
+                          Add to Stock
+                        </button>
+                      )}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setDeleteTarget(delivery);
+                        }}
+                        className="text-gray-400 hover:text-red-600"
                       >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                        />
-                      </svg>
-                    </button>
+                        <svg
+                          className="w-4 h-4 sm:w-5 sm:h-5"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                          />
+                        </svg>
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -652,6 +773,21 @@ export default function DeliveriesPage() {
           </div>
         </div>
       )}
+
+      {reviewTarget &&
+        (() => {
+          const analyzedData = buildAnalyzedDataFromExtracted(reviewTarget);
+          if (!analyzedData) return null;
+          return (
+            <DeliveryNoteConfirmationModal
+              analyzedData={analyzedData}
+              onClose={() => setReviewTarget(null)}
+              onConfirmAndAddToStock={handleReviewConfirmAndAddToStock}
+              onSaveForReview={handleReviewSaveConfirmed}
+              isSubmitting={isReviewSubmitting}
+            />
+          );
+        })()}
     </div>
   );
 }

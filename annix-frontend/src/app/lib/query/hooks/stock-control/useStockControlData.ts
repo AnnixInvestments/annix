@@ -178,6 +178,33 @@ export function useLinkDeliveryNoteToStock() {
   });
 }
 
+export function useSavePendingDeliveryNote() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (params: { file: File; analyzedData: Record<string, unknown> }) =>
+      stockControlApiClient.savePendingDeliveryNote(
+        params.file,
+        params.analyzedData as unknown as Parameters<
+          typeof stockControlApiClient.savePendingDeliveryNote
+        >[1],
+      ),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: stockControlKeys.deliveries.all });
+    },
+  });
+}
+
+export function useConfirmDeliveryNote() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (params: { id: number; confirmedData: Record<string, unknown> }) =>
+      stockControlApiClient.confirmDeliveryNote(params.id, params.confirmedData),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: stockControlKeys.deliveries.all });
+    },
+  });
+}
+
 export function useInvalidateDeliveries() {
   const queryClient = useQueryClient();
   return () => queryClient.invalidateQueries({ queryKey: stockControlKeys.deliveries.all });

@@ -20,6 +20,14 @@ export interface ExtractedDeliveryData {
   rawText?: string;
 }
 
+export const SdnStatus = {
+  PENDING_REVIEW: "PENDING_REVIEW",
+  CONFIRMED: "CONFIRMED",
+  STOCK_LINKED: "STOCK_LINKED",
+} as const;
+
+export type SdnStatusType = (typeof SdnStatus)[keyof typeof SdnStatus];
+
 @Entity("delivery_notes")
 export class DeliveryNote {
   @PrimaryGeneratedColumn()
@@ -62,6 +70,9 @@ export class DeliveryNote {
     (item) => item.deliveryNote,
   )
   items: DeliveryNoteItem[];
+
+  @Column({ name: "sdn_status", type: "varchar", length: 30, default: "'CONFIRMED'" })
+  sdnStatus: string;
 
   @Column({ name: "extraction_status", type: "varchar", length: 50, nullable: true })
   extractionStatus: string | null;

@@ -10,7 +10,7 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { DataSource, Repository } from "typeorm";
 import { fromISO, now, nowMillis } from "../../lib/datetime";
 import { IStorageService, STORAGE_SERVICE, StorageArea } from "../../storage/storage.interface";
-import { DeliveryNote } from "../entities/delivery-note.entity";
+import { DeliveryNote, SdnStatus } from "../entities/delivery-note.entity";
 import { DeliveryNoteItem } from "../entities/delivery-note-item.entity";
 import { StockItem } from "../entities/stock-item.entity";
 import { MovementType, ReferenceType, StockMovement } from "../entities/stock-movement.entity";
@@ -359,6 +359,8 @@ export class DeliveryService {
       supplierId = supplier.id;
     }
 
+    const hasLineItems = analyzedData.lineItems && analyzedData.lineItems.length > 0;
+
     const deliveryNote = this.deliveryNoteRepo.create({
       deliveryNumber,
       supplierName,
@@ -370,19 +372,20 @@ export class DeliveryService {
       companyId,
       extractionStatus: "completed",
       extractedData: analyzedData,
+      sdnStatus: hasLineItems ? SdnStatus.STOCK_LINKED : SdnStatus.CONFIRMED,
     });
 
     const savedNote = await this.deliveryNoteRepo.save(deliveryNote);
     this.logger.log(`Delivery note saved with ID: ${savedNote.id}`);
 
-    if (analyzedData.lineItems && analyzedData.lineItems.length > 0) {
+    if (hasLineItems) {
       this.logger.log(
-        `Auto-creating ${analyzedData.lineItems.length} stock items from extracted data`,
+        `Auto-creating ${analyzedData.lineItems!.length} stock items from extracted data`,
       );
       await this.extractionService.createStockItemsFromExtracted(
         companyId,
         savedNote,
-        analyzedData.lineItems,
+        analyzedData.lineItems!,
         receivedBy,
       );
     }
@@ -393,6 +396,148 @@ export class DeliveryService {
     });
 
     return this.findById(companyId, savedNote.id);
+  }
+
+  async createPendingFromAnalyzedData(
+    companyId: number,
+    file: Express.Multer.File,
+    analyzedData: {
+      deliveryNoteNumber?: string;
+      deliveryDate?: string;
+      fromCompany?: {
+        name?: string;
+        vatNumber?: string;
+        address?: string;
+        contactPerson?: string;
+        phone?: string;
+        email?: string;
+      };
+      toCompany?: { name?: string };
+      lineItems?: Array<{
+        description?: string;
+        itemCode?: string;
+        productCode?: string;
+        quantity?: number;
+        unitOfMeasure?: string;
+        unitPrice?: number;
+        lineTotal?: number;
+        isReturned?: boolean;
+        isPaint?: boolean;
+        isTwoPack?: boolean;
+        volumeLitersPerPack?: number;
+        totalLiters?: number;
+        costPerLiter?: number;
+      }>;
+    },
+    receivedBy?: string,
+  ): Promise<DeliveryNote> {
+    this.logger.log(`Saving pending delivery note, file size: ${file.size} bytes`);
+    const uploadResult = await this.storageService.upload(
+      file,
+      `${StorageArea.STOCK_CONTROL}/deliveries`,
+    );
+
+    const receivedDate = analyzedData.deliveryDate
+      ? fromISO(analyzedData.deliveryDate).toJSDate()
+      : now().toJSDate();
+
+    const deliveryNumber = analyzedData.deliveryNoteNumber || `DN-${nowMillis()}`;
+
+    const existingNote = await this.deliveryNoteRepo.findOne({
+      where: { companyId, deliveryNumber },
+    });
+
+    if (existingNote) {
+      throw new ConflictException(`Delivery note ${deliveryNumber} has already been uploaded`);
+    }
+
+    const supplierName = analyzedData.fromCompany?.name || "Unknown Supplier";
+
+    let supplierId: number | null = null;
+    if (analyzedData.fromCompany?.name) {
+      const supplier = await this.supplierService.resolveOrCreateSupplier(
+        companyId,
+        analyzedData.fromCompany.name,
+        {
+          vatNumber: analyzedData.fromCompany.vatNumber,
+          address: analyzedData.fromCompany.address,
+          contactPerson: analyzedData.fromCompany.contactPerson,
+          phone: analyzedData.fromCompany.phone,
+          email: analyzedData.fromCompany.email,
+        },
+      );
+      supplierId = supplier.id;
+    }
+
+    const deliveryNote = this.deliveryNoteRepo.create({
+      deliveryNumber,
+      supplierName,
+      supplierId,
+      receivedDate,
+      notes: null,
+      photoUrl: uploadResult.path,
+      receivedBy: receivedBy || null,
+      companyId,
+      extractionStatus: "completed",
+      extractedData: analyzedData,
+      sdnStatus: SdnStatus.PENDING_REVIEW,
+    });
+
+    const savedNote = await this.deliveryNoteRepo.save(deliveryNote);
+    this.logger.log(`Pending delivery note saved with ID: ${savedNote.id}`);
+
+    return this.findById(companyId, savedNote.id);
+  }
+
+  async confirmDeliveryNote(
+    companyId: number,
+    id: number,
+    confirmedData: {
+      deliveryNoteNumber?: string;
+      deliveryDate?: string;
+      fromCompany?: {
+        name?: string;
+        vatNumber?: string;
+        address?: string;
+        contactPerson?: string;
+        phone?: string;
+        email?: string;
+      };
+      lineItems?: Array<Record<string, unknown>>;
+    },
+  ): Promise<DeliveryNote> {
+    const note = await this.findById(companyId, id);
+
+    if (confirmedData.deliveryNoteNumber) {
+      note.deliveryNumber = confirmedData.deliveryNoteNumber;
+    }
+    if (confirmedData.deliveryDate) {
+      note.receivedDate = fromISO(confirmedData.deliveryDate).toJSDate();
+    }
+    if (confirmedData.fromCompany?.name) {
+      note.supplierName = confirmedData.fromCompany.name;
+      const supplier = await this.supplierService.resolveOrCreateSupplier(
+        companyId,
+        confirmedData.fromCompany.name,
+        {
+          vatNumber: confirmedData.fromCompany.vatNumber,
+          address: confirmedData.fromCompany.address,
+          contactPerson: confirmedData.fromCompany.contactPerson,
+          phone: confirmedData.fromCompany.phone,
+          email: confirmedData.fromCompany.email,
+        },
+      );
+      note.supplierId = supplier.id;
+    }
+
+    const merged = { ...(note.extractedData as Record<string, unknown>), ...confirmedData };
+    note.extractedData = merged as typeof note.extractedData;
+    note.sdnStatus = SdnStatus.CONFIRMED;
+
+    await this.deliveryNoteRepo.save(note);
+    this.logger.log(`Delivery note ${id} confirmed`);
+
+    return this.findById(companyId, id);
   }
 
   async createInvoiceFromAnalyzedData(

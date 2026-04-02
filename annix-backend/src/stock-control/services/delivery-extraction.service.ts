@@ -5,7 +5,7 @@ import { nowMillis } from "../../lib/datetime";
 import { RubberProductCoding } from "../../rubber-lining/entities/rubber-product-coding.entity";
 import { RubberRollStock } from "../../rubber-lining/entities/rubber-roll-stock.entity";
 import { IStorageService, STORAGE_SERVICE } from "../../storage/storage.interface";
-import { DeliveryNote } from "../entities/delivery-note.entity";
+import { DeliveryNote, SdnStatus } from "../entities/delivery-note.entity";
 import { DeliveryNoteItem } from "../entities/delivery-note-item.entity";
 import { StockItem } from "../entities/stock-item.entity";
 import { MovementType, ReferenceType, StockMovement } from "../entities/stock-movement.entity";
@@ -106,6 +106,9 @@ export class DeliveryExtractionService {
       `Linking ${extractedData.lineItems.length} extracted items to stock for delivery note ${note.id}`,
     );
     await this.createStockItemsFromExtracted(companyId, note, extractedData.lineItems, receivedBy);
+
+    note.sdnStatus = SdnStatus.STOCK_LINKED;
+    await this.deliveryNoteRepo.save(note);
   }
 
   async createStockItemsFromExtracted(

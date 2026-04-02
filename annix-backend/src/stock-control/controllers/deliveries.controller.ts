@@ -8,6 +8,7 @@ import {
   InternalServerErrorException,
   Logger,
   Param,
+  Patch,
   Post,
   Query,
   Req,
@@ -114,6 +115,92 @@ export class DeliveriesController {
       }
       throw new InternalServerErrorException(
         `Failed to add items to stock: ${error instanceof Error ? error.message : "Unknown error"}`,
+      );
+    }
+  }
+
+  @Post("save-pending")
+  @UseInterceptors(FileInterceptor("file"))
+  @ApiOperation({ summary: "Save analyzed delivery note as PENDING_REVIEW for later confirmation" })
+  @ApiConsumes("multipart/form-data")
+  @ApiBody({
+    schema: {
+      type: "object",
+      properties: {
+        file: {
+          type: "string",
+          format: "binary",
+          description: "Original photo or PDF of delivery note",
+        },
+        analyzedData: {
+          type: "string",
+          description: "JSON string of analyzed delivery note data",
+        },
+      },
+    },
+  })
+  async savePending(
+    @Req() req: any,
+    @UploadedFile() file: Express.Multer.File,
+    @Body("analyzedData") analyzedDataJson: string,
+  ) {
+    if (!file) {
+      throw new BadRequestException("No file provided");
+    }
+    if (!analyzedDataJson) {
+      throw new BadRequestException("No analyzed data provided");
+    }
+
+    try {
+      const analyzedData = JSON.parse(analyzedDataJson);
+      return await this.deliveryService.createPendingFromAnalyzedData(
+        req.user.companyId,
+        file,
+        analyzedData,
+        req.user.name,
+      );
+    } catch (error) {
+      this.logger.error(
+        `Failed to save pending delivery note: ${error instanceof Error ? error.message : String(error)}`,
+        error instanceof Error ? error.stack : undefined,
+      );
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new InternalServerErrorException(
+        `Failed to save pending delivery note: ${error instanceof Error ? error.message : "Unknown error"}`,
+      );
+    }
+  }
+
+  @Patch(":id/confirm")
+  @ApiOperation({ summary: "Confirm a PENDING_REVIEW delivery note with user-edited data" })
+  async confirmDeliveryNote(
+    @Req() req: any,
+    @Param("id") id: number,
+    @Body() confirmedData: Record<string, unknown>,
+  ) {
+    try {
+      return await this.deliveryService.confirmDeliveryNote(
+        req.user.companyId,
+        id,
+        confirmedData as {
+          deliveryNoteNumber?: string;
+          deliveryDate?: string;
+          fromCompany?: { name?: string };
+          lineItems?: Array<Record<string, unknown>>;
+        },
+      );
+    } catch (error) {
+      this.logger.error(
+        `Failed to confirm delivery note ${id}: ${error instanceof Error ? error.message : String(error)}`,
+        error instanceof Error ? error.stack : undefined,
+      );
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new InternalServerErrorException(
+        `Failed to confirm delivery note: ${error instanceof Error ? error.message : "Unknown error"}`,
       );
     }
   }

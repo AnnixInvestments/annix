@@ -158,6 +158,7 @@ export type {
   SageJcDumpParsedItem,
   SageJcDumpParseResult,
   ScrapedBrandingCandidates,
+  SdnStatusType,
   SectionStatus,
   SmtpConfigResponse,
   SmtpConfigUpdate,
@@ -206,6 +207,7 @@ export type {
   WorkflowStepConfig,
 } from "./stock-control-api";
 export {
+  SdnStatus,
   StockControlApiClient,
   stockControlApiClient,
 } from "./stock-control-api";

@@ -1133,6 +1133,14 @@ export interface PositectorStreamingSaveResult {
   average: number | null;
 }
 
+export const SdnStatus = {
+  PENDING_REVIEW: "PENDING_REVIEW",
+  CONFIRMED: "CONFIRMED",
+  STOCK_LINKED: "STOCK_LINKED",
+} as const;
+
+export type SdnStatusType = (typeof SdnStatus)[keyof typeof SdnStatus];
+
 export interface DeliveryNote {
   id: number;
   deliveryNumber: string;
@@ -1142,6 +1150,7 @@ export interface DeliveryNote {
   notes: string | null;
   photoUrl: string | null;
   receivedBy: string | null;
+  sdnStatus: SdnStatusType;
   extractionStatus: string | null;
   extractedData: Record<string, unknown> | null;
   createdAt: string;

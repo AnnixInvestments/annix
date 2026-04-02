@@ -22,6 +22,11 @@ declare module "./base" {
     deleteDeliveryNote(id: number): Promise<void>;
     uploadDeliveryPhoto(id: number, file: File): Promise<DeliveryNote>;
     linkDeliveryNoteToStock(id: number): Promise<DeliveryNote>;
+    savePendingDeliveryNote(
+      file: File,
+      analyzedData: AnalyzedDeliveryNoteData,
+    ): Promise<DeliveryNote>;
+    confirmDeliveryNote(id: number, confirmedData: Record<string, unknown>): Promise<DeliveryNote>;
     stockMovements(params?: {
       stockItemId?: number;
       movementType?: string;
@@ -78,6 +83,19 @@ proto.uploadDeliveryPhoto = async function (id, file) {
 
 proto.linkDeliveryNoteToStock = async function (id) {
   return this.request(`/stock-control/deliveries/${id}/link-to-stock`, { method: "POST" });
+};
+
+proto.savePendingDeliveryNote = async function (file, analyzedData) {
+  return this.uploadFile("/stock-control/deliveries/save-pending", file, {
+    analyzedData: JSON.stringify(analyzedData),
+  });
+};
+
+proto.confirmDeliveryNote = async function (id, confirmedData) {
+  return this.request(`/stock-control/deliveries/${id}/confirm`, {
+    method: "PATCH",
+    body: JSON.stringify(confirmedData),
+  });
 };
 
 proto.stockMovements = async function (params) {
