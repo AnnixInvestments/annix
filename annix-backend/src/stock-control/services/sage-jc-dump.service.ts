@@ -604,7 +604,6 @@ export class SageJcDumpService {
         const rawQty = row[5];
         const quantity = typeof rawQty === "number" ? rawQty : parseFloat(String(rawQty || "0"));
         const rawJtNo = String(row[6] || "").trim();
-        const jtNo = rawJtNo || lastJtNo;
         const hasNoData =
           !rawItemCode &&
           !itemDesc &&
@@ -635,6 +634,11 @@ export class SageJcDumpService {
         if (rawItemCode) {
           lastItemCode = rawItemCode;
         }
+        if (rawJtNo) {
+          lastJtNo = rawJtNo;
+        }
+
+        const jtNo = rawJtNo || lastJtNo;
         if (rawJtNo) {
           lastJtNo = rawJtNo;
         }

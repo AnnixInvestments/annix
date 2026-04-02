@@ -432,6 +432,23 @@ export default function JobCardDetailPage() {
 
   const tabDefinitions: TabDefinition[] = useMemo(() => {
     const status = jobCard?.status?.toLowerCase() || "draft";
+    const allLineItemText = [
+      jobCard?.notes || "",
+      ...(jobCard?.lineItems || []).map(
+        (li) => `${li.itemCode || ""} ${li.itemDescription || ""} ${li.notes || ""}`,
+      ),
+    ]
+      .join(" ")
+      .toLowerCase();
+    const isRubberJob =
+      allLineItemText.includes("rubber") ||
+      allLineItemText.includes("r/l") ||
+      allLineItemText.includes("lining") ||
+      allLineItemText.includes("liner") ||
+      allLineItemText.includes("lagging");
+    const hasM2Items = (jobCard?.lineItems || [])
+      .filter(isValidLineItem)
+      .some((li) => li.m2 !== null && Number(li.m2) > 0);
     return [
       {
         id: "details",
@@ -439,7 +456,7 @@ export default function JobCardDetailPage() {
         badge: validLineItemCount > 0 ? validLineItemCount : null,
       },
       { id: "coating", label: "Coating Analysis" },
-      { id: "rubber-analysis", label: "Rubber Analysis" },
+      { id: "rubber-analysis", label: "Rubber Analysis", hidden: !isRubberJob || !hasM2Items },
       { id: "requisition", label: "Requisition" },
       {
         id: "stock-issues",
