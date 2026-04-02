@@ -423,14 +423,6 @@ export class QcMeasurementService {
       date: null,
     });
 
-    const typedSignOff = (type: InterventionType): PartySignOff => ({
-      interventionType: type,
-      initial: null,
-      name: null,
-      signatureUrl: null,
-      date: null,
-    });
-
     const defaultApprovals = (): QcpApprovalSignature[] => [
       { party: "PLS", name: null, signatureUrl: null, date: null },
       { party: "MPS", name: null, signatureUrl: null, date: null },
@@ -460,347 +452,105 @@ export class QcMeasurementService {
       remarks: null,
     });
 
-    const H = InterventionType.HOLD;
-    const S = InterventionType.SURVEILLANCE;
-    const V = InterventionType.VERIFY;
-    const R = InterventionType.REVIEW;
+    const extractSpecByArea = (notes: string | null | undefined, area: "INT" | "EXT"): string => {
+      if (!notes) return "TBC";
+      const parts = notes
+        .split(/(?=\bINT\s*:|EXT\s*:)/i)
+        .filter((p) => p.trim().toUpperCase().startsWith(`${area}`))
+        .map((p) => p.trim());
+      return parts.length > 0 ? [...new Set(parts)].join(" ") : "TBC";
+    };
 
     const rubberActivities = (): QcpActivity[] => {
-      const rubberSpec = coating?.rawNotes || "TBC";
+      const rubberSpec = extractSpecByArea(coating?.rawNotes, "INT");
       return [
-        buildActivity(
-          1,
-          "Obtain Approval of QCP",
-          null,
-          "QC Document",
-          holdSignOff(),
-          typedSignOff(H),
-          typedSignOff(H),
-          typedSignOff(H),
-        ),
-        buildActivity(
-          2,
-          "Check Cleanliness",
-          "SANS 1201-2005",
-          "QD_PLS_16",
-          holdSignOff(),
-          typedSignOff(S),
-          typedSignOff(S),
-          typedSignOff(S),
-        ),
-        buildActivity(
-          3,
-          "Sand Blast 3 S A",
-          "SANS 1201-2005",
-          "QD_PLS_16",
-          holdSignOff(),
-          typedSignOff(S),
-          typedSignOff(S),
-          typedSignOff(S),
-        ),
-        buildActivity(
-          4,
-          "Hero Bond 080",
-          "CERTIFICATE OF ANALYSIS",
-          "QD_PLS_16",
-          holdSignOff(),
-          typedSignOff(S),
-          typedSignOff(S),
-          typedSignOff(S),
-        ),
-        buildActivity(
-          5,
-          "Hero Bond 082",
-          "CERTIFICATE OF ANALYSIS",
-          "QD_PLS_16",
-          holdSignOff(),
-          typedSignOff(S),
-          typedSignOff(S),
-          typedSignOff(S),
-        ),
-        buildActivity(
-          6,
-          "TY Bond 086",
-          "CERTIFICATE OF ANALYSIS",
-          "QD_PLS_16",
-          holdSignOff(),
-          typedSignOff(S),
-          typedSignOff(S),
-          typedSignOff(S),
-        ),
-        buildActivity(
-          7,
-          rubberSpec,
-          "CERTIFICATE OF ANALYSIS",
-          "QD_PLS_16",
-          holdSignOff(),
-          typedSignOff(V),
-          typedSignOff(V),
-          typedSignOff(V),
-        ),
-        buildActivity(
-          8,
-          "Pre cure Inspection",
-          "SANS 1201-2005",
-          "QD_PLS_16",
-          holdSignOff(),
-          typedSignOff(S),
-          typedSignOff(S),
-          typedSignOff(S),
-        ),
-        buildActivity(
-          9,
-          "Cure",
-          "SANS 1201-2005",
-          "QD_PLS_16",
-          holdSignOff(),
-          typedSignOff(S),
-          typedSignOff(S),
-          typedSignOff(S),
-        ),
-        buildActivity(
-          10,
-          "Buff",
-          "SANS 1201-2005",
-          "QD_PLS_16",
-          holdSignOff(),
-          typedSignOff(S),
-          typedSignOff(S),
-          typedSignOff(S),
-        ),
-        buildActivity(
-          11,
-          "Spark Test",
-          "SANS 1201-2005",
-          "QD_PLS_16",
-          holdSignOff(),
-          typedSignOff(H),
-          typedSignOff(H),
-          typedSignOff(H),
-        ),
-        buildActivity(
-          12,
-          "Hardness",
-          "SANS 1201-2005",
-          "Data Records",
-          holdSignOff(),
-          typedSignOff(H),
-          typedSignOff(H),
-          typedSignOff(H),
-        ),
-        buildActivity(
-          13,
-          "Test plate Results",
-          "SANS 1201-2005",
-          "QD_PLS_16",
-          holdSignOff(),
-          typedSignOff(H),
-          typedSignOff(H),
-          typedSignOff(H),
-        ),
-        buildActivity(
-          14,
-          "Final Inspection",
-          "SANS 1201-2005",
-          "QD_PLS_16",
-          holdSignOff(),
-          typedSignOff(H),
-          typedSignOff(H),
-          typedSignOff(H),
-        ),
-        buildActivity(
-          15,
-          "Humidity Documents",
-          "SANS 1201-2005",
-          "Data Records",
-          holdSignOff(),
-          typedSignOff(V),
-          typedSignOff(V),
-          typedSignOff(V),
-        ),
-        buildActivity(
-          16,
-          "Databook sign off",
-          null,
-          "Data Book",
-          holdSignOff(),
-          typedSignOff(H),
-          typedSignOff(H),
-          typedSignOff(H),
-        ),
+        buildActivity(1, "Obtain Approval of QCP", null, "QC Document"),
+        buildActivity(2, "Check Cleanliness", "SANS 1201-2005", "QD_PLS_16"),
+        buildActivity(3, "Sand Blast 3 S A", "SANS 1201-2005", "QD_PLS_16"),
+        buildActivity(4, "Hero Bond 080", "CERTIFICATE OF ANALYSIS", "QD_PLS_16"),
+        buildActivity(5, "Hero Bond 082", "CERTIFICATE OF ANALYSIS", "QD_PLS_16"),
+        buildActivity(6, "TY Bond 086", "CERTIFICATE OF ANALYSIS", "QD_PLS_16"),
+        buildActivity(7, rubberSpec, "CERTIFICATE OF ANALYSIS", "QD_PLS_16"),
+        buildActivity(8, "Pre cure Inspection", "SANS 1201-2005", "QD_PLS_16"),
+        buildActivity(9, "Cure", "SANS 1201-2005", "QD_PLS_16"),
+        buildActivity(10, "Buff", "SANS 1201-2005", "QD_PLS_16"),
+        buildActivity(11, "Spark Test", "SANS 1201-2005", "QD_PLS_16"),
+        buildActivity(12, "Hardness", "SANS 1201-2005", "Data Records"),
+        buildActivity(13, "Test plate Results", "SANS 1201-2005", "QD_PLS_16"),
+        buildActivity(14, "Final Inspection", "SANS 1201-2005", "QD_PLS_16"),
+        buildActivity(15, "Humidity Documents", "SANS 1201-2005", "Data Records"),
+        buildActivity(16, "Databook sign off", null, "Data Book"),
       ];
     };
 
     const paintActivities = (paintCoats: any[], surfPrep: string | null): QcpActivity[] => {
       const activities: QcpActivity[] = [
-        buildActivity(
-          1,
-          "Approval of QCP",
-          null,
-          "QD_PLS_11",
-          holdSignOff(),
-          typedSignOff(H),
-          emptySignOff(),
-          emptySignOff(),
-        ),
-        buildActivity(
-          2,
-          "Weather Conditions",
-          "HUMIDITY: less than 85%",
-          "QD_PLS_10",
-          holdSignOff(),
-          typedSignOff(V),
-          emptySignOff(),
-          emptySignOff(),
-        ),
+        buildActivity(1, "Approval of QCP", null, "QD_PLS_11"),
+        buildActivity(2, "Weather Conditions", "HUMIDITY: less than 85%", "QD_PLS_10"),
         buildActivity(
           3,
           "Calibration Certificates",
           "CALIBRATION CERTIFICATES",
           "CALIBRATION CERTIFICATES",
-          holdSignOff(),
-          typedSignOff(R),
-          emptySignOff(),
-          emptySignOff(),
         ),
-        buildActivity(
-          4,
-          "Verification of Paints Used",
-          "BATCH CERTIFICATES",
-          "BATCH CERTIFICATES",
-          holdSignOff(),
-          typedSignOff(R),
-          emptySignOff(),
-          emptySignOff(),
-        ),
-        buildActivity(
-          5,
-          "Visual Inspection on Items",
-          "QD_PLS_16",
-          "QD_PLS_16",
-          holdSignOff(),
-          typedSignOff(S),
-          emptySignOff(),
-          emptySignOff(),
-        ),
-        buildActivity(
-          6,
-          "Blasting",
-          surfPrep || "CLEAN SA.2.5 ISO 8501-1988",
-          "RECORD READINGS",
-          holdSignOff(),
-          typedSignOff(S),
-          emptySignOff(),
-          emptySignOff(),
-        ),
+        buildActivity(4, "Verification of Paints Used", "BATCH CERTIFICATES", "BATCH CERTIFICATES"),
+        buildActivity(5, "Visual Inspection on Items", "QD_PLS_16", "QD_PLS_16"),
+        buildActivity(6, "Blasting", surfPrep || "CLEAN SA.2.5 ISO 8501-1988", "RECORD READINGS"),
       ];
 
       let opNum = 7;
       let totalMinDft = 0;
       let totalMaxDft = 0;
 
+      const hasBothAreas =
+        paintCoats.some((c: any) => c.area === "external") &&
+        paintCoats.some((c: any) => c.area === "internal");
+
       paintCoats.forEach((coat: any) => {
         const dftSpec =
           coat.minDftUm && coat.maxDftUm ? `${coat.minDftUm}-${coat.maxDftUm}µm` : null;
         if (coat.minDftUm) totalMinDft += Number(coat.minDftUm);
         if (coat.maxDftUm) totalMaxDft += Number(coat.maxDftUm);
-        activities.push(
-          buildActivity(
-            opNum++,
-            coat.product || "TBC",
-            dftSpec,
-            "RECORD READINGS",
-            holdSignOff(),
-            typedSignOff(S),
-            emptySignOff(),
-            emptySignOff(),
-          ),
-        );
+        const areaPrefix = hasBothAreas ? (coat.area === "internal" ? "INT: " : "EXT: ") : "";
+        const coatName = `${areaPrefix}${coat.product || "TBC"}`;
+        activities.push(buildActivity(opNum++, coatName, dftSpec, "RECORD READINGS"));
       });
 
       if (paintCoats.length === 0) {
-        activities.push(
-          buildActivity(
-            opNum++,
-            "Primer Coat",
-            null,
-            "RECORD READINGS",
-            holdSignOff(),
-            typedSignOff(S),
-            emptySignOff(),
-            emptySignOff(),
-          ),
-        );
-        activities.push(
-          buildActivity(
-            opNum++,
-            "Topcoat",
-            null,
-            "RECORD READINGS",
-            holdSignOff(),
-            typedSignOff(S),
-            emptySignOff(),
-            emptySignOff(),
-          ),
-        );
+        activities.push(buildActivity(opNum++, "Primer Coat", null, "RECORD READINGS"));
+        activities.push(buildActivity(opNum++, "Topcoat", null, "RECORD READINGS"));
       }
 
       const totalDftSpec =
         totalMinDft > 0 || totalMaxDft > 0 ? `${totalMinDft}-${totalMaxDft}µm` : null;
 
+      activities.push(buildActivity(opNum++, "Total DFTs", totalDftSpec, "RECORD READINGS"));
       activities.push(
-        buildActivity(
-          opNum++,
-          "Total DFTs",
-          totalDftSpec,
-          "RECORD READINGS",
-          holdSignOff(),
-          typedSignOff(S),
-          emptySignOff(),
-          emptySignOff(),
-        ),
+        buildActivity(opNum++, "Final Release", "CLIENT INSPECTION", "CLIENT RELEASE"),
       );
-      activities.push(
-        buildActivity(
-          opNum++,
-          "Final Release",
-          "CLIENT INSPECTION",
-          "CLIENT RELEASE",
-          holdSignOff(),
-          typedSignOff(H),
-          emptySignOff(),
-          emptySignOff(),
-        ),
-      );
-      activities.push(
-        buildActivity(
-          opNum++,
-          "Data Book Inspection",
-          "REVIEW DATA",
-          "REVIEW DATA",
-          holdSignOff(),
-          typedSignOff(H),
-          emptySignOff(),
-          emptySignOff(),
-        ),
-      );
+      activities.push(buildActivity(opNum++, "Data Book Inspection", "REVIEW DATA", "REVIEW DATA"));
 
       return activities;
     };
 
     const activitiesForType = (planType: QcpPlanType): QcpActivity[] => {
-      if (planType === QcpPlanType.PAINT_EXTERNAL) {
-        const extCoats = coats.filter((c: any) => c.area === "external");
-        return paintActivities(extCoats, coating?.extSurfacePrep || coating?.surfacePrep || null);
-      }
-      if (planType === QcpPlanType.PAINT_INTERNAL) {
-        const intCoats = coats.filter((c: any) => c.area === "internal");
-        return paintActivities(intCoats, coating?.intSurfacePrep || coating?.surfacePrep || null);
+      if (planType === QcpPlanType.PAINT_EXTERNAL || planType === QcpPlanType.PAINT_INTERNAL) {
+        return paintActivities(coats, coating?.extSurfacePrep || coating?.surfacePrep || null);
       }
       if (planType === QcpPlanType.RUBBER) {
         return rubberActivities();
       }
       return paintActivities([], coating?.surfacePrep || null);
+    };
+
+    const specificationForType = (planType: QcpPlanType): string | null => {
+      if (planType === QcpPlanType.RUBBER) {
+        return extractSpecByArea(coating?.rawNotes, "INT") || coating?.rawNotes || null;
+      }
+      if (planType === QcpPlanType.PAINT_EXTERNAL || planType === QcpPlanType.PAINT_INTERNAL) {
+        return extractSpecByArea(coating?.rawNotes, "EXT") || coating?.rawNotes || null;
+      }
+      return coating?.rawNotes || null;
     };
 
     const companyPrefix = company?.name
@@ -820,7 +570,7 @@ export class QcMeasurementService {
           customerName,
           orderNumber,
           jobName,
-          specification: coating?.rawNotes || null,
+          specification: specificationForType(planType),
           itemDescription: itemDescriptions || null,
           activities: activitiesForType(planType),
           approvalSignatures: defaultApprovals(),
