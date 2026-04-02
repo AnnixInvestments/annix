@@ -1,6 +1,6 @@
 "use client";
 
-import { toPng } from "html-to-image";
+import { toBlob } from "html-to-image";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useFeatureGate } from "@/app/hooks/useFeatureGate";
@@ -275,36 +275,78 @@ export function FeedbackWidget(props: FeedbackWidgetProps) {
     };
   }, []);
 
-  const captureScreenshot = useCallback(async () => {
+  const captureScreenshot = useCallback(async (): Promise<File | null> => {
     try {
-      const widgetEl = document.querySelector("[data-feedback-panel]");
-      const dataUrl = await toPng(document.body, {
-        cacheBust: true,
-        width: window.innerWidth,
-        height: window.innerHeight,
+      const TRANSPARENT_PIXEL =
+        "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==";
+
+      const scrollX = window.scrollX;
+      const scrollY = window.scrollY;
+      const viewportWidth = window.innerWidth;
+      const viewportHeight = window.innerHeight;
+
+      const contentRoot = document.getElementById("__next") || document.body;
+
+      const capturePromise = toBlob(contentRoot, {
         filter: (node) => {
-          if (node === widgetEl) return false;
-          if (node instanceof HTMLElement && node.hasAttribute("data-feedback-widget"))
-            return false;
-          return true;
+          try {
+            if (node instanceof HTMLElement) {
+              if (node.closest("[data-feedback-widget]") !== null) {
+                return false;
+              }
+              const tag = node.tagName.toLowerCase();
+              if (tag === "iframe" || tag === "video" || tag === "script" || tag === "noscript") {
+                return false;
+              }
+            }
+            return true;
+          } catch {
+            return true;
+          }
         },
+        width: viewportWidth,
+        height: viewportHeight,
+        canvasWidth: viewportWidth,
+        canvasHeight: viewportHeight,
+        style: {
+          transform: `translate(-${scrollX}px, -${scrollY}px)`,
+          transformOrigin: "top left",
+          overflow: "hidden",
+        },
+        quality: 0.7,
+        pixelRatio: 1,
+        skipAutoScale: true,
+        skipFonts: true,
+        cacheBust: false,
+        fetchRequestInit: { credentials: "include" },
+        imagePlaceholder: TRANSPARENT_PIXEL,
       });
-      const response = await fetch(dataUrl);
-      const blob = await response.blob();
-      const file = new File([blob], "auto-screenshot.png", { type: "image/png" });
-      const preview = URL.createObjectURL(blob);
-      setAttachments((prev) => {
-        const withoutOldScreenshot = prev.filter((a) => !a.isAutoScreenshot);
-        return [{ file, preview, isAutoScreenshot: true }, ...withoutOldScreenshot];
-      });
+
+      const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), 8000));
+      const blob = await Promise.race([capturePromise, timeoutPromise]);
+
+      if (blob && blob.size > 5000) {
+        return new File([blob], "auto-screenshot.png", { type: "image/png" });
+      }
+      return null;
     } catch (err) {
       console.warn("Client screenshot capture failed:", err);
+      return null;
     }
   }, []);
 
   useEffect(() => {
     if (isExpanded && !showSuccess) {
-      const timeoutId = setTimeout(captureScreenshot, 100);
+      const timeoutId = setTimeout(async () => {
+        const file = await captureScreenshot();
+        if (file) {
+          const preview = URL.createObjectURL(file);
+          setAttachments((prev) => {
+            const withoutOldScreenshot = prev.filter((a) => !a.isAutoScreenshot);
+            return [{ file, preview, isAutoScreenshot: true }, ...withoutOldScreenshot];
+          });
+        }
+      }, 300);
       return () => clearTimeout(timeoutId);
     }
     return undefined;
@@ -319,7 +361,16 @@ export function FeedbackWidget(props: FeedbackWidgetProps) {
     setIsSubmitting(true);
 
     try {
-      const userFiles = attachments.map((a) => a.file);
+      const hasAutoScreenshot = attachments.some((a) => a.isAutoScreenshot);
+      let screenshotFile: File | null = null;
+      if (!hasAutoScreenshot) {
+        screenshotFile = await captureScreenshot();
+      }
+
+      const userFiles = [
+        ...attachments.map((a) => a.file),
+        ...(screenshotFile ? [screenshotFile] : []),
+      ];
 
       await submitFeedbackWithAttachments(
         {
