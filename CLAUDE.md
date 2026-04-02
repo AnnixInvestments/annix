@@ -258,7 +258,7 @@ const url = await this.storageService.presignedUrl(filePath, 3600);
 - **Clean git history**: Avoid cluttering history with iteration commits that don't make sense to others
 - **Tests must pass**: Never commit unless all tests pass - commits should take the system from one working state to another
 - **Semantic commit messages**: Write comprehensive, detailed semantic commit messages when approved to commit
-- **Issue references**: Add issue reference at end of first line: `feat: add navigation (ref #20)`
+- **Issue references**: Only add `(ref #N)` when the commit **directly fixes feedback reported in that specific GitHub issue**. Do NOT add issue references to unrelated commits — GitHub links every referencing commit to the issue timeline, cluttering it with irrelevant entries. If the user has not mentioned a specific issue number, do not add one.
 - **Workflow keywords**: Only use `closes #20`, `fixes #20`, or `resolves #20` when the ticket is actually complete and ready to close by the user
 - **No AI attribution**: Do not include AI attribution in commit messages
 - **Pre-push hook**: `.githooks/pre-push` automatically builds both apps and runs migrations before push
