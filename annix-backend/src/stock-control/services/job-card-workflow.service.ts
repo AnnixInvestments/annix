@@ -537,6 +537,7 @@ export class JobCardWorkflowService {
       jobCardId,
       { id: user.id, name: user.name },
       reason,
+      firstFgKey,
     );
 
     this.auditService

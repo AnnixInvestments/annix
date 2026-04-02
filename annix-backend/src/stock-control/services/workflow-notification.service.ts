@@ -58,7 +58,16 @@ export class WorkflowNotificationService {
     }
 
     const rawUsers = await this.assignmentService.usersForStep(companyId, step);
-    const users = await this.applyLeaveAwareDelegation(companyId, step, rawUsers);
+    const users = (await this.applyLeaveAwareDelegation(companyId, step, rawUsers)).filter(
+      (u) => !sender || u.id !== sender.id,
+    );
+
+    if (users.length === 0) {
+      this.logger.log(
+        `No recipients for approval required notification on job card ${jobCardId} (step: ${step})`,
+      );
+      return;
+    }
 
     const frontendUrl = this.configService.get<string>("FRONTEND_URL") || "http://localhost:3000";
     const actionUrl = `${frontendUrl}/stock-control/portal/job-cards/${jobCardId}`;
@@ -113,56 +122,12 @@ export class WorkflowNotificationService {
   }
 
   async notifyApprovalCompleted(
-    companyId: number,
-    jobCardId: number,
-    step: string,
-    sender: SenderInfo,
+    _companyId: number,
+    _jobCardId: number,
+    _step: string,
+    _sender: SenderInfo,
   ): Promise<void> {
-    const jobCard = await this.jobCardRepo.findOne({
-      where: { id: jobCardId, companyId },
-    });
-
-    if (!jobCard) {
-      return;
-    }
-
-    const frontendUrl = this.configService.get<string>("FRONTEND_URL") || "http://localhost:3000";
-    const actionUrl = `${frontendUrl}/stock-control/portal/job-cards/${jobCardId}`;
-
-    const users = await this.userRepo.find({
-      where: [
-        { companyId, role: StockControlRole.MANAGER },
-        { companyId, role: StockControlRole.ADMIN },
-      ],
-    });
-
-    const notifications = users.map((user) =>
-      this.notificationRepo.create({
-        companyId,
-        userId: user.id,
-        jobCardId,
-        title: `Approved: ${jobCard.jobName}`,
-        message: `${sender.name} approved ${this.stepDisplayName(step)} for job card ${jobCard.jobNumber}.`,
-        actionType: NotificationActionType.APPROVAL_COMPLETED,
-        actionUrl,
-        senderId: sender.id,
-        senderName: sender.name,
-      }),
-    );
-
-    await this.notificationRepo.save(notifications);
-    const pushUsers = users.filter((u) => u.pushNotificationsEnabled !== false);
-    this.webPushService
-      .sendToUsers(
-        pushUsers.map((u) => u.id),
-        {
-          title: `Approved: ${jobCard.jobName}`,
-          body: `${sender.name} approved ${this.stepDisplayName(step)} for job card ${jobCard.jobNumber}.`,
-          tag: `approved-${jobCardId}`,
-          data: { url: actionUrl },
-        },
-      )
-      .catch((err) => this.logger.warn(`Push notification failed: ${err.message}`));
+    return;
   }
 
   async notifyRejection(
@@ -170,6 +135,7 @@ export class WorkflowNotificationService {
     jobCardId: number,
     sender: SenderInfo,
     reason: string,
+    resetToStep?: string,
   ): Promise<void> {
     const jobCard = await this.jobCardRepo.findOne({
       where: { id: jobCardId, companyId },
@@ -182,12 +148,23 @@ export class WorkflowNotificationService {
     const frontendUrl = this.configService.get<string>("FRONTEND_URL") || "http://localhost:3000";
     const actionUrl = `${frontendUrl}/stock-control/portal/job-cards/${jobCardId}`;
 
-    const users = await this.userRepo.find({
-      where: [
-        { companyId, role: StockControlRole.ACCOUNTS },
-        { companyId, role: StockControlRole.ADMIN },
-      ],
-    });
+    const users = resetToStep
+      ? (await this.assignmentService.usersForStep(companyId, resetToStep)).filter(
+          (u) => u.id !== sender.id,
+        )
+      : (
+          await this.userRepo.find({
+            where: [
+              { companyId, role: StockControlRole.ACCOUNTS },
+              { companyId, role: StockControlRole.ADMIN },
+            ],
+          })
+        ).filter((u) => u.id !== sender.id);
+
+    if (users.length === 0) {
+      this.logger.log(`No recipients for rejection notification on job card ${jobCardId}`);
+      return;
+    }
 
     const notifications = users.map((user) =>
       this.notificationRepo.create({
@@ -253,9 +230,16 @@ export class WorkflowNotificationService {
       return;
     }
 
-    const managers = await this.userRepo.find({
+    const allManagers = await this.userRepo.find({
       where: { companyId, role: StockControlRole.MANAGER },
     });
+
+    const managers = allManagers.filter((u) => !sender || u.id !== sender.id);
+
+    if (managers.length === 0) {
+      this.logger.log(`No recipients for over-allocation notification on job card ${jobCardId}`);
+      return;
+    }
 
     const frontendUrl = this.configService.get<string>("FRONTEND_URL") || "http://localhost:3000";
     const actionUrl = `${frontendUrl}/stock-control/portal/job-cards/${jobCardId}`;
@@ -1065,11 +1049,12 @@ export class WorkflowNotificationService {
       return;
     }
 
-    const users = await this.assignmentService.usersForStep(companyId, stepKey);
+    const allUsers = await this.assignmentService.usersForStep(companyId, stepKey);
+    const users = allUsers.filter((u) => u.id !== sender.id);
 
     if (users.length === 0) {
-      this.logger.warn(
-        `No users assigned to background step "${stepKey}" for company ${companyId}`,
+      this.logger.log(
+        `No recipients for background step "${stepKey}" notification on job card ${jobCardId}`,
       );
       return;
     }
@@ -1110,58 +1095,13 @@ export class WorkflowNotificationService {
   }
 
   async notifyBackgroundStepCompleted(
-    companyId: number,
-    jobCardId: number,
-    stepKey: string,
-    stepLabel: string,
-    completer: SenderInfo,
+    _companyId: number,
+    _jobCardId: number,
+    _stepKey: string,
+    _stepLabel: string,
+    _completer: SenderInfo,
   ): Promise<void> {
-    const jobCard = await this.jobCardRepo.findOne({
-      where: { id: jobCardId, companyId },
-    });
-
-    if (!jobCard) {
-      return;
-    }
-
-    const frontendUrl = this.configService.get<string>("FRONTEND_URL") || "http://localhost:3000";
-    const actionUrl = `${frontendUrl}/stock-control/portal/job-cards/${jobCardId}`;
-
-    const allAdmins = await this.userRepo.find({
-      where: [
-        { companyId, role: StockControlRole.ADMIN },
-        { companyId, role: StockControlRole.MANAGER },
-      ],
-    });
-
-    const recipients = allAdmins.filter((u) => u.id !== completer.id);
-
-    const notifications = recipients.map((user) =>
-      this.notificationRepo.create({
-        companyId,
-        userId: user.id,
-        jobCardId,
-        title: `Background Task Completed: ${stepLabel}`,
-        message: `${completer.name} completed "${stepLabel}" for job card ${jobCard.jobNumber}.`,
-        actionType: NotificationActionType.BACKGROUND_STEP_COMPLETED,
-        actionUrl,
-        senderId: completer.id,
-        senderName: completer.name,
-      }),
-    );
-
-    await this.notificationRepo.save(notifications);
-    this.webPushService
-      .sendToUsers(
-        recipients.map((u) => u.id),
-        {
-          title: `Background Task Completed: ${stepLabel}`,
-          body: `${completer.name} completed "${stepLabel}" for job card ${jobCard.jobNumber}.`,
-          tag: `bg-done-${jobCardId}-${stepKey}`,
-          data: { url: actionUrl },
-        },
-      )
-      .catch((err) => this.logger.warn(`Push notification failed: ${err.message}`));
+    return;
   }
 
   async notifyDocumentArrived(
@@ -1312,12 +1252,14 @@ export class WorkflowNotificationService {
       return;
     }
 
-    const managers = await this.userRepo.find({
+    const allManagers = await this.userRepo.find({
       where: [
         { companyId, role: StockControlRole.MANAGER },
         { companyId, role: StockControlRole.ADMIN },
       ],
     });
+
+    const managers = allManagers.filter((u) => !sender || u.id !== sender.id);
 
     if (managers.length === 0) {
       this.logger.warn(`No managers found for QA rejection escalation (company ${companyId})`);

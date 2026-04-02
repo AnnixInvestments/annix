@@ -68,13 +68,13 @@ export class StaffLeaveController {
   @Post()
   @ApiOperation({ summary: "Record new leave" })
   async createRecord(@Req() req: any, @Body() dto: CreateLeaveDto) {
-    return this.staffLeaveService.createRecord(req.user.companyId, req.user.sub, dto);
+    return this.staffLeaveService.createRecord(req.user.companyId, req.user.id, dto);
   }
 
   @Delete(":id")
   @ApiOperation({ summary: "Delete own leave record" })
   async deleteRecord(@Req() req: any, @Param("id", ParseIntPipe) id: number) {
-    await this.staffLeaveService.deleteRecord(req.user.companyId, id, req.user.sub);
+    await this.staffLeaveService.deleteRecord(req.user.companyId, id, req.user.id);
     return { message: "Leave record deleted" };
   }
 
@@ -95,7 +95,7 @@ export class StaffLeaveController {
     @Param("id", ParseIntPipe) id: number,
     @UploadedFile() file: Express.Multer.File,
   ) {
-    return this.staffLeaveService.uploadSickNote(req.user.companyId, id, req.user.sub, file);
+    return this.staffLeaveService.uploadSickNote(req.user.companyId, id, req.user.id, file);
   }
 
   @Get(":id/sick-note")
