@@ -321,8 +321,62 @@ export class DataBookPdfService {
     });
 
     const tocEntries: TocEntry[] = [];
+    const pageCountBefore = doc.bufferedPageRange().count;
     renderFn(doc, tocEntries);
-    this.renderPageFooters(doc, ctx, isLandscape ? A4_LANDSCAPE : undefined);
+    const expectedPages = Math.max(doc.bufferedPageRange().count - pageCountBefore, 1);
+
+    const totalBuffered = doc.bufferedPageRange().count;
+    const pagesToKeep = Math.min(expectedPages, totalBuffered);
+
+    Array.from({ length: pagesToKeep }).forEach((_, i) => {
+      doc.switchToPage(i);
+      const pageW = (doc.page as any)?.width ?? A4.pageWidth;
+      const pageH = (doc.page as any)?.height ?? A4.pageHeight;
+      const isLandscapePage = pageW > pageH;
+      const pg = isLandscape ? A4_LANDSCAPE : isLandscapePage ? A4_LANDSCAPE : A4;
+      const footerY = pg.pageHeight - 28;
+
+      doc
+        .moveTo(pg.margin, footerY - 4)
+        .lineTo(pg.margin + pg.contentWidth, footerY - 4)
+        .lineWidth(0.5)
+        .stroke("#d1d5db");
+
+      const brandColor = ctx.company?.primaryColor ?? "#0d9488";
+      const companyName = ctx.company?.name ?? "PLS";
+      doc.fontSize(6).font(FONT.REGULAR).fillColor("#9ca3af");
+      doc.text(companyName, pg.margin, footerY, {
+        width: pg.contentWidth / 3,
+        align: "left",
+        lineBreak: false,
+      });
+      doc.text(
+        `Job: ${ctx.jobCard.jobNumber || ctx.jobCard.id}`,
+        pg.margin + pg.contentWidth / 3,
+        footerY,
+        { width: pg.contentWidth / 3, align: "center", lineBreak: false },
+      );
+      doc.text(`Page ${i + 1} of ${pagesToKeep}`, pg.margin + (pg.contentWidth * 2) / 3, footerY, {
+        width: pg.contentWidth / 3,
+        align: "right",
+        lineBreak: false,
+      });
+      doc.rect(0, pg.pageHeight - 4, pg.pageWidth, 4).fill(brandColor);
+    });
+
+    doc.fillColor("#000000");
+    doc.lineWidth(1);
+
+    const extraPages = totalBuffered - pagesToKeep;
+    if (extraPages > 0) {
+      Array.from({ length: extraPages }).forEach(() => {
+        const pageBuffer = (doc as any)._pageBuffer;
+        if (pageBuffer && pageBuffer.length > pagesToKeep) {
+          pageBuffer.pop();
+        }
+      });
+    }
+
     doc.end();
     return done;
   }
@@ -776,7 +830,7 @@ export class DataBookPdfService {
 
     const nameX = ctx.logoBuffer ? pg.margin + logoAreaW + 8 : pg.margin;
     doc.fontSize(11).font(FONT.BOLD).fillColor("#000000");
-    doc.text(companyName, nameX, y + 4, { width: pg.contentWidth * 0.5 });
+    doc.text(companyName, nameX, y + 4, { width: pg.contentWidth * 0.5, lineBreak: false });
 
     doc
       .fontSize(7)
@@ -786,7 +840,7 @@ export class DataBookPdfService {
         `Doc: ${docEntry.docNumber}  |  Ed: ${docEntry.edition} Rev: ${docEntry.revision}`,
         pg.margin,
         y + 6,
-        { align: "right", width: pg.contentWidth },
+        { align: "right", width: pg.contentWidth, lineBreak: false },
       );
 
     y += logoH + 4;
@@ -800,6 +854,7 @@ export class DataBookPdfService {
       .text(`Quality Control Plan - ${label}`, pg.margin, y, {
         align: "center",
         width: pg.contentWidth,
+        lineBreak: false,
       });
     y += 16;
 
@@ -885,30 +940,57 @@ export class DataBookPdfService {
     doc.fillColor("#000000");
 
     doc.fontSize(6).font(FONT.BOLD);
-    doc.text("OP\nNO", opX + 1, y + 2, { width: opW - 2, align: "center" });
-    doc.text("ACTIVITY DESCRIPTION", descX + 2, y + 5, { width: descW - 4 });
-    doc.text("SPECIFICATION /\nPROCEDURE", specX + 2, y + 2, { width: specW - 4 });
-    doc.text("DOCUMENTATION", docColX + 2, y + 5, { width: docColW - 4 });
+    doc.text("OP", opX + 1, y + 2, { width: opW - 2, align: "center", lineBreak: false });
+    doc.text("NO", opX + 1, y + 10, { width: opW - 2, align: "center", lineBreak: false });
+    doc.text("ACTIVITY DESCRIPTION", descX + 2, y + 5, { width: descW - 4, lineBreak: false });
+    doc.text("SPECIFICATION /", specX + 2, y + 2, { width: specW - 4, lineBreak: false });
+    doc.text("PROCEDURE", specX + 2, y + 10, { width: specW - 4, lineBreak: false });
+    doc.text("DOCUMENTATION", docColX + 2, y + 5, { width: docColW - 4, lineBreak: false });
 
     const interventionsW = partyW * partyCols;
     doc.text("INTERVENTIONS", plsX, y, {
       width: interventionsW,
       align: "center",
+      lineBreak: false,
     });
 
     const subY = y + 13;
     doc.fontSize(5.5).font(FONT.BOLD);
-    doc.text("PLS", plsX + 1, subY, { width: partyIntW - 2, align: "center" });
-    doc.text("SIGN", plsX + partyIntW + 1, subY, { width: partySignW - 2, align: "center" });
-    doc.text("MPS", mpsX + 1, subY, { width: partyIntW - 2, align: "center" });
-    doc.text("SIGN", mpsX + partyIntW + 1, subY, { width: partySignW - 2, align: "center" });
-    doc.text(clientLabel, clientX + 1, subY, { width: partyIntW - 2, align: "center" });
-    doc.text("SIGN", clientX + partyIntW + 1, subY, { width: partySignW - 2, align: "center" });
+    doc.text("PLS", plsX + 1, subY, { width: partyIntW - 2, align: "center", lineBreak: false });
+    doc.text("SIGN", plsX + partyIntW + 1, subY, {
+      width: partySignW - 2,
+      align: "center",
+      lineBreak: false,
+    });
+    doc.text("MPS", mpsX + 1, subY, { width: partyIntW - 2, align: "center", lineBreak: false });
+    doc.text("SIGN", mpsX + partyIntW + 1, subY, {
+      width: partySignW - 2,
+      align: "center",
+      lineBreak: false,
+    });
+    doc.text(clientLabel, clientX + 1, subY, {
+      width: partyIntW - 2,
+      align: "center",
+      lineBreak: false,
+    });
+    doc.text("SIGN", clientX + partyIntW + 1, subY, {
+      width: partySignW - 2,
+      align: "center",
+      lineBreak: false,
+    });
     if (hasThirdParty) {
-      doc.text("3rd Party", thirdX + 1, subY, { width: partyIntW - 2, align: "center" });
-      doc.text("SIGN", thirdX + partyIntW + 1, subY, { width: partySignW - 2, align: "center" });
+      doc.text("3rd Party", thirdX + 1, subY, {
+        width: partyIntW - 2,
+        align: "center",
+        lineBreak: false,
+      });
+      doc.text("SIGN", thirdX + partyIntW + 1, subY, {
+        width: partySignW - 2,
+        align: "center",
+        lineBreak: false,
+      });
     }
-    doc.text("REMARKS", remarkX + 2, y + 5, { width: remarkW - 4 });
+    doc.text("REMARKS", remarkX + 2, y + 5, { width: remarkW - 4, lineBreak: false });
 
     y += headerH;
 
