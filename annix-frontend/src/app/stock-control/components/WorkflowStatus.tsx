@@ -996,7 +996,8 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
         : `M ${rx} ${ry} L ${rx} ${bypassY - r} Q ${rx} ${bypassY} ${rx - r} ${bypassY} L ${sax + r} ${bypassY} Q ${sax} ${bypassY} ${sax} ${bypassY - r} L ${sax} ${say}`;
 
       pathEl.setAttribute("d", d);
-      pathEl.setAttribute("stroke", isBypassed ? "#f59e0b" : "#d1d5db");
+      const highlighted = receptionDone && isBypassed;
+      pathEl.setAttribute("stroke", highlighted ? "#f59e0b" : "#d1d5db");
     };
 
     updateBypassPath();

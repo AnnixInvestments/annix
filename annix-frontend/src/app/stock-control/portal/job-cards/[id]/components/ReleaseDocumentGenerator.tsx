@@ -1,5 +1,6 @@
 "use client";
 
+import { Download } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type {
   BackgroundStepStatus,
@@ -204,13 +205,28 @@ export function ReleaseDocumentGenerator(props: ReleaseDocumentGeneratorProps) {
         ) : lineItems.length === 0 ? (
           <div className="py-4 text-center text-sm text-gray-500">No line items found</div>
         ) : allFullyReleased ? (
-          <div className="rounded-md bg-green-50 border border-green-200 p-4 text-center">
-            <p className="text-sm font-medium text-green-800">
+          <div className="rounded-md bg-green-50 border border-green-200 p-4">
+            <p className="text-sm font-medium text-green-800 text-center">
               All line items have been fully released
             </p>
-            <p className="mt-1 text-xs text-green-600">
+            <p className="mt-1 text-xs text-green-600 text-center">
               {existingReleases.length} release(s) generated covering all quantities
             </p>
+            {existingReleases.length > 0 && (
+              <div className="mt-3 flex flex-wrap justify-center gap-2">
+                {existingReleases.map((release, idx) => (
+                  <button
+                    key={release.id}
+                    type="button"
+                    onClick={() => stockControlApiClient.openItemsReleasePdf(jobCardId, release.id)}
+                    className="inline-flex items-center gap-1.5 rounded-md bg-white border border-green-300 px-3 py-1.5 text-xs font-medium text-green-800 hover:bg-green-100 transition-colors"
+                  >
+                    <Download className="h-3.5 w-3.5" />
+                    Release {existingReleases.length > 1 ? `#${idx + 1}` : ""} PDF
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         ) : (
           <>
