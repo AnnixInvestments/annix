@@ -259,16 +259,42 @@ export class ImportService {
 
       const hasAnyMapping = Object.values(aiResult).some((v) => v !== null);
       if (hasAnyMapping) {
-        return aiResult;
+        return this.inferMissingNameColumn(aiResult, headers);
       }
 
       this.logger.warn("AI returned all-null mapping, falling back to header matching");
-      return this.fallbackColumnMapping(headers);
+      return this.inferMissingNameColumn(this.fallbackColumnMapping(headers), headers);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Unknown error";
       this.logger.error(`AI column mapping failed: ${message}, using fallback`);
-      return this.fallbackColumnMapping(headers);
+      return this.inferMissingNameColumn(this.fallbackColumnMapping(headers), headers);
     }
+  }
+
+  private inferMissingNameColumn(mapping: ColumnMapping, headers: string[]): ColumnMapping {
+    if (mapping.name !== null) {
+      return mapping;
+    }
+
+    const usedIndices = new Set(Object.values(mapping).filter((v): v is number => v !== null));
+
+    const candidate = headers.findIndex((h, i) => {
+      if (usedIndices.has(i)) {
+        return false;
+      }
+      const lower = h.toLowerCase().trim();
+      const looksNumeric = /^\d+(\.\d+)?$/.test(lower);
+      return !looksNumeric;
+    });
+
+    if (candidate >= 0) {
+      this.logger.log(
+        `Inferred name column: col${candidate}("${headers[candidate]}") — was unmapped`,
+      );
+      return { ...mapping, name: candidate };
+    }
+
+    return mapping;
   }
 
   private fallbackColumnMapping(headers: string[]): ColumnMapping {
