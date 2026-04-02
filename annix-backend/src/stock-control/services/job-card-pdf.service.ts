@@ -130,10 +130,9 @@ export class JobCardPdfService {
       const detailsEndY = this.drawJobCardDetails(doc, jobCard, noteItems);
       this.drawQrCode(doc, qrDataUrl);
 
-      let currentY = Math.max(280, detailsEndY);
+      let currentY = Math.max(220, detailsEndY);
       currentY = this.drawLineItems(doc, jobCard, currentY);
       currentY = this.drawRubberAllocationSync(doc, jobCard, rubberAllocationResult, currentY);
-      currentY = this.drawCpoCoatingSpecs(doc, jobCard.cpo?.coatingSpecs || null, currentY);
       currentY = this.drawCoatingSpecification(
         doc,
         coatingAnalysis,
@@ -221,22 +220,32 @@ export class JobCardPdfService {
     }
 
     doc
-      .fontSize(20)
+      .fontSize(18)
       .font("Helvetica-Bold")
       .fillColor(logoBuffer ? brandColor : "#000000")
-      .text(companyName, nameX, 50, { align: "left", width: 350 - nameX + 50 })
-      .fontSize(14)
+      .text(companyName, nameX, 50, { align: "left", width: 340, lineBreak: false })
+      .fontSize(12)
       .font("Helvetica")
       .fillColor("#000000")
-      .text("JOB CARD", nameX, 75, { align: "left" });
+      .text("JOB CARD", nameX, 72, { align: "left" });
 
-    doc.fontSize(24).font("Helvetica-Bold").text(jobCard.jobNumber, 400, 50, { align: "right" });
+    doc.fontSize(22).font("Helvetica-Bold").text(jobCard.jobNumber, 400, 46, { align: "right" });
 
+    const subIds: string[] = [];
     if (jobCard.jcNumber) {
+      subIds.push(`JC: ${jobCard.jcNumber}`);
+    }
+    const jtNumbers = [
+      ...new Set((jobCard.lineItems || []).map((li) => li.jtNo).filter((jt): jt is string => !!jt)),
+    ];
+    if (jtNumbers.length > 0) {
+      subIds.push(`JT: ${jtNumbers.join(", ")}`);
+    }
+    if (subIds.length > 0) {
       doc
-        .fontSize(10)
+        .fontSize(8)
         .font("Helvetica")
-        .text(`JT: ${jobCard.jcNumber}`, 400, 80, { align: "right" });
+        .text(subIds.join("  |  "), 300, 72, { align: "right", width: 245 });
     }
 
     doc
@@ -250,13 +259,13 @@ export class JobCardPdfService {
   private drawJobCardDetails(
     doc: typeof PDFDocument,
     jobCard: JobCard,
-    noteItems: JobCard["lineItems"],
+    _noteItems: JobCard["lineItems"],
   ): number {
-    let y = 115;
+    let y = 110;
     const leftCol = 50;
     const rightCol = 300;
 
-    doc.fontSize(10).font("Helvetica-Bold");
+    doc.fontSize(9).font("Helvetica-Bold");
 
     const details = [
       { label: "Job Name:", value: jobCard.jobName, col: leftCol },
@@ -267,52 +276,32 @@ export class JobCardPdfService {
       },
       { label: "Customer:", value: jobCard.customerName || "-", col: leftCol },
       { label: "Due Date:", value: jobCard.dueDate || "-", col: rightCol },
-      { label: "Site Location:", value: jobCard.siteLocation || "-", col: leftCol },
-      { label: "PO Number:", value: jobCard.poNumber || "-", col: rightCol },
-      { label: "Contact Person:", value: jobCard.contactPerson || "-", col: leftCol },
+      { label: "PO Number:", value: jobCard.poNumber || "-", col: leftCol },
       { label: "Reference:", value: jobCard.reference || "-", col: rightCol },
     ];
 
     details.forEach((item, index) => {
       const row = Math.floor(index / 2);
-      const currentY = y + row * 20;
+      const currentY = y + row * 16;
 
       doc.font("Helvetica-Bold").text(item.label, item.col, currentY, { continued: true });
       doc.font("Helvetica").text(` ${item.value}`);
     });
 
-    y += Math.ceil(details.length / 2) * 20;
+    y += Math.ceil(details.length / 2) * 16;
 
     if (jobCard.description) {
-      y += 10;
+      y += 6;
       doc
         .font("Helvetica-Bold")
         .text("Description:", leftCol, y)
         .font("Helvetica")
-        .text(jobCard.description, leftCol, y + 15, { width: 495 });
+        .text(jobCard.description, leftCol, y + 12, { width: 495 });
       const descLines = Math.ceil(jobCard.description.length / 80);
-      y += 15 + descLines * 12;
+      y += 12 + descLines * 11;
     }
 
-    const nonRubberNotes = (noteItems || [])
-      .map((item) => (item.itemCode || "").trim())
-      .filter(
-        (text) => text && !/^r\/l\b/i.test(text) && !/rubber\s+(lining|sheet|lagging)/i.test(text),
-      );
-    const combinedNotes = [jobCard.notes, ...nonRubberNotes].filter(Boolean).join("\n\n");
-
-    if (combinedNotes) {
-      y += 10;
-      doc.font("Helvetica-Bold").text("Notes:", leftCol, y);
-      y += 15;
-      doc.font("Helvetica").text(combinedNotes, leftCol, y, { width: 495 });
-      const noteLines = combinedNotes
-        .split("\n")
-        .reduce((total, line) => total + Math.max(1, Math.ceil(line.length / 80)), 0);
-      y += noteLines * 12;
-    }
-
-    return y + 10;
+    return y + 6;
   }
 
   private drawQrCode(doc: typeof PDFDocument, qrDataUrl: string): void {
@@ -335,19 +324,19 @@ export class JobCardPdfService {
       .lineTo(545, startY - 10)
       .stroke();
 
-    doc.fontSize(12).font("Helvetica-Bold").text("Line Items", 50, startY);
+    doc.fontSize(10).font("Helvetica-Bold").text("Line Items", 50, startY);
 
-    let y = startY + 20;
+    let y = startY + 14;
 
-    doc.fontSize(9).font("Helvetica-Bold");
+    doc.fontSize(8).font("Helvetica-Bold");
     doc.text("#", 50, y, { width: 20 });
     doc.text("Item Code", 70, y);
     doc.text("Qty", 470, y);
     doc.text("JT No", 510, y);
 
-    y += 15;
+    y += 12;
     doc.moveTo(50, y).lineTo(545, y).stroke();
-    y += 5;
+    y += 4;
 
     doc.font("Helvetica").fontSize(8);
     const { filteredItems } = this.partitionLineItems(jobCard.lineItems);
@@ -360,23 +349,23 @@ export class JobCardPdfService {
       doc.text(label, 70, y, { width: 395 });
       doc.text(String(item.quantity || "-"), 470, y);
       doc.text(item.jtNo || "-", 510, y);
-      y += 15;
+      y += 13;
 
       if (item.notes) {
         doc.fontSize(7).fillColor("#0d9488").font("Helvetica-Oblique");
         doc.text(item.notes, 70, y, { width: 395 });
         const noteLines = item.notes.split("\n").length;
-        y += noteLines * 10;
+        y += noteLines * 9;
         doc.fontSize(8).fillColor("black").font("Helvetica");
       }
     });
 
     if (filteredItems.length > 15) {
       doc.text(`... and ${filteredItems.length - 15} more items`, 50, y);
-      y += 15;
+      y += 13;
     }
 
-    return y + 10;
+    return y + 6;
   }
 
   private drawCpoCoatingSpecs(
@@ -427,10 +416,10 @@ export class JobCardPdfService {
       .lineTo(545, startY - 10)
       .stroke();
 
-    doc.fontSize(12).font("Helvetica-Bold").text("Coating Specification", 50, startY);
+    doc.fontSize(10).font("Helvetica-Bold").text("Coating Specification", 50, startY);
 
-    let y = startY + 15;
-    doc.fontSize(9).font("Helvetica");
+    let y = startY + 13;
+    doc.fontSize(8).font("Helvetica");
 
     const areaInfo: string[] = [];
     if (coatingAnalysis.extM2 > 0) {
@@ -441,22 +430,22 @@ export class JobCardPdfService {
     }
     if (areaInfo.length > 0) {
       doc.text(`Surface Area: ${areaInfo.join(", ")}`, 50, y);
-      y += 15;
+      y += 12;
     }
 
-    y += 5;
-    doc.fontSize(9).font("Helvetica-Bold");
+    y += 3;
+    doc.fontSize(8).font("Helvetica-Bold");
     doc.text("Product", 50, y);
     doc.text("DFT (µm)", 260, y);
     doc.text("Coverage (m²/L)", 330, y);
     doc.text("Allowed Litres", 420, y);
     doc.text("L/Pipe", 500, y);
 
-    y += 15;
+    y += 12;
     doc.moveTo(50, y).lineTo(545, y).stroke();
-    y += 5;
+    y += 4;
 
-    doc.font("Helvetica").fontSize(8);
+    doc.font("Helvetica").fontSize(7);
 
     const combinedCoats = coatingAnalysis.coats.reduce<
       Array<{
@@ -505,15 +494,15 @@ export class JobCardPdfService {
       doc.text(String(coat.coverageM2PerLiter.toFixed(2)), 330, y);
       doc.text(coat.litersRequired === 0 ? "—" : String(coat.litersRequired.toFixed(1)), 420, y);
       doc.text(litresPerPipe === 0 ? "—" : litresPerPipe.toFixed(2), 500, y);
-      y += 15;
+      y += 12;
     });
 
     const lossPct = company?.pipingLossFactorPct ?? 45;
-    doc.fillColor("#999999").fontSize(7).font("Helvetica");
+    doc.fillColor("#999999").fontSize(6).font("Helvetica");
     doc.text(`Coverage includes ${lossPct}% piping loss factor`, 50, y);
-    y += 12;
+    y += 10;
 
-    return y + 10;
+    return y + 4;
   }
 
   private async prepareRubberAllocation(jobCard: JobCard): Promise<{
@@ -673,9 +662,9 @@ export class JobCardPdfService {
       .lineTo(545, startY - 10)
       .stroke();
 
-    doc.fontSize(12).font("Helvetica-Bold").text("Rubber Allocation", 50, startY);
+    doc.fontSize(10).font("Helvetica-Bold").text("Rubber Allocation", 50, startY);
 
-    let y = startY + 15;
+    let y = startY + 13;
 
     if (plan.rubberSpec) {
       doc.fontSize(8).font("Helvetica");
@@ -1199,30 +1188,30 @@ export class JobCardPdfService {
       .lineTo(545, startY - 10)
       .stroke();
 
-    doc.fontSize(12).font("Helvetica-Bold").text("Stock Allocations", 50, startY);
+    doc.fontSize(10).font("Helvetica-Bold").text("Stock Allocations", 50, startY);
 
-    let y = startY + 20;
+    let y = startY + 14;
 
-    doc.fontSize(9).font("Helvetica-Bold");
+    doc.fontSize(8).font("Helvetica-Bold");
     doc.text("SKU", 50, y);
     doc.text("Item Name", 120, y);
     doc.text("Qty", 400, y);
     doc.text("Allocated By", 450, y);
 
-    y += 15;
+    y += 12;
     doc.moveTo(50, y).lineTo(545, y).stroke();
-    y += 5;
+    y += 4;
 
-    doc.font("Helvetica").fontSize(8);
+    doc.font("Helvetica").fontSize(7);
     jobCard.allocations.slice(0, 10).forEach((alloc) => {
       doc.text(alloc.stockItem?.sku || "-", 50, y, { width: 65 });
       doc.text(alloc.stockItem?.name || "-", 120, y, { width: 270 });
       doc.text(String(alloc.quantityUsed), 400, y);
       doc.text(alloc.allocatedBy || "-", 450, y, { width: 90 });
-      y += 15;
+      y += 12;
     });
 
-    return y + 10;
+    return y + 4;
   }
 
   private drawSignatureBoxes(
