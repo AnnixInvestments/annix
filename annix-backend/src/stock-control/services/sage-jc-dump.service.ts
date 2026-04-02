@@ -205,14 +205,26 @@ export class SageJcDumpService {
 
     const allItems = this.classifyItems(pages);
 
+    this.logger.log(
+      `Parsed ${pages.length} page(s), ${allItems.length} total items from ${pages.reduce((sum, p) => sum + p.lineItems.length, 0)} line items`,
+    );
+
     const jtItems = allItems.filter((item) => item.category === "jt");
     const asteriskRawItems = allItems.filter((item) => item.category === "asterisk");
     const undeliveredItems = allItems.filter((item) => item.category === "undelivered");
+
+    this.logger.log(
+      `Classification: ${jtItems.length} JT items, ${asteriskRawItems.length} asterisk, ${undeliveredItems.length} undelivered`,
+    );
 
     const jtGroups = jtItems.reduce<Record<string, SageJcDumpParsedItem[]>>((acc, item) => {
       const jt = item.jtNo as string;
       return { ...acc, [jt]: [...(acc[jt] || []), item] };
     }, {});
+
+    Object.entries(jtGroups).forEach(([jt, items]) => {
+      this.logger.log(`JT ${jt}: ${items.length} item(s)`);
+    });
 
     const parentJc = await this.jobCardRepo.findOne({
       where: { companyId, cpoId: cpo.id, parentJobCardId: IsNull() },
@@ -578,22 +590,36 @@ export class SageJcDumpService {
         collectingSpecs = false;
       };
 
+      let lastItemCode = "";
+
       itemRows.forEach((row) => {
-        const itemCode = String(row[0] || "").trim();
+        const rawItemCode = String(row[0] || "").trim();
         const itemDesc = String(row[1] || "").trim();
 
-        if (!itemCode || isFooterRow(row)) return;
-        if (FOOTER_LABELS.some((label) => itemCode.startsWith(label))) return;
+        if (isFooterRow(row)) return;
+        if (rawItemCode && FOOTER_LABELS.some((label) => rawItemCode.startsWith(label))) return;
 
         const itemNo = String(row[4] || "").trim();
         const rawQty = row[5];
         const quantity = typeof rawQty === "number" ? rawQty : parseFloat(String(rawQty || "0"));
         const jtNo = String(row[6] || "").trim();
         const hasNoData =
-          !itemDesc && !itemNo && !jtNo && (Number.isNaN(quantity) || quantity <= 0);
+          !rawItemCode &&
+          !itemDesc &&
+          !itemNo &&
+          !jtNo &&
+          (Number.isNaN(quantity) || quantity <= 0);
 
-        if (hasNoData && SPEC_ROW_PATTERN.test(itemCode)) {
-          const specText = itemCode.replace(/\s+PRODUCTION\s*$/i, "").trim();
+        if (hasNoData) return;
+
+        if (
+          !itemDesc &&
+          !itemNo &&
+          !jtNo &&
+          (Number.isNaN(quantity) || quantity <= 0) &&
+          SPEC_ROW_PATTERN.test(rawItemCode)
+        ) {
+          const specText = rawItemCode.replace(/\s+PRODUCTION\s*$/i, "").trim();
           if (specText) {
             pendingSpecLines.push(specText);
             collectingSpecs = true;
@@ -602,6 +628,11 @@ export class SageJcDumpService {
         }
 
         if (Number.isNaN(quantity) || quantity <= 0) return;
+
+        const itemCode = rawItemCode || lastItemCode;
+        if (rawItemCode) {
+          lastItemCode = rawItemCode;
+        }
 
         if (collectingSpecs) {
           flushGroup();

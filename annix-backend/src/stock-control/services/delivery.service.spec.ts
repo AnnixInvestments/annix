@@ -5,6 +5,7 @@ import { DataSource } from "typeorm";
 import { STORAGE_SERVICE } from "../../storage/storage.interface";
 import { DeliveryNote } from "../entities/delivery-note.entity";
 import { DeliveryNoteItem } from "../entities/delivery-note-item.entity";
+import { DnExtractionCorrection } from "../entities/dn-extraction-correction.entity";
 import { StockItem } from "../entities/stock-item.entity";
 import { MovementType, ReferenceType, StockMovement } from "../entities/stock-movement.entity";
 import { CpoService } from "./cpo.service";
@@ -91,6 +92,14 @@ describe("DeliveryService", () => {
       providers: [
         DeliveryService,
         { provide: getRepositoryToken(DeliveryNote), useValue: mockDeliveryNoteRepo },
+        {
+          provide: getRepositoryToken(DnExtractionCorrection),
+          useValue: {
+            find: jest.fn().mockResolvedValue([]),
+            save: jest.fn().mockResolvedValue(null),
+            create: jest.fn().mockImplementation((data) => ({ ...data })),
+          },
+        },
         { provide: STORAGE_SERVICE, useValue: mockStorageService },
         { provide: CpoService, useValue: mockCpoService },
         { provide: DataSource, useValue: mockDataSource },
