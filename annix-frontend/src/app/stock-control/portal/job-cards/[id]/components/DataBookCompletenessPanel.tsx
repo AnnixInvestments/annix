@@ -239,9 +239,13 @@ export function DataBookCompletenessPanel({
 
       <div className="divide-y divide-gray-100">
         {
-          completeness.sections.reduce<{ lastGroup: string | null; elements: React.ReactNode[] }>(
+          completeness.sections.reduce<{
+            seenGroups: Set<string>;
+            elements: React.ReactNode[];
+          }>(
             (acc, section, idx) => {
-              if (section.group && section.group !== acc.lastGroup) {
+              if (section.group && !acc.seenGroups.has(section.group)) {
+                acc.seenGroups.add(section.group);
                 acc.elements.push(
                   <div
                     key={`group-${section.group}-${idx}`}
@@ -259,9 +263,9 @@ export function DataBookCompletenessPanel({
                   section={section}
                 />,
               );
-              return { lastGroup: section.group, elements: acc.elements };
+              return acc;
             },
-            { lastGroup: null, elements: [] },
+            { seenGroups: new Set<string>(), elements: [] },
           ).elements
         }
       </div>
