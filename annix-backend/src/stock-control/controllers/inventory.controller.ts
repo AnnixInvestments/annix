@@ -46,6 +46,7 @@ export class InventoryController {
     @Query("search") search?: string,
     @Query("page") page?: string,
     @Query("limit") limit?: string,
+    @Query("locationId") locationId?: string,
   ) {
     return this.inventoryService.findAll(req.user.companyId, {
       category,
@@ -53,6 +54,7 @@ export class InventoryController {
       search,
       page,
       limit,
+      locationId,
     });
   }
 

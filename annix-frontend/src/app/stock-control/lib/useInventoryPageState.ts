@@ -96,7 +96,7 @@ interface InventoryPageState {
   search: string;
   debouncedSearch: string;
   categoryFilter: string;
-  locationFilter: number | "";
+  locationFilter: number | "" | "uncategorized";
   currentPage: number;
   pageSize: PageSize;
   showModal: boolean;
@@ -198,13 +198,19 @@ export function useInventoryPageState() {
       : {};
   if (!isGroupedView && state.debouncedSearch) listParams.search = state.debouncedSearch;
   if (!isGroupedView && state.categoryFilter) listParams.category = state.categoryFilter;
-  if (!isGroupedView && state.locationFilter) listParams.locationId = String(state.locationFilter);
+  if (!isGroupedView && state.locationFilter) {
+    listParams.locationId =
+      state.locationFilter === "uncategorized" ? "null" : String(state.locationFilter);
+  }
 
   const listQuery = useInventoryItems(isGroupedView ? {} : listParams);
+  const numericLocationFilter =
+    typeof state.locationFilter === "number" ? state.locationFilter : undefined;
   const groupedQuery = useInventoryGrouped(
     isGroupedView ? state.debouncedSearch || undefined : undefined,
-    isGroupedView ? state.locationFilter || undefined : undefined,
+    isGroupedView ? numericLocationFilter : undefined,
   );
+  const tabCountsQuery = useInventoryGrouped();
   const { data: categories = [] } = useInventoryCategories();
   const { data: locations = [] } = useInventoryLocations();
   const invalidateInventory = useInvalidateInventory();
@@ -221,9 +227,13 @@ export function useInventoryPageState() {
     const allFlatItems = groupedQuery.data.groups.flatMap(
       (g: { category: string; items: StockItem[] }) => g.items,
     );
-    const filteredItems = state.categoryFilter
+    const categoryFiltered = state.categoryFilter
       ? allFlatItems.filter((item: StockItem) => item.category === state.categoryFilter)
       : allFlatItems;
+    const filteredItems =
+      state.locationFilter === "uncategorized"
+        ? categoryFiltered.filter((item: StockItem) => item.locationId == null)
+        : categoryFiltered;
     const locMap = new Map(locations.map((l: StockControlLocation) => [l.id, l.name]));
     const byLocation = filteredItems.reduce<Record<string, StockItem[]>>((acc, item: StockItem) => {
       const key = item.locationId != null ? String(item.locationId) : "null";
@@ -250,7 +260,26 @@ export function useInventoryPageState() {
         if (b.locationId === null) return 1;
         return a.locationName.localeCompare(b.locationName);
       });
-  }, [isGroupedView, groupedQuery.data, state.categoryFilter, locations, state.expandedGroups]);
+  }, [
+    isGroupedView,
+    groupedQuery.data,
+    state.categoryFilter,
+    state.locationFilter,
+    locations,
+    state.expandedGroups,
+  ]);
+
+  const locationCounts: Map<number | null, number> = useMemo(() => {
+    if (!tabCountsQuery.data) return new Map();
+    const allFlatItems = tabCountsQuery.data.groups.flatMap(
+      (g: { category: string; items: StockItem[] }) => g.items,
+    );
+    return allFlatItems.reduce<Map<number | null, number>>((acc, item: StockItem) => {
+      const key = item.locationId != null ? item.locationId : null;
+      const current = acc.get(key) || 0;
+      return new Map([...acc, [key, current + 1]]);
+    }, new Map());
+  }, [tabCountsQuery.data]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -319,7 +348,8 @@ export function useInventoryPageState() {
   const handleLocationChange = useCallback(
     (value: string) => {
       updateState({
-        locationFilter: value === "" ? "" : Number(value),
+        locationFilter:
+          value === "" ? "" : value === "uncategorized" ? "uncategorized" : Number(value),
         currentPage: 0,
       });
     },
@@ -860,6 +890,7 @@ export function useInventoryPageState() {
     categories,
     locations,
     groupedData,
+    locationCounts,
     allItems,
 
     changeViewMode,

@@ -30,6 +30,7 @@ export default function InventoryPage() {
     categories,
     locations,
     groupedData,
+    locationCounts,
     allItems,
     changeViewMode,
     changeThumbSize,
@@ -138,7 +139,7 @@ export default function InventoryPage() {
         locations={locations}
         locationFilter={state.locationFilter}
         total={total}
-        groupedData={groupedData}
+        locationCounts={locationCounts}
         onLocationChange={handleLocationChange}
       />
 

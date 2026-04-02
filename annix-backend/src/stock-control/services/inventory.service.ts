@@ -54,6 +54,7 @@ export class InventoryService {
       search?: string;
       page?: string;
       limit?: string;
+      locationId?: string;
     },
   ): Promise<{ items: StockItem[]; total: number }> {
     const page = Math.max(1, Number(filters?.page) || 1);
@@ -68,6 +69,7 @@ export class InventoryService {
         skip,
         limit,
         filters?.belowMinStock === "true",
+        filters?.locationId,
       );
       return { items: await this.refreshPhotoUrls(result.items), total: result.total };
     }
@@ -82,6 +84,15 @@ export class InventoryService {
 
     if (filters?.belowMinStock === "true") {
       qb.andWhere("item.quantity <= item.min_stock_level");
+    }
+
+    if (filters?.locationId === "null") {
+      qb.andWhere("item.location_id IS NULL");
+    } else if (filters?.locationId) {
+      const parsedLocId = Number(filters.locationId);
+      if (Number.isInteger(parsedLocId) && parsedLocId > 0) {
+        qb.andWhere("item.location_id = :locationId", { locationId: parsedLocId });
+      }
     }
 
     qb.orderBy("item.name", "ASC");
@@ -100,6 +111,7 @@ export class InventoryService {
     skip: number,
     limit: number,
     belowMinStock = false,
+    locationId?: string,
   ): Promise<{ items: StockItem[]; total: number }> {
     const qb = this.stockItemRepo
       .createQueryBuilder("item")
@@ -111,6 +123,15 @@ export class InventoryService {
 
     if (belowMinStock) {
       qb.andWhere("item.quantity <= item.min_stock_level");
+    }
+
+    if (locationId === "null") {
+      qb.andWhere("item.location_id IS NULL");
+    } else if (locationId) {
+      const parsedLocId = Number(locationId);
+      if (Number.isInteger(parsedLocId) && parsedLocId > 0) {
+        qb.andWhere("item.location_id = :locationId", { locationId: parsedLocId });
+      }
     }
 
     qb.orderBy("item.name", "ASC");
