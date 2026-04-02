@@ -851,9 +851,13 @@ export class DataBookPdfService {
 
     y = infoStartY + infoLeft.length * 11 + 4;
 
-    const mpsAbbrev = this.qcpClientAbbrev(plan);
+    const rawAbbrev = this.qcpClientAbbrev(plan);
+    const clientLabel =
+      rawAbbrev && rawAbbrev !== "MPS" && rawAbbrev !== "PLS" ? rawAbbrev : "Client";
     const hasThirdParty = plan.activities.some(
-      (a) => (a as any).thirdParty?.interventionType || (a as any).thirdParty?.initial,
+      (a) =>
+        (a as any).thirdParty?.interventionType !== null &&
+        (a as any).thirdParty?.interventionType !== undefined,
     );
     const partyCols = hasThirdParty ? 4 : 3;
 
@@ -898,7 +902,7 @@ export class DataBookPdfService {
     doc.text("SIGN", plsX + partyIntW + 1, subY, { width: partySignW - 2, align: "center" });
     doc.text("MPS", mpsX + 1, subY, { width: partyIntW - 2, align: "center" });
     doc.text("SIGN", mpsX + partyIntW + 1, subY, { width: partySignW - 2, align: "center" });
-    doc.text(mpsAbbrev || "Client", clientX + 1, subY, { width: partyIntW - 2, align: "center" });
+    doc.text(clientLabel, clientX + 1, subY, { width: partyIntW - 2, align: "center" });
     doc.text("SIGN", clientX + partyIntW + 1, subY, { width: partySignW - 2, align: "center" });
     if (hasThirdParty) {
       doc.text("3rd Party", thirdX + 1, subY, { width: partyIntW - 2, align: "center" });
@@ -1038,13 +1042,16 @@ export class DataBookPdfService {
     const defaultSigParties = [
       { party: "PLS", name: null, signatureUrl: null, date: null },
       { party: "MPS", name: null, signatureUrl: null, date: null },
-      { party: mpsAbbrev || "Client", name: null, signatureUrl: null, date: null },
+      { party: clientLabel, name: null, signatureUrl: null, date: null },
       ...(hasThirdParty
         ? [{ party: "3rd Party", name: null, signatureUrl: null, date: null }]
         : []),
     ];
-    const sigParties =
+    const storedSigs =
       plan.approvalSignatures.length > 0 ? plan.approvalSignatures : defaultSigParties;
+    const sigParties = hasThirdParty
+      ? storedSigs
+      : storedSigs.filter((s) => s.party !== "3rd Party");
 
     const sigColW = pg.contentWidth / Math.max(sigParties.length, 3);
     sigParties.forEach((sig, idx) => {
