@@ -941,7 +941,11 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
     if (!pathEl || !container) return;
 
     const managerFgIdx = allSteps.findIndex((s) => s.key === "manager_approval");
-    const shouldShow = managerFgIdx >= 0 && managerFgIdx <= currentStepIndex;
+    const recBgStep = backgroundSteps.find(
+      (bg) => bg.stepKey === "reception" || bg.stepKey === "custom_reception",
+    );
+    const receptionDone = !recBgStep || recBgStep.completedAt !== null;
+    const shouldShow = managerFgIdx >= 0 && managerFgIdx <= currentStepIndex && receptionDone;
 
     const isReqStep = (key: string) =>
       [

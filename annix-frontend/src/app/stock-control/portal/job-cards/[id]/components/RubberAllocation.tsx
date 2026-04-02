@@ -1356,15 +1356,6 @@ function RubberAllocationSection({
 
   return (
     <div className="bg-white shadow rounded-lg overflow-x-auto">
-      <div className="px-4 py-5 sm:px-6 border-b border-gray-200">
-        <h3 className="text-lg leading-6 font-medium text-gray-900">Rubber Allocation</h3>
-        {plan.hasPipeItems && (
-          <p className="mt-1 text-sm text-gray-500">
-            Internal lining uses ID circumference; pulleys/drums/rollers use OD circumference. +50mm
-            bevel allowance on all cuts. Roll widths: 800-1450mm. Lengths: up to 12.5m.
-          </p>
-        )}
-      </div>
       <div className="px-4 py-5 sm:px-6">
         {comboSummaries.length > 0 && plan.hasPipeItems && (
           <div className="mb-6">
