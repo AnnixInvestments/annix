@@ -244,7 +244,7 @@ export function DataBookCompletenessPanel({
               if (section.group && section.group !== acc.lastGroup) {
                 acc.elements.push(
                   <div
-                    key={`group-${section.group}`}
+                    key={`group-${section.group}-${idx}`}
                     className="border-t border-gray-200 bg-gray-50 px-4 py-2"
                   >
                     <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">
