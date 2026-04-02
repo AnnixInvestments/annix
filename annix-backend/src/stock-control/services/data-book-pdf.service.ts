@@ -938,15 +938,24 @@ export class DataBookPdfService {
       doc.fontSize(6).font(FONT.REGULAR).fillColor("#000000");
       doc.text(String(activity.operationNumber), opX + 1, y + 3, {
         width: opW - 2,
+        height: rowH - 4,
         align: "center",
       });
-      doc.text(activity.description, descX + 2, y + 3, { width: descW - 4 });
-      doc.text(activity.specification ?? "-", specX + 2, y + 3, { width: specW - 4 });
+      doc.text(activity.description, descX + 2, y + 3, {
+        width: descW - 4,
+        height: rowH - 4,
+        ellipsis: true,
+      });
+      doc.text(activity.specification ?? "-", specX + 2, y + 3, {
+        width: specW - 4,
+        height: rowH - 4,
+        ellipsis: true,
+      });
       doc.text(
         (activity as any).documentation ?? activity.procedureRequired ?? "-",
         docColX + 2,
         y + 3,
-        { width: docColW - 4 },
+        { width: docColW - 4, height: rowH - 4, ellipsis: true },
       );
 
       doc.font(FONT.BOLD);
@@ -955,41 +964,65 @@ export class DataBookPdfService {
       const clientType = activity.client?.interventionType ?? "-";
       const thirdType = (activity as any).thirdParty?.interventionType ?? "-";
 
-      doc.text(plsType, plsX + 1, y + 3, { width: partyIntW - 2, align: "center" });
+      doc.text(plsType, plsX + 1, y + 3, {
+        width: partyIntW - 2,
+        align: "center",
+        lineBreak: false,
+      });
       doc.fontSize(5.5).font(FONT.REGULAR);
       doc.text(activity.pls?.initial ?? "", plsX + partyIntW + 1, y + 3, {
         width: partySignW - 2,
         align: "center",
+        lineBreak: false,
       });
 
       doc.fontSize(6).font(FONT.BOLD);
-      doc.text(mpsType, mpsX + 1, y + 3, { width: partyIntW - 2, align: "center" });
+      doc.text(mpsType, mpsX + 1, y + 3, {
+        width: partyIntW - 2,
+        align: "center",
+        lineBreak: false,
+      });
       doc.fontSize(5.5).font(FONT.REGULAR);
       doc.text(activity.mps?.initial ?? "", mpsX + partyIntW + 1, y + 3, {
         width: partySignW - 2,
         align: "center",
+        lineBreak: false,
       });
 
       doc.fontSize(6).font(FONT.BOLD);
-      doc.text(clientType, clientX + 1, y + 3, { width: partyIntW - 2, align: "center" });
+      doc.text(clientType, clientX + 1, y + 3, {
+        width: partyIntW - 2,
+        align: "center",
+        lineBreak: false,
+      });
       doc.fontSize(5.5).font(FONT.REGULAR);
       doc.text(activity.client?.initial ?? "", clientX + partyIntW + 1, y + 3, {
         width: partySignW - 2,
         align: "center",
+        lineBreak: false,
       });
 
       if (hasThirdParty) {
         doc.fontSize(6).font(FONT.BOLD);
-        doc.text(thirdType, thirdX + 1, y + 3, { width: partyIntW - 2, align: "center" });
+        doc.text(thirdType, thirdX + 1, y + 3, {
+          width: partyIntW - 2,
+          align: "center",
+          lineBreak: false,
+        });
         doc.fontSize(5.5).font(FONT.REGULAR);
         doc.text((activity as any).thirdParty?.initial ?? "", thirdX + partyIntW + 1, y + 3, {
           width: partySignW - 2,
           align: "center",
+          lineBreak: false,
         });
       }
 
       doc.font(FONT.REGULAR).fontSize(6);
-      doc.text(activity.remarks ?? "", remarkX + 2, y + 3, { width: remarkW - 4 });
+      doc.text(activity.remarks ?? "", remarkX + 2, y + 3, {
+        width: remarkW - 4,
+        height: rowH - 4,
+        ellipsis: true,
+      });
 
       y += rowH;
     });
@@ -999,7 +1032,7 @@ export class DataBookPdfService {
       addNewPage();
     }
 
-    doc.fontSize(7).font(FONT.BOLD).text("Approval Signatures", pg.margin, y);
+    doc.fontSize(7).font(FONT.BOLD).text("Approval Signatures", pg.margin, y, { lineBreak: false });
     y += 12;
 
     const defaultSigParties = [
@@ -1019,25 +1052,25 @@ export class DataBookPdfService {
       doc
         .fontSize(6.5)
         .font(FONT.BOLD)
-        .text(`Approved By: ${sig.party}`, sx, y, { width: sigColW });
+        .text(`Approved By: ${sig.party}`, sx, y, { width: sigColW, lineBreak: false });
       doc
         .fontSize(6.5)
         .font(FONT.REGULAR)
-        .text(`Name: ${sig.name ?? ""}`, sx, y + 10, { width: sigColW });
-      doc.text("Signed: ________________", sx, y + 20, { width: sigColW });
-      doc.text(`Date: ${sig.date ?? ""}`, sx, y + 30, { width: sigColW });
+        .text(`Name: ${sig.name ?? ""}`, sx, y + 10, { width: sigColW, lineBreak: false });
+      doc.text("Signed: ________________", sx, y + 20, { width: sigColW, lineBreak: false });
+      doc.text(`Date: ${sig.date ?? ""}`, sx, y + 30, { width: sigColW, lineBreak: false });
     });
 
     y += 46;
 
-    doc.fontSize(6).font(FONT.BOLD).text("Legend", pg.margin, y);
+    doc.fontSize(6).font(FONT.BOLD).text("Legend", pg.margin, y, { lineBreak: false });
     y += 8;
     doc.fontSize(5.5).font(FONT.REGULAR);
     doc.text(
       "H = Hold    I = Inspection    W = Witness    R = Review    S = Surveillance    V = Verify",
       pg.margin,
       y,
-      { width: pg.contentWidth },
+      { width: pg.contentWidth, lineBreak: false },
     );
   }
 
