@@ -39,10 +39,20 @@ const INTERVENTION_LABELS: Record<InterventionType, string> = {
 
 const INTERVENTION_TYPES: InterventionType[] = ["H", "I", "W", "R", "S", "V"];
 
-const PARTIES = ["PLS", "MPS", "Client"] as const;
+const PARTIES = ["PLS", "MPS", "Client", "3rd Party"] as const;
+type PartyKey = "pls" | "mps" | "client" | "thirdParty";
+const PARTY_KEYS: PartyKey[] = ["pls", "mps", "client", "thirdParty"];
 
 function emptyPartySignOff(): QcpPartySignOff {
-  return { interventionType: null, name: null, signatureUrl: null, date: null };
+  return { interventionType: null, initial: null, name: null, signatureUrl: null, date: null };
+}
+
+function holdSignOff(): QcpPartySignOff {
+  return { interventionType: "H", initial: null, name: null, signatureUrl: null, date: null };
+}
+
+function typedSignOff(type: InterventionType): QcpPartySignOff {
+  return { interventionType: type, initial: null, name: null, signatureUrl: null, date: null };
 }
 
 function emptyActivity(opNum: number): QcpActivity {
@@ -51,69 +61,267 @@ function emptyActivity(opNum: number): QcpActivity {
     description: "",
     specification: null,
     procedureRequired: null,
+    documentation: null,
     pls: emptyPartySignOff(),
     mps: emptyPartySignOff(),
     client: emptyPartySignOff(),
+    thirdParty: emptyPartySignOff(),
     remarks: null,
   };
 }
 
-function paintExternalTemplate(): QcpActivity[] {
-  const steps = [
-    "Receive & inspect items",
-    "Surface preparation - Abrasive blasting to SA 2.5",
-    "Dust and debris assessment",
-    "Apply primer coat",
-    "Primer DFT measurement",
-    "Apply intermediate coat",
-    "Intermediate DFT measurement",
-    "Apply final/topcoat",
-    "Final DFT measurement",
-    "Visual inspection",
-    "Final release",
-  ];
-  return steps.map((desc, i) => ({
-    ...emptyActivity(i + 1),
+function buildAct(
+  opNum: number,
+  desc: string,
+  spec: string | null,
+  doc: string | null,
+  pls?: QcpPartySignOff,
+  mps?: QcpPartySignOff,
+  client?: QcpPartySignOff,
+  tp?: QcpPartySignOff,
+): QcpActivity {
+  return {
+    operationNumber: opNum,
     description: desc,
-  }));
+    specification: spec,
+    procedureRequired: null,
+    documentation: doc,
+    pls: pls || holdSignOff(),
+    mps: mps || emptyPartySignOff(),
+    client: client || emptyPartySignOff(),
+    thirdParty: tp || emptyPartySignOff(),
+    remarks: null,
+  };
 }
 
-function paintInternalTemplate(): QcpActivity[] {
-  const steps = [
-    "Receive & inspect items",
-    "Surface preparation - Abrasive blasting to SA 2.5",
-    "Dust and debris assessment",
-    "Apply internal primer coat",
-    "Primer DFT measurement",
-    "Apply internal lining coat",
-    "Final DFT measurement",
-    "Visual inspection",
-    "Final release",
+function paintTemplate(): QcpActivity[] {
+  return [
+    buildAct(1, "Approval of QCP", null, "QD_PLS_11", holdSignOff(), typedSignOff("H")),
+    buildAct(
+      2,
+      "Weather Conditions",
+      "HUMIDITY: less than 85%",
+      "QD_PLS_10",
+      holdSignOff(),
+      typedSignOff("V"),
+    ),
+    buildAct(
+      3,
+      "Calibration Certificates",
+      "CALIBRATION CERTIFICATES",
+      "CALIBRATION CERTIFICATES",
+      holdSignOff(),
+      typedSignOff("R"),
+    ),
+    buildAct(
+      4,
+      "Verification of Paints Used",
+      "BATCH CERTIFICATES",
+      "BATCH CERTIFICATES",
+      holdSignOff(),
+      typedSignOff("R"),
+    ),
+    buildAct(
+      5,
+      "Visual Inspection on Items",
+      "QD_PLS_16",
+      "QD_PLS_16",
+      holdSignOff(),
+      typedSignOff("S"),
+    ),
+    buildAct(
+      6,
+      "Blasting",
+      "CLEAN SA.2.5 ISO 8501-1988",
+      "RECORD READINGS",
+      holdSignOff(),
+      typedSignOff("S"),
+    ),
+    buildAct(7, "Primer Coat", null, "RECORD READINGS", holdSignOff(), typedSignOff("S")),
+    buildAct(8, "Topcoat", null, "RECORD READINGS", holdSignOff(), typedSignOff("S")),
+    buildAct(9, "Total DFTs", null, "RECORD READINGS", holdSignOff(), typedSignOff("S")),
+    buildAct(
+      10,
+      "Final Release",
+      "CLIENT INSPECTION",
+      "CLIENT RELEASE",
+      holdSignOff(),
+      typedSignOff("H"),
+    ),
+    buildAct(
+      11,
+      "Data Book Inspection",
+      "REVIEW DATA",
+      "REVIEW DATA",
+      holdSignOff(),
+      typedSignOff("H"),
+    ),
   ];
-  return steps.map((desc, i) => ({
-    ...emptyActivity(i + 1),
-    description: desc,
-  }));
 }
 
 function rubberTemplate(): QcpActivity[] {
-  const steps = [
-    "Receive & inspect items",
-    "Surface preparation - Abrasive blasting to SA 2.5",
-    "Contamination check",
-    "Apply bonding solution/adhesive",
-    "Apply rubber lining as per drawing",
-    "Visual inspection - pre-cure",
-    "Autoclave curing",
-    "Shore hardness test",
-    "Spark test",
-    "Visual inspection - post-cure",
-    "Final release",
+  return [
+    buildAct(
+      1,
+      "Obtain Approval of QCP",
+      null,
+      "QC Document",
+      holdSignOff(),
+      typedSignOff("H"),
+      typedSignOff("H"),
+      typedSignOff("H"),
+    ),
+    buildAct(
+      2,
+      "Check Cleanliness",
+      "SANS 1201-2005",
+      "QD_PLS_16",
+      holdSignOff(),
+      typedSignOff("S"),
+      typedSignOff("S"),
+      typedSignOff("S"),
+    ),
+    buildAct(
+      3,
+      "Sand Blast 3 S A",
+      "SANS 1201-2005",
+      "QD_PLS_16",
+      holdSignOff(),
+      typedSignOff("S"),
+      typedSignOff("S"),
+      typedSignOff("S"),
+    ),
+    buildAct(
+      4,
+      "Hero Bond 080",
+      "CERTIFICATE OF ANALYSIS",
+      "QD_PLS_16",
+      holdSignOff(),
+      typedSignOff("S"),
+      typedSignOff("S"),
+      typedSignOff("S"),
+    ),
+    buildAct(
+      5,
+      "Hero Bond 082",
+      "CERTIFICATE OF ANALYSIS",
+      "QD_PLS_16",
+      holdSignOff(),
+      typedSignOff("S"),
+      typedSignOff("S"),
+      typedSignOff("S"),
+    ),
+    buildAct(
+      6,
+      "TY Bond 086",
+      "CERTIFICATE OF ANALYSIS",
+      "QD_PLS_16",
+      holdSignOff(),
+      typedSignOff("S"),
+      typedSignOff("S"),
+      typedSignOff("S"),
+    ),
+    buildAct(
+      7,
+      "TBC",
+      "CERTIFICATE OF ANALYSIS",
+      "QD_PLS_16",
+      holdSignOff(),
+      typedSignOff("V"),
+      typedSignOff("V"),
+      typedSignOff("V"),
+    ),
+    buildAct(
+      8,
+      "Pre cure Inspection",
+      "SANS 1201-2005",
+      "QD_PLS_16",
+      holdSignOff(),
+      typedSignOff("S"),
+      typedSignOff("S"),
+      typedSignOff("S"),
+    ),
+    buildAct(
+      9,
+      "Cure",
+      "SANS 1201-2005",
+      "QD_PLS_16",
+      holdSignOff(),
+      typedSignOff("S"),
+      typedSignOff("S"),
+      typedSignOff("S"),
+    ),
+    buildAct(
+      10,
+      "Buff",
+      "SANS 1201-2005",
+      "QD_PLS_16",
+      holdSignOff(),
+      typedSignOff("S"),
+      typedSignOff("S"),
+      typedSignOff("S"),
+    ),
+    buildAct(
+      11,
+      "Spark Test",
+      "SANS 1201-2005",
+      "QD_PLS_16",
+      holdSignOff(),
+      typedSignOff("H"),
+      typedSignOff("H"),
+      typedSignOff("H"),
+    ),
+    buildAct(
+      12,
+      "Hardness",
+      "SANS 1201-2005",
+      "Data Records",
+      holdSignOff(),
+      typedSignOff("H"),
+      typedSignOff("H"),
+      typedSignOff("H"),
+    ),
+    buildAct(
+      13,
+      "Test plate Results",
+      "SANS 1201-2005",
+      "QD_PLS_16",
+      holdSignOff(),
+      typedSignOff("H"),
+      typedSignOff("H"),
+      typedSignOff("H"),
+    ),
+    buildAct(
+      14,
+      "Final Inspection",
+      "SANS 1201-2005",
+      "QD_PLS_16",
+      holdSignOff(),
+      typedSignOff("H"),
+      typedSignOff("H"),
+      typedSignOff("H"),
+    ),
+    buildAct(
+      15,
+      "Humidity Documents",
+      "SANS 1201-2005",
+      "Data Records",
+      holdSignOff(),
+      typedSignOff("V"),
+      typedSignOff("V"),
+      typedSignOff("V"),
+    ),
+    buildAct(
+      16,
+      "Databook sign off",
+      null,
+      "Data Book",
+      holdSignOff(),
+      typedSignOff("H"),
+      typedSignOff("H"),
+      typedSignOff("H"),
+    ),
   ];
-  return steps.map((desc, i) => ({
-    ...emptyActivity(i + 1),
-    description: desc,
-  }));
 }
 
 function hdpeTemplate(): QcpActivity[] {
@@ -134,8 +342,7 @@ function hdpeTemplate(): QcpActivity[] {
 }
 
 function templateForType(type: QcpPlanType): QcpActivity[] {
-  if (type === "paint_external") return paintExternalTemplate();
-  if (type === "paint_internal") return paintInternalTemplate();
+  if (type === "paint_external" || type === "paint_internal") return paintTemplate();
   if (type === "rubber") return rubberTemplate();
   return hdpeTemplate();
 }
@@ -158,14 +365,19 @@ export function QcpForm({ jobCardId, existingPlan, onSaved, onCancel }: QcpFormP
   const [approvalSignatures, setApprovalSignatures] = useState<QcpApprovalSignature[]>(
     existingPlan?.approvalSignatures?.length
       ? existingPlan.approvalSignatures
-      : PARTIES.map((p) => ({ party: p, name: null, signatureUrl: null, date: null })),
+      : (["PLS", "MPS", "Client", "3rd Party"] as const).map((p) => ({
+          party: p,
+          name: null,
+          signatureUrl: null,
+          date: null,
+        })),
   );
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [signingPartyIndex, setSigningPartyIndex] = useState<number | null>(null);
   const [signingActivityKey, setSigningActivityKey] = useState<{
     activityIndex: number;
-    party: "pls" | "mps" | "client";
+    party: PartyKey;
   } | null>(null);
   const [currentUserName, setCurrentUserName] = useState("");
 
@@ -252,7 +464,7 @@ export function QcpForm({ jobCardId, existingPlan, onSaved, onCancel }: QcpFormP
   );
 
   const updateActivityIntervention = useCallback(
-    (index: number, party: "pls" | "mps" | "client", type: InterventionType | null) => {
+    (index: number, party: PartyKey, type: InterventionType | null) => {
       setActivities((prev) =>
         prev.map((a, i) =>
           i === index ? { ...a, [party]: { ...a[party], interventionType: type } } : a,
@@ -262,8 +474,17 @@ export function QcpForm({ jobCardId, existingPlan, onSaved, onCancel }: QcpFormP
     [],
   );
 
+  const updateActivityInitial = useCallback(
+    (index: number, party: PartyKey, initial: string | null) => {
+      setActivities((prev) =>
+        prev.map((a, i) => (i === index ? { ...a, [party]: { ...a[party], initial } } : a)),
+      );
+    },
+    [],
+  );
+
   const handleActivitySignOff = useCallback(
-    (index: number, party: "pls" | "mps" | "client") => {
+    (index: number, party: PartyKey) => {
       setActivities((prev) =>
         prev.map((a, i) =>
           i === index
@@ -497,27 +718,34 @@ export function QcpForm({ jobCardId, existingPlan, onSaved, onCancel }: QcpFormP
               <th className="px-2 py-2 text-left text-xs font-medium uppercase text-gray-500">
                 Description
               </th>
-              <th className="w-36 px-2 py-2 text-left text-xs font-medium uppercase text-gray-500">
+              <th className="w-32 px-2 py-2 text-left text-xs font-medium uppercase text-gray-500">
                 Spec / Procedure
               </th>
-              {PARTIES.map((party) => (
+              <th className="w-28 px-2 py-2 text-left text-xs font-medium uppercase text-gray-500">
+                Documentation
+              </th>
+              {PARTIES.map((party, pIdx) => (
                 <th
                   key={party}
-                  className="w-28 px-2 py-2 text-center text-xs font-medium uppercase text-gray-500"
+                  className="w-24 px-1 py-2 text-center text-xs font-medium uppercase text-gray-500"
                 >
-                  {party}
+                  <div>{party}</div>
+                  <div className="mt-0.5 flex justify-center gap-1 text-[10px] font-normal normal-case text-gray-400">
+                    <span>Type</span>
+                    <span>Initial</span>
+                  </div>
                 </th>
               ))}
-              <th className="w-16 px-2 py-2" />
+              <th className="w-14 px-2 py-2" />
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
             {activities.map((activity, idx) => (
               <tr key={idx} className="hover:bg-gray-50">
-                <td className="px-2 py-2 text-center font-medium text-gray-700">
+                <td className="px-2 py-1.5 text-center font-medium text-gray-700">
                   {activity.operationNumber}
                 </td>
-                <td className="px-2 py-2">
+                <td className="px-2 py-1.5">
                   <input
                     type="text"
                     value={activity.description}
@@ -526,7 +754,7 @@ export function QcpForm({ jobCardId, existingPlan, onSaved, onCancel }: QcpFormP
                     placeholder="Activity description"
                   />
                 </td>
-                <td className="px-2 py-2">
+                <td className="px-2 py-1.5">
                   <input
                     type="text"
                     value={activity.specification ?? ""}
@@ -535,63 +763,60 @@ export function QcpForm({ jobCardId, existingPlan, onSaved, onCancel }: QcpFormP
                     placeholder="Spec ref"
                   />
                 </td>
-                {(["pls", "mps", "client"] as const).map((party) => {
-                  const signOff = activity[party];
+                <td className="px-2 py-1.5">
+                  <input
+                    type="text"
+                    value={activity.documentation ?? ""}
+                    onChange={(e) => updateActivity(idx, "documentation", e.target.value || null)}
+                    className="w-full rounded border border-gray-300 px-2 py-1 text-sm"
+                    placeholder="Doc ref"
+                  />
+                </td>
+                {PARTY_KEYS.map((partyKey, pIdx) => {
+                  const signOff = activity[partyKey] || emptyPartySignOff();
                   return (
-                    <td key={party} className="px-2 py-2">
-                      <div className="flex flex-col items-center gap-1">
+                    <td key={partyKey} className="px-1 py-1.5">
+                      <div className="flex items-center gap-1">
                         <select
                           value={signOff.interventionType ?? ""}
                           onChange={(e) =>
                             updateActivityIntervention(
                               idx,
-                              party,
+                              partyKey,
                               (e.target.value as InterventionType) || null,
                             )
                           }
-                          className="w-full rounded border border-gray-300 px-1 py-1 text-center text-xs"
+                          className="w-14 rounded border border-gray-300 px-0.5 py-1 text-center text-xs"
                         >
                           <option value="">-</option>
                           {INTERVENTION_TYPES.map((t) => (
                             <option key={t} value={t}>
-                              {t} - {INTERVENTION_LABELS[t]}
+                              {t}
                             </option>
                           ))}
                         </select>
-                        {signOff.interventionType && (
-                          <div className="flex flex-col items-center gap-0.5">
-                            {signOff.name ? (
-                              <span className="text-xs text-green-700">{signOff.name}</span>
-                            ) : (
-                              <button
-                                type="button"
-                                onClick={() => handleActivitySignOff(idx, party)}
-                                className="text-xs text-teal-600 hover:text-teal-800"
-                              >
-                                Sign off
-                              </button>
-                            )}
-                            {signOff.signatureUrl && (
-                              <img
-                                src={signOff.signatureUrl}
-                                alt="Sig"
-                                className="h-6 rounded border border-gray-200"
-                              />
-                            )}
-                          </div>
-                        )}
+                        <input
+                          type="text"
+                          value={signOff.initial ?? ""}
+                          onChange={(e) =>
+                            updateActivityInitial(idx, partyKey, e.target.value || null)
+                          }
+                          className="w-12 rounded border border-gray-300 px-1 py-1 text-center text-xs"
+                          placeholder=""
+                          title="Initial"
+                        />
                       </div>
                     </td>
                   );
                 })}
-                <td className="px-2 py-2 text-center">
+                <td className="px-2 py-1.5 text-center">
                   {activities.length > 1 && (
                     <button
                       type="button"
                       onClick={() => removeActivity(idx)}
                       className="text-xs text-red-500 hover:text-red-700"
                     >
-                      Remove
+                      X
                     </button>
                   )}
                 </td>
@@ -628,7 +853,7 @@ export function QcpForm({ jobCardId, existingPlan, onSaved, onCancel }: QcpFormP
         <h4 className="text-sm font-semibold text-gray-900">Approval Signatures</h4>
       </div>
 
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-4 gap-4">
         {approvalSignatures.map((sig, idx) => (
           <div key={idx} className="rounded border border-gray-200 bg-gray-50 p-3">
             <p className="mb-2 text-xs font-semibold text-gray-700">{sig.party}</p>
