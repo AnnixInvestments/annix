@@ -6,7 +6,6 @@ import { JobCard } from "../../entities/job-card.entity";
 import { StockControlCompany } from "../../entities/stock-control-company.entity";
 import { QcBlastProfile } from "../entities/qc-blast-profile.entity";
 import {
-  InterventionType,
   type PartySignOff,
   QcControlPlan,
   type QcpActivity,
@@ -409,23 +408,6 @@ export class QcMeasurementService {
 
     const emptySignOff = (): PartySignOff => ({
       interventionType: null,
-      initial: null,
-      name: null,
-      signatureUrl: null,
-      date: null,
-    });
-
-    const holdSignOff = (): PartySignOff => ({
-      interventionType: InterventionType.HOLD,
-      initial: null,
-      name: null,
-      signatureUrl: null,
-      date: null,
-    });
-
-    const typedSignOff = (type: InterventionType): PartySignOff => ({
-      interventionType: type,
-      initial: null,
       name: null,
       signatureUrl: null,
       date: null,
@@ -435,372 +417,125 @@ export class QcMeasurementService {
       { party: "PLS", name: null, signatureUrl: null, date: null },
       { party: "MPS", name: null, signatureUrl: null, date: null },
       { party: "Client", name: null, signatureUrl: null, date: null },
-      { party: "3rd Party", name: null, signatureUrl: null, date: null },
     ];
 
     const buildActivity = (
       opNum: number,
       description: string,
       spec: string | null,
-      doc: string | null,
-      pls?: PartySignOff,
-      mps?: PartySignOff,
-      client?: PartySignOff,
-      thirdParty?: PartySignOff,
     ): QcpActivity => ({
       operationNumber: opNum,
       description,
       specification: spec,
       procedureRequired: null,
-      documentation: doc,
-      pls: pls || holdSignOff(),
-      mps: mps || emptySignOff(),
-      client: client || emptySignOff(),
-      thirdParty: thirdParty || emptySignOff(),
+      pls: emptySignOff(),
+      mps: emptySignOff(),
+      client: emptySignOff(),
       remarks: null,
     });
 
-    const H = InterventionType.HOLD;
-    const S = InterventionType.SURVEILLANCE;
-    const V = InterventionType.VERIFY;
-    const R = InterventionType.REVIEW;
-
-    const rubberActivities = (): QcpActivity[] => {
-      const rubberSpec = coating?.rawNotes || "TBC";
-      return [
-        buildActivity(
-          1,
-          "Obtain Approval of QCP",
-          null,
-          "QC Document",
-          holdSignOff(),
-          typedSignOff(H),
-          typedSignOff(H),
-          typedSignOff(H),
-        ),
-        buildActivity(
-          2,
-          "Check Cleanliness",
-          "SANS 1201-2005",
-          "QD_PLS_16",
-          holdSignOff(),
-          typedSignOff(S),
-          typedSignOff(S),
-          typedSignOff(S),
-        ),
-        buildActivity(
-          3,
-          "Sand Blast 3 S A",
-          "SANS 1201-2005",
-          "QD_PLS_16",
-          holdSignOff(),
-          typedSignOff(S),
-          typedSignOff(S),
-          typedSignOff(S),
-        ),
-        buildActivity(
-          4,
-          "Hero Bond 080",
-          "CERTIFICATE OF ANALYSIS",
-          "QD_PLS_16",
-          holdSignOff(),
-          typedSignOff(S),
-          typedSignOff(S),
-          typedSignOff(S),
-        ),
-        buildActivity(
-          5,
-          "Hero Bond 082",
-          "CERTIFICATE OF ANALYSIS",
-          "QD_PLS_16",
-          holdSignOff(),
-          typedSignOff(S),
-          typedSignOff(S),
-          typedSignOff(S),
-        ),
-        buildActivity(
-          6,
-          "TY Bond 086",
-          "CERTIFICATE OF ANALYSIS",
-          "QD_PLS_16",
-          holdSignOff(),
-          typedSignOff(S),
-          typedSignOff(S),
-          typedSignOff(S),
-        ),
-        buildActivity(
-          7,
-          rubberSpec,
-          "CERTIFICATE OF ANALYSIS",
-          "QD_PLS_16",
-          holdSignOff(),
-          typedSignOff(V),
-          typedSignOff(V),
-          typedSignOff(V),
-        ),
-        buildActivity(
-          8,
-          "Pre cure Inspection",
-          "SANS 1201-2005",
-          "QD_PLS_16",
-          holdSignOff(),
-          typedSignOff(S),
-          typedSignOff(S),
-          typedSignOff(S),
-        ),
-        buildActivity(
-          9,
-          "Cure",
-          "SANS 1201-2005",
-          "QD_PLS_16",
-          holdSignOff(),
-          typedSignOff(S),
-          typedSignOff(S),
-          typedSignOff(S),
-        ),
-        buildActivity(
-          10,
-          "Buff",
-          "SANS 1201-2005",
-          "QD_PLS_16",
-          holdSignOff(),
-          typedSignOff(S),
-          typedSignOff(S),
-          typedSignOff(S),
-        ),
-        buildActivity(
-          11,
-          "Spark Test",
-          "SANS 1201-2005",
-          "QD_PLS_16",
-          holdSignOff(),
-          typedSignOff(H),
-          typedSignOff(H),
-          typedSignOff(H),
-        ),
-        buildActivity(
-          12,
-          "Hardness",
-          "SANS 1201-2005",
-          "Data Records",
-          holdSignOff(),
-          typedSignOff(H),
-          typedSignOff(H),
-          typedSignOff(H),
-        ),
-        buildActivity(
-          13,
-          "Test plate Results",
-          "SANS 1201-2005",
-          "QD_PLS_16",
-          holdSignOff(),
-          typedSignOff(H),
-          typedSignOff(H),
-          typedSignOff(H),
-        ),
-        buildActivity(
-          14,
-          "Final Inspection",
-          "SANS 1201-2005",
-          "QD_PLS_16",
-          holdSignOff(),
-          typedSignOff(H),
-          typedSignOff(H),
-          typedSignOff(H),
-        ),
-        buildActivity(
-          15,
-          "Humidity Documents",
-          "SANS 1201-2005",
-          "Data Records",
-          holdSignOff(),
-          typedSignOff(V),
-          typedSignOff(V),
-          typedSignOff(V),
-        ),
-        buildActivity(
-          16,
-          "Databook sign off",
-          null,
-          "Data Book",
-          holdSignOff(),
-          typedSignOff(H),
-          typedSignOff(H),
-          typedSignOff(H),
-        ),
-      ];
-    };
-
-    const paintActivities = (paintCoats: any[], surfPrep: string | null): QcpActivity[] => {
+    const paintExternalActivities = (externalCoats: any[]): QcpActivity[] => {
       const activities: QcpActivity[] = [
-        buildActivity(
-          1,
-          "Approval of QCP",
-          null,
-          "QD_PLS_11",
-          holdSignOff(),
-          typedSignOff(H),
-          emptySignOff(),
-          emptySignOff(),
-        ),
+        buildActivity(1, "Receive & inspect items", null),
         buildActivity(
           2,
-          "Weather Conditions",
-          "HUMIDITY: less than 85%",
-          "QD_PLS_10",
-          holdSignOff(),
-          typedSignOff(V),
-          emptySignOff(),
-          emptySignOff(),
+          "Surface preparation - Abrasive blasting to SA 2.5",
+          coating?.surfacePrep || null,
         ),
-        buildActivity(
-          3,
-          "Calibration Certificates",
-          "CALIBRATION CERTIFICATES",
-          "CALIBRATION CERTIFICATES",
-          holdSignOff(),
-          typedSignOff(R),
-          emptySignOff(),
-          emptySignOff(),
-        ),
-        buildActivity(
-          4,
-          "Verification of Paints Used",
-          "BATCH CERTIFICATES",
-          "BATCH CERTIFICATES",
-          holdSignOff(),
-          typedSignOff(R),
-          emptySignOff(),
-          emptySignOff(),
-        ),
-        buildActivity(
-          5,
-          "Visual Inspection on Items",
-          "QD_PLS_16",
-          "QD_PLS_16",
-          holdSignOff(),
-          typedSignOff(S),
-          emptySignOff(),
-          emptySignOff(),
-        ),
-        buildActivity(
-          6,
-          "Blasting",
-          surfPrep || "CLEAN SA.2.5 ISO 8501-1988",
-          "RECORD READINGS",
-          holdSignOff(),
-          typedSignOff(S),
-          emptySignOff(),
-          emptySignOff(),
-        ),
+        buildActivity(3, "Dust and debris assessment", null),
       ];
 
-      let opNum = 7;
-      let totalMinDft = 0;
-      let totalMaxDft = 0;
-
-      paintCoats.forEach((coat: any) => {
+      let opNum = 4;
+      externalCoats.forEach((coat: any, idx: number) => {
         const dftSpec =
-          coat.minDftUm && coat.maxDftUm ? `${coat.minDftUm}-${coat.maxDftUm}µm` : null;
-        if (coat.minDftUm) totalMinDft += Number(coat.minDftUm);
-        if (coat.maxDftUm) totalMaxDft += Number(coat.maxDftUm);
+          coat.minDftUm && coat.maxDftUm ? `${coat.minDftUm}-${coat.maxDftUm} µm` : null;
+        const label =
+          idx === 0
+            ? "primer"
+            : idx === externalCoats.length - 1
+              ? "final/topcoat"
+              : "intermediate";
+        activities.push(buildActivity(opNum++, `Apply ${label} - ${coat.product || "TBC"}`, null));
         activities.push(
           buildActivity(
             opNum++,
-            coat.product || "TBC",
+            `${label === "primer" ? "Primer" : label === "final/topcoat" ? "Final" : "Intermediate"} DFT measurement`,
             dftSpec,
-            "RECORD READINGS",
-            holdSignOff(),
-            typedSignOff(S),
-            emptySignOff(),
-            emptySignOff(),
           ),
         );
       });
 
-      if (paintCoats.length === 0) {
-        activities.push(
-          buildActivity(
-            opNum++,
-            "Primer Coat",
-            null,
-            "RECORD READINGS",
-            holdSignOff(),
-            typedSignOff(S),
-            emptySignOff(),
-            emptySignOff(),
-          ),
-        );
-        activities.push(
-          buildActivity(
-            opNum++,
-            "Topcoat",
-            null,
-            "RECORD READINGS",
-            holdSignOff(),
-            typedSignOff(S),
-            emptySignOff(),
-            emptySignOff(),
-          ),
-        );
+      if (externalCoats.length === 0) {
+        activities.push(buildActivity(opNum++, "Apply primer coat", null));
+        activities.push(buildActivity(opNum++, "Primer DFT measurement", null));
+        activities.push(buildActivity(opNum++, "Apply final/topcoat", null));
+        activities.push(buildActivity(opNum++, "Final DFT measurement", null));
       }
 
-      const totalDftSpec =
-        totalMinDft > 0 || totalMaxDft > 0 ? `${totalMinDft}-${totalMaxDft}µm` : null;
-
-      activities.push(
-        buildActivity(
-          opNum++,
-          "Total DFTs",
-          totalDftSpec,
-          "RECORD READINGS",
-          holdSignOff(),
-          typedSignOff(S),
-          emptySignOff(),
-          emptySignOff(),
-        ),
-      );
-      activities.push(
-        buildActivity(
-          opNum++,
-          "Final Release",
-          "CLIENT INSPECTION",
-          "CLIENT RELEASE",
-          holdSignOff(),
-          typedSignOff(H),
-          emptySignOff(),
-          emptySignOff(),
-        ),
-      );
-      activities.push(
-        buildActivity(
-          opNum++,
-          "Data Book Inspection",
-          "REVIEW DATA",
-          "REVIEW DATA",
-          holdSignOff(),
-          typedSignOff(H),
-          emptySignOff(),
-          emptySignOff(),
-        ),
-      );
-
+      activities.push(buildActivity(opNum++, "Visual inspection", null));
+      activities.push(buildActivity(opNum++, "Final release", null));
       return activities;
     };
 
+    const paintInternalActivities = (internalCoats: any[]): QcpActivity[] => {
+      const activities: QcpActivity[] = [
+        buildActivity(1, "Receive & inspect items", null),
+        buildActivity(
+          2,
+          "Surface preparation - Abrasive blasting to SA 2.5",
+          coating?.surfacePrep || null,
+        ),
+        buildActivity(3, "Dust and debris assessment", null),
+      ];
+
+      let opNum = 4;
+      internalCoats.forEach((coat: any, idx: number) => {
+        const dftSpec =
+          coat.minDftUm && coat.maxDftUm ? `${coat.minDftUm}-${coat.maxDftUm} µm` : null;
+        const label = idx === 0 ? "internal primer" : "internal lining";
+        activities.push(buildActivity(opNum++, `Apply ${label} - ${coat.product || "TBC"}`, null));
+        activities.push(
+          buildActivity(opNum++, `${idx === 0 ? "Primer" : "Final"} DFT measurement`, dftSpec),
+        );
+      });
+
+      if (internalCoats.length === 0) {
+        activities.push(buildActivity(opNum++, "Apply internal primer coat", null));
+        activities.push(buildActivity(opNum++, "Primer DFT measurement", null));
+        activities.push(buildActivity(opNum++, "Apply internal lining coat", null));
+        activities.push(buildActivity(opNum++, "Final DFT measurement", null));
+      }
+
+      activities.push(buildActivity(opNum++, "Visual inspection", null));
+      activities.push(buildActivity(opNum++, "Final release", null));
+      return activities;
+    };
+
+    const rubberActivities = (): QcpActivity[] => [
+      buildActivity(1, "Receive & inspect items", null),
+      buildActivity(2, "Surface preparation - Abrasive blasting to SA 2.5", "SA 3"),
+      buildActivity(3, "Contamination check", null),
+      buildActivity(4, "Apply bonding solution/adhesive", null),
+      buildActivity(5, "Apply rubber lining as per drawing", null),
+      buildActivity(6, "Visual inspection - pre-cure", null),
+      buildActivity(7, "Autoclave curing", null),
+      buildActivity(8, "Shore hardness test", null),
+      buildActivity(9, "Spark test", null),
+      buildActivity(10, "Visual inspection - post-cure", null),
+      buildActivity(11, "Final release", null),
+    ];
+
     const activitiesForType = (planType: QcpPlanType): QcpActivity[] => {
       if (planType === QcpPlanType.PAINT_EXTERNAL) {
-        const extCoats = coats.filter((c: any) => c.area === "external");
-        return paintActivities(extCoats, coating?.extSurfacePrep || coating?.surfacePrep || null);
+        return paintExternalActivities(coats.filter((c: any) => c.area === "external"));
       }
       if (planType === QcpPlanType.PAINT_INTERNAL) {
-        const intCoats = coats.filter((c: any) => c.area === "internal");
-        return paintActivities(intCoats, coating?.intSurfacePrep || coating?.surfacePrep || null);
+        return paintInternalActivities(coats.filter((c: any) => c.area === "internal"));
       }
       if (planType === QcpPlanType.RUBBER) {
         return rubberActivities();
       }
-      return paintActivities([], coating?.surfacePrep || null);
+      return paintExternalActivities([]);
     };
 
     const companyPrefix = company?.name

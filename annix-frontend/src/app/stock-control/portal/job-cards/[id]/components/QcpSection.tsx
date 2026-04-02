@@ -7,7 +7,6 @@ import type {
   QcpPlanType,
 } from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
-import { QcpEditorModal } from "./QcpEditorModal";
 import { QcpForm } from "./QcpForm";
 
 interface QcpSectionProps {
@@ -78,7 +77,6 @@ export function QcpSection({ jobCardId }: QcpSectionProps) {
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [isAutoGenerating, setIsAutoGenerating] = useState(false);
-  const [editorPlan, setEditorPlan] = useState<QcControlPlanRecord | null>(null);
 
   const fetchPlans = useCallback(async () => {
     try {
@@ -243,7 +241,7 @@ export function QcpSection({ jobCardId }: QcpSectionProps) {
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation();
-                        setEditorPlan(plan);
+                        stockControlApiClient.openControlPlanPdf(jobCardId, plan.id);
                       }}
                       className="text-sm text-blue-600 hover:text-blue-800"
                     >
@@ -299,17 +297,10 @@ export function QcpSection({ jobCardId }: QcpSectionProps) {
                           <th className="px-2 py-1.5 text-left font-medium text-gray-500">
                             Activity
                           </th>
-                          <th className="px-2 py-1.5 text-left font-medium text-gray-500">
-                            Spec/Proc
-                          </th>
-                          <th className="px-2 py-1.5 text-left font-medium text-gray-500">Doc</th>
                           <th className="px-2 py-1.5 text-center font-medium text-gray-500">PLS</th>
                           <th className="px-2 py-1.5 text-center font-medium text-gray-500">MPS</th>
                           <th className="px-2 py-1.5 text-center font-medium text-gray-500">
                             Client
-                          </th>
-                          <th className="px-2 py-1.5 text-center font-medium text-gray-500">
-                            3rd Party
                           </th>
                         </tr>
                       </thead>
@@ -317,13 +308,14 @@ export function QcpSection({ jobCardId }: QcpSectionProps) {
                         {plan.activities.map((a, i) => (
                           <tr key={i}>
                             <td className="px-2 py-1.5 text-center">{a.operationNumber}</td>
-                            <td className="px-2 py-1.5">{a.description}</td>
-                            <td className="px-2 py-1.5 text-gray-500">{a.specification || "-"}</td>
-                            <td className="px-2 py-1.5 text-gray-500">
-                              {(a as any).documentation || a.procedureRequired || "-"}
+                            <td className="px-2 py-1.5">
+                              {a.description}
+                              {a.specification && (
+                                <span className="ml-1 text-gray-400">({a.specification})</span>
+                              )}
                             </td>
-                            {(["pls", "mps", "client", "thirdParty"] as const).map((party) => {
-                              const so = (a as any)[party] || {};
+                            {(["pls", "mps", "client"] as const).map((party) => {
+                              const so = a[party];
                               if (!so.interventionType) {
                                 return (
                                   <td key={party} className="px-2 py-1.5 text-center text-gray-300">
@@ -334,8 +326,10 @@ export function QcpSection({ jobCardId }: QcpSectionProps) {
                               return (
                                 <td key={party} className="px-2 py-1.5 text-center">
                                   <span className="font-medium">{so.interventionType}</span>
-                                  {so.initial && (
-                                    <span className="ml-1 text-gray-500">{so.initial}</span>
+                                  {so.name ? (
+                                    <span className="ml-1 text-green-700">{so.name}</span>
+                                  ) : (
+                                    <span className="ml-1 text-amber-600">Pending</span>
                                   )}
                                 </td>
                               );
@@ -363,15 +357,6 @@ export function QcpSection({ jobCardId }: QcpSectionProps) {
             );
           })}
         </div>
-      )}
-
-      {editorPlan && (
-        <QcpEditorModal
-          plan={editorPlan}
-          jobCardId={jobCardId}
-          onClose={() => setEditorPlan(null)}
-          onSaved={fetchPlans}
-        />
       )}
     </div>
   );

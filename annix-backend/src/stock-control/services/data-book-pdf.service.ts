@@ -33,14 +33,6 @@ const A4: PageLayout = {
   pageWidth: 595.28,
 };
 
-const A4_LANDSCAPE: PageLayout = {
-  margin: 30,
-  contentWidth: 841.89 - 60,
-  headerHeight: 70,
-  pageHeight: 595.28,
-  pageWidth: 841.89,
-};
-
 const FONT = {
   BOLD: "Helvetica-Bold",
   REGULAR: "Helvetica",
@@ -269,25 +261,18 @@ export class DataBookPdfService {
       itemsReleases: [],
     };
 
-    return this.renderStandaloneDocument(
-      ctx,
-      (doc, tocEntries) => {
-        this.renderControlPlan(doc, ctx, plan, tocEntries);
-      },
-      { layout: "landscape" },
-    );
+    return this.renderStandaloneDocument(ctx, (doc, tocEntries) => {
+      this.renderControlPlan(doc, ctx, plan, tocEntries);
+    });
   }
 
   private async renderStandaloneDocument(
     ctx: DataBookContext,
     renderFn: (doc: PDFDoc, tocEntries: TocEntry[]) => void,
-    options?: { layout?: "portrait" | "landscape" },
   ): Promise<Buffer> {
-    const isLandscape = options?.layout === "landscape";
     const doc = new PDFDocument({
       size: "A4",
-      layout: isLandscape ? "landscape" : "portrait",
-      margin: isLandscape ? A4_LANDSCAPE.margin : A4.margin,
+      margin: A4.margin,
       bufferPages: true,
       autoFirstPage: false,
     });
@@ -300,7 +285,7 @@ export class DataBookPdfService {
 
     const tocEntries: TocEntry[] = [];
     renderFn(doc, tocEntries);
-    this.renderPageFooters(doc, ctx, isLandscape ? A4_LANDSCAPE : undefined);
+    this.renderPageFooters(doc, ctx);
     doc.end();
     return done;
   }
@@ -679,7 +664,6 @@ export class DataBookPdfService {
     plan: QcControlPlan,
     tocEntries: TocEntry[],
   ): void {
-    const pg = A4_LANDSCAPE;
     const planLabels: Record<string, string> = {
       paint_external: "Paint External",
       paint_internal: "Paint Internal",
@@ -694,7 +678,7 @@ export class DataBookPdfService {
       revision: plan.revision ?? DOC_NUMBERS[docKey].revision,
     };
 
-    doc.addPage({ size: "A4", layout: "landscape" });
+    doc.addPage();
     const brandColor = ctx.company?.primaryColor ?? "#dc2626";
     const companyName = ctx.company?.name ?? "Polymer Lining System (Pty) Ltd";
 
@@ -707,10 +691,10 @@ export class DataBookPdfService {
       edition: docEntry.edition,
     });
 
-    let y = pg.margin;
+    let y = A4.margin;
 
     doc.fontSize(11).font(FONT.BOLD).fillColor("#000000");
-    doc.text(companyName, pg.margin, y, { width: pg.contentWidth * 0.65 });
+    doc.text(companyName, A4.margin, y, { width: A4.contentWidth * 0.65 });
 
     doc
       .fontSize(7)
@@ -718,24 +702,24 @@ export class DataBookPdfService {
       .fillColor("#6b7280")
       .text(
         `Doc: ${docEntry.docNumber}  |  Ed: ${docEntry.edition} Rev: ${docEntry.revision}`,
-        pg.margin,
+        A4.margin,
         y + 2,
-        { align: "right", width: pg.contentWidth },
+        { align: "right", width: A4.contentWidth },
       );
 
     y += 18;
-    doc.rect(pg.margin, y, pg.contentWidth, 2).fill(brandColor);
+    doc.rect(A4.margin, y, A4.contentWidth, 2).fill(brandColor);
     y += 8;
 
     doc
-      .fontSize(13)
+      .fontSize(14)
       .font(FONT.BOLD)
       .fillColor("#000000")
-      .text(`Quality Control Plan - ${label}`, pg.margin, y, {
+      .text(`Quality Control Plan - ${label}`, A4.margin, y, {
         align: "center",
-        width: pg.contentWidth,
+        width: A4.contentWidth,
       });
-    y += 18;
+    y += 20;
 
     const jobInfo = [
       `Job Card: ${ctx.jobCard.jobNumber || ctx.jobCard.id}`,
@@ -749,22 +733,22 @@ export class DataBookPdfService {
       .fontSize(7)
       .font(FONT.REGULAR)
       .fillColor("#6b7280")
-      .text(jobInfo, pg.margin, y, { align: "center", width: pg.contentWidth });
-    y += 12;
+      .text(jobInfo, A4.margin, y, { align: "center", width: A4.contentWidth });
+    y += 14;
 
     doc
-      .moveTo(pg.margin, y)
-      .lineTo(pg.margin + pg.contentWidth, y)
+      .moveTo(A4.margin, y)
+      .lineTo(A4.margin + A4.contentWidth, y)
       .lineWidth(0.5)
       .stroke("#d1d5db");
     doc.lineWidth(1);
-    y += 8;
+    y += 12;
     doc.fillColor("#000000");
 
-    const leftCol = pg.margin;
-    const rightCol = pg.margin + pg.contentWidth * 0.5;
-    const labelW = 90;
-    const valW = pg.contentWidth * 0.5 - labelW;
+    const leftCol = A4.margin;
+    const rightCol = A4.margin + A4.contentWidth * 0.45;
+    const labelW = 85;
+    const valW = A4.contentWidth * 0.45 - labelW;
 
     const infoLeft: Array<[string, string]> = [
       ["QCP Number:", plan.qcpNumber ?? "-"],
@@ -782,173 +766,119 @@ export class DataBookPdfService {
     infoLeft.forEach(([lbl, val]) => {
       doc.font(FONT.BOLD).text(lbl, leftCol, y, { width: labelW, continued: false });
       doc.font(FONT.REGULAR).text(val, leftCol + labelW, y - 10, { width: valW });
-      y += 12;
+      y += 13;
     });
 
     y = infoStartY;
     infoRight.forEach(([lbl, val]) => {
       doc.font(FONT.BOLD).text(lbl, rightCol, y, { width: labelW, continued: false });
       doc.font(FONT.REGULAR).text(val, rightCol + labelW, y - 10, { width: valW });
-      y += 12;
+      y += 13;
     });
 
-    y = infoStartY + infoLeft.length * 12 + 6;
+    y = infoStartY + infoLeft.length * 13 + 8;
 
-    const mpsAbbrev = this.qcpClientAbbrev(plan);
-    const opW = 24;
-    const descW = 155;
-    const specW = 110;
-    const docColW = 80;
-    const partyIntW = 22;
-    const partySignW = 26;
-    const partyW = partyIntW + partySignW;
-    const remarkW = pg.contentWidth - opW - descW - specW - docColW - partyW * 4;
+    const opW = 28;
+    const descW = 130;
+    const specW = 75;
+    const procW = 70;
+    const partyW = 55;
+    const signW = 0;
+    const remarkW = A4.contentWidth - opW - descW - specW - procW - partyW * 3 - signW * 3;
 
-    const opX = pg.margin;
+    const opX = A4.margin;
     const descX = opX + opW;
     const specX = descX + descW;
-    const docColX = specX + specW;
-    const plsX = docColX + docColW;
+    const procX = specX + specW;
+    const plsX = procX + procW;
     const mpsX = plsX + partyW;
     const clientX = mpsX + partyW;
-    const thirdX = clientX + partyW;
-    const remarkX = thirdX + partyW;
+    const remarkX = clientX + partyW;
 
-    const headerH = 28;
-    doc.rect(pg.margin, y - 2, pg.contentWidth, headerH).fill("#f3f4f6");
+    doc.rect(A4.margin, y - 2, A4.contentWidth, 24).fill("#f3f4f6");
     doc.fillColor("#000000");
 
-    doc.fontSize(6).font(FONT.BOLD);
-    doc.text("OP\nNO", opX + 1, y + 2, { width: opW - 2, align: "center" });
-    doc.text("ACTIVITY DESCRIPTION", descX + 2, y + 5, { width: descW - 4 });
-    doc.text("SPECIFICATION /\nPROCEDURE", specX + 2, y + 2, { width: specW - 4 });
-    doc.text("DOCUMENTATION", docColX + 2, y + 5, { width: docColW - 4 });
+    doc.fontSize(6.5).font(FONT.BOLD);
+    doc.text("OP", opX + 2, y, { width: opW - 4, align: "center" });
+    doc.text("ACTIVITY DESCRIPTION", descX + 2, y, { width: descW - 4 });
+    doc.text("SPECIFICATION", specX + 2, y, { width: specW - 4 });
+    doc.text("PROCEDURE /\nREQUIRED", procX + 2, y, { width: procW - 4 });
 
-    const interventionsW = partyW * 4;
-    doc.text("INTERVENTIONS", plsX, y, {
-      width: interventionsW,
+    doc.text("INTERVENTIONS", plsX, y - 2, {
+      width: partyW * 3,
       align: "center",
     });
 
-    const subY = y + 13;
-    doc.fontSize(5.5).font(FONT.BOLD);
-    doc.text("PLS", plsX + 1, subY, { width: partyIntW - 2, align: "center" });
-    doc.text("SIGN", plsX + partyIntW + 1, subY, { width: partySignW - 2, align: "center" });
-    doc.text("MPS", mpsX + 1, subY, { width: partyIntW - 2, align: "center" });
-    doc.text("SIGN", mpsX + partyIntW + 1, subY, { width: partySignW - 2, align: "center" });
-    doc.text(mpsAbbrev || "Client", clientX + 1, subY, { width: partyIntW - 2, align: "center" });
-    doc.text("SIGN", clientX + partyIntW + 1, subY, { width: partySignW - 2, align: "center" });
-    doc.text("3rd Party", thirdX + 1, subY, { width: partyIntW - 2, align: "center" });
-    doc.text("SIGN", thirdX + partyIntW + 1, subY, { width: partySignW - 2, align: "center" });
-    doc.text("REMARKS", remarkX + 2, y + 5, { width: remarkW - 4 });
+    const subY = y + 11;
+    doc.fontSize(6).font(FONT.BOLD);
+    doc.text("PLS", plsX + 2, subY, { width: partyW - 4, align: "center" });
+    doc.text(this.qcpClientAbbrev(plan), mpsX + 2, subY, { width: partyW - 4, align: "center" });
+    doc.text("Client", clientX + 2, subY, { width: partyW - 4, align: "center" });
+    doc.text("REMARKS", remarkX + 2, y + 4, { width: remarkW - 4 });
 
-    y += headerH;
+    y += 26;
 
     doc
-      .moveTo(pg.margin, y - 1)
-      .lineTo(pg.margin + pg.contentWidth, y - 1)
+      .moveTo(A4.margin, y - 1)
+      .lineTo(A4.margin + A4.contentWidth, y - 1)
       .lineWidth(0.5)
       .stroke("#d1d5db");
     doc.lineWidth(1);
 
-    const maxY = pg.pageHeight - 50;
-
-    const addNewPage = (): void => {
-      doc.addPage({ size: "A4", layout: "landscape" });
-      y = pg.margin + 10;
-    };
-
     plan.activities.forEach((activity) => {
-      if (y > maxY) {
-        addNewPage();
+      if (y > 720) {
+        doc.addPage();
+        y = A4.margin + 20;
       }
 
-      const rowH = 14;
+      const rowH = 13;
       doc
-        .moveTo(pg.margin, y + rowH - 1)
-        .lineTo(pg.margin + pg.contentWidth, y + rowH - 1)
+        .moveTo(A4.margin, y + rowH - 1)
+        .lineTo(A4.margin + A4.contentWidth, y + rowH - 1)
         .lineWidth(0.3)
         .stroke("#e5e7eb");
       doc.lineWidth(1);
 
-      doc.fontSize(6).font(FONT.REGULAR).fillColor("#000000");
-      doc.text(String(activity.operationNumber), opX + 1, y + 3, {
-        width: opW - 2,
+      doc.fontSize(6.5).font(FONT.REGULAR).fillColor("#000000");
+      doc.text(String(activity.operationNumber), opX + 2, y + 2, {
+        width: opW - 4,
         align: "center",
       });
-      doc.text(activity.description, descX + 2, y + 3, { width: descW - 4 });
-      doc.text(activity.specification ?? "-", specX + 2, y + 3, { width: specW - 4 });
-      doc.text(
-        (activity as any).documentation ?? activity.procedureRequired ?? "-",
-        docColX + 2,
-        y + 3,
-        { width: docColW - 4 },
-      );
+      doc.text(activity.description, descX + 2, y + 2, { width: descW - 4 });
+      doc.text(activity.specification ?? "-", specX + 2, y + 2, { width: specW - 4 });
+      doc.text(activity.procedureRequired ?? "-", procX + 2, y + 2, { width: procW - 4 });
 
       doc.font(FONT.BOLD);
-      const plsType = activity.pls?.interventionType ?? "-";
-      const mpsType = activity.mps?.interventionType ?? "-";
-      const clientType = activity.client?.interventionType ?? "-";
-      const thirdType = (activity as any).thirdParty?.interventionType ?? "-";
-
-      doc.text(plsType, plsX + 1, y + 3, { width: partyIntW - 2, align: "center" });
-      doc.fontSize(5.5).font(FONT.REGULAR);
-      doc.text(activity.pls?.initial ?? "", plsX + partyIntW + 1, y + 3, {
-        width: partySignW - 2,
+      doc.text(activity.pls.interventionType ?? "-", plsX + 2, y + 2, {
+        width: partyW - 4,
         align: "center",
       });
-
-      doc.fontSize(6).font(FONT.BOLD);
-      doc.text(mpsType, mpsX + 1, y + 3, { width: partyIntW - 2, align: "center" });
-      doc.fontSize(5.5).font(FONT.REGULAR);
-      doc.text(activity.mps?.initial ?? "", mpsX + partyIntW + 1, y + 3, {
-        width: partySignW - 2,
+      doc.text(activity.mps.interventionType ?? "-", mpsX + 2, y + 2, {
+        width: partyW - 4,
         align: "center",
       });
-
-      doc.fontSize(6).font(FONT.BOLD);
-      doc.text(clientType, clientX + 1, y + 3, { width: partyIntW - 2, align: "center" });
-      doc.fontSize(5.5).font(FONT.REGULAR);
-      doc.text(activity.client?.initial ?? "", clientX + partyIntW + 1, y + 3, {
-        width: partySignW - 2,
+      doc.text(activity.client.interventionType ?? "-", clientX + 2, y + 2, {
+        width: partyW - 4,
         align: "center",
       });
-
-      doc.fontSize(6).font(FONT.BOLD);
-      doc.text(thirdType, thirdX + 1, y + 3, { width: partyIntW - 2, align: "center" });
-      doc.fontSize(5.5).font(FONT.REGULAR);
-      doc.text((activity as any).thirdParty?.initial ?? "", thirdX + partyIntW + 1, y + 3, {
-        width: partySignW - 2,
-        align: "center",
-      });
-
-      doc.font(FONT.REGULAR).fontSize(6);
-      doc.text(activity.remarks ?? "", remarkX + 2, y + 3, { width: remarkW - 4 });
+      doc.font(FONT.REGULAR);
+      doc.text(activity.remarks ?? "", remarkX + 2, y + 2, { width: remarkW - 4 });
 
       y += rowH;
     });
 
-    y += 14;
-    if (y > maxY - 60) {
-      addNewPage();
+    y += 16;
+    if (y > 700) {
+      doc.addPage();
+      y = A4.margin + 20;
     }
 
-    doc.fontSize(8).font(FONT.BOLD).text("Approval Signatures", pg.margin, y);
+    doc.fontSize(8).font(FONT.BOLD).text("Approval Signatures", A4.margin, y);
     y += 14;
 
-    const sigParties =
-      plan.approvalSignatures.length > 0
-        ? plan.approvalSignatures
-        : [
-            { party: "PLS", name: null, signatureUrl: null, date: null },
-            { party: "MPS", name: null, signatureUrl: null, date: null },
-            { party: mpsAbbrev || "Client", name: null, signatureUrl: null, date: null },
-            { party: "3rd Party", name: null, signatureUrl: null, date: null },
-          ];
-
-    const sigColW = pg.contentWidth / Math.max(sigParties.length, 4);
-    sigParties.forEach((sig, idx) => {
-      const sx = pg.margin + idx * sigColW;
+    const sigColW = A4.contentWidth / Math.max(plan.approvalSignatures.length, 3);
+    plan.approvalSignatures.forEach((sig, idx) => {
+      const sx = A4.margin + idx * sigColW;
       doc.fontSize(7).font(FONT.BOLD).text(`Approved By: ${sig.party}`, sx, y, { width: sigColW });
       doc
         .fontSize(7)
@@ -960,7 +890,7 @@ export class DataBookPdfService {
 
     y += 56;
 
-    doc.fontSize(6.5).font(FONT.BOLD).text("Legend", pg.margin, y);
+    doc.fontSize(6.5).font(FONT.BOLD).text("Legend", A4.margin, y);
     y += 10;
     doc.fontSize(6).font(FONT.REGULAR);
     const legendItems = [
@@ -969,7 +899,7 @@ export class DataBookPdfService {
     ];
     legendItems.forEach((row) => {
       row.forEach((item, idx) => {
-        doc.text(item, pg.margin + idx * 130, y, { width: 130 });
+        doc.text(item, A4.margin + idx * 120, y, { width: 120 });
       });
       y += 10;
     });
@@ -1788,40 +1718,36 @@ export class DataBookPdfService {
     doc.fillColor("#000000");
   }
 
-  private renderPageFooters(doc: PDFDoc, ctx: DataBookContext, layoutOverride?: PageLayout): void {
+  private renderPageFooters(doc: PDFDoc, ctx: DataBookContext): void {
     const brandColor = ctx.company?.primaryColor ?? "#0d9488";
     const totalPages = doc.bufferedPageRange().count;
     const companyName = ctx.company?.name ?? "PLS";
 
     Array.from({ length: totalPages }).forEach((_, i) => {
       doc.switchToPage(i);
-      const pageW = (doc.page as any)?.width ?? A4.pageWidth;
-      const pageH = (doc.page as any)?.height ?? A4.pageHeight;
-      const isLandscapePage = pageW > pageH;
-      const pg = layoutOverride || (isLandscapePage ? A4_LANDSCAPE : A4);
 
-      const footerY = pg.pageHeight - 28;
+      const footerY = A4.pageHeight - 28;
 
       doc
-        .moveTo(pg.margin, footerY - 4)
-        .lineTo(pg.margin + pg.contentWidth, footerY - 4)
+        .moveTo(A4.margin, footerY - 4)
+        .lineTo(A4.margin + A4.contentWidth, footerY - 4)
         .lineWidth(0.5)
         .stroke("#d1d5db");
 
       doc.fontSize(6).font(FONT.REGULAR).fillColor("#9ca3af");
-      doc.text(companyName, pg.margin, footerY, { width: pg.contentWidth / 3, align: "left" });
+      doc.text(companyName, A4.margin, footerY, { width: A4.contentWidth / 3, align: "left" });
       doc.text(
         `Job: ${ctx.jobCard.jobNumber || ctx.jobCard.id}`,
-        pg.margin + pg.contentWidth / 3,
+        A4.margin + A4.contentWidth / 3,
         footerY,
-        { width: pg.contentWidth / 3, align: "center" },
+        { width: A4.contentWidth / 3, align: "center" },
       );
-      doc.text(`Page ${i + 1} of ${totalPages}`, pg.margin + (pg.contentWidth * 2) / 3, footerY, {
-        width: pg.contentWidth / 3,
+      doc.text(`Page ${i + 1} of ${totalPages}`, A4.margin + (A4.contentWidth * 2) / 3, footerY, {
+        width: A4.contentWidth / 3,
         align: "right",
       });
 
-      doc.rect(0, pg.pageHeight - 4, pg.pageWidth, 4).fill(brandColor);
+      doc.rect(0, A4.pageHeight - 4, A4.pageWidth, 4).fill(brandColor);
     });
 
     doc.fillColor("#000000");

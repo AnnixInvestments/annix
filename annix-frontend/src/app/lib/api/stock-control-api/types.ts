@@ -913,7 +913,6 @@ export type InterventionType = "H" | "I" | "W" | "R" | "S" | "V";
 
 export interface QcpPartySignOff {
   interventionType: InterventionType | null;
-  initial: string | null;
   name: string | null;
   signatureUrl: string | null;
   date: string | null;
@@ -924,11 +923,9 @@ export interface QcpActivity {
   description: string;
   specification: string | null;
   procedureRequired: string | null;
-  documentation: string | null;
   pls: QcpPartySignOff;
   mps: QcpPartySignOff;
   client: QcpPartySignOff;
-  thirdParty: QcpPartySignOff;
   remarks: string | null;
 }
 
