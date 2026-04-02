@@ -562,6 +562,7 @@ export class SageJcDumpService {
       }> = [];
       const pendingSpecLines: string[] = [];
       let collectingSpecs = false;
+      let lastJtNo = "";
 
       const flushGroup = () => {
         const specText = pendingSpecLines.length > 0 ? pendingSpecLines.join("\n") : null;
@@ -588,9 +589,10 @@ export class SageJcDumpService {
         const itemNo = String(row[4] || "").trim();
         const rawQty = row[5];
         const quantity = typeof rawQty === "number" ? rawQty : parseFloat(String(rawQty || "0"));
-        const jtNo = String(row[6] || "").trim();
+        const rawJtNo = String(row[6] || "").trim();
+        const jtNo = rawJtNo || lastJtNo;
         const hasNoData =
-          !itemDesc && !itemNo && !jtNo && (Number.isNaN(quantity) || quantity <= 0);
+          !itemDesc && !itemNo && !rawJtNo && (Number.isNaN(quantity) || quantity <= 0);
 
         if (hasNoData && SPEC_ROW_PATTERN.test(itemCode)) {
           const specText = itemCode.replace(/\s+PRODUCTION\s*$/i, "").trim();
@@ -602,6 +604,10 @@ export class SageJcDumpService {
         }
 
         if (Number.isNaN(quantity) || quantity <= 0) return;
+
+        if (rawJtNo) {
+          lastJtNo = rawJtNo;
+        }
 
         if (collectingSpecs) {
           flushGroup();
