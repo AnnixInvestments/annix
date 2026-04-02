@@ -392,12 +392,10 @@ export class QcMeasurementService {
     if (hasRubber) planTypes.push(QcpPlanType.RUBBER);
     if (!hasPaint && !hasRubber) planTypes.push(QcpPlanType.PAINT_EXTERNAL);
 
-    const existingTypes = new Set(existing.map((e) => e.planType));
-    const toCreate = planTypes.filter((t) => !existingTypes.has(t));
-
-    if (toCreate.length === 0) {
-      return existing;
-    }
+    const existingByType = existing.reduce(
+      (acc, plan) => ({ ...acc, [plan.planType]: plan }),
+      {} as Record<string, QcControlPlan>,
+    );
 
     const customerName = jobCard.customerName || null;
     const orderNumber = jobCard.poNumber || null;
@@ -470,7 +468,7 @@ export class QcMeasurementService {
         buildActivity(4, "Hero Bond 080", "CERTIFICATE OF ANALYSIS", "QD_PLS_16"),
         buildActivity(5, "Hero Bond 082", "CERTIFICATE OF ANALYSIS", "QD_PLS_16"),
         buildActivity(6, "TY Bond 086", "CERTIFICATE OF ANALYSIS", "QD_PLS_16"),
-        buildActivity(7, rubberSpec, "CERTIFICATE OF ANALYSIS", "QD_PLS_16"),
+        buildActivity(7, "Rubber Lining Application", rubberSpec, "QD_PLS_16"),
         buildActivity(8, "Pre cure Inspection", "SANS 1201-2005", "QD_PLS_16"),
         buildActivity(9, "Cure", "SANS 1201-2005", "QD_PLS_16"),
         buildActivity(10, "Buff", "SANS 1201-2005", "QD_PLS_16"),
@@ -557,16 +555,38 @@ export class QcMeasurementService {
       ? company.name.split(" ")[0].toUpperCase().slice(0, 3)
       : "QCP";
 
+    const nextRevision = (current: string | null): string => {
+      const num = parseInt(current || "0", 10);
+      return String(num + 1).padStart(2, "0");
+    };
+
     const created = await Promise.all(
-      toCreate.map((planType) => {
-        const qcpNumber = `${companyPrefix}-${jobCard.jobNumber}-${planType.toUpperCase().replace("_", "-")}`;
+      planTypes.map((planType) => {
+        const existingPlan = existingByType[planType] || null;
+        const qcpNumber =
+          existingPlan?.qcpNumber ||
+          `${companyPrefix}-${jobCard.jobNumber}-${planType.toUpperCase().replace("_", "-")}`;
+        const revision = existingPlan ? nextRevision(existingPlan.revision) : "01";
+
+        if (existingPlan) {
+          existingPlan.revision = revision;
+          existingPlan.customerName = customerName;
+          existingPlan.orderNumber = orderNumber;
+          existingPlan.jobName = jobName;
+          existingPlan.specification = specificationForType(planType);
+          existingPlan.itemDescription = itemDescriptions || null;
+          existingPlan.activities = activitiesForType(planType);
+          existingPlan.approvalSignatures = defaultApprovals();
+          return this.controlPlanRepo.save(existingPlan);
+        }
+
         const record = this.controlPlanRepo.create({
           companyId,
           jobCardId,
           planType,
           qcpNumber,
           documentRef: null,
-          revision: "01",
+          revision,
           customerName,
           orderNumber,
           jobName,
@@ -582,10 +602,10 @@ export class QcMeasurementService {
     );
 
     this.logger.log(
-      `Auto-generated ${created.length} QCP(s) for job card ${jobCardId}: ${toCreate.join(", ")}`,
+      `Auto-generated ${created.length} QCP(s) for job card ${jobCardId}: ${planTypes.join(", ")}`,
     );
 
-    return [...existing, ...created];
+    return created;
   }
 
   // ── Release Certificates ───────────────────────────────────────────

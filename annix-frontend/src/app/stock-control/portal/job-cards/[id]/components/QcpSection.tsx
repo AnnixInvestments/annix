@@ -337,7 +337,11 @@ export function QcpSection({ jobCardId }: QcpSectionProps) {
             disabled={isAutoGenerating}
             className="rounded-md bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
           >
-            {isAutoGenerating ? "Generating..." : "Auto-Generate"}
+            {isAutoGenerating
+              ? "Generating..."
+              : plans.length > 0
+                ? "Re-Generate"
+                : "Auto-Generate"}
           </button>
           <button
             type="button"
@@ -392,6 +396,11 @@ export function QcpSection({ jobCardId }: QcpSectionProps) {
                       <span className="text-sm font-medium text-gray-900">
                         {plan.qcpNumber || `QCP #${plan.id}`}
                       </span>
+                      {plan.revision && (
+                        <span className="ml-1.5 inline-flex items-center rounded bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-gray-600">
+                          V{plan.revision}
+                        </span>
+                      )}
                       {plan.specification && (
                         <span className="ml-2 text-xs text-gray-500">
                           {filteredSpec(plan.specification, plan.planType)}
