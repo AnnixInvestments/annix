@@ -156,8 +156,8 @@ export class ImportService {
     try {
       const available = await this.aiChatService.isAvailable();
       if (!available) {
-        this.logger.warn("AI not available for column mapping, returning null mapping");
-        return nullMapping;
+        this.logger.warn("AI not available for column mapping, using fallback header matching");
+        return this.fallbackColumnMapping(headers);
       }
 
       const systemPrompt = [
@@ -180,18 +180,86 @@ export class ImportService {
         .trim();
       const parsed = JSON.parse(cleaned);
 
-      return Object.keys(nullMapping).reduce((acc, key) => {
+      const aiResult = Object.keys(nullMapping).reduce<ColumnMapping>((acc, key) => {
         const value = parsed[key];
         return {
           ...acc,
           [key]: typeof value === "number" && value >= 0 && value < headers.length ? value : null,
         };
       }, nullMapping);
+
+      const hasAnyMapping = Object.values(aiResult).some((v) => v !== null);
+      if (hasAnyMapping) {
+        return aiResult;
+      }
+
+      this.logger.warn("AI returned all-null mapping, falling back to header matching");
+      return this.fallbackColumnMapping(headers);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Unknown error";
-      this.logger.error(`AI column mapping failed: ${message}`);
-      return nullMapping;
+      this.logger.error(`AI column mapping failed: ${message}, using fallback`);
+      return this.fallbackColumnMapping(headers);
     }
+  }
+
+  private fallbackColumnMapping(headers: string[]): ColumnMapping {
+    const lower = headers.map((h) => h.toLowerCase().trim());
+    const used = new Set<number>();
+
+    const findFirst = (patterns: string[]): number | null => {
+      const idx = lower.findIndex((h, i) => !used.has(i) && patterns.some((p) => h.includes(p)));
+      if (idx >= 0) {
+        used.add(idx);
+        return idx;
+      }
+      return null;
+    };
+
+    const sku = findFirst(["item code", "itemcode", "stock code", "product code", "sku", "code"]);
+    const name = findFirst([
+      "item description",
+      "item name",
+      "description",
+      "name",
+      "product",
+      "item",
+    ]);
+    const description = findFirst(["long description", "detail", "notes", "secondary"]);
+    const category = findFirst(["category", "group", "type", "class"]);
+    const unitOfMeasure = findFirst(["uom", "unit of measure", "unit", "measure"]);
+    const costPerUnit = findFirst(["cost price", "cost", "price", "unit price", "rate", "value"]);
+    const quantity = findFirst([
+      "on hand",
+      "soh",
+      "qty on hand",
+      "qty",
+      "quantity",
+      "count",
+      "stock",
+    ]);
+    const minStockLevel = findFirst(["min stock", "minimum", "reorder", "min"]);
+    const location = findFirst(["warehouse", "location", "bin", "store"]);
+
+    const result = {
+      sku,
+      name,
+      description,
+      category,
+      unitOfMeasure,
+      costPerUnit,
+      quantity,
+      minStockLevel,
+      location,
+    };
+    this.logger.log(
+      `Fallback column mapping: ${
+        Object.entries(result)
+          .filter(([, v]) => v !== null)
+          .map(([k, v]) => `${k}→col${v}`)
+          .join(", ") || "none matched"
+      }`,
+    );
+    return result;
   }
 
   async parseExcel(buffer: Buffer): Promise<ImportRow[]> {
