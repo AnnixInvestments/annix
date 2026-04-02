@@ -190,6 +190,7 @@ export class DeliveriesController {
           fromCompany?: { name?: string };
           lineItems?: Array<Record<string, unknown>>;
         },
+        req.user.userId,
       );
     } catch (error) {
       this.logger.error(
@@ -221,7 +222,7 @@ export class DeliveriesController {
       },
     },
   })
-  async analyzeDocument(@UploadedFile() file: Express.Multer.File) {
+  async analyzeDocument(@Req() req: any, @UploadedFile() file: Express.Multer.File) {
     if (!file) {
       throw new BadRequestException("No file provided");
     }
@@ -233,11 +234,15 @@ export class DeliveriesController {
       throw new BadRequestException("File must be an image (JPEG, PNG) or PDF");
     }
 
+    const correctionHints = await this.deliveryService.dnCorrectionHintsForCompany(
+      req.user.companyId,
+    );
+
     if (isPdf) {
-      return this.extractionService.analyzeDeliveryNotePdf(file.buffer);
+      return this.extractionService.analyzeDeliveryNotePdf(file.buffer, correctionHints);
     }
 
-    return this.extractionService.analyzeDeliveryNotePhoto([file.buffer]);
+    return this.extractionService.analyzeDeliveryNotePhoto([file.buffer], correctionHints);
   }
 
   @Post("accept-analyzed")

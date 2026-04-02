@@ -1086,7 +1086,10 @@ export class RubberCocExtractionService {
     };
   }
 
-  async analyzeDeliveryNotePhoto(imageBuffers: Buffer[]): Promise<{
+  async analyzeDeliveryNotePhoto(
+    imageBuffers: Buffer[],
+    correctionHints?: string | null,
+  ): Promise<{
     data: ExtractedUniversalDeliveryNote;
     tokensUsed?: number;
     processingTimeMs: number;
@@ -1098,8 +1101,12 @@ export class RubberCocExtractionService {
       throw new Error("GEMINI_API_KEY not configured");
     }
 
+    const systemPrompt = correctionHints
+      ? `${UNIVERSAL_DELIVERY_NOTE_SYSTEM_PROMPT}\n\n${correctionHints}`
+      : UNIVERSAL_DELIVERY_NOTE_SYSTEM_PROMPT;
+
     const response = await this.callGeminiWithImages(
-      UNIVERSAL_DELIVERY_NOTE_SYSTEM_PROMPT,
+      systemPrompt,
       "Please analyze this delivery note photo and extract all company information, stock details, and line items. Return ONLY a valid JSON object with the extracted data.",
       imageBuffers,
       "delivery-note-photo-analysis",
@@ -1115,7 +1122,10 @@ export class RubberCocExtractionService {
     };
   }
 
-  async analyzeDeliveryNotePdf(pdfBuffer: Buffer): Promise<{
+  async analyzeDeliveryNotePdf(
+    pdfBuffer: Buffer,
+    correctionHints?: string | null,
+  ): Promise<{
     data: ExtractedUniversalDeliveryNote;
     tokensUsed?: number;
     processingTimeMs: number;
@@ -1129,8 +1139,12 @@ export class RubberCocExtractionService {
 
     const images = await this.convertPdfToImages(pdfBuffer);
 
+    const systemPrompt = correctionHints
+      ? `${UNIVERSAL_DELIVERY_NOTE_SYSTEM_PROMPT}\n\n${correctionHints}`
+      : UNIVERSAL_DELIVERY_NOTE_SYSTEM_PROMPT;
+
     const response = await this.callGeminiWithImages(
-      UNIVERSAL_DELIVERY_NOTE_SYSTEM_PROMPT,
+      systemPrompt,
       "Please analyze this delivery note and extract all company information, stock details, and line items. Return ONLY a valid JSON object with the extracted data.",
       images,
       "delivery-note-pdf-analysis",

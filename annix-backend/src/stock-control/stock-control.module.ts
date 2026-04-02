@@ -53,6 +53,7 @@ import { DeliveryNoteItem } from "./entities/delivery-note-item.entity";
 import { DispatchCdn } from "./entities/dispatch-cdn.entity";
 import { DispatchLoadPhoto } from "./entities/dispatch-load-photo.entity";
 import { DispatchScan } from "./entities/dispatch-scan.entity";
+import { DnExtractionCorrection } from "./entities/dn-extraction-correction.entity";
 import { GlossaryTerm } from "./entities/glossary-term.entity";
 import { InspectionBooking } from "./entities/inspection-booking.entity";
 import { InvoiceClarification } from "./entities/invoice-clarification.entity";
@@ -240,6 +241,7 @@ import { WorkflowStepConfigService } from "./services/workflow-step-config.servi
       StockReturn,
       RubberRollStock,
       RubberProductCoding,
+      DnExtractionCorrection,
     ]),
     EmailModule,
     FlangeDimensionModule,

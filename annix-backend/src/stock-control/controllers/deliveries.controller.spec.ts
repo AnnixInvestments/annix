@@ -28,6 +28,7 @@ describe("DeliveriesController", () => {
       linkExtractedItemsToStock: jest.fn(),
       createFromAnalyzedData: jest.fn(),
       createInvoiceFromAnalyzedData: jest.fn(),
+      dnCorrectionHintsForCompany: jest.fn(),
     };
 
     const mockExtractionService = {
@@ -201,6 +202,8 @@ describe("DeliveriesController", () => {
   });
 
   describe("POST /analyze (analyzeDocument)", () => {
+    const mockReq = { user: { companyId: 1, userId: 10 } };
+
     it("should analyze a PDF file", async () => {
       const file = {
         buffer: Buffer.from("pdf-data"),
@@ -208,10 +211,11 @@ describe("DeliveriesController", () => {
       } as Express.Multer.File;
       const expected = { lineItems: [] };
       extractionService.analyzeDeliveryNotePdf.mockResolvedValue(expected as any);
+      deliveryService.dnCorrectionHintsForCompany.mockResolvedValue(null);
 
-      const result = await controller.analyzeDocument(file);
+      const result = await controller.analyzeDocument(mockReq, file);
 
-      expect(extractionService.analyzeDeliveryNotePdf).toHaveBeenCalledWith(file.buffer);
+      expect(extractionService.analyzeDeliveryNotePdf).toHaveBeenCalledWith(file.buffer, null);
       expect(result).toBe(expected);
     });
 
@@ -222,15 +226,18 @@ describe("DeliveriesController", () => {
       } as Express.Multer.File;
       const expected = { lineItems: [] };
       extractionService.analyzeDeliveryNotePhoto.mockResolvedValue(expected as any);
+      deliveryService.dnCorrectionHintsForCompany.mockResolvedValue(null);
 
-      const result = await controller.analyzeDocument(file);
+      const result = await controller.analyzeDocument(mockReq, file);
 
-      expect(extractionService.analyzeDeliveryNotePhoto).toHaveBeenCalledWith([file.buffer]);
+      expect(extractionService.analyzeDeliveryNotePhoto).toHaveBeenCalledWith([file.buffer], null);
       expect(result).toBe(expected);
     });
 
     it("should throw BadRequestException when no file provided", async () => {
-      await expect(controller.analyzeDocument(null as any)).rejects.toThrow(BadRequestException);
+      await expect(controller.analyzeDocument(mockReq, null as any)).rejects.toThrow(
+        BadRequestException,
+      );
     });
 
     it("should throw BadRequestException for unsupported file type", async () => {
@@ -239,7 +246,7 @@ describe("DeliveriesController", () => {
         mimetype: "text/plain",
       } as Express.Multer.File;
 
-      await expect(controller.analyzeDocument(file)).rejects.toThrow(BadRequestException);
+      await expect(controller.analyzeDocument(mockReq, file)).rejects.toThrow(BadRequestException);
     });
   });
 

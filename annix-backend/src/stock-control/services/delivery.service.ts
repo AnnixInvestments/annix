@@ -12,6 +12,7 @@ import { fromISO, now, nowMillis } from "../../lib/datetime";
 import { IStorageService, STORAGE_SERVICE, StorageArea } from "../../storage/storage.interface";
 import { DeliveryNote, SdnStatus } from "../entities/delivery-note.entity";
 import { DeliveryNoteItem } from "../entities/delivery-note-item.entity";
+import { DnExtractionCorrection } from "../entities/dn-extraction-correction.entity";
 import { StockItem } from "../entities/stock-item.entity";
 import { MovementType, ReferenceType, StockMovement } from "../entities/stock-movement.entity";
 import { SupplierInvoice } from "../entities/supplier-invoice.entity";
@@ -27,6 +28,8 @@ export class DeliveryService {
   constructor(
     @InjectRepository(DeliveryNote)
     private readonly deliveryNoteRepo: Repository<DeliveryNote>,
+    @InjectRepository(DnExtractionCorrection)
+    private readonly dnCorrectionRepo: Repository<DnExtractionCorrection>,
     @Inject(STORAGE_SERVICE)
     private readonly storageService: IStorageService,
     @Inject(forwardRef(() => CpoService))
@@ -505,8 +508,10 @@ export class DeliveryService {
       };
       lineItems?: Array<Record<string, unknown>>;
     },
+    userId?: number | null,
   ): Promise<DeliveryNote> {
     const note = await this.findById(companyId, id);
+    const originalData = note.extractedData as Record<string, unknown> | null;
 
     if (confirmedData.deliveryNoteNumber) {
       note.deliveryNumber = confirmedData.deliveryNoteNumber;
@@ -530,14 +535,154 @@ export class DeliveryService {
       note.supplierId = supplier.id;
     }
 
-    const merged = { ...(note.extractedData as Record<string, unknown>), ...confirmedData };
+    const merged = { ...(originalData || {}), ...confirmedData };
     note.extractedData = merged as typeof note.extractedData;
     note.sdnStatus = SdnStatus.CONFIRMED;
 
     await this.deliveryNoteRepo.save(note);
     this.logger.log(`Delivery note ${id} confirmed`);
 
+    const supplierName = confirmedData.fromCompany?.name || note.supplierName;
+    this.saveDnCorrections(
+      companyId,
+      id,
+      supplierName,
+      originalData,
+      confirmedData,
+      userId || null,
+    ).catch((err) => {
+      const msg = err instanceof Error ? err.message : "Unknown error";
+      this.logger.warn(`Failed to save DN corrections for ${id}: ${msg}`);
+    });
+
     return this.findById(companyId, id);
+  }
+
+  private async saveDnCorrections(
+    companyId: number,
+    deliveryNoteId: number,
+    supplierName: string,
+    originalData: Record<string, unknown> | null,
+    confirmedData: Record<string, unknown>,
+    userId: number | null,
+  ): Promise<void> {
+    const corrections: Array<{
+      fieldName: string;
+      originalValue: string | null;
+      correctedValue: string;
+      itemDescription: string | null;
+      itemIndex: number | null;
+    }> = [];
+
+    const headerFields = ["deliveryNoteNumber", "deliveryDate"] as const;
+    headerFields.forEach((field) => {
+      const original = String(originalData?.[field] || "");
+      const corrected = String(confirmedData[field] || "");
+      if (corrected && corrected !== original) {
+        corrections.push({
+          fieldName: field,
+          originalValue: original || null,
+          correctedValue: corrected,
+          itemDescription: null,
+          itemIndex: null,
+        });
+      }
+    });
+
+    const originalFromCompany = (originalData?.fromCompany || {}) as Record<string, unknown>;
+    const confirmedFromCompany = (confirmedData.fromCompany || {}) as Record<string, unknown>;
+    const companyFields = ["name", "vatNumber", "address", "contactPerson", "phone", "email"];
+    companyFields.forEach((field) => {
+      const original = String(originalFromCompany[field] || "");
+      const corrected = String(confirmedFromCompany[field] || "");
+      if (corrected && corrected !== original) {
+        corrections.push({
+          fieldName: `fromCompany.${field}`,
+          originalValue: original || null,
+          correctedValue: corrected,
+          itemDescription: null,
+          itemIndex: null,
+        });
+      }
+    });
+
+    const originalItems = (originalData?.lineItems || []) as Array<Record<string, unknown>>;
+    const confirmedItems = (confirmedData.lineItems || []) as Array<Record<string, unknown>>;
+    const itemFields = [
+      "description",
+      "productCode",
+      "compoundCode",
+      "quantity",
+      "unitOfMeasure",
+      "unitPrice",
+      "lineTotal",
+      "rollNumber",
+      "batchNumber",
+      "thicknessMm",
+      "widthMm",
+      "lengthM",
+      "weightKg",
+      "color",
+      "hardnessShoreA",
+    ];
+
+    confirmedItems.forEach((confirmedItem, index) => {
+      const originalItem = originalItems[index] || {};
+      const desc = String(confirmedItem.description || "");
+
+      itemFields.forEach((field) => {
+        const original = String(originalItem[field] || "");
+        const corrected = String(confirmedItem[field] || "");
+        if (corrected && corrected !== original) {
+          corrections.push({
+            fieldName: `lineItem.${field}`,
+            originalValue: original || null,
+            correctedValue: corrected,
+            itemDescription: desc || null,
+            itemIndex: index,
+          });
+        }
+      });
+    });
+
+    if (corrections.length === 0) return;
+
+    this.logger.log(
+      `Saving ${corrections.length} DN extraction corrections for supplier "${supplierName}"`,
+    );
+
+    const entities = corrections.map((c) =>
+      this.dnCorrectionRepo.create({
+        companyId,
+        supplierName,
+        deliveryNoteId,
+        fieldName: c.fieldName,
+        originalValue: c.originalValue,
+        correctedValue: c.correctedValue,
+        itemDescription: c.itemDescription,
+        itemIndex: c.itemIndex,
+        correctedBy: userId,
+      }),
+    );
+
+    await this.dnCorrectionRepo.save(entities);
+  }
+
+  async dnCorrectionHintsForCompany(companyId: number): Promise<string | null> {
+    const recentCorrections = await this.dnCorrectionRepo.find({
+      where: { companyId },
+      order: { createdAt: "DESC" },
+      take: 30,
+    });
+
+    if (recentCorrections.length === 0) return null;
+
+    const hints = recentCorrections.map((c) => {
+      const context = c.itemDescription ? ` (item: "${c.itemDescription}")` : "";
+      return `- ${c.supplierName}${context}: ${c.fieldName} was corrected from "${c.originalValue}" to "${c.correctedValue}"`;
+    });
+
+    return `PREVIOUS CORRECTIONS FOR DELIVERY NOTES (learn from these patterns):\n${hints.join("\n")}\n\nApply these correction patterns when extracting similar documents. For example, if a supplier's compound codes are consistently corrected, use the corrected format. If quantities or dimensions are corrected, pay attention to units.`;
   }
 
   async createInvoiceFromAnalyzedData(
