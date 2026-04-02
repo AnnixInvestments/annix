@@ -1,11 +1,11 @@
 import { Test, TestingModule } from "@nestjs/testing";
 import { getRepositoryToken } from "@nestjs/typeorm";
-import { CustomerPurchaseOrder } from "../entities/customer-purchase-order.entity";
+import { CpoStatus, CustomerPurchaseOrder } from "../entities/customer-purchase-order.entity";
 import { DeliveryNote } from "../entities/delivery-note.entity";
-import { JobCard } from "../entities/job-card.entity";
+import { JobCard, JobCardStatus } from "../entities/job-card.entity";
 import { StaffMember } from "../entities/staff-member.entity";
 import { StockItem } from "../entities/stock-item.entity";
-import { SupplierInvoice } from "../entities/supplier-invoice.entity";
+import { InvoiceExtractionStatus, SupplierInvoice } from "../entities/supplier-invoice.entity";
 import { SearchService } from "./search.service";
 
 const createMockQueryBuilder = (rows: unknown[] = []) => ({
@@ -24,7 +24,7 @@ const makeJobCard = (overrides: Partial<JobCard> = {}): Partial<JobCard> => ({
   jobName: "Test Job",
   customerName: "Example Corp",
   description: "Steel fabrication",
-  status: "in_progress",
+  status: JobCardStatus.ACTIVE,
   updatedAt: new Date("2026-03-01T12:00:00Z"),
   ...overrides,
 });
@@ -65,7 +65,7 @@ const makeInvoice = (overrides: Partial<SupplierInvoice> = {}): Partial<Supplier
   invoiceNumber: "INV-5001",
   supplierName: "Sample Industries",
   totalAmount: 12500.0,
-  extractionStatus: "completed",
+  extractionStatus: InvoiceExtractionStatus.COMPLETED,
   updatedAt: new Date("2026-03-05T12:00:00Z"),
   ...overrides,
 });
@@ -79,7 +79,7 @@ const makeCpo = (
   jobName: "Test Job",
   customerName: "Example Corp",
   poNumber: "PO-9001",
-  status: "open",
+  status: CpoStatus.ACTIVE,
   updatedAt: new Date("2026-03-06T12:00:00Z"),
   ...overrides,
 });
@@ -538,7 +538,7 @@ describe("SearchService", () => {
           jobNumber: "JC-WITHOUT",
           jcNumber: null,
           jobName: "Without Date",
-          updatedAt: null,
+          updatedAt: undefined,
         });
 
         mockJobCardRepo.createQueryBuilder.mockReturnValue(
