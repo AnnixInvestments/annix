@@ -151,6 +151,33 @@ export function ImportReviewStep(props: ImportReviewStepProps) {
     );
   }, []);
 
+  const deleteRow = useCallback((index: number) => {
+    setRows((prev) => prev.filter((r) => r.index !== index));
+  }, []);
+
+  const addRow = useCallback(() => {
+    const maxIndex = rows.reduce((max, r) => Math.max(max, r.index), 0);
+    const newRow: EditableRow = {
+      index: maxIndex + 1,
+      action: "create",
+      matchedItemId: null,
+      sku: "",
+      name: "",
+      description: "",
+      category: "",
+      unitOfMeasure: "each",
+      costPerUnit: "0",
+      quantity: "",
+      minStockLevel: "0",
+      location: "",
+      originalImported: {},
+      originalMatch: null,
+      matchConfidence: 0,
+      matchReason: null,
+    };
+    setRows((prev) => [...prev, newRow]);
+  }, [rows]);
+
   const handleSubmit = async () => {
     try {
       setIsSubmitting(true);
@@ -290,6 +317,7 @@ export function ImportReviewStep(props: ImportReviewStepProps) {
                 <th className="px-2 py-2 text-left font-medium text-gray-500 w-16">Qty</th>
                 <th className="px-2 py-2 text-left font-medium text-gray-500 w-16">Min</th>
                 <th className="px-2 py-2 text-left font-medium text-gray-500 w-24">Location</th>
+                <th className="px-2 py-2 w-8"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
@@ -427,11 +455,50 @@ export function ImportReviewStep(props: ImportReviewStepProps) {
                         disabled={isSkipped}
                       />
                     </td>
+                    <td className="px-1 py-1.5">
+                      <button
+                        type="button"
+                        onClick={() => deleteRow(row.index)}
+                        className="text-gray-300 hover:text-red-500 transition-colors"
+                        title="Remove row"
+                      >
+                        <svg
+                          className="w-4 h-4"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                          />
+                        </svg>
+                      </button>
+                    </td>
                   </tr>
                 );
               })}
             </tbody>
           </table>
+        </div>
+        <div className="px-4 py-3 border-t border-gray-200">
+          <button
+            type="button"
+            onClick={addRow}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-teal-700 bg-teal-50 border border-teal-200 rounded-md hover:bg-teal-100 transition-colors"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 4v16m8-8H4"
+              />
+            </svg>
+            Add Row
+          </button>
         </div>
       </div>
     </div>
