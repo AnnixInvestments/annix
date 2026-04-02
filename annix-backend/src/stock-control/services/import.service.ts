@@ -129,15 +129,75 @@ export class ImportService {
       return { headers: [], rawRows: [] };
     }
 
-    const headers = allRows[0].map((h) => String(h).trim());
+    const headerRowIndex = this.detectHeaderRow(allRows);
+    this.logger.log(
+      `Excel parse: ${allRows.length} total rows, header row detected at index ${headerRowIndex}`,
+    );
+
+    const headers = allRows[headerRowIndex].map((h) => String(h).trim());
+    this.logger.log(`Excel headers: ${JSON.stringify(headers)}`);
+
     const nonEmptyRows = allRows
-      .slice(1)
+      .slice(headerRowIndex + 1)
       .filter((row) => row.some((cell) => String(cell).trim() !== ""));
 
     return {
       headers,
       rawRows: nonEmptyRows.map((row) => row.map((cell) => String(cell))),
     };
+  }
+
+  private detectHeaderRow(allRows: string[][]): number {
+    const maxScan = Math.min(allRows.length, 15);
+    const knownHeaders = [
+      "item code",
+      "stock code",
+      "description",
+      "item description",
+      "qty",
+      "quantity",
+      "on hand",
+      "soh",
+      "uom",
+      "unit",
+      "warehouse",
+      "location",
+      "cost",
+      "price",
+      "category",
+      "code",
+      "name",
+      "product",
+      "bin",
+      "group",
+    ];
+
+    let bestIndex = 0;
+    let bestScore = 0;
+
+    Array.from({ length: maxScan }, (_, i) => i).forEach((i) => {
+      const row = allRows[i];
+      const nonEmpty = row.filter((cell) => String(cell).trim() !== "").length;
+      if (nonEmpty < 2) {
+        return;
+      }
+
+      const headerMatches = row.filter((cell) => {
+        const lower = String(cell).toLowerCase().trim();
+        return (
+          lower.length > 0 && lower.length < 50 && knownHeaders.some((kh) => lower.includes(kh))
+        );
+      }).length;
+
+      const score = headerMatches * 3 + nonEmpty;
+
+      if (score > bestScore) {
+        bestScore = score;
+        bestIndex = i;
+      }
+    });
+
+    return bestIndex;
   }
 
   async mapColumnsWithAi(headers: string[]): Promise<ColumnMapping> {
@@ -188,6 +248,15 @@ export class ImportService {
         };
       }, nullMapping);
 
+      this.logger.log(
+        `AI column mapping result: ${
+          Object.entries(aiResult)
+            .filter(([, v]) => v !== null)
+            .map(([k, v]) => `${k}→col${v}("${headers[v as number]}")`)
+            .join(", ") || "all null"
+        }`,
+      );
+
       const hasAnyMapping = Object.values(aiResult).some((v) => v !== null);
       if (hasAnyMapping) {
         return aiResult;
@@ -215,30 +284,79 @@ export class ImportService {
       return null;
     };
 
-    const sku = findFirst(["item code", "itemcode", "stock code", "product code", "sku", "code"]);
+    const sku = findFirst([
+      "item code",
+      "itemcode",
+      "stock code",
+      "stockcode",
+      "product code",
+      "part number",
+      "part no",
+      "sku",
+      "code",
+      "material",
+    ]);
     const name = findFirst([
       "item description",
+      "stock description",
       "item name",
       "description",
       "name",
       "product",
       "item",
     ]);
-    const description = findFirst(["long description", "detail", "notes", "secondary"]);
-    const category = findFirst(["category", "group", "type", "class"]);
-    const unitOfMeasure = findFirst(["uom", "unit of measure", "unit", "measure"]);
-    const costPerUnit = findFirst(["cost price", "cost", "price", "unit price", "rate", "value"]);
+    const description = findFirst(["long description", "detail", "notes", "secondary", "remarks"]);
+    const category = findFirst(["category", "group", "type", "class", "segment"]);
+    const unitOfMeasure = findFirst([
+      "uom",
+      "unit of measure",
+      "stocking uom",
+      "stocking u/m",
+      "sell uom",
+      "u/m",
+      "unit",
+      "measure",
+    ]);
+    const costPerUnit = findFirst([
+      "cost price",
+      "unit cost",
+      "average cost",
+      "avg cost",
+      "latest cost",
+      "last cost",
+      "cost",
+      "price",
+      "unit price",
+      "rate",
+      "value",
+    ]);
     const quantity = findFirst([
       "on hand",
-      "soh",
       "qty on hand",
+      "quantity on hand",
+      "soh",
+      "stock on hand",
+      "physical qty",
+      "counted qty",
+      "qty counted",
+      "available",
+      "balance",
       "qty",
       "quantity",
       "count",
       "stock",
     ]);
-    const minStockLevel = findFirst(["min stock", "minimum", "reorder", "min"]);
-    const location = findFirst(["warehouse", "location", "bin", "store"]);
+    const minStockLevel = findFirst([
+      "min stock",
+      "minimum stock",
+      "reorder level",
+      "reorder point",
+      "minimum",
+      "reorder",
+      "min level",
+      "min",
+    ]);
+    const location = findFirst(["warehouse code", "warehouse", "location", "bin", "store", "site"]);
 
     const result = {
       sku,

@@ -30,9 +30,14 @@ export class ImportController {
   @UseInterceptors(FileInterceptor("file"))
   @ApiOperation({ summary: "Upload and parse an Excel or PDF file for import" })
   async upload(@UploadedFile() file: Express.Multer.File) {
+    const ext = (file.originalname || "").toLowerCase().split(".").pop();
     const isExcel =
       file.mimetype === "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" ||
-      file.mimetype === "application/vnd.ms-excel";
+      file.mimetype === "application/vnd.ms-excel" ||
+      file.mimetype === "application/octet-stream" ||
+      ext === "xlsx" ||
+      ext === "xls" ||
+      ext === "csv";
     const isPdf = file.mimetype === "application/pdf";
 
     if (isExcel) {
