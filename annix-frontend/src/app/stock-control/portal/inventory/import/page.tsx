@@ -309,7 +309,8 @@ export default function ImportPage() {
                       type="date"
                       value={stockTakeDate ?? ""}
                       onChange={(e) => setStockTakeDate(e.target.value || null)}
-                      className="block w-48 px-3 py-1.5 text-sm border border-amber-300 rounded-md focus:ring-amber-500 focus:border-amber-500"
+                      className="block w-48 px-3 py-1.5 text-sm border border-amber-300 rounded-md focus:ring-amber-500 focus:border-amber-500 text-amber-900"
+                      style={{ colorScheme: "light" }}
                     />
                     <p className="text-xs text-amber-600 mt-1">
                       If set, deliveries and issuances after this date will be replayed on top of
