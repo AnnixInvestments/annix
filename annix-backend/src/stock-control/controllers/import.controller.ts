@@ -15,6 +15,7 @@ import {
   StockControlRoleGuard,
   StockControlRoles,
 } from "../guards/stock-control-role.guard";
+import type { ImportRow, ReviewedRow } from "../services/import.service";
 import { ImportService } from "../services/import.service";
 
 @ApiTags("Stock Control - Import")
@@ -46,6 +47,12 @@ export class ImportController {
     }
   }
 
+  @Post("match")
+  @ApiOperation({ summary: "Match import rows against existing inventory" })
+  async match(@Body() body: { rows: ImportRow[] }, @Req() req: any) {
+    return this.importService.matchRowsToInventory(req.user.companyId, body.rows);
+  }
+
   @Post("confirm")
   @ApiOperation({ summary: "Confirm and import parsed rows into inventory" })
   async confirm(
@@ -53,6 +60,26 @@ export class ImportController {
     @Req() req: any,
   ) {
     return this.importService.importRows(
+      req.user.companyId,
+      body.rows,
+      req.user.name,
+      body.isStockTake ?? false,
+      body.stockTakeDate ?? null,
+    );
+  }
+
+  @Post("confirm-reviewed")
+  @ApiOperation({ summary: "Confirm reviewed import with Nix learning from corrections" })
+  async confirmReviewed(
+    @Body()
+    body: {
+      rows: ReviewedRow[];
+      isStockTake?: boolean;
+      stockTakeDate?: string;
+    },
+    @Req() req: any,
+  ) {
+    return this.importService.confirmReviewedImport(
       req.user.companyId,
       body.rows,
       req.user.name,

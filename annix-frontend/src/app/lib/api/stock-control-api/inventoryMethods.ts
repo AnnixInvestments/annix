@@ -1,6 +1,14 @@
 import { API_BASE_URL } from "@/lib/api-config";
 import { StockControlApiClient } from "./base";
-import type { ImportResult, ImportUploadResponse, StockItem, StockPriceHistory } from "./types";
+import type {
+  ImportMatchRow,
+  ImportResult,
+  ImportUploadResponse,
+  ReviewedImportResult,
+  ReviewedRow,
+  StockItem,
+  StockPriceHistory,
+} from "./types";
 
 declare module "./base" {
   interface StockControlApiClient {
@@ -76,6 +84,12 @@ declare module "./base" {
       category?: string;
     }): Promise<void>;
     stockItemPriceHistory(stockItemId: number, limit?: number): Promise<StockPriceHistory[]>;
+    matchImportRows(rows: unknown[]): Promise<ImportMatchRow[]>;
+    confirmReviewedImport(
+      rows: ReviewedRow[],
+      isStockTake?: boolean,
+      stockTakeDate?: string | null,
+    ): Promise<ReviewedImportResult>;
   }
 }
 
@@ -199,4 +213,18 @@ proto.downloadBatchLabelsPdf = async function (body) {
 proto.stockItemPriceHistory = async function (stockItemId, limit) {
   const query = limit ? `?limit=${limit}` : "";
   return this.request(`/stock-control/inventory/${stockItemId}/price-history${query}`);
+};
+
+proto.matchImportRows = async function (rows) {
+  return this.request("/stock-control/import/match", {
+    method: "POST",
+    body: JSON.stringify({ rows }),
+  });
+};
+
+proto.confirmReviewedImport = async function (rows, isStockTake = false, stockTakeDate = null) {
+  return this.request("/stock-control/import/confirm-reviewed", {
+    method: "POST",
+    body: JSON.stringify({ rows, isStockTake, stockTakeDate }),
+  });
 };

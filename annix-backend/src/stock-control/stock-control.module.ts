@@ -6,6 +6,7 @@ import { TypeOrmModule } from "@nestjs/typeorm";
 import { EmailModule } from "../email/email.module";
 import { FlangeDimensionModule } from "../flange-dimension/flange-dimension.module";
 import { NbOdLookupModule } from "../nb-od-lookup/nb-od-lookup.module";
+import { NixLearning } from "../nix/entities/nix-learning.entity";
 import { NixModule } from "../nix/nix.module";
 import { PipeScheduleModule } from "../pipe-schedule/pipe-schedule.module";
 import { RubberProductCoding } from "../rubber-lining/entities/rubber-product-coding.entity";
@@ -242,6 +243,7 @@ import { WorkflowStepConfigService } from "./services/workflow-step-config.servi
       RubberRollStock,
       RubberProductCoding,
       DnExtractionCorrection,
+      NixLearning,
     ]),
     EmailModule,
     FlangeDimensionModule,

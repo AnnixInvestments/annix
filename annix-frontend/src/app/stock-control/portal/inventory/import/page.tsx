@@ -3,13 +3,15 @@
 import Link from "next/link";
 import { useRef, useState } from "react";
 import type {
-  ImportResult,
+  ImportMatchRow,
   ImportUploadResponse,
   InventoryColumnMapping,
+  ReviewedImportResult,
 } from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
+import { ImportReviewStep } from "./ImportReviewStep";
 
-type ImportStep = "upload" | "preview" | "result";
+type ImportStep = "upload" | "preview" | "review" | "result";
 
 export default function ImportPage() {
   const [step, setStep] = useState<ImportStep>("upload");
@@ -20,9 +22,10 @@ export default function ImportPage() {
   const [importMapping, setImportMapping] = useState<InventoryColumnMapping | null>(null);
   const [importFormat, setImportFormat] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
-  const [isConfirming, setIsConfirming] = useState(false);
+  const [isMatching, setIsMatching] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [result, setResult] = useState<ImportResult | null>(null);
+  const [result, setResult] = useState<ReviewedImportResult | null>(null);
+  const [matchedRows, setMatchedRows] = useState<ImportMatchRow[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [isStockTake, setIsStockTake] = useState(false);
   const [stockTakeDate, setStockTakeDate] = useState<string | null>(null);
@@ -83,55 +86,59 @@ export default function ImportPage() {
     }
   };
 
-  const handleConfirm = async () => {
+  const buildImportRows = () => {
+    if (importFormat === "excel" && importMapping) {
+      return importRawRows.map((row) => {
+        const cellAt = (idx: number | null): string | undefined => {
+          if (idx === null || idx < 0 || idx >= row.length) {
+            return undefined;
+          }
+          const val = row[idx].trim();
+          return val === "" ? undefined : val;
+        };
+        const numAt = (idx: number | null): number | undefined => {
+          const val = cellAt(idx);
+          if (val === undefined) {
+            return undefined;
+          }
+          const num = Number(val);
+          return Number.isNaN(num) ? undefined : num;
+        };
+        return {
+          sku: cellAt(importMapping.sku),
+          name: cellAt(importMapping.name),
+          description: cellAt(importMapping.description),
+          category: cellAt(importMapping.category),
+          unitOfMeasure: cellAt(importMapping.unitOfMeasure),
+          costPerUnit: numAt(importMapping.costPerUnit),
+          quantity: numAt(importMapping.quantity),
+          minStockLevel: numAt(importMapping.minStockLevel),
+          location: cellAt(importMapping.location),
+        };
+      });
+    }
+    return parsedRows;
+  };
+
+  const handleMatchAndReview = async () => {
     try {
-      setIsConfirming(true);
+      setIsMatching(true);
       setError(null);
 
-      const rowsToImport =
-        importFormat === "excel" && importMapping
-          ? importRawRows.map((row) => {
-              const cellAt = (idx: number | null): string | undefined => {
-                if (idx === null || idx < 0 || idx >= row.length) {
-                  return undefined;
-                }
-                const val = row[idx].trim();
-                return val === "" ? undefined : val;
-              };
-              const numAt = (idx: number | null): number | undefined => {
-                const val = cellAt(idx);
-                if (val === undefined) {
-                  return undefined;
-                }
-                const num = Number(val);
-                return Number.isNaN(num) ? undefined : num;
-              };
-              return {
-                sku: cellAt(importMapping.sku),
-                name: cellAt(importMapping.name),
-                description: cellAt(importMapping.description),
-                category: cellAt(importMapping.category),
-                unitOfMeasure: cellAt(importMapping.unitOfMeasure),
-                costPerUnit: numAt(importMapping.costPerUnit),
-                quantity: numAt(importMapping.quantity),
-                minStockLevel: numAt(importMapping.minStockLevel),
-                location: cellAt(importMapping.location),
-              };
-            })
-          : parsedRows;
-
-      const importResult = await stockControlApiClient.confirmImport(
-        rowsToImport,
-        isStockTake,
-        isStockTake ? stockTakeDate : null,
-      );
-      setResult(importResult);
-      setStep("result");
+      const rowsToMatch = buildImportRows();
+      const matched = await stockControlApiClient.matchImportRows(rowsToMatch);
+      setMatchedRows(matched);
+      setStep("review");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to import data");
+      setError(err instanceof Error ? err.message : "Failed to match items");
     } finally {
-      setIsConfirming(false);
+      setIsMatching(false);
     }
+  };
+
+  const handleReviewComplete = (reviewResult: ReviewedImportResult) => {
+    setResult(reviewResult);
+    setStep("result");
   };
 
   const resetImport = () => {
@@ -143,6 +150,7 @@ export default function ImportPage() {
     setImportMapping(null);
     setImportFormat(null);
     setResult(null);
+    setMatchedRows([]);
     setError(null);
     setIsStockTake(false);
     setStockTakeDate(null);
@@ -265,11 +273,13 @@ export default function ImportPage() {
                   Cancel
                 </button>
                 <button
-                  onClick={handleConfirm}
-                  disabled={isConfirming || previewRowCount === 0}
+                  onClick={handleMatchAndReview}
+                  disabled={isMatching || previewRowCount === 0}
                   className="px-4 py-2 text-sm font-medium text-white bg-teal-600 border border-transparent rounded-md hover:bg-teal-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
                 >
-                  {isConfirming ? "Importing..." : `Confirm Import (${previewRowCount} rows)`}
+                  {isMatching
+                    ? "Matching inventory..."
+                    : `Review & Match (${previewRowCount} rows)`}
                 </button>
               </div>
             </div>
@@ -415,6 +425,16 @@ export default function ImportPage() {
         </div>
       )}
 
+      {step === "review" && (
+        <ImportReviewStep
+          matchedRows={matchedRows}
+          isStockTake={isStockTake}
+          stockTakeDate={stockTakeDate}
+          onComplete={handleReviewComplete}
+          onCancel={() => setStep("preview")}
+        />
+      )}
+
       {step === "result" && result && (
         <div className="space-y-4">
           <div className="bg-white shadow rounded-lg overflow-x-auto">
@@ -422,7 +442,7 @@ export default function ImportPage() {
               <h3 className="text-lg leading-6 font-medium text-gray-900">Import Results</h3>
             </div>
             <div className="p-6">
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+              <div className="grid grid-cols-1 sm:grid-cols-5 gap-4 mb-6">
                 <div className="bg-green-50 rounded-lg p-4 text-center">
                   <div className="text-2xl font-bold text-green-700">{result.created}</div>
                   <div className="text-sm text-green-600">Created</div>
@@ -431,11 +451,28 @@ export default function ImportPage() {
                   <div className="text-2xl font-bold text-blue-700">{result.updated}</div>
                   <div className="text-sm text-blue-600">Updated</div>
                 </div>
+                <div className="bg-gray-50 rounded-lg p-4 text-center">
+                  <div className="text-2xl font-bold text-gray-700">{result.skipped}</div>
+                  <div className="text-sm text-gray-600">Skipped</div>
+                </div>
+                <div className="bg-purple-50 rounded-lg p-4 text-center">
+                  <div className="text-2xl font-bold text-purple-700">{result.learned}</div>
+                  <div className="text-sm text-purple-600">Nix Learned</div>
+                </div>
                 <div className="bg-red-50 rounded-lg p-4 text-center">
                   <div className="text-2xl font-bold text-red-700">{result.errors.length}</div>
                   <div className="text-sm text-red-600">Errors</div>
                 </div>
               </div>
+
+              {result.learned > 0 && (
+                <div className="mb-4 bg-purple-50 border border-purple-200 rounded-lg p-3">
+                  <p className="text-sm text-purple-700">
+                    Nix learned from {result.learned} correction{result.learned !== 1 ? "s" : ""}.
+                    Future imports and SDN extractions will use these corrections automatically.
+                  </p>
+                </div>
+              )}
 
               {result.errors.length > 0 && (
                 <div className="mt-4">

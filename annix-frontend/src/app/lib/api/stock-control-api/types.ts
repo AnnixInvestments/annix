@@ -1710,6 +1710,61 @@ export interface ImportResult {
   errors: { row: number; message: string }[];
 }
 
+export interface MatchedExistingItem {
+  id: number;
+  sku: string;
+  name: string;
+  description: string | null;
+  category: string | null;
+  unitOfMeasure: string;
+  costPerUnit: number;
+  quantity: number;
+  location: string | null;
+}
+
+export interface ImportMatchRow {
+  index: number;
+  imported: {
+    sku?: string;
+    name?: string;
+    description?: string;
+    category?: string;
+    unitOfMeasure?: string;
+    costPerUnit?: number;
+    quantity?: number;
+    minStockLevel?: number;
+    location?: string;
+  };
+  match: MatchedExistingItem | null;
+  matchConfidence: number;
+  matchReason: string | null;
+}
+
+export interface ReviewedRow {
+  index: number;
+  action: "update" | "create" | "skip";
+  matchedItemId: number | null;
+  sku: string;
+  name: string;
+  description: string | null;
+  category: string | null;
+  unitOfMeasure: string;
+  costPerUnit: number;
+  quantity: number;
+  minStockLevel: number;
+  location: string | null;
+  corrections: { field: string; originalValue: string | null; correctedValue: string | null }[];
+}
+
+export interface ReviewedImportResult {
+  totalRows: number;
+  created: number;
+  updated: number;
+  skipped: number;
+  learned: number;
+  errors: { row: number; message: string }[];
+}
+
 export interface StockIssuance {
   id: number;
   companyId: number;

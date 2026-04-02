@@ -3,6 +3,7 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { fromISO } from "../../lib/datetime";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
+import { LearningSource, LearningType, NixLearning } from "../../nix/entities/nix-learning.entity";
 import { StockItem } from "../entities/stock-item.entity";
 import { MovementType, ReferenceType, StockMovement } from "../entities/stock-movement.entity";
 
@@ -37,6 +38,51 @@ export interface ImportResult {
   errors: { row: number; message: string }[];
 }
 
+export interface MatchedExistingItem {
+  id: number;
+  sku: string;
+  name: string;
+  description: string | null;
+  category: string | null;
+  unitOfMeasure: string;
+  costPerUnit: number;
+  quantity: number;
+  location: string | null;
+}
+
+export interface ImportMatchRow {
+  index: number;
+  imported: ImportRow;
+  match: MatchedExistingItem | null;
+  matchConfidence: number;
+  matchReason: string | null;
+}
+
+export interface ReviewedRow {
+  index: number;
+  action: "update" | "create" | "skip";
+  matchedItemId: number | null;
+  sku: string;
+  name: string;
+  description: string | null;
+  category: string | null;
+  unitOfMeasure: string;
+  costPerUnit: number;
+  quantity: number;
+  minStockLevel: number;
+  location: string | null;
+  corrections: { field: string; originalValue: string | null; correctedValue: string | null }[];
+}
+
+export interface ReviewedImportResult {
+  totalRows: number;
+  created: number;
+  updated: number;
+  skipped: number;
+  learned: number;
+  errors: { row: number; message: string }[];
+}
+
 const INVENTORY_PDF_EXTRACTION_PROMPT = `You are an expert at reading inventory, stock, and product listing documents.
 
 Look at this PDF and extract all inventory/stock items into a JSON array.
@@ -64,6 +110,8 @@ export class ImportService {
     private readonly stockItemRepo: Repository<StockItem>,
     @InjectRepository(StockMovement)
     private readonly movementRepo: Repository<StockMovement>,
+    @InjectRepository(NixLearning)
+    private readonly nixLearningRepo: Repository<NixLearning>,
     private readonly aiChatService: AiChatService,
   ) {}
 
@@ -475,5 +523,328 @@ export class ImportService {
     }
 
     return categoryMap;
+  }
+
+  async matchRowsToInventory(companyId: number, rows: ImportRow[]): Promise<ImportMatchRow[]> {
+    const allItems = await this.stockItemRepo.find({ where: { companyId } });
+    const learned = await this.nixLearningRepo.find({
+      where: {
+        learningType: LearningType.CORRECTION,
+        category: "stock_import",
+        isActive: true,
+      },
+    });
+
+    const skuCorrections = learned
+      .filter((l) => l.patternKey.startsWith("sku_rename:"))
+      .reduce(
+        (acc, l) => ({ ...acc, [l.originalValue || ""]: l.learnedValue }),
+        {} as Record<string, string>,
+      );
+
+    const nameCorrections = learned
+      .filter((l) => l.patternKey.startsWith("name_correction:"))
+      .reduce(
+        (acc, l) => ({ ...acc, [(l.originalValue || "").toLowerCase()]: l.learnedValue }),
+        {} as Record<string, string>,
+      );
+
+    return rows.map((row, index) => {
+      const importSku = row.sku?.trim() || "";
+      const importName = row.name?.trim() || "";
+
+      const correctedSku = skuCorrections[importSku] || importSku;
+
+      const exactSkuMatch = allItems.find(
+        (item) => item.sku.toLowerCase() === correctedSku.toLowerCase() && correctedSku !== "",
+      );
+      if (exactSkuMatch) {
+        return {
+          index,
+          imported: row,
+          match: this.toMatchedItem(exactSkuMatch),
+          matchConfidence: correctedSku !== importSku ? 0.95 : 1.0,
+          matchReason:
+            correctedSku !== importSku
+              ? `Exact SKU match via learned correction (${importSku} -> ${correctedSku})`
+              : "Exact SKU match",
+        };
+      }
+
+      const partialSkuMatch = importSku
+        ? allItems.find(
+            (item) =>
+              item.sku.toLowerCase().includes(importSku.toLowerCase()) ||
+              importSku.toLowerCase().includes(item.sku.toLowerCase()),
+          )
+        : null;
+      if (partialSkuMatch) {
+        return {
+          index,
+          imported: row,
+          match: this.toMatchedItem(partialSkuMatch),
+          matchConfidence: 0.7,
+          matchReason: `Partial SKU match: "${partialSkuMatch.sku}"`,
+        };
+      }
+
+      const correctedName = nameCorrections[importName.toLowerCase()] || importName;
+      if (correctedName) {
+        const nameMatch = allItems.find(
+          (item) => item.name.toLowerCase() === correctedName.toLowerCase(),
+        );
+        if (nameMatch) {
+          return {
+            index,
+            imported: row,
+            match: this.toMatchedItem(nameMatch),
+            matchConfidence: correctedName !== importName ? 0.85 : 0.8,
+            matchReason:
+              correctedName !== importName
+                ? "Name match via learned correction"
+                : "Exact name match",
+          };
+        }
+
+        const fuzzyMatch = this.fuzzyNameMatch(correctedName, allItems);
+        if (fuzzyMatch) {
+          return {
+            index,
+            imported: row,
+            match: this.toMatchedItem(fuzzyMatch.item),
+            matchConfidence: fuzzyMatch.score,
+            matchReason: `Fuzzy name match (${Math.round(fuzzyMatch.score * 100)}%): "${fuzzyMatch.item.name}"`,
+          };
+        }
+      }
+
+      return {
+        index,
+        imported: row,
+        match: null,
+        matchConfidence: 0,
+        matchReason: null,
+      };
+    });
+  }
+
+  private toMatchedItem(item: StockItem): MatchedExistingItem {
+    return {
+      id: item.id,
+      sku: item.sku,
+      name: item.name,
+      description: item.description,
+      category: item.category,
+      unitOfMeasure: item.unitOfMeasure,
+      costPerUnit: Number(item.costPerUnit),
+      quantity: Number(item.quantity),
+      location: item.location,
+    };
+  }
+
+  private fuzzyNameMatch(
+    name: string,
+    items: StockItem[],
+  ): { item: StockItem; score: number } | null {
+    const normalizedInput = name
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, " ")
+      .trim();
+    const inputTokens = new Set(normalizedInput.split(/\s+/).filter((t) => t.length > 1));
+
+    if (inputTokens.size === 0) {
+      return null;
+    }
+
+    const scored = items
+      .map((item) => {
+        const normalizedItem = item.name
+          .toLowerCase()
+          .replace(/[^a-z0-9]/g, " ")
+          .trim();
+        const itemTokens = new Set(normalizedItem.split(/\s+/).filter((t) => t.length > 1));
+        if (itemTokens.size === 0) {
+          return { item, score: 0 };
+        }
+        const intersection = [...inputTokens].filter((t) => itemTokens.has(t)).length;
+        const union = new Set([...inputTokens, ...itemTokens]).size;
+        const score = union > 0 ? intersection / union : 0;
+        return { item, score };
+      })
+      .filter((s) => s.score >= 0.4)
+      .sort((a, b) => b.score - a.score);
+
+    return scored.length > 0 ? scored[0] : null;
+  }
+
+  async confirmReviewedImport(
+    companyId: number,
+    rows: ReviewedRow[],
+    createdBy: string | null,
+    isStockTake: boolean,
+    stockTakeDate: string | null,
+  ): Promise<ReviewedImportResult> {
+    const result: ReviewedImportResult = {
+      totalRows: rows.length,
+      created: 0,
+      updated: 0,
+      skipped: 0,
+      learned: 0,
+      errors: [],
+    };
+
+    for (const row of rows) {
+      try {
+        if (row.action === "skip") {
+          result.skipped += 1;
+          continue;
+        }
+
+        const learningCount = await this.recordCorrections(row);
+        result.learned += learningCount;
+
+        if (row.action === "update" && row.matchedItemId) {
+          const existing = await this.stockItemRepo.findOne({
+            where: { id: row.matchedItemId, companyId },
+          });
+          if (!existing) {
+            result.errors = [
+              ...result.errors,
+              { row: row.index + 1, message: `Matched item #${row.matchedItemId} not found` },
+            ];
+            continue;
+          }
+
+          if (!isStockTake) {
+            existing.sku = row.sku || existing.sku;
+            existing.name = row.name || existing.name;
+            existing.description = row.description ?? existing.description;
+            existing.category = row.category ?? existing.category;
+            existing.unitOfMeasure = row.unitOfMeasure || existing.unitOfMeasure;
+            existing.costPerUnit = row.costPerUnit ?? existing.costPerUnit;
+            existing.minStockLevel = row.minStockLevel ?? existing.minStockLevel;
+            existing.location = row.location ?? existing.location;
+          }
+
+          if (row.quantity !== null && row.quantity !== undefined) {
+            const { finalSoh, movementNotes } = await this.resolveStockTakeQuantity(
+              existing,
+              row.quantity,
+              companyId,
+              isStockTake,
+              stockTakeDate,
+            );
+
+            if (finalSoh !== existing.quantity) {
+              const delta = finalSoh - existing.quantity;
+              existing.quantity = finalSoh;
+
+              const movement = this.movementRepo.create({
+                stockItem: existing,
+                movementType: delta > 0 ? MovementType.IN : MovementType.OUT,
+                quantity: Math.abs(delta),
+                referenceType: isStockTake ? ReferenceType.STOCK_TAKE : ReferenceType.IMPORT,
+                notes: movementNotes,
+                createdBy,
+                companyId,
+              });
+              await this.movementRepo.save(movement);
+            }
+          }
+
+          await this.stockItemRepo.save(existing);
+          result.updated += 1;
+        } else if (row.action === "create") {
+          const item = this.stockItemRepo.create({
+            sku: row.sku,
+            name: row.name,
+            description: row.description || null,
+            category: row.category || null,
+            unitOfMeasure: row.unitOfMeasure || "each",
+            costPerUnit: row.costPerUnit || 0,
+            quantity: row.quantity || 0,
+            minStockLevel: row.minStockLevel || 0,
+            location: row.location || null,
+            companyId,
+            needsQrPrint: isStockTake,
+          });
+          const saved = await this.stockItemRepo.save(item);
+
+          if (row.quantity && row.quantity > 0) {
+            const movement = this.movementRepo.create({
+              stockItem: saved,
+              movementType: MovementType.IN,
+              quantity: row.quantity,
+              referenceType: isStockTake ? ReferenceType.STOCK_TAKE : ReferenceType.IMPORT,
+              notes: isStockTake ? "Stock take - new item" : "Initial import (reviewed)",
+              createdBy,
+              companyId,
+            });
+            await this.movementRepo.save(movement);
+          }
+
+          result.created += 1;
+        }
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "Unknown error";
+        result.errors = [...result.errors, { row: row.index + 1, message }];
+      }
+    }
+
+    return result;
+  }
+
+  private async recordCorrections(row: ReviewedRow): Promise<number> {
+    if (row.corrections.length === 0) {
+      return 0;
+    }
+
+    let count = 0;
+    for (const correction of row.corrections) {
+      if (correction.originalValue === correction.correctedValue) {
+        continue;
+      }
+
+      const patternKey = `${correction.field}_correction:${(correction.originalValue || "").slice(0, 100)}`;
+
+      const existing = await this.nixLearningRepo.findOne({
+        where: {
+          patternKey,
+          learningType: LearningType.CORRECTION,
+          category: "stock_import",
+          learnedValue: correction.correctedValue || "",
+        },
+      });
+
+      if (existing) {
+        existing.confirmationCount += 1;
+        existing.confidence = Math.min(1, existing.confidence + 0.1);
+        await this.nixLearningRepo.save(existing);
+      } else {
+        const learning = this.nixLearningRepo.create({
+          learningType: LearningType.CORRECTION,
+          source: LearningSource.USER_CORRECTION,
+          category: "stock_import",
+          patternKey,
+          originalValue: correction.originalValue || undefined,
+          learnedValue: correction.correctedValue || "",
+          context: {
+            field: correction.field,
+            importedSku: row.sku,
+            importedName: row.name,
+            matchedItemId: row.matchedItemId,
+          },
+          confidence: 0.6,
+          confirmationCount: 1,
+          applicableProducts: ["stock_item"],
+          isActive: true,
+        });
+        await this.nixLearningRepo.save(learning);
+      }
+
+      count += 1;
+    }
+
+    return count;
   }
 }
