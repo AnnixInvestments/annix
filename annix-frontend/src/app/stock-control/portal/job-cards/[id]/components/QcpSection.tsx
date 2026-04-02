@@ -8,7 +8,6 @@ import type {
   QcpPlanType,
 } from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
-import { QcpEditorModal } from "./QcpEditorModal";
 import { QcpForm } from "./QcpForm";
 
 interface QcpSectionProps {
@@ -193,7 +192,6 @@ export function QcpSection({ jobCardId }: QcpSectionProps) {
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [isAutoGenerating, setIsAutoGenerating] = useState(false);
-  const [editorPlan, setEditorPlan] = useState<QcControlPlanRecord | null>(null);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const fetchPlans = useCallback(async () => {
@@ -427,7 +425,7 @@ export function QcpSection({ jobCardId }: QcpSectionProps) {
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation();
-                        setEditorPlan(plan);
+                        stockControlApiClient.openControlPlanPdf(jobCardId, plan.id);
                       }}
                       className="text-sm text-blue-600 hover:text-blue-800"
                     >
@@ -579,15 +577,6 @@ export function QcpSection({ jobCardId }: QcpSectionProps) {
             );
           })}
         </div>
-      )}
-
-      {editorPlan && (
-        <QcpEditorModal
-          plan={editorPlan}
-          jobCardId={jobCardId}
-          onClose={() => setEditorPlan(null)}
-          onSaved={fetchPlans}
-        />
       )}
     </div>
   );
