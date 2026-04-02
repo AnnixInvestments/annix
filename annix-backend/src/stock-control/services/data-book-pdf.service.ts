@@ -909,11 +909,10 @@ export class DataBookPdfService {
     const rawAbbrev = this.qcpClientAbbrev(plan);
     const clientLabel =
       rawAbbrev && rawAbbrev !== "MPS" && rawAbbrev !== "PLS" ? rawAbbrev : "Client";
-    const hasThirdParty = plan.activities.some(
-      (a) =>
-        (a as any).thirdParty?.interventionType !== null &&
-        (a as any).thirdParty?.interventionType !== undefined,
-    );
+    const hasThirdParty = plan.activities.some((a) => {
+      const it = (a as any).thirdParty?.interventionType;
+      return it !== null && it !== undefined && it !== "";
+    });
     const partyCols = hasThirdParty ? 4 : 3;
 
     const opW = 24;
@@ -1133,7 +1132,7 @@ export class DataBookPdfService {
       plan.approvalSignatures.length > 0 ? plan.approvalSignatures : defaultSigParties;
     const sigParties = hasThirdParty
       ? storedSigs
-      : storedSigs.filter((s) => s.party !== "3rd Party");
+      : storedSigs.filter((s) => !s.party.toLowerCase().includes("3rd"));
 
     const sigColW = pg.contentWidth / Math.max(sigParties.length, 3);
     sigParties.forEach((sig, idx) => {
