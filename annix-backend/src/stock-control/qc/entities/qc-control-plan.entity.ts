@@ -27,6 +27,7 @@ export enum InterventionType {
 
 export interface PartySignOff {
   interventionType: InterventionType | null;
+  initial: string | null;
   name: string | null;
   signatureUrl: string | null;
   date: string | null;
@@ -37,9 +38,11 @@ export interface QcpActivity {
   description: string;
   specification: string | null;
   procedureRequired: string | null;
+  documentation: string | null;
   pls: PartySignOff;
   mps: PartySignOff;
   client: PartySignOff;
+  thirdParty: PartySignOff;
   remarks: string | null;
 }
 
