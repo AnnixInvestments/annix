@@ -190,7 +190,7 @@ export function QcpEditorModal(props: QcpEditorModalProps) {
                   <td className="px-1 py-1">
                     <input
                       type="text"
-                      value={a.specification ?? ""}
+                      value={a.specification || ""}
                       onChange={(e) => updateField(idx, "specification", e.target.value || null)}
                       className="w-full rounded border border-gray-200 px-1.5 py-0.5 text-xs"
                     />
@@ -198,7 +198,7 @@ export function QcpEditorModal(props: QcpEditorModalProps) {
                   <td className="px-1 py-1">
                     <input
                       type="text"
-                      value={a.documentation ?? ""}
+                      value={a.documentation || ""}
                       onChange={(e) => updateField(idx, "documentation", e.target.value || null)}
                       className="w-full rounded border border-gray-200 px-1.5 py-0.5 text-xs"
                     />
@@ -209,7 +209,7 @@ export function QcpEditorModal(props: QcpEditorModalProps) {
                       <td key={pk} className="px-1 py-1">
                         <div className="flex items-center gap-0.5">
                           <select
-                            value={(so as QcpPartySignOff).interventionType ?? ""}
+                            value={(so as QcpPartySignOff).interventionType || ""}
                             onChange={(e) =>
                               updateIntervention(
                                 idx,
@@ -228,7 +228,7 @@ export function QcpEditorModal(props: QcpEditorModalProps) {
                           </select>
                           <input
                             type="text"
-                            value={(so as QcpPartySignOff).initial ?? ""}
+                            value={(so as QcpPartySignOff).initial || ""}
                             onChange={(e) => updateInitial(idx, pk, e.target.value || null)}
                             className="w-10 rounded border border-gray-200 px-0.5 py-0.5 text-center text-xs"
                             placeholder=""
@@ -241,7 +241,7 @@ export function QcpEditorModal(props: QcpEditorModalProps) {
                   <td className="px-1 py-1">
                     <input
                       type="text"
-                      value={a.remarks ?? ""}
+                      value={a.remarks || ""}
                       onChange={(e) => updateField(idx, "remarks", e.target.value || null)}
                       className="w-full rounded border border-gray-200 px-1.5 py-0.5 text-xs"
                     />
