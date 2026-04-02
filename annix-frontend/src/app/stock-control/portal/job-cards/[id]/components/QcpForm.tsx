@@ -400,9 +400,9 @@ export function QcpForm({ jobCardId, existingPlan, onSaved, onCancel }: QcpFormP
           stockControlApiClient.jobCardById(jobCardId),
           stockControlApiClient.jobCardCoatingAnalysis(jobCardId),
         ]);
-        setCustomerName(jobCard.customerName ?? "");
-        setOrderNumber(jobCard.poNumber ?? "");
-        setJobName(jobCard.jobName ?? "");
+        setCustomerName(jobCard.customerName || "");
+        setOrderNumber(jobCard.poNumber || "");
+        setJobName(jobCard.jobName || "");
 
         if (coatingAnalysis && coatingAnalysis.status === "accepted") {
           populateFromCoating(planType, coatingAnalysis);
@@ -434,7 +434,7 @@ export function QcpForm({ jobCardId, existingPlan, onSaved, onCancel }: QcpFormP
           hand_tool: "Hand tool preparation",
           power_tool: "Power tool preparation",
         };
-        const prepLabel = prepLabels[coating.surfacePrep] ?? coating.surfacePrep;
+        const prepLabel = prepLabels[coating.surfacePrep] || coating.surfacePrep;
         setActivities((prev) =>
           prev.map((a) =>
             a.description.toLowerCase().includes("surface preparation")
@@ -757,7 +757,7 @@ export function QcpForm({ jobCardId, existingPlan, onSaved, onCancel }: QcpFormP
                 <td className="px-2 py-1.5">
                   <input
                     type="text"
-                    value={activity.specification ?? ""}
+                    value={activity.specification || ""}
                     onChange={(e) => updateActivity(idx, "specification", e.target.value || null)}
                     className="w-full rounded border border-gray-300 px-2 py-1 text-sm"
                     placeholder="Spec ref"
@@ -766,7 +766,7 @@ export function QcpForm({ jobCardId, existingPlan, onSaved, onCancel }: QcpFormP
                 <td className="px-2 py-1.5">
                   <input
                     type="text"
-                    value={activity.documentation ?? ""}
+                    value={activity.documentation || ""}
                     onChange={(e) => updateActivity(idx, "documentation", e.target.value || null)}
                     className="w-full rounded border border-gray-300 px-2 py-1 text-sm"
                     placeholder="Doc ref"
@@ -778,7 +778,7 @@ export function QcpForm({ jobCardId, existingPlan, onSaved, onCancel }: QcpFormP
                     <td key={partyKey} className="px-1 py-1.5">
                       <div className="flex items-center gap-1">
                         <select
-                          value={signOff.interventionType ?? ""}
+                          value={signOff.interventionType || ""}
                           onChange={(e) =>
                             updateActivityIntervention(
                               idx,
@@ -797,7 +797,7 @@ export function QcpForm({ jobCardId, existingPlan, onSaved, onCancel }: QcpFormP
                         </select>
                         <input
                           type="text"
-                          value={signOff.initial ?? ""}
+                          value={signOff.initial || ""}
                           onChange={(e) =>
                             updateActivityInitial(idx, partyKey, e.target.value || null)
                           }
