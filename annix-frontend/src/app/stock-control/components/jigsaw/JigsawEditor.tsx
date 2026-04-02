@@ -198,30 +198,19 @@ export function JigsawEditor(props: {
       const roll = rolls[rollIndex];
       if (!roll) return;
 
-      const overRect = over.rect;
-      const activeTranslated = active.rect.current.translated;
-
-      let xMm = 0;
-      let yMm = 0;
-
-      if (overRect && activeTranslated) {
-        const scale = (overRect.width || 700) / roll.lengthMm;
-
-        const dropX = activeTranslated.left - overRect.left;
-        const dropY = activeTranslated.top - overRect.top;
-
-        xMm = snapToGrid(dropX / scale);
-        yMm = snapToGrid(dropY / scale);
-      }
-
-      xMm = Math.max(0, xMm);
-      yMm = Math.max(0, yMm);
+      const otherOnRoll = placedPanels.filter(
+        (p) => p.rollIndex === rollIndex && p.panelId !== panelId,
+      );
+      const packLeftX = otherOnRoll.reduce(
+        (maxX, p) => Math.max(maxX, p.xMm + effectiveLength(p)),
+        0,
+      );
 
       const candidate: PlacedPanel = {
         ...panel,
         rollIndex,
-        xMm,
-        yMm,
+        xMm: packLeftX,
+        yMm: 0,
       };
 
       if (!isWithinBounds(candidate, roll)) {
