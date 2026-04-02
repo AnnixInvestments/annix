@@ -430,6 +430,76 @@ describe("M2CalculationService", () => {
     });
   });
 
+  describe("reducer C/F dimension parsing", () => {
+    it("parses C/F without mm suffix and doubles it for reducer length", async () => {
+      setupStandardMocks(1219.2, 12.7);
+      const [result] = await service.calculateM2ForItems([
+        "1200NB x 800NB CONCENTRIC REDUCER C/F 2557",
+      ]);
+      expect(result.parsedItemType).toBe("reducer");
+      expect(result.parsedLengthM).toBeCloseTo(5.114, 2);
+    });
+
+    it("uses explicit LG length over C/F doubling for reducer", async () => {
+      setupStandardMocks();
+      const [result] = await service.calculateM2ForItems(["100NB x 80NB REDUCER 6000 LG C/F 2000"]);
+      expect(result.parsedItemType).toBe("reducer");
+      expect(result.parsedLengthM).toBeCloseTo(6, 1);
+    });
+  });
+
+  describe("lateral arm dimension parsing", () => {
+    it("parses arm dimensions from bare format without parentheses", async () => {
+      setupStandardMocks(1219.2, 12.7);
+      const [result] = await service.calculateM2ForItems(["1200NB LATERAL 1597 x 1597 PE"]);
+      expect(result.parsedItemType).toBe("lateral");
+      expect(result.externalM2).toBeGreaterThan(0);
+      expect(result.internalM2).toBeGreaterThan(0);
+    });
+
+    it("adds open-end allowance for PE lateral (3 un-flanged ends)", async () => {
+      const odMm = 1219.2;
+      const wallMm = 12.7;
+      setupStandardMocks(odMm, wallMm);
+      mockFlangeDimension.flangeDimensionsForM2.mockResolvedValue({
+        D: 1500,
+        d4: 1220,
+        b: 50,
+      });
+
+      const [peResult] = await service.calculateM2ForItems(["1200NB LATERAL 1597 x 1597 PE"]);
+      const [flangedResult] = await service.calculateM2ForItems([
+        "1200NB LATERAL 1597 x 1597 3X R/F",
+      ]);
+
+      expect(peResult.totalM2!).toBeGreaterThan(0);
+      const idMm = odMm - 2 * wallMm;
+      const allowanceM = 0.1;
+      const expectedOpenEndArea =
+        3 * Math.PI * (odMm / 1000) * allowanceM + 3 * Math.PI * (idMm / 1000) * allowanceM;
+
+      const backAnnular = (Math.PI / 4) * (1500 ** 2 - odMm ** 2);
+      const faceAnnular = (Math.PI / 4) * (1500 ** 2 - 1220 ** 2);
+      const boreInternal = Math.PI * (1220 / 1000) * (50 / 1000);
+      const externalPerFlange = backAnnular / 1_000_000;
+      const internalPerFlange = faceAnnular / 1_000_000 + boreInternal;
+      const expectedFlangeArea = (externalPerFlange + internalPerFlange) * 3;
+
+      expect(peResult.totalM2! - flangedResult.totalM2!).toBeCloseTo(
+        expectedOpenEndArea - expectedFlangeArea,
+        3,
+      );
+    });
+
+    it("adds 1 open-end allowance for lateral with 2 flanges", async () => {
+      setupStandardMocks(1219.2, 12.7);
+      mockFlangeDimension.flangeDimensionsForM2.mockResolvedValue(null);
+
+      const [result] = await service.calculateM2ForItems(["1200NB LATERAL 1597 x 1597 2X R/F"]);
+      expect(result.totalM2!).toBeGreaterThan(0);
+    });
+  });
+
   describe("RFQ-format descriptions end-to-end", () => {
     it("parses full ASTM pipe description", async () => {
       setupStandardMocks();

@@ -59,8 +59,10 @@ const WALL_THICKNESS_PARENS_PATTERN = /\bSCH(?:EDULE)?\s*\d+[SsHh]?\s*\((\d+(?:\
 const BEND_ANGLE_DEGREES_PATTERN = /(\d+)°/;
 const BEND_TYPE_PATTERN = /\b(\d+(?:\.\d+)?)\s*D\b/;
 const CF_SINGLE_PATTERN = /C\/F\s+(\d+)mm/i;
+const CF_SINGLE_NO_MM_PATTERN = /\bC\/F\s+(\d+)(?!\s*(?:mm|[Dd]))\b/i;
 const CF_PAIR_PATTERN = /(\d+)\s*x\s*(\d+)\s*C\/F/i;
 const FITTING_DIMS_PATTERN = /\((\d+)\s*x\s*(\d+)\)/;
+const FITTING_DIMS_BARE_PATTERN = /\b(\d{3,5})\s*[xX]\s*(\d{3,5})\b(?!\s*NB)/i;
 const BEND_CF_BARE_PATTERN = /(\d{3,})\s*x\s*(\d{3,})\s+(?:BEND|ELBOW)/i;
 const FLANGE_STANDARD_ASME_PATTERN = /\bASME\s+B16\.5\s+(\d+)\b/i;
 const FLANGE_STANDARD_SABS_PATTERN = /\bSABS\s+1123\s+(\d+(?:\/\d+)?)\b/i;
@@ -188,6 +190,10 @@ export class M2CalculationService {
       }
     }
 
+    if (itemType === "reducer" && cfDimensionMm && lengthMm === null) {
+      lengthMm = 2 * cfDimensionMm;
+    }
+
     const schedMatch = description.match(SCHEDULE_PATTERN);
     const schedule = schedMatch ? `Sch ${schedMatch[1]}` : null;
 
@@ -255,6 +261,11 @@ export class M2CalculationService {
     const singleMatch = description.match(CF_SINGLE_PATTERN);
     if (singleMatch) {
       return parseInt(singleMatch[1], 10);
+    }
+
+    const singleNoMmMatch = description.match(CF_SINGLE_NO_MM_PATTERN);
+    if (singleNoMmMatch) {
+      return parseInt(singleNoMmMatch[1], 10);
     }
 
     const pairMatch = description.match(CF_PAIR_PATTERN);
@@ -343,6 +354,12 @@ export class M2CalculationService {
     if (match) {
       return { a: parseInt(match[1], 10), b: parseInt(match[2], 10) };
     }
+
+    const bareMatch = description.match(FITTING_DIMS_BARE_PATTERN);
+    if (bareMatch) {
+      return { a: parseInt(bareMatch[1], 10), b: parseInt(bareMatch[2], 10) };
+    }
+
     return { a: null, b: null };
   }
 
@@ -695,6 +712,15 @@ export class M2CalculationService {
         );
         externalM2 += flangeArea.external;
         internalM2 += flangeArea.internal;
+      }
+
+      if (itemType === "lateral") {
+        const unFlangedEnds = Math.max(3 - regex.flangeCount, 0);
+        if (unFlangedEnds > 0) {
+          const allowanceM = FLANGE_OVERLAP_ALLOWANCE_MM / 1000;
+          externalM2 += unFlangedEnds * Math.PI * (odMm / 1000) * allowanceM;
+          internalM2 += unFlangedEnds * Math.PI * (idMm / 1000) * allowanceM;
+        }
       }
 
       const totalM2 = externalM2 + internalM2;
