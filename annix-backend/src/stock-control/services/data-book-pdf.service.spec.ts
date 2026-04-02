@@ -1,6 +1,7 @@
 import { Test, TestingModule } from "@nestjs/testing";
 import { getRepositoryToken } from "@nestjs/typeorm";
 import { fromISO, now } from "../../lib/datetime";
+import { STORAGE_SERVICE } from "../../storage/storage.interface";
 import { JobCard } from "../entities/job-card.entity";
 import { StockControlCompany } from "../entities/stock-control-company.entity";
 import { QcBlastProfile } from "../qc/entities/qc-blast-profile.entity";
@@ -278,6 +279,13 @@ describe("DataBookPdfService", () => {
         { provide: getRepositoryToken(QcItemsRelease), useValue: itemsReleaseRepo },
         { provide: getRepositoryToken(JobCard), useValue: jobCardRepo },
         { provide: getRepositoryToken(StockControlCompany), useValue: companyRepo },
+        {
+          provide: STORAGE_SERVICE,
+          useValue: {
+            download: jest.fn().mockResolvedValue(Buffer.from("")),
+            presignedUrl: jest.fn().mockResolvedValue("https://presigned.url/logo.png"),
+          },
+        },
       ],
     }).compile();
 

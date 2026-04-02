@@ -1,4 +1,4 @@
-import { Injectable, Logger } from "@nestjs/common";
+import { Inject, Injectable, Logger } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import PDFDocument from "pdfkit";
 
@@ -6,6 +6,7 @@ type PDFDoc = InstanceType<typeof PDFDocument>;
 
 import { Repository } from "typeorm";
 import { now } from "../../lib/datetime";
+import { type IStorageService, STORAGE_SERVICE } from "../../storage/storage.interface";
 import { JobCard } from "../entities/job-card.entity";
 import { StockControlCompany } from "../entities/stock-control-company.entity";
 import { QcBlastProfile } from "../qc/entities/qc-blast-profile.entity";
@@ -134,6 +135,7 @@ interface TocEntry {
 interface DataBookContext {
   jobCard: JobCard;
   company: StockControlCompany | null;
+  logoBuffer: Buffer | null;
   shoreHardness: QcShoreHardness[];
   primerDft: QcDftReading[];
   finalDft: QcDftReading[];
@@ -170,7 +172,22 @@ export class DataBookPdfService {
     private readonly jobCardRepo: Repository<JobCard>,
     @InjectRepository(StockControlCompany)
     private readonly companyRepo: Repository<StockControlCompany>,
+    @Inject(STORAGE_SERVICE)
+    private readonly storageService: IStorageService,
   ) {}
+
+  private async fetchCompanyLogo(company: StockControlCompany | null): Promise<Buffer | null> {
+    if (!company?.logoUrl) return null;
+    try {
+      if (company.logoUrl.startsWith("http")) {
+        return Buffer.from(await (await fetch(company.logoUrl)).arrayBuffer());
+      }
+      return this.storageService.download(company.logoUrl);
+    } catch (err) {
+      this.logger.warn(`Failed to fetch company logo: ${err}`);
+      return null;
+    }
+  }
 
   async generateReleaseCertificatePdf(
     companyId: number,
@@ -190,6 +207,7 @@ export class DataBookPdfService {
     const ctx: DataBookContext = {
       jobCard,
       company,
+      logoBuffer: null,
       shoreHardness: [],
       primerDft: [],
       finalDft: [],
@@ -224,6 +242,7 @@ export class DataBookPdfService {
     const ctx: DataBookContext = {
       jobCard,
       company,
+      logoBuffer: null,
       shoreHardness: [],
       primerDft: [],
       finalDft: [],
@@ -255,9 +274,12 @@ export class DataBookPdfService {
       return null;
     }
 
+    const logoBuffer = await this.fetchCompanyLogo(company);
+
     const ctx: DataBookContext = {
       jobCard,
       company,
+      logoBuffer,
       shoreHardness: [],
       primerDft: [],
       finalDft: [],
@@ -361,9 +383,12 @@ export class DataBookPdfService {
       return null;
     }
 
+    const logoBuffer = await this.fetchCompanyLogo(company);
+
     const ctx: DataBookContext = {
       jobCard,
       company,
+      logoBuffer,
       shoreHardness,
       primerDft: dftReadings.filter((d) => d.coatType === DftCoatType.PRIMER),
       finalDft: dftReadings.filter((d) => d.coatType === DftCoatType.FINAL),
@@ -453,12 +478,24 @@ export class DataBookPdfService {
       });
     }
 
+    const logoH = 24;
+    const logoAreaW = 40;
+    let nameX = A4.margin;
+    if (ctx.logoBuffer) {
+      try {
+        doc.image(ctx.logoBuffer, A4.margin, y, { height: logoH, fit: [logoAreaW, logoH] });
+        nameX = A4.margin + logoAreaW + 6;
+      } catch {
+        // logo failed to render — skip
+      }
+    }
+
     if (ctx.company?.name) {
       doc
         .fontSize(10)
         .font(FONT.BOLD)
         .fillColor("#000000")
-        .text(ctx.company.name, A4.margin, y, { width: A4.contentWidth / 2 });
+        .text(ctx.company.name, nameX, y + 4, { width: A4.contentWidth / 2 });
     }
 
     const rightInfo = [
@@ -673,6 +710,25 @@ export class DataBookPdfService {
     });
   }
 
+  private filterSpecForPlanType(spec: string | null, planType: string): string {
+    if (!spec) return "-";
+    const parts = spec
+      .split(/(?=\bINT\s*:|EXT\s*:)/i)
+      .map((s) => s.trim())
+      .filter(Boolean);
+    if (parts.length <= 1) return spec;
+
+    if (planType === "rubber") {
+      const intParts = parts.filter((p) => /^INT\s*:/i.test(p));
+      return intParts.length > 0 ? intParts.join("; ") : spec;
+    }
+    if (planType === "paint_external" || planType === "paint_internal") {
+      const extParts = parts.filter((p) => /^EXT\s*:/i.test(p));
+      return extParts.length > 0 ? extParts.join("; ") : spec;
+    }
+    return spec;
+  }
+
   private renderControlPlan(
     doc: PDFDoc,
     ctx: DataBookContext,
@@ -687,7 +743,6 @@ export class DataBookPdfService {
       hdpe: "HDPE",
     };
     const label = planLabels[plan.planType] ?? plan.planType;
-    const isRubber = plan.planType === "rubber";
     const docKey = QCP_PLAN_TYPE_DOC_KEYS[plan.planType] ?? "qcp_paint_ext";
     const docEntry = {
       ...DOC_NUMBERS[docKey],
@@ -709,8 +764,19 @@ export class DataBookPdfService {
 
     let y = pg.margin;
 
+    const logoH = 28;
+    const logoAreaW = 50;
+    if (ctx.logoBuffer) {
+      try {
+        doc.image(ctx.logoBuffer, pg.margin, y, { height: logoH, fit: [logoAreaW, logoH] });
+      } catch {
+        // logo failed to render — skip
+      }
+    }
+
+    const nameX = ctx.logoBuffer ? pg.margin + logoAreaW + 8 : pg.margin;
     doc.fontSize(11).font(FONT.BOLD).fillColor("#000000");
-    doc.text(companyName, pg.margin, y, { width: pg.contentWidth * 0.65 });
+    doc.text(companyName, nameX, y + 4, { width: pg.contentWidth * 0.5 });
 
     doc
       .fontSize(7)
@@ -719,38 +785,23 @@ export class DataBookPdfService {
       .text(
         `Doc: ${docEntry.docNumber}  |  Ed: ${docEntry.edition} Rev: ${docEntry.revision}`,
         pg.margin,
-        y + 2,
+        y + 6,
         { align: "right", width: pg.contentWidth },
       );
 
-    y += 18;
+    y += logoH + 4;
     doc.rect(pg.margin, y, pg.contentWidth, 2).fill(brandColor);
-    y += 8;
+    y += 6;
 
     doc
-      .fontSize(13)
+      .fontSize(12)
       .font(FONT.BOLD)
       .fillColor("#000000")
       .text(`Quality Control Plan - ${label}`, pg.margin, y, {
         align: "center",
         width: pg.contentWidth,
       });
-    y += 18;
-
-    const jobInfo = [
-      `Job Card: ${ctx.jobCard.jobNumber || ctx.jobCard.id}`,
-      ctx.jobCard.customerName ? `Customer: ${ctx.jobCard.customerName}` : null,
-      ctx.jobCard.poNumber ? `PO: ${ctx.jobCard.poNumber}` : null,
-    ]
-      .filter(Boolean)
-      .join("  |  ");
-
-    doc
-      .fontSize(7)
-      .font(FONT.REGULAR)
-      .fillColor("#6b7280")
-      .text(jobInfo, pg.margin, y, { align: "center", width: pg.contentWidth });
-    y += 12;
+    y += 16;
 
     doc
       .moveTo(pg.margin, y)
@@ -758,41 +809,47 @@ export class DataBookPdfService {
       .lineWidth(0.5)
       .stroke("#d1d5db");
     doc.lineWidth(1);
-    y += 8;
+    y += 6;
     doc.fillColor("#000000");
 
     const leftCol = pg.margin;
     const rightCol = pg.margin + pg.contentWidth * 0.5;
-    const labelW = 90;
-    const valW = pg.contentWidth * 0.5 - labelW;
+    const labelW = 80;
+    const valW = pg.contentWidth * 0.5 - labelW - 4;
+
+    const filteredSpec = this.filterSpecForPlanType(plan.specification, plan.planType);
 
     const infoLeft: Array<[string, string]> = [
       ["QCP Number:", plan.qcpNumber ?? "-"],
-      [isRubber ? "Job Card No:" : "Job Number:", ctx.jobCard.jobNumber || "-"],
+      ["Job Card:", ctx.jobCard.jobNumber || String(ctx.jobCard.id)],
       ["Description:", plan.itemDescription ?? "-"],
     ];
     const infoRight: Array<[string, string]> = [
       ["Customer:", plan.customerName ?? "-"],
-      ["Order Number:", plan.orderNumber ?? "-"],
-      ["Specification:", plan.specification ?? "-"],
+      ["Order No:", plan.orderNumber ?? "-"],
+      ["Specification:", filteredSpec],
     ];
 
     const infoStartY = y;
-    doc.fontSize(7.5);
+    doc.fontSize(7);
     infoLeft.forEach(([lbl, val]) => {
-      doc.font(FONT.BOLD).text(lbl, leftCol, y, { width: labelW, continued: false });
-      doc.font(FONT.REGULAR).text(val, leftCol + labelW, y - 10, { width: valW });
-      y += 12;
+      doc.font(FONT.BOLD).text(lbl, leftCol, y, { width: labelW, lineBreak: false });
+      doc
+        .font(FONT.REGULAR)
+        .text(val, leftCol + labelW, y, { width: valW, height: 10, ellipsis: true });
+      y += 11;
     });
 
     y = infoStartY;
     infoRight.forEach(([lbl, val]) => {
-      doc.font(FONT.BOLD).text(lbl, rightCol, y, { width: labelW, continued: false });
-      doc.font(FONT.REGULAR).text(val, rightCol + labelW, y - 10, { width: valW });
-      y += 12;
+      doc.font(FONT.BOLD).text(lbl, rightCol, y, { width: labelW, lineBreak: false });
+      doc
+        .font(FONT.REGULAR)
+        .text(val, rightCol + labelW, y, { width: valW, height: 10, ellipsis: true });
+      y += 11;
     });
 
-    y = infoStartY + infoLeft.length * 12 + 6;
+    y = infoStartY + infoLeft.length * 11 + 4;
 
     const mpsAbbrev = this.qcpClientAbbrev(plan);
     const hasThirdParty = plan.activities.some(
@@ -937,13 +994,13 @@ export class DataBookPdfService {
       y += rowH;
     });
 
-    y += 14;
+    y += 10;
     if (y > maxY - 60) {
       addNewPage();
     }
 
-    doc.fontSize(8).font(FONT.BOLD).text("Approval Signatures", pg.margin, y);
-    y += 14;
+    doc.fontSize(7).font(FONT.BOLD).text("Approval Signatures", pg.margin, y);
+    y += 12;
 
     const defaultSigParties = [
       { party: "PLS", name: null, signatureUrl: null, date: null },
@@ -959,30 +1016,29 @@ export class DataBookPdfService {
     const sigColW = pg.contentWidth / Math.max(sigParties.length, 3);
     sigParties.forEach((sig, idx) => {
       const sx = pg.margin + idx * sigColW;
-      doc.fontSize(7).font(FONT.BOLD).text(`Approved By: ${sig.party}`, sx, y, { width: sigColW });
       doc
-        .fontSize(7)
+        .fontSize(6.5)
+        .font(FONT.BOLD)
+        .text(`Approved By: ${sig.party}`, sx, y, { width: sigColW });
+      doc
+        .fontSize(6.5)
         .font(FONT.REGULAR)
-        .text(`Name: ${sig.name ?? ""}`, sx, y + 12, { width: sigColW });
-      doc.text("Signed: ________________", sx, y + 24, { width: sigColW });
-      doc.text(`Date: ${sig.date ?? ""}`, sx, y + 36, { width: sigColW });
+        .text(`Name: ${sig.name ?? ""}`, sx, y + 10, { width: sigColW });
+      doc.text("Signed: ________________", sx, y + 20, { width: sigColW });
+      doc.text(`Date: ${sig.date ?? ""}`, sx, y + 30, { width: sigColW });
     });
 
-    y += 56;
+    y += 46;
 
-    doc.fontSize(6.5).font(FONT.BOLD).text("Legend", pg.margin, y);
-    y += 10;
-    doc.fontSize(6).font(FONT.REGULAR);
-    const legendItems = [
-      ["H = Hold", "I = Inspection", "W = Witness"],
-      ["R = Review", "S = Surveillance", "V = Verify"],
-    ];
-    legendItems.forEach((row) => {
-      row.forEach((item, idx) => {
-        doc.text(item, pg.margin + idx * 130, y, { width: 130 });
-      });
-      y += 10;
-    });
+    doc.fontSize(6).font(FONT.BOLD).text("Legend", pg.margin, y);
+    y += 8;
+    doc.fontSize(5.5).font(FONT.REGULAR);
+    doc.text(
+      "H = Hold    I = Inspection    W = Witness    R = Review    S = Surveillance    V = Verify",
+      pg.margin,
+      y,
+      { width: pg.contentWidth },
+    );
   }
 
   private qcpClientAbbrev(plan: QcControlPlan): string {
