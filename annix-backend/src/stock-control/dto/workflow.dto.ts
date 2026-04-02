@@ -22,6 +22,13 @@ export class ApproveWorkflowStepDto {
   @IsOptional()
   @IsString()
   comments?: string;
+
+  @ApiPropertyOptional({
+    description: "Outcome key when step has multiple outcomes (e.g. soh, req)",
+  })
+  @IsOptional()
+  @IsString()
+  outcomeKey?: string;
 }
 
 export class RejectWorkflowStepDto {

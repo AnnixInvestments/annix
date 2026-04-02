@@ -45,7 +45,22 @@ const DEFAULT_STEPS: ReadonlyArray<{
     actionLabel: "Release to Factory",
     branchColor: null,
     phaseActionLabels: null,
-    stepOutcomes: null,
+    stepOutcomes: [
+      {
+        key: "soh",
+        label: "SOH",
+        nextStepKey: null,
+        notifyStepKey: null,
+        style: "green",
+      },
+      {
+        key: "req",
+        label: "REQ",
+        nextStepKey: null,
+        notifyStepKey: null,
+        style: "amber",
+      },
+    ],
     branchType: null,
     rejoinAtStep: null,
   },

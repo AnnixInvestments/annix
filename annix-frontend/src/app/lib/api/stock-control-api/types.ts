@@ -1595,6 +1595,7 @@ export interface WorkflowStatus {
     label: string;
     sortOrder: number;
     actionLabel: string | null;
+    stepOutcomes: StepOutcome[] | null;
   }>;
   backgroundSteps: Array<{
     stepKey: string;

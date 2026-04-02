@@ -65,6 +65,9 @@ export class JobCardApproval {
   @Column({ name: "rejected_reason", type: "text", nullable: true })
   rejectedReason: string | null;
 
+  @Column({ name: "outcome_key", type: "varchar", length: 50, nullable: true })
+  outcomeKey: string | null;
+
   @Column({ name: "approved_at", type: "timestamp", nullable: true })
   approvedAt: Date | null;
 

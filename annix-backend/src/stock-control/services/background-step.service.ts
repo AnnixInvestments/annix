@@ -10,6 +10,7 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { IsNull, Repository } from "typeorm";
 import { now } from "../../lib/datetime";
 import { JobCard } from "../entities/job-card.entity";
+import { JobCardApproval } from "../entities/job-card-approval.entity";
 import { JobCardBackgroundCompletion } from "../entities/job-card-background-completion.entity";
 import {
   NotificationActionType,
@@ -37,6 +38,8 @@ export class BackgroundStepService {
     private readonly completionRepo: Repository<JobCardBackgroundCompletion>,
     @InjectRepository(JobCard)
     private readonly jobCardRepo: Repository<JobCard>,
+    @InjectRepository(JobCardApproval)
+    private readonly approvalRepo: Repository<JobCardApproval>,
     @InjectRepository(WorkflowNotification)
     private readonly notificationRepo: Repository<WorkflowNotification>,
     private readonly stepConfigService: WorkflowStepConfigService,
@@ -144,6 +147,10 @@ export class BackgroundStepService {
       { id: user.id, name: user.name },
     );
 
+    if (stepKey === "reception") {
+      await this.autoSkipRequisitionChainIfSoh(companyId, jobCardId, user);
+    }
+
     if (stepKey === "qa_check") {
       await this.qaProcessService.autoSkipInapplicableSteps(companyId, jobCardId, user);
     }
@@ -219,6 +226,55 @@ export class BackgroundStepService {
     );
 
     return saved;
+  }
+
+  private async autoSkipRequisitionChainIfSoh(
+    companyId: number,
+    jobCardId: number,
+    user: UserContext,
+  ): Promise<void> {
+    const pmApproval = await this.approvalRepo.findOne({
+      where: { companyId, jobCardId, step: "manager_approval" },
+      order: { approvedAt: "DESC" },
+    });
+
+    if (pmApproval?.outcomeKey !== "soh") {
+      return;
+    }
+
+    const requisitionChainKeys = ["requisition", "req_auth", "order_placement"];
+    const bgSteps = await this.stepConfigService.backgroundSteps(companyId);
+    const validKeys = requisitionChainKeys.filter((key) => bgSteps.some((s) => s.key === key));
+
+    const existingCompletions = await this.completionRepo.find({
+      where: { jobCardId, companyId },
+    });
+    const completedKeys = new Set(existingCompletions.map((c) => c.stepKey));
+
+    const toSkip = validKeys.filter((key) => !completedKeys.has(key));
+
+    if (toSkip.length === 0) {
+      return;
+    }
+
+    const skippedCompletions = toSkip.map((key) =>
+      this.completionRepo.create({
+        companyId,
+        jobCardId,
+        stepKey: key,
+        completedById: user.id,
+        completedByName: "System (SOH)",
+        completedAt: now().toJSDate(),
+        notes: "Auto-skipped: PM approved with SOH (Stock on Hand)",
+        completionType: "skipped",
+      }),
+    );
+
+    await this.completionRepo.save(skippedCompletions);
+
+    this.logger.log(
+      `Auto-skipped requisition chain [${toSkip.join(", ")}] for job card ${jobCardId} (PM outcome: SOH)`,
+    );
   }
 
   async completeMultipleSteps(

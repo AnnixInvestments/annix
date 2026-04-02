@@ -314,10 +314,15 @@ export default function JobCardDetailPage() {
     await activateJobCard(true);
   };
 
-  const handleApprove = async (signatureDataUrl?: string, comments?: string) => {
+  const handleApprove = async (
+    signatureDataUrl?: string,
+    comments?: string,
+    outcomeKey?: string,
+  ) => {
     await stockControlApiClient.approveWorkflowStep(jobId, {
       signatureDataUrl,
       comments,
+      outcomeKey,
     });
     invalidateJobCardsList();
     fetchData();
@@ -2161,6 +2166,10 @@ export default function JobCardDetailPage() {
         onReject={handleReject}
         jobNumber={jobCard.jobNumber}
         stepName={currentApprovalStep.replace(/_/g, " ")}
+        stepOutcomes={
+          workflowStatus?.foregroundSteps?.find((s) => s.key === currentApprovalStep)
+            ?.stepOutcomes || null
+        }
       />
 
       {showSourceFileModal && sourceFileUrl && (

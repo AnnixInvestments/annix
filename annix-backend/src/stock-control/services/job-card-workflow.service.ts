@@ -25,6 +25,7 @@ import { ApprovalStatus, JobCardApproval } from "../entities/job-card-approval.e
 import { JobCardBackgroundCompletion } from "../entities/job-card-background-completion.entity";
 import { JobCardDocument, JobCardDocumentType } from "../entities/job-card-document.entity";
 import { StockControlRole } from "../entities/stock-control-user.entity";
+import type { StepOutcome } from "../entities/workflow-step-config.entity";
 import { WorkflowStepConfig } from "../entities/workflow-step-config.entity";
 import { BackgroundStepService } from "./background-step.service";
 import { RequisitionService } from "./requisition.service";
@@ -36,6 +37,7 @@ import { WorkflowStepConfigService } from "./workflow-step-config.service";
 interface ApprovalInput {
   signatureDataUrl?: string;
   comments?: string;
+  outcomeKey?: string;
 }
 
 interface UserContext {
@@ -147,6 +149,16 @@ export class JobCardWorkflowService {
 
     await this.validateUserIsAssigned(user, currentStep.key);
 
+    const fgOutcomes = currentStep.stepOutcomes || [];
+    const chosenOutcome = input.outcomeKey
+      ? fgOutcomes.find((o) => o.key === input.outcomeKey)
+      : null;
+    if (fgOutcomes.length > 0 && !chosenOutcome) {
+      throw new BadRequestException(
+        `Step "${currentStep.label}" requires an outcome. Valid outcomes: ${fgOutcomes.map((o) => o.key).join(", ")}`,
+      );
+    }
+
     const currentIdx = fgSteps.findIndex((s) => s.key === currentStep.key);
     if (currentIdx > 0) {
       const prevFgKey = fgSteps[currentIdx - 1].key;
@@ -225,6 +237,7 @@ export class JobCardWorkflowService {
       ApprovalStatus.APPROVED,
       signatureUrl,
       input.comments,
+      chosenOutcome?.key ?? null,
     );
 
     const nextStatus = this.nextFgStatus(currentStep.key, fgSteps);
@@ -561,6 +574,7 @@ export class JobCardWorkflowService {
       label: string;
       sortOrder: number;
       actionLabel: string | null;
+      stepOutcomes: StepOutcome[] | null;
     }>;
     backgroundSteps: Array<{
       stepKey: string;
@@ -628,6 +642,7 @@ export class JobCardWorkflowService {
       label: s.label,
       sortOrder: s.sortOrder,
       actionLabel: s.actionLabel,
+      stepOutcomes: s.stepOutcomes,
     }));
 
     const bgStepConfigs = await this.stepConfigService.backgroundSteps(companyId);
@@ -831,6 +846,7 @@ export class JobCardWorkflowService {
     status: ApprovalStatus = ApprovalStatus.APPROVED,
     signatureUrl?: string | null,
     comments?: string,
+    outcomeKey?: string | null,
   ): Promise<JobCardApproval> {
     const approval = this.approvalRepo.create({
       jobCardId,
@@ -841,6 +857,7 @@ export class JobCardWorkflowService {
       approvedByName: user.name,
       signatureUrl: signatureUrl ?? null,
       comments: comments ?? null,
+      outcomeKey: outcomeKey ?? null,
       approvedAt: status === ApprovalStatus.APPROVED ? now().toJSDate() : null,
     });
 

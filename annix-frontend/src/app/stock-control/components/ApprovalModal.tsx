@@ -2,22 +2,33 @@
 
 import { X } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
+import type { StepOutcome } from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { useModalAccessibility } from "../lib/useModalAccessibility";
 import { SignaturePad } from "./SignaturePad";
 
+const OUTCOME_STYLE_MAP: Record<string, string> = {
+  green: "bg-green-600 hover:bg-green-700",
+  red: "bg-red-600 hover:bg-red-700",
+  amber: "bg-amber-600 hover:bg-amber-700",
+  blue: "bg-blue-600 hover:bg-blue-700",
+};
+
 interface ApprovalModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onApprove: (signatureDataUrl?: string, comments?: string) => Promise<void>;
+  onApprove: (signatureDataUrl?: string, comments?: string, outcomeKey?: string) => Promise<void>;
   onReject: (reason: string) => Promise<void>;
   jobNumber: string;
   stepName: string;
+  stepOutcomes?: StepOutcome[] | null;
 }
 
 export function ApprovalModal(props: ApprovalModalProps) {
-  const { isOpen, onClose, onApprove, onReject, jobNumber, stepName } = props;
-  const [mode, setMode] = useState<"choice" | "approve" | "reject">("choice");
+  const { isOpen, onClose, onApprove, onReject, jobNumber, stepName, stepOutcomes } = props;
+  const hasOutcomes = stepOutcomes && stepOutcomes.length > 0;
+  const [mode, setMode] = useState<"choice" | "outcome" | "approve" | "reject">("choice");
+  const [selectedOutcome, setSelectedOutcome] = useState<string | null>(null);
   const [comments, setComments] = useState("");
   const [rejectReason, setRejectReason] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -48,7 +59,7 @@ export function ApprovalModal(props: ApprovalModalProps) {
       setError(null);
       try {
         const dataUrl = signatureDataUrl || undefined;
-        await onApprove(dataUrl, comments || undefined);
+        await onApprove(dataUrl, comments || undefined, selectedOutcome || undefined);
         onClose();
       } catch (err) {
         const message = err instanceof Error ? err.message : "Approval failed. Please try again.";
@@ -57,7 +68,7 @@ export function ApprovalModal(props: ApprovalModalProps) {
         setIsSubmitting(false);
       }
     },
-    [onApprove, comments, onClose],
+    [onApprove, comments, selectedOutcome, onClose],
   );
 
   const handleReject = useCallback(async () => {
@@ -80,15 +91,23 @@ export function ApprovalModal(props: ApprovalModalProps) {
 
   const handleClose = useCallback(() => {
     setMode("choice");
+    setSelectedOutcome(null);
     setComments("");
     setRejectReason("");
     setError(null);
     onClose();
   }, [onClose]);
 
+  const handleSelectOutcome = useCallback((outcomeKey: string) => {
+    setSelectedOutcome(outcomeKey);
+    setMode("approve");
+  }, []);
+
   const modalFocusRef = useModalAccessibility(isOpen, handleClose);
 
   if (!isOpen) return null;
+
+  const selectedOutcomeLabel = stepOutcomes?.find((o) => o.key === selectedOutcome)?.label || "";
 
   return (
     <div
@@ -104,7 +123,11 @@ export function ApprovalModal(props: ApprovalModalProps) {
           <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
             <h2 id="approval-modal-title" className="text-lg font-semibold text-gray-900">
               {mode === "choice" && `Workflow Action: ${jobNumber}`}
-              {mode === "approve" && `Approve: ${stepName}`}
+              {mode === "outcome" && `Select Outcome: ${stepName}`}
+              {mode === "approve" &&
+                (selectedOutcomeLabel
+                  ? `Approve (${selectedOutcomeLabel}): ${stepName}`
+                  : `Approve: ${stepName}`)}
               {mode === "reject" && `Reject: ${jobNumber}`}
             </h2>
             <button
@@ -122,7 +145,7 @@ export function ApprovalModal(props: ApprovalModalProps) {
                 <p className="text-gray-600">What would you like to do with this job card?</p>
                 <div className="flex space-x-4">
                   <button
-                    onClick={() => setMode("approve")}
+                    onClick={() => (hasOutcomes ? setMode("outcome") : setMode("approve"))}
                     className="flex-1 px-4 py-3 bg-teal-600 text-white rounded-lg hover:bg-teal-700 font-medium"
                   >
                     Approve
@@ -137,8 +160,39 @@ export function ApprovalModal(props: ApprovalModalProps) {
               </div>
             )}
 
+            {mode === "outcome" && hasOutcomes && (
+              <div className="space-y-4">
+                <p className="text-gray-600">
+                  Select the material sourcing method for this job card:
+                </p>
+                <div className="flex space-x-4">
+                  {stepOutcomes.map((outcome) => (
+                    <button
+                      key={outcome.key}
+                      onClick={() => handleSelectOutcome(outcome.key)}
+                      className={`flex-1 px-4 py-3 text-white rounded-lg font-medium ${OUTCOME_STYLE_MAP[outcome.style] || "bg-gray-600 hover:bg-gray-700"}`}
+                    >
+                      {outcome.label}
+                    </button>
+                  ))}
+                </div>
+                <button
+                  onClick={() => setMode("choice")}
+                  className="text-sm text-gray-500 hover:text-gray-700"
+                >
+                  Back
+                </button>
+              </div>
+            )}
+
             {mode === "approve" && (
               <div className="space-y-4">
+                {selectedOutcomeLabel && (
+                  <div className="px-3 py-2 bg-teal-50 border border-teal-200 rounded-md text-sm text-teal-800">
+                    Material sourcing: <span className="font-semibold">{selectedOutcomeLabel}</span>
+                  </div>
+                )}
+
                 <p className="text-gray-600">
                   {savedSignature
                     ? "Your saved signature is shown below. You can use it or draw a new one."
@@ -165,7 +219,7 @@ export function ApprovalModal(props: ApprovalModalProps) {
                   ) : (
                     <SignaturePad
                       onSave={handleApprove}
-                      onCancel={() => setMode("choice")}
+                      onCancel={() => (hasOutcomes ? setMode("outcome") : setMode("choice"))}
                       existingSignature={savedSignature}
                     />
                   )}

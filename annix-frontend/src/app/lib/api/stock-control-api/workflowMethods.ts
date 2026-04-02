@@ -37,7 +37,7 @@ declare module "./base" {
     approvalHistory(jobCardId: number): Promise<JobCardApproval[]>;
     approveWorkflowStep(
       jobCardId: number,
-      data: { signatureDataUrl?: string; comments?: string },
+      data: { signatureDataUrl?: string; comments?: string; outcomeKey?: string },
     ): Promise<JobCard>;
     rejectWorkflowStep(jobCardId: number, reason: string): Promise<JobCard>;
     pendingApprovals(): Promise<JobCard[]>;

@@ -13,6 +13,10 @@ import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { roleLabel } from "../../lib/roleLabels";
 
 const DEFAULT_STEP_OUTCOMES: Record<string, StepOutcome[]> = {
+  manager_approval: [
+    { key: "soh", label: "SOH", nextStepKey: null, notifyStepKey: null, style: "green" },
+    { key: "req", label: "REQ", nextStepKey: null, notifyStepKey: null, style: "amber" },
+  ],
   qa_review: [
     { key: "accept", label: "QA Accepted", nextStepKey: null, notifyStepKey: null, style: "green" },
     {
