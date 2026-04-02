@@ -641,9 +641,8 @@ export function QcpForm({ jobCardId, existingPlan, onSaved, onCancel }: QcpFormP
           <input
             type="text"
             value={revision}
-            onChange={(e) => setRevision(e.target.value)}
-            className="mt-1 w-full rounded border border-gray-300 px-3 py-2 text-sm"
-            placeholder="01"
+            readOnly
+            className="mt-1 w-full rounded border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-500 cursor-not-allowed"
           />
         </div>
       </div>
@@ -786,12 +785,17 @@ export function QcpForm({ jobCardId, existingPlan, onSaved, onCancel }: QcpFormP
                               (e.target.value as InterventionType) || null,
                             )
                           }
-                          className="w-14 rounded border border-gray-300 px-0.5 py-1 text-center text-xs"
+                          title={
+                            signOff.interventionType
+                              ? `${signOff.interventionType} - ${INTERVENTION_LABELS[signOff.interventionType]}`
+                              : ""
+                          }
+                          className="w-11 overflow-hidden text-ellipsis rounded border border-gray-300 px-0.5 py-1 text-center text-xs"
                         >
                           <option value="">-</option>
                           {INTERVENTION_TYPES.map((t) => (
                             <option key={t} value={t}>
-                              {t}
+                              {t} - {INTERVENTION_LABELS[t]}
                             </option>
                           ))}
                         </select>
