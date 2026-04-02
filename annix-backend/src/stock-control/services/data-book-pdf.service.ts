@@ -795,14 +795,19 @@ export class DataBookPdfService {
     y = infoStartY + infoLeft.length * 12 + 6;
 
     const mpsAbbrev = this.qcpClientAbbrev(plan);
+    const hasThirdParty = plan.activities.some(
+      (a) => (a as any).thirdParty?.interventionType || (a as any).thirdParty?.initial,
+    );
+    const partyCols = hasThirdParty ? 4 : 3;
+
     const opW = 24;
-    const descW = 155;
-    const specW = 110;
-    const docColW = 80;
+    const descW = hasThirdParty ? 155 : 170;
+    const specW = hasThirdParty ? 110 : 120;
+    const docColW = hasThirdParty ? 80 : 90;
     const partyIntW = 22;
     const partySignW = 26;
     const partyW = partyIntW + partySignW;
-    const remarkW = pg.contentWidth - opW - descW - specW - docColW - partyW * 4;
+    const remarkW = pg.contentWidth - opW - descW - specW - docColW - partyW * partyCols;
 
     const opX = pg.margin;
     const descX = opX + opW;
@@ -812,7 +817,7 @@ export class DataBookPdfService {
     const mpsX = plsX + partyW;
     const clientX = mpsX + partyW;
     const thirdX = clientX + partyW;
-    const remarkX = thirdX + partyW;
+    const remarkX = hasThirdParty ? thirdX + partyW : clientX + partyW;
 
     const headerH = 28;
     doc.rect(pg.margin, y - 2, pg.contentWidth, headerH).fill("#f3f4f6");
@@ -824,7 +829,7 @@ export class DataBookPdfService {
     doc.text("SPECIFICATION /\nPROCEDURE", specX + 2, y + 2, { width: specW - 4 });
     doc.text("DOCUMENTATION", docColX + 2, y + 5, { width: docColW - 4 });
 
-    const interventionsW = partyW * 4;
+    const interventionsW = partyW * partyCols;
     doc.text("INTERVENTIONS", plsX, y, {
       width: interventionsW,
       align: "center",
@@ -838,8 +843,10 @@ export class DataBookPdfService {
     doc.text("SIGN", mpsX + partyIntW + 1, subY, { width: partySignW - 2, align: "center" });
     doc.text(mpsAbbrev || "Client", clientX + 1, subY, { width: partyIntW - 2, align: "center" });
     doc.text("SIGN", clientX + partyIntW + 1, subY, { width: partySignW - 2, align: "center" });
-    doc.text("3rd Party", thirdX + 1, subY, { width: partyIntW - 2, align: "center" });
-    doc.text("SIGN", thirdX + partyIntW + 1, subY, { width: partySignW - 2, align: "center" });
+    if (hasThirdParty) {
+      doc.text("3rd Party", thirdX + 1, subY, { width: partyIntW - 2, align: "center" });
+      doc.text("SIGN", thirdX + partyIntW + 1, subY, { width: partySignW - 2, align: "center" });
+    }
     doc.text("REMARKS", remarkX + 2, y + 5, { width: remarkW - 4 });
 
     y += headerH;
@@ -914,13 +921,15 @@ export class DataBookPdfService {
         align: "center",
       });
 
-      doc.fontSize(6).font(FONT.BOLD);
-      doc.text(thirdType, thirdX + 1, y + 3, { width: partyIntW - 2, align: "center" });
-      doc.fontSize(5.5).font(FONT.REGULAR);
-      doc.text((activity as any).thirdParty?.initial ?? "", thirdX + partyIntW + 1, y + 3, {
-        width: partySignW - 2,
-        align: "center",
-      });
+      if (hasThirdParty) {
+        doc.fontSize(6).font(FONT.BOLD);
+        doc.text(thirdType, thirdX + 1, y + 3, { width: partyIntW - 2, align: "center" });
+        doc.fontSize(5.5).font(FONT.REGULAR);
+        doc.text((activity as any).thirdParty?.initial ?? "", thirdX + partyIntW + 1, y + 3, {
+          width: partySignW - 2,
+          align: "center",
+        });
+      }
 
       doc.font(FONT.REGULAR).fontSize(6);
       doc.text(activity.remarks ?? "", remarkX + 2, y + 3, { width: remarkW - 4 });
@@ -936,17 +945,18 @@ export class DataBookPdfService {
     doc.fontSize(8).font(FONT.BOLD).text("Approval Signatures", pg.margin, y);
     y += 14;
 
+    const defaultSigParties = [
+      { party: "PLS", name: null, signatureUrl: null, date: null },
+      { party: "MPS", name: null, signatureUrl: null, date: null },
+      { party: mpsAbbrev || "Client", name: null, signatureUrl: null, date: null },
+      ...(hasThirdParty
+        ? [{ party: "3rd Party", name: null, signatureUrl: null, date: null }]
+        : []),
+    ];
     const sigParties =
-      plan.approvalSignatures.length > 0
-        ? plan.approvalSignatures
-        : [
-            { party: "PLS", name: null, signatureUrl: null, date: null },
-            { party: "MPS", name: null, signatureUrl: null, date: null },
-            { party: mpsAbbrev || "Client", name: null, signatureUrl: null, date: null },
-            { party: "3rd Party", name: null, signatureUrl: null, date: null },
-          ];
+      plan.approvalSignatures.length > 0 ? plan.approvalSignatures : defaultSigParties;
 
-    const sigColW = pg.contentWidth / Math.max(sigParties.length, 4);
+    const sigColW = pg.contentWidth / Math.max(sigParties.length, 3);
     sigParties.forEach((sig, idx) => {
       const sx = pg.margin + idx * sigColW;
       doc.fontSize(7).font(FONT.BOLD).text(`Approved By: ${sig.party}`, sx, y, { width: sigColW });

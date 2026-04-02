@@ -77,6 +77,26 @@ function customerShortName(name: string | null): string {
     .toUpperCase();
 }
 
+function filteredSpec(spec: string | null, planType: QcpPlanType): string {
+  if (!spec) return "";
+  const isPaint = planType === "paint_external" || planType === "paint_internal";
+  const isRubber = planType === "rubber";
+  if (!isPaint && !isRubber) return spec;
+
+  const parts = spec
+    .split(/(?=\bINT\s*:|EXT\s*:)/i)
+    .map((s) => s.trim())
+    .filter(Boolean);
+  if (parts.length <= 1) return spec;
+
+  if (isPaint) {
+    const extParts = parts.filter((p) => /^EXT\s*:/i.test(p));
+    return extParts.length > 0 ? extParts.join(" ") : spec;
+  }
+  const intParts = parts.filter((p) => /^INT\s*:/i.test(p));
+  return intParts.length > 0 ? intParts.join(" ") : spec;
+}
+
 function signOffProgress(plan: QcControlPlanRecord): { signed: number; total: number } {
   const total = plan.activities.reduce((acc, a) => {
     const count =
@@ -373,7 +393,9 @@ export function QcpSection({ jobCardId }: QcpSectionProps) {
                         {plan.qcpNumber || `QCP #${plan.id}`}
                       </span>
                       {plan.specification && (
-                        <span className="ml-2 text-xs text-gray-500">{plan.specification}</span>
+                        <span className="ml-2 text-xs text-gray-500">
+                          {filteredSpec(plan.specification, plan.planType)}
+                        </span>
                       )}
                       <div className="flex items-center gap-2 text-xs text-gray-500">
                         <span>{plan.activities.length} activities</span>
@@ -517,9 +539,13 @@ export function QcpSection({ jobCardId }: QcpSectionProps) {
                               activity={a}
                               activityIndex={i}
                               party="thirdParty"
-                              editable={false}
-                              onChangeIntervention={() => {}}
-                              onChangeInitial={() => {}}
+                              editable={true}
+                              onChangeIntervention={(idx, party, val) =>
+                                handlePartyInterventionChange(plan.id, idx, party, val)
+                              }
+                              onChangeInitial={(idx, party, val) =>
+                                handlePartyInitialChange(plan.id, idx, party, val)
+                              }
                             />
                           </tr>
                         ))}
