@@ -10,7 +10,7 @@ import { JobCardCoatingAnalysis } from "../entities/coating-analysis.entity";
 import type { RubberPlanManualRoll } from "../entities/job-card.entity";
 import { JobCard } from "../entities/job-card.entity";
 import { ApprovalStatus, JobCardApproval } from "../entities/job-card-approval.entity";
-import { StockControlCompany } from "../entities/stock-control-company.entity";
+import { BrandingType, StockControlCompany } from "../entities/stock-control-company.entity";
 import { StockItem } from "../entities/stock-item.entity";
 import {
   type BandSpec,
@@ -83,6 +83,9 @@ export class JobCardPdfService {
     const qrUrl = `${frontendUrl}/stock-control/portal/job-cards/${jobCardId}/dispatch`;
     const qrDataUrl = await QRCode.toDataURL(qrUrl, { width: 120, margin: 1 });
 
+    const logoBuffer =
+      company?.brandingType === BrandingType.CUSTOM ? await this.fetchCompanyLogo(company) : null;
+
     const buffer = await this.createPdf(
       jobCard,
       company,
@@ -90,6 +93,7 @@ export class JobCardPdfService {
       coatingAnalysis,
       qrDataUrl,
       stepConfigs,
+      logoBuffer,
     );
     const filename = `JC-${jobCard.jobNumber}-${jobCard.id}.pdf`;
 
@@ -103,6 +107,7 @@ export class JobCardPdfService {
     coatingAnalysis: JobCardCoatingAnalysis | null,
     qrDataUrl: string,
     stepConfigs: { key: string; label: string }[] = [],
+    logoBuffer: Buffer | null = null,
   ): Promise<Buffer> {
     const rubberAllocationResult = await this.prepareRubberAllocation(jobCard);
     const signatureBuffers = await this.fetchSignatureBuffers(approvals);
@@ -121,7 +126,7 @@ export class JobCardPdfService {
         0,
       );
 
-      this.drawHeader(doc, company, jobCard);
+      this.drawHeader(doc, company, jobCard, logoBuffer);
       const detailsEndY = this.drawJobCardDetails(doc, jobCard, noteItems);
       this.drawQrCode(doc, qrDataUrl);
 
@@ -171,6 +176,19 @@ export class JobCardPdfService {
     return bufferMap;
   }
 
+  private async fetchCompanyLogo(company: StockControlCompany | null): Promise<Buffer | null> {
+    if (!company?.logoUrl) return null;
+    try {
+      if (company.logoUrl.startsWith("http")) {
+        return Buffer.from(await (await fetch(company.logoUrl)).arrayBuffer());
+      }
+      return this.storageService.download(company.logoUrl);
+    } catch (err) {
+      this.logger.warn(`Failed to fetch company logo: ${err}`);
+      return null;
+    }
+  }
+
   private extractS3Key(url: string): string {
     try {
       const parsed = new URL(url);
@@ -184,16 +202,33 @@ export class JobCardPdfService {
     doc: typeof PDFDocument,
     company: StockControlCompany | null,
     jobCard: JobCard,
+    logoBuffer: Buffer | null = null,
   ): void {
     const companyName = company?.name || "Stock Control";
+    const brandColor = company?.primaryColor || "#000000";
+
+    const logoH = 36;
+    const logoAreaW = 44;
+    let nameX = 50;
+
+    if (logoBuffer) {
+      try {
+        doc.image(logoBuffer, 50, 42, { height: logoH, fit: [logoAreaW, logoH] });
+        nameX = 50 + logoAreaW + 8;
+      } catch {
+        this.logger.warn("Failed to render company logo in job card PDF");
+      }
+    }
 
     doc
       .fontSize(20)
       .font("Helvetica-Bold")
-      .text(companyName, 50, 50, { align: "left" })
+      .fillColor(logoBuffer ? brandColor : "#000000")
+      .text(companyName, nameX, 50, { align: "left", width: 350 - nameX + 50 })
       .fontSize(14)
       .font("Helvetica")
-      .text("JOB CARD", 50, 75, { align: "left" });
+      .fillColor("#000000")
+      .text("JOB CARD", nameX, 75, { align: "left" });
 
     doc.fontSize(24).font("Helvetica-Bold").text(jobCard.jobNumber, 400, 50, { align: "right" });
 
@@ -204,7 +239,12 @@ export class JobCardPdfService {
         .text(`JT: ${jobCard.jcNumber}`, 400, 80, { align: "right" });
     }
 
-    doc.moveTo(50, 100).lineTo(545, 100).stroke();
+    doc
+      .strokeColor(logoBuffer ? brandColor : "#000000")
+      .moveTo(50, 100)
+      .lineTo(545, 100)
+      .stroke()
+      .strokeColor("#000000");
   }
 
   private drawJobCardDetails(
