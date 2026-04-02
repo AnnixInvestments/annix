@@ -230,6 +230,28 @@ export function ReleaseDocumentGenerator(props: ReleaseDocumentGeneratorProps) {
           </div>
         ) : (
           <>
+            {existingReleases.length > 0 && (
+              <div className="mb-3 rounded-md bg-blue-50 border border-blue-200 p-3">
+                <p className="text-xs font-medium text-blue-800 mb-2">
+                  Previous releases ({existingReleases.length}):
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {existingReleases.map((release, idx) => (
+                    <button
+                      key={release.id}
+                      type="button"
+                      onClick={() =>
+                        stockControlApiClient.openItemsReleasePdf(jobCardId, release.id)
+                      }
+                      className="inline-flex items-center gap-1.5 rounded-md bg-white border border-blue-300 px-3 py-1.5 text-xs font-medium text-blue-800 hover:bg-blue-100 transition-colors"
+                    >
+                      <Download className="h-3.5 w-3.5" />
+                      Release #{idx + 1} PDF
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
             <div className="overflow-x-auto rounded-md border border-teal-200 bg-white">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
