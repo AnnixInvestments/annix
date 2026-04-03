@@ -111,21 +111,6 @@ export default function PortalToolbar(props: PortalToolbarProps) {
             <div className="flex-shrink-0 flex items-center">
               <Link href={config.homeHref} className="flex items-center space-x-3">
                 <AmixLogo size="sm" showText={true} />
-                <Tooltip text="Return to Annix Landing Page" position="bottom">
-                  <svg
-                    className="w-5 h-5 opacity-60 hover:opacity-100 transition-opacity"
-                    fill="none"
-                    stroke={corpId.colors.accent.orange}
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={1.5}
-                      d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"
-                    />
-                  </svg>
-                </Tooltip>
                 {config.title && (
                   <span
                     className="text-lg font-semibold hidden md:block"

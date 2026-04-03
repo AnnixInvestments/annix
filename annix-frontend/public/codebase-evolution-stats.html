@@ -44,101 +44,54 @@
       line-height: 1.6;
       transition: background 0.3s, color 0.3s;
     }
-
-    /* ── Sticky nav ──────────────────────────────────────── */
     .sticky-nav {
-      position: sticky;
-      top: 0;
-      z-index: 100;
+      position: sticky; top: 0; z-index: 100;
       background: var(--navy-dark);
       border-bottom: 1px solid rgba(255,255,255,0.08);
       backdrop-filter: blur(8px);
     }
     .sticky-nav-inner {
-      max-width: 1200px;
-      margin: 0 auto;
-      padding: 0 32px;
-      height: 56px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
+      max-width: 1200px; margin: 0 auto; padding: 0 32px;
+      height: 56px; display: flex; align-items: center; justify-content: space-between;
     }
-
-    /* ── Header ──────────────────────────────────────────── */
     header {
       background: linear-gradient(135deg, var(--navy-dark) 0%, var(--navy) 60%, var(--navy-light) 100%);
-      padding: 0;
-      position: relative;
-      overflow: hidden;
+      padding: 0; position: relative; overflow: hidden;
     }
     header::after {
-      content: '';
-      position: absolute;
-      inset: 0;
+      content: ''; position: absolute; inset: 0;
       background: radial-gradient(ellipse at 80% 50%, rgba(255,165,0,0.15) 0%, transparent 60%);
       pointer-events: none;
     }
-    .header-inner {
-      max-width: 1200px;
-      margin: 0 auto;
-      padding: 40px 32px 40px;
-      position: relative;
-      z-index: 1;
-    }
-    .brand {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
+    .header-inner { max-width: 1200px; margin: 0 auto; padding: 40px 32px 40px; position: relative; z-index: 1; }
+    .brand { display: flex; align-items: center; gap: 12px; }
     .brand-logo { height: 40px; display: flex; align-items: center; gap: 8px; }
     .brand-logo img { height: 40px; width: auto; }
-    .brand-sub  { color: rgba(255,255,255,0.55); font-size: 13px; margin-top: 1px; }
+    .brand-sub { color: rgba(255,255,255,0.55); font-size: 13px; margin-top: 1px; }
     .theme-btn {
-      background: rgba(255,255,255,0.12);
-      border: 1px solid rgba(255,255,255,0.2);
-      color: white;
-      padding: 8px 16px;
-      border-radius: 20px;
-      cursor: pointer;
-      font-size: 13px;
-      font-family: inherit;
-      transition: background 0.2s;
+      background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.2);
+      color: white; padding: 8px 16px; border-radius: 20px; cursor: pointer;
+      font-size: 13px; font-family: inherit; transition: background 0.2s;
     }
     .theme-btn:hover { background: rgba(255,255,255,0.2); }
     .header-title { color: white; font-size: 36px; font-weight: 800; letter-spacing: -1px; margin-bottom: 8px; }
     .header-subtitle { color: rgba(255,255,255,0.65); font-size: 16px; max-width: 560px; }
     .header-accent { color: var(--orange); }
-
-    /* ── Hero stats ─────────────────────────────────────── */
     .hero-stats {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 16px;
-      max-width: 1200px;
-      margin: -32px auto 0;
-      padding: 0 32px;
-      position: relative;
-      z-index: 2;
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px;
+      max-width: 1200px; margin: -32px auto 0; padding: 0 32px;
+      position: relative; z-index: 2;
     }
     .stat-card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 24px 20px;
-      box-shadow: var(--shadow);
-      text-align: center;
+      background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 24px 20px; box-shadow: var(--shadow); text-align: center;
       transition: transform 0.2s, box-shadow 0.2s;
     }
     .stat-card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(50,50,136,0.12); }
-    .stat-number {
-      font-size: 36px; font-weight: 800; letter-spacing: -1px;
-      color: var(--navy); line-height: 1;
-    }
+    .stat-number { font-size: 36px; font-weight: 800; letter-spacing: -1px; color: var(--navy); line-height: 1; }
     .dark .stat-number { color: var(--orange); }
     .stat-label { font-size: 13px; color: var(--muted); margin-top: 6px; font-weight: 500; }
     .stat-sub { font-size: 11px; color: var(--orange); font-weight: 600; margin-top: 4px; }
-
-    /* ── Main layout ────────────────────────────────────── */
     main { max-width: 1200px; margin: 0 auto; padding: 48px 32px; }
     section { margin-bottom: 56px; }
     .section-title {
@@ -148,83 +101,47 @@
       display: flex; align-items: center; gap: 10px;
     }
     .dark .section-title { color: white; }
-    .section-title .dot {
-      width: 8px; height: 8px; border-radius: 50%;
-      background: var(--orange); flex-shrink: 0;
-    }
-
-    /* ── Repo journey callout ───────────────────────────── */
-    .journey {
-      display: grid;
-      grid-template-columns: 1fr auto 1fr;
-      gap: 0;
-      align-items: center;
-    }
+    .section-title .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--orange); flex-shrink: 0; }
+    .journey { display: grid; grid-template-columns: 1fr auto 1fr; gap: 0; align-items: center; }
     .repo-card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 28px 24px;
-      box-shadow: var(--shadow);
+      background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 28px 24px; box-shadow: var(--shadow);
     }
     .repo-card.current {
-      border-color: var(--navy);
-      border-width: 2px;
+      border-color: var(--navy); border-width: 2px;
       background: linear-gradient(135deg, rgba(50,50,136,0.04) 0%, transparent 100%);
     }
-    .dark .repo-card.current {
-      background: linear-gradient(135deg, rgba(50,50,136,0.2) 0%, transparent 100%);
-    }
+    .dark .repo-card.current { background: linear-gradient(135deg, rgba(50,50,136,0.2) 0%, transparent 100%); }
     .repo-tag {
-      display: inline-block;
-      font-size: 11px; font-weight: 700; letter-spacing: 0.8px; text-transform: uppercase;
-      padding: 4px 10px; border-radius: 20px; margin-bottom: 12px;
+      display: inline-block; font-size: 11px; font-weight: 700; letter-spacing: 0.8px;
+      text-transform: uppercase; padding: 4px 10px; border-radius: 20px; margin-bottom: 12px;
     }
     .repo-tag.vendor { background: rgba(255,165,0,0.12); color: var(--orange-dark); }
     .dark .repo-tag.vendor { color: var(--orange); background: rgba(255,165,0,0.2); }
-    .repo-tag.owned  { background: rgba(50,50,136,0.1); color: var(--navy); }
-    .dark .repo-tag.owned  { background: rgba(74,77,163,0.3); color: #9da4f5; }
+    .repo-tag.owned { background: rgba(50,50,136,0.1); color: var(--navy); }
+    .dark .repo-tag.owned { background: rgba(74,77,163,0.3); color: #9da4f5; }
     .repo-name { font-size: 18px; font-weight: 700; color: var(--text); margin-bottom: 4px; }
     .repo-period { font-size: 13px; color: var(--muted); margin-bottom: 16px; }
     .repo-stat { font-size: 13px; color: var(--muted); display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid var(--border); }
     .repo-stat:last-child { border-bottom: none; }
     .repo-stat strong { color: var(--text); font-weight: 600; }
-    .journey-arrow {
-      text-align: center; padding: 0 20px; color: var(--orange);
-      font-size: 28px; font-weight: 300;
-    }
+    .journey-arrow { text-align: center; padding: 0 20px; color: var(--orange); font-size: 28px; font-weight: 300; }
     .journey-arrow span { display: block; font-size: 11px; color: var(--muted); font-weight: 500; margin-top: 4px; white-space: nowrap; }
-
-    /* ── Callout box ─────────────────────────────────────── */
     .callout {
       background: linear-gradient(135deg, rgba(255,165,0,0.08) 0%, rgba(50,50,136,0.06) 100%);
-      border: 1px solid rgba(255,165,0,0.3);
-      border-radius: var(--radius);
-      padding: 20px 24px;
-      margin-top: 20px;
-      font-size: 14px;
-      color: var(--text);
+      border: 1px solid rgba(255,165,0,0.3); border-radius: var(--radius);
+      padding: 20px 24px; margin-top: 20px; font-size: 14px; color: var(--text);
     }
     .callout strong { color: var(--navy); }
     .dark .callout strong { color: var(--orange); }
-
-    /* ── Chart grid ─────────────────────────────────────── */
     .chart-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
     .chart-grid-3 { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 24px; }
     .chart-card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 24px;
-      box-shadow: var(--shadow);
+      background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 24px; box-shadow: var(--shadow);
     }
-    .chart-card-header {
-      display: flex; align-items: flex-start; justify-content: space-between;
-      gap: 8px; margin-bottom: 4px;
-    }
-    .chart-card-title {
-      font-size: 15px; font-weight: 600; color: var(--text);
-    }
+    .chart-card-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; margin-bottom: 4px; }
+    .chart-card-title { font-size: 15px; font-weight: 600; color: var(--text); }
     .chart-expand-btn {
       flex-shrink: 0; background: none; border: 1px solid var(--border);
       color: var(--muted); border-radius: 6px; width: 28px; height: 28px;
@@ -238,8 +155,6 @@
     .chart-wrap.tall { height: 260px; }
     .chart-wrap.medium { height: 220px; }
     .chart-wrap.small { height: 200px; }
-
-    /* ── Chart modal overlay ─────────────────────────────── */
     #chartModal {
       display: none; position: fixed; inset: 0; z-index: 300;
       background: rgba(0,0,0,0.72); backdrop-filter: blur(3px);
@@ -253,26 +168,16 @@
       width: min(92vw, 1100px); height: min(84vh, 700px);
       padding: 20px; position: relative; overflow: hidden;
     }
-    .chart-modal-header {
-      display: flex; align-items: center; justify-content: space-between;
-      margin-bottom: 16px; flex-shrink: 0;
-    }
-    .chart-modal-title {
-      font-size: 15px; font-weight: 600; color: var(--text);
-    }
+    .chart-modal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; flex-shrink: 0; }
+    .chart-modal-title { font-size: 15px; font-weight: 600; color: var(--text); }
     .chart-modal-close {
       background: var(--surface-2); border: 1px solid var(--border);
       border-radius: 8px; width: 32px; height: 32px; cursor: pointer;
-      color: var(--text); display: flex; align-items: center;
-      justify-content: center; flex-shrink: 0;
+      color: var(--text); display: flex; align-items: center; justify-content: center; flex-shrink: 0;
     }
     .chart-modal-close:hover { background: var(--border); }
-    .chart-modal-canvas-wrap {
-      flex: 1; min-height: 0; position: relative;
-    }
+    .chart-modal-canvas-wrap { flex: 1; min-height: 0; position: relative; }
     #modalCanvas { position: absolute; inset: 0; }
-
-    /* ── Contributor bars ───────────────────────────────── */
     .contrib-list { display: flex; flex-direction: column; gap: 14px; margin-top: 4px; }
     .contrib-item { display: block; }
     .contrib-meta { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
@@ -283,139 +188,69 @@
     .bar-navy   { background: var(--navy); }
     .bar-orange { background: var(--orange); }
     .bar-light  { background: var(--navy-light); }
-
-    /* ── Metric tiles ────────────────────────────────────── */
     .metric-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
     .metric-tile {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 20px;
-      box-shadow: var(--shadow);
-      text-align: center;
+      background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 20px; box-shadow: var(--shadow); text-align: center;
     }
     .metric-icon { font-size: 28px; margin-bottom: 8px; }
     .metric-val { font-size: 28px; font-weight: 800; letter-spacing: -0.5px; color: var(--navy); }
     .dark .metric-val { color: var(--orange); }
     .metric-lbl { font-size: 12px; color: var(--muted); margin-top: 4px; font-weight: 500; }
-
-    /* ── Tech stack ─────────────────────────────────────── */
     .stack-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
     .stack-card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 24px;
-      box-shadow: var(--shadow);
+      background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 24px; box-shadow: var(--shadow);
     }
     .stack-header {
       font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px;
       color: var(--muted); margin-bottom: 16px; padding-bottom: 10px;
-      border-bottom: 1px solid var(--border);
-      display: flex; align-items: center; gap: 8px;
+      border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 8px;
     }
     .stack-header .badge {
-      background: var(--navy); color: white;
-      font-size: 10px; padding: 2px 8px; border-radius: 10px;
+      background: var(--navy); color: white; font-size: 10px; padding: 2px 8px; border-radius: 10px;
       text-transform: none; letter-spacing: 0;
     }
     .dark .stack-header .badge { background: var(--orange); }
     .tech-chips { display: flex; flex-wrap: wrap; gap: 8px; }
     .chip {
-      background: var(--surface-2);
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      padding: 5px 12px;
-      font-size: 13px; font-weight: 500; color: var(--text);
+      background: var(--surface-2); border: 1px solid var(--border); border-radius: 6px;
+      padding: 5px 12px; font-size: 13px; font-weight: 500; color: var(--text);
     }
     .chip.primary { background: rgba(50,50,136,0.08); border-color: rgba(50,50,136,0.2); color: var(--navy); }
     .dark .chip.primary { background: rgba(74,77,163,0.2); border-color: rgba(74,77,163,0.4); color: #9da4f5; }
-
-    /* ── Footer ─────────────────────────────────────────── */
     footer {
-      background: var(--navy-dark);
-      color: rgba(255,255,255,0.5);
-      text-align: center;
-      padding: 24px;
-      font-size: 13px;
+      background: var(--navy-dark); color: rgba(255,255,255,0.5);
+      text-align: center; padding: 24px; font-size: 13px;
     }
     footer.page-footer > strong { color: rgba(255,255,255,0.8); }
-
-    /* ── Cost comparison ────────────────────────────────── */
-    .cost-grid {
-      display: grid;
-      grid-template-columns: 1fr auto 1fr;
-      gap: 0;
-      align-items: stretch;
-      margin-bottom: 24px;
-    }
+    .cost-grid { display: grid; grid-template-columns: 1fr auto 1fr; gap: 0; align-items: stretch; margin-bottom: 24px; }
     .cost-card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 28px 24px;
-      box-shadow: var(--shadow);
+      background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 28px 24px; box-shadow: var(--shadow);
     }
     .cost-card.highlight { border-color: var(--orange); box-shadow: 0 0 0 2px rgba(255,165,0,0.15), var(--shadow); }
     .cost-divider {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 0 20px;
-      font-size: 13px;
-      font-weight: 600;
-      color: var(--orange);
-      white-space: nowrap;
-      flex-direction: column;
-      gap: 4px;
+      display: flex; align-items: center; justify-content: center; padding: 0 20px;
+      font-size: 13px; font-weight: 600; color: var(--orange); white-space: nowrap;
+      flex-direction: column; gap: 4px;
     }
-    .cost-label {
-      font-size: 11px;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.8px;
-      color: var(--muted);
-      margin-bottom: 12px;
-    }
-    .cost-headline {
-      font-size: 32px;
-      font-weight: 800;
-      color: var(--text);
-      letter-spacing: -1px;
-      margin-bottom: 4px;
-    }
+    .cost-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: var(--muted); margin-bottom: 12px; }
+    .cost-headline { font-size: 32px; font-weight: 800; color: var(--text); letter-spacing: -1px; margin-bottom: 4px; }
     .cost-headline.orange { color: var(--orange); }
-    .cost-sub {
-      font-size: 13px;
-      color: var(--muted);
-      margin-bottom: 20px;
-    }
-    .cost-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 8px 0;
-      border-bottom: 1px solid var(--border);
-      font-size: 13px;
-    }
+    .cost-sub { font-size: 13px; color: var(--muted); margin-bottom: 20px; }
+    .cost-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
     .cost-row:last-child { border-bottom: none; }
     .cost-row span { color: var(--muted); }
     .cost-row strong { color: var(--text); }
     .value-callout {
       background: linear-gradient(135deg, var(--navy-dark), var(--navy));
-      border-radius: var(--radius);
-      padding: 28px 32px;
-      color: white;
-      display: grid;
-      grid-template-columns: 1fr 1fr 1fr;
-      gap: 24px;
-      text-align: center;
+      border-radius: var(--radius); padding: 28px 32px; color: white;
+      display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 24px; text-align: center;
     }
     .value-stat-num { font-size: 36px; font-weight: 800; color: var(--orange); letter-spacing: -1px; }
     .value-stat-lbl { font-size: 12px; color: rgba(255,255,255,0.6); margin-top: 4px; text-transform: uppercase; letter-spacing: 0.6px; }
     .value-stat-sub { font-size: 13px; color: rgba(255,255,255,0.45); margin-top: 2px; }
-
-    /* ── Responsive ─────────────────────────────────────── */
     @media (max-width: 900px) {
       .hero-stats { grid-template-columns: repeat(2, 1fr); margin-top: -20px; }
       .chart-grid-2, .chart-grid-3 { grid-template-columns: 1fr; }
@@ -464,78 +299,76 @@
 <header>
   <div class="header-inner">
     <h1 class="header-title">Codebase <span class="header-accent">Evolution</span></h1>
-    <p class="header-subtitle">From a vendor-built foundation of 28K lines to 748K lines in 13 weeks — the AI-multiplied productivity story.</p>
+    <p class="header-subtitle">From a vendor-built foundation of 28K lines to 799K lines in 15 weeks &mdash; the AI-multiplied productivity story.</p>
   </div>
 </header>
 
 <div class="hero-stats">
   <div class="stat-card">
-    <div class="stat-number">748K</div>
+    <div class="stat-number">799K</div>
     <div class="stat-label">Lines of TypeScript</div>
     <div class="stat-sub">Frontend + Backend</div>
   </div>
   <div class="stat-card">
-    <div class="stat-number">2,044</div>
+    <div class="stat-number">2,389</div>
     <div class="stat-label">Team Commits</div>
-    <div class="stat-sub">~157/week since Dec 17</div>
+    <div class="stat-sub">~159/week since Dec 17</div>
   </div>
   <div class="stat-card">
-    <div class="stat-number">2,905</div>
+    <div class="stat-number">3,102</div>
     <div class="stat-label">TypeScript Files</div>
-    <div class="stat-sub">1,018 frontend · 1,887 backend</div>
+    <div class="stat-sub">1,051 frontend &middot; 2,051 backend</div>
   </div>
   <div class="stat-card">
-    <div class="stat-number">13</div>
+    <div class="stat-number">15</div>
     <div class="stat-label">Weeks of Development</div>
-    <div class="stat-sub">Dec 2025 – present</div>
+    <div class="stat-sub">Dec 2025 &ndash; present</div>
   </div>
 </div>
 
 <main>
 
-  <!-- Repo journey -->
   <section>
     <h2 class="section-title"><span class="dot"></span>Repository Journey</h2>
     <div class="journey">
       <div class="repo-card">
         <span class="repo-tag vendor">Vendor phase</span>
-        <div class="repo-name">Tyto Ltd · TytoLtd/Annix</div>
-        <div class="repo-period">Aug 2025 — Dec 2025 · Squashed on handover</div>
+        <div class="repo-name">Tyto Ltd &middot; TytoLtd/Annix</div>
+        <div class="repo-period">Aug 2025 &mdash; Dec 2025 &middot; Squashed on handover</div>
         <div class="repo-stat"><span>Duration</span><strong>~4 months</strong></div>
         <div class="repo-stat"><span>Commits</span><strong>~100</strong></div>
         <div class="repo-stat"><span>Lines of code</span><strong>28,358</strong></div>
         <div class="repo-stat"><span>TypeScript files</span><strong>258</strong></div>
         <div class="repo-stat"><span>Avg LOC/day</span><strong>~236</strong></div>
       </div>
-      <div class="journey-arrow">→<span>Dec 17 2025<br>Team takeover</span></div>
+      <div class="journey-arrow">&rarr;<span>Dec 17 2025<br>Team takeover</span></div>
       <div class="repo-card current">
         <span class="repo-tag owned">Team + AI phase</span>
         <div class="repo-name">AnnixInvestments/annix</div>
-        <div class="repo-period">Dec 17 2025 — present · Active</div>
-        <div class="repo-stat"><span>Commits</span><strong>2,044</strong></div>
-        <div class="repo-stat"><span>Lines of code added</span><strong>+720K</strong></div>
-        <div class="repo-stat"><span>Duration</span><strong>13 weeks</strong></div>
-        <div class="repo-stat"><span>Avg LOC/day</span><strong>~7,700</strong></div>
-        <div class="repo-stat"><span>Avg commits/week</span><strong>~157</strong></div>
+        <div class="repo-period">Dec 17 2025 &mdash; present &middot; Active</div>
+        <div class="repo-stat"><span>Commits</span><strong>2,389</strong></div>
+        <div class="repo-stat"><span>Lines of code added</span><strong>+771K</strong></div>
+        <div class="repo-stat"><span>Duration</span><strong>15 weeks</strong></div>
+        <div class="repo-stat"><span>Avg LOC/day</span><strong>~7,206</strong></div>
+        <div class="repo-stat"><span>Avg commits/week</span><strong>~159</strong></div>
       </div>
     </div>
     <div class="callout">
-      <strong>History note:</strong> The original vendor (Tyto Ltd) worked on TytoLtd/Annix for ~4 months, producing a 28K-line foundation. When the team took ownership on <strong>17 Dec 2025</strong>, Tyto's entire commit history was squashed into a single initial commit — so the visible git history (2,044 commits) is entirely Nick &amp; Andy's work, AI-assisted from day one. The codebase moved to the AnnixInvestments organisation on <strong>12 Feb 2026</strong> — the dotted line in the chart marks that repo migration, not a change of team. In 13 weeks the team added <strong>720K lines</strong> on top of Tyto's 28K base: roughly <strong>33× the vendor's productivity</strong>.
+      <strong>History note:</strong> The original vendor (Tyto Ltd) worked on TytoLtd/Annix for ~4 months, producing a 28K-line foundation. When the team took ownership on <strong>17 Dec 2025</strong>, Tyto's entire commit history was squashed into a single initial commit &mdash; so the visible git history (2,389 commits) is entirely Nick &amp; Andy's work, AI-assisted from day one. The codebase moved to the AnnixInvestments organisation on <strong>12 Feb 2026</strong> &mdash; the dotted line in the chart marks that repo migration, not a change of team. In 15 weeks the team added <strong>771K lines</strong> on top of Tyto's 28K base: roughly <strong>31&times; the vendor's productivity</strong>.
     </div>
   </section>
 
-  <!-- Commit activity -->
   <section>
     <h2 class="section-title"><span class="dot"></span>Commit Activity</h2>
     <div class="chart-grid-2">
       <div class="chart-card">
         <div class="chart-card-header">
-          <div class="chart-card-title">Weekly commits — team timeline (Dec 17 – present)</div>
+          <div class="chart-card-title">Weekly commits &mdash; team timeline (Dec 17 &ndash; present)</div>
           <button class="chart-expand-btn" onclick="expandChart(this)" title="Expand chart">
             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5v-4m0 4h-4m4 0l-5-5"/></svg>
           </button>
         </div>
-        <div class="chart-card-sub">All commits are Nick &amp; Andy's · dashed line marks repo migration to AnnixInvestments org (12 Feb)</div>
+        <div class="chart-card-sub">All commits are AndyBarrett1982 &amp; Andy Barrett's &middot; dashed line marks repo migration to AnnixInvestments org (12 Feb)</div>
         <div class="chart-wrap tall">
           <canvas id="monthlyChart"></canvas>
         </div>
@@ -546,53 +379,51 @@
         <div class="contrib-list" style="margin-top:12px;">
           <div class="contrib-item">
             <div class="contrib-meta">
-              <span class="contrib-name">Andy Barrett</span>
-              <span class="contrib-count">1,765 commits · 86%</span>
+              <span class="contrib-name">AndyBarrett1982</span>
+              <span class="contrib-count">1,487 commits &middot; 62%</span>
             </div>
-            <div class="contrib-bar-bg"><div class="contrib-bar bar-orange" style="width:86%"></div></div>
+            <div class="contrib-bar-bg"><div class="contrib-bar bar-orange" style="width:62%"></div></div>
           </div>
           <div class="contrib-item">
             <div class="contrib-meta">
-              <span class="contrib-name">Nick Barrett</span>
-              <span class="contrib-count">279 commits · 14%</span>
+              <span class="contrib-name">Andy Barrett</span>
+              <span class="contrib-count">538 commits &middot; 23%</span>
             </div>
-            <div class="contrib-bar-bg"><div class="contrib-bar bar-navy" style="width:14%"></div></div>
+            <div class="contrib-bar-bg"><div class="contrib-bar bar-navy" style="width:23%"></div></div>
           </div>
         </div>
         <div style="margin-top:28px;">
           <div class="chart-card-title">Vendor vs Team productivity</div>
-          <div class="chart-card-sub">Tyto Ltd (4 months) vs Nick + Andy + AI (13 weeks)</div>
+          <div class="chart-card-sub">Tyto Ltd (4 months) vs AndyBarrett1982 + Andy Barrett + AI (15 weeks)</div>
           <div class="contrib-list">
             <div class="contrib-item">
               <div class="contrib-meta">
-                <span class="contrib-name">Tyto Ltd — LOC/day</span>
-                <span class="contrib-count">~236 · 28K in 4 months</span>
+                <span class="contrib-name">Tyto Ltd &mdash; LOC/day</span>
+                <span class="contrib-count">~236 &middot; 28K in 4 months</span>
               </div>
               <div class="contrib-bar-bg"><div class="contrib-bar bar-light" style="width:3%"></div></div>
             </div>
             <div class="contrib-item">
               <div class="contrib-meta">
-                <span class="contrib-name">Nick + Andy + AI — LOC/day</span>
-                <span class="contrib-count">~7,700 · 720K in 13 weeks</span>
+                <span class="contrib-name">AndyBarrett1982 + Andy Barrett + AI &mdash; LOC/day</span>
+                <span class="contrib-count">~7,206 &middot; 771K in 15 weeks</span>
               </div>
               <div class="contrib-bar-bg"><div class="contrib-bar bar-orange" style="width:100%"></div></div>
             </div>
           </div>
-          <p style="margin-top:14px; font-size:13px; color:var(--muted);">The team produced code at <strong style="color:var(--orange)">~33× the vendor's rate</strong> with AI assistance.</p>
+          <p style="margin-top:14px; font-size:13px; color:var(--muted);">The team produced code at <strong style="color:var(--orange)">~31&times; the vendor's rate</strong> with AI assistance.</p>
         </div>
       </div>
     </div>
   </section>
 
-  <!-- Cost & value analysis -->
   <section>
     <h2 class="section-title"><span class="dot"></span>Cost &amp; Value Analysis</h2>
     <div class="cost-grid">
-
       <div class="cost-card">
-        <div class="cost-label">Tyto Ltd — Vendor phase</div>
+        <div class="cost-label">Tyto Ltd &mdash; Vendor phase</div>
         <div class="cost-headline">Fixed price</div>
-        <div class="cost-sub">External contract · Aug – Dec 2025</div>
+        <div class="cost-sub">External contract &middot; Aug &ndash; Dec 2025</div>
         <div class="cost-row"><span>Duration</span><strong>~4 months</strong></div>
         <div class="cost-row"><span>Team size</span><strong>External vendor team</strong></div>
         <div class="cost-row"><span>Lines of code</span><strong>28,358</strong></div>
@@ -600,49 +431,43 @@
         <div class="cost-row"><span>LOC / day</span><strong>~236</strong></div>
         <div class="cost-row"><span>Contract type</span><strong>Fixed price</strong></div>
       </div>
-
       <div class="cost-divider">
-        <span style="font-size:28px; color:var(--orange)">⚡</span>
-        <span>33×</span>
+        <span style="font-size:28px; color:var(--orange)">&olarr;</span>
+        <span>31&times;</span>
         <span style="font-size:11px; color:var(--muted); font-weight:400">faster</span>
       </div>
-
       <div class="cost-card highlight">
-        <div class="cost-label">Nick + Andy + AI — Team phase</div>
+        <div class="cost-label">AndyBarrett1982 + Andy Barrett + AI &mdash; Team phase</div>
         <div class="cost-headline orange">~R12,000</div>
-        <div class="cost-sub">~$650 USD cash outlay · Dec 17 2025 – present</div>
-        <div class="cost-row"><span>Duration</span><strong>13 weeks</strong></div>
+        <div class="cost-sub">~$650 USD cash outlay &middot; Dec 17 2025 &ndash; present</div>
+        <div class="cost-row"><span>Duration</span><strong>15 weeks</strong></div>
         <div class="cost-row"><span>Team size</span><strong>2 owner-developers + AI</strong></div>
-        <div class="cost-row"><span>Lines of code added</span><strong>720,000</strong></div>
-        <div class="cost-row"><span>Commits</span><strong>2,044</strong></div>
-        <div class="cost-row"><span>LOC / day</span><strong>~7,700</strong></div>
+        <div class="cost-row"><span>Lines of code added</span><strong>771,010</strong></div>
+        <div class="cost-row"><span>Commits</span><strong>2,389</strong></div>
+        <div class="cost-row"><span>LOC / day</span><strong>~7,206</strong></div>
         <div class="cost-row"><span>AI tooling</span><strong>Claude Max subscription</strong></div>
         <div class="cost-row"><span>Cash cost per LOC</span><strong>R0.02 / $0.001</strong></div>
-        <div class="cost-row"><span>Incl. dev time (market rate)</span><strong>~R2.3M / $125K</strong></div>
       </div>
-
     </div>
-
     <div class="value-callout">
       <div>
-        <div class="value-stat-num">5 devs · 5 yrs</div>
+        <div class="value-stat-num">5 devs &middot; 15 yrs</div>
         <div class="value-stat-lbl">Traditional human equivalent</div>
-        <div class="value-stat-sub">720K LOC at 40 lines/dev/day needs ~5 years with a 5-person team</div>
+        <div class="value-stat-sub">771K LOC at 40 lines/dev/day needs ~15 years with a 5-person team</div>
       </div>
       <div>
-        <div class="value-stat-num">R67M / $3.7M</div>
+        <div class="value-stat-num">R202.5M / $11.3M</div>
         <div class="value-stat-lbl">Traditional team cost</div>
-        <div class="value-stat-sub">5 devs × 5 yrs × $150K/yr vs R12,000 / $650 cash AI spend</div>
+        <div class="value-stat-sub">5 devs &times; 15 yrs &times; $150K/yr vs R12,000 / $650 cash AI spend</div>
       </div>
       <div>
-        <div class="value-stat-num">~5,600×</div>
+        <div class="value-stat-num">~16,875&times;</div>
         <div class="value-stat-lbl">Cash cost advantage</div>
-        <div class="value-stat-sub">R67M traditional vs R12,000 actual · same output · 20× faster delivery</div>
+        <div class="value-stat-sub">R202.5M traditional vs R12,000 actual &middot; same output</div>
       </div>
     </div>
   </section>
 
-  <!-- Codebase composition -->
   <section>
     <h2 class="section-title"><span class="dot"></span>Codebase Composition</h2>
     <div class="chart-grid-3">
@@ -653,7 +478,7 @@
             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5v-4m0 4h-4m4 0l-5-5"/></svg>
           </button>
         </div>
-        <div class="chart-card-sub">Cumulative LOC · team started Dec 17 on a 28K vendor base</div>
+        <div class="chart-card-sub">Cumulative LOC &middot; team started Dec 17 on a 28K vendor base</div>
         <div class="chart-wrap tall">
           <canvas id="growthChart"></canvas>
         </div>
@@ -685,59 +510,57 @@
     </div>
   </section>
 
-  <!-- Architecture metrics -->
   <section>
     <h2 class="section-title"><span class="dot"></span>Architecture Metrics</h2>
     <div class="metric-grid">
       <div class="metric-tile">
-        <div class="metric-icon">⚛️</div>
-        <div class="metric-val">679</div>
+        <div class="metric-icon">&#9883;</div>
+        <div class="metric-val">791</div>
         <div class="metric-lbl">React Components</div>
       </div>
       <div class="metric-tile">
-        <div class="metric-icon">🎛️</div>
-        <div class="metric-val">177</div>
+        <div class="metric-icon">&#127899;</div>
+        <div class="metric-val">187</div>
         <div class="metric-lbl">NestJS Controllers</div>
       </div>
       <div class="metric-tile">
-        <div class="metric-icon">📦</div>
-        <div class="metric-val">113</div>
+        <div class="metric-icon">&#128230;</div>
+        <div class="metric-val">119</div>
         <div class="metric-lbl">NestJS Modules</div>
       </div>
       <div class="metric-tile">
-        <div class="metric-icon">🗄️</div>
-        <div class="metric-val">444</div>
+        <div class="metric-icon">&#128451;</div>
+        <div class="metric-val">523</div>
         <div class="metric-lbl">DB Migrations</div>
       </div>
       <div class="metric-tile">
-        <div class="metric-icon">📄</div>
-        <div class="metric-val">269</div>
+        <div class="metric-icon">&#128196;</div>
+        <div class="metric-val">276</div>
         <div class="metric-lbl">Next.js Pages</div>
       </div>
       <div class="metric-tile">
-        <div class="metric-icon">🧪</div>
-        <div class="metric-val">2,379</div>
+        <div class="metric-icon">&#129514;</div>
+        <div class="metric-val">2,709</div>
         <div class="metric-lbl">Test Cases</div>
       </div>
       <div class="metric-tile">
-        <div class="metric-icon">🔌</div>
-        <div class="metric-val">1,679</div>
+        <div class="metric-icon">&#128268;</div>
+        <div class="metric-val">1,799</div>
         <div class="metric-lbl">API Endpoints</div>
       </div>
       <div class="metric-tile">
-        <div class="metric-icon">📊</div>
-        <div class="metric-val">152</div>
+        <div class="metric-icon">&#128202;</div>
+        <div class="metric-val">160</div>
         <div class="metric-lbl">Spec Files</div>
       </div>
     </div>
   </section>
 
-  <!-- Tech stack -->
   <section>
     <h2 class="section-title"><span class="dot"></span>Technology Stack</h2>
     <div class="stack-grid">
       <div class="stack-card">
-        <div class="stack-header">Frontend <span class="badge">Next.js 16 · React 19</span></div>
+        <div class="stack-header">Frontend <span class="badge">Next.js 16 &middot; React 19</span></div>
         <div class="tech-chips">
           <span class="chip primary">Next.js 16</span>
           <span class="chip primary">React 19</span>
@@ -757,7 +580,7 @@
         </div>
       </div>
       <div class="stack-card">
-        <div class="stack-header">Backend <span class="badge">NestJS 11 · TypeORM</span></div>
+        <div class="stack-header">Backend <span class="badge">NestJS 11 &middot; TypeORM</span></div>
         <div class="tech-chips">
           <span class="chip primary">NestJS 11</span>
           <span class="chip primary">TypeORM</span>
@@ -781,7 +604,7 @@
 </main>
 
 <footer class="page-footer">
-  Generated <strong>20 Mar 2026</strong> · <strong>AnnixInvestments/annix</strong> · Built with Chart.js
+  Auto-generated <strong>Apr 3, 2026</strong> &middot; <strong>AnnixInvestments/annix</strong> &middot; Built with Chart.js
 </footer>
 
 <script>
@@ -807,7 +630,8 @@
   const defaultFont = { family: 'Geist, -apple-system, sans-serif', size: 12 };
   Chart.defaults.font = defaultFont;
 
-  function baseOptions(extra = {}) {
+  function baseOptions(extra) {
+    extra = extra || {};
     return {
       responsive: true,
       maintainAspectRatio: false,
@@ -816,28 +640,9 @@
     };
   }
 
-  // Weekly commits chart — full ramp across both repos
-  const takeoverPlugin = {
-    id: 'takeover-line',
-    afterDraw(chart) {
-      const { ctx, chartArea: { top, bottom }, scales: { x } } = chart;
-      const xPos = (x.getPixelForValue(8) + x.getPixelForValue(9)) / 2;
-      ctx.save();
-      ctx.beginPath();
-      ctx.moveTo(xPos, top);
-      ctx.lineTo(xPos, bottom);
-      ctx.setLineDash([5, 4]);
-      ctx.strokeStyle = 'rgba(255,165,0,0.8)';
-      ctx.lineWidth = 2;
-      ctx.stroke();
-      ctx.setLineDash([]);
-      ctx.restore();
-    },
-  };
-
-  const weeklyLabels = ['Dec 18', 'Dec 22', 'Dec 29', 'Jan 05', 'Jan 12', 'Jan 19', 'Jan 26', 'Feb 02', 'Feb 09', 'Feb 12', 'Feb 19', 'Feb 26', 'Mar 05', 'Mar 12', 'Mar 19'];
-  const andyWeekly  = [20, 69, 114, 109, 61, 53, 62, 42, 13, 53, 121, 239, 463, 350, 16];
-  const nickWeekly  = [13, 10,   3,  46, 57, 25,  6, 29, 12, 32,  25,  13,   5,   5,  0];
+  const weeklyLabels = ["Dec 14","Dec 21","Dec 28","Jan 4","Jan 11","Jan 18","Jan 25","Feb 1","Feb 8","Feb 15","Feb 22","Mar 1","Mar 8","Mar 15","Mar 22","Mar 29"];
+  const topWeekly = [12,77,108,105,65,50,66,37,27,81,140,296,522,149,124,166];
+  const secondWeekly = [12,77,108,105,65,50,66,37,27,81,140,296,522,149,124,166];
 
   const monthlyCtx = document.getElementById('monthlyChart').getContext('2d');
   const weeklyChart = new Chart(monthlyCtx, {
@@ -846,16 +651,16 @@
       labels: weeklyLabels,
       datasets: [
         {
-          label: 'Andy Barrett',
-          data: andyWeekly,
-          backgroundColor: (ctx) => ctx.dataIndex <= 8 ? ORANGE : ORANGE_DARK,
+          label: 'AndyBarrett1982',
+          data: topWeekly,
+          backgroundColor: ORANGE,
           borderRadius: 3,
           borderSkipped: false,
         },
         {
-          label: 'Nick Barrett',
-          data: nickWeekly,
-          backgroundColor: (ctx) => ctx.dataIndex <= 8 ? NAVY : NAVY_DARK,
+          label: 'Andy Barrett',
+          data: secondWeekly,
+          backgroundColor: NAVY,
           borderRadius: 3,
           borderSkipped: false,
         },
@@ -868,19 +673,21 @@
         y: { stacked: true, grid: { color: gridColor() }, ticks: { color: textColor() } },
       },
     },
-    plugins: [takeoverPlugin],
   });
 
-  // LOC growth chart — team phase from Dec 17 2025 on a 28K vendor base
+  const growthLabels = ["Vendor\nBase","Dec 14","Dec 21","Dec 28","Jan 4","Jan 11","Jan 18","Jan 25","Feb 1","Feb 8","Feb 15","Feb 22","Mar 1","Mar 8","Mar 15","Mar 22","Mar 29","Now"];
+  const growthFrontend = [15000,24233,47779,58878,72586,84311,95658,105771,190932,221777,294917,334625,358348,405926,416034,430901,431735,398902];
+  const growthBackend = [13358,18237,43619,59828,72315,84247,124621,164640,181756,201545,257599,289451,318794,381075,389173,402667,417835,400466];
+
   const growthCtx = document.getElementById('growthChart').getContext('2d');
   const growthChart = new Chart(growthCtx, {
     type: 'line',
     data: {
-      labels: ['Tyto base\n(Dec 17)', 'Wk 3\n(Jan 7)', 'Wk 5\n(Jan 21)', 'Wk 7\n(Feb 4)', 'Wk 9\n(Feb 18)', 'Wk 10\n(Feb 22)', 'Wk 11\n(Feb 26)', 'Wk 12\n(Mar 5)', 'Wk 13\n(Mar 12)', 'Now\n(Mar 20)'],
+      labels: growthLabels,
       datasets: [
         {
           label: 'Frontend LOC',
-          data: [15000, 85000, 150000, 210000, 245000, 260000, 280000, 316000, 353000, 380000],
+          data: growthFrontend,
           borderColor: ORANGE,
           backgroundColor: 'rgba(255,165,0,0.08)',
           fill: true,
@@ -890,7 +697,7 @@
         },
         {
           label: 'Backend LOC',
-          data: [13000, 80000, 120000, 165000, 200000, 212000, 260000, 288000, 323000, 368000],
+          data: growthBackend,
           borderColor: NAVY,
           backgroundColor: 'rgba(50,50,136,0.08)',
           fill: true,
@@ -904,19 +711,18 @@
       ...baseOptions(),
       scales: {
         x: { grid: { color: gridColor() }, ticks: { color: textColor() } },
-        y: { grid: { color: gridColor() }, ticks: { color: textColor(), callback: v => `${(v/1000).toFixed(0)}K` } },
+        y: { grid: { color: gridColor() }, ticks: { color: textColor(), callback: function(v) { return (v/1000).toFixed(0) + 'K'; } } },
       },
     },
   });
 
-  // Frontend vs backend doughnut
   const splitCtx = document.getElementById('splitChart').getContext('2d');
   const splitChart = new Chart(splitCtx, {
     type: 'doughnut',
     data: {
-      labels: ['Frontend (380K)', 'Backend (368K)'],
+      labels: ['Frontend (399K)', 'Backend (400K)'],
       datasets: [{
-        data: [379916, 367784],
+        data: [398902, 400466],
         backgroundColor: [ORANGE, NAVY],
         borderWidth: 0,
         hoverOffset: 6,
@@ -931,14 +737,13 @@
     },
   });
 
-  // File distribution doughnut
   const filesCtx = document.getElementById('filesChart').getContext('2d');
   const filesChart = new Chart(filesCtx, {
     type: 'doughnut',
     data: {
-      labels: ['Backend .ts (1,887)', 'Frontend .tsx (679)', 'Frontend .ts (339)'],
+      labels: ['Backend .ts (2,051)', 'Frontend .tsx (705)', 'Frontend .ts (346)'],
       datasets: [{
-        data: [1887, 679, 339],
+        data: [2051, 705, 346],
         backgroundColor: [NAVY, ORANGE, NAVY_LIGHT],
         borderWidth: 0,
         hoverOffset: 6,
@@ -991,14 +796,14 @@
     if (modalChart) { modalChart.destroy(); modalChart = null; }
   }
 
-  document.getElementById('chartModal').addEventListener('click', e => {
+  document.getElementById('chartModal').addEventListener('click', function(e) {
     if (e.target === document.getElementById('chartModal')) collapseChart();
   });
 
-  document.addEventListener('keydown', e => { if (e.key === 'Escape') collapseChart(); });
+  document.addEventListener('keydown', function(e) { if (e.key === 'Escape') collapseChart(); });
 
   function updateChartThemes() {
-    [weeklyChart, growthChart, splitChart, filesChart].forEach(chart => {
+    [weeklyChart, growthChart, splitChart, filesChart].forEach(function(chart) {
       if (chart.config.type === 'bar' || chart.config.type === 'line') {
         chart.options.scales.x.grid.color = gridColor();
         chart.options.scales.y.grid.color = gridColor();
