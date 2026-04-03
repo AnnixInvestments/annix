@@ -1,39 +1,245 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import type { ActivityItem } from "@/app/lib/api/adminApi";
+import Link from "next/link";
+import type { ActivityItem, FeedbackItem, ScheduledJobDto } from "@/app/lib/api/adminApi";
 import { fromISO, now } from "@/app/lib/datetime";
-import { useAdminDashboard } from "@/app/lib/query/hooks";
+import { useAdminDashboard, useAdminFeedback, useScheduledJobs } from "@/app/lib/query/hooks";
+
+function formatRelativeDate(dateString: string) {
+  const date = fromISO(dateString);
+  const currentTime = now();
+  const diffMs = currentTime.toMillis() - date.toMillis();
+  const diffMins = Math.floor(diffMs / 60000);
+
+  if (diffMins < 1) return "Just now";
+  if (diffMins < 60) return `${diffMins}m ago`;
+
+  const diffHours = Math.floor(diffMins / 60);
+  if (diffHours < 24) return `${diffHours}h ago`;
+
+  const diffDays = Math.floor(diffHours / 24);
+  if (diffDays < 7) return `${diffDays}d ago`;
+
+  return date.toLocaleString({ year: "numeric", month: "short", day: "numeric" });
+}
+
+function SessionCard({ label, count, color }: { label: string; count: number; color: string }) {
+  return (
+    <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-4">
+      <div className="flex items-center gap-3">
+        <div className={`w-3 h-3 rounded-full ${color}`} />
+        <div className="flex-1">
+          <p className="text-sm text-gray-500 dark:text-gray-400">{label}</p>
+        </div>
+        <p className="text-2xl font-bold text-gray-900 dark:text-white">{count}</p>
+      </div>
+    </div>
+  );
+}
+
+function AdminQuickLink({
+  href,
+  icon,
+  label,
+  description,
+  badgeCount,
+  badgeColor,
+}: {
+  href: string;
+  icon: string;
+  label: string;
+  description: string;
+  badgeCount?: number;
+  badgeColor?: string;
+}) {
+  return (
+    <Link
+      href={href}
+      className="group bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-4 hover:border-[#323288] hover:shadow-md transition-all"
+    >
+      <div className="flex items-start gap-3">
+        <div className="w-10 h-10 rounded-lg bg-[#323288]/10 flex items-center justify-center flex-shrink-0 group-hover:bg-[#323288] transition-colors">
+          <svg
+            className="w-5 h-5 text-[#323288] group-hover:text-white transition-colors"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d={icon} />
+          </svg>
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <h3 className="text-sm font-semibold text-gray-900 dark:text-white">{label}</h3>
+            {badgeCount !== undefined && badgeCount > 0 && (
+              <span
+                className={`px-1.5 py-0.5 text-xs font-medium rounded-full text-white ${badgeColor || "bg-[#323288]"}`}
+              >
+                {badgeCount}
+              </span>
+            )}
+          </div>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{description}</p>
+        </div>
+        <svg
+          className="w-4 h-4 text-gray-400 group-hover:text-[#323288] group-hover:translate-x-0.5 transition-all flex-shrink-0 mt-1"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+        </svg>
+      </div>
+    </Link>
+  );
+}
+
+function FeedbackSummary({ feedback }: { feedback: FeedbackItem[] }) {
+  const submitted = feedback.filter((f) => f.status === "submitted").length;
+  const triaged = feedback.filter((f) => f.status === "triaged").length;
+  const inProgress = feedback.filter((f) => f.status === "in_progress").length;
+  const resolved = feedback.filter((f) => f.status === "resolved").length;
+
+  const statuses = [
+    { label: "New", count: submitted, color: "bg-blue-500" },
+    { label: "Triaged", count: triaged, color: "bg-yellow-500" },
+    { label: "In Progress", count: inProgress, color: "bg-purple-500" },
+    { label: "Resolved", count: resolved, color: "bg-green-500" },
+  ];
+
+  return (
+    <Link
+      href="/admin/portal/feedback"
+      className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-5 hover:border-[#323288] hover:shadow-md transition-all"
+    >
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Feedback</h3>
+        <span className="text-xs text-gray-500 dark:text-gray-400">{feedback.length} total</span>
+      </div>
+      <div className="grid grid-cols-4 gap-3">
+        {statuses.map((s) => (
+          <div key={s.label} className="text-center">
+            <p className="text-xl font-bold text-gray-900 dark:text-white">{s.count}</p>
+            <div className="flex items-center justify-center gap-1 mt-1">
+              <div className={`w-2 h-2 rounded-full ${s.color}`} />
+              <p className="text-xs text-gray-500 dark:text-gray-400">{s.label}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </Link>
+  );
+}
+
+function ScheduledJobsSummary({ jobs }: { jobs: ScheduledJobDto[] }) {
+  const active = jobs.filter((j) => j.active && !isPaused(j)).length;
+  const paused = jobs.filter((j) => isPaused(j)).length;
+  const total = jobs.length;
+
+  return (
+    <Link
+      href="/admin/portal/scheduled-jobs"
+      className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-5 hover:border-[#323288] hover:shadow-md transition-all"
+    >
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Scheduled Jobs</h3>
+        <span className="text-xs text-gray-500 dark:text-gray-400">{total} total</span>
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <div className="text-center">
+          <p className="text-xl font-bold text-green-600">{active}</p>
+          <div className="flex items-center justify-center gap-1 mt-1">
+            <div className="w-2 h-2 rounded-full bg-green-500" />
+            <p className="text-xs text-gray-500 dark:text-gray-400">Active</p>
+          </div>
+        </div>
+        <div className="text-center">
+          <p className="text-xl font-bold text-yellow-600">{paused}</p>
+          <div className="flex items-center justify-center gap-1 mt-1">
+            <div className="w-2 h-2 rounded-full bg-yellow-500" />
+            <p className="text-xs text-gray-500 dark:text-gray-400">Paused</p>
+          </div>
+        </div>
+      </div>
+    </Link>
+  );
+}
+
+function isPaused(job: ScheduledJobDto): boolean {
+  return !job.active;
+}
+
+function ActivityFeed({ activities }: { activities: ActivityItem[] }) {
+  return (
+    <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 overflow-hidden">
+      <div className="px-5 py-4 border-b border-gray-200 dark:border-slate-700">
+        <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Recent Activity</h3>
+      </div>
+      <div className="divide-y divide-gray-100 dark:divide-slate-700">
+        {activities.slice(0, 10).map((activity) => (
+          <div key={activity.id} className="px-5 py-3 hover:bg-gray-50 dark:hover:bg-slate-750">
+            <div className="flex items-start gap-3">
+              <div className="w-8 h-8 rounded-full bg-[#323288]/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                <svg
+                  className="w-4 h-4 text-[#323288]"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                  />
+                </svg>
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm text-gray-900 dark:text-white">
+                  <span className="font-medium">{activity.userName}</span>{" "}
+                  <span className="text-gray-500 dark:text-gray-400">
+                    {activity.action} {activity.entityType}
+                    {activity.entityId ? ` #${activity.entityId}` : ""}
+                  </span>
+                </p>
+                {activity.details && (
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 truncate">
+                    {activity.details}
+                  </p>
+                )}
+              </div>
+              <div className="flex flex-col items-end gap-0.5 flex-shrink-0">
+                <span className="text-xs text-gray-400">
+                  {formatRelativeDate(activity.timestamp)}
+                </span>
+                {activity.ipAddress && (
+                  <span className="text-xs text-gray-300">{activity.ipAddress}</span>
+                )}
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 export default function AdminDashboardPage() {
-  const router = useRouter();
   const dashboardQuery = useAdminDashboard();
+  const feedbackQuery = useAdminFeedback();
+  const jobsQuery = useScheduledJobs();
 
   const stats = dashboardQuery.data;
+  const feedback = feedbackQuery.data || [];
+  const jobs = (jobsQuery.data || []) as ScheduledJobDto[];
 
-  const formatDate = (dateString: string) => {
-    const date = fromISO(dateString);
-    const currentTime = now();
-    const diffMs = currentTime.toMillis() - date.toMillis();
-    const diffMins = Math.floor(diffMs / 60000);
-
-    if (diffMins < 1) return "Just now";
-    if (diffMins < 60) return `${diffMins}m ago`;
-
-    const diffHours = Math.floor(diffMins / 60);
-    if (diffHours < 24) return `${diffHours}h ago`;
-
-    const diffDays = Math.floor(diffHours / 24);
-    if (diffDays < 7) return `${diffDays}d ago`;
-
-    return date.toLocaleString({ year: "numeric", month: "short", day: "numeric" });
-  };
+  const openFeedbackCount = feedback.filter((f) => f.status !== "resolved").length;
 
   if (dashboardQuery.isLoading) {
     return (
       <div className="flex items-center justify-center min-h-96">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#323288] mx-auto" />
           <p className="mt-4 text-gray-600">Loading dashboard...</p>
         </div>
       </div>
@@ -43,31 +249,14 @@ export default function AdminDashboardPage() {
   if (dashboardQuery.error) {
     return (
       <div className="bg-red-50 border border-red-200 rounded-lg p-6">
-        <div className="flex items-start">
-          <svg
-            className="w-6 h-6 text-red-600 mr-3 flex-shrink-0"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-            />
-          </svg>
-          <div>
-            <h3 className="text-sm font-medium text-red-800">Error loading dashboard</h3>
-            <p className="mt-1 text-sm text-red-700">{dashboardQuery.error.message}</p>
-            <button
-              onClick={() => dashboardQuery.refetch()}
-              className="mt-3 text-sm font-medium text-red-800 hover:text-red-900 underline"
-            >
-              Try again
-            </button>
-          </div>
-        </div>
+        <h3 className="text-sm font-medium text-red-800">Error loading dashboard</h3>
+        <p className="mt-1 text-sm text-red-700">{dashboardQuery.error.message}</p>
+        <button
+          onClick={() => dashboardQuery.refetch()}
+          className="mt-3 text-sm font-medium text-red-800 hover:text-red-900 underline"
+        >
+          Try again
+        </button>
       </div>
     );
   }
@@ -76,17 +265,22 @@ export default function AdminDashboardPage() {
 
   return (
     <div className="space-y-6">
-      {/* Page Header */}
-      <div className="relative">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900">Admin Dashboard</h1>
-          <p className="mt-1 text-sm text-gray-600">Monitor and manage the Annix platform</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Admin Dashboard</h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+            Platform overview and administration
+          </p>
         </div>
         <button
-          onClick={() => dashboardQuery.refetch()}
-          className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+          onClick={() => {
+            dashboardQuery.refetch();
+            feedbackQuery.refetch();
+            jobsQuery.refetch();
+          }}
+          className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors flex items-center gap-2"
         >
-          <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -98,419 +292,128 @@ export default function AdminDashboardPage() {
         </button>
       </div>
 
-      {/* Metric Cards Grid */}
-      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-        {/* Total Customers Card - Clickable */}
-        <button
-          onClick={() => router.push("/admin/portal/customers")}
-          className="bg-white overflow-hidden shadow rounded-lg hover:shadow-lg transition-shadow text-left w-full"
-        >
-          <div className="p-5">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <div className="w-12 h-12 rounded-md bg-blue-500 flex items-center justify-center">
-                  <svg
-                    className="w-6 h-6 text-white"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"
-                    />
-                  </svg>
-                </div>
-              </div>
-              <div className="ml-5 w-0 flex-1">
-                <dl>
-                  <dt className="text-sm font-medium text-gray-500 truncate">Total Customers</dt>
-                  <dd className="flex items-baseline">
-                    <div className="text-2xl font-semibold text-gray-900">
-                      {stats.totalCustomers}
-                    </div>
-                    <svg
-                      className="ml-auto w-5 h-5 text-gray-400"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M9 5l7 7-7 7"
-                      />
-                    </svg>
-                  </dd>
-                </dl>
-              </div>
-            </div>
-          </div>
-        </button>
-
-        {/* Total Suppliers Card - Clickable */}
-        <button
-          onClick={() => router.push("/admin/portal/suppliers")}
-          className="bg-white overflow-hidden shadow rounded-lg hover:shadow-lg transition-shadow text-left w-full"
-        >
-          <div className="p-5">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <div className="w-12 h-12 rounded-md bg-green-500 flex items-center justify-center">
-                  <svg
-                    className="w-6 h-6 text-white"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
-                    />
-                  </svg>
-                </div>
-              </div>
-              <div className="ml-5 w-0 flex-1">
-                <dl>
-                  <dt className="text-sm font-medium text-gray-500 truncate">Total Suppliers</dt>
-                  <dd className="flex items-baseline">
-                    <div className="text-2xl font-semibold text-gray-900">
-                      {stats.totalSuppliers}
-                    </div>
-                    <svg
-                      className="ml-auto w-5 h-5 text-gray-400"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M9 5l7 7-7 7"
-                      />
-                    </svg>
-                  </dd>
-                </dl>
-              </div>
-            </div>
-          </div>
-        </button>
-
-        {/* Total RFQs Card - Clickable */}
-        <button
-          onClick={() => router.push("/admin/portal/rfqs")}
-          className="bg-white overflow-hidden shadow rounded-lg hover:shadow-lg transition-shadow text-left w-full"
-        >
-          <div className="p-5">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <div className="w-12 h-12 rounded-md bg-purple-500 flex items-center justify-center">
-                  <svg
-                    className="w-6 h-6 text-white"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                    />
-                  </svg>
-                </div>
-              </div>
-              <div className="ml-5 w-0 flex-1">
-                <dl>
-                  <dt className="text-sm font-medium text-gray-500 truncate">Total RFQs</dt>
-                  <dd className="flex items-baseline">
-                    <div className="text-2xl font-semibold text-gray-900">{stats.totalRfqs}</div>
-                    <svg
-                      className="ml-auto w-5 h-5 text-gray-400"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M9 5l7 7-7 7"
-                      />
-                    </svg>
-                  </dd>
-                </dl>
-              </div>
-            </div>
-          </div>
-        </button>
-
-        {/* Pending Approvals Card - Clickable */}
-        <button
-          onClick={() => router.push("/admin/portal/approvals")}
-          className="bg-white overflow-hidden shadow rounded-lg hover:shadow-lg transition-shadow text-left w-full"
-        >
-          <div className="p-5">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <div className="w-12 h-12 rounded-md bg-orange-500 flex items-center justify-center">
-                  <svg
-                    className="w-6 h-6 text-white"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                    />
-                  </svg>
-                </div>
-              </div>
-              <div className="ml-5 w-0 flex-1">
-                <dl>
-                  <dt className="text-sm font-medium text-gray-500 truncate">Pending Approvals</dt>
-                  <dd className="flex items-baseline">
-                    <div className="text-2xl font-semibold text-gray-900">
-                      {stats.pendingApprovals.total}
-                    </div>
-                    <svg
-                      className="ml-auto w-5 h-5 text-gray-400"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M9 5l7 7-7 7"
-                      />
-                    </svg>
-                  </dd>
-                  <dd className="mt-1 text-xs text-gray-500">
-                    {stats.pendingApprovals.customers} customers, {stats.pendingApprovals.suppliers}{" "}
-                    suppliers
-                  </dd>
-                </dl>
-              </div>
-            </div>
-          </div>
-        </button>
-      </div>
-
-      {/* Quick Links */}
-      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-        <button
-          onClick={() => router.push("/admin/portal/pumps")}
-          className="bg-white overflow-hidden shadow rounded-lg hover:shadow-lg transition-shadow text-left w-full"
-        >
-          <div className="p-5">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <div className="w-12 h-12 rounded-md bg-indigo-500 flex items-center justify-center">
-                  <svg
-                    className="w-6 h-6 text-white"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 007.92 12.446A9 9 0 1112 3zm0 0a9 9 0 109 9M12 3v9m0 0l6.364-6.364M12 12l-6.364-6.364"
-                    />
-                  </svg>
-                </div>
-              </div>
-              <div className="ml-5 w-0 flex-1">
-                <dl>
-                  <dt className="text-sm font-medium text-gray-500 truncate">Pumps</dt>
-                  <dd className="flex items-baseline">
-                    <div className="text-sm text-gray-600">Pump catalogue and specifications</div>
-                    <svg
-                      className="ml-auto w-5 h-5 text-gray-400"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M9 5l7 7-7 7"
-                      />
-                    </svg>
-                  </dd>
-                </dl>
-              </div>
-            </div>
-          </div>
-        </button>
-      </div>
-
-      {/* Codebase Evolution Report */}
-      <button
-        onClick={() => window.open("/codebase-evolution-stats.html", "_blank")}
-        className="w-full bg-white overflow-hidden shadow rounded-lg hover:shadow-lg transition-shadow text-left"
-      >
-        <div className="p-5">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div
-                className="w-12 h-12 rounded-md flex items-center justify-center flex-shrink-0"
-                style={{ background: "#323288" }}
-              >
-                <svg
-                  className="w-6 h-6 text-white"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
-                  />
-                </svg>
-              </div>
-              <div>
-                <p className="text-sm font-medium text-gray-900">Codebase Evolution Report</p>
-                <p className="text-xs text-gray-500 mt-0.5">
-                  471K lines · 892 commits · 25× vendor productivity · cost &amp; value analysis
-                </p>
-              </div>
-            </div>
-            <svg
-              className="w-5 h-5 text-gray-400 flex-shrink-0"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
-              />
-            </svg>
-          </div>
-        </div>
-      </button>
-
-      {/* System Health Section */}
       {stats.systemHealth && (
-        <div className="bg-white shadow rounded-lg">
-          <div className="px-4 py-5 sm:p-6">
-            <h3 className="text-lg font-medium leading-6 text-gray-900 mb-4">System Health</h3>
-            <dl className="grid grid-cols-1 gap-5 sm:grid-cols-3">
-              <div className="px-4 py-5 bg-gray-50 shadow rounded-lg overflow-hidden">
-                <dt className="text-sm font-medium text-gray-500 truncate">
-                  Active Customer Sessions
-                </dt>
-                <dd className="mt-1 text-3xl font-semibold text-gray-900">
-                  {stats.systemHealth.activeCustomerSessions}
-                </dd>
-              </div>
-              <div className="px-4 py-5 bg-gray-50 shadow rounded-lg overflow-hidden">
-                <dt className="text-sm font-medium text-gray-500 truncate">
-                  Active Supplier Sessions
-                </dt>
-                <dd className="mt-1 text-3xl font-semibold text-gray-900">
-                  {stats.systemHealth.activeSupplierSessions}
-                </dd>
-              </div>
-              <div className="px-4 py-5 bg-gray-50 shadow rounded-lg overflow-hidden">
-                <dt className="text-sm font-medium text-gray-500 truncate">
-                  Active Admin Sessions
-                </dt>
-                <dd className="mt-1 text-3xl font-semibold text-gray-900">
-                  {stats.systemHealth.activeAdminSessions}
-                </dd>
-              </div>
-            </dl>
-          </div>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <SessionCard
+            label="Active Customer Sessions"
+            count={stats.systemHealth.activeCustomerSessions}
+            color="bg-blue-500"
+          />
+          <SessionCard
+            label="Active Supplier Sessions"
+            count={stats.systemHealth.activeSupplierSessions}
+            color="bg-green-500"
+          />
+          <SessionCard
+            label="Active Admin Sessions"
+            count={stats.systemHealth.activeAdminSessions}
+            color="bg-purple-500"
+          />
         </div>
       )}
 
-      {/* Recent Activity Section */}
-      <div className="bg-white shadow rounded-lg">
-        <div className="px-4 py-5 sm:p-6">
-          <h3 className="text-lg font-medium leading-6 text-gray-900 mb-4">Recent Activity</h3>
-          <div className="flow-root">
-            <ul className="-mb-8">
-              {stats.recentActivity.slice(0, 10).map((activity: ActivityItem, idx: number) => (
-                <li key={activity.id}>
-                  <div className="relative pb-8">
-                    {idx !== stats.recentActivity.slice(0, 10).length - 1 && (
-                      <span
-                        className="absolute top-5 left-5 -ml-px h-full w-0.5 bg-gray-200"
-                        aria-hidden="true"
-                      />
-                    )}
-                    <div className="relative flex items-start space-x-3">
-                      <div>
-                        <div className="relative px-1">
-                          <div className="h-8 w-8 bg-blue-500 rounded-full flex items-center justify-center ring-8 ring-white">
-                            <svg
-                              className="w-5 h-5 text-white"
-                              fill="none"
-                              stroke="currentColor"
-                              viewBox="0 0 24 24"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-                              />
-                            </svg>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div>
-                          <div className="text-sm">
-                            <span className="font-medium text-gray-900">{activity.userName}</span>
-                          </div>
-                          <p className="mt-0.5 text-sm text-gray-500">
-                            {activity.action} {activity.entityType}
-                            {activity.entityId && ` #${activity.entityId}`}
-                          </p>
-                        </div>
-                        <div className="mt-2 text-sm text-gray-700">
-                          <p>{activity.details}</p>
-                        </div>
-                        <div className="mt-1 flex items-center space-x-2">
-                          <span className="text-xs text-gray-500">
-                            {formatDate(activity.timestamp)}
-                          </span>
-                          {activity.ipAddress && (
-                            <>
-                              <span className="text-gray-300">•</span>
-                              <span className="text-xs text-gray-500">{activity.ipAddress}</span>
-                            </>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          </div>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {feedback.length > 0 && <FeedbackSummary feedback={feedback} />}
+        {jobs.length > 0 && <ScheduledJobsSummary jobs={jobs} />}
+      </div>
+
+      <div>
+        <h2 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">Administration</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          <AdminQuickLink
+            href="/admin/portal/users"
+            icon="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z"
+            label="Admin Users"
+            description="Manage admin accounts and roles"
+          />
+          <AdminQuickLink
+            href="/admin/portal/global-messages"
+            icon="M20.25 8.511c.884.284 1.5 1.128 1.5 2.097v4.286c0 1.136-.847 2.1-1.98 2.193-.34.027-.68.052-1.02.072v3.091l-3-3c-1.354 0-2.694-.055-4.02-.163a2.115 2.115 0 01-.825-.242m9.345-6.334a2.126 2.126 0 00-.476-.095 48.64 48.64 0 00-8.048 0c-1.131.094-1.976 1.057-1.976 2.192v4.286c0 .837.46 1.58 1.155 1.951m9.345-6.334V6.637c0-1.621-1.152-3.026-2.76-3.235A48.455 48.455 0 0011.25 3c-2.115 0-4.198.137-6.24.402-1.608.209-2.76 1.614-2.76 3.235v6.226c0 1.621 1.152 3.026 2.76 3.235.577.075 1.157.14 1.74.194V21l4.155-4.155"
+            label="Global Messages"
+            description="View and manage messages across apps"
+          />
+          <AdminQuickLink
+            href="/admin/portal/feedback"
+            icon="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.087.16 2.185.283 3.293.369V21l4.076-4.076a1.526 1.526 0 011.037-.443 48.282 48.282 0 005.68-.494c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0012 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018z"
+            label="Feedback"
+            description="User feedback and issue tracking"
+            badgeCount={openFeedbackCount}
+            badgeColor="bg-orange-500"
+          />
+          <AdminQuickLink
+            href="/admin/portal/secure-documents"
+            icon="M16.5 10.5V6.75C16.5 4.26472 14.4853 2.25 12 2.25C9.51472 2.25 7.5 4.26472 7.5 6.75V10.5M6.75 21.75H17.25C18.4926 21.75 19.5 20.7426 19.5 19.5V12.75C19.5 11.5074 18.4926 10.5 17.25 10.5H6.75C5.50736 10.5 4.5 11.5074 4.5 12.75V19.5C4.5 20.7426 5.50736 21.75 6.75 21.75Z"
+            label="Secure Documents"
+            description="Encrypted document management"
+          />
+          <AdminQuickLink
+            href="/admin/portal/ai-usage"
+            icon="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 00-2.455 2.456z"
+            label="AI Usage"
+            description="AI provider usage and token analytics"
+          />
+          <AdminQuickLink
+            href="/admin/portal/scheduled-jobs"
+            icon="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z"
+            label="Scheduled Jobs"
+            description="Background task monitoring"
+          />
+          <AdminQuickLink
+            href="/admin/portal/reference-data"
+            icon="M3.75 12h16.5m-16.5 3.75h16.5M3.75 19.5h16.5M5.625 4.5h12.75a1.875 1.875 0 010 3.75H5.625a1.875 1.875 0 010-3.75z"
+            label="Reference Data"
+            description="Manage lookup tables and reference values"
+          />
         </div>
       </div>
+
+      <button
+        onClick={() => window.open("/codebase-evolution-stats.html", "_blank")}
+        className="w-full bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-4 hover:border-[#323288] hover:shadow-md transition-all text-left"
+      >
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="w-10 h-10 rounded-lg bg-[#323288] flex items-center justify-center flex-shrink-0">
+              <svg
+                className="w-5 h-5 text-white"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+                />
+              </svg>
+            </div>
+            <div>
+              <p className="text-sm font-medium text-gray-900 dark:text-white">
+                Codebase Evolution Report
+              </p>
+              <p className="text-xs text-gray-500 mt-0.5">
+                471K lines · 892 commits · 25x vendor productivity · cost &amp; value analysis
+              </p>
+            </div>
+          </div>
+          <svg
+            className="w-5 h-5 text-gray-400 flex-shrink-0"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+            />
+          </svg>
+        </div>
+      </button>
+
+      {stats.recentActivity.length > 0 && <ActivityFeed activities={stats.recentActivity} />}
     </div>
   );
 }
