@@ -3713,21 +3713,21 @@ Formula: totalPrice = totalKg × salePricePerKg
   }
 
   @Get("portal/accounting/directors")
-  @UseGuards(AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
   @ApiOperation({ summary: "List all company directors" })
   async accountingDirectors(): Promise<DirectorDto[]> {
     return this.rubberCompanyDirectorService.allDirectors();
   }
 
   @Post("portal/accounting/directors")
-  @UseGuards(AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
   @ApiOperation({ summary: "Create a company director" })
   async createAccountingDirector(@Body() dto: CreateDirectorDto): Promise<DirectorDto> {
     return this.rubberCompanyDirectorService.createDirector(dto);
   }
 
   @Put("portal/accounting/directors/:id")
-  @UseGuards(AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
   @ApiOperation({ summary: "Update a company director" })
   async updateAccountingDirector(
     @Param("id") id: string,
@@ -3739,7 +3739,7 @@ Formula: totalPrice = totalKg × salePricePerKg
   }
 
   @Delete("portal/accounting/directors/:id")
-  @UseGuards(AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
   @ApiOperation({ summary: "Delete a company director" })
   async deleteAccountingDirector(@Param("id") id: string): Promise<void> {
     const deleted = await this.rubberCompanyDirectorService.deleteDirector(Number(id));
@@ -3747,7 +3747,7 @@ Formula: totalPrice = totalKg × salePricePerKg
   }
 
   @Get("portal/accounting/payable")
-  @UseGuards(AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
   @ApiOperation({ summary: "Monthly accounts payable data" })
   async accountingPayable(
     @Query("year") year: string,
@@ -3762,7 +3762,7 @@ Formula: totalPrice = totalKg × salePricePerKg
   }
 
   @Get("portal/accounting/receivable")
-  @UseGuards(AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
   @ApiOperation({ summary: "Monthly accounts receivable data" })
   async accountingReceivable(
     @Query("year") year: string,
@@ -3777,7 +3777,7 @@ Formula: totalPrice = totalKg × salePricePerKg
   }
 
   @Get("portal/accounting")
-  @UseGuards(AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
   @ApiOperation({ summary: "List generated monthly accounts" })
   async accountingList(
     @Query("accountType") accountType?: string,
@@ -3792,7 +3792,7 @@ Formula: totalPrice = totalKg × salePricePerKg
   }
 
   @Get("portal/accounting/:id")
-  @UseGuards(AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
   @ApiOperation({ summary: "Single monthly account with sign-off status" })
   async accountingById(@Param("id") id: string): Promise<MonthlyAccountDto> {
     const result = await this.rubberAccountingService.monthlyAccountById(Number(id));
@@ -3801,7 +3801,7 @@ Formula: totalPrice = totalKg × salePricePerKg
   }
 
   @Post("portal/accounting/generate")
-  @UseGuards(AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
   @ApiOperation({ summary: "Generate monthly account PDF" })
   async accountingGenerate(
     @Body()
@@ -3822,7 +3822,7 @@ Formula: totalPrice = totalKg × salePricePerKg
   }
 
   @Get("portal/accounting/:id/pdf")
-  @UseGuards(AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
   @ApiOperation({ summary: "Download monthly account PDF" })
   async accountingDownloadPdf(@Param("id") id: string, @Res() res: Response): Promise<void> {
     const buffer = await this.rubberAccountingService.downloadAccountPdf(Number(id));
@@ -3832,7 +3832,7 @@ Formula: totalPrice = totalKg × salePricePerKg
   }
 
   @Post("portal/accounting/:id/request-signoff")
-  @UseGuards(AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
   @ApiOperation({ summary: "Send sign-off request emails to directors" })
   async accountingRequestSignOff(@Param("id") id: string): Promise<MonthlyAccountDto> {
     return this.rubberAccountingService.requestDirectorSignOff(Number(id));
@@ -3862,7 +3862,7 @@ Formula: totalPrice = totalKg × salePricePerKg
   }
 
   @Post("portal/accounting/reconciliation/upload")
-  @UseGuards(AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
   @UseInterceptors(FileInterceptor("file"))
   @ApiConsumes("multipart/form-data")
   @ApiOperation({ summary: "Upload a supplier statement for reconciliation" })
@@ -3879,21 +3879,21 @@ Formula: totalPrice = totalKg × salePricePerKg
   }
 
   @Post("portal/accounting/reconciliation/:id/extract")
-  @UseGuards(AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
   @ApiOperation({ summary: "Trigger AI extraction on uploaded statement" })
   async reconciliationExtract(@Param("id") id: string): Promise<ReconciliationDetailDto> {
     return this.rubberStatementReconciliationService.extractStatement(Number(id));
   }
 
   @Post("portal/accounting/reconciliation/:id/reconcile")
-  @UseGuards(AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
   @ApiOperation({ summary: "Run statement reconciliation matching" })
   async reconciliationReconcile(@Param("id") id: string): Promise<ReconciliationDetailDto> {
     return this.rubberStatementReconciliationService.reconcileStatement(Number(id));
   }
 
   @Put("portal/accounting/reconciliation/:id/resolve")
-  @UseGuards(AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
   @ApiOperation({ summary: "Mark reconciliation as resolved" })
   async reconciliationResolve(
     @Param("id") id: string,
@@ -3907,7 +3907,7 @@ Formula: totalPrice = totalKg × salePricePerKg
   }
 
   @Get("portal/accounting/reconciliation")
-  @UseGuards(AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
   @ApiOperation({ summary: "List all reconciliations" })
   async reconciliationList(
     @Query("companyId") companyId?: string,
@@ -3924,7 +3924,7 @@ Formula: totalPrice = totalKg × salePricePerKg
   }
 
   @Get("portal/accounting/reconciliation/:id")
-  @UseGuards(AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
   @ApiOperation({ summary: "Reconciliation detail" })
   async reconciliationById(@Param("id") id: string): Promise<ReconciliationDetailDto> {
     const result = await this.rubberStatementReconciliationService.reconciliationById(Number(id));
