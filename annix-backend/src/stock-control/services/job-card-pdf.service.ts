@@ -335,9 +335,11 @@ export class JobCardPdfService {
     doc.moveTo(50, y).lineTo(545, y).stroke();
     y += 4;
 
-    doc.font("Helvetica").fontSize(8);
     const { filteredItems } = this.partitionLineItems(jobCard.lineItems);
-    filteredItems.slice(0, 15).forEach((item, index) => {
+    const sortedItems = this.groupItemsBySpec(filteredItems.slice(0, 15));
+
+    doc.font("Helvetica").fontSize(8);
+    sortedItems.forEach((item, index) => {
       y = this.checkPageBreak(doc, y, 25);
 
       const itemCode = item.itemCode || "-";
@@ -350,7 +352,7 @@ export class JobCardPdfService {
       doc.text(item.jtNo || "-", 510, y);
       y += 13;
 
-      if (item.notes) {
+      if (item._showSpec && item.notes) {
         doc.fontSize(7).fillColor("#0d9488").font("Helvetica-Oblique");
         doc.text(item.notes, 70, y, { width: 395 });
         const noteLines = item.notes.split("\n").length;
@@ -365,6 +367,30 @@ export class JobCardPdfService {
     }
 
     return y + 6;
+  }
+
+  private groupItemsBySpec(
+    items: Array<JobCard["lineItems"][number]>,
+  ): Array<JobCard["lineItems"][number] & { _showSpec?: boolean }> {
+    const specGroups = new Map<string, Array<JobCard["lineItems"][number]>>();
+    const groupOrder: string[] = [];
+
+    items.forEach((item) => {
+      const spec = (item.notes || "").trim();
+      if (!specGroups.has(spec)) {
+        specGroups.set(spec, []);
+        groupOrder.push(spec);
+      }
+      specGroups.get(spec)!.push(item);
+    });
+
+    return groupOrder.flatMap((spec) => {
+      const group = specGroups.get(spec)!;
+      return group.map((item, idx) => ({
+        ...item,
+        _showSpec: idx === group.length - 1 && spec.length > 0,
+      }));
+    });
   }
 
   private drawCpoCoatingSpecs(
