@@ -17,10 +17,13 @@ export enum CoatingAnalysisStatus {
   FAILED = "failed",
 }
 
+export type CoatRole = "primer" | "intermediate" | "final";
+
 export interface CoatDetail {
   product: string;
   genericType: string | null;
   area: "external" | "internal";
+  coatRole?: CoatRole;
   minDftUm: number;
   maxDftUm: number;
   solidsByVolumePercent: number;

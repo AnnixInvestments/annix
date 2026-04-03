@@ -82,17 +82,18 @@ const matchBatchByProduct = (records: IssuanceBatchRecord[], product: string): s
   return paintRecords[0]?.batchNumber || "";
 };
 
+type DftCoatType = "primer" | "intermediate" | "final";
+
 const coatDefaults = (
   coatingAnalysis: CoatingAnalysis | null | undefined,
-  coatType: "primer" | "final",
+  coatType: DftCoatType,
   batchRecords: IssuanceBatchRecord[],
 ): { product: string; batchNumber: string; minUm: string; maxUm: string } => {
   if (!coatingAnalysis) {
     return { product: "", batchNumber: "", minUm: "", maxUm: "" };
   }
-  const coatIndex = coatType === "primer" ? 0 : 1;
   const extCoats = coatingAnalysis.coats.filter((c) => c.area === "external");
-  const coat = extCoats[coatIndex] ?? extCoats[0] ?? coatingAnalysis.coats[coatIndex] ?? null;
+  const coat = extCoats.find((c) => c.coatRole === coatType) || extCoats[0] || null;
   if (coat) {
     const batchByProduct = matchBatchByProduct(batchRecords, coat.product);
     const batchNumber =
@@ -117,7 +118,14 @@ export default function DftReadingForm({
   coatingAnalysis = null,
   batchRecords = [],
 }: DftReadingFormProps) {
-  const [coatType, setCoatType] = useState<"primer" | "final">(existing?.coatType || "primer");
+  const availableCoatTypes: DftCoatType[] = (() => {
+    const extCoats = coatingAnalysis?.coats.filter((c) => c.area === "external") || [];
+    const roles = extCoats.map((c) => c.coatRole).filter(Boolean) as DftCoatType[];
+    return roles.length > 0
+      ? (["primer", "intermediate", "final"] as const).filter((r) => roles.includes(r))
+      : ["primer", "final"];
+  })();
+  const [coatType, setCoatType] = useState<DftCoatType>(existing?.coatType || "primer");
   const defaults = existing ? null : coatDefaults(coatingAnalysis, coatType, batchRecords);
   const [paintProduct, setPaintProduct] = useState(
     existing?.paintProduct || defaults?.product || "",
@@ -239,28 +247,20 @@ export default function DftReadingForm({
         {error && <div className="mb-4 rounded-md bg-red-50 p-3 text-sm text-red-700">{error}</div>}
 
         <div className="mb-4 flex rounded-md border border-gray-300 overflow-hidden">
-          <button
-            type="button"
-            className={`flex-1 px-4 py-2 text-sm font-medium transition-colors ${
-              coatType === "primer"
-                ? "bg-teal-600 text-white"
-                : "bg-white text-gray-700 hover:bg-gray-50"
-            }`}
-            onClick={() => setCoatType("primer")}
-          >
-            Primer
-          </button>
-          <button
-            type="button"
-            className={`flex-1 px-4 py-2 text-sm font-medium transition-colors ${
-              coatType === "final"
-                ? "bg-teal-600 text-white"
-                : "bg-white text-gray-700 hover:bg-gray-50"
-            }`}
-            onClick={() => setCoatType("final")}
-          >
-            Final
-          </button>
+          {availableCoatTypes.map((type) => (
+            <button
+              key={type}
+              type="button"
+              className={`flex-1 px-4 py-2 text-sm font-medium transition-colors capitalize ${
+                coatType === type
+                  ? "bg-teal-600 text-white"
+                  : "bg-white text-gray-700 hover:bg-gray-50"
+              }`}
+              onClick={() => setCoatType(type)}
+            >
+              {type}
+            </button>
+          ))}
         </div>
 
         <div className="grid grid-cols-2 gap-4 mb-4">

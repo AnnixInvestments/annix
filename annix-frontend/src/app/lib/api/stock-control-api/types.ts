@@ -444,6 +444,7 @@ export interface CoatDetail {
   product: string;
   genericType: string | null;
   area: "external" | "internal";
+  coatRole?: "primer" | "intermediate" | "final";
   minDftUm: number;
   maxDftUm: number;
   solidsByVolumePercent: number;
@@ -713,7 +714,7 @@ export interface QcDftReadingRecord {
   id: number;
   companyId: number;
   jobCardId: number;
-  coatType: "primer" | "final";
+  coatType: "primer" | "intermediate" | "final";
   paintProduct: string;
   batchNumber: string | null;
   specMinMicrons: number;

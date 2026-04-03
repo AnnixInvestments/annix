@@ -11,6 +11,7 @@ import { StockControlCompany } from "../../entities/stock-control-company.entity
 
 export enum DftCoatType {
   PRIMER = "primer",
+  INTERMEDIATE = "intermediate",
   FINAL = "final",
 }
 

@@ -31,6 +31,7 @@ interface AiCoatResult {
   product: string;
   genericType: string | null;
   area: "external" | "internal";
+  coatRole?: "primer" | "intermediate" | "final";
   minDftUm: number;
   maxDftUm: number;
   solidsByVolumePercent: number;
@@ -54,12 +55,13 @@ INT : [SIMILAR FORMAT]
 Return JSON only with this structure:
 {
   "applicationType": "external" | "internal" | "both",
-  "surfacePrep": "blast" | "sa3_blast" | "hand_tool" | "power_tool" | null,
+  "surfacePrep": "blast" | "sa3_blast" | "sa2_5_blast" | "sa2_blast" | "sa1_blast" | "hand_tool" | "power_tool" | "no_blasting" | null,
   "coats": [
     {
       "product": "PENGUARD EXPRESS MIO BUFF",
       "genericType": "epoxy_mio" | "polyurethane" | "zinc_rich" | "epoxy" | "alkyd" | "inorganic_zinc" | "acrylic" | "unknown",
       "area": "external" | "internal",
+      "coatRole": "primer" | "intermediate" | "final",
       "minDftUm": 240,
       "maxDftUm": 250,
       "solidsByVolumePercent": 65
@@ -76,9 +78,10 @@ Rules:
   - epoxy_mio: 65, epoxy: 70, polyurethane: 55, zinc_rich: 75, alkyd: 50, inorganic_zinc: 80, acrylic: 45, unknown: 60
 - Tag each coat with "area": "external" for coats under EXT section, "internal" for coats under INT section
 - If notes mention both EXT and INT, set applicationType to "both" and include all coats with their respective area tags
-- Surface prep: look for "BLAST", "HAND TOOL", "POWER TOOL" keywords. If internal rubber lining (R/L) is specified, surface prep is "sa3_blast" (SA3 abrasive blast required before rubber lining)
+- Surface prep: look for "BLAST", "HAND TOOL", "POWER TOOL", "NO BLAST", "NO BLASTING" keywords. If internal rubber lining (R/L) is specified, surface prep is "sa3_blast" (SA3 abrasive blast required before rubber lining). If "NO BLAST" or "NO BLASTING" is specified, surface prep is "no_blasting"
 - "R/L" or "RUBBER LINING" in INT section means internal rubber lining — set applicationType to "both" but DO NOT include rubber as a coat entry. Rubber lining is not paint.
 - NEVER include rubber lining products (identified by keywords: R/L, SHORE, RUBBER, LINING, LINER, LAGGING) in the coats array — only include paint/coating products
+- coatRole: Assign based on the coat's position in the system for each area (external/internal separately). First coat = "primer", last coat = "final", any coat between = "intermediate". For single-coat systems the only coat is both primer and final — use "primer". For two-coat systems: first = "primer", second = "final". For three+ coat systems: first = "primer", middle coats = "intermediate", last = "final".
 - Return valid JSON only, no additional text`;
 
 @Injectable()
@@ -274,7 +277,8 @@ export class CoatingAnalysisService {
         const exists = acc.find((c) => c.product === coat.product && c.area === coat.area);
         return exists ? acc : [...acc, coat];
       }, []);
-      const coats = dedupedAiCoats.map((coat) => {
+      const coatsWithRoles = CoatingAnalysisService.inferCoatRoles(dedupedAiCoats);
+      const coats = coatsWithRoles.map((coat) => {
         const m2ForCoat = coat.area === "internal" ? analysis.intM2 : analysis.extM2;
         return this.calculateCoatVolume(coat, m2ForCoat, retentionFactor);
       });
@@ -690,10 +694,18 @@ export class CoatingAnalysisService {
 
     const RUBBER_PATTERN = /\br\/l\b|rubber|shore|lining|liner|lagging|\brot\b/i;
 
+    const VALID_COAT_ROLES = ["primer", "intermediate", "final"] as const;
+    const parseCoatRole = (val: unknown): "primer" | "intermediate" | "final" | undefined =>
+      typeof val === "string" &&
+      VALID_COAT_ROLES.includes(val as "primer" | "intermediate" | "final")
+        ? (val as "primer" | "intermediate" | "final")
+        : undefined;
+
     const allCoats = validated.coats.map((coat: Record<string, unknown>) => ({
       product: validString(coat.product, "Unknown"),
       genericType: validString(coat.genericType, "unknown"),
       area: coat.area === "internal" ? ("internal" as const) : ("external" as const),
+      coatRole: parseCoatRole(coat.coatRole),
       minDftUm: validPositiveNumber(coat.minDftUm, 0),
       maxDftUm: validPositiveNumber(coat.maxDftUm, 0),
       solidsByVolumePercent: validPercentage(coat.solidsByVolumePercent, DEFAULT_SOLIDS_BY_VOLUME),
@@ -712,6 +724,32 @@ export class CoatingAnalysisService {
     const company = await this.companyRepo.findOne({ where: { id: companyId } });
     const lossPct = company?.pipingLossFactorPct ?? 45;
     return (100 - lossPct) / 100;
+  }
+
+  static inferCoatRoles<T extends { area: string; coatRole?: "primer" | "intermediate" | "final" }>(
+    coats: T[],
+  ): T[] {
+    const hasAnyRole = coats.some((c) => c.coatRole);
+    if (hasAnyRole) {
+      return coats;
+    }
+    const byArea = coats.reduce<Record<string, T[]>>((acc, coat) => {
+      const key = coat.area;
+      return { ...acc, [key]: [...(acc[key] || []), coat] };
+    }, {});
+    return Object.values(byArea).flatMap((areaCoats) =>
+      areaCoats.map((coat, idx) => {
+        const role: "primer" | "intermediate" | "final" =
+          areaCoats.length === 1
+            ? "primer"
+            : idx === 0
+              ? "primer"
+              : idx === areaCoats.length - 1
+                ? "final"
+                : "intermediate";
+        return { ...coat, coatRole: role };
+      }),
+    );
   }
 
   private calculateCoatVolume(
@@ -751,6 +789,7 @@ export class CoatingAnalysisService {
       product: coat.product,
       genericType: coat.genericType,
       area: coat.area,
+      coatRole: coat.coatRole,
       minDftUm: effectiveMinDft,
       maxDftUm: effectiveMaxDft,
       solidsByVolumePercent: volumeSolids,

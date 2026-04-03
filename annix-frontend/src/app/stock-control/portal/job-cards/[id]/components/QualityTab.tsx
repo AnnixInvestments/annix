@@ -315,10 +315,17 @@ export function QualityTab(props: QualityTabProps) {
                         className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
                           rec.coatType === "primer"
                             ? "bg-orange-100 text-orange-800"
-                            : "bg-blue-100 text-blue-800"
+                            : rec.coatType === "intermediate"
+                              ? "bg-purple-100 text-purple-800"
+                              : "bg-blue-100 text-blue-800"
                         }`}
                       >
-                        DFT {rec.coatType === "primer" ? "Primer" : "Final"}
+                        DFT{" "}
+                        {rec.coatType === "primer"
+                          ? "Primer"
+                          : rec.coatType === "intermediate"
+                            ? "Intermediate"
+                            : "Final"}
                       </span>
                       <span className="text-sm font-medium text-gray-900">{rec.paintProduct}</span>
                       <span className="text-sm text-gray-500">

@@ -920,6 +920,7 @@ function ImportWizardModal({
                     className="mt-1 block w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm"
                   >
                     <option value="primer">Primer</option>
+                    <option value="intermediate">Intermediate</option>
                     <option value="final">Final</option>
                   </select>
                 </div>

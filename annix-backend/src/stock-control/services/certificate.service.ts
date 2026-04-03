@@ -9,7 +9,7 @@ import {
   STORAGE_SERVICE,
   StorageArea,
 } from "../../storage/storage.interface";
-import { JobCardCoatingAnalysis } from "../entities/coating-analysis.entity";
+import { type CoatRole, JobCardCoatingAnalysis } from "../entities/coating-analysis.entity";
 import { IssuanceBatchRecord } from "../entities/issuance-batch-record.entity";
 import { JobCard } from "../entities/job-card.entity";
 import { JobCardDataBook } from "../entities/job-card-data-book.entity";
@@ -22,6 +22,7 @@ import { QcControlPlan } from "../qc/entities/qc-control-plan.entity";
 import { QcReleaseCertificate } from "../qc/entities/qc-release-certificate.entity";
 import { QcMeasurementService } from "../qc/services/qc-measurement.service";
 import { generateBrandedCoverPage } from "./branded-cover-page";
+import { CoatingAnalysisService } from "./coating-analysis.service";
 import { DataBookPdfService } from "./data-book-pdf.service";
 
 interface UserContext {
@@ -650,7 +651,13 @@ export class CertificateService {
             this.qcMeasurementService.allMeasurementsForJobCard(companyId, jobCardId),
             this.qcMeasurementService.itemsReleasesForJobCard(companyId, jobCardId),
           ]);
-          return this.qcSections(qcData, itemsReleases, hasRubber, hasPaint);
+          return this.qcSections(
+            qcData,
+            itemsReleases,
+            hasRubber,
+            hasPaint,
+            coatingAnalysis || null,
+          );
         })()
       : { sections: [], warnings: [] };
 
@@ -694,11 +701,10 @@ export class CertificateService {
             const qcSectionKeys = [
               "controlPlans",
               "blastProfiles",
-              "primerDft",
-              "finalDft",
               "shoreHardness",
               "itemsRelease",
               "releaseCertificates",
+              ...sections.filter((s) => s.key.endsWith("Dft")).map((s) => s.key),
             ];
             const hasAnyQcData = sections
               .filter((s) => qcSectionKeys.includes(s.key))
@@ -734,6 +740,7 @@ export class CertificateService {
     itemsReleases: Awaited<ReturnType<QcMeasurementService["itemsReleasesForJobCard"]>>,
     hasRubber: boolean,
     hasPaint: boolean,
+    coatingAnalysis: JobCardCoatingAnalysis | null,
   ): { sections: SectionStatus[]; warnings: string[] } {
     const qcpWarnings = qcData.controlPlans.flatMap((plan) =>
       plan.approvalSignatures
@@ -779,8 +786,26 @@ export class CertificateService {
           `Shore Hardness: avg ${rec.averages.overall?.toFixed(1)} vs required ${rec.requiredShore} (out of spec)`,
       );
 
-    const primerDft = qcData.dftReadings.filter((r) => r.coatType === "primer");
-    const finalDft = qcData.dftReadings.filter((r) => r.coatType === "final");
+    const COAT_ROLE_ORDER: CoatRole[] = ["primer", "intermediate", "final"];
+    const COAT_ROLE_LABELS: Record<CoatRole, string> = {
+      primer: "Primer",
+      intermediate: "Intermediate",
+      final: "Final",
+    };
+
+    const coatsWithRoles = CoatingAnalysisService.inferCoatRoles(coatingAnalysis?.coats || []);
+    const distinctCoatRoles: CoatRole[] =
+      coatsWithRoles.length > 0
+        ? COAT_ROLE_ORDER.filter((role) => coatsWithRoles.some((c) => c.coatRole === role))
+        : COAT_ROLE_ORDER.filter((role) => qcData.dftReadings.some((r) => r.coatType === role));
+
+    const dftByRole = distinctCoatRoles.reduce<Record<string, typeof qcData.dftReadings>>(
+      (acc, role) => ({
+        ...acc,
+        [role]: qcData.dftReadings.filter((r) => r.coatType === role),
+      }),
+      {},
+    );
 
     const dftWarnings = qcData.dftReadings
       .filter(
@@ -791,7 +816,7 @@ export class CertificateService {
       )
       .map(
         (rec) =>
-          `${rec.coatType === "primer" ? "Primer" : "Final"} DFT: avg ${Number(rec.averageMicrons).toFixed(1)} μm outside spec ${rec.specMinMicrons}-${rec.specMaxMicrons} μm`,
+          `${COAT_ROLE_LABELS[rec.coatType as CoatRole] || rec.coatType} DFT: avg ${Number(rec.averageMicrons).toFixed(1)} μm outside spec ${rec.specMinMicrons}-${rec.specMaxMicrons} μm`,
       );
 
     const blastWarnings = qcData.blastProfiles
@@ -890,14 +915,14 @@ export class CertificateService {
           ),
           group: paintGroup,
         },
-        {
-          ...this.sectionFromCount("primerDft", "Primer DFT Reports", primerDft.length),
+        ...distinctCoatRoles.map((role) => ({
+          ...this.sectionFromCount(
+            `${role}Dft`,
+            `${COAT_ROLE_LABELS[role]} DFT Reports`,
+            (dftByRole[role] || []).length,
+          ),
           group: paintGroup,
-        },
-        {
-          ...this.sectionFromCount("finalDft", "Final DFT Reports", finalDft.length),
-          group: paintGroup,
-        },
+        })),
         { ...sharedItemsRelease, group: paintGroup },
         { ...sharedReleaseCerts, group: paintGroup },
       );
@@ -921,8 +946,13 @@ export class CertificateService {
           ),
           blastWarnings,
         ),
-        this.sectionFromCount("primerDft", "Primer DFT Reports", primerDft.length),
-        this.sectionFromCount("finalDft", "Final DFT Reports", finalDft.length),
+        ...distinctCoatRoles.map((role) =>
+          this.sectionFromCount(
+            `${role}Dft`,
+            `${COAT_ROLE_LABELS[role]} DFT Reports`,
+            (dftByRole[role] || []).length,
+          ),
+        ),
         sectionWithWarnings(
           this.sectionFromCount(
             "shoreHardness",

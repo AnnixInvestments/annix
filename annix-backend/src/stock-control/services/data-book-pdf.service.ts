@@ -137,8 +137,7 @@ interface DataBookContext {
   company: StockControlCompany | null;
   logoBuffer: Buffer | null;
   shoreHardness: QcShoreHardness[];
-  primerDft: QcDftReading[];
-  finalDft: QcDftReading[];
+  dftByRole: { role: string; label: string; readings: QcDftReading[] }[];
   blastProfiles: QcBlastProfile[];
   dustDebrisTests: QcDustDebrisTest[];
   pullTests: QcPullTest[];
@@ -209,8 +208,7 @@ export class DataBookPdfService {
       company,
       logoBuffer: null,
       shoreHardness: [],
-      primerDft: [],
-      finalDft: [],
+      dftByRole: [],
       blastProfiles: [],
       dustDebrisTests: [],
       pullTests: [],
@@ -244,8 +242,7 @@ export class DataBookPdfService {
       company,
       logoBuffer: null,
       shoreHardness: [],
-      primerDft: [],
-      finalDft: [],
+      dftByRole: [],
       blastProfiles: [],
       dustDebrisTests: [],
       pullTests: [],
@@ -281,8 +278,7 @@ export class DataBookPdfService {
       company,
       logoBuffer,
       shoreHardness: [],
-      primerDft: [],
-      finalDft: [],
+      dftByRole: [],
       blastProfiles: [],
       dustDebrisTests: [],
       pullTests: [],
@@ -442,8 +438,23 @@ export class DataBookPdfService {
       company,
       logoBuffer,
       shoreHardness,
-      primerDft: dftReadings.filter((d) => d.coatType === DftCoatType.PRIMER),
-      finalDft: dftReadings.filter((d) => d.coatType === DftCoatType.FINAL),
+      dftByRole: [
+        {
+          role: "primer",
+          label: "Primer",
+          readings: dftReadings.filter((d) => d.coatType === DftCoatType.PRIMER),
+        },
+        {
+          role: "intermediate",
+          label: "Intermediate",
+          readings: dftReadings.filter((d) => d.coatType === DftCoatType.INTERMEDIATE),
+        },
+        {
+          role: "final",
+          label: "Final",
+          readings: dftReadings.filter((d) => d.coatType === DftCoatType.FINAL),
+        },
+      ].filter((group) => group.readings.length > 0),
       blastProfiles,
       dustDebrisTests,
       pullTests,
@@ -480,12 +491,10 @@ export class DataBookPdfService {
       this.renderBlastProfile(doc, ctx, rec, tocEntries);
     });
 
-    ctx.primerDft.forEach((rec) => {
-      this.renderDftReport(doc, ctx, rec, "Primer", tocEntries);
-    });
-
-    ctx.finalDft.forEach((rec) => {
-      this.renderDftReport(doc, ctx, rec, "Final", tocEntries);
+    ctx.dftByRole.forEach((group) => {
+      group.readings.forEach((rec) => {
+        this.renderDftReport(doc, ctx, rec, group.label, tocEntries);
+      });
     });
 
     ctx.shoreHardness.forEach((rec) => {
@@ -730,12 +739,9 @@ export class DataBookPdfService {
     ) {
       entries.push(["Quality Control Plan - Paint", "QCP"]);
     }
-    if (ctx.primerDft.length > 0) {
-      entries.push(["Primer DFT Report", `${ctx.primerDft.length} record(s)`]);
-    }
-    if (ctx.finalDft.length > 0) {
-      entries.push(["Final DFT Report", `${ctx.finalDft.length} record(s)`]);
-    }
+    ctx.dftByRole.forEach((group) => {
+      entries.push([`${group.label} DFT Report`, `${group.readings.length} record(s)`]);
+    });
     if (ctx.blastProfiles.length > 0) {
       entries.push(["Blast Profile Report", `${ctx.blastProfiles.length} record(s)`]);
     }

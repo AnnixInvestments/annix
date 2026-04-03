@@ -624,10 +624,18 @@ function StartSessionForm({
           setPaintProduct(coat.product);
           setSpecMin(String(coat.minDftUm));
           setSpecMax(String(coat.maxDftUm));
-          const isPrimer =
-            coat.genericType?.toLowerCase().includes("primer") ||
-            coat.product.toLowerCase().includes("primer");
-          setCoatType(isPrimer ? "primer" : "final");
+          const lowerGeneric = coat.genericType?.toLowerCase() || "";
+          const lowerProduct = coat.product.toLowerCase();
+          if (lowerGeneric.includes("primer") || lowerProduct.includes("primer")) {
+            setCoatType("primer");
+          } else if (
+            lowerGeneric.includes("intermediate") ||
+            lowerProduct.includes("intermediate")
+          ) {
+            setCoatType("intermediate");
+          } else {
+            setCoatType("final");
+          }
         }
       }
     },
@@ -837,6 +845,7 @@ function StartSessionForm({
                   className="mt-1 block w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm"
                 >
                   <option value="primer">Primer</option>
+                  <option value="intermediate">Intermediate</option>
                   <option value="final">Final</option>
                 </select>
               </div>

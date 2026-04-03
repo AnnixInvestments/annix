@@ -493,7 +493,12 @@ export class QcMeasurementService {
         ),
         buildActivity(4, "Verification of Paints Used", "BATCH CERTIFICATES", "BATCH CERTIFICATES"),
         buildActivity(5, "Visual Inspection on Items", "QD_PLS_16", "QD_PLS_16"),
-        buildActivity(6, "Blasting", surfPrep || "CLEAN SA.2.5 ISO 8501-1988", "RECORD READINGS"),
+        buildActivity(
+          6,
+          surfPrep === "no_blasting" ? "Surface Preparation" : "Blasting",
+          surfPrep === "no_blasting" ? "NO BLASTING" : surfPrep || "CLEAN SA.2.5 ISO 8501-1988",
+          surfPrep === "no_blasting" ? "N/A" : "RECORD READINGS",
+        ),
       ];
 
       let opNum = 7;

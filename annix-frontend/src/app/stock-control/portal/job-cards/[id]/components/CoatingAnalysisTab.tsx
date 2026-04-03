@@ -364,6 +364,7 @@ export function CoatingAnalysisTab(props: CoatingAnalysisTabProps) {
                     <option value="blast">BLAST</option>
                     <option value="hand_tool">HAND TOOL</option>
                     <option value="power_tool">POWER TOOL</option>
+                    <option value="no_blasting">NO BLASTING</option>
                   </select>
                 ) : (
                   <span className="text-gray-900 uppercase">
