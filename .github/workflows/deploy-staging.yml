@@ -52,8 +52,8 @@ jobs:
       - name: Run frontend type check
         run: pnpm --filter annix-frontend type-check
 
-  build-and-deploy:
-    name: Build & Deploy to Staging
+  build-image:
+    name: Build App Image
     runs-on: ubuntu-latest
     needs: test
     steps:
@@ -89,13 +89,28 @@ jobs:
           cache-from: type=gha,scope=pr-${{ github.event.pull_request.number }}
           cache-to: type=gha,mode=max,scope=pr-${{ github.event.pull_request.number }}
 
-      - name: Pull image for local deploy
+  deploy:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: build-image
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Pull app image
         run: docker pull ${{ env.APP_IMAGE }}:pr-${{ github.event.pull_request.number }}-${{ github.sha }}
 
       - name: Setup Fly.io CLI
         uses: superfly/flyctl-actions/setup-flyctl@master
 
-      - name: Deploy to Staging
+      - name: Deploy to Fly.io (staging)
         run: |
           for i in 1 2 3; do
             if flyctl deploy -a annix-app-staging \
