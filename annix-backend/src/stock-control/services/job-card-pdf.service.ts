@@ -314,19 +314,30 @@ export class JobCardPdfService {
       .text("Scan to dispatch", 450, 210, { width: 90, align: "center" });
   }
 
+  private checkPageBreak(doc: typeof PDFDocument, y: number, requiredSpace: number): number {
+    const pageBottom = doc.page.height - 60;
+    if (y + requiredSpace > pageBottom) {
+      doc.addPage();
+      return 50;
+    }
+    return y;
+  }
+
   private drawLineItems(doc: typeof PDFDocument, jobCard: JobCard, startY: number): number {
     if (!jobCard.lineItems || jobCard.lineItems.length === 0) {
       return startY;
     }
 
+    let y = this.checkPageBreak(doc, startY, 60);
+
     doc
-      .moveTo(50, startY - 10)
-      .lineTo(545, startY - 10)
+      .moveTo(50, y - 10)
+      .lineTo(545, y - 10)
       .stroke();
 
-    doc.fontSize(10).font("Helvetica-Bold").text("Line Items", 50, startY);
+    doc.fontSize(10).font("Helvetica-Bold").text("Line Items", 50, y);
 
-    let y = startY + 14;
+    y += 14;
 
     doc.fontSize(8).font("Helvetica-Bold");
     doc.text("#", 50, y, { width: 20 });
@@ -341,6 +352,8 @@ export class JobCardPdfService {
     doc.font("Helvetica").fontSize(8);
     const { filteredItems } = this.partitionLineItems(jobCard.lineItems);
     filteredItems.slice(0, 15).forEach((item, index) => {
+      y = this.checkPageBreak(doc, y, 25);
+
       const itemCode = item.itemCode || "-";
       const description = item.itemDescription || "";
       const label = description ? `${itemCode} - ${description}` : itemCode;
@@ -378,6 +391,9 @@ export class JobCardPdfService {
     const lines = coatingSpecs.split("\n").filter((line) => line.trim());
     if (lines.length === 0) return startY;
 
+    const estimatedHeight = 20 + lines.length * 14 + 10;
+    startY = this.checkPageBreak(doc, startY, estimatedHeight);
+
     doc
       .moveTo(50, startY - 10)
       .lineTo(545, startY - 10)
@@ -411,14 +427,19 @@ export class JobCardPdfService {
     if (!coatingAnalysis || !coatingAnalysis.coats || coatingAnalysis.coats.length === 0) {
       return startY;
     }
+
+    const coatCount = coatingAnalysis.coats.length;
+    const estimatedHeight = 50 + coatCount * 12 + 20;
+    let y = this.checkPageBreak(doc, startY, estimatedHeight);
+
     doc
-      .moveTo(50, startY - 10)
-      .lineTo(545, startY - 10)
+      .moveTo(50, y - 10)
+      .lineTo(545, y - 10)
       .stroke();
 
-    doc.fontSize(10).font("Helvetica-Bold").text("Coating Specification", 50, startY);
+    doc.fontSize(10).font("Helvetica-Bold").text("Coating Specification", 50, y);
 
-    let y = startY + 13;
+    y += 13;
     doc.fontSize(8).font("Helvetica");
 
     const areaInfo: string[] = [];
@@ -481,6 +502,8 @@ export class JobCardPdfService {
     }, []);
 
     combinedCoats.forEach((coat) => {
+      y = this.checkPageBreak(doc, y, 15);
+
       const dftRange =
         coat.minDftUm === coat.maxDftUm
           ? String(coat.minDftUm)
@@ -1183,14 +1206,19 @@ export class JobCardPdfService {
     if (!jobCard.allocations || jobCard.allocations.length === 0) {
       return startY;
     }
+
+    const allocCount = Math.min(jobCard.allocations.length, 10);
+    const estimatedHeight = 40 + allocCount * 12;
+    let y = this.checkPageBreak(doc, startY, estimatedHeight);
+
     doc
-      .moveTo(50, startY - 10)
-      .lineTo(545, startY - 10)
+      .moveTo(50, y - 10)
+      .lineTo(545, y - 10)
       .stroke();
 
-    doc.fontSize(10).font("Helvetica-Bold").text("Stock Allocations", 50, startY);
+    doc.fontSize(10).font("Helvetica-Bold").text("Stock Allocations", 50, y);
 
-    let y = startY + 14;
+    y += 14;
 
     doc.fontSize(8).font("Helvetica-Bold");
     doc.text("SKU", 50, y);
@@ -1204,6 +1232,7 @@ export class JobCardPdfService {
 
     doc.font("Helvetica").fontSize(7);
     jobCard.allocations.slice(0, 10).forEach((alloc) => {
+      y = this.checkPageBreak(doc, y, 15);
       doc.text(alloc.stockItem?.sku || "-", 50, y, { width: 65 });
       doc.text(alloc.stockItem?.name || "-", 120, y, { width: 270 });
       doc.text(String(alloc.quantityUsed), 400, y);
