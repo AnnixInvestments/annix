@@ -80,8 +80,9 @@ function CompoundCard(props: {
   section: CompoundSection;
   isExpanded: boolean;
   onToggle: () => void;
+  onInvoiceClick: (invoice: RubberTaxInvoiceDto) => void;
 }) {
-  const { section, isExpanded, onToggle } = props;
+  const { section, isExpanded, onToggle, onInvoiceClick } = props;
   const { stock } = section;
   const actualSOH = section.totalReceived - section.totalDispatched;
   const available = actualSOH - section.committedKg;
@@ -177,6 +178,7 @@ function CompoundCard(props: {
               movements={section.receivedMovements}
               invoices={section.linkedInvoices}
               totalReceived={section.totalReceived}
+              onInvoiceClick={onInvoiceClick}
             />
             <CommittedSection
               committedOrders={section.committedOrders}
@@ -188,6 +190,7 @@ function CompoundCard(props: {
               calendaredInvoices={section.calendaredInvoices}
               calendaredInvoiceDns={section.calendaredInvoiceDns}
               totalDispatched={section.totalDispatched}
+              onStiClick={onInvoiceClick}
             />
           </div>
         </div>
@@ -200,8 +203,9 @@ function ReceivedSection(props: {
   movements: RubberCompoundMovementDto[];
   invoices: Map<number, RubberTaxInvoiceDto>;
   totalReceived: number;
+  onInvoiceClick: (invoice: RubberTaxInvoiceDto) => void;
 }) {
-  const { movements, invoices, totalReceived } = props;
+  const { movements, invoices, totalReceived, onInvoiceClick } = props;
 
   return (
     <div>
@@ -225,12 +229,13 @@ function ReceivedSection(props: {
                   <span className="text-xs text-gray-400">{m.createdAt.split("T")[0]}</span>
                 </div>
                 {invoice && (
-                  <Link
-                    href={`/au-rubber/portal/tax-invoices/${invoice.id}?returnUrl=${encodeURIComponent("/au-rubber/portal/compound-stocks")}`}
-                    className="text-xs text-yellow-600 hover:underline"
+                  <button
+                    type="button"
+                    onClick={() => onInvoiceClick(invoice)}
+                    className="text-xs text-yellow-600 hover:underline text-left"
                   >
                     {invoice.invoiceNumber} - {invoice.companyName || "Unknown"}
-                  </Link>
+                  </button>
                 )}
                 {!invoice && m.referenceType && (
                   <p className="text-xs text-gray-500">{m.referenceType.replace(/_/g, " ")}</p>
@@ -301,9 +306,16 @@ function DispatchedSection(props: {
   calendaredInvoices: Map<number, RubberTaxInvoiceDto>;
   calendaredInvoiceDns: Map<number, RubberDeliveryNoteDto>;
   totalDispatched: number;
+  onStiClick: (invoice: RubberTaxInvoiceDto) => void;
 }) {
-  const { movements, deliveryNotes, calendaredInvoices, calendaredInvoiceDns, totalDispatched } =
-    props;
+  const {
+    movements,
+    deliveryNotes,
+    calendaredInvoices,
+    calendaredInvoiceDns,
+    totalDispatched,
+    onStiClick,
+  } = props;
 
   const calendaringByRef = movements
     .filter((m) => m.referenceType === "CALENDARING" && m.referenceId)
@@ -361,12 +373,13 @@ function DispatchedSection(props: {
                   </Link>
                 )}
                 {calInv && (
-                  <Link
-                    href={`/au-rubber/portal/tax-invoices/${calInv.id}?returnUrl=${returnUrl}`}
-                    className="text-xs text-yellow-600 hover:underline block"
+                  <button
+                    type="button"
+                    onClick={() => onStiClick(calInv)}
+                    className="text-xs text-yellow-600 hover:underline block text-left"
                   >
                     STI: {calInv.invoiceNumber} - {calInv.companyName || "Calendarer"}
-                  </Link>
+                  </button>
                 )}
                 {dnRolls.length > 0 ? (
                   <div className="mt-1 ml-2 space-y-0.5">
@@ -461,6 +474,14 @@ export default function CompoundStocksPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [showLowStockOnly, setShowLowStockOnly] = useState(false);
 
+  const [stiModal, setStiModal] = useState<{
+    isOpen: boolean;
+    invoice: RubberTaxInvoiceDto | null;
+    documentUrl: string | null;
+    isLoading: boolean;
+    error: string | null;
+  }>({ isOpen: false, invoice: null, documentUrl: null, isLoading: false, error: null });
+
   const [compounds, setCompounds] = useState<RubberProductCodingDto[]>([]);
   const [locations, setLocations] = useState<StockLocationDto[]>([]);
   const [showOpeningStockModal, setShowOpeningStockModal] = useState(false);
@@ -484,6 +505,30 @@ export default function CompoundStocksPage() {
     null,
   );
   const [isImporting, setIsImporting] = useState(false);
+
+  const isOfficeFilePath = (path: string) => /\.(xlsx|xls|docx|doc|pptx|ppt)$/i.test(path);
+
+  const openStiViewer = async (invoice: RubberTaxInvoiceDto) => {
+    setStiModal({ isOpen: true, invoice, documentUrl: null, isLoading: true, error: null });
+    if (!invoice.documentPath) {
+      setStiModal((prev) => ({ ...prev, isLoading: false }));
+      return;
+    }
+    try {
+      const url = await auRubberApiClient.documentUrl(invoice.documentPath);
+      setStiModal((prev) => ({ ...prev, documentUrl: url, isLoading: false }));
+    } catch {
+      setStiModal((prev) => ({
+        ...prev,
+        isLoading: false,
+        error: "Failed to load document",
+      }));
+    }
+  };
+
+  const closeStiModal = () => {
+    setStiModal({ isOpen: false, invoice: null, documentUrl: null, isLoading: false, error: null });
+  };
 
   const fetchData = async () => {
     try {
@@ -971,11 +1016,94 @@ export default function CompoundStocksPage() {
                   section={section}
                   isExpanded={expandedIds.has(section.stock.id)}
                   onToggle={() => toggleExpand(section.stock.id)}
+                  onInvoiceClick={openStiViewer}
                 />
               ))}
             </div>
           )}
         </>
+      )}
+
+      {stiModal.isOpen && (
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+          <div className="flex items-center justify-center min-h-screen px-4">
+            <div className="fixed inset-0 bg-black/10 backdrop-blur-md" onClick={closeStiModal} />
+            <div className="relative bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col">
+              <div className="flex items-center justify-between p-4 border-b">
+                <div className="flex-1 min-w-0 mr-4">
+                  <h2 className="text-base font-semibold text-gray-900 truncate">
+                    {stiModal.invoice?.invoiceNumber || "Tax Invoice"}
+                    {stiModal.invoice?.companyName && (
+                      <span className="ml-2 text-sm font-normal text-gray-500">
+                        — {stiModal.invoice.companyName}
+                      </span>
+                    )}
+                  </h2>
+                </div>
+                <div className="flex items-center space-x-2 shrink-0">
+                  {stiModal.invoice && (
+                    <a
+                      href={`/au-rubber/portal/tax-invoices/${stiModal.invoice.id}?returnUrl=${encodeURIComponent("/au-rubber/portal/compound-stocks")}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-white bg-yellow-600 hover:bg-yellow-700 rounded-md transition-colors"
+                    >
+                      Full Details
+                    </a>
+                  )}
+                  <button
+                    type="button"
+                    onClick={closeStiModal}
+                    className="text-gray-400 hover:text-gray-600 p-1"
+                  >
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M6 18L18 6M6 6l12 12"
+                      />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+              <div className="flex-1 min-h-[500px] flex items-center justify-center bg-gray-100 overflow-auto">
+                {stiModal.isLoading ? (
+                  <div className="text-center">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-yellow-600 mx-auto" />
+                    <p className="mt-4 text-gray-600">Loading document...</p>
+                  </div>
+                ) : stiModal.error ? (
+                  <div className="text-center text-red-600">
+                    <p>{stiModal.error}</p>
+                  </div>
+                ) : !stiModal.invoice?.documentPath ? (
+                  <div className="text-center text-gray-500">
+                    <p>No document attached to this invoice.</p>
+                  </div>
+                ) : stiModal.documentUrl &&
+                  stiModal.invoice?.documentPath &&
+                  isOfficeFilePath(stiModal.invoice.documentPath) ? (
+                  <iframe
+                    src={`https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(stiModal.documentUrl)}`}
+                    className="w-full h-[70vh]"
+                    title="Tax Invoice Document"
+                  />
+                ) : stiModal.documentUrl ? (
+                  <iframe
+                    src={stiModal.documentUrl}
+                    className="w-full h-[70vh]"
+                    title="Tax Invoice Document"
+                  />
+                ) : (
+                  <div className="text-center text-gray-500">
+                    <p>Document not available.</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
       )}
 
       {showOpeningStockModal && (
