@@ -45,6 +45,21 @@ export const FEATURE_FLAGS = {
   RFQ_PRODUCT_PIPE_STEEL_WORK: "RFQ_PRODUCT_PIPE_STEEL_WORK",
   RFQ_RESTRICT_UNREGISTERED: "RFQ_RESTRICT_UNREGISTERED",
   SAGE_INTEGRATION: "SAGE_INTEGRATION",
+  ANNIX_ORDERS: "ANNIX_ORDERS",
+  ANNIX_PRODUCTS: "ANNIX_PRODUCTS",
+  ANNIX_SUPPLIER_COCS: "ANNIX_SUPPLIER_COCS",
+  ANNIX_CERTIFICATES: "ANNIX_CERTIFICATES",
+  ANNIX_DELIVERY_NOTES: "ANNIX_DELIVERY_NOTES",
+  ANNIX_TAX_INVOICES: "ANNIX_TAX_INVOICES",
+  ANNIX_QUALITY: "ANNIX_QUALITY",
+  ANNIX_STOCK_CONTROL: "ANNIX_STOCK_CONTROL",
+  ANNIX_PRODUCTION: "ANNIX_PRODUCTION",
+  ANNIX_PRICING: "ANNIX_PRICING",
+  ANNIX_SAGE_SYNC: "ANNIX_SAGE_SYNC",
+  ANNIX_EMAIL_INGESTION: "ANNIX_EMAIL_INGESTION",
+  ANNIX_PURCHASE_REQS: "ANNIX_PURCHASE_REQS",
+  ANNIX_COMPANIES: "ANNIX_COMPANIES",
+  ANNIX_RBAC: "ANNIX_RBAC",
 } as const;
 
 export type FeatureFlagKey = (typeof FEATURE_FLAGS)[keyof typeof FEATURE_FLAGS];
@@ -96,6 +111,21 @@ export const FEATURE_FLAG_DESCRIPTIONS: Record<FeatureFlagKey, string> = {
   RFQ_PRODUCT_PIPE_STEEL_WORK: "Pipe Brackets & Steel Work",
   RFQ_RESTRICT_UNREGISTERED: "Restrict RFQ options for unregistered customers",
   SAGE_INTEGRATION: "Sage Accounting integration addon (paid feature)",
+  ANNIX_ORDERS: "Order management with import, tracking, and correction workflows",
+  ANNIX_PRODUCTS: "Product catalog with coding classifications and bulk import",
+  ANNIX_SUPPLIER_COCS: "Supplier Certificate of Conformance processing and approval workflows",
+  ANNIX_CERTIFICATES: "Customer AU Certificates with readiness tracking and document versioning",
+  ANNIX_DELIVERY_NOTES: "Delivery note management for suppliers and customers",
+  ANNIX_TAX_INVOICES: "Tax invoice creation, versioning, and correction tracking",
+  ANNIX_QUALITY: "Quality tracking, roll stock management, and rejection workflows",
+  ANNIX_STOCK_CONTROL: "Compound inventory, stock movements, locations, and other items",
+  ANNIX_PRODUCTION: "Production workflow management with batch tracking",
+  ANNIX_PRICING: "Pricing tiers and cost of sale analysis with cost rate management",
+  ANNIX_SAGE_SYNC: "Sage Accounting sync for invoices, contacts, and CoC data",
+  ANNIX_EMAIL_INGESTION: "Automatic CoC extraction from monitored email inboxes via AI",
+  ANNIX_PURCHASE_REQS: "Internal purchase requisition workflows with approval chains",
+  ANNIX_COMPANIES: "Customer and supplier management with statements and Sage linking",
+  ANNIX_RBAC: "Role-based access control with granular permissions per user",
 };
 
 export const FEATURE_FLAG_DEFAULTS: Record<FeatureFlagKey, boolean> = {
@@ -145,6 +175,21 @@ export const FEATURE_FLAG_DEFAULTS: Record<FeatureFlagKey, boolean> = {
   RFQ_PRODUCT_PIPE_STEEL_WORK: true,
   RFQ_RESTRICT_UNREGISTERED: true,
   SAGE_INTEGRATION: false,
+  ANNIX_ORDERS: false,
+  ANNIX_PRODUCTS: false,
+  ANNIX_SUPPLIER_COCS: false,
+  ANNIX_CERTIFICATES: false,
+  ANNIX_DELIVERY_NOTES: false,
+  ANNIX_TAX_INVOICES: false,
+  ANNIX_QUALITY: false,
+  ANNIX_STOCK_CONTROL: false,
+  ANNIX_PRODUCTION: false,
+  ANNIX_PRICING: false,
+  ANNIX_SAGE_SYNC: false,
+  ANNIX_EMAIL_INGESTION: false,
+  ANNIX_PURCHASE_REQS: false,
+  ANNIX_COMPANIES: false,
+  ANNIX_RBAC: false,
 };
 
 export type FeatureFlagCategory =
@@ -153,7 +198,8 @@ export type FeatureFlagCategory =
   | "admin"
   | "system"
   | "registration"
-  | "rfq";
+  | "rfq"
+  | "addons";
 
 export const FEATURE_FLAG_CATEGORIES: Record<FeatureFlagKey, FeatureFlagCategory> = {
   REMOTE_ACCESS: "system",
@@ -202,4 +248,19 @@ export const FEATURE_FLAG_CATEGORIES: Record<FeatureFlagKey, FeatureFlagCategory
   RFQ_PRODUCT_PIPE_STEEL_WORK: "rfq",
   RFQ_RESTRICT_UNREGISTERED: "rfq",
   SAGE_INTEGRATION: "system",
+  ANNIX_ORDERS: "addons",
+  ANNIX_PRODUCTS: "addons",
+  ANNIX_SUPPLIER_COCS: "addons",
+  ANNIX_CERTIFICATES: "addons",
+  ANNIX_DELIVERY_NOTES: "addons",
+  ANNIX_TAX_INVOICES: "addons",
+  ANNIX_QUALITY: "addons",
+  ANNIX_STOCK_CONTROL: "addons",
+  ANNIX_PRODUCTION: "addons",
+  ANNIX_PRICING: "addons",
+  ANNIX_SAGE_SYNC: "addons",
+  ANNIX_EMAIL_INGESTION: "addons",
+  ANNIX_PURCHASE_REQS: "addons",
+  ANNIX_COMPANIES: "addons",
+  ANNIX_RBAC: "addons",
 };

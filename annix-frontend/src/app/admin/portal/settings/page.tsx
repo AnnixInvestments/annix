@@ -43,9 +43,14 @@ const CATEGORY_CONFIG: Record<string, CategoryConfig> = {
       "Control which project types and products/services are available to users when creating RFQs",
     color: "teal",
   },
+  addons: {
+    title: "Add-on Features",
+    description: "Sellable add-on modules available across all Annix apps",
+    color: "rose",
+  },
 };
 
-const CATEGORY_ORDER = ["customer", "supplier", "admin", "system", "registration", "rfq"];
+const CATEGORY_ORDER = ["customer", "supplier", "admin", "system", "registration", "rfq", "addons"];
 
 const RFQ_PRODUCT_FLAG_MAP = PRODUCTS_AND_SERVICES.reduce<
   Record<
