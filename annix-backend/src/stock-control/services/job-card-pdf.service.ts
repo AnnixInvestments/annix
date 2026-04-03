@@ -327,9 +327,11 @@ export class JobCardPdfService {
 
     doc.fontSize(8).font("Helvetica-Bold");
     doc.text("#", 50, y, { width: 20 });
-    doc.text("Item Code", 70, y);
-    doc.text("Qty", 470, y);
-    doc.text("JT No", 510, y);
+    doc.text("Item No", 70, y);
+    doc.text("Type", 170, y);
+    doc.text("Description", 240, y);
+    doc.text("Qty", 440, y);
+    doc.text("JT No", 480, y);
 
     y += 12;
     doc.moveTo(50, y).lineTo(545, y).stroke();
@@ -343,13 +345,13 @@ export class JobCardPdfService {
       y = this.checkPageBreak(doc, y, 25);
 
       const workType = this.workTypeFromNotes(item.notes);
-      const description = item.itemDescription || "";
-      const label = description ? `${workType} - ${description}` : workType;
 
       doc.text(String(index + 1), 50, y, { width: 20 });
-      doc.text(label, 70, y, { width: 395 });
-      doc.text(String(item.quantity || "-"), 470, y);
-      doc.text(item.jtNo || "-", 510, y);
+      doc.text(item.itemNo || "-", 70, y, { width: 95 });
+      doc.text(workType, 170, y, { width: 65 });
+      doc.text(item.itemDescription || "-", 240, y, { width: 195 });
+      doc.text(String(item.quantity || "-"), 440, y);
+      doc.text(item.jtNo || "-", 480, y);
       y += 13;
 
       if (item._showSpec && item.notes) {

@@ -23,6 +23,18 @@ import {
 } from "@/app/stock-control/lib/rubberCuttingCalculator";
 import { isValidLineItem } from "../lib/helpers";
 
+function workTypeFromNotes(notes: string | null | undefined): string {
+  if (!notes) return "—";
+  const upper = notes.toUpperCase();
+  const lines = upper.split("\n").map((l) => l.trim());
+  const hasRubber = lines.some((l) => /^INT\s*:/.test(l) && /R\/L|RUBBER|SHORE|LINING/.test(l));
+  const hasPaint = lines.some((l) => /^EXT\s*:/.test(l) && /PAINT|BLAST|PRIMER|COAT/.test(l));
+  if (hasRubber && hasPaint) return "Rubber & Paint";
+  if (hasRubber) return "Rubber";
+  if (hasPaint) return "Paint";
+  return "—";
+}
+
 const STANDARD_ROLL_WIDTH_MM = 1200;
 const STANDARD_ROLL_LENGTH_M = 12.5;
 const STANDARD_ROLL_AREA_M2 = (STANDARD_ROLL_WIDTH_MM / 1000) * STANDARD_ROLL_LENGTH_M;
@@ -1523,7 +1535,8 @@ export function RubberAllocationGuard({
             <thead>
               <tr className="border-b border-gray-200">
                 <th className="text-left py-2 pr-4 font-medium text-gray-500 w-10">#</th>
-                <th className="text-left py-2 pr-4 font-medium text-gray-500">Item Code</th>
+                <th className="text-left py-2 pr-4 font-medium text-gray-500">Item No</th>
+                <th className="text-left py-2 pr-4 font-medium text-gray-500">Type</th>
                 <th className="text-left py-2 pr-4 font-medium text-gray-500">Description</th>
                 <th className="text-right py-2 pr-4 font-medium text-gray-500">Qty</th>
                 <th className="text-right py-2 pr-4 font-medium text-gray-500">m²</th>
@@ -1537,7 +1550,8 @@ export function RubberAllocationGuard({
                 return (
                   <tr key={li.id} className="border-b border-gray-100">
                     <td className="py-2 pr-4 text-gray-400">{idx + 1}</td>
-                    <td className="py-2 pr-4 text-gray-900 font-medium">{li.itemCode || "—"}</td>
+                    <td className="py-2 pr-4 text-gray-900 font-medium">{li.itemNo || "—"}</td>
+                    <td className="py-2 pr-4 text-gray-700">{workTypeFromNotes(li.notes)}</td>
                     <td className="py-2 pr-4 text-gray-700">{li.itemDescription || "—"}</td>
                     <td className="py-2 pr-4 text-right font-semibold text-gray-900">{qty}</td>
                     <td className="py-2 pr-4 text-right text-gray-700">
