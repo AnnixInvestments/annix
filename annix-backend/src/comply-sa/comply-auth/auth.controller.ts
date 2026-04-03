@@ -25,7 +25,7 @@ export class ComplySaAuthController {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
-      path: "/api/comply-sa",
+      path: "/api",
       maxAge: SEVEN_DAYS_MS,
     });
   }

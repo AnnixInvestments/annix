@@ -28,6 +28,7 @@ import { useEffect, useRef, useState } from "react";
 import Breadcrumbs from "@/app/comply-sa/components/Breadcrumbs";
 import HelpLinks from "@/app/comply-sa/components/HelpLinks";
 import AmixLogo from "@/app/components/AmixLogo";
+import { FeedbackWidget } from "@/app/components/FeedbackWidget";
 import { ThemeToggle } from "@/app/components/ThemeToggle";
 
 type NavItem = { href: string; label: string; icon: React.ComponentType<{ className?: string }> };
@@ -344,6 +345,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         {children}
         <HelpLinks />
       </main>
+
+      <FeedbackWidget authContext="comply-sa" />
     </div>
   );
 }

@@ -19,9 +19,12 @@ export type FeedbackAuthContext =
   | "au-rubber"
   | "supplier"
   | "cv-assistant"
-  | "annix-rep";
+  | "annix-rep"
+  | "comply-sa";
 
-const AUTH_TOKEN_KEYS: Record<FeedbackAuthContext, string> = {
+const COOKIE_AUTH_CONTEXTS: FeedbackAuthContext[] = ["comply-sa"];
+
+const AUTH_TOKEN_KEYS: Record<string, string> = {
   customer: "customerAccessToken",
   admin: "adminAccessToken",
   "stock-control": "stockControlAccessToken",
@@ -31,12 +34,19 @@ const AUTH_TOKEN_KEYS: Record<FeedbackAuthContext, string> = {
   "annix-rep": "annixRepAccessToken",
 };
 
+function usesCookieAuth(authContext: FeedbackAuthContext): boolean {
+  return COOKIE_AUTH_CONTEXTS.includes(authContext);
+}
+
 function resolveToken(authContext: FeedbackAuthContext): string | null {
+  if (usesCookieAuth(authContext)) {
+    return null;
+  }
   if (typeof window === "undefined") {
     return null;
   }
   const key = AUTH_TOKEN_KEYS[authContext];
-  return localStorage.getItem(key) || sessionStorage.getItem(key);
+  return key ? localStorage.getItem(key) || sessionStorage.getItem(key) : null;
 }
 
 function customerAuthHeaders(): Record<string, string> {
@@ -90,9 +100,10 @@ export async function submitFeedbackWithAttachments(
   files: File[],
   authContext: FeedbackAuthContext,
 ): Promise<SubmitFeedbackResponse> {
+  const isCookieAuth = usesCookieAuth(authContext);
   const token = resolveToken(authContext);
 
-  if (!token) {
+  if (!isCookieAuth && !token) {
     throw new Error("Not authenticated");
   }
 
@@ -108,11 +119,15 @@ export async function submitFeedbackWithAttachments(
     formData.append("files", file);
   });
 
+  const headers: Record<string, string> = {};
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+
   const response = await fetch(`${API_BASE_URL}/feedback`, {
     method: "POST",
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
+    headers,
+    credentials: isCookieAuth ? "include" : "same-origin",
     body: formData,
   });
 

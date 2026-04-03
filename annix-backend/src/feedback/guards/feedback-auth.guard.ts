@@ -17,7 +17,10 @@ export class FeedbackAuthGuard implements CanActivate {
     const request = context.switchToHttp().getRequest<Request>();
     const authHeader = request.headers.authorization;
 
-    const token = authHeader?.startsWith("Bearer ") ? authHeader.substring(7) : null;
+    const token =
+      (authHeader?.startsWith("Bearer ") ? authHeader.substring(7) : null) ||
+      request.cookies?.["comply_sa_token"] ||
+      null;
 
     if (!token) {
       throw new UnauthorizedException("Authentication required");
