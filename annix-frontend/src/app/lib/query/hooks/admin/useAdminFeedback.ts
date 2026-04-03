@@ -1,5 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { FeedbackAttachmentUrl, FeedbackDetail, FeedbackItem } from "@/app/lib/api/adminApi";
+import type {
+  FeedbackAttachmentUrl,
+  FeedbackDetail,
+  FeedbackItem,
+  ResolutionStatus,
+} from "@/app/lib/api/adminApi";
 import { adminApiClient as adminApi } from "@/app/lib/api/adminApi";
 import { adminKeys } from "../../keys/adminKeys";
 
@@ -31,6 +36,26 @@ export function useAssignFeedback() {
 
   return useMutation({
     mutationFn: (feedbackId: number) => adminApi.assignFeedback(feedbackId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: adminKeys.feedback.all });
+    },
+  });
+}
+
+export function useUpdateFeedbackResolution() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (params: {
+      feedbackId: number;
+      resolutionStatus: ResolutionStatus | null;
+      testCriteria: string | null;
+    }) =>
+      adminApi.updateFeedbackResolution(
+        params.feedbackId,
+        params.resolutionStatus,
+        params.testCriteria,
+      ),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: adminKeys.feedback.all });
     },

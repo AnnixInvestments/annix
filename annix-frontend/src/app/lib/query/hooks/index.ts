@@ -16,6 +16,7 @@ export {
   useAssignFeedback,
   useFeedbackAttachmentUrls,
   useUnassignFeedback,
+  useUpdateFeedbackResolution,
 } from "./admin/useAdminFeedback";
 export {
   useAdminBroadcasts,

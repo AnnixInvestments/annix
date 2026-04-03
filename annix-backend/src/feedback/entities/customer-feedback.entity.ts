@@ -32,6 +32,16 @@ export type FeedbackClassification =
 
 export type FeedbackStatus = "submitted" | "triaged" | "in_progress" | "resolved";
 
+export type ResolutionStatus =
+  | "needs_investigation"
+  | "investigating"
+  | "fix_in_progress"
+  | "fix_deployed"
+  | "verified"
+  | "cannot_reproduce"
+  | "wont_fix"
+  | "duplicate";
+
 @Entity("customer_feedback")
 export class CustomerFeedback {
   @PrimaryGeneratedColumn()
@@ -87,6 +97,15 @@ export class CustomerFeedback {
 
   @Column({ name: "status", type: "varchar", length: 20, default: "submitted" })
   status: FeedbackStatus;
+
+  @Column({ name: "resolution_status", type: "varchar", length: 30, nullable: true })
+  resolutionStatus: ResolutionStatus | null;
+
+  @Column({ name: "test_criteria", type: "text", nullable: true })
+  testCriteria: string | null;
+
+  @Column({ name: "verified_at", type: "timestamptz", nullable: true })
+  verifiedAt: Date | null;
 
   @OneToMany(
     () => FeedbackAttachment,

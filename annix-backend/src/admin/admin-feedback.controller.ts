@@ -1,4 +1,14 @@
-import { Controller, Get, Param, ParseIntPipe, Post, Req, UseGuards } from "@nestjs/common";
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  ParseIntPipe,
+  Post,
+  Put,
+  Req,
+  UseGuards,
+} from "@nestjs/common";
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from "@nestjs/swagger";
 import { Request } from "express";
 import { CustomerFeedback } from "../feedback/entities/customer-feedback.entity";
@@ -44,6 +54,16 @@ export class AdminFeedbackController {
   @ApiResponse({ status: 200, description: "Attachment URLs" })
   async attachmentUrls(@Param("id", ParseIntPipe) id: number) {
     return this.feedbackService.attachmentUrls(id);
+  }
+
+  @Put(":id/resolution")
+  @ApiOperation({ summary: "Update feedback resolution status and test criteria" })
+  @ApiResponse({ status: 200, description: "Resolution updated" })
+  async updateResolution(
+    @Param("id", ParseIntPipe) id: number,
+    @Body() body: { resolutionStatus: string | null; testCriteria: string | null },
+  ): Promise<CustomerFeedback> {
+    return this.feedbackService.updateResolution(id, body.resolutionStatus, body.testCriteria);
   }
 
   @Post(":id/unassign")

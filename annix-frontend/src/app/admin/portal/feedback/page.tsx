@@ -1,13 +1,19 @@
 "use client";
 
 import { useState } from "react";
-import type { FeedbackClassification, FeedbackItem, FeedbackStatus } from "@/app/lib/api/adminApi";
+import type {
+  FeedbackClassification,
+  FeedbackItem,
+  FeedbackStatus,
+  ResolutionStatus,
+} from "@/app/lib/api/adminApi";
 import { formatDateZA } from "@/app/lib/datetime";
 import {
   useAdminFeedback,
   useAssignFeedback,
   useFeedbackAttachmentUrls,
   useUnassignFeedback,
+  useUpdateFeedbackResolution,
 } from "@/app/lib/query/hooks";
 
 const STATUS_OPTIONS: Array<{ value: string; label: string }> = [
@@ -60,6 +66,39 @@ function classificationBadgeColor(classification: FeedbackClassification | null)
   return colors[classification] || colors.question;
 }
 
+const RESOLUTION_OPTIONS: Array<{ value: ResolutionStatus | ""; label: string }> = [
+  { value: "", label: "None" },
+  { value: "needs_investigation", label: "Needs Investigation" },
+  { value: "investigating", label: "Investigating" },
+  { value: "fix_in_progress", label: "Fix In Progress" },
+  { value: "fix_deployed", label: "Fix Deployed" },
+  { value: "verified", label: "Verified" },
+  { value: "cannot_reproduce", label: "Cannot Reproduce" },
+  { value: "wont_fix", label: "Won't Fix" },
+  { value: "duplicate", label: "Duplicate" },
+];
+
+function resolutionBadgeColor(status: ResolutionStatus | null): string {
+  if (!status) return "bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400";
+  const colors: Record<ResolutionStatus, string> = {
+    needs_investigation: "bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300",
+    investigating: "bg-orange-100 text-orange-700 dark:bg-orange-900/50 dark:text-orange-300",
+    fix_in_progress: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/50 dark:text-yellow-300",
+    fix_deployed: "bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300",
+    verified: "bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300",
+    cannot_reproduce: "bg-slate-100 text-slate-700 dark:bg-slate-600 dark:text-slate-300",
+    wont_fix: "bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400",
+    duplicate: "bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300",
+  };
+  return colors[status] || colors.needs_investigation;
+}
+
+function resolutionLabel(status: ResolutionStatus | null): string {
+  if (!status) return "-";
+  const option = RESOLUTION_OPTIONS.find((o) => o.value === status);
+  return option?.label || status;
+}
+
 function appBadgeColor(app: string | null): string {
   if (!app) return "bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400";
   const colors: Record<string, string> = {
@@ -79,6 +118,11 @@ function FeedbackDetailPanel(props: { feedback: FeedbackItem; onClose: () => voi
   const { data: attachmentUrls } = useFeedbackAttachmentUrls(feedback.id);
   const assignMutation = useAssignFeedback();
   const unassignMutation = useUnassignFeedback();
+  const resolutionMutation = useUpdateFeedbackResolution();
+  const [editResolution, setEditResolution] = useState<ResolutionStatus | "">(
+    feedback.resolutionStatus || "",
+  );
+  const [editTestCriteria, setEditTestCriteria] = useState(feedback.testCriteria || "");
 
   const githubUrl = feedback.githubIssueNumber
     ? `https://github.com/AnnixInvestments/annix/issues/${feedback.githubIssueNumber}`
@@ -212,6 +256,58 @@ function FeedbackDetailPanel(props: { feedback: FeedbackItem; onClose: () => voi
               >
                 Assign to me
               </button>
+            )}
+          </div>
+
+          <div className="space-y-3 rounded-lg border border-gray-200 p-3 dark:border-slate-600">
+            <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">
+              Resolution Tracking
+            </h3>
+            <div>
+              <label className="mb-1 block text-xs text-gray-500 dark:text-gray-400">
+                Resolution Status
+              </label>
+              <select
+                value={editResolution}
+                onChange={(e) => setEditResolution(e.target.value as ResolutionStatus | "")}
+                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-700 dark:text-white"
+              >
+                {RESOLUTION_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="mb-1 block text-xs text-gray-500 dark:text-gray-400">
+                Test Criteria
+              </label>
+              <textarea
+                value={editTestCriteria}
+                onChange={(e) => setEditTestCriteria(e.target.value)}
+                rows={3}
+                placeholder="Steps to verify this issue is resolved after deployment..."
+                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:placeholder-gray-500"
+              />
+            </div>
+            <button
+              onClick={() =>
+                resolutionMutation.mutate({
+                  feedbackId: feedback.id,
+                  resolutionStatus: editResolution || null,
+                  testCriteria: editTestCriteria || null,
+                })
+              }
+              disabled={resolutionMutation.isPending}
+              className="rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+            >
+              {resolutionMutation.isPending ? "Saving..." : "Save Resolution"}
+            </button>
+            {feedback.verifiedAt && (
+              <p className="text-xs text-green-600 dark:text-green-400">
+                Verified on {formatDateZA(feedback.verifiedAt)}
+              </p>
             )}
           </div>
 
@@ -393,6 +489,7 @@ export default function FeedbackDashboardPage() {
                   "App",
                   "Classification",
                   "Status",
+                  "Resolution",
                   "GitHub",
                   "Content",
                 ].map((header) => (
@@ -409,7 +506,7 @@ export default function FeedbackDashboardPage() {
               {isLoading ? (
                 <tr>
                   <td
-                    colSpan={8}
+                    colSpan={9}
                     className="px-4 py-8 text-center text-sm text-gray-500 dark:text-gray-400"
                   >
                     Loading...
@@ -418,7 +515,7 @@ export default function FeedbackDashboardPage() {
               ) : filtered.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={8}
+                    colSpan={9}
                     className="px-4 py-8 text-center text-sm text-gray-500 dark:text-gray-400"
                   >
                     No feedback found
@@ -459,6 +556,13 @@ export default function FeedbackDashboardPage() {
                         className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${statusBadgeColor(item.status)}`}
                       >
                         {item.status}
+                      </span>
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-3 text-sm">
+                      <span
+                        className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${resolutionBadgeColor(item.resolutionStatus)}`}
+                      >
+                        {resolutionLabel(item.resolutionStatus)}
                       </span>
                     </td>
                     <td className="whitespace-nowrap px-4 py-3 text-sm">

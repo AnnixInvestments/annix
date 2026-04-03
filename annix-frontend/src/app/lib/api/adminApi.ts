@@ -86,6 +86,16 @@ export type FeedbackClassification =
   | "data-issue";
 export type FeedbackStatus = "submitted" | "triaged" | "in_progress" | "resolved";
 
+export type ResolutionStatus =
+  | "needs_investigation"
+  | "investigating"
+  | "fix_in_progress"
+  | "fix_deployed"
+  | "verified"
+  | "cannot_reproduce"
+  | "wont_fix"
+  | "duplicate";
+
 export interface FeedbackItem {
   id: number;
   customerProfileId: number | null;
@@ -101,6 +111,9 @@ export interface FeedbackItem {
   githubIssueNumber: number | null;
   aiClassification: FeedbackClassification | null;
   status: FeedbackStatus;
+  resolutionStatus: ResolutionStatus | null;
+  testCriteria: string | null;
+  verifiedAt: string | null;
   createdAt: string;
   customerProfile?: {
     id: number;
@@ -1159,6 +1172,17 @@ class AdminApiClient {
   async unassignFeedback(feedbackId: number): Promise<FeedbackDetail> {
     return this.request<FeedbackDetail>(`/admin/feedback/${feedbackId}/unassign`, {
       method: "POST",
+    });
+  }
+
+  async updateFeedbackResolution(
+    feedbackId: number,
+    resolutionStatus: ResolutionStatus | null,
+    testCriteria: string | null,
+  ): Promise<FeedbackDetail> {
+    return this.request<FeedbackDetail>(`/admin/feedback/${feedbackId}/resolution`, {
+      method: "PUT",
+      body: JSON.stringify({ resolutionStatus, testCriteria }),
     });
   }
 
