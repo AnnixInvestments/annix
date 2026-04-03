@@ -242,6 +242,51 @@ const navSections: NavSection[] = [
       },
     ],
   },
+  {
+    label: "Accounting",
+    icon: (
+      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"
+        />
+      </svg>
+    ),
+    items: [
+      {
+        href: "/au-rubber/portal/accounting",
+        label: "Overview",
+        permission: PAGE_PERMISSIONS["/au-rubber/portal/accounting"],
+      },
+      {
+        href: "/au-rubber/portal/accounting/payable",
+        label: "Accounts Payable",
+        permission: PAGE_PERMISSIONS["/au-rubber/portal/accounting/payable"],
+      },
+      {
+        href: "/au-rubber/portal/accounting/receivable",
+        label: "Accounts Receivable",
+        permission: PAGE_PERMISSIONS["/au-rubber/portal/accounting/receivable"],
+      },
+      {
+        href: "/au-rubber/portal/accounting/reconciliation",
+        label: "Reconciliation",
+        permission: PAGE_PERMISSIONS["/au-rubber/portal/accounting/reconciliation"],
+      },
+      {
+        href: "/au-rubber/portal/accounting/directors",
+        label: "Directors",
+        permission: PAGE_PERMISSIONS["/au-rubber/portal/accounting/directors"],
+      },
+      {
+        href: "/au-rubber/portal/accounting/history",
+        label: "History",
+        permission: PAGE_PERMISSIONS["/au-rubber/portal/accounting/history"],
+      },
+    ],
+  },
 ];
 
 const singleNavItems: SingleNavItem[] = [
@@ -405,8 +450,8 @@ export function AuHeader(props: AuHeaderProps) {
             AU
           </div>
         )}
-        <span className="ml-2 text-white text-base font-medium hidden sm:inline">Rubber App</span>
-        <span className="ml-1.5 text-white/50 text-xs font-mono hidden sm:inline">
+        <span className="ml-2 text-black text-base font-medium hidden sm:inline">Rubber App</span>
+        <span className="ml-1.5 text-black/50 text-xs font-mono hidden sm:inline">
           v{AU_RUBBER_VERSION}
         </span>
       </div>
@@ -418,8 +463,8 @@ export function AuHeader(props: AuHeaderProps) {
             href={item.href}
             className={`flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 text-sm font-medium whitespace-nowrap rounded-md transition-colors ${
               isActive(item.href)
-                ? "bg-black/20 text-white"
-                : "text-white/70 hover:bg-black/10 hover:text-white"
+                ? "bg-black/20 text-black"
+                : "text-black/70 hover:bg-black/10 hover:text-black"
             }`}
           >
             <span className="[&>svg]:w-4 [&>svg]:h-4">{item.icon}</span>
@@ -438,8 +483,8 @@ export function AuHeader(props: AuHeaderProps) {
               onClick={() => handleSectionClick(section.label)}
               className={`w-full flex items-center justify-center gap-1.5 px-2 py-1.5 text-sm font-medium whitespace-nowrap rounded-md transition-colors ${
                 isSectionActive(section) || hoveredSection === section.label
-                  ? "bg-black/20 text-white"
-                  : "text-white/70 hover:bg-black/10 hover:text-white"
+                  ? "bg-black/20 text-black"
+                  : "text-black/70 hover:bg-black/10 hover:text-black"
               }`}
             >
               <span className="[&>svg]:w-4 [&>svg]:h-4">{section.icon}</span>
@@ -504,13 +549,13 @@ export function AuHeader(props: AuHeaderProps) {
           </div>
         </div>
         <ThemeToggle
-          className="p-2 text-white hover:bg-white hover:bg-opacity-10 rounded-lg transition-colors"
-          iconClassName="w-5 h-5 text-white"
+          className="p-2 text-black hover:bg-black hover:bg-opacity-10 rounded-lg transition-colors"
+          iconClassName="w-5 h-5 text-black"
         />
         <div className="relative" ref={userMenuRef}>
           <button
             onClick={() => setShowUserMenu(!showUserMenu)}
-            className="flex items-center justify-center w-9 h-9 rounded-full text-white font-semibold text-sm hover:ring-2 hover:ring-yellow-400 transition-all"
+            className="flex items-center justify-center w-9 h-9 rounded-full text-black font-semibold text-sm hover:ring-2 hover:ring-yellow-400 transition-all"
             style={{ backgroundColor: colors.accent }}
           >
             {userInitials}
