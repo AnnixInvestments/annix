@@ -185,11 +185,39 @@ const SCHEDULE_WALL_THICKNESS: Record<string, Record<number, number>> = {
   },
 };
 
+const FLANGE_OD_MM: Record<number, number> = {
+  15: 95,
+  20: 105,
+  25: 115,
+  32: 140,
+  40: 150,
+  50: 165,
+  65: 185,
+  80: 200,
+  100: 220,
+  125: 250,
+  150: 285,
+  200: 340,
+  250: 405,
+  300: 460,
+  350: 520,
+  400: 580,
+  450: 640,
+  500: 670,
+  600: 780,
+  700: 895,
+  750: 960,
+  800: 1015,
+  850: 1075,
+  900: 1130,
+};
+
 const ROLL_WIDTH_MIN_MM = 800;
 const ROLL_WIDTH_MAX_MM = 1450;
 const ROLL_WIDTH_INCREMENT_MM = 50;
 const ROLL_LENGTH_MAX_M = 12.5;
 const OPEN_END_ALLOWANCE_MM = 100;
+const FLANGE_ALLOWANCE_FALLBACK_MM = 100;
 const BEVEL_ALLOWANCE_MM = 50;
 
 export interface ParsedPipeItem {
@@ -440,6 +468,15 @@ function openEndsFromConfig(config: string | null): number {
   return 2;
 }
 
+function flangeAllowanceMm(nbMm: number): number {
+  const flangeOd = FLANGE_OD_MM[nbMm];
+  const pipeOd = NB_TO_OD_MM[nbMm];
+  if (flangeOd && pipeOd) {
+    return Math.ceil((flangeOd - pipeOd) / 2);
+  }
+  return FLANGE_ALLOWANCE_FALLBACK_MM;
+}
+
 function nbToOd(nbMm: number): number {
   return NB_TO_OD_MM[nbMm] || nbMm * 1.1;
 }
@@ -587,7 +624,11 @@ export function parsePipeItem(
         stripsPerPiece = Math.ceil(circumference / ROLL_WIDTH_MAX_MM);
         rubberWidthMm = roundUpToNearest(circumference / stripsPerPiece, ROLL_WIDTH_INCREMENT_MM);
       }
-      rubberLengthMm = lengthMm + 2 * OPEN_END_ALLOWANCE_MM + BEVEL_ALLOWANCE_MM;
+      const flangedEnds = Math.min(2 - openEnds, 2);
+      const unflangedEnds = 2 - flangedEnds;
+      const flangeExtra = flangedEnds * flangeAllowanceMm(nbMm);
+      const openExtra = unflangedEnds * OPEN_END_ALLOWANCE_MM;
+      rubberLengthMm = lengthMm + flangeExtra + openExtra + BEVEL_ALLOWANCE_MM;
     }
   }
 

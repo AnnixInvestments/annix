@@ -240,14 +240,14 @@ describe("rubberCuttingCalculator", () => {
       expect(result.rubberLengthMm).toBe(6000 + 2 * 100 + 20);
     });
 
-    it("always adds +200mm end allowance for FOE (same as PE)", () => {
+    it("adds flange turn-down for flanged end + open allowance for open end (FOE)", () => {
       const result = parsePipeItem("1", "100 NB PIPE FOE 6000 LG", 1, null, null);
-      expect(result.rubberLengthMm).toBe(6000 + 2 * 100 + 20);
+      expect(result.rubberLengthMm).toBe(6000 + 53 + 100 + 20);
     });
 
-    it("always adds +200mm end allowance for FBE (covers flanges)", () => {
+    it("adds flange turn-down for both flanged ends (FBE)", () => {
       const result = parsePipeItem("1", "100 NB PIPE FBE 6000 LG", 1, null, null);
-      expect(result.rubberLengthMm).toBe(6000 + 2 * 100 + 20);
+      expect(result.rubberLengthMm).toBe(6000 + 2 * 53 + 20);
     });
 
     it("sets isValidPipe true when NB and length present", () => {

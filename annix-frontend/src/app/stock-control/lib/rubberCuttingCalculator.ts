@@ -197,7 +197,10 @@ const FLANGE_ALLOWANCE_FALLBACK_MM = 100;
 
 function flangeAllowanceMm(nbMm: number): number {
   const flangeSpec = FLANGE_DATA[nbMm];
-  if (flangeSpec) return flangeSpec.thickness;
+  const pipeOd = NB_TO_OD_MM[nbMm];
+  if (flangeSpec && pipeOd) {
+    return Math.ceil((flangeSpec.flangeOD - pipeOd) / 2);
+  }
   return FLANGE_ALLOWANCE_FALLBACK_MM;
 }
 
@@ -853,7 +856,11 @@ export function parsePipeItem(
         stripsPerPiece = Math.ceil(circumference / ROLL_WIDTH_MAX_MM);
         rubberWidthMm = roundUpToNearest(circumference / stripsPerPiece, ROLL_WIDTH_INCREMENT_MM);
       }
-      rubberLengthMm = lengthMm + 2 * OPEN_END_ALLOWANCE_MM + BEVEL_ALLOWANCE_MM;
+      const flangedEnds = Math.min(flangeCount, 2);
+      const unflangedEnds = 2 - flangedEnds;
+      const flangeExtra = flangedEnds * flangeAllowanceMm(nbMm);
+      const openExtra = unflangedEnds * OPEN_END_ALLOWANCE_MM;
+      rubberLengthMm = lengthMm + flangeExtra + openExtra + BEVEL_ALLOWANCE_MM;
     }
   }
 
