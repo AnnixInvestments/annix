@@ -284,19 +284,19 @@ export class SeedExpandedFastenerData1797100000000 implements MigrationInterface
       },
     ];
 
-    const allInserts: string[] = [];
+    const allSelects: string[] = [];
     massData.forEach((bolt) => {
       bolt.lengths.forEach((l) => {
-        allInserts.push(
-          `((SELECT id FROM bolts WHERE designation = '${bolt.designation}'), ${l.mm}, ${l.kg})`,
+        allSelects.push(
+          `SELECT id, ${l.mm}, ${l.kg} FROM bolts WHERE designation = '${bolt.designation}'`,
         );
       });
     });
 
-    if (allInserts.length > 0) {
+    if (allSelects.length > 0) {
       await queryRunner.query(`
         INSERT INTO bolt_masses ("boltId", length_mm, mass_kg)
-        VALUES ${allInserts.join(",\n")}
+        SELECT * FROM (${allSelects.join(" UNION ALL ")}) AS src
         ON CONFLICT DO NOTHING
       `);
     }
@@ -756,16 +756,17 @@ export class SeedExpandedFastenerData1797100000000 implements MigrationInterface
     ];
 
     for (const nut of nutData) {
-      const values = nut.sizes.map(
+      const selects = nut.sizes.map(
         (s) =>
-          `((SELECT id FROM bolts WHERE designation = '${s.designation}' LIMIT 1), ${s.massKg}, 'Grade ${s.grade}', '${nut.type}', ${nut.standard ? `'${nut.standard}'` : "NULL"})`,
+          `SELECT id AS bolt_id, ${s.massKg} AS mass_kg, 'Grade ${s.grade}' AS grade, '${nut.type}' AS type, ${nut.standard ? `'${nut.standard}'` : "NULL"} AS standard FROM bolts WHERE designation = '${s.designation}' LIMIT 1`,
       );
 
-      const chunks = this.chunkArray(values, 30);
+      const chunks = this.chunkArray(selects, 30);
       for (const chunk of chunks) {
         await queryRunner.query(`
           INSERT INTO nut_masses (bolt_id, mass_kg, grade, type, standard)
-          VALUES ${chunk.join(",\n")}
+          SELECT bolt_id, mass_kg, grade, type, standard::text FROM (${chunk.join(" UNION ALL ")}) AS src
+          WHERE bolt_id IS NOT NULL
           ON CONFLICT DO NOTHING
         `);
       }
@@ -883,14 +884,16 @@ export class SeedExpandedFastenerData1797100000000 implements MigrationInterface
     ];
 
     for (const washer of washerData) {
-      const values = washer.sizes.map(
+      const selects = washer.sizes.map(
         (s) =>
-          `((SELECT id FROM bolts WHERE designation = '${s.designation}' LIMIT 1), '${washer.type}', 'Carbon Steel', ${s.massKg}, ${s.odMm}, ${s.idMm}, ${s.thickMm}, ${washer.standard ? `'${washer.standard}'` : "NULL"})`,
+          `SELECT id AS bolt_id, '${washer.type}' AS type, 'Carbon Steel' AS material, ${s.massKg} AS "massKg", ${s.odMm} AS od_mm, ${s.idMm} AS id_mm, ${s.thickMm} AS thickness_mm, ${washer.standard ? `'${washer.standard}'` : "NULL"} AS standard FROM bolts WHERE designation = '${s.designation}' LIMIT 1`,
       );
 
       await queryRunner.query(`
         INSERT INTO washers (bolt_id, type, material, "massKg", od_mm, id_mm, thickness_mm, standard)
-        VALUES ${values.join(",\n")}
+        SELECT bolt_id, type, material, "massKg", od_mm, id_mm, thickness_mm, standard::text
+        FROM (${selects.join(" UNION ALL ")}) AS src
+        WHERE bolt_id IS NOT NULL
         ON CONFLICT DO NOTHING
       `);
     }
@@ -1035,19 +1038,19 @@ export class SeedExpandedFastenerData1797100000000 implements MigrationInterface
       },
     ];
 
-    const massValues: string[] = [];
+    const massSelects: string[] = [];
     smallBoltMasses.forEach((bolt) => {
       bolt.lengths.forEach((l) => {
-        massValues.push(
-          `((SELECT id FROM bolts WHERE designation = '${bolt.designation}' LIMIT 1), ${l.mm}, ${l.kg})`,
+        massSelects.push(
+          `SELECT id, ${l.mm}, ${l.kg} FROM bolts WHERE designation = '${bolt.designation}' LIMIT 1`,
         );
       });
     });
 
-    if (massValues.length > 0) {
+    if (massSelects.length > 0) {
       await queryRunner.query(`
         INSERT INTO bolt_masses ("boltId", length_mm, mass_kg)
-        VALUES ${massValues.join(",\n")}
+        SELECT * FROM (${massSelects.join(" UNION ALL ")}) AS src
         ON CONFLICT DO NOTHING
       `);
     }
@@ -1058,14 +1061,15 @@ export class SeedExpandedFastenerData1797100000000 implements MigrationInterface
       { designation: "M5", type: "hex", massKg: 0.005, grade: "Grade 8", standard: "DIN 934" },
     ];
 
-    const smallNutValues = smallNuts.map(
+    const smallNutSelects = smallNuts.map(
       (n) =>
-        `((SELECT id FROM bolts WHERE designation = '${n.designation}' LIMIT 1), ${n.massKg}, '${n.grade}', '${n.type}', '${n.standard}')`,
+        `SELECT id AS bolt_id, ${n.massKg} AS mass_kg, '${n.grade}' AS grade, '${n.type}' AS type, '${n.standard}' AS standard FROM bolts WHERE designation = '${n.designation}' LIMIT 1`,
     );
 
     await queryRunner.query(`
       INSERT INTO nut_masses (bolt_id, mass_kg, grade, type, standard)
-      VALUES ${smallNutValues.join(",\n")}
+      SELECT bolt_id, mass_kg, grade, type, standard FROM (${smallNutSelects.join(" UNION ALL ")}) AS src
+      WHERE bolt_id IS NOT NULL
       ON CONFLICT DO NOTHING
     `);
 
@@ -1126,14 +1130,15 @@ export class SeedExpandedFastenerData1797100000000 implements MigrationInterface
       },
     ];
 
-    const smallWasherValues = smallWashers.map(
+    const smallWasherSelects = smallWashers.map(
       (w) =>
-        `((SELECT id FROM bolts WHERE designation = '${w.designation}' LIMIT 1), '${w.type}', 'Carbon Steel', ${w.massKg}, ${w.odMm}, ${w.idMm}, ${w.thickMm}, '${w.standard}')`,
+        `SELECT id AS bolt_id, '${w.type}' AS type, 'Carbon Steel' AS material, ${w.massKg} AS "massKg", ${w.odMm} AS od_mm, ${w.idMm} AS id_mm, ${w.thickMm} AS thickness_mm, '${w.standard}' AS standard FROM bolts WHERE designation = '${w.designation}' LIMIT 1`,
     );
 
     await queryRunner.query(`
       INSERT INTO washers (bolt_id, type, material, "massKg", od_mm, id_mm, thickness_mm, standard)
-      VALUES ${smallWasherValues.join(",\n")}
+      SELECT bolt_id, type, material, "massKg", od_mm, id_mm, thickness_mm, standard FROM (${smallWasherSelects.join(" UNION ALL ")}) AS src
+      WHERE bolt_id IS NOT NULL
       ON CONFLICT DO NOTHING
     `);
   }
