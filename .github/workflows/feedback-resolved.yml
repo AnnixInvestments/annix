@@ -9,13 +9,55 @@ env:
 
 jobs:
   notify-feedback:
-    if: github.event.pull_request.merged == true
+    if: |
+      github.event.pull_request.merged == true ||
+      github.event.pull_request.user.login == 'github-actions[bot]' ||
+      github.event.pull_request.user.login == 'claude[bot]'
     runs-on: ubuntu-latest
     permissions:
+      contents: read
       issues: write
     steps:
-      - name: Find linked feedback issues
+      - name: Checkout repository
+        if: github.event.pull_request.merged != true
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 50
+
+      - name: Check if PR was cherry-picked to main
+        id: cherry-pick-check
+        if: github.event.pull_request.merged != true
+        run: |
+          PR_SHA="${{ github.event.pull_request.head.sha }}"
+          SHORT_SHA=$(echo "$PR_SHA" | cut -c1-7)
+
+          if git log --oneline origin/main -50 | grep -q "$SHORT_SHA"; then
+            echo "cherry_picked=true" >> "$GITHUB_OUTPUT"
+          else
+            COMMIT_MSG=$(gh pr view ${{ github.event.pull_request.number }} --repo "${{ github.repository }}" --json commits --jq '.commits[0].messageHeadline' 2>/dev/null || echo "")
+            if [ -n "$COMMIT_MSG" ] && git log --oneline origin/main -50 | grep -qF "$COMMIT_MSG"; then
+              echo "cherry_picked=true" >> "$GITHUB_OUTPUT"
+            else
+              echo "cherry_picked=false" >> "$GITHUB_OUTPUT"
+            fi
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.PROJECT_TOKEN }}
+
+      - name: Determine if fix landed on main
+        id: should-resolve
+        run: |
+          if [ "${{ github.event.pull_request.merged }}" = "true" ]; then
+            echo "resolve=true" >> "$GITHUB_OUTPUT"
+          elif [ "${{ steps.cherry-pick-check.outputs.cherry_picked }}" = "true" ]; then
+            echo "resolve=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "resolve=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Find linked feedback issues and extract feedback IDs
         id: find-feedback
+        if: steps.should-resolve.outputs.resolve == 'true'
         env:
           GH_TOKEN: ${{ secrets.PROJECT_TOKEN }}
           PR_BODY: ${{ github.event.pull_request.body }}
@@ -24,15 +66,30 @@ jobs:
           ISSUE_NUMS=$(echo "$PR_BODY" | grep -oP '(?:closes|fixes|resolves|ref)\s*#(\d+)' | grep -oP '\d+' || echo "")
 
           FEEDBACK_ISSUES=""
+          FEEDBACK_IDS=""
           for NUM in $ISSUE_NUMS; do
             LABELS=$(gh issue view "$NUM" --repo "${{ github.repository }}" --json labels -q '.labels[].name' 2>/dev/null || echo "")
             if echo "$LABELS" | grep -q "feedback"; then
               FEEDBACK_ISSUES="$FEEDBACK_ISSUES $NUM"
+
+              COMMENTS=$(gh api "repos/${{ github.repository }}/issues/${NUM}/comments?per_page=50" --jq '.[].body' 2>/dev/null || echo "")
+              PR_FEEDBACK_IDS=$(echo "$COMMENTS" | grep -oP 'Feedback #(\d+)' | grep -oP '\d+' | sort -u || echo "")
+
+              PR_COMMENT_BODY=$(gh pr view "$PR_NUMBER" --repo "${{ github.repository }}" --json body --jq '.body' 2>/dev/null || echo "")
+              PR_COMMENT_IDS=$(echo "$PR_COMMENT_BODY" | grep -oP 'feedback.*?#(\d+)|submission #(\d+)' | grep -oP '\d+' || echo "")
+
+              for FID in $PR_FEEDBACK_IDS $PR_COMMENT_IDS; do
+                if ! echo "$FEEDBACK_IDS" | grep -qw "$FID"; then
+                  FEEDBACK_IDS="$FEEDBACK_IDS $FID"
+                fi
+              done
             fi
           done
 
           FEEDBACK_ISSUES=$(echo "$FEEDBACK_ISSUES" | xargs)
+          FEEDBACK_IDS=$(echo "$FEEDBACK_IDS" | xargs)
           echo "issues=$FEEDBACK_ISSUES" >> "$GITHUB_OUTPUT"
+          echo "feedback_ids=$FEEDBACK_IDS" >> "$GITHUB_OUTPUT"
           if [ -n "$FEEDBACK_ISSUES" ]; then
             echo "has_feedback=true" >> "$GITHUB_OUTPUT"
           else
@@ -45,11 +102,17 @@ jobs:
           GH_TOKEN: ${{ secrets.PROJECT_TOKEN }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           PR_TITLE: ${{ github.event.pull_request.title }}
+          MERGED: ${{ github.event.pull_request.merged }}
         run: |
+          if [ "$MERGED" = "true" ]; then
+            ACTION="merged"
+          else
+            ACTION="cherry-picked to main"
+          fi
           for NUM in ${{ steps.find-feedback.outputs.issues }}; do
             gh issue comment "$NUM" \
               --repo "${{ github.repository }}" \
-              --body "A fix related to feedback in this issue has been merged in PR #${PR_NUMBER} (${PR_TITLE})."
+              --body "A fix related to feedback in this issue has been ${ACTION} via PR #${PR_NUMBER} (${PR_TITLE})."
           done
 
       - name: Notify backend to update feedback status
@@ -57,15 +120,26 @@ jobs:
         env:
           BACKEND_URL: ${{ secrets.BACKEND_URL }}
           GITHUB_WEBHOOK_SECRET: ${{ secrets.GITHUB_WEBHOOK_SECRET }}
+          FEEDBACK_IDS: ${{ steps.find-feedback.outputs.feedback_ids }}
         run: |
-          if [ -n "$BACKEND_URL" ] && [ -n "$GITHUB_WEBHOOK_SECRET" ]; then
+          if [ -z "$BACKEND_URL" ] || [ -z "$GITHUB_WEBHOOK_SECRET" ]; then
+            echo "BACKEND_URL or GITHUB_WEBHOOK_SECRET not configured — skipping backend notification"
+            exit 0
+          fi
+
+          if [ -n "$FEEDBACK_IDS" ]; then
+            IDS_JSON=$(echo "$FEEDBACK_IDS" | tr ' ' '\n' | awk '{printf "%s%s", (NR>1?",":""), $0}')
+            curl -s -X POST "${BACKEND_URL}/feedback/github-webhook/resolved" \
+              -H "Content-Type: application/json" \
+              -H "X-Webhook-Secret: ${GITHUB_WEBHOOK_SECRET}" \
+              -d "{\"issueNumber\": 0, \"prNumber\": ${{ github.event.pull_request.number }}, \"feedbackIds\": [${IDS_JSON}]}" \
+              || echo "Failed to notify backend for feedback IDs: ${FEEDBACK_IDS}"
+          else
             for NUM in ${{ steps.find-feedback.outputs.issues }}; do
               curl -s -X POST "${BACKEND_URL}/feedback/github-webhook/resolved" \
                 -H "Content-Type: application/json" \
                 -H "X-Webhook-Secret: ${GITHUB_WEBHOOK_SECRET}" \
                 -d "{\"issueNumber\": ${NUM}, \"prNumber\": ${{ github.event.pull_request.number }}}" \
-                || echo "Failed to notify backend for issue #${NUM} (backend may not be configured yet)"
+                || echo "Failed to notify backend for issue #${NUM}"
             done
-          else
-            echo "BACKEND_URL or GITHUB_WEBHOOK_SECRET not configured — skipping backend notification"
           fi

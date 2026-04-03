@@ -14,6 +14,7 @@ import { FeedbackService } from "./feedback.service";
 interface ResolvedWebhookDto {
   issueNumber: number;
   prNumber: number;
+  feedbackIds?: number[];
 }
 
 @ApiExcludeController()
@@ -38,9 +39,17 @@ export class FeedbackWebhookController {
       throw new UnauthorizedException("Invalid webhook secret");
     }
 
-    await this.feedbackService.markResolvedByIssue(dto.issueNumber, dto.prNumber);
-
-    this.logger.log(`Feedback resolved via GitHub issue #${dto.issueNumber}, PR #${dto.prNumber}`);
+    if (dto.feedbackIds && dto.feedbackIds.length > 0) {
+      await this.feedbackService.markResolvedByIds(dto.feedbackIds, dto.prNumber);
+      this.logger.log(
+        `Feedback ${dto.feedbackIds.map((id) => `#${id}`).join(", ")} resolved via PR #${dto.prNumber}`,
+      );
+    } else {
+      await this.feedbackService.markResolvedByIssue(dto.issueNumber, dto.prNumber);
+      this.logger.log(
+        `Feedback resolved via GitHub issue #${dto.issueNumber}, PR #${dto.prNumber}`,
+      );
+    }
 
     return { ok: true };
   }

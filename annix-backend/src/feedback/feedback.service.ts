@@ -1,7 +1,7 @@
 import { Inject, Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
+import { In, Repository } from "typeorm";
 import { CustomerProfile } from "../customer/entities/customer-profile.entity";
 import { EmailService } from "../email/email.service";
 import { formatDateTime, now } from "../lib/datetime";
@@ -280,6 +280,36 @@ export class FeedbackService {
     return feedback;
   }
 
+  async updateResolution(
+    feedbackId: number,
+    resolutionStatus: string | null,
+    testCriteria: string | null,
+  ): Promise<CustomerFeedback> {
+    const feedback = await this.feedbackRepository.findOne({
+      where: { id: feedbackId },
+    });
+
+    if (!feedback) {
+      throw new Error("Feedback not found");
+    }
+
+    feedback.resolutionStatus = resolutionStatus as CustomerFeedback["resolutionStatus"];
+    feedback.testCriteria = testCriteria;
+
+    if (resolutionStatus === "verified" && !feedback.verifiedAt) {
+      feedback.verifiedAt = now().toJSDate();
+    } else if (resolutionStatus !== "verified") {
+      feedback.verifiedAt = null;
+    }
+
+    await this.feedbackRepository.save(feedback);
+    this.logger.log(
+      `Feedback #${feedbackId} resolution updated to: ${resolutionStatus || "cleared"}`,
+    );
+
+    return feedback;
+  }
+
   async feedbackById(feedbackId: number): Promise<CustomerFeedback | null> {
     return this.feedbackRepository.findOne({
       where: { id: feedbackId },
@@ -321,6 +351,31 @@ export class FeedbackService {
     this.logger.log(
       `Feedback #${feedback.id} resolved via GitHub issue #${issueNumber}, PR #${prNumber}`,
     );
+  }
+
+  async markResolvedByIds(feedbackIds: number[], prNumber: number): Promise<void> {
+    const feedbacks = await this.feedbackRepository.find({
+      where: { id: In(feedbackIds) },
+      relations: ["conversation"],
+    });
+
+    for (const feedback of feedbacks) {
+      feedback.status = "resolved";
+      await this.feedbackRepository.save(feedback);
+
+      if (feedback.conversationId) {
+        const adminIds = await this.adminUserIds();
+        const senderId = adminIds[0];
+
+        if (senderId) {
+          await this.messagingService.sendMessage(feedback.conversationId, senderId, {
+            content: `*Your feedback has been addressed in PR #${prNumber} and deployed. Thank you for reporting this!*`,
+          });
+        }
+      }
+
+      this.logger.log(`Feedback #${feedback.id} resolved via PR #${prNumber}`);
+    }
   }
 
   async allFeedback(): Promise<CustomerFeedback[]> {
