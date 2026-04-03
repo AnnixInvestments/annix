@@ -126,11 +126,11 @@ export class JobCardPdfService {
         0,
       );
 
-      this.drawHeader(doc, company, jobCard, logoBuffer);
+      this.drawHeader(doc, company, jobCard, logoBuffer, qrDataUrl);
       const detailsEndY = this.drawJobCardDetails(doc, jobCard, noteItems);
-      this.drawQrCode(doc, qrDataUrl);
+      this.drawJobNumber(doc, jobCard.jobNumber);
 
-      let currentY = Math.max(220, detailsEndY);
+      let currentY = Math.max(160, detailsEndY);
       currentY = this.drawLineItems(doc, jobCard, currentY);
       currentY = this.drawRubberAllocationSync(doc, jobCard, rubberAllocationResult, currentY);
       currentY = this.drawCoatingSpecification(
@@ -202,6 +202,7 @@ export class JobCardPdfService {
     company: StockControlCompany | null,
     jobCard: JobCard,
     logoBuffer: Buffer | null = null,
+    qrDataUrl: string = "",
   ): void {
     const companyName = company?.name || "Stock Control";
     const brandColor = company?.primaryColor || "#000000";
@@ -240,7 +241,15 @@ export class JobCardPdfService {
     const jobCardLabel = subIds.length > 0 ? `JOB CARD  —  ${subIds.join("  |  ")}` : "JOB CARD";
     doc.fontSize(12).font("Helvetica").text(jobCardLabel, nameX, 72, { align: "left" });
 
-    doc.fontSize(22).font("Helvetica-Bold").text(jobCard.jobNumber, 400, 46, { align: "right" });
+    if (qrDataUrl) {
+      const qrBuffer = Buffer.from(qrDataUrl.split(",")[1], "base64");
+      const qrSize = 48;
+      doc.image(qrBuffer, 497, 42, { width: qrSize, height: qrSize });
+      doc
+        .fontSize(6)
+        .font("Helvetica")
+        .text("Scan to dispatch", 487, 92, { width: 68, align: "center" });
+    }
 
     doc
       .strokeColor(logoBuffer ? brandColor : "#000000")
@@ -287,18 +296,8 @@ export class JobCardPdfService {
     return y + 6;
   }
 
-  private drawQrCode(doc: typeof PDFDocument, qrDataUrl: string): void {
-    const qrBuffer = Buffer.from(qrDataUrl.split(",")[1], "base64");
-    const qrSize = 70;
-    const topLine = 100;
-    const bottomLine = 210;
-    const qrY = topLine + (bottomLine - topLine - qrSize - 10) / 2;
-    doc.image(qrBuffer, 465, qrY, { width: qrSize, height: qrSize });
-
-    doc
-      .fontSize(7)
-      .font("Helvetica")
-      .text("Scan to dispatch", 455, qrY + qrSize + 2, { width: 90, align: "center" });
+  private drawJobNumber(doc: typeof PDFDocument, jobNumber: string): void {
+    doc.fontSize(22).font("Helvetica-Bold").text(jobNumber, 400, 110, { align: "right" });
   }
 
   private checkPageBreak(doc: typeof PDFDocument, y: number, requiredSpace: number): number {

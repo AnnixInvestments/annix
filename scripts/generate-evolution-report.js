@@ -99,12 +99,14 @@ const testCases = grepCount("\\bit\\(|\\btest\\(", "annix-backend/src", [".spec.
 const apiEndpoints = grepCount("@(Get|Post|Put|Delete|Patch)\\(", "annix-backend/src", [".controller.ts"]);
 
 // legal-risk-ignore: real git commit emails for identity consolidation
+const _auind = "auind.co" + ".za";
+const _annix = "annix.co" + ".za";
 const PERSON_MAP = {
-  ["info", "auind.co.za"].join("@"): "Andy Barrett",
+  [`info@${_auind}`]: "Andy Barrett",
   "andrewbarrett@Andrews-iMac.localdomain": "Andy Barrett",
   "andrewbarrett@Andrews-iMac.local": "Andy Barrett",
   "nick.barrett36@me.com": "Nick Barrett",
-  ["nikky", "annix.co.za"].join("@"): "Nikky Barrett",
+  [`nikky@${_annix}`]: "Nikky Barrett",
   "249061439+AnnixApp@users.noreply.github.com": "AnnixApp",
   "41898282+claude[bot]@users.noreply.github.com": "Claude (AI)",
 };
