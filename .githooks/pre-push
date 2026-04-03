@@ -55,7 +55,19 @@ pull_rebase() {
   fi
 }
 
+generate_evolution_report() {
+  node "${ROOT_DIR}/scripts/generate-evolution-report.js"
+  if git diff --quiet "${ROOT_DIR}/annix-frontend/public/codebase-evolution-stats.html" 2>/dev/null; then
+    echo "Report unchanged."
+  else
+    git add "${ROOT_DIR}/annix-frontend/public/codebase-evolution-stats.html"
+    git commit --amend --no-edit
+    echo "Report updated and amended to latest commit."
+  fi
+}
+
 cd "$ROOT_DIR"
+timed_step "evolution report" generate_evolution_report
 timed_step "legal risk check" legal_risk_check
 timed_step "git pull --rebase" pull_rebase
 timed_step "biome check" biome_check

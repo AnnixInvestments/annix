@@ -393,7 +393,8 @@ export default function AdminDashboardPage() {
                 Codebase Evolution Report
               </p>
               <p className="text-xs text-gray-500 mt-0.5">
-                471K lines · 892 commits · 25x vendor productivity · cost &amp; value analysis
+                Auto-generated on every deploy &middot; LOC, commits, growth charts &amp; cost
+                analysis
               </p>
             </div>
           </div>

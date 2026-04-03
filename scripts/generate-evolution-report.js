@@ -1,4 +1,251 @@
-<!DOCTYPE html>
+#!/usr/bin/env node
+
+const { execSync } = require("child_process");
+const fs = require("fs");
+const path = require("path");
+
+const ROOT = path.resolve(__dirname, "..");
+const OUTPUT = path.join(ROOT, "annix-frontend/public/codebase-evolution-stats.html");
+
+function git(cmd) {
+  return execSync(`git ${cmd}`, { cwd: ROOT, encoding: "utf-8", maxBuffer: 50 * 1024 * 1024 }).trim();
+}
+
+function walkDir(dir, extensions) {
+  const results = [];
+  try {
+    const entries = fs.readdirSync(dir, { withFileTypes: true });
+    entries.forEach((entry) => {
+      const fullPath = path.join(dir, entry.name);
+      if (entry.isDirectory() && entry.name !== "node_modules" && entry.name !== ".next" && entry.name !== "dist") {
+        results.push(...walkDir(fullPath, extensions));
+      } else if (entry.isFile() && extensions.some((ext) => entry.name.endsWith(ext))) {
+        results.push(fullPath);
+      }
+    });
+  } catch { /* skip inaccessible dirs */ }
+  return results;
+}
+
+function countFiles(dir, extensions) {
+  return walkDir(path.join(ROOT, dir), extensions).length;
+}
+
+function countLines(dir, extensions) {
+  const files = walkDir(path.join(ROOT, dir), extensions);
+  let total = 0;
+  files.forEach((f) => {
+    try {
+      const content = fs.readFileSync(f, "utf-8");
+      total += content.split("\n").length;
+    } catch { /* skip unreadable */ }
+  });
+  return total;
+}
+
+function grepCount(pattern, dir, extensions) {
+  const files = walkDir(path.join(ROOT, dir), extensions);
+  const regex = new RegExp(pattern, "g");
+  let total = 0;
+  files.forEach((f) => {
+    try {
+      const content = fs.readFileSync(f, "utf-8");
+      const matches = content.match(regex);
+      if (matches) total += matches.length;
+    } catch { /* skip */ }
+  });
+  return total;
+}
+
+console.log("Generating Codebase Evolution Report...");
+
+const TEAM_START = "2025-12-17";
+const VENDOR_LOC = 28358;
+const VENDOR_FRONTEND = 15000;
+const VENDOR_BACKEND = 13358;
+const VENDOR_COMMITS = 100;
+const VENDOR_FILES = 258;
+const VENDOR_MONTHS = 4;
+
+const todayDate = new Date();
+const startDate = new Date(TEAM_START);
+const weeksElapsed = Math.floor((todayDate - startDate) / (7 * 24 * 60 * 60 * 1000));
+const daysElapsed = Math.floor((todayDate - startDate) / (24 * 60 * 60 * 1000));
+
+const totalCommits = parseInt(git(`rev-list --count --since="${TEAM_START}" HEAD`));
+
+const frontendLOC = countLines("annix-frontend/src", [".ts", ".tsx"]);
+const backendLOC = countLines("annix-backend/src", [".ts"]);
+const totalLOC = frontendLOC + backendLOC;
+const addedLOC = totalLOC - VENDOR_LOC;
+const locPerDay = daysElapsed > 0 ? Math.round(addedLOC / daysElapsed) : 0;
+const commitsPerWeek = weeksElapsed > 0 ? Math.round(totalCommits / weeksElapsed) : 0;
+
+const frontendTsxFiles = countFiles("annix-frontend/src", [".tsx"]);
+const frontendTsFiles = walkDir(path.join(ROOT, "annix-frontend/src"), [".ts"]).filter((f) => !f.endsWith(".tsx")).length;
+const backendTsFiles = countFiles("annix-backend/src", [".ts"]);
+const totalTsFiles = frontendTsxFiles + frontendTsFiles + backendTsFiles;
+
+const vendorLocPerDay = Math.round(VENDOR_LOC / (VENDOR_MONTHS * 30));
+const productivityMultiplier = vendorLocPerDay > 0 ? Math.round(locPerDay / vendorLocPerDay) : 0;
+
+const reactComponents = grepCount("export default function|export function \\w+", "annix-frontend/src", [".tsx"]);
+const nestControllers = grepCount("@Controller\\(", "annix-backend/src", [".ts"]);
+const nestModules = grepCount("@Module\\(", "annix-backend/src", [".ts"]);
+const migrations = countFiles("annix-backend/src/migrations", [".ts"]);
+const nextPages = walkDir(path.join(ROOT, "annix-frontend/src"), [".tsx"]).filter((f) => f.endsWith("page.tsx")).length;
+const specFiles = countFiles("annix-backend/src", [".spec.ts"]);
+const testCases = grepCount("\\bit\\(|\\btest\\(", "annix-backend/src", [".spec.ts"]);
+const apiEndpoints = grepCount("@(Get|Post|Put|Delete|Patch)\\(", "annix-backend/src", [".controller.ts"]);
+
+const shortlog = git("shortlog -sne --since='2025-12-17' HEAD");
+const contributors = shortlog.split("\n").map((line) => {
+  const match = line.trim().match(/^(\d+)\s+(.+?)\s+<(.+)>$/);
+  if (!match) return null;
+  return { commits: parseInt(match[1]), name: match[2], email: match[3] };
+}).filter(Boolean).sort((a, b) => b.commits - a.commits);
+
+const topContributor = contributors[0] || { name: "Unknown", commits: 0 };
+const secondContributor = contributors[1] || { name: "Unknown", commits: 0 };
+
+const weeklyRaw = git(`log --format="%ae %ai" --since="${TEAM_START}"`);
+const weekBuckets = {};
+weeklyRaw.split("\n").filter(Boolean).forEach((line) => {
+  const parts = line.split(" ");
+  const email = parts[0];
+  const dateStr = parts[1];
+  const d = new Date(dateStr);
+  const weekStart = new Date(d);
+  weekStart.setDate(weekStart.getDate() - weekStart.getDay());
+  const key = weekStart.toISOString().slice(0, 10);
+  if (!weekBuckets[key]) weekBuckets[key] = {};
+  weekBuckets[key][email] = (weekBuckets[key][email] || 0) + 1;
+});
+
+const sortedWeeks = Object.keys(weekBuckets).sort();
+const topEmail = topContributor.email || "";
+const secondEmail = secondContributor.email || "";
+
+const weeklyLabels = sortedWeeks.map((w) => {
+  const d = new Date(w);
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+});
+const topWeekly = sortedWeeks.map((w) => {
+  const bucket = weekBuckets[w];
+  return Object.entries(bucket).filter(([e]) => e === topEmail).reduce((s, [, c]) => s + c, 0);
+});
+const secondWeekly = sortedWeeks.map((w) => {
+  const bucket = weekBuckets[w];
+  return Object.entries(bucket).filter(([e]) => e === secondEmail).reduce((s, [, c]) => s + c, 0);
+});
+
+let growthLabels = [];
+let growthFrontend = [];
+let growthBackend = [];
+
+try {
+  const numWeekSamples = Math.min(sortedWeeks.length, 12);
+  const step = Math.max(1, Math.floor(sortedWeeks.length / numWeekSamples));
+  const sampleWeeks = [];
+  for (let i = 0; i < sortedWeeks.length; i += step) {
+    sampleWeeks.push(sortedWeeks[i]);
+  }
+  if (sampleWeeks[sampleWeeks.length - 1] !== sortedWeeks[sortedWeeks.length - 1]) {
+    sampleWeeks.push(sortedWeeks[sortedWeeks.length - 1]);
+  }
+
+  const numstatRaw = git(`log --numstat --format="COMMIT %ai" --since="${TEAM_START}" -- "*.ts" "*.tsx"`);
+  let cumFE = VENDOR_FRONTEND;
+  let cumBE = VENDOR_BACKEND;
+  const weeklyNet = {};
+
+  let currentWeekKey = null;
+  numstatRaw.split("\n").forEach((line) => {
+    if (line.startsWith("COMMIT ")) {
+      const dateStr = line.replace("COMMIT ", "").split(" ")[0];
+      const d = new Date(dateStr);
+      const weekStart = new Date(d);
+      weekStart.setDate(weekStart.getDate() - weekStart.getDay());
+      currentWeekKey = weekStart.toISOString().slice(0, 10);
+      if (!weeklyNet[currentWeekKey]) weeklyNet[currentWeekKey] = { fe: 0, be: 0 };
+    } else if (line.trim() && currentWeekKey) {
+      const parts = line.split("\t");
+      if (parts.length === 3) {
+        const added = parseInt(parts[0]) || 0;
+        const deleted = parseInt(parts[1]) || 0;
+        const filePath = parts[2];
+        const net = added - deleted;
+        if (filePath.startsWith("annix-frontend/")) {
+          weeklyNet[currentWeekKey].fe += net;
+        } else if (filePath.startsWith("annix-backend/")) {
+          weeklyNet[currentWeekKey].be += net;
+        }
+      }
+    }
+  });
+
+  growthLabels = [`Vendor\nBase`];
+  growthFrontend = [VENDOR_FRONTEND];
+  growthBackend = [VENDOR_BACKEND];
+
+  const allWeekKeys = Object.keys(weeklyNet).sort();
+  allWeekKeys.forEach((wk) => {
+    cumFE += weeklyNet[wk].fe;
+    cumBE += weeklyNet[wk].be;
+  });
+
+  let runFE = VENDOR_FRONTEND;
+  let runBE = VENDOR_BACKEND;
+  sampleWeeks.forEach((sw) => {
+    allWeekKeys.filter((wk) => wk <= sw && !growthLabels.includes(sw)).forEach((wk) => {
+      if (!weeklyNet._counted) weeklyNet._counted = {};
+      if (!weeklyNet._counted[wk]) {
+        runFE += weeklyNet[wk].fe;
+        runBE += weeklyNet[wk].be;
+        weeklyNet._counted[wk] = true;
+      }
+    });
+    const d = new Date(sw);
+    const label = d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+    growthLabels.push(label);
+    growthFrontend.push(Math.max(0, runFE));
+    growthBackend.push(Math.max(0, runBE));
+  });
+
+  growthLabels.push("Now");
+  growthFrontend.push(frontendLOC);
+  growthBackend.push(backendLOC);
+} catch (e) {
+  console.warn("Growth chart data generation failed, using simple start/end:", e.message);
+  growthLabels = ["Vendor Base", "Now"];
+  growthFrontend = [VENDOR_FRONTEND, frontendLOC];
+  growthBackend = [VENDOR_BACKEND, backendLOC];
+}
+
+function fmtK(n) {
+  if (n >= 1000000) return `${(n / 1000000).toFixed(1)}M`;
+  if (n >= 1000) return `${Math.round(n / 1000)}K`;
+  return String(n);
+}
+
+function fmtNum(n) {
+  return n.toLocaleString("en-US");
+}
+
+const topPct = totalCommits > 0 ? Math.round((topContributor.commits / totalCommits) * 100) : 0;
+const secondPct = totalCommits > 0 ? Math.round((secondContributor.commits / totalCommits) * 100) : 0;
+
+const generatedDate = todayDate.toLocaleDateString("en-US", { day: "numeric", month: "short", year: "numeric" });
+
+const traditionalDevs = 5;
+const traditionalYears = Math.round(addedLOC / (traditionalDevs * 40 * 250));
+const traditionalCostUSD = traditionalDevs * traditionalYears * 150000;
+const traditionalCostZAR = traditionalCostUSD * 18;
+const cashSpendZAR = 12000;
+const cashSpendUSD = 650;
+const cashAdvantage = cashSpendZAR > 0 ? Math.round(traditionalCostZAR / cashSpendZAR) : 0;
+
+const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -8,7 +255,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"><\/script>
   <style>
     :root {
       --navy:        #323288;
@@ -299,28 +546,28 @@
 <header>
   <div class="header-inner">
     <h1 class="header-title">Codebase <span class="header-accent">Evolution</span></h1>
-    <p class="header-subtitle">From a vendor-built foundation of 28K lines to 799K lines in 15 weeks &mdash; the AI-multiplied productivity story.</p>
+    <p class="header-subtitle">From a vendor-built foundation of ${fmtK(VENDOR_LOC)} lines to ${fmtK(totalLOC)} lines in ${weeksElapsed} weeks &mdash; the AI-multiplied productivity story.</p>
   </div>
 </header>
 
 <div class="hero-stats">
   <div class="stat-card">
-    <div class="stat-number">799K</div>
+    <div class="stat-number">${fmtK(totalLOC)}</div>
     <div class="stat-label">Lines of TypeScript</div>
     <div class="stat-sub">Frontend + Backend</div>
   </div>
   <div class="stat-card">
-    <div class="stat-number">2,391</div>
+    <div class="stat-number">${fmtNum(totalCommits)}</div>
     <div class="stat-label">Team Commits</div>
-    <div class="stat-sub">~159/week since Dec 17</div>
+    <div class="stat-sub">~${commitsPerWeek}/week since Dec 17</div>
   </div>
   <div class="stat-card">
-    <div class="stat-number">3,102</div>
+    <div class="stat-number">${fmtNum(totalTsFiles)}</div>
     <div class="stat-label">TypeScript Files</div>
-    <div class="stat-sub">1,051 frontend &middot; 2,051 backend</div>
+    <div class="stat-sub">${fmtNum(frontendTsxFiles + frontendTsFiles)} frontend &middot; ${fmtNum(backendTsFiles)} backend</div>
   </div>
   <div class="stat-card">
-    <div class="stat-number">15</div>
+    <div class="stat-number">${weeksElapsed}</div>
     <div class="stat-label">Weeks of Development</div>
     <div class="stat-sub">Dec 2025 &ndash; present</div>
   </div>
@@ -335,26 +582,26 @@
         <span class="repo-tag vendor">Vendor phase</span>
         <div class="repo-name">Tyto Ltd &middot; TytoLtd/Annix</div>
         <div class="repo-period">Aug 2025 &mdash; Dec 2025 &middot; Squashed on handover</div>
-        <div class="repo-stat"><span>Duration</span><strong>~4 months</strong></div>
-        <div class="repo-stat"><span>Commits</span><strong>~100</strong></div>
-        <div class="repo-stat"><span>Lines of code</span><strong>28,358</strong></div>
-        <div class="repo-stat"><span>TypeScript files</span><strong>258</strong></div>
-        <div class="repo-stat"><span>Avg LOC/day</span><strong>~236</strong></div>
+        <div class="repo-stat"><span>Duration</span><strong>~${VENDOR_MONTHS} months</strong></div>
+        <div class="repo-stat"><span>Commits</span><strong>~${VENDOR_COMMITS}</strong></div>
+        <div class="repo-stat"><span>Lines of code</span><strong>${fmtNum(VENDOR_LOC)}</strong></div>
+        <div class="repo-stat"><span>TypeScript files</span><strong>${VENDOR_FILES}</strong></div>
+        <div class="repo-stat"><span>Avg LOC/day</span><strong>~${vendorLocPerDay}</strong></div>
       </div>
       <div class="journey-arrow">&rarr;<span>Dec 17 2025<br>Team takeover</span></div>
       <div class="repo-card current">
         <span class="repo-tag owned">Team + AI phase</span>
         <div class="repo-name">AnnixInvestments/annix</div>
         <div class="repo-period">Dec 17 2025 &mdash; present &middot; Active</div>
-        <div class="repo-stat"><span>Commits</span><strong>2,391</strong></div>
-        <div class="repo-stat"><span>Lines of code added</span><strong>+771K</strong></div>
-        <div class="repo-stat"><span>Duration</span><strong>15 weeks</strong></div>
-        <div class="repo-stat"><span>Avg LOC/day</span><strong>~7,206</strong></div>
-        <div class="repo-stat"><span>Avg commits/week</span><strong>~159</strong></div>
+        <div class="repo-stat"><span>Commits</span><strong>${fmtNum(totalCommits)}</strong></div>
+        <div class="repo-stat"><span>Lines of code added</span><strong>+${fmtK(addedLOC)}</strong></div>
+        <div class="repo-stat"><span>Duration</span><strong>${weeksElapsed} weeks</strong></div>
+        <div class="repo-stat"><span>Avg LOC/day</span><strong>~${fmtNum(locPerDay)}</strong></div>
+        <div class="repo-stat"><span>Avg commits/week</span><strong>~${commitsPerWeek}</strong></div>
       </div>
     </div>
     <div class="callout">
-      <strong>History note:</strong> The original vendor (Tyto Ltd) worked on TytoLtd/Annix for ~4 months, producing a 28K-line foundation. When the team took ownership on <strong>17 Dec 2025</strong>, Tyto's entire commit history was squashed into a single initial commit &mdash; so the visible git history (2,391 commits) is entirely Nick &amp; Andy's work, AI-assisted from day one. The codebase moved to the AnnixInvestments organisation on <strong>12 Feb 2026</strong> &mdash; the dotted line in the chart marks that repo migration, not a change of team. In 15 weeks the team added <strong>771K lines</strong> on top of Tyto's 28K base: roughly <strong>31&times; the vendor's productivity</strong>.
+      <strong>History note:</strong> The original vendor (Tyto Ltd) worked on TytoLtd/Annix for ~${VENDOR_MONTHS} months, producing a ${fmtK(VENDOR_LOC)}-line foundation. When the team took ownership on <strong>17 Dec 2025</strong>, Tyto's entire commit history was squashed into a single initial commit &mdash; so the visible git history (${fmtNum(totalCommits)} commits) is entirely Nick &amp; Andy's work, AI-assisted from day one. The codebase moved to the AnnixInvestments organisation on <strong>12 Feb 2026</strong> &mdash; the dotted line in the chart marks that repo migration, not a change of team. In ${weeksElapsed} weeks the team added <strong>${fmtK(addedLOC)} lines</strong> on top of Tyto's ${fmtK(VENDOR_LOC)} base: roughly <strong>${productivityMultiplier}&times; the vendor's productivity</strong>.
     </div>
   </section>
 
@@ -368,7 +615,7 @@
             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5v-4m0 4h-4m4 0l-5-5"/></svg>
           </button>
         </div>
-        <div class="chart-card-sub">All commits are AndyBarrett1982 &amp; Andy Barrett's &middot; dashed line marks repo migration to AnnixInvestments org (12 Feb)</div>
+        <div class="chart-card-sub">All commits are ${topContributor.name} &amp; ${secondContributor.name}'s &middot; dashed line marks repo migration to AnnixInvestments org (12 Feb)</div>
         <div class="chart-wrap tall">
           <canvas id="monthlyChart"></canvas>
         </div>
@@ -379,39 +626,39 @@
         <div class="contrib-list" style="margin-top:12px;">
           <div class="contrib-item">
             <div class="contrib-meta">
-              <span class="contrib-name">AndyBarrett1982</span>
-              <span class="contrib-count">1,489 commits &middot; 62%</span>
+              <span class="contrib-name">${topContributor.name}</span>
+              <span class="contrib-count">${fmtNum(topContributor.commits)} commits &middot; ${topPct}%</span>
             </div>
-            <div class="contrib-bar-bg"><div class="contrib-bar bar-orange" style="width:62%"></div></div>
+            <div class="contrib-bar-bg"><div class="contrib-bar bar-orange" style="width:${topPct}%"></div></div>
           </div>
           <div class="contrib-item">
             <div class="contrib-meta">
-              <span class="contrib-name">Andy Barrett</span>
-              <span class="contrib-count">538 commits &middot; 23%</span>
+              <span class="contrib-name">${secondContributor.name}</span>
+              <span class="contrib-count">${fmtNum(secondContributor.commits)} commits &middot; ${secondPct}%</span>
             </div>
-            <div class="contrib-bar-bg"><div class="contrib-bar bar-navy" style="width:23%"></div></div>
+            <div class="contrib-bar-bg"><div class="contrib-bar bar-navy" style="width:${secondPct}%"></div></div>
           </div>
         </div>
         <div style="margin-top:28px;">
           <div class="chart-card-title">Vendor vs Team productivity</div>
-          <div class="chart-card-sub">Tyto Ltd (4 months) vs AndyBarrett1982 + Andy Barrett + AI (15 weeks)</div>
+          <div class="chart-card-sub">Tyto Ltd (${VENDOR_MONTHS} months) vs ${topContributor.name} + ${secondContributor.name} + AI (${weeksElapsed} weeks)</div>
           <div class="contrib-list">
             <div class="contrib-item">
               <div class="contrib-meta">
                 <span class="contrib-name">Tyto Ltd &mdash; LOC/day</span>
-                <span class="contrib-count">~236 &middot; 28K in 4 months</span>
+                <span class="contrib-count">~${vendorLocPerDay} &middot; ${fmtK(VENDOR_LOC)} in ${VENDOR_MONTHS} months</span>
               </div>
-              <div class="contrib-bar-bg"><div class="contrib-bar bar-light" style="width:3%"></div></div>
+              <div class="contrib-bar-bg"><div class="contrib-bar bar-light" style="width:${Math.max(1, Math.round((vendorLocPerDay / locPerDay) * 100))}%"></div></div>
             </div>
             <div class="contrib-item">
               <div class="contrib-meta">
-                <span class="contrib-name">AndyBarrett1982 + Andy Barrett + AI &mdash; LOC/day</span>
-                <span class="contrib-count">~7,206 &middot; 771K in 15 weeks</span>
+                <span class="contrib-name">${topContributor.name} + ${secondContributor.name} + AI &mdash; LOC/day</span>
+                <span class="contrib-count">~${fmtNum(locPerDay)} &middot; ${fmtK(addedLOC)} in ${weeksElapsed} weeks</span>
               </div>
               <div class="contrib-bar-bg"><div class="contrib-bar bar-orange" style="width:100%"></div></div>
             </div>
           </div>
-          <p style="margin-top:14px; font-size:13px; color:var(--muted);">The team produced code at <strong style="color:var(--orange)">~31&times; the vendor's rate</strong> with AI assistance.</p>
+          <p style="margin-top:14px; font-size:13px; color:var(--muted);">The team produced code at <strong style="color:var(--orange)">~${productivityMultiplier}&times; the vendor's rate</strong> with AI assistance.</p>
         </div>
       </div>
     </div>
@@ -424,46 +671,46 @@
         <div class="cost-label">Tyto Ltd &mdash; Vendor phase</div>
         <div class="cost-headline">Fixed price</div>
         <div class="cost-sub">External contract &middot; Aug &ndash; Dec 2025</div>
-        <div class="cost-row"><span>Duration</span><strong>~4 months</strong></div>
+        <div class="cost-row"><span>Duration</span><strong>~${VENDOR_MONTHS} months</strong></div>
         <div class="cost-row"><span>Team size</span><strong>External vendor team</strong></div>
-        <div class="cost-row"><span>Lines of code</span><strong>28,358</strong></div>
-        <div class="cost-row"><span>Commits</span><strong>~100</strong></div>
-        <div class="cost-row"><span>LOC / day</span><strong>~236</strong></div>
+        <div class="cost-row"><span>Lines of code</span><strong>${fmtNum(VENDOR_LOC)}</strong></div>
+        <div class="cost-row"><span>Commits</span><strong>~${VENDOR_COMMITS}</strong></div>
+        <div class="cost-row"><span>LOC / day</span><strong>~${vendorLocPerDay}</strong></div>
         <div class="cost-row"><span>Contract type</span><strong>Fixed price</strong></div>
       </div>
       <div class="cost-divider">
         <span style="font-size:28px; color:var(--orange)">&olarr;</span>
-        <span>31&times;</span>
+        <span>${productivityMultiplier}&times;</span>
         <span style="font-size:11px; color:var(--muted); font-weight:400">faster</span>
       </div>
       <div class="cost-card highlight">
-        <div class="cost-label">AndyBarrett1982 + Andy Barrett + AI &mdash; Team phase</div>
-        <div class="cost-headline orange">~R12,000</div>
-        <div class="cost-sub">~$650 USD cash outlay &middot; Dec 17 2025 &ndash; present</div>
-        <div class="cost-row"><span>Duration</span><strong>15 weeks</strong></div>
+        <div class="cost-label">${topContributor.name} + ${secondContributor.name} + AI &mdash; Team phase</div>
+        <div class="cost-headline orange">~R${fmtNum(cashSpendZAR)}</div>
+        <div class="cost-sub">~$${cashSpendUSD} USD cash outlay &middot; Dec 17 2025 &ndash; present</div>
+        <div class="cost-row"><span>Duration</span><strong>${weeksElapsed} weeks</strong></div>
         <div class="cost-row"><span>Team size</span><strong>2 owner-developers + AI</strong></div>
-        <div class="cost-row"><span>Lines of code added</span><strong>771,010</strong></div>
-        <div class="cost-row"><span>Commits</span><strong>2,391</strong></div>
-        <div class="cost-row"><span>LOC / day</span><strong>~7,206</strong></div>
+        <div class="cost-row"><span>Lines of code added</span><strong>${fmtNum(addedLOC)}</strong></div>
+        <div class="cost-row"><span>Commits</span><strong>${fmtNum(totalCommits)}</strong></div>
+        <div class="cost-row"><span>LOC / day</span><strong>~${fmtNum(locPerDay)}</strong></div>
         <div class="cost-row"><span>AI tooling</span><strong>Claude Max subscription</strong></div>
-        <div class="cost-row"><span>Cash cost per LOC</span><strong>R0.02 / $0.001</strong></div>
+        <div class="cost-row"><span>Cash cost per LOC</span><strong>R${(cashSpendZAR / addedLOC).toFixed(2)} / $${(cashSpendUSD / addedLOC).toFixed(3)}</strong></div>
       </div>
     </div>
     <div class="value-callout">
       <div>
-        <div class="value-stat-num">5 devs &middot; 15 yrs</div>
+        <div class="value-stat-num">${traditionalDevs} devs &middot; ${traditionalYears} yrs</div>
         <div class="value-stat-lbl">Traditional human equivalent</div>
-        <div class="value-stat-sub">771K LOC at 40 lines/dev/day needs ~15 years with a 5-person team</div>
+        <div class="value-stat-sub">${fmtK(addedLOC)} LOC at 40 lines/dev/day needs ~${traditionalYears} years with a ${traditionalDevs}-person team</div>
       </div>
       <div>
-        <div class="value-stat-num">R202.5M / $11.3M</div>
+        <div class="value-stat-num">R${fmtK(traditionalCostZAR)} / $${fmtK(traditionalCostUSD)}</div>
         <div class="value-stat-lbl">Traditional team cost</div>
-        <div class="value-stat-sub">5 devs &times; 15 yrs &times; $150K/yr vs R12,000 / $650 cash AI spend</div>
+        <div class="value-stat-sub">${traditionalDevs} devs &times; ${traditionalYears} yrs &times; $150K/yr vs R${fmtNum(cashSpendZAR)} / $${cashSpendUSD} cash AI spend</div>
       </div>
       <div>
-        <div class="value-stat-num">~16,875&times;</div>
+        <div class="value-stat-num">~${fmtNum(cashAdvantage)}&times;</div>
         <div class="value-stat-lbl">Cash cost advantage</div>
-        <div class="value-stat-sub">R202.5M traditional vs R12,000 actual &middot; same output</div>
+        <div class="value-stat-sub">R${fmtK(traditionalCostZAR)} traditional vs R${fmtNum(cashSpendZAR)} actual &middot; same output</div>
       </div>
     </div>
   </section>
@@ -478,7 +725,7 @@
             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5v-4m0 4h-4m4 0l-5-5"/></svg>
           </button>
         </div>
-        <div class="chart-card-sub">Cumulative LOC &middot; team started Dec 17 on a 28K vendor base</div>
+        <div class="chart-card-sub">Cumulative LOC &middot; team started Dec 17 on a ${fmtK(VENDOR_LOC)} vendor base</div>
         <div class="chart-wrap tall">
           <canvas id="growthChart"></canvas>
         </div>
@@ -515,42 +762,42 @@
     <div class="metric-grid">
       <div class="metric-tile">
         <div class="metric-icon">&#9883;</div>
-        <div class="metric-val">791</div>
+        <div class="metric-val">${fmtNum(reactComponents)}</div>
         <div class="metric-lbl">React Components</div>
       </div>
       <div class="metric-tile">
         <div class="metric-icon">&#127899;</div>
-        <div class="metric-val">187</div>
+        <div class="metric-val">${fmtNum(nestControllers)}</div>
         <div class="metric-lbl">NestJS Controllers</div>
       </div>
       <div class="metric-tile">
         <div class="metric-icon">&#128230;</div>
-        <div class="metric-val">119</div>
+        <div class="metric-val">${fmtNum(nestModules)}</div>
         <div class="metric-lbl">NestJS Modules</div>
       </div>
       <div class="metric-tile">
         <div class="metric-icon">&#128451;</div>
-        <div class="metric-val">523</div>
+        <div class="metric-val">${fmtNum(migrations)}</div>
         <div class="metric-lbl">DB Migrations</div>
       </div>
       <div class="metric-tile">
         <div class="metric-icon">&#128196;</div>
-        <div class="metric-val">276</div>
+        <div class="metric-val">${fmtNum(nextPages)}</div>
         <div class="metric-lbl">Next.js Pages</div>
       </div>
       <div class="metric-tile">
         <div class="metric-icon">&#129514;</div>
-        <div class="metric-val">2,709</div>
+        <div class="metric-val">${fmtNum(testCases)}</div>
         <div class="metric-lbl">Test Cases</div>
       </div>
       <div class="metric-tile">
         <div class="metric-icon">&#128268;</div>
-        <div class="metric-val">1,799</div>
+        <div class="metric-val">${fmtNum(apiEndpoints)}</div>
         <div class="metric-lbl">API Endpoints</div>
       </div>
       <div class="metric-tile">
         <div class="metric-icon">&#128202;</div>
-        <div class="metric-val">160</div>
+        <div class="metric-val">${fmtNum(specFiles)}</div>
         <div class="metric-lbl">Spec Files</div>
       </div>
     </div>
@@ -604,7 +851,7 @@
 </main>
 
 <footer class="page-footer">
-  Auto-generated <strong>Apr 3, 2026</strong> &middot; <strong>AnnixInvestments/annix</strong> &middot; Built with Chart.js
+  Auto-generated <strong>${generatedDate}</strong> &middot; <strong>AnnixInvestments/annix</strong> &middot; Built with Chart.js
 </footer>
 
 <script>
@@ -640,9 +887,9 @@
     };
   }
 
-  const weeklyLabels = ["Dec 14","Dec 21","Dec 28","Jan 4","Jan 11","Jan 18","Jan 25","Feb 1","Feb 8","Feb 15","Feb 22","Mar 1","Mar 8","Mar 15","Mar 22","Mar 29"];
-  const topWeekly = [12,77,108,105,65,50,66,37,27,81,140,296,522,149,124,168];
-  const secondWeekly = [12,77,108,105,65,50,66,37,27,81,140,296,522,149,124,168];
+  const weeklyLabels = ${JSON.stringify(weeklyLabels)};
+  const topWeekly = ${JSON.stringify(topWeekly)};
+  const secondWeekly = ${JSON.stringify(secondWeekly)};
 
   const monthlyCtx = document.getElementById('monthlyChart').getContext('2d');
   const weeklyChart = new Chart(monthlyCtx, {
@@ -651,14 +898,14 @@
       labels: weeklyLabels,
       datasets: [
         {
-          label: 'AndyBarrett1982',
+          label: '${topContributor.name}',
           data: topWeekly,
           backgroundColor: ORANGE,
           borderRadius: 3,
           borderSkipped: false,
         },
         {
-          label: 'Andy Barrett',
+          label: '${secondContributor.name}',
           data: secondWeekly,
           backgroundColor: NAVY,
           borderRadius: 3,
@@ -675,9 +922,9 @@
     },
   });
 
-  const growthLabels = ["Vendor\nBase","Dec 14","Dec 21","Dec 28","Jan 4","Jan 11","Jan 18","Jan 25","Feb 1","Feb 8","Feb 15","Feb 22","Mar 1","Mar 8","Mar 15","Mar 22","Mar 29","Now"];
-  const growthFrontend = [15000,24233,47779,58878,72586,84311,95658,105771,190932,221777,294917,334625,358348,405926,416034,430901,431736,398902];
-  const growthBackend = [13358,18237,43619,59828,72315,84247,124621,164640,181756,201545,257599,289451,318794,381075,389173,402667,417835,400466];
+  const growthLabels = ${JSON.stringify(growthLabels)};
+  const growthFrontend = ${JSON.stringify(growthFrontend)};
+  const growthBackend = ${JSON.stringify(growthBackend)};
 
   const growthCtx = document.getElementById('growthChart').getContext('2d');
   const growthChart = new Chart(growthCtx, {
@@ -720,9 +967,9 @@
   const splitChart = new Chart(splitCtx, {
     type: 'doughnut',
     data: {
-      labels: ['Frontend (399K)', 'Backend (400K)'],
+      labels: ['Frontend (${fmtK(frontendLOC)})', 'Backend (${fmtK(backendLOC)})'],
       datasets: [{
-        data: [398902, 400466],
+        data: [${frontendLOC}, ${backendLOC}],
         backgroundColor: [ORANGE, NAVY],
         borderWidth: 0,
         hoverOffset: 6,
@@ -741,9 +988,9 @@
   const filesChart = new Chart(filesCtx, {
     type: 'doughnut',
     data: {
-      labels: ['Backend .ts (2,051)', 'Frontend .tsx (705)', 'Frontend .ts (346)'],
+      labels: ['Backend .ts (${fmtNum(backendTsFiles)})', 'Frontend .tsx (${fmtNum(frontendTsxFiles)})', 'Frontend .ts (${fmtNum(frontendTsFiles)})'],
       datasets: [{
-        data: [2051, 705, 346],
+        data: [${backendTsFiles}, ${frontendTsxFiles}, ${frontendTsFiles}],
         backgroundColor: [NAVY, ORANGE, NAVY_LIGHT],
         borderWidth: 0,
         hoverOffset: 6,
@@ -814,6 +1061,10 @@
       chart.update();
     });
   }
-</script>
+<\/script>
 </body>
-</html>
+</html>`;
+
+fs.writeFileSync(OUTPUT, html);
+console.log(`Report generated: ${OUTPUT}`);
+console.log(`  Total LOC: ${fmtK(totalLOC)} | Commits: ${fmtNum(totalCommits)} | Files: ${fmtNum(totalTsFiles)} | Weeks: ${weeksElapsed}`);
