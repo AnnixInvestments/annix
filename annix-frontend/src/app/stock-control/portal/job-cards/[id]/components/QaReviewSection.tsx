@@ -62,7 +62,8 @@ export function QaReviewSection(props: QaReviewSectionProps) {
   const qcRepairsPending = qcRepairsStep ? qcRepairsStep.completedAt === null : false;
 
   const qaReviewActive = (() => {
-    if (!qaReviewStep || !qaReviewPending) return true;
+    if (!qaReviewStep) return false;
+    if (!qaReviewPending) return false;
     const trigger = qaReviewStep.triggerAfterStep;
     const sameBranch = backgroundSteps.filter(
       (bg) => bg.triggerAfterStep === trigger && !bg.branchColor,
