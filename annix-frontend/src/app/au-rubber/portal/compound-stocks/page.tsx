@@ -83,7 +83,8 @@ function CompoundCard(props: {
 }) {
   const { section, isExpanded, onToggle } = props;
   const { stock } = section;
-  const available = stock.quantityKg - section.committedKg;
+  const actualSOH = section.totalReceived - section.totalDispatched;
+  const available = actualSOH - section.committedKg;
   const isLow = stock.isLowStock;
 
   return (
@@ -119,7 +120,7 @@ function CompoundCard(props: {
             <div className="text-right">
               <p className="text-xs text-gray-500">Actual SOH</p>
               <p className={`text-sm font-bold ${isLow ? "text-red-600" : "text-gray-900"}`}>
-                {formatKg(stock.quantityKg)}
+                {formatKg(actualSOH)}
               </p>
             </div>
             <div className="text-right">
@@ -137,7 +138,7 @@ function CompoundCard(props: {
           </div>
         </div>
         <div className="mt-3 px-9">
-          <StockBar actual={stock.quantityKg} committed={section.committedKg} />
+          <StockBar actual={actualSOH} committed={section.committedKg} />
           <div className="flex items-center justify-between mt-1 text-xs text-gray-400">
             <span>0 kg</span>
             <div className="flex items-center space-x-4">
@@ -150,7 +151,7 @@ function CompoundCard(props: {
                 Committed
               </span>
             </div>
-            <span>{formatKg(stock.quantityKg)}</span>
+            <span>{formatKg(actualSOH)}</span>
           </div>
         </div>
       </button>
@@ -522,7 +523,7 @@ export default function CompoundStocksPage() {
           .filter((m) => m.movementType === "IN")
           .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
         const dispatchedMovements = stockMovements
-          .filter((m) => m.movementType === "OUT")
+          .filter((m) => m.movementType === "OUT" || m.movementType === "ADJUSTMENT")
           .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 
         const totalReceived = receivedMovements.reduce((sum, m) => sum + m.quantityKg, 0);
@@ -652,7 +653,10 @@ export default function CompoundStocksPage() {
     return hasReceivedStock && matchesSearch && matchesLowStock;
   });
 
-  const totalActualSOH = filteredSections.reduce((sum, s) => sum + s.stock.quantityKg, 0);
+  const totalActualSOH = filteredSections.reduce(
+    (sum, s) => sum + (s.totalReceived - s.totalDispatched),
+    0,
+  );
   const totalCommitted = filteredSections.reduce((sum, s) => sum + s.committedKg, 0);
   const totalAvailable = totalActualSOH - totalCommitted;
   const lowStockCount = sections.filter((s) => s.stock.isLowStock).length;

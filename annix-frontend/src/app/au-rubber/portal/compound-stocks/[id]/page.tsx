@@ -135,10 +135,16 @@ export default function CompoundStockDetailPage() {
 
   const openAdjustModal = () => {
     if (stock) {
-      setAdjustQty(stock.quantityKg.toString());
+      setAdjustQty(calculatedSOH.toFixed(2));
       setShowAdjustModal(true);
     }
   };
+
+  const calculatedSOH = movements.reduce((sum, m) => {
+    if (m.movementType === "IN") return sum + m.quantityKg;
+    if (m.movementType === "OUT" || m.movementType === "ADJUSTMENT") return sum - m.quantityKg;
+    return sum;
+  }, 0);
 
   const movementTypeColor = (type: string) => {
     if (type === "IN") return "bg-green-100 text-green-800";
@@ -217,7 +223,7 @@ export default function CompoundStockDetailPage() {
           <p
             className={`text-2xl font-bold ${stock.isLowStock ? "text-red-600" : "text-gray-900"}`}
           >
-            {stock.quantityKg.toFixed(2)} kg
+            {calculatedSOH.toFixed(2)} kg
           </p>
           {stock.isLowStock && <p className="text-xs text-red-600 mt-1">Below reorder point</p>}
         </div>
@@ -365,7 +371,7 @@ export default function CompoundStockDetailPage() {
             <div className="relative z-20 bg-white rounded-lg shadow-xl max-w-md w-full p-6">
               <h3 className="text-lg font-medium text-gray-900 mb-4">Adjust Stock</h3>
               <p className="text-sm text-gray-600 mb-4">
-                Current stock: {stock.quantityKg.toFixed(2)} kg. Enter the new total quantity.
+                Current stock: {calculatedSOH.toFixed(2)} kg. Enter the new total quantity.
               </p>
               <div className="space-y-4">
                 <div>
