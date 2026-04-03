@@ -368,7 +368,7 @@
             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5v-4m0 4h-4m4 0l-5-5"/></svg>
           </button>
         </div>
-        <div class="chart-card-sub">All commits are AndyBarrett1982 &amp; Andy Barrett's &middot; dashed line marks repo migration to AnnixInvestments org (12 Feb)</div>
+        <div class="chart-card-sub">All commits are Andy Barrett &amp; Nick Barrett's &middot; dashed line marks repo migration to AnnixInvestments org (12 Feb)</div>
         <div class="chart-wrap tall">
           <canvas id="monthlyChart"></canvas>
         </div>
@@ -379,22 +379,22 @@
         <div class="contrib-list" style="margin-top:12px;">
           <div class="contrib-item">
             <div class="contrib-meta">
-              <span class="contrib-name">AndyBarrett1982</span>
-              <span class="contrib-count">1,506 commits &middot; 63%</span>
+              <span class="contrib-name">Andy Barrett</span>
+              <span class="contrib-count">2,062 commits &middot; 86%</span>
             </div>
-            <div class="contrib-bar-bg"><div class="contrib-bar bar-orange" style="width:63%"></div></div>
+            <div class="contrib-bar-bg"><div class="contrib-bar bar-orange" style="width:86%"></div></div>
           </div>
           <div class="contrib-item">
             <div class="contrib-meta">
-              <span class="contrib-name">Andy Barrett</span>
-              <span class="contrib-count">538 commits &middot; 22%</span>
+              <span class="contrib-name">Nick Barrett</span>
+              <span class="contrib-count">285 commits &middot; 12%</span>
             </div>
-            <div class="contrib-bar-bg"><div class="contrib-bar bar-navy" style="width:22%"></div></div>
+            <div class="contrib-bar-bg"><div class="contrib-bar bar-navy" style="width:12%"></div></div>
           </div>
         </div>
         <div style="margin-top:28px;">
           <div class="chart-card-title">Vendor vs Team productivity</div>
-          <div class="chart-card-sub">Tyto Ltd (4 months) vs AndyBarrett1982 + Andy Barrett + AI (15 weeks)</div>
+          <div class="chart-card-sub">Tyto Ltd (4 months) vs Andy Barrett + Nick Barrett + AI (15 weeks)</div>
           <div class="contrib-list">
             <div class="contrib-item">
               <div class="contrib-meta">
@@ -405,7 +405,7 @@
             </div>
             <div class="contrib-item">
               <div class="contrib-meta">
-                <span class="contrib-name">AndyBarrett1982 + Andy Barrett + AI &mdash; LOC/day</span>
+                <span class="contrib-name">Andy Barrett + Nick Barrett + AI &mdash; LOC/day</span>
                 <span class="contrib-count">~7,276 &middot; 779K in 15 weeks</span>
               </div>
               <div class="contrib-bar-bg"><div class="contrib-bar bar-orange" style="width:100%"></div></div>
@@ -437,7 +437,7 @@
         <span style="font-size:11px; color:var(--muted); font-weight:400">faster</span>
       </div>
       <div class="cost-card highlight">
-        <div class="cost-label">AndyBarrett1982 + Andy Barrett + AI &mdash; Team phase</div>
+        <div class="cost-label">Andy Barrett + Nick Barrett + AI &mdash; Team phase</div>
         <div class="cost-headline orange">~R12,000</div>
         <div class="cost-sub">~$650 USD cash outlay &middot; Dec 17 2025 &ndash; present</div>
         <div class="cost-row"><span>Duration</span><strong>15 weeks</strong></div>
@@ -641,8 +641,8 @@
   }
 
   const weeklyLabels = ["Dec 14","Dec 21","Dec 28","Jan 4","Jan 11","Jan 18","Jan 25","Feb 1","Feb 8","Feb 15","Feb 22","Mar 1","Mar 8","Mar 15","Mar 22","Mar 29"];
-  const topWeekly = [12,77,108,105,65,50,66,37,27,81,140,296,522,149,124,185];
-  const secondWeekly = [12,77,108,105,65,50,66,37,27,81,140,296,522,149,124,185];
+  const topWeekly = [12,77,108,105,65,50,66,37,27,88,151,296,522,149,124,185];
+  const secondWeekly = [9,14,3,40,58,30,6,28,16,34,21,9,6,7,1,3];
 
   const monthlyCtx = document.getElementById('monthlyChart').getContext('2d');
   const weeklyChart = new Chart(monthlyCtx, {
@@ -651,14 +651,14 @@
       labels: weeklyLabels,
       datasets: [
         {
-          label: 'AndyBarrett1982',
+          label: 'Andy Barrett',
           data: topWeekly,
           backgroundColor: ORANGE,
           borderRadius: 3,
           borderSkipped: false,
         },
         {
-          label: 'Andy Barrett',
+          label: 'Nick Barrett',
           data: secondWeekly,
           backgroundColor: NAVY,
           borderRadius: 3,

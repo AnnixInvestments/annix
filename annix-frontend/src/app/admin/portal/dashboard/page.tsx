@@ -37,6 +37,75 @@ function SessionCard({ label, count, color }: { label: string; count: number; co
   );
 }
 
+const LINK_COLORS: Record<
+  string,
+  {
+    iconBg: string;
+    iconBgHover: string;
+    iconText: string;
+    iconTextHover: string;
+    border: string;
+    arrow: string;
+  }
+> = {
+  indigo: {
+    iconBg: "bg-indigo-600/10",
+    iconBgHover: "group-hover:bg-indigo-600",
+    iconText: "text-indigo-600",
+    iconTextHover: "group-hover:text-white",
+    border: "hover:border-indigo-500",
+    arrow: "group-hover:text-indigo-600",
+  },
+  blue: {
+    iconBg: "bg-blue-600/10",
+    iconBgHover: "group-hover:bg-blue-600",
+    iconText: "text-blue-600",
+    iconTextHover: "group-hover:text-white",
+    border: "hover:border-blue-500",
+    arrow: "group-hover:text-blue-600",
+  },
+  orange: {
+    iconBg: "bg-orange-500/10",
+    iconBgHover: "group-hover:bg-orange-500",
+    iconText: "text-orange-500",
+    iconTextHover: "group-hover:text-white",
+    border: "hover:border-orange-500",
+    arrow: "group-hover:text-orange-500",
+  },
+  emerald: {
+    iconBg: "bg-emerald-600/10",
+    iconBgHover: "group-hover:bg-emerald-600",
+    iconText: "text-emerald-600",
+    iconTextHover: "group-hover:text-white",
+    border: "hover:border-emerald-500",
+    arrow: "group-hover:text-emerald-600",
+  },
+  violet: {
+    iconBg: "bg-violet-600/10",
+    iconBgHover: "group-hover:bg-violet-600",
+    iconText: "text-violet-600",
+    iconTextHover: "group-hover:text-white",
+    border: "hover:border-violet-500",
+    arrow: "group-hover:text-violet-600",
+  },
+  slate: {
+    iconBg: "bg-slate-600/10",
+    iconBgHover: "group-hover:bg-slate-600",
+    iconText: "text-slate-600",
+    iconTextHover: "group-hover:text-white",
+    border: "hover:border-slate-500",
+    arrow: "group-hover:text-slate-600",
+  },
+  amber: {
+    iconBg: "bg-amber-600/10",
+    iconBgHover: "group-hover:bg-amber-600",
+    iconText: "text-amber-600",
+    iconTextHover: "group-hover:text-white",
+    border: "hover:border-amber-500",
+    arrow: "group-hover:text-amber-600",
+  },
+};
+
 function AdminQuickLink({
   href,
   icon,
@@ -44,6 +113,7 @@ function AdminQuickLink({
   description,
   badgeCount,
   badgeColor,
+  color = "indigo",
 }: {
   href: string;
   icon: string;
@@ -51,16 +121,20 @@ function AdminQuickLink({
   description: string;
   badgeCount?: number;
   badgeColor?: string;
+  color?: string;
 }) {
+  const c = LINK_COLORS[color] || LINK_COLORS.indigo;
   return (
     <Link
       href={href}
-      className="group bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-4 hover:border-[#323288] hover:shadow-md transition-all"
+      className={`group bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-4 ${c.border} hover:shadow-md transition-all`}
     >
       <div className="flex items-start gap-3">
-        <div className="w-10 h-10 rounded-lg bg-[#323288]/10 flex items-center justify-center flex-shrink-0 group-hover:bg-[#323288] transition-colors">
+        <div
+          className={`w-10 h-10 rounded-lg ${c.iconBg} ${c.iconBgHover} flex items-center justify-center flex-shrink-0 transition-colors`}
+        >
           <svg
-            className="w-5 h-5 text-[#323288] group-hover:text-white transition-colors"
+            className={`w-5 h-5 ${c.iconText} ${c.iconTextHover} transition-colors`}
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -82,7 +156,7 @@ function AdminQuickLink({
           <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{description}</p>
         </div>
         <svg
-          className="w-4 h-4 text-gray-400 group-hover:text-[#323288] group-hover:translate-x-0.5 transition-all flex-shrink-0 mt-1"
+          className={`w-4 h-4 text-gray-400 ${c.arrow} group-hover:translate-x-0.5 transition-all flex-shrink-0 mt-1`}
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
@@ -325,12 +399,14 @@ export default function AdminDashboardPage() {
             icon="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z"
             label="Admin Users"
             description="Manage admin accounts and roles"
+            color="indigo"
           />
           <AdminQuickLink
             href="/admin/portal/global-messages"
             icon="M20.25 8.511c.884.284 1.5 1.128 1.5 2.097v4.286c0 1.136-.847 2.1-1.98 2.193-.34.027-.68.052-1.02.072v3.091l-3-3c-1.354 0-2.694-.055-4.02-.163a2.115 2.115 0 01-.825-.242m9.345-6.334a2.126 2.126 0 00-.476-.095 48.64 48.64 0 00-8.048 0c-1.131.094-1.976 1.057-1.976 2.192v4.286c0 .837.46 1.58 1.155 1.951m9.345-6.334V6.637c0-1.621-1.152-3.026-2.76-3.235A48.455 48.455 0 0011.25 3c-2.115 0-4.198.137-6.24.402-1.608.209-2.76 1.614-2.76 3.235v6.226c0 1.621 1.152 3.026 2.76 3.235.577.075 1.157.14 1.74.194V21l4.155-4.155"
             label="Global Messages"
             description="View and manage messages across apps"
+            color="blue"
           />
           <AdminQuickLink
             href="/admin/portal/feedback"
@@ -339,30 +415,35 @@ export default function AdminDashboardPage() {
             description="User feedback and issue tracking"
             badgeCount={openFeedbackCount}
             badgeColor="bg-orange-500"
+            color="orange"
           />
           <AdminQuickLink
             href="/admin/portal/secure-documents"
             icon="M16.5 10.5V6.75C16.5 4.26472 14.4853 2.25 12 2.25C9.51472 2.25 7.5 4.26472 7.5 6.75V10.5M6.75 21.75H17.25C18.4926 21.75 19.5 20.7426 19.5 19.5V12.75C19.5 11.5074 18.4926 10.5 17.25 10.5H6.75C5.50736 10.5 4.5 11.5074 4.5 12.75V19.5C4.5 20.7426 5.50736 21.75 6.75 21.75Z"
             label="Secure Documents"
             description="Encrypted document management"
+            color="emerald"
           />
           <AdminQuickLink
             href="/admin/portal/ai-usage"
             icon="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 00-2.455 2.456z"
             label="AI Usage"
             description="AI provider usage and token analytics"
+            color="violet"
           />
           <AdminQuickLink
             href="/admin/portal/scheduled-jobs"
             icon="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z"
             label="Scheduled Jobs"
             description="Background task monitoring"
+            color="slate"
           />
           <AdminQuickLink
             href="/admin/portal/reference-data"
             icon="M3.75 12h16.5m-16.5 3.75h16.5M3.75 19.5h16.5M5.625 4.5h12.75a1.875 1.875 0 010 3.75H5.625a1.875 1.875 0 010-3.75z"
             label="Reference Data"
             description="Manage lookup tables and reference values"
+            color="amber"
           />
         </div>
       </div>

@@ -98,33 +98,61 @@ const specFiles = countFiles("annix-backend/src", [".spec.ts"]);
 const testCases = grepCount("\\bit\\(|\\btest\\(", "annix-backend/src", [".spec.ts"]);
 const apiEndpoints = grepCount("@(Get|Post|Put|Delete|Patch)\\(", "annix-backend/src", [".controller.ts"]);
 
+const PERSON_MAP = {
+  "info@auind.co.za": "Andy Barrett",
+  "andrewbarrett@Andrews-iMac.localdomain": "Andy Barrett",
+  "andrewbarrett@Andrews-iMac.local": "Andy Barrett",
+  "nick.barrett36@me.com": "Nick Barrett",
+  "nikky@annix.co.za": "Nikky Barrett",
+  "249061439+AnnixApp@users.noreply.github.com": "AnnixApp",
+  "41898282+claude[bot]@users.noreply.github.com": "Claude (AI)",
+};
+
+function personFromEmail(email) {
+  return PERSON_MAP[email] || email;
+}
+
 const shortlog = git("shortlog -sne --since='2025-12-17' HEAD");
-const contributors = shortlog.split("\n").map((line) => {
+const rawContributors = shortlog.split("\n").map((line) => {
   const match = line.trim().match(/^(\d+)\s+(.+?)\s+<(.+)>$/);
   if (!match) return null;
   return { commits: parseInt(match[1]), name: match[2], email: match[3] };
-}).filter(Boolean).sort((a, b) => b.commits - a.commits);
+}).filter(Boolean);
 
-const topContributor = contributors[0] || { name: "Unknown", commits: 0 };
-const secondContributor = contributors[1] || { name: "Unknown", commits: 0 };
+const mergedMap = {};
+rawContributors.forEach((c) => {
+  const person = personFromEmail(c.email);
+  if (!mergedMap[person]) {
+    mergedMap[person] = { name: person, commits: 0, emails: [] };
+  }
+  mergedMap[person].commits += c.commits;
+  if (!mergedMap[person].emails.includes(c.email)) {
+    mergedMap[person].emails.push(c.email);
+  }
+});
+const contributors = Object.values(mergedMap).sort((a, b) => b.commits - a.commits);
+
+const topContributor = contributors[0] || { name: "Unknown", commits: 0, emails: [] };
+const secondContributor = contributors[1] || { name: "Unknown", commits: 0, emails: [] };
 
 const weeklyRaw = git(`log --format="%ae %ai" --since="${TEAM_START}"`);
 const weekBuckets = {};
 weeklyRaw.split("\n").filter(Boolean).forEach((line) => {
   const parts = line.split(" ");
   const email = parts[0];
+  const person = personFromEmail(email);
   const dateStr = parts[1];
   const d = new Date(dateStr);
   const weekStart = new Date(d);
   weekStart.setDate(weekStart.getDate() - weekStart.getDay());
   const key = weekStart.toISOString().slice(0, 10);
   if (!weekBuckets[key]) weekBuckets[key] = {};
-  weekBuckets[key][email] = (weekBuckets[key][email] || 0) + 1;
+  weekBuckets[key][person] = (weekBuckets[key][person] || 0) + 1;
 });
 
 const sortedWeeks = Object.keys(weekBuckets).sort();
-const topEmail = topContributor.email || "";
-const secondEmail = secondContributor.email || "";
+const topName = topContributor.name;
+const secondName = secondContributor.name;
 
 const weeklyLabels = sortedWeeks.map((w) => {
   const d = new Date(w);
@@ -132,11 +160,11 @@ const weeklyLabels = sortedWeeks.map((w) => {
 });
 const topWeekly = sortedWeeks.map((w) => {
   const bucket = weekBuckets[w];
-  return Object.entries(bucket).filter(([e]) => e === topEmail).reduce((s, [, c]) => s + c, 0);
+  return bucket[topName] || 0;
 });
 const secondWeekly = sortedWeeks.map((w) => {
   const bucket = weekBuckets[w];
-  return Object.entries(bucket).filter(([e]) => e === secondEmail).reduce((s, [, c]) => s + c, 0);
+  return bucket[secondName] || 0;
 });
 
 let growthLabels = [];
