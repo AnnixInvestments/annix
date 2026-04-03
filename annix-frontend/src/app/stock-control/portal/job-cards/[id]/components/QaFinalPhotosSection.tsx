@@ -8,6 +8,8 @@ interface QaFinalPhotosSectionProps {
   jobCardId: number;
   backgroundSteps: BackgroundStepStatus[];
   onPhotosSaved: () => void;
+  stepAssignments: Record<string, { name: string; isPrimary: boolean }[]>;
+  currentUserName: string | null;
 }
 
 interface SavedPhoto {
@@ -17,7 +19,7 @@ interface SavedPhoto {
 }
 
 export function QaFinalPhotosSection(props: QaFinalPhotosSectionProps) {
-  const { jobCardId, backgroundSteps, onPhotosSaved } = props;
+  const { jobCardId, backgroundSteps, onPhotosSaved, stepAssignments, currentUserName } = props;
 
   const [savedPhotos, setSavedPhotos] = useState<SavedPhoto[]>([]);
   const [noPhotos, setNoPhotos] = useState(false);
@@ -29,8 +31,26 @@ export function QaFinalPhotosSection(props: QaFinalPhotosSectionProps) {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const qaFinalStep = backgroundSteps.find((bg) => bg.stepKey === "qa_final_check");
+  const qaFinalStep = backgroundSteps.find(
+    (bg) =>
+      bg.stepKey === "qa_final_check" ||
+      bg.stepKey === "custom_qa_final_check" ||
+      bg.label?.toLowerCase() === "qa final",
+  );
+  const stepExists = qaFinalStep !== undefined;
   const stepIsPending = qaFinalStep ? qaFinalStep.completedAt === null : false;
+  const stepCompleted = qaFinalStep ? qaFinalStep.completedAt !== null : false;
+
+  const qaFinalStepKey = qaFinalStep?.stepKey || "qa_final_check";
+  const assignedUsers =
+    stepAssignments[qaFinalStepKey] ||
+    stepAssignments["qa_final_check"] ||
+    stepAssignments["custom_qa_final_check"] ||
+    [];
+  const isAssignedUser =
+    currentUserName !== null &&
+    (assignedUsers.length === 0 || assignedUsers.some((u) => u.name === currentUserName));
+  const canEdit = stepIsPending && isAssignedUser;
 
   const loadPhotos = useCallback(async () => {
     try {
@@ -54,12 +74,16 @@ export function QaFinalPhotosSection(props: QaFinalPhotosSectionProps) {
   }, [jobCardId]);
 
   useEffect(() => {
-    if (stepIsPending) {
+    if (stepExists) {
       loadPhotos();
     }
-  }, [stepIsPending, loadPhotos]);
+  }, [stepExists, loadPhotos]);
 
-  if (!stepIsPending) {
+  if (!stepExists) {
+    return null;
+  }
+
+  if (stepIsPending && !isAssignedUser) {
     return null;
   }
 
@@ -116,6 +140,42 @@ export function QaFinalPhotosSection(props: QaFinalPhotosSectionProps) {
     }
   };
 
+  if (stepCompleted) {
+    return (
+      <div
+        id="qa-final-photos-section"
+        className="rounded-lg border border-gray-200 bg-white shadow-sm"
+      >
+        <div className="border-b border-gray-200 px-5 py-3">
+          <h3 className="text-sm font-semibold text-gray-900">Final Job Photos</h3>
+        </div>
+        <div className="px-5 py-4">
+          {savedPhotos.length > 0 ? (
+            <div className="flex flex-wrap gap-2">
+              {savedPhotos.map((photo) => (
+                <a
+                  key={photo.id}
+                  href={photo.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block w-24 h-24 rounded-md overflow-hidden border border-gray-300 hover:border-blue-400 transition-colors"
+                >
+                  <img
+                    src={photo.url}
+                    alt={photo.originalFilename}
+                    className="w-full h-full object-cover"
+                  />
+                </a>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-gray-500">No final photos were uploaded.</p>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div
       id="qa-final-photos-section"
@@ -152,15 +212,17 @@ export function QaFinalPhotosSection(props: QaFinalPhotosSectionProps) {
                   className="w-full h-full object-cover"
                 />
               </a>
-              <button
-                onClick={() => handleDeletePhoto(photo.id)}
-                className="absolute top-0.5 right-0.5 w-5 h-5 rounded-full bg-red-600 text-white flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity"
-              >
-                X
-              </button>
+              {canEdit && (
+                <button
+                  onClick={() => handleDeletePhoto(photo.id)}
+                  className="absolute top-0.5 right-0.5 w-5 h-5 rounded-full bg-red-600 text-white flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity"
+                >
+                  X
+                </button>
+              )}
             </div>
           ))}
-          {!noPhotos && (
+          {canEdit && !noPhotos && (
             <button
               onClick={() => fileInputRef.current?.click()}
               disabled={isUploading}
@@ -199,7 +261,7 @@ export function QaFinalPhotosSection(props: QaFinalPhotosSectionProps) {
           />
         </div>
 
-        {savedPhotos.length === 0 && (
+        {canEdit && savedPhotos.length === 0 && (
           <label className="flex items-center gap-2 cursor-pointer">
             <input
               type="checkbox"
@@ -216,19 +278,21 @@ export function QaFinalPhotosSection(props: QaFinalPhotosSectionProps) {
           </label>
         )}
 
-        <div className="flex items-center gap-3">
-          <button
-            onClick={handleSave}
-            disabled={!canSave || isSaving}
-            className="rounded-md bg-teal-600 px-4 py-2 text-sm font-medium text-white hover:bg-teal-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
-          >
-            {isSaving ? "Saving..." : "Save Photos"}
-          </button>
-          {saveSuccess && <span className="text-xs text-green-600 font-medium">Saved</span>}
-          {isSaved && !saveSuccess && (
-            <span className="text-xs text-gray-500">Photos confirmed</span>
-          )}
-        </div>
+        {canEdit && (
+          <div className="flex items-center gap-3">
+            <button
+              onClick={handleSave}
+              disabled={!canSave || isSaving}
+              className="rounded-md bg-teal-600 px-4 py-2 text-sm font-medium text-white hover:bg-teal-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+            >
+              {isSaving ? "Saving..." : "Save Photos"}
+            </button>
+            {saveSuccess && <span className="text-xs text-green-600 font-medium">Saved</span>}
+            {isSaved && !saveSuccess && (
+              <span className="text-xs text-gray-500">Photos confirmed</span>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

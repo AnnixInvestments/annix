@@ -220,6 +220,8 @@ export function QualityTab(props: QualityTabProps) {
         jobCardId={jobCardId}
         backgroundSteps={backgroundSteps}
         onPhotosSaved={onFinalPhotosSaved || (() => {})}
+        stepAssignments={stepAssignments}
+        currentUserName={currentUserName}
       />
 
       {isLoading ? (
