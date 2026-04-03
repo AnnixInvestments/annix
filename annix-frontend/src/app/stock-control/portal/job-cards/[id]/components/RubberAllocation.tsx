@@ -273,10 +273,12 @@ function OffcutList({
   const [wastageSG, setWastageSG] = useState<number>(1.5);
   const [wastageSubmitting, setWastageSubmitting] = useState(false);
   const [markedWastage, setMarkedWastage] = useState<Set<number>>(new Set());
+  const [returnedToStock, setReturnedToStock] = useState<Set<number>>(new Set());
+  const [returnSubmitting, setReturnSubmitting] = useState(false);
 
   if (offcuts.length === 0) return null;
 
-  const canMarkWastage =
+  const canManage =
     (userRole === "manager" || userRole === "admin") && jobCardId !== undefined && thicknessMm;
 
   const calculateWeightKg = (offcut: Offcut, sg: number): number => {
@@ -305,23 +307,63 @@ function OffcutList({
     }
   };
 
+  const handleReturnAllToStock = async () => {
+    if (!jobCardId || !thicknessMm) return;
+    const unmarkedOffcuts = offcuts
+      .map((offcut, idx) => ({ offcut, idx }))
+      .filter(({ idx }) => !markedWastage.has(idx) && !returnedToStock.has(idx));
+
+    if (unmarkedOffcuts.length === 0) return;
+
+    setReturnSubmitting(true);
+    try {
+      await stockControlApiClient.returnRubberOffcuts(jobCardId, {
+        offcuts: unmarkedOffcuts.map(({ offcut }) => ({
+          widthMm: offcut.widthMm,
+          lengthMm: offcut.lengthMm,
+          thicknessMm,
+          color: color || null,
+        })),
+      });
+      setReturnedToStock((prev) => new Set([...prev, ...unmarkedOffcuts.map(({ idx }) => idx)]));
+    } finally {
+      setReturnSubmitting(false);
+    }
+  };
+
+  const unmarkedCount = offcuts.filter(
+    (_, idx) => !markedWastage.has(idx) && !returnedToStock.has(idx),
+  ).length;
+
   return (
     <div className="mt-2">
-      <div className="text-xs text-gray-500 mb-1">Offcuts:</div>
+      <div className="flex items-center justify-between mb-1">
+        <div className="text-xs text-gray-500">Offcuts:</div>
+        {canManage && unmarkedCount > 0 && (
+          <button
+            type="button"
+            onClick={handleReturnAllToStock}
+            disabled={returnSubmitting}
+            className="text-xs px-2 py-0.5 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50"
+          >
+            {returnSubmitting ? "Returning..." : `Return ${unmarkedCount} to Stock`}
+          </button>
+        )}
+      </div>
       <div className="flex flex-wrap gap-1">
         {offcuts.map((offcut, idx) => {
-          const isMarked = markedWastage.has(idx);
+          const isWaste = markedWastage.has(idx);
+          const isReturned = returnedToStock.has(idx);
+          const statusClass = isWaste
+            ? "bg-red-50 border-red-400 text-red-600 line-through"
+            : isReturned
+              ? "bg-green-50 border-green-400 text-green-700"
+              : "bg-gray-100 border-gray-400 text-gray-600";
           return (
             <div key={`offcut-${idx}`} className="flex flex-col gap-1">
-              <span
-                className={`text-xs border border-dashed rounded px-2 py-0.5 ${
-                  isMarked
-                    ? "bg-red-50 border-red-400 text-red-600 line-through"
-                    : "bg-gray-100 border-gray-400 text-gray-600"
-                }`}
-              >
+              <span className={`text-xs border border-dashed rounded px-2 py-0.5 ${statusClass}`}>
                 {offcut.widthMm}mm x {offcut.lengthMm}mm ({offcut.areaSqM.toFixed(3)} m&#178;)
-                {canMarkWastage && !isMarked && (
+                {canManage && !isWaste && !isReturned && (
                   <button
                     type="button"
                     onClick={() => setWastageIdx(wastageIdx === idx ? null : idx)}
@@ -331,7 +373,10 @@ function OffcutList({
                     Weigh
                   </button>
                 )}
-                {isMarked && <span className="ml-2 text-orange-500 font-medium">Weighed</span>}
+                {isWaste && <span className="ml-2 text-orange-500 font-medium">Weighed</span>}
+                {isReturned && (
+                  <span className="ml-2 text-green-600 font-medium">Returned to Stock</span>
+                )}
               </span>
               {wastageIdx === idx && (
                 <div className="bg-red-50 border border-red-200 rounded p-2 text-xs">

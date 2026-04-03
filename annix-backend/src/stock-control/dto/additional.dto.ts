@@ -38,6 +38,29 @@ export class MarkOffcutAsWastageDto {
   specificGravity: number;
 }
 
+export class RubberOffcutReturnItem {
+  @IsNumber()
+  @Min(1)
+  widthMm: number;
+
+  @IsNumber()
+  @Min(1)
+  lengthMm: number;
+
+  @IsNumber()
+  @Min(0)
+  thicknessMm: number;
+
+  @IsOptional()
+  @IsString()
+  color?: string | null;
+}
+
+export class ReturnRubberOffcutsDto {
+  @IsArray()
+  offcuts: RubberOffcutReturnItem[];
+}
+
 export class UploadAmendmentDto {
   @IsOptional()
   @IsString()

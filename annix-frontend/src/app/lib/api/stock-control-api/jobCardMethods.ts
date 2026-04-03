@@ -70,6 +70,19 @@ declare module "./base" {
         specificGravity: number;
       },
     ): Promise<{ weightKg: number; stockItemId: number }>;
+    returnRubberOffcuts(
+      jobCardId: number,
+      data: {
+        offcuts: Array<{
+          widthMm: number;
+          lengthMm: number;
+          thicknessMm: number;
+          color: string | null;
+        }>;
+      },
+    ): Promise<{
+      created: Array<{ stockItemId: number; widthMm: number; lengthMm: number }>;
+    }>;
     rubberDimensionSuggestions(params: {
       itemType?: string | null;
       nbMm?: number | null;
@@ -297,6 +310,14 @@ proto.updateRubberPlan = async function (jobCardId, override) {
 
 proto.markOffcutAsWastage = async function (jobCardId, data) {
   return this.request(`/stock-control/job-cards/${jobCardId}/rubber-wastage`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+};
+
+proto.returnRubberOffcuts = async function (jobCardId, data) {
+  return this.request(`/stock-control/job-cards/${jobCardId}/rubber-offcuts/return`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),

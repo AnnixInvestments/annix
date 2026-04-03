@@ -25,6 +25,7 @@ import { now, nowISO } from "../../lib/datetime";
 import { IStorageService, STORAGE_SERVICE } from "../../storage/storage.interface";
 import {
   MarkOffcutAsWastageDto,
+  ReturnRubberOffcutsDto,
   UpdateRubberPlanDto,
   UploadAmendmentDto,
   UploadAttachmentDto,
@@ -649,6 +650,61 @@ export class JobCardsController {
     const savedOffcut = await this.stockItemRepo.save(offcutItem);
 
     return { weightKg: roundedKg, stockItemId: wastageItem.id, offcutStockItemId: savedOffcut.id };
+  }
+
+  @StockControlRoles("manager", "admin")
+  @Post(":id/rubber-offcuts/return")
+  @ApiOperation({ summary: "Return consolidated rubber offcuts to stock as reusable items" })
+  async returnRubberOffcuts(
+    @Req() req: any,
+    @Param("id") id: number,
+    @Body() dto: ReturnRubberOffcutsDto,
+  ) {
+    const companyId = req.user.companyId;
+    const createdBy = req.user.name || "System";
+    const timestamp = Date.now();
+
+    const createdItems = await Promise.all(
+      dto.offcuts.map(async (offcut, idx) => {
+        const colour = (offcut.color || "Unknown").trim();
+        const offcutSku = `RO-${id}-${timestamp}-${idx}`;
+        const lengthM = offcut.lengthMm / 1000;
+
+        const stockItem = this.stockItemRepo.create({
+          companyId,
+          sku: offcutSku,
+          name: `Rubber Offcut ${offcut.widthMm}x${offcut.lengthMm}mm ${offcut.thicknessMm}mm ${colour}`,
+          description: `Reusable rubber offcut returned from JC #${id}`,
+          category: "rubber-sheet",
+          unitOfMeasure: "piece",
+          quantity: 1,
+          minStockLevel: 0,
+          color: colour,
+          thicknessMm: offcut.thicknessMm,
+          widthMm: offcut.widthMm,
+          lengthM,
+          isLeftover: true,
+          sourceJobCardId: id,
+        });
+        const saved = await this.stockItemRepo.save(stockItem);
+
+        const movement = this.stockMovementRepo.create({
+          stockItem: saved,
+          companyId,
+          movementType: MovementType.IN,
+          quantity: 1,
+          referenceType: ReferenceType.RETURN,
+          referenceId: id,
+          notes: `Rubber offcut returned from JC #${id}: ${offcut.widthMm}mm x ${offcut.lengthMm}mm x ${offcut.thicknessMm}mm (${colour})`,
+          createdBy,
+        });
+        await this.stockMovementRepo.save(movement);
+
+        return { stockItemId: saved.id, widthMm: offcut.widthMm, lengthMm: offcut.lengthMm };
+      }),
+    );
+
+    return { created: createdItems };
   }
 
   private async upsertDimensionOverrides(companyId: number, overrides: any[]): Promise<void> {
