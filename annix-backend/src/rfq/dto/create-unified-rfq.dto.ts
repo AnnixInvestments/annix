@@ -1420,6 +1420,54 @@ export class UnifiedTankChuteDto {
   calculationData?: Record<string, unknown>;
 }
 
+export class UnifiedFastenerDto {
+  @ApiProperty({ description: "Fastener category", example: "bolt" })
+  @IsString()
+  fastenerCategory: string;
+
+  @ApiProperty({ description: "Specific type", example: "hex_bolt" })
+  @IsString()
+  specificType: string;
+
+  @ApiProperty({ description: "Thread size", example: "M16" })
+  @IsString()
+  size: string;
+
+  @ApiProperty({ description: "Grade", required: false })
+  @IsOptional()
+  @IsString()
+  grade?: string;
+
+  @ApiProperty({ description: "Material", required: false })
+  @IsOptional()
+  @IsString()
+  material?: string;
+
+  @ApiProperty({ description: "Finish", required: false })
+  @IsOptional()
+  @IsString()
+  finish?: string;
+
+  @ApiProperty({ description: "Thread type", required: false })
+  @IsOptional()
+  @IsString()
+  threadType?: string;
+
+  @ApiProperty({ description: "Standard", required: false })
+  @IsOptional()
+  @IsString()
+  standard?: string;
+
+  @ApiProperty({ description: "Length in mm", required: false })
+  @IsOptional()
+  @IsNumber()
+  lengthMm?: number;
+
+  @ApiProperty({ description: "Quantity", example: 100 })
+  @IsNumber()
+  quantityValue: number;
+}
+
 export class UnifiedRfqItemDto {
   @ApiProperty({ description: "Item type", example: "straight_pipe" })
   @IsString()
@@ -1431,7 +1479,8 @@ export class UnifiedRfqItemDto {
     | "pump"
     | "valve"
     | "instrument"
-    | "tank_chute";
+    | "tank_chute"
+    | "fastener";
 
   @ApiProperty({ description: "Item description" })
   @IsString()
@@ -1521,6 +1570,15 @@ export class UnifiedRfqItemDto {
   @ValidateNested()
   @Type(() => UnifiedTankChuteDto)
   tankChute?: UnifiedTankChuteDto;
+
+  @ApiProperty({
+    description: "Fastener specs (if itemType is fastener)",
+    required: false,
+  })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => UnifiedFastenerDto)
+  fastener?: UnifiedFastenerDto;
 }
 
 export class CreateUnifiedRfqDto {

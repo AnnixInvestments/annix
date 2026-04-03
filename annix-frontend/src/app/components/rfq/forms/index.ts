@@ -1,5 +1,6 @@
 export { type BendFormProps, default as BendForm } from "./BendForm";
 export { default as ExpansionJointForm, type ExpansionJointFormProps } from "./ExpansionJointForm";
+export { FastenerItemForm, type FastenerItemFormProps } from "./FastenerItemForm";
 export { default as FittingForm, type FittingFormProps } from "./FittingForm";
 export { default as InstrumentForm, type InstrumentFormProps } from "./InstrumentForm";
 export { default as PipeSteelWorkForm, type PipeSteelWorkFormProps } from "./PipeSteelWorkForm";

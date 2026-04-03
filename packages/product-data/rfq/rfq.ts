@@ -37,7 +37,7 @@ export interface CreateBendRfqWithItemDto {
 }
 
 export interface UnifiedRfqItemDto {
-  itemType: "straight_pipe" | "bend" | "fitting" | "tank_chute";
+  itemType: "straight_pipe" | "bend" | "fitting" | "tank_chute" | "fastener";
   description: string;
   notes?: string;
   totalWeightKg?: number;
@@ -96,6 +96,21 @@ export interface UnifiedRfqItemDto {
     sscTested?: boolean;
   };
   tankChute?: UnifiedTankChuteDto;
+  fastener?: UnifiedFastenerDto;
+}
+
+export interface UnifiedFastenerDto {
+  fastenerCategory: "bolt" | "nut" | "washer" | "insert";
+  specificType: string;
+  size: string;
+  grade?: string;
+  material?: string;
+  finish?: string;
+  threadType?: string;
+  standard?: string;
+  lengthMm?: number;
+  quantityValue: number;
+  notes?: string;
 }
 
 export interface CreateUnifiedRfqDto {

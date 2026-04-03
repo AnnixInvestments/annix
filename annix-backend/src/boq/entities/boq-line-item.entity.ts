@@ -20,6 +20,7 @@ export enum BoqItemType {
   SUPPORT = "support",
   COATING = "coating",
   LINING = "lining",
+  FASTENER = "fastener",
   CUSTOM = "custom",
 }
 

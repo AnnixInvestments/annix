@@ -2826,9 +2826,10 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
         `📊 Submitting unified RFQ: ${straightPipeItems.length} pipe(s), ${bendItems.length} bend(s), ${fittingItems.length} fitting(s)`,
       );
 
+      const itemsRequiringCalculation = ["straight_pipe", "bend", "fitting"];
       for (let i = 0; i < allItems.length; i++) {
         const entry = allItems[i];
-        if (!entry.calculation) {
+        if (itemsRequiringCalculation.includes(entry.itemType) && !entry.calculation) {
           const itemType =
             entry.itemType === "bend" ? "Bend" : entry.itemType === "fitting" ? "Fitting" : "Pipe";
           setValidationErrors({
@@ -2951,6 +2952,25 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
               coatingPricePerM2: specs.coatingPricePerM2,
               fabricationCost: specs.fabricationCost,
               totalCost: specs.totalCost,
+            },
+          };
+        } else if (entry.itemType === "fastener") {
+          return {
+            itemType: "fastener" as const,
+            description: entry.description || "Fastener Item",
+            notes: entry.notes,
+            totalWeightKg: undefined,
+            fastener: {
+              fastenerCategory: specs.fastenerCategory || "bolt",
+              specificType: specs.specificType || "",
+              size: specs.size || "",
+              grade: specs.grade,
+              material: specs.material,
+              finish: specs.finish,
+              threadType: specs.threadType,
+              standard: specs.standard,
+              lengthMm: specs.lengthMm,
+              quantityValue: specs.quantityValue || 1,
             },
           };
         } else {
@@ -3262,6 +3282,25 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
               coatingPricePerM2: specs.coatingPricePerM2,
               fabricationCost: specs.fabricationCost,
               totalCost: specs.totalCost,
+            },
+          };
+        } else if (entry.itemType === "fastener") {
+          return {
+            itemType: "fastener" as const,
+            description: entry.description || "Fastener Item",
+            notes: entry.notes,
+            totalWeightKg: undefined,
+            fastener: {
+              fastenerCategory: specs.fastenerCategory || "bolt",
+              specificType: specs.specificType || "",
+              size: specs.size || "",
+              grade: specs.grade,
+              material: specs.material,
+              finish: specs.finish,
+              threadType: specs.threadType,
+              standard: specs.standard,
+              lengthMm: specs.lengthMm,
+              quantityValue: specs.quantityValue || 1,
             },
           };
         } else {

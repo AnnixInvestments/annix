@@ -336,6 +336,36 @@ export interface TankChuteEntry {
   notes?: string;
 }
 
+export interface FastenerEntry {
+  id: string;
+  itemType: "fastener";
+  description: string;
+  clientItemNumber?: string;
+  useSequentialNumbering?: boolean;
+  specs: {
+    fastenerCategory:
+      | "bolt"
+      | "nut"
+      | "washer"
+      | "gasket"
+      | "set_screw"
+      | "machine_screw"
+      | "insert";
+    specificType?: string;
+    size?: string;
+    grade?: string;
+    material?: string;
+    finish?: string;
+    threadType?: "coarse" | "fine";
+    standard?: string;
+    lengthMm?: number;
+    quantityValue: number;
+  };
+  calculation?: Record<string, unknown>;
+  calculationError?: string | null;
+  notes?: string;
+}
+
 export type PipeItem =
   | StraightPipeEntry
   | BendEntry
@@ -345,7 +375,8 @@ export type PipeItem =
   | ValveEntry
   | InstrumentEntry
   | PumpEntry
-  | TankChuteEntry;
+  | TankChuteEntry
+  | FastenerEntry;
 
 export interface GlobalSpecs {
   workingPressureBar?: number;
@@ -579,7 +610,8 @@ export const useRfqForm = () => {
         | "valve"
         | "instrument"
         | "pump"
-        | "tank_chute",
+        | "tank_chute"
+        | "fastener",
       description?: string,
       insertAtStart?: boolean,
     ) => {
@@ -593,6 +625,7 @@ export const useRfqForm = () => {
         instrument: store.addInstrumentEntry,
         pump: store.addPumpEntry,
         tank_chute: store.addTankChuteEntry,
+        fastener: store.addFastenerEntry,
       };
       return addFns[itemType](description, insertAtStart);
     },
@@ -604,6 +637,7 @@ export const useRfqForm = () => {
     addInstrumentEntry: store.addInstrumentEntry,
     addPumpEntry: store.addPumpEntry,
     addTankChuteEntry: store.addTankChuteEntry,
+    addFastenerEntry: store.addFastenerEntry,
     updateItem: store.updateItem,
     removeItem: store.removeStraightPipeEntry,
     duplicateItem: store.duplicateItem,

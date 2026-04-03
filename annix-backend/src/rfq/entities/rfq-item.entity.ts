@@ -11,6 +11,7 @@ import {
 } from "typeorm";
 import { BendRfq } from "./bend-rfq.entity";
 import { ExpansionJointRfq } from "./expansion-joint-rfq.entity";
+import { FastenerRfq } from "./fastener-rfq.entity";
 import { FittingRfq } from "./fitting-rfq.entity";
 import { InstrumentRfq } from "./instrument-rfq.entity";
 import { PipeSteelWorkRfq } from "./pipe-steel-work-rfq.entity";
@@ -34,6 +35,7 @@ export enum RfqItemType {
   PUMP = "pump",
   SURFACE_PROTECTION = "surface_protection",
   TANK_CHUTE = "tank_chute",
+  FASTENER = "fastener",
 }
 
 export enum MaterialType {
@@ -284,6 +286,21 @@ export class RfqItem {
     },
   )
   tankChuteDetails?: TankChuteRfq;
+
+  @ApiProperty({
+    description: "Fastener details (if item type is fastener)",
+    required: false,
+    type: () => FastenerRfq,
+  })
+  @OneToOne(
+    () => FastenerRfq,
+    (fastener) => fastener.rfqItem,
+    {
+      cascade: true,
+      nullable: true,
+    },
+  )
+  fastenerDetails?: FastenerRfq;
 
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;

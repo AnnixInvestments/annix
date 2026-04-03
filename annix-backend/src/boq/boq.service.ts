@@ -129,6 +129,7 @@ export class BoqService {
         bend: "BEND",
         fitting: "FIT",
         flange: "FLG",
+        fastener: "FST",
         custom: "CUST",
       }[itemType] || "ITEM";
     return `${typePrefix}-${String(lineNumber).padStart(3, "0")}`;
@@ -140,6 +141,7 @@ export class BoqService {
       bend: BoqItemType.BEND,
       fitting: BoqItemType.FITTING,
       flange: BoqItemType.FLANGE,
+      fastener: BoqItemType.FASTENER,
       custom: BoqItemType.CUSTOM,
     };
     return typeMap[rfqItemType] || BoqItemType.CUSTOM;

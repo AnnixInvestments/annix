@@ -8,22 +8,37 @@ export class Bolt {
   id: number;
 
   @Column({ unique: true })
-  designation: string; // e.g. "M12", "M16"
+  designation: string;
 
   @Column({ type: "varchar", nullable: true })
-  grade: string | null; // e.g. "8.8", "10.9", "12.9"
+  grade: string | null;
 
   @Column({ type: "varchar", nullable: true })
-  material: string | null; // e.g. "Carbon Steel", "Stainless Steel"
+  material: string | null;
 
   @Column({ name: "head_style", type: "varchar", nullable: true })
-  headStyle: string | null; // e.g. "hex", "stud"
+  headStyle: string | null;
 
   @Column({ name: "thread_type", type: "varchar", nullable: true })
-  threadType: string | null; // e.g. "coarse", "fine"
+  threadType: string | null;
 
   @Column({ name: "thread_pitch_mm", type: "float", nullable: true })
   threadPitchMm: number | null;
+
+  @Column({ type: "varchar", length: 50, nullable: true, default: "plain" })
+  finish: string | null;
+
+  @Column({ type: "varchar", length: 100, nullable: true })
+  standard: string | null;
+
+  @Column({ type: "varchar", length: 50, nullable: true })
+  category: string | null;
+
+  @Column({ name: "drive_type", type: "varchar", length: 50, nullable: true })
+  driveType: string | null;
+
+  @Column({ name: "point_type", type: "varchar", length: 50, nullable: true })
+  pointType: string | null;
 
   @OneToMany(
     () => BoltMass,

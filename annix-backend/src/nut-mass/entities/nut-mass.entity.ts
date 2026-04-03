@@ -35,5 +35,12 @@ export class NutMass {
     description: "Type of nut",
   })
   @Column({ type: "varchar", nullable: true })
-  type: string | null; // e.g. "hex", "lock", "flange", "castle"
+  type: string | null;
+
+  @ApiProperty({
+    example: "DIN 934",
+    description: "Manufacturing standard reference",
+  })
+  @Column({ type: "varchar", length: 100, nullable: true })
+  standard: string | null;
 }

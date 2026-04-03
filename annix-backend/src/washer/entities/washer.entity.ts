@@ -52,4 +52,11 @@ export class Washer {
   })
   @Column({ name: "thickness_mm", type: "float", nullable: true })
   thicknessMm: number | null;
+
+  @ApiProperty({
+    example: "DIN 125",
+    description: "Manufacturing standard reference",
+  })
+  @Column({ type: "varchar", length: 100, nullable: true })
+  standard: string | null;
 }

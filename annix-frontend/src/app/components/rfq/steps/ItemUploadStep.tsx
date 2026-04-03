@@ -61,6 +61,7 @@ const OffsetBend3DPreview = dynamic(
 import {
   BendForm,
   ExpansionJointForm,
+  FastenerItemForm,
   FittingForm,
   InstrumentForm,
   PipeSteelWorkForm,
@@ -199,7 +200,9 @@ const ItemWrapper = memo(function ItemWrapper({
                         ? "bg-indigo-100 text-indigo-800"
                         : entry.itemType === "tank_chute"
                           ? "bg-amber-100 text-amber-800"
-                          : "bg-blue-100 text-blue-800"
+                          : entry.itemType === "fastener"
+                            ? "bg-lime-100 text-lime-800"
+                            : "bg-blue-100 text-blue-800"
             } text-xs font-semibold rounded-full`}
           >
             {entry.itemType === "bend"
@@ -214,7 +217,9 @@ const ItemWrapper = memo(function ItemWrapper({
                       ? "Pump"
                       : entry.itemType === "tank_chute"
                         ? "Tank/Chute"
-                        : "Straight Pipe"}
+                        : entry.itemType === "fastener"
+                          ? "Fastener"
+                          : "Straight Pipe"}
           </span>
           {entry.specs?.quantityValue > 1 && (
             <label className="flex items-center gap-1 text-xs text-gray-600 cursor-pointer ml-2">
@@ -344,6 +349,14 @@ const ItemWrapper = memo(function ItemWrapper({
           generateItemDescription={generateItemDescription}
           requiredProducts={requiredProducts}
         />
+      ) : entry.itemType === "fastener" ? (
+        <FastenerItemForm
+          entry={entry}
+          index={index}
+          entriesCount={entriesCount}
+          onUpdateEntry={onUpdateEntry}
+          onRemoveEntry={onRemoveEntry}
+        />
       ) : (
         <StraightPipeForm
           entry={entry}
@@ -416,6 +429,7 @@ export default function ItemUploadStep(props: {
   const onAddInstrumentEntry = useRfqWizardStore((s) => s.addInstrumentEntry);
   const onAddPumpEntry = useRfqWizardStore((s) => s.addPumpEntry);
   const onAddTankChuteEntry = useRfqWizardStore((s) => s.addTankChuteEntry);
+  const onAddFastenerEntry = useRfqWizardStore((s) => s.addFastenerEntry);
   const onRemoveEntry = useRfqWizardStore((s) => s.removeStraightPipeEntry);
   const onDuplicateEntry = useRfqWizardStore((s) => s.duplicateItem);
   const entries = rfqData.items.length > 0 ? rfqData.items : rfqData.straightPipeEntries;
@@ -1238,6 +1252,18 @@ export default function ItemUploadStep(props: {
         return parts.join(" - ");
       }
 
+      if (entry.itemType === "fastener") {
+        const cat = entry.specs?.fastenerCategory || "fastener";
+        const type = entry.specs?.specificType || "";
+        const size = entry.specs?.size || "";
+        const grade = entry.specs?.grade || "";
+        const qty = entry.specs?.quantityValue || 1;
+        const parts = [cat.replace(/_/g, " "), type.replace(/_/g, " "), size];
+        if (grade) parts.push(grade);
+        if (qty > 1) parts.push(`x${qty}`);
+        return parts.filter(Boolean).join(" - ");
+      }
+
       // Handle straight pipe items
       const nb = entry.specs.nominalBoreMm || "XX";
       let schedule =
@@ -1622,6 +1648,27 @@ export default function ItemUploadStep(props: {
             </span>
           </button>
         )}
+        {requiredProducts.includes("fasteners_gaskets") && onAddFastenerEntry && (
+          <button
+            onClick={() => onAddFastenerEntry(undefined, insertAtStart)}
+            className="flex items-center gap-1 px-3 py-1.5 bg-lime-100 hover:bg-lime-200 rounded-md border border-lime-300 transition-colors"
+          >
+            <svg
+              className="w-4 h-4 text-lime-600"
+              fill="none"
+              viewBox="0 0 24 24"
+              strokeWidth={1.5}
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M11.42 15.17L17.25 21A2.652 2.652 0 0021 17.25l-5.877-5.877M11.42 15.17l2.496-3.03c.317-.384.74-.626 1.208-.766M11.42 15.17l-4.655 5.653a2.548 2.548 0 11-3.586-3.586l6.837-5.63m5.108-.233c.55-.164 1.163-.188 1.743-.14a4.5 4.5 0 004.486-6.336l-3.276 3.277a3.004 3.004 0 01-2.25-2.25l3.276-3.276a4.5 4.5 0 00-6.336 4.486c.091 1.076-.071 2.264-.904 2.95l-.102.085"
+              />
+            </svg>
+            <span className="text-xs font-medium text-lime-800">Fastener</span>
+          </button>
+        )}
         {requiredProducts.includes("tanks_chutes") && onAddTankChuteEntry && (
           <button
             onClick={() => onAddTankChuteEntry(undefined, insertAtStart)}
@@ -1755,6 +1802,28 @@ export default function ItemUploadStep(props: {
                 </svg>
                 <span className="text-lg font-semibold">Tank/Chute</span>
                 <span className="text-xs text-amber-200 mt-1">Tanks, chutes, hoppers</span>
+              </button>
+            )}
+            {requiredProducts.includes("fasteners_gaskets") && (
+              <button
+                onClick={() => onAddFastenerEntry()}
+                className="flex flex-col items-center justify-center w-48 h-40 bg-lime-600 text-white rounded-xl hover:bg-lime-700 focus:outline-none focus:ring-4 focus:ring-lime-300 transition-all shadow-lg hover:shadow-xl"
+              >
+                <svg
+                  className="w-12 h-12 mb-3"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M11.42 15.17L17.25 21A2.652 2.652 0 0021 17.25l-5.877-5.877M11.42 15.17l2.496-3.03c.317-.384.74-.626 1.208-.766M11.42 15.17l-4.655 5.653a2.548 2.548 0 11-3.586-3.586l6.837-5.63m5.108-.233c.55-.164 1.163-.188 1.743-.14a4.5 4.5 0 004.486-6.336l-3.276 3.277a3.004 3.004 0 01-2.25-2.25l3.276-3.276a4.5 4.5 0 00-6.336 4.486c.091 1.076-.071 2.264-.904 2.95l-.102.085"
+                  />
+                </svg>
+                <span className="text-lg font-semibold">Fastener</span>
+                <span className="text-xs text-lime-200 mt-1">Bolts, nuts, washers</span>
               </button>
             )}
           </div>
@@ -2165,6 +2234,27 @@ export default function ItemUploadStep(props: {
                       />
                     </svg>
                     <span className="text-sm font-semibold text-amber-700">Tank/Chute</span>
+                  </button>
+                )}
+                {requiredProducts.includes("fasteners_gaskets") && onAddFastenerEntry && (
+                  <button
+                    onClick={() => onAddFastenerEntry()}
+                    className="flex items-center gap-2 px-4 py-2 rounded-lg border-2 transition-all bg-lime-50 hover:bg-lime-100 border-lime-400 hover:border-lime-500 hover:shadow-md"
+                  >
+                    <svg
+                      className="w-5 h-5 text-lime-600"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M12 4v16m8-8H4"
+                      />
+                    </svg>
+                    <span className="text-sm font-semibold text-lime-700">Fastener</span>
                   </button>
                 )}
               </div>

@@ -9,6 +9,7 @@ import { addDaysFromNowISODate, generateUniqueId, nowMillis } from "@/app/lib/da
 import type {
   BendEntry,
   ExpansionJointEntry,
+  FastenerEntry,
   FittingEntry,
   GlobalSpecs,
   InstrumentEntry,
@@ -201,6 +202,7 @@ interface RfqWizardActions {
   addInstrumentEntry: (description?: string, insertAtStart?: boolean) => string;
   addPumpEntry: (description?: string, insertAtStart?: boolean) => string;
   addTankChuteEntry: (description?: string, insertAtStart?: boolean) => string;
+  addFastenerEntry: (description?: string, insertAtStart?: boolean) => string;
 
   updateStraightPipeEntry: (id: string, updates: Partial<Omit<StraightPipeEntry, "id">>) => void;
   updateItem: (id: string, updates: Partial<Omit<PipeItem, "id" | "itemType">>) => void;
@@ -904,6 +906,34 @@ export const useRfqWizardStore = create<RfqWizardStore>()(
             }),
             false,
             "addTankChuteEntry",
+          );
+
+          return newEntry.id;
+        },
+
+        addFastenerEntry: (description, insertAtStart) => {
+          const newEntry: FastenerEntry = {
+            id: generateUniqueId(),
+            itemType: "fastener",
+            description: description || "New Fastener Item",
+            specs: {
+              fastenerCategory: "bolt",
+              quantityValue: 1,
+            },
+            notes: "",
+          };
+
+          set(
+            (state) => ({
+              rfqData: {
+                ...state.rfqData,
+                items: insertAtStart
+                  ? [newEntry, ...state.rfqData.items]
+                  : [...state.rfqData.items, newEntry],
+              },
+            }),
+            false,
+            "addFastenerEntry",
           );
 
           return newEntry.id;

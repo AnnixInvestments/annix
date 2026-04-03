@@ -20,6 +20,7 @@ import { AnonymousDraftService } from "./anonymous-draft.service";
 import { AnonymousDraft } from "./entities/anonymous-draft.entity";
 import { BendRfq } from "./entities/bend-rfq.entity";
 import { ExpansionJointRfq } from "./entities/expansion-joint-rfq.entity";
+import { FastenerRfq } from "./entities/fastener-rfq.entity";
 import { FittingRfq } from "./entities/fitting-rfq.entity";
 import { InstrumentRfq } from "./entities/instrument-rfq.entity";
 import { PumpRfq } from "./entities/pump-rfq.entity";
@@ -51,6 +52,7 @@ import { RfqDocumentService } from "./services/rfq-document.service";
       InstrumentRfq,
       PumpRfq,
       TankChuteRfq,
+      FastenerRfq,
       RfqDocument,
       RfqDraft,
       AnonymousDraft,

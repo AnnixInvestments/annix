@@ -6,10 +6,20 @@ import { BoltController } from "./bolt.controller";
 import { BoltService } from "./bolt.service";
 import { Bolt } from "./entities/bolt.entity";
 import { PipeClampEntity } from "./entities/pipe-clamp.entity";
+import { ThreadedInsert } from "./entities/threaded-insert.entity";
 import { UBoltEntity } from "./entities/u-bolt.entity";
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Bolt, BoltMass, NutMass, UBoltEntity, PipeClampEntity])],
+  imports: [
+    TypeOrmModule.forFeature([
+      Bolt,
+      BoltMass,
+      NutMass,
+      UBoltEntity,
+      PipeClampEntity,
+      ThreadedInsert,
+    ]),
+  ],
   controllers: [BoltController],
   providers: [BoltService],
   exports: [BoltService],

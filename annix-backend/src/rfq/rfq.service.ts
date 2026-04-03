@@ -44,6 +44,7 @@ import {
   ExpansionJointType,
   FabricatedLoopType,
 } from "./entities/expansion-joint-rfq.entity";
+import { FastenerCategory, FastenerRfq } from "./entities/fastener-rfq.entity";
 import { FittingRfq } from "./entities/fitting-rfq.entity";
 import { InstrumentCategory, InstrumentRfq } from "./entities/instrument-rfq.entity";
 import {
@@ -102,6 +103,8 @@ export class RfqService {
     private pumpRfqRepository: Repository<PumpRfq>,
     @InjectRepository(TankChuteRfq)
     private tankChuteRfqRepository: Repository<TankChuteRfq>,
+    @InjectRepository(FastenerRfq)
+    private fastenerRfqRepository: Repository<FastenerRfq>,
     @InjectRepository(RfqDocument)
     private rfqDocumentRepository: Repository<RfqDocument>,
     @InjectRepository(RfqDraft)
@@ -864,6 +867,33 @@ export class RfqService {
 
         await this.tankChuteRfqRepository.save(tankChuteRfq);
         this.logger.log(`Created tank/chute item #${lineNumber}: ${item.description}`);
+      } else if (item.itemType === "fastener" && item.fastener) {
+        const savedRfqItem = await this.createRfqItem({
+          lineNumber,
+          description: item.description,
+          itemType: RfqItemType.FASTENER,
+          quantity: item.fastener.quantityValue || 1,
+          totalWeightKg: item.totalWeightKg,
+          notes: item.notes,
+          rfq: savedRfq,
+        });
+
+        const fastenerRfq = this.fastenerRfqRepository.create({
+          fastenerCategory: item.fastener.fastenerCategory as FastenerCategory,
+          specificType: item.fastener.specificType,
+          size: item.fastener.size,
+          grade: item.fastener.grade || null,
+          material: item.fastener.material || null,
+          finish: item.fastener.finish || null,
+          threadType: item.fastener.threadType || null,
+          standard: item.fastener.standard || null,
+          lengthMm: item.fastener.lengthMm || null,
+          quantityValue: item.fastener.quantityValue || 1,
+          rfqItem: savedRfqItem,
+        });
+
+        await this.fastenerRfqRepository.save(fastenerRfq);
+        this.logger.log(`Created fastener item #${lineNumber}: ${item.description}`);
       }
     }, Promise.resolve());
 
@@ -879,6 +909,7 @@ export class RfqService {
         "items.instrumentDetails",
         "items.pumpDetails",
         "items.tankChuteDetails",
+        "items.fastenerDetails",
       ],
     });
 
@@ -1285,6 +1316,32 @@ export class RfqService {
         });
 
         await this.tankChuteRfqRepository.save(tankChuteRfq);
+      } else if (item.itemType === "fastener" && item.fastener) {
+        const savedRfqItem = await this.createRfqItem({
+          lineNumber,
+          description: item.description,
+          itemType: RfqItemType.FASTENER,
+          quantity: item.fastener.quantityValue || 1,
+          totalWeightKg: item.totalWeightKg,
+          notes: item.notes,
+          rfq: savedRfq,
+        });
+
+        const fastenerRfq = this.fastenerRfqRepository.create({
+          fastenerCategory: item.fastener.fastenerCategory as FastenerCategory,
+          specificType: item.fastener.specificType,
+          size: item.fastener.size,
+          grade: item.fastener.grade || null,
+          material: item.fastener.material || null,
+          finish: item.fastener.finish || null,
+          threadType: item.fastener.threadType || null,
+          standard: item.fastener.standard || null,
+          lengthMm: item.fastener.lengthMm || null,
+          quantityValue: item.fastener.quantityValue || 1,
+          rfqItem: savedRfqItem,
+        });
+
+        await this.fastenerRfqRepository.save(fastenerRfq);
       }
     }, Promise.resolve());
 
@@ -1300,6 +1357,7 @@ export class RfqService {
         "items.instrumentDetails",
         "items.pumpDetails",
         "items.tankChuteDetails",
+        "items.fastenerDetails",
       ],
     });
 
@@ -1436,6 +1494,7 @@ export class RfqService {
         "items.instrumentDetails",
         "items.pumpDetails",
         "items.tankChuteDetails",
+        "items.fastenerDetails",
         "drawings",
         "boqs",
       ],

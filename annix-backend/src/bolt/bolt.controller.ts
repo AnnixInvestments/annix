@@ -114,4 +114,34 @@ export class BoltController {
   pipeClamp(@Param("clampType") clampType: string, @Param("nbMm") nbMm: number) {
     return this.boltService.pipeClamp(clampType, Number(nbMm));
   }
+
+  @Get("fasteners/types")
+  @ApiOperation({ summary: "List available fastener types grouped by category" })
+  @ApiResponse({ status: 200, description: "Fastener types by category" })
+  fastenerTypes() {
+    return this.boltService.fastenerTypesGrouped();
+  }
+
+  @Get("fasteners/sizes")
+  @ApiOperation({ summary: "List sizes available for a given fastener type" })
+  @ApiQuery({ name: "category", required: true, description: "bolt, nut, washer, or insert" })
+  @ApiQuery({ name: "type", required: true, description: "Specific type within category" })
+  @ApiResponse({ status: 200, description: "Available sizes" })
+  fastenerSizes(@Query("category") category: string, @Query("type") type: string) {
+    return this.boltService.fastenerSizesForType(category, type);
+  }
+
+  @Get("fasteners/grades")
+  @ApiOperation({ summary: "List grades/materials for a given type and size" })
+  @ApiQuery({ name: "category", required: true })
+  @ApiQuery({ name: "type", required: true })
+  @ApiQuery({ name: "size", required: true })
+  @ApiResponse({ status: 200, description: "Available grades and materials" })
+  fastenerGrades(
+    @Query("category") category: string,
+    @Query("type") type: string,
+    @Query("size") size: string,
+  ) {
+    return this.boltService.fastenerGradesForTypeAndSize(category, type, size);
+  }
 }
