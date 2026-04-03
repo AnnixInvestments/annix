@@ -13,6 +13,8 @@ interface QaReviewSectionProps {
   jobCardId: number;
   backgroundSteps: BackgroundStepStatus[];
   onReviewSubmitted: () => void;
+  stepAssignments: Record<string, { name: string; isPrimary: boolean }[]>;
+  currentUserName: string | null;
 }
 
 type ReviewState = "loading" | "form" | "repairs" | "submitted";
@@ -30,7 +32,7 @@ interface DefectPhoto {
 }
 
 export function QaReviewSection(props: QaReviewSectionProps) {
-  const { jobCardId, backgroundSteps, onReviewSubmitted } = props;
+  const { jobCardId, backgroundSteps, onReviewSubmitted, stepAssignments, currentUserName } = props;
 
   const [reviewState, setReviewState] = useState<ReviewState>("loading");
   const [applicability, setApplicability] = useState<QaApplicability | null>(null);
@@ -69,6 +71,18 @@ export function QaReviewSection(props: QaReviewSectionProps) {
     const preceding = sameBranch.slice(0, qaIdx);
     return preceding.every((bg) => bg.completedAt !== null);
   })();
+
+  const qaStepKey = qaReviewStep?.stepKey || "qa_review";
+  const assignedUsers =
+    stepAssignments[qaStepKey] ||
+    stepAssignments[`custom_${qaStepKey}`] ||
+    stepAssignments["qa_review"] ||
+    stepAssignments["custom_qa_review"] ||
+    [];
+  const isAssignedUser =
+    currentUserName !== null &&
+    (assignedUsers.length === 0 || assignedUsers.some((u) => u.name === currentUserName));
+  const qaReviewCompleted = qaReviewStep ? qaReviewStep.completedAt !== null : false;
 
   const loadData = useCallback(async () => {
     try {
@@ -224,6 +238,14 @@ export function QaReviewSection(props: QaReviewSectionProps) {
       setIsCompletingRepairs(false);
     }
   };
+
+  if (!qaReviewActive && !qaReviewCompleted) {
+    return null;
+  }
+
+  if (qaReviewActive && !qaReviewCompleted && !isAssignedUser) {
+    return null;
+  }
 
   if (reviewState === "loading") {
     return (
@@ -454,16 +476,7 @@ export function QaReviewSection(props: QaReviewSectionProps) {
   }
 
   if (!qaReviewActive) {
-    return (
-      <div id="qa-review-section" className="rounded-lg border border-gray-200 bg-white shadow-sm">
-        <div className="border-b border-gray-200 bg-gray-50 px-5 py-3">
-          <h3 className="text-sm font-semibold text-gray-600">QA Review</h3>
-        </div>
-        <div className="py-8 text-center text-sm text-gray-400">
-          Awaiting preceding quality steps to complete before QA Review becomes available.
-        </div>
-      </div>
-    );
+    return null;
   }
 
   return (

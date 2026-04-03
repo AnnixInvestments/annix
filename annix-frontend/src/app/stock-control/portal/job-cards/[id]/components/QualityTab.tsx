@@ -36,11 +36,20 @@ interface QualityTabProps {
   onBatchComplete: (() => void) | null;
   onQaReviewSubmitted: (() => void) | null;
   onFinalPhotosSaved: (() => void) | null;
+  stepAssignments: Record<string, { name: string; isPrimary: boolean }[]>;
+  currentUserName: string | null;
 }
 
 export function QualityTab(props: QualityTabProps) {
-  const { jobCardId, backgroundSteps, onBatchComplete, onQaReviewSubmitted, onFinalPhotosSaved } =
-    props;
+  const {
+    jobCardId,
+    backgroundSteps,
+    onBatchComplete,
+    onQaReviewSubmitted,
+    onFinalPhotosSaved,
+    stepAssignments,
+    currentUserName,
+  } = props;
   const [certificates, setCertificates] = useState<SupplierCertificate[]>([]);
   const [calibrationCerts, setCalibrationCerts] = useState<CalibrationCertificate[]>([]);
   const [batchRecords, setBatchRecords] = useState<IssuanceBatchRecord[]>([]);
@@ -203,6 +212,8 @@ export function QualityTab(props: QualityTabProps) {
         jobCardId={jobCardId}
         backgroundSteps={backgroundSteps}
         onReviewSubmitted={onQaReviewSubmitted || (() => {})}
+        stepAssignments={stepAssignments}
+        currentUserName={currentUserName}
       />
 
       <QaFinalPhotosSection

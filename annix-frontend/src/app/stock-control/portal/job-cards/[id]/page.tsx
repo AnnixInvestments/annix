@@ -2131,6 +2131,8 @@ export default function JobCardDetailPage() {
               <QualityTab
                 jobCardId={jobId}
                 backgroundSteps={backgroundSteps}
+                stepAssignments={workflowStatus?.stepAssignments || {}}
+                currentUserName={user?.name || null}
                 onBatchComplete={
                   userPendingBgSteps.some((bg) => bg.branchColor && bg.stepKey === "qc_batch_certs")
                     ? () => {
