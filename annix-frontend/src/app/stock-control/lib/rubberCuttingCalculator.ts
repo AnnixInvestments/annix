@@ -535,7 +535,7 @@ function parseBendRadiusType(description: string): string | null {
 }
 
 function parseCenterToFace(description: string): number | null {
-  const singleMatch = description.match(/C\/F\s+(\d+(?:\.\d+)?)\s*mm/i);
+  const singleMatch = description.match(/C\/F\s+(\d+(?:\.\d+)?)/i);
   if (singleMatch) return parseFloat(singleMatch[1]);
 
   const dimMatch = description.match(/(\d+(?:\.\d+)?)\s*x\s*\d+(?:\.\d+)?\s*C\/F/i);
@@ -560,6 +560,18 @@ function parseFittingDimensions(description: string): {
     return {
       lengthA: parseFloat(bareMatch[1]),
       lengthB: parseFloat(bareMatch[2]),
+    };
+  }
+  const allDims = [...description.matchAll(/\b(\d{3,5})\s*[xX]\s*(\d{3,5})\b/gi)];
+  const standaloneDim = allDims.find((m) => {
+    const afterIdx = (m.index || 0) + m[0].length;
+    const after = description.substring(afterIdx);
+    return !/^\s*(?:mm\s*)?NB/i.test(after);
+  });
+  if (standaloneDim) {
+    return {
+      lengthA: parseFloat(standaloneDim[1]),
+      lengthB: parseFloat(standaloneDim[2]),
     };
   }
   return { lengthA: null, lengthB: null };
@@ -604,6 +616,24 @@ function parseFlangeStandard(description: string): string | null {
   return match ? match.standard : null;
 }
 
+function effectiveLengthForBendOrTee(
+  rawLengthMm: number | null,
+  itemType: string | null,
+  centerToFaceMm: number | null,
+  fittingLengthA: number | null,
+  fittingLengthB: number | null,
+): number | null {
+  if (itemType === "bend" && fittingLengthA !== null && fittingLengthB !== null) {
+    return fittingLengthA + fittingLengthB;
+  } else if (centerToFaceMm !== null && itemType === "bend") {
+    return centerToFaceMm * 2;
+  } else if (centerToFaceMm !== null && itemType === "tee") {
+    return centerToFaceMm * 3;
+  } else {
+    return rawLengthMm;
+  }
+}
+
 function bendRadiusMultiplier(bendType: string | null): number {
   if (!bendType) return 1.5;
   const match = bendType.match(/(\d+(?:\.\d+)?)/);
@@ -619,10 +649,17 @@ function calculateItemSurfaceArea(item: ParsedPipeItem): {
   const flangeAllowanceMm = item.flangeCount * 100;
 
   if (item.itemType === "bend" && item.bendAngle && item.nbMm) {
-    const multiplier = bendRadiusMultiplier(item.bendType);
-    const bendRadiusMm = multiplier * item.nbMm;
-    const arcLengthMm = (item.bendAngle / 360) * 2 * Math.PI * bendRadiusMm;
-    const effectiveLengthMm = arcLengthMm + flangeAllowanceMm;
+    let bendLengthMm: number;
+    if (item.centerToFaceMm !== null) {
+      bendLengthMm = item.centerToFaceMm * 2;
+    } else if (item.fittingLengthAMm !== null && item.fittingLengthBMm !== null) {
+      bendLengthMm = item.fittingLengthAMm + item.fittingLengthBMm;
+    } else {
+      const multiplier = bendRadiusMultiplier(item.bendType);
+      const bendRadiusMm = multiplier * item.nbMm;
+      bendLengthMm = (item.bendAngle / 360) * 2 * Math.PI * bendRadiusMm;
+    }
+    const effectiveLengthMm = bendLengthMm + flangeAllowanceMm;
     const extM2 = (Math.PI * item.odMm * effectiveLengthMm) / 1_000_000;
     const intM2 = item.idMm ? (Math.PI * item.idMm * effectiveLengthMm) / 1_000_000 : null;
     return { extM2, intM2 };
@@ -748,9 +785,9 @@ export function parsePipeItem(
   itemNo: string | null,
 ): ParsedPipeItem {
   const nbMm = parseNb(description);
-  const branchNbMm = parseBranchNb(description);
+  const rawBranchNbMm = parseBranchNb(description);
   const directOd = parseOd(description);
-  const lengthMm = parseLength(description);
+  const rawLengthMm = parseLength(description);
   const schedule = parseSchedule(description);
   const flangeConfig = parseFlangeConfig(description);
   const itemType = parseItemType(description);
@@ -763,8 +800,23 @@ export function parsePipeItem(
   const flangeCount = parseFlangeCount(description);
   const pressureClass = parsePressureClass(description);
   const flangeStandard = parseFlangeStandard(description);
-  const fittingRunLengthMm = itemType === "tee" ? fittingDims.lengthA : null;
-  const fittingBranchLengthMm = itemType === "tee" ? fittingDims.lengthB : null;
+
+  const lengthMm = effectiveLengthForBendOrTee(
+    rawLengthMm,
+    itemType,
+    centerToFaceMm,
+    fittingDims.lengthA,
+    fittingDims.lengthB,
+  );
+  const branchNbMm = rawBranchNbMm || (itemType === "tee" && centerToFaceMm !== null ? nbMm : null);
+  const fittingRunLengthMm =
+    itemType === "tee"
+      ? centerToFaceMm !== null
+        ? centerToFaceMm * 2
+        : fittingDims.lengthA
+      : null;
+  const fittingBranchLengthMm =
+    itemType === "tee" ? (centerToFaceMm !== null ? centerToFaceMm : fittingDims.lengthB) : null;
 
   const hasDimensions = (nbMm !== null || directOd !== null) && lengthMm !== null && lengthMm > 0;
   const isExternalLining = itemType === "pulley" || itemType === "drum" || itemType === "roller";
@@ -1051,11 +1103,21 @@ function finalizeRoll(
 
     const widthWaste = rollWidthMm - band.widthUsedMm;
     if (widthWaste > 0) {
-      offcuts.push({
-        widthMm: widthWaste,
-        lengthMm: band.heightMm,
-        areaSqM: (widthWaste / 1000) * (band.heightMm / 1000),
-      });
+      const lastOffcut = offcuts[offcuts.length - 1];
+      if (lastOffcut && lastOffcut.widthMm === widthWaste) {
+        const mergedLength = lastOffcut.lengthMm + band.heightMm;
+        offcuts[offcuts.length - 1] = {
+          widthMm: widthWaste,
+          lengthMm: mergedLength,
+          areaSqM: (widthWaste / 1000) * (mergedLength / 1000),
+        };
+      } else {
+        offcuts.push({
+          widthMm: widthWaste,
+          lengthMm: band.heightMm,
+          areaSqM: (widthWaste / 1000) * (band.heightMm / 1000),
+        });
+      }
     }
   });
 

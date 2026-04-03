@@ -327,7 +327,65 @@ function parseLength(description: string): number | null {
   const mMatch = description.match(/(\d+(?:\.\d+)?)\s*[Mm](?:\s|$)/);
   if (mMatch) return parseFloat(mMatch[1]) * 1000;
 
+  const trailingMatch = description.match(/\s(\d{3,5})(?:\/\d+)?\s*$/);
+  if (trailingMatch) {
+    const val = parseInt(trailingMatch[1], 10);
+    if (val >= 100) return val;
+  }
+
   return null;
+}
+
+function parseCenterToFace(description: string): number | null {
+  const singleMatch = description.match(/C\/F\s+(\d+(?:\.\d+)?)/i);
+  if (singleMatch) return parseFloat(singleMatch[1]);
+
+  const dimMatch = description.match(/(\d+(?:\.\d+)?)\s*x\s*\d+(?:\.\d+)?\s*C\/F/i);
+  if (dimMatch) return parseFloat(dimMatch[1]);
+
+  return null;
+}
+
+function parseFittingDimensions(description: string): {
+  lengthA: number | null;
+  lengthB: number | null;
+} {
+  const match = description.match(/\((\d+(?:\.\d+)?)\s*x\s*(\d+(?:\.\d+)?)\)/);
+  if (match) {
+    return { lengthA: parseFloat(match[1]), lengthB: parseFloat(match[2]) };
+  }
+  const bareMatch = description.match(/NB\s+(\d{3,4})\s*[xX]\s*(\d{3,4})\b/i);
+  if (bareMatch) {
+    return { lengthA: parseFloat(bareMatch[1]), lengthB: parseFloat(bareMatch[2]) };
+  }
+  const allDims = [...description.matchAll(/\b(\d{3,5})\s*[xX]\s*(\d{3,5})\b/gi)];
+  const standaloneDim = allDims.find((m) => {
+    const afterIdx = (m.index || 0) + m[0].length;
+    const after = description.substring(afterIdx);
+    return !/^\s*(?:mm\s*)?NB/i.test(after);
+  });
+  if (standaloneDim) {
+    return { lengthA: parseFloat(standaloneDim[1]), lengthB: parseFloat(standaloneDim[2]) };
+  }
+  return { lengthA: null, lengthB: null };
+}
+
+function effectiveLengthForBendOrTee(
+  rawLengthMm: number | null,
+  itemType: string | null,
+  centerToFaceMm: number | null,
+  fittingLengthA: number | null,
+  fittingLengthB: number | null,
+): number | null {
+  if (itemType === "bend" && fittingLengthA !== null && fittingLengthB !== null) {
+    return fittingLengthA + fittingLengthB;
+  } else if (centerToFaceMm !== null && itemType === "bend") {
+    return centerToFaceMm * 2;
+  } else if (centerToFaceMm !== null && itemType === "tee") {
+    return centerToFaceMm * 3;
+  } else {
+    return rawLengthMm;
+  }
 }
 
 function parseSchedule(description: string): string | null {
@@ -479,11 +537,20 @@ export function parsePipeItem(
 ): ParsedPipeItem {
   const nbMm = parseNb(description);
   const directOd = parseOd(description);
-  const lengthMm = parseLength(description);
+  const rawLengthMm = parseLength(description);
   const schedule = parseSchedule(description);
   const flangeConfig = parseFlangeConfig(description);
   const itemType = parseItemType(description);
   const openEnds = openEndsFromConfig(flangeConfig);
+  const centerToFaceMm = parseCenterToFace(description);
+  const fittingDims = parseFittingDimensions(description);
+  const lengthMm = effectiveLengthForBendOrTee(
+    rawLengthMm,
+    itemType,
+    centerToFaceMm,
+    fittingDims.lengthA,
+    fittingDims.lengthB,
+  );
 
   const hasDimensions = (nbMm !== null || directOd !== null) && lengthMm !== null && lengthMm > 0;
   const isExternalLining = itemType === "pulley" || itemType === "drum" || itemType === "roller";
@@ -677,16 +744,31 @@ function finalizeRoll(
     }),
   );
 
-  const bandOffcuts: Offcut[] = placedBands
-    .filter(({ band }) => rollWidthMm - band.widthUsedMm > 0)
-    .map(({ band }) => {
-      const widthWaste = rollWidthMm - band.widthUsedMm;
-      return {
+  const bandOffcuts: Offcut[] = placedBands.reduce<Offcut[]>((acc, { band }) => {
+    const widthWaste = rollWidthMm - band.widthUsedMm;
+    if (widthWaste <= 0) return acc;
+
+    const lastOffcut = acc[acc.length - 1];
+    if (lastOffcut && lastOffcut.widthMm === widthWaste) {
+      const mergedLength = lastOffcut.lengthMm + band.heightMm;
+      return [
+        ...acc.slice(0, -1),
+        {
+          widthMm: widthWaste,
+          lengthMm: mergedLength,
+          areaSqM: (widthWaste / 1000) * (mergedLength / 1000),
+        },
+      ];
+    }
+    return [
+      ...acc,
+      {
         widthMm: widthWaste,
         lengthMm: band.heightMm,
         areaSqM: (widthWaste / 1000) * (band.heightMm / 1000),
-      };
-    });
+      },
+    ];
+  }, []);
 
   const rollTail = rollLengthMm - totalBandHeight;
   const offcuts: Offcut[] = [

@@ -167,9 +167,12 @@ export class M2CalculationService {
     let lengthMm: number | null = null;
 
     if (itemType === "bend" || itemType === "offset") {
-      lengthMm = this.parseBendArcLength(description);
-      if (lengthMm === null && cfDimensionMm) {
-        lengthMm = cfDimensionMm;
+      if (cfDimensionMm) {
+        const isSingleCf =
+          !CF_PAIR_PATTERN.test(description) && !BEND_CF_BARE_PATTERN.test(description);
+        lengthMm = isSingleCf ? cfDimensionMm * 2 : cfDimensionMm;
+      } else {
+        lengthMm = this.parseBendArcLength(description);
       }
     }
 
@@ -192,6 +195,12 @@ export class M2CalculationService {
 
     if (itemType === "reducer" && cfDimensionMm && lengthMm === null) {
       lengthMm = 2 * cfDimensionMm;
+    }
+
+    if (itemType === "tee" && cfDimensionMm && lengthMm === null) {
+      const isSingleCfTee =
+        !CF_PAIR_PATTERN.test(description) && !BEND_CF_BARE_PATTERN.test(description);
+      lengthMm = isSingleCfTee ? cfDimensionMm * 3 : cfDimensionMm;
     }
 
     const schedMatch = description.match(SCHEDULE_PATTERN);
@@ -388,12 +397,15 @@ export class M2CalculationService {
     bendAngle: number,
     bendMultiplier: number,
     nbMm: number,
-    cfDimensionMm: number | null,
+    cfTotalMm: number | null,
   ): { external: number; internal: number } {
-    const bendRadiusMm = bendMultiplier * nbMm;
-    const arcLengthM = ((bendAngle / 360) * 2 * Math.PI * bendRadiusMm) / 1000;
-    const tangentLengthM = cfDimensionMm ? cfDimensionMm / 1000 : 0;
-    const totalLengthM = arcLengthM + tangentLengthM;
+    let totalLengthM: number;
+    if (cfTotalMm !== null) {
+      totalLengthM = cfTotalMm / 1000;
+    } else {
+      const bendRadiusMm = bendMultiplier * nbMm;
+      totalLengthM = ((bendAngle / 360) * 2 * Math.PI * bendRadiusMm) / 1000;
+    }
 
     return {
       external: Math.PI * (odMm / 1000) * totalLengthM,
@@ -661,24 +673,34 @@ export class M2CalculationService {
 
       if (itemType === "bend" || (itemType === "offset" && regex.bendAngle && regex.bendType)) {
         const bendMultiplier = parseFloat(regex.bendType?.replace("D", "") || "1.5");
+        const isSingleCf =
+          regex.cfDimensionMm !== null &&
+          !CF_PAIR_PATTERN.test(description) &&
+          !BEND_CF_BARE_PATTERN.test(description);
+        let cfTotalMm: number | null = null;
+        if (regex.cfDimensionMm !== null) {
+          cfTotalMm = isSingleCf ? regex.cfDimensionMm * 2 : regex.cfDimensionMm;
+        } else if (regex.fittingDimensionsA !== null && regex.fittingDimensionsB !== null) {
+          cfTotalMm = regex.fittingDimensionsA + regex.fittingDimensionsB;
+        }
         const bendResult = this.calculateBendM2(
           odMm,
           idMm,
           regex.bendAngle || 90,
           bendMultiplier,
           diameterMm,
-          regex.cfDimensionMm,
+          cfTotalMm,
         );
         externalM2 = bendResult.external;
         internalM2 = bendResult.internal;
       } else if (itemType === "tee" || itemType === "lateral") {
-        const teeResult = this.calculateTeeM2(
-          odMm,
-          idMm,
-          regex.fittingType,
-          regex.fittingDimensionsA,
-          regex.fittingDimensionsB,
-        );
+        const isSingleCfTee =
+          regex.cfDimensionMm !== null &&
+          !CF_PAIR_PATTERN.test(description) &&
+          !BEND_CF_BARE_PATTERN.test(description);
+        const dimA = regex.fittingDimensionsA || (isSingleCfTee ? regex.cfDimensionMm! * 2 : null);
+        const dimB = regex.fittingDimensionsB || (isSingleCfTee ? regex.cfDimensionMm! : null);
+        const teeResult = this.calculateTeeM2(odMm, idMm, regex.fittingType, dimA, dimB);
         externalM2 = teeResult.external;
         internalM2 = teeResult.internal;
       } else if (itemType === "reducer") {

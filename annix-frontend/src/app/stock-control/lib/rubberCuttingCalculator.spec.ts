@@ -637,4 +637,47 @@ describe("rubberCuttingCalculator", () => {
       expect(plan.rolls[0].bands.length).toBeGreaterThanOrEqual(1);
     });
   });
+
+  describe("C/F (Center to Face) dimension parsing", () => {
+    it("bend with C/F uses 2x C/F as total length", () => {
+      const result = parsePipeItem("1", "500NB 90° BEND FBE 1600/3 C/F 1020", 1, null, "01");
+      expect(result.itemType).toBe("bend");
+      expect(result.centerToFaceMm).toBe(1020);
+      expect(result.lengthMm).toBe(2040);
+    });
+
+    it("bend with C/F and mm suffix parses correctly", () => {
+      const result = parsePipeItem("1", "80NB 90° 3D Bend C/F 455mm FBE", 1, null, "02");
+      expect(result.centerToFaceMm).toBe(455);
+      expect(result.lengthMm).toBe(910);
+    });
+
+    it("bend with AxB dimensions sums A+B as total length", () => {
+      const result = parsePipeItem("1", "500NB 90° BEND 1020x2456 FBE 1600/3", 1, null, "03");
+      expect(result.lengthMm).toBe(3476);
+    });
+
+    it("tee with C/F uses 3x C/F as total length", () => {
+      const result = parsePipeItem("1", "500NB TEE FBE 1600/3 C/F 300", 1, null, "04");
+      expect(result.itemType).toBe("tee");
+      expect(result.centerToFaceMm).toBe(300);
+      expect(result.lengthMm).toBe(900);
+      expect(result.fittingRunLengthMm).toBe(600);
+      expect(result.fittingBranchLengthMm).toBe(300);
+      expect(result.branchNbMm).toBe(500);
+    });
+
+    it("bend C/F produces correct surface area", () => {
+      const result = parsePipeItem("1", "500NB 90° BEND FBE 1600/3 C/F 1020", 1, null, "01");
+      expect(result.calculatedExtM2).not.toBeNull();
+      expect(result.calculatedExtM2!).toBeGreaterThan(3);
+    });
+
+    it("tee with AxB dims still uses existing fitting dim logic", () => {
+      const result = parsePipeItem("1", "400x150NB 810x405 RED/TEE FAE 1000/3", 1, null, "09");
+      expect(result.itemType).toBe("tee");
+      expect(result.fittingRunLengthMm).toBe(810);
+      expect(result.fittingBranchLengthMm).toBe(405);
+    });
+  });
 });

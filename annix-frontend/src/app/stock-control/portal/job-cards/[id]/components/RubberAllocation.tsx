@@ -410,7 +410,7 @@ function CuttingDiagram({
   const rollWidthMm = roll.rollSpec.widthMm;
   const bands = roll.bands;
   const totalBandHeight = bands.reduce((sum, b) => sum + b.heightMm, 0);
-  const diagramHeight = 56;
+  const diagramHeight = 140;
 
   return (
     <div className="bg-white border border-gray-300 rounded-lg p-3 mb-3">
@@ -438,108 +438,139 @@ function CuttingDiagram({
         </span>
       </div>
 
-      <div
-        className="relative bg-gray-100 rounded border border-gray-300 overflow-hidden"
-        style={{ height: `${diagramHeight}px` }}
-      >
-        {roll.cuts.map((cut, idx) => {
-          const left = (cut.positionMm / rollLengthMm) * 100;
-          const rawWidth = (cut.lengthMm / rollLengthMm) * 100;
-          const isFullRoll = rawWidth >= 95;
-          const width = isFullRoll ? 100 - left : rawWidth;
-          const colorClass =
-            colorMap.get(cut.itemId.split("-")[0]) || CUT_COLORS[idx % CUT_COLORS.length];
-          const rolls = cut.stripsPerPiece || 1;
-          const displayLabel =
-            rolls > 1 ? `${rolls} rolls` : cut.itemNo || `${(cut.lengthMm / 1000).toFixed(1)}m`;
+      <div className="flex gap-1">
+        <div className="flex flex-col justify-between text-[8px] text-gray-400 py-0.5 w-8 flex-shrink-0">
+          <span>0</span>
+          <span>{rollWidthMm}</span>
+        </div>
+        <div
+          className="relative bg-gray-200 rounded border border-gray-300 overflow-hidden flex-1"
+          style={{ height: `${diagramHeight}px` }}
+        >
+          {bands.map((band) => {
+            const bandLeft = (band.startMm / rollLengthMm) * 100;
+            const bandWidth = (band.heightMm / rollLengthMm) * 100;
+            const usedHeightPct = (band.widthUsedMm / rollWidthMm) * 100;
+            const wasteHeightPct = 100 - usedHeightPct;
 
-          const band = bands.find((b) => b.bandIndex === cut.band);
-          const totalLanes = band ? band.lanes : 1;
-          const laneHeightPct = 100 / totalLanes;
-          const topPct = cut.lane * laneHeightPct;
+            return wasteHeightPct > 1 ? (
+              <div
+                key={`waste-${band.bandIndex}`}
+                className="absolute bg-gray-300/50 border-b border-dashed border-gray-400"
+                style={{
+                  left: `${bandLeft}%`,
+                  width: `${bandWidth}%`,
+                  top: `${usedHeightPct}%`,
+                  height: `${wasteHeightPct}%`,
+                }}
+              />
+            ) : null;
+          })}
 
-          const hasSubPanels =
-            cut.subPanels !== null && cut.subPanels !== undefined && cut.subPanels.length > 1;
+          {roll.cuts.map((cut, idx) => {
+            const left = (cut.positionMm / rollLengthMm) * 100;
+            const rawWidth = (cut.lengthMm / rollLengthMm) * 100;
+            const isFullRoll = rawWidth >= 95;
+            const width = isFullRoll ? 100 - left : rawWidth;
+            const colorClass =
+              colorMap.get(cut.itemId.split("-")[0]) || CUT_COLORS[idx % CUT_COLORS.length];
+            const rolls = cut.stripsPerPiece || 1;
+            const displayLabel =
+              rolls > 1 ? `${rolls} rolls` : cut.itemNo || `${(cut.lengthMm / 1000).toFixed(1)}m`;
 
-          if (hasSubPanels) {
-            const totalSubLength = cut.subPanels!.reduce((s, p) => s + p.rubberLengthMm, 0);
+            const band = bands.find((b) => b.bandIndex === cut.band);
+            const laneWidthMm = band ? band.laneWidthMm : rollWidthMm;
+            const topPct = ((cut.lane * laneWidthMm) / rollWidthMm) * 100;
+            const heightPct = (cut.widthMm / rollWidthMm) * 100;
+
+            const hasSubPanels =
+              cut.subPanels !== null && cut.subPanels !== undefined && cut.subPanels.length > 1;
+
+            if (hasSubPanels) {
+              const totalSubLength = cut.subPanels!.reduce((s, p) => s + p.rubberLengthMm, 0);
+              return (
+                <div
+                  key={cut.itemId}
+                  className="absolute flex"
+                  style={{
+                    left: `${left}%`,
+                    width: `${width}%`,
+                    top: `${topPct}%`,
+                    height: `${heightPct}%`,
+                  }}
+                  title={`${cut.itemNo ? `[${cut.itemNo}] ` : ""}${cut.description}: ${cut.subPanels!.map((p) => `${p.label} ${(p.rubberLengthMm / 1000).toFixed(2)}m x ${p.rubberWidthMm}mm`).join(" + ")}`}
+                >
+                  {cut.subPanels!.map((panel, panelIdx) => {
+                    const panelPct = (panel.rubberLengthMm / totalSubLength) * 100;
+                    const isLast = panelIdx === cut.subPanels!.length - 1;
+                    return (
+                      <div
+                        key={panel.label}
+                        className={`${colorClass} flex flex-col items-center justify-center h-full overflow-hidden`}
+                        style={{
+                          width: `${panelPct}%`,
+                          borderRight: isLast
+                            ? "1px solid white"
+                            : "2px dashed rgba(255,255,255,0.9)",
+                          borderBottom: "1px solid white",
+                        }}
+                      >
+                        <span className="text-[10px] text-white font-bold truncate px-0.5 leading-tight">
+                          {cut.itemNo || displayLabel} {panel.label}
+                        </span>
+                        <span className="text-[9px] text-white/80 truncate px-0.5 leading-tight">
+                          {(panel.rubberLengthMm / 1000).toFixed(2)}m x {panel.rubberWidthMm}mm
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            }
+
             return (
               <div
                 key={cut.itemId}
-                className="absolute flex"
+                className={`absolute ${colorClass} border-r border-b border-white flex flex-col items-center justify-center overflow-hidden`}
                 style={{
                   left: `${left}%`,
                   width: `${width}%`,
                   top: `${topPct}%`,
-                  height: `${laneHeightPct}%`,
+                  height: `${heightPct}%`,
                 }}
-                title={`${cut.itemNo ? `[${cut.itemNo}] ` : ""}${cut.description}: ${cut.subPanels!.map((p) => `${p.label} ${(p.rubberLengthMm / 1000).toFixed(2)}m`).join(" + ")}`}
+                title={`${cut.itemNo ? `[${cut.itemNo}] ` : ""}${cut.description}: ${(cut.lengthMm / 1000).toFixed(2)}m x ${cut.widthMm}mm${rolls > 1 ? ` (${rolls} rolls)` : ""}`}
               >
-                {cut.subPanels!.map((panel, panelIdx) => {
-                  const panelPct = (panel.rubberLengthMm / totalSubLength) * 100;
-                  const isLast = panelIdx === cut.subPanels!.length - 1;
-                  return (
-                    <div
-                      key={panel.label}
-                      className={`${colorClass} flex flex-col items-center justify-center h-full overflow-hidden`}
-                      style={{
-                        width: `${panelPct}%`,
-                        borderRight: isLast
-                          ? "1px solid white"
-                          : "2px dashed rgba(255,255,255,0.9)",
-                        borderBottom: "1px solid white",
-                      }}
-                    >
-                      <span className="text-[10px] text-white font-bold truncate px-0.5 leading-tight">
-                        {cut.itemNo || displayLabel} {panel.label}
-                      </span>
-                      <span className="text-[9px] text-white/80 truncate px-0.5 leading-tight">
-                        {(panel.rubberLengthMm / 1000).toFixed(2)}m x {panel.rubberWidthMm}mm
-                      </span>
-                    </div>
-                  );
-                })}
+                <span className="text-[10px] text-white font-bold truncate px-0.5 leading-tight">
+                  {displayLabel}
+                </span>
+                <span className="text-[9px] text-white/80 truncate px-0.5 leading-tight">
+                  {(cut.lengthMm / 1000).toFixed(2)}m x {cut.widthMm}mm
+                </span>
               </div>
             );
-          }
+          })}
 
-          return (
+          {totalBandHeight < rollLengthMm * 0.95 && (
             <div
-              key={cut.itemId}
-              className={`absolute ${colorClass} border-r border-b border-white flex flex-col items-center justify-center overflow-hidden`}
+              className="absolute bg-gray-300 flex items-center justify-center"
               style={{
-                left: `${left}%`,
-                width: `${width}%`,
-                top: `${topPct}%`,
-                height: `${laneHeightPct}%`,
+                left: `${(totalBandHeight / rollLengthMm) * 100}%`,
+                width: `${((rollLengthMm - totalBandHeight) / rollLengthMm) * 100}%`,
+                top: 0,
+                height: "100%",
               }}
-              title={`${cut.itemNo ? `[${cut.itemNo}] ` : ""}${cut.description}: ${(cut.lengthMm / 1000).toFixed(2)}m x ${cut.widthMm}mm${rolls > 1 ? ` (${rolls} rolls)` : ""}`}
             >
-              <span className="text-[10px] text-white font-bold truncate px-0.5 leading-tight">
-                {displayLabel}
-              </span>
-              <span className="text-[9px] text-white/80 truncate px-0.5 leading-tight">
-                {(cut.lengthMm / 1000).toFixed(2)}m x {cut.widthMm}mm
+              <span className="text-[9px] text-gray-500 font-medium">
+                offcut {((rollLengthMm - totalBandHeight) / 1000).toFixed(1)}m x {rollWidthMm}mm
               </span>
             </div>
-          );
-        })}
+          )}
+        </div>
+      </div>
 
-        {totalBandHeight < rollLengthMm * 0.95 && (
-          <div
-            className="absolute bg-gray-300 flex items-center justify-center"
-            style={{
-              left: `${(totalBandHeight / rollLengthMm) * 100}%`,
-              width: `${((rollLengthMm - totalBandHeight) / rollLengthMm) * 100}%`,
-              top: 0,
-              height: "100%",
-            }}
-          >
-            <span className="text-[9px] text-gray-600 font-medium">
-              {((rollLengthMm - totalBandHeight) / 1000).toFixed(1)}m
-            </span>
-          </div>
-        )}
+      <div className="flex gap-1 mt-0.5 ml-9 text-[8px] text-gray-400">
+        <span>0m</span>
+        <span className="ml-auto">{roll.rollSpec.lengthM}m</span>
       </div>
 
       <div className="mt-2">
