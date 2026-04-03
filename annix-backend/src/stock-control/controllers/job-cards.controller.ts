@@ -629,7 +629,26 @@ export class JobCardsController {
     });
     await this.stockMovementRepo.save(movement);
 
-    return { weightKg: roundedKg, stockItemId: wastageItem.id };
+    const offcutSku = `RO-${id}-${Date.now()}`;
+    const offcutItem = this.stockItemRepo.create({
+      companyId,
+      sku: offcutSku,
+      name: `Rubber Offcut ${dto.widthMm}x${dto.lengthMm}mm ${dto.thicknessMm}mm ${colour}`,
+      description: `Reusable rubber offcut from JC #${id}`,
+      category: "rubber-sheet",
+      unitOfMeasure: "piece",
+      quantity: 1,
+      minStockLevel: 0,
+      color: colour,
+      thicknessMm: dto.thicknessMm,
+      widthMm: dto.widthMm,
+      lengthM: lengthM,
+      isLeftover: true,
+      sourceJobCardId: id,
+    });
+    const savedOffcut = await this.stockItemRepo.save(offcutItem);
+
+    return { weightKg: roundedKg, stockItemId: wastageItem.id, offcutStockItemId: savedOffcut.id };
   }
 
   private async upsertDimensionOverrides(companyId: number, overrides: any[]): Promise<void> {

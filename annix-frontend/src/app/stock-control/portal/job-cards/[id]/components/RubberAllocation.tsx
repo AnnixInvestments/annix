@@ -17,9 +17,12 @@ import {
   type CuttingPlan,
   calculateCuttingPlan,
   expandAndRotateItems,
+  matchOffcutsToPanel,
   type Offcut,
+  type OffcutMatch,
   parsePipeItem,
   type RollAllocation,
+  type StockRollInfo,
 } from "@/app/stock-control/lib/rubberCuttingCalculator";
 import { isValidLineItem } from "../lib/helpers";
 
@@ -181,6 +184,7 @@ function manualRollsToCuttingPlan(manualRolls: RubberPlanManualRoll[]): CuttingP
       thicknessMm: t,
       rolls: rolls.filter((r) => r.plyThicknessMm === t),
       totalRollsNeeded: rolls.filter((r) => r.plyThicknessMm === t).length,
+      plyCount: 1,
     })),
     totalThicknessMm: thicknesses.reduce((sum, t) => sum + t, 0),
     isMultiPly: thicknesses.length > 1,
@@ -592,16 +596,53 @@ function CuttingDiagram({
   );
 }
 
+function OffcutSuggestions({ matches }: { matches: OffcutMatch[] }) {
+  if (matches.length === 0) return null;
+
+  return (
+    <div className="mt-4 border border-emerald-200 rounded-lg bg-emerald-50 p-3">
+      <h4 className="text-sm font-semibold text-emerald-800 mb-2">
+        Offcut / Stock Suggestions (FIFO)
+      </h4>
+      <p className="text-xs text-emerald-600 mb-2">
+        These panels can be cut from existing stock or offcuts instead of a new roll:
+      </p>
+      <div className="space-y-1">
+        {matches.map((m) => (
+          <div
+            key={`${m.cutItemId}-${m.panelLabel || "main"}`}
+            className="flex items-center justify-between text-xs bg-white rounded px-2 py-1.5 border border-emerald-100"
+          >
+            <span className="font-medium text-gray-800">
+              {m.cutItemNo || "-"}
+              {m.panelLabel ? ` (${m.panelLabel})` : ""}
+            </span>
+            <span className="text-gray-500">
+              needs {m.requiredWidthMm}mm x {(m.requiredLengthMm / 1000).toFixed(2)}m
+            </span>
+            <span className="text-emerald-700 font-medium">
+              Stock: {m.stockItemName} ({m.stockThicknessMm}mm)
+            </span>
+            <span className="text-gray-400">waste: {m.wasteIfUsedSqM.toFixed(3)} m&#178;</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function PipeCuttingView({
   plan,
   fallbackThicknessMm,
   jobCardId,
   userRole,
+  stockRolls,
 }: {
   plan: CuttingPlan;
   fallbackThicknessMm?: number;
   jobCardId?: number;
   userRole?: string | null;
+  stockRolls?: StockRollInfo[];
 }) {
   const colorMap = plan.rolls
     .flatMap((roll) => roll.cuts)
@@ -678,6 +719,18 @@ function PipeCuttingView({
           />
         ))}
       </div>
+
+      {stockRolls && stockRolls.length > 0 && (
+        <OffcutSuggestions
+          matches={plan.rolls.flatMap((roll) =>
+            matchOffcutsToPanel(
+              roll.cuts,
+              stockRolls,
+              roll.plyThicknessMm || plan.totalThicknessMm || 0,
+            ),
+          )}
+        />
+      )}
     </div>
   );
 }
@@ -1135,6 +1188,7 @@ function RubberSOHPanel({
                 <div className="flex items-center justify-between p-2 text-sm">
                   <span className="font-medium">
                     Ply {idx + 1}: {ply.thicknessMm}mm
+                    {ply.plyCount > 1 ? ` (×${ply.plyCount} layers)` : ""}
                   </span>
                   <span>{ply.totalRollsNeeded} rolls needed</span>
                   <span>{totalAvailable} available</span>
@@ -1487,6 +1541,7 @@ function RubberAllocationSection({
             fallbackThicknessMm={stockOptions?.rubberSpec?.thicknessMm}
             jobCardId={jobCardId}
             userRole={scUser?.role || null}
+            stockRolls={stockQuery?.rolls}
           />
         ) : (
           <GenericM2View totalM2={plan.genericM2Total} items={plan.genericM2Items} />

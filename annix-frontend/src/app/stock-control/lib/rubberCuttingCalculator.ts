@@ -304,6 +304,7 @@ export interface PlyLayer {
   thicknessMm: number;
   rolls: RollAllocation[];
   totalRollsNeeded: number;
+  plyCount: number;
 }
 
 export interface StockRollInfo {
@@ -335,6 +336,85 @@ export interface CuttingPlan {
   totalThicknessMm: number;
   isMultiPly: boolean;
   offcuts: Offcut[];
+}
+
+export interface OffcutMatch {
+  cutItemId: string;
+  cutItemNo: string | null;
+  cutDescription: string;
+  panelLabel: string | null;
+  requiredWidthMm: number;
+  requiredLengthMm: number;
+  stockItemId: number;
+  stockItemName: string;
+  stockWidthMm: number;
+  stockLengthMm: number;
+  stockThicknessMm: number;
+  stockColor: string | null;
+  wasteIfUsedSqM: number;
+}
+
+export function matchOffcutsToPanel(
+  cuts: CutPiece[],
+  stockRolls: StockRollInfo[],
+  requiredThicknessMm: number,
+): OffcutMatch[] {
+  const availableStock = stockRolls
+    .filter(
+      (s) =>
+        s.quantityAvailable > 0 &&
+        s.thicknessMm === requiredThicknessMm &&
+        s.widthMm > 0 &&
+        s.lengthM > 0,
+    )
+    .sort((a, b) => a.stockItemId - b.stockItemId);
+
+  if (availableStock.length === 0) return [];
+
+  const usedStockCounts = new Map<number, number>();
+
+  return cuts.flatMap((cut) => {
+    const panels =
+      cut.subPanels && cut.subPanels.length > 1
+        ? cut.subPanels.map((p) => ({
+            label: p.label,
+            widthMm: p.rubberWidthMm,
+            lengthMm: p.rubberLengthMm,
+          }))
+        : [{ label: null as string | null, widthMm: cut.widthMm, lengthMm: cut.lengthMm }];
+
+    return panels.flatMap((panel) =>
+      availableStock
+        .filter((stock) => {
+          const stockLengthMm = stock.lengthM * 1000;
+          const usedCount = usedStockCounts.get(stock.stockItemId) || 0;
+          const remaining = stock.quantityAvailable - usedCount;
+          return remaining > 0 && stock.widthMm >= panel.widthMm && stockLengthMm >= panel.lengthMm;
+        })
+        .slice(0, 1)
+        .map((stock) => {
+          const stockLengthMm = stock.lengthM * 1000;
+          const stockAreaSqM = (stock.widthMm / 1000) * stock.lengthM;
+          const panelAreaSqM = (panel.widthMm / 1000) * (panel.lengthMm / 1000);
+          usedStockCounts.set(stock.stockItemId, (usedStockCounts.get(stock.stockItemId) || 0) + 1);
+          return {
+            cutItemId: cut.itemId,
+            cutItemNo: cut.itemNo,
+            cutDescription: cut.description,
+            panelLabel: panel.label,
+            requiredWidthMm: panel.widthMm,
+            requiredLengthMm: panel.lengthMm,
+            stockItemId: stock.stockItemId,
+            stockItemName: `${stock.widthMm}mm x ${stock.lengthM}m`,
+            stockWidthMm: stock.widthMm,
+            stockLengthMm: stockLengthMm,
+            stockThicknessMm: stock.thicknessMm,
+            stockColor: stock.color,
+            wasteIfUsedSqM: Math.max(0, stockAreaSqM - panelAreaSqM),
+          };
+        }),
+    );
+  });
 }
 
 function parseNb(description: string): number | null {
@@ -1083,9 +1163,18 @@ function scorePlyCombination(
   parsedItems: ParsedPipeItem[],
   stockQuery: StockQuery | null,
 ): { plies: PlyLayer[]; score: number } {
+  const thicknessMap = new Map<number, number>();
+  combo.forEach((t) => {
+    thicknessMap.set(t, (thicknessMap.get(t) || 0) + 1);
+  });
+
   let rollIdx = 1;
-  const plies: PlyLayer[] = combo.map((thickness) => {
-    const baseRolls = buildRollsForItems(parsedItems);
+  const plies: PlyLayer[] = Array.from(thicknessMap.entries()).map(([thickness, plyCount]) => {
+    const multipliedItems =
+      plyCount > 1
+        ? parsedItems.map((item) => ({ ...item, quantity: item.quantity * plyCount }))
+        : parsedItems;
+    const baseRolls = buildRollsForItems(multipliedItems);
     const rolls = baseRolls.map((roll) => ({
       ...roll,
       rollIndex: rollIdx++,
@@ -1095,6 +1184,7 @@ function scorePlyCombination(
       thicknessMm: thickness,
       rolls,
       totalRollsNeeded: rolls.length,
+      plyCount,
     };
   });
 
@@ -1103,7 +1193,7 @@ function scorePlyCombination(
 
   let stockScore = 0;
   if (stockQuery) {
-    stockScore = combo.reduce((score, thickness) => {
+    stockScore = Array.from(thicknessMap.entries()).reduce((score, [thickness]) => {
       const available = stockQuery.rolls.filter((r) => r.thicknessMm === thickness);
       const totalAvailable = available.reduce((s, r) => s + r.quantityAvailable, 0);
       const needed = plies.find((p) => p.thicknessMm === thickness)?.totalRollsNeeded || 0;
@@ -1203,7 +1293,7 @@ export function calculateCuttingPlan(
   if (selectedPlyCombination && selectedPlyCombination.length > 0) {
     const scored = scorePlyCombination(selectedPlyCombination, parsedItems, stockQuery || null);
     plies = scored.plies;
-    isMultiPly = plies.length > 1;
+    isMultiPly = selectedPlyCombination.length > 1;
   } else if (rubberSpec && hasMultiPlyEligibleItems && stockQuery) {
     const combos = suggestPlyCombinations(rubberSpec.thicknessMm);
     const viableCombos = combos.filter((combo) =>
@@ -1217,7 +1307,7 @@ export function calculateCuttingPlan(
     const best = candidates.sort((a, b) => b.score - a.score)[0];
     if (best) {
       plies = best.plies;
-      isMultiPly = plies.length > 1;
+      isMultiPly = plies.some((p) => p.plyCount > 1) || plies.length > 1;
     }
   }
 
@@ -1227,6 +1317,7 @@ export function calculateCuttingPlan(
         thicknessMm: rubberSpec?.thicknessMm || 0,
         rolls: baseRolls,
         totalRollsNeeded: baseRolls.length,
+        plyCount: 1,
       },
     ];
   }

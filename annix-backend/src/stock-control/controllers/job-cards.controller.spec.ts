@@ -673,6 +673,9 @@ describe("JobCardsController", () => {
       const movementEntity = { id: 1 };
       stockMovementRepo.create.mockReturnValue(movementEntity);
       stockMovementRepo.save.mockResolvedValue(movementEntity);
+      const offcutItem = { id: 99 };
+      stockItemRepo.create.mockReturnValue(offcutItem);
+      stockItemRepo.save.mockResolvedValue(offcutItem);
 
       const result = await controller.markOffcutAsWastage(mockReq(), 5, dto as any);
 
@@ -682,6 +685,7 @@ describe("JobCardsController", () => {
       expect(stockMovementRepo.save).toHaveBeenCalled();
       expect(result.weightKg).toBeCloseTo(0.72);
       expect(result.stockItemId).toBe(50);
+      expect(result.offcutStockItemId).toBe(99);
     });
 
     it("should create new wastage stock item when none exists", async () => {
@@ -695,8 +699,9 @@ describe("JobCardsController", () => {
 
       stockItemRepo.findOne.mockResolvedValue(null);
       const newItem = { id: 60, quantity: 0 };
-      stockItemRepo.create.mockReturnValue(newItem);
-      stockItemRepo.save.mockResolvedValue(newItem);
+      const offcutItem = { id: 101 };
+      stockItemRepo.create.mockReturnValueOnce(newItem).mockReturnValueOnce(offcutItem);
+      stockItemRepo.save.mockResolvedValueOnce(newItem).mockResolvedValueOnce(offcutItem);
       stockItemRepo.update.mockResolvedValue(undefined);
       stockMovementRepo.create.mockReturnValue({ id: 1 });
       stockMovementRepo.save.mockResolvedValue({ id: 1 });
@@ -711,6 +716,7 @@ describe("JobCardsController", () => {
         }),
       );
       expect(result.stockItemId).toBe(60);
+      expect(result.offcutStockItemId).toBe(101);
     });
   });
 });
