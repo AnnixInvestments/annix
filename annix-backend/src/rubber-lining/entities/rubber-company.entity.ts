@@ -61,6 +61,16 @@ export class RubberCompany {
   @Column({ name: "is_compound_owner", type: "boolean", default: false })
   isCompoundOwner: boolean;
 
+  @Column({
+    name: "discount_percent",
+    type: "decimal",
+    precision: 5,
+    scale: 2,
+    nullable: true,
+    default: 0.0,
+  })
+  discountPercent: string | null;
+
   @Column({ name: "vat_number", type: "varchar", length: 50, nullable: true })
   vatNumber: string | null;
 

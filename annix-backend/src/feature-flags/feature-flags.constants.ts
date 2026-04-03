@@ -60,6 +60,7 @@ export const FEATURE_FLAGS = {
   ANNIX_PURCHASE_REQS: "ANNIX_PURCHASE_REQS",
   ANNIX_COMPANIES: "ANNIX_COMPANIES",
   ANNIX_RBAC: "ANNIX_RBAC",
+  ANNIX_ACCOUNTING: "ANNIX_ACCOUNTING",
 } as const;
 
 export type FeatureFlagKey = (typeof FEATURE_FLAGS)[keyof typeof FEATURE_FLAGS];
@@ -126,6 +127,8 @@ export const FEATURE_FLAG_DESCRIPTIONS: Record<FeatureFlagKey, string> = {
   ANNIX_PURCHASE_REQS: "Internal purchase requisition workflows with approval chains",
   ANNIX_COMPANIES: "Customer and supplier management with statements and Sage linking",
   ANNIX_RBAC: "Role-based access control with granular permissions per user",
+  ANNIX_ACCOUNTING:
+    "Monthly accounts payable/receivable with director sign-off and statement reconciliation",
 };
 
 export const FEATURE_FLAG_DEFAULTS: Record<FeatureFlagKey, boolean> = {
@@ -190,6 +193,7 @@ export const FEATURE_FLAG_DEFAULTS: Record<FeatureFlagKey, boolean> = {
   ANNIX_PURCHASE_REQS: false,
   ANNIX_COMPANIES: false,
   ANNIX_RBAC: false,
+  ANNIX_ACCOUNTING: false,
 };
 
 export type FeatureFlagCategory =
@@ -263,4 +267,5 @@ export const FEATURE_FLAG_CATEGORIES: Record<FeatureFlagKey, FeatureFlagCategory
   ANNIX_PURCHASE_REQS: "addons",
   ANNIX_COMPANIES: "addons",
   ANNIX_RBAC: "addons",
+  ANNIX_ACCOUNTING: "addons",
 };

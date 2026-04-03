@@ -3392,6 +3392,194 @@ class AuRubberApiClient {
   > {
     return this.request(`/rubber-lining/portal/${entityType}/${id}/version-history`);
   }
+
+  async accountingDirectors(): Promise<
+    Array<{
+      id: number;
+      name: string;
+      title: string;
+      email: string;
+      isActive: boolean;
+      createdAt: string;
+    }>
+  > {
+    return this.request("/rubber-lining/portal/accounting/directors");
+  }
+
+  async createAccountingDirector(data: {
+    name: string;
+    title: string;
+    email: string;
+  }): Promise<{ id: number; name: string; title: string; email: string }> {
+    return this.request("/rubber-lining/portal/accounting/directors", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateAccountingDirector(
+    id: number,
+    data: { name?: string; title?: string; email?: string; isActive?: boolean },
+  ): Promise<{ id: number; name: string; title: string; email: string }> {
+    return this.request(`/rubber-lining/portal/accounting/directors/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteAccountingDirector(id: number): Promise<void> {
+    return this.request(`/rubber-lining/portal/accounting/directors/${id}`, {
+      method: "DELETE",
+    });
+  }
+
+  async accountingPayable(
+    year: number,
+    month: number,
+    companyId?: number,
+  ): Promise<{
+    year: number;
+    month: number;
+    accountType: string;
+    companies: Array<unknown>;
+    grandTotal: number;
+    grandVat: number;
+    grandPayable: number;
+  }> {
+    const params = new URLSearchParams({
+      year: String(year),
+      month: String(month),
+    });
+    if (companyId) params.set("companyId", String(companyId));
+    return this.request(`/rubber-lining/portal/accounting/payable?${params.toString()}`);
+  }
+
+  async accountingReceivable(
+    year: number,
+    month: number,
+    companyId?: number,
+  ): Promise<{
+    year: number;
+    month: number;
+    accountType: string;
+    companies: Array<unknown>;
+    grandTotal: number;
+    grandVat: number;
+    grandPayable: number;
+  }> {
+    const params = new URLSearchParams({
+      year: String(year),
+      month: String(month),
+    });
+    if (companyId) params.set("companyId", String(companyId));
+    return this.request(`/rubber-lining/portal/accounting/receivable?${params.toString()}`);
+  }
+
+  async accountingMonthlyAccounts(filters?: {
+    accountType?: string;
+    status?: string;
+    year?: number;
+  }): Promise<Array<unknown>> {
+    const params = new URLSearchParams();
+    if (filters?.accountType) params.set("accountType", filters.accountType);
+    if (filters?.status) params.set("status", filters.status);
+    if (filters?.year) params.set("year", String(filters.year));
+    const qs = params.toString();
+    return this.request(`/rubber-lining/portal/accounting${qs ? `?${qs}` : ""}`);
+  }
+
+  async accountingGenerate(
+    year: number,
+    month: number,
+    accountType: string,
+  ): Promise<Record<string, unknown>> {
+    return this.request("/rubber-lining/portal/accounting/generate", {
+      method: "POST",
+      body: JSON.stringify({ year, month, accountType }),
+    });
+  }
+
+  async accountingDownloadPdf(id: number): Promise<void> {
+    const response = await fetch(`${this.baseURL}/rubber-lining/portal/accounting/${id}/pdf`, {
+      headers: this.headers(),
+    });
+    if (!response.ok) throw new Error(`Failed to download PDF: ${response.statusText}`);
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `account-${id}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  async accountingRequestSignOff(id: number): Promise<Record<string, unknown>> {
+    return this.request(`/rubber-lining/portal/accounting/${id}/request-signoff`, {
+      method: "POST",
+    });
+  }
+
+  async accountingReconciliations(filters?: {
+    companyId?: number;
+    status?: string;
+    year?: number;
+    month?: number;
+  }): Promise<Array<unknown>> {
+    const params = new URLSearchParams();
+    if (filters?.companyId) params.set("companyId", String(filters.companyId));
+    if (filters?.status) params.set("status", filters.status);
+    if (filters?.year) params.set("year", String(filters.year));
+    if (filters?.month) params.set("month", String(filters.month));
+    const qs = params.toString();
+    return this.request(`/rubber-lining/portal/accounting/reconciliation${qs ? `?${qs}` : ""}`);
+  }
+
+  async accountingReconciliationById(id: number): Promise<unknown> {
+    return this.request(`/rubber-lining/portal/accounting/reconciliation/${id}`);
+  }
+
+  async accountingUploadStatement(
+    companyId: number,
+    file: File,
+    year: number,
+    month: number,
+  ): Promise<Record<string, unknown>> {
+    return this.requestWithFiles(
+      "/rubber-lining/portal/accounting/reconciliation/upload",
+      [file],
+      {
+        companyId,
+        year,
+        month,
+      },
+      "file",
+    );
+  }
+
+  async accountingExtractStatement(id: number): Promise<unknown> {
+    return this.request(`/rubber-lining/portal/accounting/reconciliation/${id}/extract`, {
+      method: "POST",
+    });
+  }
+
+  async accountingReconcileStatement(id: number): Promise<unknown> {
+    return this.request(`/rubber-lining/portal/accounting/reconciliation/${id}/reconcile`, {
+      method: "POST",
+    });
+  }
+
+  async accountingResolveDiscrepancy(
+    id: number,
+    resolvedBy: string,
+    notes: string,
+  ): Promise<unknown> {
+    return this.request(`/rubber-lining/portal/accounting/reconciliation/${id}/resolve`, {
+      method: "PUT",
+      body: JSON.stringify({ resolvedBy, notes }),
+    });
+  }
 }
 
 export const auRubberApiClient = new AuRubberApiClient();

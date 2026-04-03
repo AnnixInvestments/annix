@@ -136,6 +136,7 @@ import {
   ExtractedCustomerDeliveryNoteData,
   ExtractedCustomerDeliveryNotePodPage,
 } from "./entities/rubber-delivery-note.entity";
+import { MonthlyAccountType } from "./entities/rubber-monthly-account.entity";
 import { RubberOrderStatus } from "./entities/rubber-order.entity";
 import { ProductCodingType } from "./entities/rubber-product-coding.entity";
 import { RubberProductionStatus } from "./entities/rubber-production.entity";
@@ -146,14 +147,26 @@ import {
 } from "./entities/rubber-purchase-requisition.entity";
 import { RollRejectionStatus } from "./entities/rubber-roll-rejection.entity";
 import { RollStockStatus } from "./entities/rubber-roll-stock.entity";
+import { ReconciliationStatus } from "./entities/rubber-statement-reconciliation.entity";
 import { CocProcessingStatus, SupplierCocType } from "./entities/rubber-supplier-coc.entity";
 import { TaxInvoiceStatus, TaxInvoiceType } from "./entities/rubber-tax-invoice.entity";
 import { AuRubberAccessGuard } from "./guards/au-rubber-access.guard";
+import {
+  type MonthlyAccountDataDto,
+  type MonthlyAccountDto,
+  RubberAccountingService,
+} from "./rubber-accounting.service";
 import { RubberAuCocService } from "./rubber-au-coc.service";
 import { RubberAuCocReadinessService } from "./rubber-au-coc-readiness.service";
 import { RubberBrandingService, ScrapedBrandingCandidates } from "./rubber-branding.service";
 import { RubberCocService } from "./rubber-coc.service";
 import { RubberCocExtractionService } from "./rubber-coc-extraction.service";
+import {
+  type CreateDirectorDto,
+  type DirectorDto,
+  RubberCompanyDirectorService,
+  type UpdateDirectorDto,
+} from "./rubber-company-director.service";
 import {
   type CostRateDto,
   type CreateCostRateDto,
@@ -188,6 +201,11 @@ import {
   type PostToSageResult,
   RubberSageInvoicePostService,
 } from "./rubber-sage-invoice-post.service";
+import {
+  type ReconciliationDetailDto,
+  type ReconciliationListDto,
+  RubberStatementReconciliationService,
+} from "./rubber-statement-reconciliation.service";
 import { RubberStockService } from "./rubber-stock.service";
 import { RubberStockLocationService, StockLocationDto } from "./rubber-stock-location.service";
 import {
@@ -235,6 +253,9 @@ export class RubberLiningController {
     private readonly rubberRollRejectionService: RubberRollRejectionService,
     private readonly rubberCostService: RubberCostService,
     @Inject(STORAGE_SERVICE) private readonly storageService: IStorageService,
+    private readonly rubberAccountingService: RubberAccountingService,
+    private readonly rubberCompanyDirectorService: RubberCompanyDirectorService,
+    private readonly rubberStatementReconciliationService: RubberStatementReconciliationService,
   ) {}
 
   @Get("types")
@@ -3689,5 +3710,225 @@ Formula: totalPrice = totalKg × salePricePerKg
         return pod.pageNumber > maxDnPage && (!nextDnPage || pod.pageNumber < nextDnPage);
       })
       .map((pod) => pod.pageNumber);
+  }
+
+  @Get("portal/accounting/directors")
+  @UseGuards(AuRubberAccessGuard)
+  @ApiOperation({ summary: "List all company directors" })
+  async accountingDirectors(): Promise<DirectorDto[]> {
+    return this.rubberCompanyDirectorService.allDirectors();
+  }
+
+  @Post("portal/accounting/directors")
+  @UseGuards(AuRubberAccessGuard)
+  @ApiOperation({ summary: "Create a company director" })
+  async createAccountingDirector(@Body() dto: CreateDirectorDto): Promise<DirectorDto> {
+    return this.rubberCompanyDirectorService.createDirector(dto);
+  }
+
+  @Put("portal/accounting/directors/:id")
+  @UseGuards(AuRubberAccessGuard)
+  @ApiOperation({ summary: "Update a company director" })
+  async updateAccountingDirector(
+    @Param("id") id: string,
+    @Body() dto: UpdateDirectorDto,
+  ): Promise<DirectorDto> {
+    const result = await this.rubberCompanyDirectorService.updateDirector(Number(id), dto);
+    if (!result) throw new NotFoundException("Director not found");
+    return result;
+  }
+
+  @Delete("portal/accounting/directors/:id")
+  @UseGuards(AuRubberAccessGuard)
+  @ApiOperation({ summary: "Delete a company director" })
+  async deleteAccountingDirector(@Param("id") id: string): Promise<void> {
+    const deleted = await this.rubberCompanyDirectorService.deleteDirector(Number(id));
+    if (!deleted) throw new NotFoundException("Director not found");
+  }
+
+  @Get("portal/accounting/payable")
+  @UseGuards(AuRubberAccessGuard)
+  @ApiOperation({ summary: "Monthly accounts payable data" })
+  async accountingPayable(
+    @Query("year") year: string,
+    @Query("month") month: string,
+    @Query("companyId") companyId?: string,
+  ): Promise<MonthlyAccountDataDto> {
+    return this.rubberAccountingService.monthlyPayable(
+      Number(year),
+      Number(month),
+      companyId ? Number(companyId) : undefined,
+    );
+  }
+
+  @Get("portal/accounting/receivable")
+  @UseGuards(AuRubberAccessGuard)
+  @ApiOperation({ summary: "Monthly accounts receivable data" })
+  async accountingReceivable(
+    @Query("year") year: string,
+    @Query("month") month: string,
+    @Query("companyId") companyId?: string,
+  ): Promise<MonthlyAccountDataDto> {
+    return this.rubberAccountingService.monthlyReceivable(
+      Number(year),
+      Number(month),
+      companyId ? Number(companyId) : undefined,
+    );
+  }
+
+  @Get("portal/accounting")
+  @UseGuards(AuRubberAccessGuard)
+  @ApiOperation({ summary: "List generated monthly accounts" })
+  async accountingList(
+    @Query("accountType") accountType?: string,
+    @Query("status") status?: string,
+    @Query("year") year?: string,
+  ): Promise<MonthlyAccountDto[]> {
+    return this.rubberAccountingService.allMonthlyAccounts({
+      accountType: accountType as MonthlyAccountType,
+      status: status as never,
+      year: year ? Number(year) : undefined,
+    });
+  }
+
+  @Get("portal/accounting/:id")
+  @UseGuards(AuRubberAccessGuard)
+  @ApiOperation({ summary: "Single monthly account with sign-off status" })
+  async accountingById(@Param("id") id: string): Promise<MonthlyAccountDto> {
+    const result = await this.rubberAccountingService.monthlyAccountById(Number(id));
+    if (!result) throw new NotFoundException("Monthly account not found");
+    return result;
+  }
+
+  @Post("portal/accounting/generate")
+  @UseGuards(AuRubberAccessGuard)
+  @ApiOperation({ summary: "Generate monthly account PDF" })
+  async accountingGenerate(
+    @Body()
+    body: {
+      year: number;
+      month: number;
+      accountType: MonthlyAccountType;
+    },
+    @Req() req: AdminRequest,
+  ): Promise<MonthlyAccountDto> {
+    const generatedBy = req.user?.email || "unknown";
+    return this.rubberAccountingService.generateMonthlyAccountPdf(
+      body.year,
+      body.month,
+      body.accountType,
+      generatedBy,
+    );
+  }
+
+  @Get("portal/accounting/:id/pdf")
+  @UseGuards(AuRubberAccessGuard)
+  @ApiOperation({ summary: "Download monthly account PDF" })
+  async accountingDownloadPdf(@Param("id") id: string, @Res() res: Response): Promise<void> {
+    const buffer = await this.rubberAccountingService.downloadAccountPdf(Number(id));
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `attachment; filename="account-${id}.pdf"`);
+    res.send(buffer);
+  }
+
+  @Post("portal/accounting/:id/request-signoff")
+  @UseGuards(AuRubberAccessGuard)
+  @ApiOperation({ summary: "Send sign-off request emails to directors" })
+  async accountingRequestSignOff(@Param("id") id: string): Promise<MonthlyAccountDto> {
+    return this.rubberAccountingService.requestDirectorSignOff(Number(id));
+  }
+
+  @Get("public/accounting/signoff/:token")
+  @Public()
+  @ApiOperation({ summary: "View sign-off details (public)" })
+  async accountingSignOffDetails(@Param("token") token: string): Promise<{
+    signOff: unknown;
+    account: unknown;
+    pdfUrl: string | null;
+  }> {
+    const result = await this.rubberAccountingService.signOffDetails(token);
+    if (!result) throw new NotFoundException("Invalid sign-off token");
+    return result;
+  }
+
+  @Post("public/accounting/signoff/:token")
+  @Public()
+  @ApiOperation({ summary: "Submit sign-off decision (public)" })
+  async accountingSubmitSignOff(
+    @Param("token") token: string,
+    @Body() body: { action: "APPROVED" | "REJECTED"; notes?: string },
+  ): Promise<{ success: boolean; message: string }> {
+    return this.rubberAccountingService.signOffAccount(token, body.action, body.notes);
+  }
+
+  @Post("portal/accounting/reconciliation/upload")
+  @UseGuards(AuRubberAccessGuard)
+  @UseInterceptors(FileInterceptor("file"))
+  @ApiConsumes("multipart/form-data")
+  @ApiOperation({ summary: "Upload a supplier statement for reconciliation" })
+  async reconciliationUpload(
+    @UploadedFile() file: Express.Multer.File,
+    @Body() body: { companyId: string; year: string; month: string },
+  ): Promise<ReconciliationListDto> {
+    return this.rubberStatementReconciliationService.uploadStatement(
+      Number(body.companyId),
+      file,
+      Number(body.year),
+      Number(body.month),
+    );
+  }
+
+  @Post("portal/accounting/reconciliation/:id/extract")
+  @UseGuards(AuRubberAccessGuard)
+  @ApiOperation({ summary: "Trigger AI extraction on uploaded statement" })
+  async reconciliationExtract(@Param("id") id: string): Promise<ReconciliationDetailDto> {
+    return this.rubberStatementReconciliationService.extractStatement(Number(id));
+  }
+
+  @Post("portal/accounting/reconciliation/:id/reconcile")
+  @UseGuards(AuRubberAccessGuard)
+  @ApiOperation({ summary: "Run statement reconciliation matching" })
+  async reconciliationReconcile(@Param("id") id: string): Promise<ReconciliationDetailDto> {
+    return this.rubberStatementReconciliationService.reconcileStatement(Number(id));
+  }
+
+  @Put("portal/accounting/reconciliation/:id/resolve")
+  @UseGuards(AuRubberAccessGuard)
+  @ApiOperation({ summary: "Mark reconciliation as resolved" })
+  async reconciliationResolve(
+    @Param("id") id: string,
+    @Body() body: { resolvedBy: string; notes: string },
+  ): Promise<ReconciliationDetailDto> {
+    return this.rubberStatementReconciliationService.resolveDiscrepancy(
+      Number(id),
+      body.resolvedBy,
+      body.notes,
+    );
+  }
+
+  @Get("portal/accounting/reconciliation")
+  @UseGuards(AuRubberAccessGuard)
+  @ApiOperation({ summary: "List all reconciliations" })
+  async reconciliationList(
+    @Query("companyId") companyId?: string,
+    @Query("status") status?: string,
+    @Query("year") year?: string,
+    @Query("month") month?: string,
+  ): Promise<ReconciliationListDto[]> {
+    return this.rubberStatementReconciliationService.allReconciliations({
+      companyId: companyId ? Number(companyId) : undefined,
+      status: status as ReconciliationStatus,
+      year: year ? Number(year) : undefined,
+      month: month ? Number(month) : undefined,
+    });
+  }
+
+  @Get("portal/accounting/reconciliation/:id")
+  @UseGuards(AuRubberAccessGuard)
+  @ApiOperation({ summary: "Reconciliation detail" })
+  async reconciliationById(@Param("id") id: string): Promise<ReconciliationDetailDto> {
+    const result = await this.rubberStatementReconciliationService.reconciliationById(Number(id));
+    if (!result) throw new NotFoundException("Reconciliation not found");
+    return result;
   }
 }
