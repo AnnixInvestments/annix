@@ -327,8 +327,8 @@ export class JobCardPdfService {
 
     doc.fontSize(8).font("Helvetica-Bold");
     doc.text("#", 50, y, { width: 20 });
-    doc.text("Item No", 70, y);
-    doc.text("Type", 170, y);
+    doc.text("Type", 70, y);
+    doc.text("Item No", 150, y);
     doc.text("Description", 240, y);
     doc.text("Qty", 440, y);
     doc.text("JT No", 480, y);
@@ -347,8 +347,8 @@ export class JobCardPdfService {
       const workType = this.workTypeFromNotes(item.notes);
 
       doc.text(String(index + 1), 50, y, { width: 20 });
-      doc.text(item.itemNo || "-", 70, y, { width: 95 });
-      doc.text(workType, 170, y, { width: 65 });
+      doc.text(workType, 70, y, { width: 75 });
+      doc.text(item.itemNo || "-", 150, y, { width: 85 });
       doc.text(item.itemDescription || "-", 240, y, { width: 195 });
       doc.text(String(item.quantity || "-"), 440, y);
       doc.text(item.jtNo || "-", 480, y);

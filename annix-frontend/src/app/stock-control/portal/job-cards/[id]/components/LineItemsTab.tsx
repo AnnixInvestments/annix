@@ -7,6 +7,18 @@ import type { JobCard, JobCardAttachment } from "@/app/lib/api/stockControlApi";
 import { useAddLineItem, useDeleteLineItem, useReExtractLineItems } from "@/app/lib/query/hooks";
 import { isValidLineItem } from "../lib/helpers";
 
+function workTypeFromNotes(notes: string | null | undefined): string {
+  if (!notes) return "—";
+  const upper = notes.toUpperCase();
+  const lines = upper.split("\n").map((l) => l.trim());
+  const hasRubber = lines.some((l) => /^INT\s*:/.test(l) && /R\/L|RUBBER|SHORE|LINING/.test(l));
+  const hasPaint = lines.some((l) => /^EXT\s*:/.test(l) && /PAINT|BLAST|PRIMER|COAT/.test(l));
+  if (hasRubber && hasPaint) return "Rubber & Paint";
+  if (hasRubber) return "Rubber";
+  if (hasPaint) return "Paint";
+  return "—";
+}
+
 interface LineItemsTabProps {
   jobCard: JobCard;
   attachments: JobCardAttachment[];
@@ -273,13 +285,13 @@ export function LineItemsTab(props: LineItemsTabProps) {
                 #
               </th>
               <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Item Code
-              </th>
-              <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Description
+                Type
               </th>
               <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Item No
+              </th>
+              <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Description
               </th>
               <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider w-20">
                 Qty
@@ -312,14 +324,14 @@ export function LineItemsTab(props: LineItemsTabProps) {
                     <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">
                       {itemCounter}
                     </td>
+                    <td className="px-3 py-2 text-sm text-gray-700">
+                      {workTypeFromNotes(li.notes)}
+                    </td>
                     <td className="px-3 py-2 text-sm font-mono text-gray-900 break-all">
-                      {li.itemCode || "-"}
+                      {li.itemNo || "-"}
                     </td>
                     <td className="px-3 py-2 text-sm text-gray-900 break-words">
                       {li.itemDescription || "-"}
-                    </td>
-                    <td className="px-3 py-2 text-sm text-gray-900 break-all">
-                      {li.itemNo || "-"}
                     </td>
                     <td className="px-3 py-2 whitespace-nowrap text-sm text-right font-semibold text-gray-900">
                       {li.quantity || "-"}

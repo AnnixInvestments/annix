@@ -284,21 +284,14 @@ export class SeedExpandedFastenerData1797100000000 implements MigrationInterface
       },
     ];
 
-    const allSelects: string[] = [];
-    massData.forEach((bolt) => {
-      bolt.lengths.forEach((l) => {
-        allSelects.push(
-          `SELECT id, ${l.mm}, ${l.kg} FROM bolts WHERE designation = '${bolt.designation}'`,
-        );
-      });
-    });
-
-    if (allSelects.length > 0) {
-      await queryRunner.query(`
-        INSERT INTO bolt_masses ("boltId", length_mm, mass_kg)
-        SELECT * FROM (${allSelects.join(" UNION ALL ")}) AS src
-        ON CONFLICT DO NOTHING
-      `);
+    for (const bolt of massData) {
+      for (const l of bolt.lengths) {
+        await queryRunner.query(`
+          INSERT INTO bolt_masses ("boltId", length_mm, mass_kg)
+          SELECT id, ${l.mm}, ${l.kg} FROM bolts WHERE designation = '${bolt.designation}'
+          ON CONFLICT DO NOTHING
+        `);
+      }
     }
   }
 
@@ -756,17 +749,11 @@ export class SeedExpandedFastenerData1797100000000 implements MigrationInterface
     ];
 
     for (const nut of nutData) {
-      const selects = nut.sizes.map(
-        (s) =>
-          `SELECT id AS bolt_id, ${s.massKg} AS mass_kg, 'Grade ${s.grade}' AS grade, '${nut.type}' AS type, ${nut.standard ? `'${nut.standard}'` : "NULL"} AS standard FROM bolts WHERE designation = '${s.designation}' LIMIT 1`,
-      );
-
-      const chunks = this.chunkArray(selects, 30);
-      for (const chunk of chunks) {
+      for (const s of nut.sizes) {
         await queryRunner.query(`
           INSERT INTO nut_masses (bolt_id, mass_kg, grade, type, standard)
-          SELECT bolt_id, mass_kg, grade, type, standard::text FROM (${chunk.join(" UNION ALL ")}) AS src
-          WHERE bolt_id IS NOT NULL
+          SELECT id, ${s.massKg}, 'Grade ${s.grade}', '${nut.type}', ${nut.standard ? `'${nut.standard}'` : "NULL"}
+          FROM bolts WHERE designation = '${s.designation}'
           ON CONFLICT DO NOTHING
         `);
       }
@@ -884,18 +871,14 @@ export class SeedExpandedFastenerData1797100000000 implements MigrationInterface
     ];
 
     for (const washer of washerData) {
-      const selects = washer.sizes.map(
-        (s) =>
-          `SELECT id AS bolt_id, '${washer.type}' AS type, 'Carbon Steel' AS material, ${s.massKg} AS "massKg", ${s.odMm} AS od_mm, ${s.idMm} AS id_mm, ${s.thickMm} AS thickness_mm, ${washer.standard ? `'${washer.standard}'` : "NULL"} AS standard FROM bolts WHERE designation = '${s.designation}' LIMIT 1`,
-      );
-
-      await queryRunner.query(`
-        INSERT INTO washers (bolt_id, type, material, "massKg", od_mm, id_mm, thickness_mm, standard)
-        SELECT bolt_id, type, material, "massKg", od_mm, id_mm, thickness_mm, standard::text
-        FROM (${selects.join(" UNION ALL ")}) AS src
-        WHERE bolt_id IS NOT NULL
-        ON CONFLICT DO NOTHING
-      `);
+      for (const s of washer.sizes) {
+        await queryRunner.query(`
+          INSERT INTO washers (bolt_id, type, material, "massKg", od_mm, id_mm, thickness_mm, standard)
+          SELECT id, '${washer.type}', 'Carbon Steel', ${s.massKg}, ${s.odMm}, ${s.idMm}, ${s.thickMm}, ${washer.standard ? `'${washer.standard}'` : "NULL"}
+          FROM bolts WHERE designation = '${s.designation}'
+          ON CONFLICT DO NOTHING
+        `);
+      }
     }
   }
 
@@ -975,6 +958,7 @@ export class SeedExpandedFastenerData1797100000000 implements MigrationInterface
       await queryRunner.query(`
         INSERT INTO threaded_inserts (designation, insert_type, material, standard, outer_diameter_mm, length_mm, mass_kg)
         VALUES ${values.join(",\n")}
+        ON CONFLICT DO NOTHING
       `);
     }
   }
@@ -1038,21 +1022,14 @@ export class SeedExpandedFastenerData1797100000000 implements MigrationInterface
       },
     ];
 
-    const massSelects: string[] = [];
-    smallBoltMasses.forEach((bolt) => {
-      bolt.lengths.forEach((l) => {
-        massSelects.push(
-          `SELECT id, ${l.mm}, ${l.kg} FROM bolts WHERE designation = '${bolt.designation}' LIMIT 1`,
-        );
-      });
-    });
-
-    if (massSelects.length > 0) {
-      await queryRunner.query(`
-        INSERT INTO bolt_masses ("boltId", length_mm, mass_kg)
-        SELECT * FROM (${massSelects.join(" UNION ALL ")}) AS src
-        ON CONFLICT DO NOTHING
-      `);
+    for (const bolt of smallBoltMasses) {
+      for (const l of bolt.lengths) {
+        await queryRunner.query(`
+          INSERT INTO bolt_masses ("boltId", length_mm, mass_kg)
+          SELECT id, ${l.mm}, ${l.kg} FROM bolts WHERE designation = '${bolt.designation}'
+          ON CONFLICT DO NOTHING
+        `);
+      }
     }
 
     const smallNuts = [
@@ -1061,17 +1038,14 @@ export class SeedExpandedFastenerData1797100000000 implements MigrationInterface
       { designation: "M5", type: "hex", massKg: 0.005, grade: "Grade 8", standard: "DIN 934" },
     ];
 
-    const smallNutSelects = smallNuts.map(
-      (n) =>
-        `SELECT id AS bolt_id, ${n.massKg} AS mass_kg, '${n.grade}' AS grade, '${n.type}' AS type, '${n.standard}' AS standard FROM bolts WHERE designation = '${n.designation}' LIMIT 1`,
-    );
-
-    await queryRunner.query(`
-      INSERT INTO nut_masses (bolt_id, mass_kg, grade, type, standard)
-      SELECT bolt_id, mass_kg, grade, type, standard FROM (${smallNutSelects.join(" UNION ALL ")}) AS src
-      WHERE bolt_id IS NOT NULL
-      ON CONFLICT DO NOTHING
-    `);
+    for (const n of smallNuts) {
+      await queryRunner.query(`
+        INSERT INTO nut_masses (bolt_id, mass_kg, grade, type, standard)
+        SELECT id, ${n.massKg}, '${n.grade}', '${n.type}', '${n.standard}'
+        FROM bolts WHERE designation = '${n.designation}'
+        ON CONFLICT DO NOTHING
+      `);
+    }
 
     const smallWashers = [
       {
@@ -1130,17 +1104,14 @@ export class SeedExpandedFastenerData1797100000000 implements MigrationInterface
       },
     ];
 
-    const smallWasherSelects = smallWashers.map(
-      (w) =>
-        `SELECT id AS bolt_id, '${w.type}' AS type, 'Carbon Steel' AS material, ${w.massKg} AS "massKg", ${w.odMm} AS od_mm, ${w.idMm} AS id_mm, ${w.thickMm} AS thickness_mm, '${w.standard}' AS standard FROM bolts WHERE designation = '${w.designation}' LIMIT 1`,
-    );
-
-    await queryRunner.query(`
-      INSERT INTO washers (bolt_id, type, material, "massKg", od_mm, id_mm, thickness_mm, standard)
-      SELECT bolt_id, type, material, "massKg", od_mm, id_mm, thickness_mm, standard FROM (${smallWasherSelects.join(" UNION ALL ")}) AS src
-      WHERE bolt_id IS NOT NULL
-      ON CONFLICT DO NOTHING
-    `);
+    for (const w of smallWashers) {
+      await queryRunner.query(`
+        INSERT INTO washers (bolt_id, type, material, "massKg", od_mm, id_mm, thickness_mm, standard)
+        SELECT id, '${w.type}', 'Carbon Steel', ${w.massKg}, ${w.odMm}, ${w.idMm}, ${w.thickMm}, '${w.standard}'
+        FROM bolts WHERE designation = '${w.designation}'
+        ON CONFLICT DO NOTHING
+      `);
+    }
   }
 
   private chunkArray<T>(array: T[], size: number): T[][] {
