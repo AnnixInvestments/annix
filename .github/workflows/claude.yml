@@ -168,6 +168,14 @@ jobs:
             3. After fixing, run `npx biome check .` again to verify zero errors remain
             Do NOT commit or push code that fails these checks. If biome reports errors after --write, manually fix them.
 
+            MANDATORY: After you finish (whether you fixed the issue or not), you MUST post a summary comment on this issue using `gh issue comment`. The comment must include:
+            - **What you investigated**: files examined, error patterns found
+            - **Root cause**: what is causing the reported problem (or "Unable to determine" with explanation)
+            - **What you changed**: list of files modified with brief descriptions (or "No changes made")
+            - **PR link**: if you created a PR, include the URL
+            - **Why you couldn't fix it**: if applicable, explain what blocked you
+            Never finish silently — the developer reviewing this needs a clear trail of what happened.
+
       - name: Create PR if Claude pushed a branch but didn't open one
         if: |
           github.event_name != 'workflow_dispatch' &&
@@ -213,6 +221,60 @@ jobs:
           )" || echo "Failed to create PR for $BRANCH"
               else
                 echo "PR #$EXISTING_PR already exists for branch $BRANCH"
+              fi
+            fi
+          done
+
+      - name: Report orphaned branches or failures
+        if: |
+          github.event_name != 'workflow_dispatch' &&
+          steps.feedback-check.outputs.is_feedback == 'true' &&
+          always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ISSUE_NUM=""
+          if [ "${{ github.event_name }}" = "issues" ]; then
+            ISSUE_NUM="${{ github.event.issue.number }}"
+          elif [ "${{ github.event_name }}" = "issue_comment" ]; then
+            ISSUE_NUM="${{ github.event.issue.number }}"
+          fi
+
+          if [ -z "$ISSUE_NUM" ]; then
+            exit 0
+          fi
+
+          CLAUDE_OUTCOME="${{ steps.claude-feedback.outcome }}"
+
+          if [ "$CLAUDE_OUTCOME" = "failure" ]; then
+            gh issue comment "$ISSUE_NUM" --repo "${{ github.repository }}" --body "$(cat <<'COMMENT_EOF'
+          ## Claude Auto-Fix Failed
+
+          The Claude Code workflow encountered an error while processing this feedback.
+          A developer will need to investigate manually.
+
+          **Workflow run:** ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          COMMENT_EOF
+          )"
+          fi
+
+          git fetch origin --prune
+          BRANCHES=$(git branch -r --no-merged origin/main | grep -v HEAD | sed 's/origin\///' | xargs)
+          for BRANCH in $BRANCHES; do
+            COMMIT_MSG=$(git log "origin/$BRANCH" --not origin/main --oneline | head -1)
+            if echo "$COMMIT_MSG" | grep -q "#$ISSUE_NUM"; then
+              EXISTING_PR=$(gh pr list --head "$BRANCH" --state open --json number -q '.[0].number' 2>/dev/null || echo "")
+              if [ -z "$EXISTING_PR" ]; then
+                gh issue comment "$ISSUE_NUM" --repo "${{ github.repository }}" --body "$(cat <<WARN_EOF
+          ## Warning: Orphaned Branch Detected
+
+          Claude pushed branch \`$BRANCH\` but no PR was created.
+          This branch contains fixes for this issue but needs manual PR creation.
+
+          **Branch:** \`$BRANCH\`
+          **Workflow run:** ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          WARN_EOF
+          )"
               fi
             fi
           done
