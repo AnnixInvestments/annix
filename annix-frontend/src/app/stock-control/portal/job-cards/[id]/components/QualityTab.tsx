@@ -21,6 +21,7 @@ import { DataBookCompletenessPanel } from "./DataBookCompletenessPanel";
 import { DefelskoBatchSection } from "./DefelskoBatchSection";
 import DftReadingForm from "./DftReadingForm";
 import { ItemsReleaseSection } from "./ItemsReleaseSection";
+import { MaterialBatchSection } from "./MaterialBatchSection";
 import { QaFinalPhotosSection } from "./QaFinalPhotosSection";
 import { QaReviewSection } from "./QaReviewSection";
 import { QcpSection } from "./QcpSection";
@@ -207,6 +208,12 @@ export function QualityTab(props: QualityTabProps) {
           onComplete={onBatchComplete}
         />
       )}
+
+      <MaterialBatchSection
+        batchRecords={batchRecords}
+        hasRubber={coatingAnalysis?.hasInternalLining === true}
+        hasPaint={(coatingAnalysis?.coats || []).length > 0}
+      />
 
       <QaReviewSection
         jobCardId={jobCardId}
