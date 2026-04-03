@@ -89,6 +89,9 @@ jobs:
           cache-from: type=gha,scope=pr-${{ github.event.pull_request.number }}
           cache-to: type=gha,mode=max,scope=pr-${{ github.event.pull_request.number }}
 
+      - name: Pull image for local deploy
+        run: docker pull ${{ env.APP_IMAGE }}:pr-${{ github.event.pull_request.number }}-${{ github.sha }}
+
       - name: Setup Fly.io CLI
         uses: superfly/flyctl-actions/setup-flyctl@master
 
