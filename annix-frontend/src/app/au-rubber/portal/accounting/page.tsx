@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useToast } from "@/app/components/Toast";
 import { auRubberApiClient } from "@/app/lib/api/auRubberApi";
+import { DateTime } from "@/app/lib/datetime";
 import { SignOffStatusBadge } from "../../components/accounting/SignOffStatusBadge";
 import { Breadcrumb } from "../../components/Breadcrumb";
 import { RequirePermission } from "../../components/RequirePermission";
@@ -32,9 +33,9 @@ export default function AccountingDashboardPage() {
   const [receivableSummary, setReceivableSummary] = useState<AccountData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const currentDate = new Date();
-  const currentYear = currentDate.getFullYear();
-  const currentMonth = currentDate.getMonth() + 1;
+  const previousMonth = DateTime.now().minus({ months: 1 });
+  const currentYear = previousMonth.year;
+  const currentMonth = previousMonth.month;
 
   const fetchDashboard = async () => {
     setIsLoading(true);
@@ -59,9 +60,7 @@ export default function AccountingDashboardPage() {
     fetchDashboard();
   }, []);
 
-  const monthName = new Date(currentYear, currentMonth - 1).toLocaleString("en-ZA", {
-    month: "long",
-  });
+  const monthName = previousMonth.toFormat("MMMM");
 
   return (
     <RequirePermission permission={PAGE_PERMISSIONS["/au-rubber/portal/accounting"]}>

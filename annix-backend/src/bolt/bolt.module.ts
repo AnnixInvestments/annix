@@ -2,6 +2,7 @@ import { Module } from "@nestjs/common";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { BoltMass } from "src/bolt-mass/entities/bolt-mass.entity";
 import { NutMass } from "src/nut-mass/entities/nut-mass.entity";
+import { Washer } from "src/washer/entities/washer.entity";
 import { BoltController } from "./bolt.controller";
 import { BoltService } from "./bolt.service";
 import { Bolt } from "./entities/bolt.entity";
@@ -18,6 +19,7 @@ import { UBoltEntity } from "./entities/u-bolt.entity";
       UBoltEntity,
       PipeClampEntity,
       ThreadedInsert,
+      Washer,
     ]),
   ],
   controllers: [BoltController],

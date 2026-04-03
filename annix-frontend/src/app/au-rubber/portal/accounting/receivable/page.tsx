@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useToast } from "@/app/components/Toast";
 import { auRubberApiClient } from "@/app/lib/api/auRubberApi";
+import { DateTime } from "@/app/lib/datetime";
 import { AccountsSummaryTable } from "../../../components/accounting/AccountsSummaryTable";
 import { AccountsTable } from "../../../components/accounting/AccountsTable";
 import { MonthYearPicker } from "../../../components/accounting/MonthYearPicker";
@@ -42,9 +43,9 @@ interface AccountData {
 
 export default function AccountsReceivablePage() {
   const { showToast } = useToast();
-  const currentDate = new Date();
-  const [year, setYear] = useState(currentDate.getFullYear());
-  const [month, setMonth] = useState(currentDate.getMonth() + 1);
+  const previousMonth = DateTime.now().minus({ months: 1 });
+  const [year, setYear] = useState(previousMonth.year);
+  const [month, setMonth] = useState(previousMonth.month);
   const [data, setData] = useState<AccountData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
