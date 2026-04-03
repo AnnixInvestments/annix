@@ -231,23 +231,23 @@ describe("rubberCuttingCalculator", () => {
       const result = parsePipeItem("1", "100 NB PIPE SCH 40 6000 LG", 1, null, null);
       const id = 114.3 - 2 * 6.02;
       const circumference = Math.PI * id;
-      const expectedWidth = Math.ceil((circumference + 50) / 50) * 50;
+      const expectedWidth = Math.ceil((circumference + 20) / 50) * 50;
       expect(result.rubberWidthMm).toBe(expectedWidth);
     });
 
     it("always adds +200mm end allowance plus bevel for internal lining", () => {
       const result = parsePipeItem("1", "100 NB PIPE PE 6000 LG", 1, null, null);
-      expect(result.rubberLengthMm).toBe(6000 + 2 * 100 + 50);
+      expect(result.rubberLengthMm).toBe(6000 + 2 * 100 + 20);
     });
 
     it("always adds +200mm end allowance for FOE (same as PE)", () => {
       const result = parsePipeItem("1", "100 NB PIPE FOE 6000 LG", 1, null, null);
-      expect(result.rubberLengthMm).toBe(6000 + 2 * 100 + 50);
+      expect(result.rubberLengthMm).toBe(6000 + 2 * 100 + 20);
     });
 
     it("always adds +200mm end allowance for FBE (covers flanges)", () => {
       const result = parsePipeItem("1", "100 NB PIPE FBE 6000 LG", 1, null, null);
-      expect(result.rubberLengthMm).toBe(6000 + 2 * 100 + 50);
+      expect(result.rubberLengthMm).toBe(6000 + 2 * 100 + 20);
     });
 
     it("sets isValidPipe true when NB and length present", () => {

@@ -92,6 +92,7 @@ function manualRollsToCuttingPlan(manualRolls: RubberPlanManualRoll[]): CuttingP
             lane: laneIdx,
             band: bandIndex,
             stripsPerPiece: 1,
+            subPanels: null,
           });
         });
 
@@ -453,6 +454,48 @@ function CuttingDiagram({
           const laneHeightPct = 100 / totalLanes;
           const topPct = cut.lane * laneHeightPct;
 
+          const hasSubPanels =
+            cut.subPanels !== null && cut.subPanels !== undefined && cut.subPanels.length > 1;
+
+          if (hasSubPanels) {
+            const totalSubLength = cut.subPanels!.reduce((s, p) => s + p.rubberLengthMm, 0);
+            return (
+              <div
+                key={cut.itemId}
+                className="absolute flex"
+                style={{
+                  left: `${left}%`,
+                  width: `${width}%`,
+                  top: `${topPct}%`,
+                  height: `${laneHeightPct}%`,
+                }}
+                title={`${cut.itemNo ? `[${cut.itemNo}] ` : ""}${cut.description}: ${cut.subPanels!.map((p) => `${p.label} ${(p.rubberLengthMm / 1000).toFixed(2)}m`).join(" + ")}`}
+              >
+                {cut.subPanels!.map((panel, panelIdx) => {
+                  const panelPct = (panel.rubberLengthMm / totalSubLength) * 100;
+                  const isLast = panelIdx === cut.subPanels!.length - 1;
+                  return (
+                    <div
+                      key={panel.label}
+                      className={`${colorClass} flex items-center justify-center h-full`}
+                      style={{
+                        width: `${panelPct}%`,
+                        borderRight: isLast
+                          ? "1px solid white"
+                          : "2px dashed rgba(255,255,255,0.9)",
+                        borderBottom: "1px solid white",
+                      }}
+                    >
+                      <span className="text-[10px] text-white font-bold truncate px-1">
+                        {cut.itemNo || displayLabel} {panel.label}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          }
+
           return (
             <div
               key={cut.itemId}
@@ -502,6 +545,9 @@ function CuttingDiagram({
                 <div className={`w-3 h-3 rounded flex-shrink-0 ${colorClass}`} />
                 <span className="font-mono font-semibold text-gray-800 flex-shrink-0">
                   {cut.itemNo || "-"}
+                  {cut.subPanels && cut.subPanels.length > 1
+                    ? ` (${cut.subPanels.map((p) => p.label).join(" + ")})`
+                    : ""}
                 </span>
                 <span className="text-gray-400 flex-shrink-0">|</span>
                 <span className="text-gray-600 flex-shrink-0">

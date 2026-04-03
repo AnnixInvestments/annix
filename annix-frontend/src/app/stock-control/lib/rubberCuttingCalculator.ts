@@ -185,12 +185,21 @@ const SCHEDULE_WALL_THICKNESS: Record<string, Record<number, number>> = {
   },
 };
 
+import { FLANGE_DATA } from "@/app/lib/3d/flangeData";
+
 const ROLL_WIDTH_MIN_MM = 800;
 const ROLL_WIDTH_MAX_MM = 1450;
 const ROLL_WIDTH_INCREMENT_MM = 50;
 const ROLL_LENGTH_MAX_M = 12.5;
 const OPEN_END_ALLOWANCE_MM = 100;
-const BEVEL_ALLOWANCE_MM = 50;
+const BEVEL_ALLOWANCE_MM = 20;
+const FLANGE_ALLOWANCE_FALLBACK_MM = 100;
+
+function flangeAllowanceMm(nbMm: number): number {
+  const flangeSpec = FLANGE_DATA[nbMm];
+  if (flangeSpec) return flangeSpec.thickness;
+  return FLANGE_ALLOWANCE_FALLBACK_MM;
+}
 
 export interface ParsedPipeItem {
   id: string;
@@ -221,6 +230,18 @@ export interface ParsedPipeItem {
   flangeStandard: string | null;
   calculatedExtM2: number | null;
   calculatedIntM2: number | null;
+  branchNbMm: number | null;
+  fittingRunLengthMm: number | null;
+  fittingBranchLengthMm: number | null;
+  subPanels: SubPanelSpec[] | null;
+}
+
+export interface SubPanelSpec {
+  label: string;
+  nbMm: number;
+  rubberWidthMm: number;
+  rubberLengthMm: number;
+  flangeCount: number;
 }
 
 export interface RollSpecification {
@@ -241,6 +262,7 @@ export interface CutPiece {
   lane: number;
   band: number;
   stripsPerPiece: number;
+  subPanels: SubPanelSpec[] | null;
 }
 
 export interface BandSpec {
@@ -316,8 +338,20 @@ export interface CuttingPlan {
 }
 
 function parseNb(description: string): number | null {
+  const multiMatch = description.match(/(\d+)\s*[xX]\s*(\d+)\s*(?:mm\s*)?NB/i);
+  if (multiMatch) {
+    return Math.max(parseInt(multiMatch[1], 10), parseInt(multiMatch[2], 10));
+  }
   const match = description.match(/(\d+)\s*(?:mm\s*)?NB/i);
   return match ? parseInt(match[1], 10) : null;
+}
+
+function parseBranchNb(description: string): number | null {
+  const multiMatch = description.match(/(\d+)\s*[xX]\s*(\d+)\s*(?:mm\s*)?NB/i);
+  if (multiMatch) {
+    return Math.min(parseInt(multiMatch[1], 10), parseInt(multiMatch[2], 10));
+  }
+  return null;
 }
 
 function parseOd(description: string): number | null {
@@ -345,6 +379,12 @@ function parseLength(description: string): number | null {
   const mMatch = description.match(/(\d+(?:\.\d+)?)\s*[Mm](?:\s|$)/);
   if (mMatch) return Math.round(parseFloat(mMatch[1]) * 1000);
 
+  const trailingMatch = description.match(/\s(\d{3,5})(?:\/\d+)?\s*$/);
+  if (trailingMatch) {
+    const val = parseInt(trailingMatch[1], 10);
+    if (val >= 100) return val;
+  }
+
   return null;
 }
 
@@ -362,6 +402,7 @@ function parseFlangeConfig(description: string): string | null {
   const patterns: { pattern: RegExp; config: string }[] = [
     { pattern: /\bFBE\b/i, config: "both_ends" },
     { pattern: /\bFFE\b/i, config: "both_ends" },
+    { pattern: /\bFAE\b/i, config: "both_ends" },
     { pattern: /\bF(?:OE|1E)\b/i, config: "one_end" },
     { pattern: /\bPE\b/, config: "plain_ends" },
     { pattern: /\bL\/FLG\b/i, config: "loose_flange" },
@@ -434,6 +475,13 @@ function parseFittingDimensions(description: string): {
       lengthB: parseFloat(match[2]),
     };
   }
+  const bareMatch = description.match(/NB\s+(\d{3,4})\s*[xX]\s*(\d{3,4})\b/i);
+  if (bareMatch) {
+    return {
+      lengthA: parseFloat(bareMatch[1]),
+      lengthB: parseFloat(bareMatch[2]),
+    };
+  }
   return { lengthA: null, lengthB: null };
 }
 
@@ -446,7 +494,12 @@ function parseFlangeCount(description: string): number {
     }, 0);
   }
 
-  if (/\bFBE\b/i.test(description) || /\bFFE\b/i.test(description) || /\bF2E\b/i.test(description))
+  if (
+    /\bFBE\b/i.test(description) ||
+    /\bFFE\b/i.test(description) ||
+    /\bFAE\b/i.test(description) ||
+    /\bF2E\b/i.test(description)
+  )
     return 2;
   if (/\bFOE\b/i.test(description) || /\bF1E\b/i.test(description)) return 1;
 
@@ -615,6 +668,7 @@ export function parsePipeItem(
   itemNo: string | null,
 ): ParsedPipeItem {
   const nbMm = parseNb(description);
+  const branchNbMm = parseBranchNb(description);
   const directOd = parseOd(description);
   const lengthMm = parseLength(description);
   const schedule = parseSchedule(description);
@@ -629,6 +683,8 @@ export function parsePipeItem(
   const flangeCount = parseFlangeCount(description);
   const pressureClass = parsePressureClass(description);
   const flangeStandard = parseFlangeStandard(description);
+  const fittingRunLengthMm = itemType === "tee" ? fittingDims.lengthA : null;
+  const fittingBranchLengthMm = itemType === "tee" ? fittingDims.lengthB : null;
 
   const hasDimensions = (nbMm !== null || directOd !== null) && lengthMm !== null && lengthMm > 0;
   const isExternalLining = itemType === "pulley" || itemType === "drum" || itemType === "roller";
@@ -698,6 +754,10 @@ export function parsePipeItem(
     flangeStandard,
     calculatedExtM2: null,
     calculatedIntM2: null,
+    branchNbMm,
+    fittingRunLengthMm,
+    fittingBranchLengthMm,
+    subPanels: null,
   };
 
   const surfaceArea = calculateItemSurfaceArea(partialItem);
@@ -725,9 +785,74 @@ function rotateIfNeeded(item: ParsedPipeItem): ParsedPipeItem {
   return w <= l ? item : { ...item, rubberWidthMm: l, rubberLengthMm: w };
 }
 
+function expandTeeItem(item: ParsedPipeItem): ParsedPipeItem {
+  const hasTeeDims =
+    item.itemType === "tee" &&
+    item.fittingRunLengthMm !== null &&
+    item.fittingBranchLengthMm !== null &&
+    item.branchNbMm !== null &&
+    item.nbMm !== null;
+
+  if (!hasTeeDims) return item;
+
+  const schedule = item.schedule;
+  const mainNb = item.nbMm as number;
+  const branchNb = item.branchNbMm as number;
+  const runLength = item.fittingRunLengthMm as number;
+  const branchLength = item.fittingBranchLengthMm as number;
+
+  const mainOd = nbToOd(mainNb);
+  const mainWt = item.wallThicknessMm || wallThickness(mainNb, schedule);
+  const mainId = mainOd - 2 * mainWt;
+  const mainCirc = Math.PI * mainId;
+  const mainRubberWidth = roundUpToNearest(mainCirc + BEVEL_ALLOWANCE_MM, ROLL_WIDTH_INCREMENT_MM);
+  const mainFlangeAllowance = flangeAllowanceMm(mainNb);
+  const mainRubberLength = runLength + 2 * mainFlangeAllowance + BEVEL_ALLOWANCE_MM;
+
+  const branchOd = nbToOd(branchNb);
+  const branchWt = wallThickness(branchNb, schedule);
+  const branchId = branchOd - 2 * branchWt;
+  const branchCirc = Math.PI * branchId;
+  const branchRubberWidth = roundUpToNearest(
+    branchCirc + BEVEL_ALLOWANCE_MM,
+    ROLL_WIDTH_INCREMENT_MM,
+  );
+  const branchFlangeAllowance = flangeAllowanceMm(branchNb);
+  const branchRubberLength = branchLength + branchFlangeAllowance + BEVEL_ALLOWANCE_MM;
+
+  const compositeWidth = Math.max(mainRubberWidth, branchRubberWidth);
+  const compositeLength = mainRubberLength + branchRubberLength;
+
+  const subPanels: SubPanelSpec[] = [
+    {
+      label: "Run",
+      nbMm: mainNb,
+      rubberWidthMm: mainRubberWidth,
+      rubberLengthMm: mainRubberLength,
+      flangeCount: 2,
+    },
+    {
+      label: "Branch",
+      nbMm: branchNb,
+      rubberWidthMm: branchRubberWidth,
+      rubberLengthMm: branchRubberLength,
+      flangeCount: 1,
+    },
+  ];
+
+  return {
+    ...item,
+    rubberWidthMm: compositeWidth,
+    rubberLengthMm: compositeLength,
+    stripsPerPiece: 1,
+    subPanels,
+  };
+}
+
 export function expandAndRotateItems(parsedItems: ParsedPipeItem[]): ParsedPipeItem[] {
   return parsedItems
     .filter((item) => item.isValidPipe)
+    .map((item) => expandTeeItem(item))
     .flatMap((item) => {
       const rotated = rotateIfNeeded(item);
       const count = Number(item.quantity) || 1;
@@ -840,6 +965,7 @@ function finalizeRoll(
         lane: laneIdx,
         band: bandIdx,
         stripsPerPiece: item.stripsPerPiece,
+        subPanels: item.subPanels,
       });
     });
 
