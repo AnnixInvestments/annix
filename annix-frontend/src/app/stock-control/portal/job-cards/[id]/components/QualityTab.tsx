@@ -34,6 +34,7 @@ type QcFormType = "shore-hardness" | "dft" | "blast-profile" | null;
 interface QualityTabProps {
   jobCardId: number;
   backgroundSteps: BackgroundStepStatus[];
+  activeBgStepKeys: Set<string>;
   onBatchComplete: (() => void) | null;
   onQaReviewSubmitted: (() => void) | null;
   onFinalPhotosSaved: (() => void) | null;
@@ -45,6 +46,7 @@ export function QualityTab(props: QualityTabProps) {
   const {
     jobCardId,
     backgroundSteps,
+    activeBgStepKeys,
     onBatchComplete,
     onQaReviewSubmitted,
     onFinalPhotosSaved,
@@ -210,6 +212,7 @@ export function QualityTab(props: QualityTabProps) {
       )}
 
       <MaterialBatchSection
+        jobCardId={jobCardId}
         batchRecords={batchRecords}
         hasRubber={coatingAnalysis?.hasInternalLining === true}
         hasPaint={(coatingAnalysis?.coats || []).length > 0}
@@ -218,6 +221,7 @@ export function QualityTab(props: QualityTabProps) {
       <QaReviewSection
         jobCardId={jobCardId}
         backgroundSteps={backgroundSteps}
+        activeBgStepKeys={activeBgStepKeys}
         onReviewSubmitted={onQaReviewSubmitted || (() => {})}
         stepAssignments={stepAssignments}
         currentUserName={currentUserName}
@@ -226,6 +230,7 @@ export function QualityTab(props: QualityTabProps) {
       <QaFinalPhotosSection
         jobCardId={jobCardId}
         backgroundSteps={backgroundSteps}
+        activeBgStepKeys={activeBgStepKeys}
         onPhotosSaved={onFinalPhotosSaved || (() => {})}
         stepAssignments={stepAssignments}
         currentUserName={currentUserName}

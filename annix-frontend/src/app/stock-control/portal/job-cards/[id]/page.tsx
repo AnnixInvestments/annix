@@ -598,6 +598,11 @@ export default function JobCardDetailPage() {
     });
   }, [workflowStatus, backgroundSteps, currentStatus, user?.name]);
 
+  const activeBgStepKeys = useMemo(
+    () => new Set(userPendingBgSteps.map((bg) => bg.stepKey)),
+    [userPendingBgSteps],
+  );
+
   const currentStepPhaseInfo = useMemo(() => {
     if (!workflowStatus || !currentStep) {
       return {
@@ -2132,6 +2137,7 @@ export default function JobCardDetailPage() {
               <QualityTab
                 jobCardId={jobId}
                 backgroundSteps={backgroundSteps}
+                activeBgStepKeys={activeBgStepKeys}
                 stepAssignments={workflowStatus?.stepAssignments || {}}
                 currentUserName={user?.name || null}
                 onBatchComplete={

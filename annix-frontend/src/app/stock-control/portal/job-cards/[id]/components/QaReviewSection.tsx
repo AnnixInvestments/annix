@@ -12,6 +12,7 @@ import { formatDateZA } from "@/app/lib/datetime";
 interface QaReviewSectionProps {
   jobCardId: number;
   backgroundSteps: BackgroundStepStatus[];
+  activeBgStepKeys: Set<string>;
   onReviewSubmitted: () => void;
   stepAssignments: Record<string, { name: string; isPrimary: boolean }[]>;
   currentUserName: string | null;
@@ -32,7 +33,14 @@ interface DefectPhoto {
 }
 
 export function QaReviewSection(props: QaReviewSectionProps) {
-  const { jobCardId, backgroundSteps, onReviewSubmitted, stepAssignments, currentUserName } = props;
+  const {
+    jobCardId,
+    backgroundSteps,
+    activeBgStepKeys,
+    onReviewSubmitted,
+    stepAssignments,
+    currentUserName,
+  } = props;
 
   const [reviewState, setReviewState] = useState<ReviewState>("loading");
   const [applicability, setApplicability] = useState<QaApplicability | null>(null);
@@ -58,33 +66,12 @@ export function QaReviewSection(props: QaReviewSectionProps) {
   const qcRepairsStep = backgroundSteps.find(
     (bg) => bg.stepKey === "qc_repairs" || bg.label?.toLowerCase().includes("repair"),
   );
-  const qaReviewPending = qaReviewStep ? qaReviewStep.completedAt === null : true;
   const qcRepairsPending = qcRepairsStep ? qcRepairsStep.completedAt === null : false;
 
-  const qaReviewActive = (() => {
-    if (!qaReviewStep) return false;
-    if (!qaReviewPending) return false;
-    const trigger = qaReviewStep.triggerAfterStep;
-    const sameBranch = backgroundSteps.filter(
-      (bg) => bg.triggerAfterStep === trigger && !bg.branchColor,
-    );
-    const qaIdx = sameBranch.findIndex((bg) => bg.stepKey === qaReviewStep.stepKey);
-    const preceding = sameBranch.slice(0, qaIdx);
-    return preceding.every((bg) => bg.completedAt !== null);
-  })();
+  const qaReviewPending = qaReviewStep ? qaReviewStep.completedAt === null : false;
 
   const qaStepKey = qaReviewStep?.stepKey || "qa_review";
-  const assignedUsers =
-    stepAssignments[qaStepKey] ||
-    stepAssignments[`custom_${qaStepKey}`] ||
-    stepAssignments["qa_review"] ||
-    stepAssignments["custom_qa_review"] ||
-    [];
-  const isAssignedUser =
-    currentUserName !== null &&
-    (assignedUsers.length === 0 || assignedUsers.some((u) => u.name === currentUserName));
-  const qaReviewCompleted = qaReviewStep ? qaReviewStep.completedAt !== null : false;
-
+  const qaReviewActive = activeBgStepKeys.has(qaStepKey) || activeBgStepKeys.has("qa_review");
   const loadData = useCallback(async () => {
     try {
       const [applicRes, decisionRes, filesRes] = await Promise.all([
@@ -240,11 +227,7 @@ export function QaReviewSection(props: QaReviewSectionProps) {
     }
   };
 
-  if (!qaReviewActive && !qaReviewCompleted) {
-    return null;
-  }
-
-  if (qaReviewActive && !qaReviewCompleted && !isAssignedUser) {
+  if (!qaReviewActive) {
     return null;
   }
 

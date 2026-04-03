@@ -7,6 +7,7 @@ import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 interface QaFinalPhotosSectionProps {
   jobCardId: number;
   backgroundSteps: BackgroundStepStatus[];
+  activeBgStepKeys: Set<string>;
   onPhotosSaved: () => void;
   stepAssignments: Record<string, { name: string; isPrimary: boolean }[]>;
   currentUserName: string | null;
@@ -19,7 +20,14 @@ interface SavedPhoto {
 }
 
 export function QaFinalPhotosSection(props: QaFinalPhotosSectionProps) {
-  const { jobCardId, backgroundSteps, onPhotosSaved, stepAssignments, currentUserName } = props;
+  const {
+    jobCardId,
+    backgroundSteps,
+    activeBgStepKeys,
+    onPhotosSaved,
+    stepAssignments,
+    currentUserName,
+  } = props;
 
   const [savedPhotos, setSavedPhotos] = useState<SavedPhoto[]>([]);
   const [noPhotos, setNoPhotos] = useState(false);
@@ -37,20 +45,12 @@ export function QaFinalPhotosSection(props: QaFinalPhotosSectionProps) {
       bg.stepKey === "custom_qa_final_check" ||
       bg.label?.toLowerCase() === "qa final",
   );
-  const stepExists = qaFinalStep !== undefined;
-  const stepIsPending = qaFinalStep ? qaFinalStep.completedAt === null : false;
-  const stepCompleted = qaFinalStep ? qaFinalStep.completedAt !== null : false;
-
   const qaFinalStepKey = qaFinalStep?.stepKey || "qa_final_check";
-  const assignedUsers =
-    stepAssignments[qaFinalStepKey] ||
-    stepAssignments["qa_final_check"] ||
-    stepAssignments["custom_qa_final_check"] ||
-    [];
-  const isAssignedUser =
-    currentUserName !== null &&
-    (assignedUsers.length === 0 || assignedUsers.some((u) => u.name === currentUserName));
-  const canEdit = stepIsPending && isAssignedUser;
+  const stepActive =
+    activeBgStepKeys.has(qaFinalStepKey) ||
+    activeBgStepKeys.has("qa_final_check") ||
+    activeBgStepKeys.has("custom_qa_final_check");
+  const canEdit = stepActive;
 
   const loadPhotos = useCallback(async () => {
     try {
@@ -74,16 +74,12 @@ export function QaFinalPhotosSection(props: QaFinalPhotosSectionProps) {
   }, [jobCardId]);
 
   useEffect(() => {
-    if (stepExists) {
+    if (stepActive) {
       loadPhotos();
     }
-  }, [stepExists, loadPhotos]);
+  }, [stepActive, loadPhotos]);
 
-  if (!stepExists) {
-    return null;
-  }
-
-  if (stepIsPending && !isAssignedUser) {
+  if (!stepActive) {
     return null;
   }
 
@@ -139,42 +135,6 @@ export function QaFinalPhotosSection(props: QaFinalPhotosSectionProps) {
       setIsSaving(false);
     }
   };
-
-  if (stepCompleted) {
-    return (
-      <div
-        id="qa-final-photos-section"
-        className="rounded-lg border border-gray-200 bg-white shadow-sm"
-      >
-        <div className="border-b border-gray-200 px-5 py-3">
-          <h3 className="text-sm font-semibold text-gray-900">Final Job Photos</h3>
-        </div>
-        <div className="px-5 py-4">
-          {savedPhotos.length > 0 ? (
-            <div className="flex flex-wrap gap-2">
-              {savedPhotos.map((photo) => (
-                <a
-                  key={photo.id}
-                  href={photo.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="block w-24 h-24 rounded-md overflow-hidden border border-gray-300 hover:border-blue-400 transition-colors"
-                >
-                  <img
-                    src={photo.url}
-                    alt={photo.originalFilename}
-                    className="w-full h-full object-cover"
-                  />
-                </a>
-              ))}
-            </div>
-          ) : (
-            <p className="text-sm text-gray-500">No final photos were uploaded.</p>
-          )}
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div
