@@ -342,9 +342,9 @@ export class JobCardPdfService {
     sortedItems.forEach((item, index) => {
       y = this.checkPageBreak(doc, y, 25);
 
-      const itemCode = item.itemCode || "-";
+      const workType = this.workTypeFromNotes(item.notes);
       const description = item.itemDescription || "";
-      const label = description ? `${itemCode} - ${description}` : itemCode;
+      const label = description ? `${workType} - ${description}` : workType;
 
       doc.text(String(index + 1), 50, y, { width: 20 });
       doc.text(label, 70, y, { width: 395 });
@@ -391,6 +391,18 @@ export class JobCardPdfService {
         _showSpec: idx === group.length - 1 && spec.length > 0,
       }));
     });
+  }
+
+  private workTypeFromNotes(notes: string | null | undefined): string {
+    if (!notes) return "-";
+    const upper = notes.toUpperCase();
+    const lines = upper.split("\n").map((l) => l.trim());
+    const hasRubber = lines.some((l) => /^INT\s*:/.test(l) && /R\/L|RUBBER|SHORE|LINING/.test(l));
+    const hasPaint = lines.some((l) => /^EXT\s*:/.test(l) && /PAINT|BLAST|PRIMER|COAT/.test(l));
+    if (hasRubber && hasPaint) return "Rubber & Paint";
+    if (hasRubber) return "Rubber";
+    if (hasPaint) return "Paint";
+    return "-";
   }
 
   private drawCpoCoatingSpecs(
