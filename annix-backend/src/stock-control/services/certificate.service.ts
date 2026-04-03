@@ -674,18 +674,7 @@ export class CertificateService {
       ...(expiredMsg ? { warnings: [expiredMsg] } : {}),
     };
 
-    const coreQcSections = qcResult.sections.filter(
-      (s) => !["itemsRelease", "releaseCertificates"].includes(s.key),
-    );
-    const releaseQcSections = qcResult.sections.filter((s) =>
-      ["itemsRelease", "releaseCertificates"].includes(s.key),
-    );
-    const sections: SectionStatus[] = [
-      ...coreQcSections,
-      calCertSection,
-      supplierCertSection,
-      ...releaseQcSections,
-    ];
+    const sections: SectionStatus[] = [...qcResult.sections, calCertSection, supplierCertSection];
 
     const warnings: string[] = [
       ...qcResult.warnings,
