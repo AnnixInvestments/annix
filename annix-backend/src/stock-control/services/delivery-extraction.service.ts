@@ -258,6 +258,9 @@ export class DeliveryExtractionService {
       if (Number.isFinite(costPerUnit) && costPerUnit > 0) {
         existingBySku.costPerUnit = costPerUnit;
       }
+      if (item.isPaint && item.volumeLitersPerPack && !existingBySku.packSizeLitres) {
+        existingBySku.packSizeLitres = item.volumeLitersPerPack;
+      }
       await this.stockItemRepo.save(existingBySku);
       this.logger.log(`Updated existing stock item ${sku}: +${quantity}`);
       return existingBySku;
@@ -277,6 +280,9 @@ export class DeliveryExtractionService {
       matched.quantity = matched.quantity + quantity;
       if (Number.isFinite(costPerUnit) && costPerUnit > 0) {
         matched.costPerUnit = costPerUnit;
+      }
+      if (item.isPaint && item.volumeLitersPerPack && !matched.packSizeLitres) {
+        matched.packSizeLitres = item.volumeLitersPerPack;
       }
       await this.stockItemRepo.save(matched);
       this.logger.log(
@@ -315,6 +321,9 @@ export class DeliveryExtractionService {
     const itemDescription =
       rubberData?.description || (rollNumber ? `Roll #${rollNumber}` : null) || null;
 
+    const packSizeLitres =
+      item.isPaint && item.volumeLitersPerPack ? item.volumeLitersPerPack : null;
+
     const created = this.stockItemRepo.create({
       sku: finalSku,
       name: itemName.slice(0, 255),
@@ -327,6 +336,7 @@ export class DeliveryExtractionService {
       needsQrPrint: true,
       companyId,
       locationId: inferredLocationId,
+      packSizeLitres,
       thicknessMm: rubberData?.thicknessMm || null,
       widthMm: rubberData?.widthMm || null,
       lengthM: rubberData?.lengthM || null,
