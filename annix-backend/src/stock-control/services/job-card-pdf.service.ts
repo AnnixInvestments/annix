@@ -368,7 +368,7 @@ export class JobCardPdfService {
       y += 13;
     }
 
-    return y + 6;
+    return y + 14;
   }
 
   private groupItemsBySpec(
