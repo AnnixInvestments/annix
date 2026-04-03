@@ -715,4 +715,32 @@ export class MessagingService {
       readByUserIds: (readReceipts || []).map((r) => r.userId),
     };
   }
+
+  async deleteConversationsByAdmin(conversationIds: number[]): Promise<{ deleted: number }> {
+    if (conversationIds.length === 0) {
+      return { deleted: 0 };
+    }
+
+    await this.receiptRepo.delete({
+      message: { conversationId: In(conversationIds) },
+    });
+
+    await this.attachmentRepo.delete({
+      message: { conversationId: In(conversationIds) },
+    });
+
+    await this.messageRepo.delete({
+      conversationId: In(conversationIds),
+    });
+
+    await this.participantRepo.delete({
+      conversationId: In(conversationIds),
+    });
+
+    const result = await this.conversationRepo.delete({
+      id: In(conversationIds),
+    });
+
+    return { deleted: result.affected || 0 };
+  }
 }

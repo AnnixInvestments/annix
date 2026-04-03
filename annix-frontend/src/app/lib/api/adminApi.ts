@@ -1207,6 +1207,13 @@ class AdminApiClient {
     });
   }
 
+  async deleteConversations(ids: number[]): Promise<{ deleted: number }> {
+    return this.request<{ deleted: number }>("/admin/messaging/conversations/delete", {
+      method: "POST",
+      body: JSON.stringify({ ids }),
+    });
+  }
+
   async broadcasts(
     filters?: BroadcastFilterDto,
   ): Promise<{ broadcasts: BroadcastDetailDto[]; total: number }> {

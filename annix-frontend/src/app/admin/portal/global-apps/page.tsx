@@ -139,7 +139,6 @@ interface AppCard {
   icon: React.ReactNode;
   color: string;
   hoverColor: string;
-  isExternal?: boolean;
 }
 
 const adminApps: AppCard[] = [
@@ -163,22 +162,20 @@ const adminApps: AppCard[] = [
 
 const platformApps: AppCard[] = [
   {
-    href: "/rfq-portal",
+    href: "/admin/portal/dashboard",
     title: "RFQ Platform",
     description: "Pipeline quotation management for customers and suppliers.",
     icon: <RfqIcon />,
     color: "bg-blue-100 text-blue-600",
     hoverColor: "hover:border-blue-400 group-hover:bg-blue-600 group-hover:text-white",
-    isExternal: true,
   },
   {
-    href: "/au-rubber/login",
+    href: "/au-rubber/portal/dashboard",
     title: "AU Rubber App",
     description: "Manage rubber lining products, orders, and companies.",
     icon: <RubberIcon />,
     color: "bg-yellow-100 text-yellow-600",
     hoverColor: "hover:border-yellow-400 group-hover:bg-yellow-600 group-hover:text-white",
-    isExternal: true,
   },
   {
     href: "/voice-filter",
@@ -187,51 +184,44 @@ const platformApps: AppCard[] = [
     icon: <VoiceFilterIcon />,
     color: "bg-cyan-100 text-cyan-600",
     hoverColor: "hover:border-cyan-400 group-hover:bg-cyan-600 group-hover:text-white",
-    isExternal: true,
   },
   {
-    href: "/annix-rep/setup",
+    href: "/annix-rep",
     title: "Annix Rep",
     description: "Mobile sales assistant with smart prospecting and route planning.",
     icon: <AnnixRepIcon />,
     color: "bg-emerald-100 text-emerald-600",
     hoverColor: "hover:border-emerald-400 group-hover:bg-emerald-600 group-hover:text-white",
-    isExternal: true,
   },
   {
-    href: "/stock-control/login",
+    href: "/stock-control/portal/admin",
     title: "Stock Control",
     description: "Manage stock items, job allocations, and inventory tracking.",
     icon: <StockControlIcon />,
     color: "bg-teal-100 text-teal-600",
     hoverColor: "hover:border-teal-400 group-hover:bg-teal-600 group-hover:text-white",
-    isExternal: true,
   },
   {
-    href: "/cv-assistant/login",
+    href: "/cv-assistant/portal/dashboard",
     title: "CV Assistant",
     description: "AI-powered candidate screening and reference checking.",
     icon: <CvAssistantIcon />,
     color: "bg-violet-100 text-violet-600",
     hoverColor: "hover:border-violet-400 group-hover:bg-violet-600 group-hover:text-white",
-    isExternal: true,
   },
   {
-    href: "/comply-sa",
+    href: "/comply-sa/dashboard",
     title: "Comply SA",
     description: "SA SME compliance dashboard with B-BBEE, tax tools, and regulatory tracking.",
     icon: <ComplySaIcon />,
     color: "bg-rose-100 text-rose-600",
     hoverColor: "hover:border-rose-400 group-hover:bg-rose-600 group-hover:text-white",
-    isExternal: true,
   },
 ];
 
 function AppCardComponent({ app }: { app: AppCard }) {
-  const linkProps = app.isExternal ? { target: "_blank", rel: "noopener noreferrer" } : {};
-
   return (
-    <Link href={app.href} {...linkProps} className="group">
+    <Link href={app.href} className="group">
       <div
         className={`bg-white dark:bg-slate-800 rounded-xl shadow-md p-6 border-2 border-transparent ${app.hoverColor.split(" ")[0]} hover:shadow-lg transition-all duration-300 h-full`}
       >

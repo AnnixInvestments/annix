@@ -74,6 +74,17 @@ export class AdminMessagingController {
     return this.messagingService.createConversation(userId, dto);
   }
 
+  @Post("conversations/delete")
+  @Roles("admin")
+  @ApiOperation({ summary: "Delete multiple conversations by ID" })
+  @ApiResponse({
+    status: 200,
+    description: "Conversations deleted",
+  })
+  async deleteConversations(@Body() body: { ids: number[] }): Promise<{ deleted: number }> {
+    return this.messagingService.deleteConversationsByAdmin(body.ids);
+  }
+
   @Get("conversations/:id")
   @ApiOperation({ summary: "Get conversation details" })
   @ApiParam({ name: "id", description: "Conversation ID" })

@@ -7,52 +7,89 @@ import { formatDateZA } from "@/app/lib/datetime";
 
 type TabType = "conversations" | "broadcasts";
 
-function ConversationCard({ conversation }: { conversation: ConversationSummaryDto }) {
+function ConversationCard({
+  conversation,
+  isSelectMode,
+  isSelected,
+  onToggle,
+}: {
+  conversation: ConversationSummaryDto;
+  isSelectMode: boolean;
+  isSelected: boolean;
+  onToggle: (id: number) => void;
+}) {
   const participantNames = (conversation.participantNames || []).join(", ");
+
+  const cardContent = (
+    <div className="flex items-start justify-between gap-4">
+      {isSelectMode && (
+        <div className="flex-shrink-0 pt-1">
+          <input
+            type="checkbox"
+            checked={isSelected}
+            onChange={() => onToggle(conversation.id)}
+            className="w-4 h-4 text-[#323288] border-gray-300 rounded focus:ring-[#323288] cursor-pointer"
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
+      )}
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 mb-1">
+          <h3 className="font-semibold text-gray-900 dark:text-white truncate">
+            {conversation.subject}
+          </h3>
+          {conversation.unreadCount > 0 && (
+            <span className="flex-shrink-0 px-2 py-0.5 text-xs font-medium bg-[#323288] text-white rounded-full">
+              {conversation.unreadCount}
+            </span>
+          )}
+        </div>
+        <p className="text-sm text-gray-500 dark:text-gray-400 truncate mb-2">{participantNames}</p>
+        {conversation.lastMessagePreview && (
+          <p className="text-sm text-gray-600 dark:text-gray-300 line-clamp-2">
+            {conversation.lastMessagePreview}
+          </p>
+        )}
+      </div>
+      <div className="flex flex-col items-end gap-1 flex-shrink-0">
+        <span
+          className={`px-2 py-0.5 text-xs font-medium rounded-full ${
+            conversation.isArchived
+              ? "bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300"
+              : "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+          }`}
+        >
+          {conversation.isArchived ? "archived" : "active"}
+        </span>
+        {conversation.lastMessageAt && (
+          <span className="text-xs text-gray-400">{formatDateZA(conversation.lastMessageAt)}</span>
+        )}
+      </div>
+    </div>
+  );
+
+  if (isSelectMode) {
+    return (
+      <button
+        type="button"
+        onClick={() => onToggle(conversation.id)}
+        className={`block w-full text-left bg-white dark:bg-slate-800 rounded-lg border-2 p-4 transition-all ${
+          isSelected
+            ? "border-[#323288] shadow-md"
+            : "border-gray-200 dark:border-slate-700 hover:border-gray-300"
+        }`}
+      >
+        {cardContent}
+      </button>
+    );
+  }
 
   return (
     <Link
       href={`/admin/portal/messages/conversations/${conversation.id}`}
       className="block bg-white dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700 p-4 hover:border-[#323288] hover:shadow-md transition-all"
     >
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-1">
-            <h3 className="font-semibold text-gray-900 dark:text-white truncate">
-              {conversation.subject}
-            </h3>
-            {conversation.unreadCount > 0 && (
-              <span className="flex-shrink-0 px-2 py-0.5 text-xs font-medium bg-[#323288] text-white rounded-full">
-                {conversation.unreadCount}
-              </span>
-            )}
-          </div>
-          <p className="text-sm text-gray-500 dark:text-gray-400 truncate mb-2">
-            {participantNames}
-          </p>
-          {conversation.lastMessagePreview && (
-            <p className="text-sm text-gray-600 dark:text-gray-300 line-clamp-2">
-              {conversation.lastMessagePreview}
-            </p>
-          )}
-        </div>
-        <div className="flex flex-col items-end gap-1 flex-shrink-0">
-          <span
-            className={`px-2 py-0.5 text-xs font-medium rounded-full ${
-              conversation.isArchived
-                ? "bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300"
-                : "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
-            }`}
-          >
-            {conversation.isArchived ? "archived" : "active"}
-          </span>
-          {conversation.lastMessageAt && (
-            <span className="text-xs text-gray-400">
-              {formatDateZA(conversation.lastMessageAt)}
-            </span>
-          )}
-        </div>
-      </div>
+      {cardContent}
     </Link>
   );
 }
@@ -177,6 +214,9 @@ export default function GlobalMessagesPage() {
   const [broadcasts, setBroadcasts] = useState<BroadcastDetailDto[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isSelectMode, setIsSelectMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const fetchData = useCallback(async () => {
     setIsLoading(true);
@@ -202,6 +242,57 @@ export default function GlobalMessagesPage() {
   }, [fetchData]);
 
   const totalUnread = conversations.reduce((sum, c) => sum + c.unreadCount, 0);
+
+  const toggleSelection = (id: number) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === conversations.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(conversations.map((c) => c.id)));
+    }
+  };
+
+  const enterSelectMode = () => {
+    setIsSelectMode(true);
+    setSelectedIds(new Set());
+  };
+
+  const exitSelectMode = () => {
+    setIsSelectMode(false);
+    setSelectedIds(new Set());
+  };
+
+  const deleteSelected = async () => {
+    if (selectedIds.size === 0) return;
+
+    const confirmed = window.confirm(
+      `Are you sure you want to permanently delete ${selectedIds.size} conversation${selectedIds.size > 1 ? "s" : ""}? This cannot be undone.`,
+    );
+    if (!confirmed) return;
+
+    setIsDeleting(true);
+    try {
+      await adminApiClient.deleteConversations([...selectedIds]);
+      setConversations((prev) => prev.filter((c) => !selectedIds.has(c.id)));
+      setSelectedIds(new Set());
+      setIsSelectMode(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to delete conversations");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -329,7 +420,10 @@ export default function GlobalMessagesPage() {
         <div className="border-b border-gray-200 dark:border-slate-700">
           <div className="flex">
             <button
-              onClick={() => setActiveTab("conversations")}
+              onClick={() => {
+                setActiveTab("conversations");
+                exitSelectMode();
+              }}
               className={`flex-1 px-4 py-3 text-sm font-medium transition-colors relative ${
                 activeTab === "conversations"
                   ? "text-[#323288] dark:text-blue-400"
@@ -357,7 +451,10 @@ export default function GlobalMessagesPage() {
               )}
             </button>
             <button
-              onClick={() => setActiveTab("broadcasts")}
+              onClick={() => {
+                setActiveTab("broadcasts");
+                exitSelectMode();
+              }}
               className={`flex-1 px-4 py-3 text-sm font-medium transition-colors relative ${
                 activeTab === "broadcasts"
                   ? "text-[#323288] dark:text-blue-400"
@@ -382,6 +479,96 @@ export default function GlobalMessagesPage() {
           </div>
         </div>
 
+        {activeTab === "conversations" && conversations.length > 0 && !isLoading && (
+          <div className="px-4 pt-3 flex items-center justify-between">
+            {isSelectMode ? (
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={toggleSelectAll}
+                  className="px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-slate-700 rounded-md hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors"
+                >
+                  {selectedIds.size === conversations.length ? "Deselect All" : "Select All"}
+                </button>
+                <span className="text-sm text-gray-500 dark:text-gray-400">
+                  {selectedIds.size} selected
+                </span>
+              </div>
+            ) : (
+              <div />
+            )}
+            <div className="flex items-center gap-2">
+              {isSelectMode ? (
+                <>
+                  <button
+                    onClick={exitSelectMode}
+                    className="px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-slate-700 rounded-md hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={deleteSelected}
+                    disabled={selectedIds.size === 0 || isDeleting}
+                    className="px-3 py-1.5 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
+                  >
+                    {isDeleting ? (
+                      <>
+                        <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                          <circle
+                            className="opacity-25"
+                            cx="12"
+                            cy="12"
+                            r="10"
+                            stroke="currentColor"
+                            strokeWidth="4"
+                          />
+                          <path
+                            className="opacity-75"
+                            fill="currentColor"
+                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                          />
+                        </svg>
+                        Deleting...
+                      </>
+                    ) : (
+                      <>
+                        <svg
+                          className="w-4 h-4"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                          />
+                        </svg>
+                        Delete ({selectedIds.size})
+                      </>
+                    )}
+                  </button>
+                </>
+              ) : (
+                <button
+                  onClick={enterSelectMode}
+                  className="px-3 py-1.5 text-sm font-medium text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors flex items-center gap-1.5"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                    />
+                  </svg>
+                  Delete
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
         <div className="p-4">
           {isLoading ? (
             <LoadingState />
@@ -389,7 +576,13 @@ export default function GlobalMessagesPage() {
             conversations.length > 0 ? (
               <div className="space-y-3">
                 {conversations.map((conversation) => (
-                  <ConversationCard key={conversation.id} conversation={conversation} />
+                  <ConversationCard
+                    key={conversation.id}
+                    conversation={conversation}
+                    isSelectMode={isSelectMode}
+                    isSelected={selectedIds.has(conversation.id)}
+                    onToggle={toggleSelection}
+                  />
                 ))}
               </div>
             ) : (

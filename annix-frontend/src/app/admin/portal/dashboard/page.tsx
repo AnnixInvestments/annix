@@ -307,6 +307,57 @@ export default function AdminDashboardPage() {
         </button>
       </div>
 
+      {/* Quick Links */}
+      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+        <button
+          onClick={() => router.push("/admin/portal/pumps")}
+          className="bg-white overflow-hidden shadow rounded-lg hover:shadow-lg transition-shadow text-left w-full"
+        >
+          <div className="p-5">
+            <div className="flex items-center">
+              <div className="flex-shrink-0">
+                <div className="w-12 h-12 rounded-md bg-indigo-500 flex items-center justify-center">
+                  <svg
+                    className="w-6 h-6 text-white"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 007.92 12.446A9 9 0 1112 3zm0 0a9 9 0 109 9M12 3v9m0 0l6.364-6.364M12 12l-6.364-6.364"
+                    />
+                  </svg>
+                </div>
+              </div>
+              <div className="ml-5 w-0 flex-1">
+                <dl>
+                  <dt className="text-sm font-medium text-gray-500 truncate">Pumps</dt>
+                  <dd className="flex items-baseline">
+                    <div className="text-sm text-gray-600">Pump catalogue and specifications</div>
+                    <svg
+                      className="ml-auto w-5 h-5 text-gray-400"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M9 5l7 7-7 7"
+                      />
+                    </svg>
+                  </dd>
+                </dl>
+              </div>
+            </div>
+          </div>
+        </button>
+      </div>
+
       {/* Codebase Evolution Report */}
       <button
         onClick={() => window.open("/codebase-evolution-stats.html", "_blank")}
