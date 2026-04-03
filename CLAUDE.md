@@ -298,7 +298,7 @@ All apps follow the same **semantic versioning** rules (major.minor.patch):
 The user may use these shorthand commands instead of full sentences:
 - **`luc`** — list all unpushed commits (`git log origin/main..HEAD --oneline`)
 - **`push`** — push all changes to main and report pre-push step timings
-- **`luc + push`** — list unpushed commits, then push all changes
+- **`luc + push`** — list unpushed commits, then push immediately without asking for confirmation
 
 ## Project Context
 
