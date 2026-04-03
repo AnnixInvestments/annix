@@ -1,9 +1,12 @@
 import { BadRequestException, NotFoundException } from "@nestjs/common";
 import { Test, TestingModule } from "@nestjs/testing";
 import { getRepositoryToken } from "@nestjs/typeorm";
+import { NutMass } from "../nut-mass/entities/nut-mass.entity";
+import { Washer } from "../washer/entities/washer.entity";
 import { BoltService } from "./bolt.service";
 import { Bolt } from "./entities/bolt.entity";
 import { PipeClampEntity } from "./entities/pipe-clamp.entity";
+import { ThreadedInsert } from "./entities/threaded-insert.entity";
 import { UBoltEntity } from "./entities/u-bolt.entity";
 
 describe("BoltService", () => {
@@ -55,6 +58,47 @@ describe("BoltService", () => {
     })),
   };
 
+  const mockNutMassRepo = {
+    createQueryBuilder: jest.fn(() => ({
+      innerJoin: jest.fn().mockReturnThis(),
+      andWhere: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
+      orderBy: jest.fn().mockReturnThis(),
+      select: jest.fn().mockReturnThis(),
+      addSelect: jest.fn().mockReturnThis(),
+      groupBy: jest.fn().mockReturnThis(),
+      getMany: jest.fn().mockResolvedValue([]),
+      getRawMany: jest.fn().mockResolvedValue([]),
+    })),
+  };
+
+  const mockWasherRepo = {
+    createQueryBuilder: jest.fn(() => ({
+      innerJoin: jest.fn().mockReturnThis(),
+      andWhere: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
+      orderBy: jest.fn().mockReturnThis(),
+      select: jest.fn().mockReturnThis(),
+      addSelect: jest.fn().mockReturnThis(),
+      groupBy: jest.fn().mockReturnThis(),
+      getMany: jest.fn().mockResolvedValue([]),
+      getRawMany: jest.fn().mockResolvedValue([]),
+    })),
+  };
+
+  const mockThreadedInsertRepo = {
+    createQueryBuilder: jest.fn(() => ({
+      andWhere: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
+      orderBy: jest.fn().mockReturnThis(),
+      select: jest.fn().mockReturnThis(),
+      addSelect: jest.fn().mockReturnThis(),
+      groupBy: jest.fn().mockReturnThis(),
+      getMany: jest.fn().mockResolvedValue([]),
+      getRawMany: jest.fn().mockResolvedValue([]),
+    })),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -64,6 +108,18 @@ describe("BoltService", () => {
         {
           provide: getRepositoryToken(PipeClampEntity),
           useValue: mockPipeClampRepo,
+        },
+        {
+          provide: getRepositoryToken(NutMass),
+          useValue: mockNutMassRepo,
+        },
+        {
+          provide: getRepositoryToken(Washer),
+          useValue: mockWasherRepo,
+        },
+        {
+          provide: getRepositoryToken(ThreadedInsert),
+          useValue: mockThreadedInsertRepo,
         },
       ],
     }).compile();

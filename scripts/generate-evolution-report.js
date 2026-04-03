@@ -958,7 +958,7 @@ const html = `<!DOCTYPE html>
       ...baseOptions(),
       scales: {
         x: { grid: { color: gridColor() }, ticks: { color: textColor() } },
-        y: { grid: { color: gridColor() }, ticks: { color: textColor(), callback: function(v) { return (v/1000).toFixed(0) + 'K'; } } },
+        y: { grid: { color: gridColor() }, ticks: { color: textColor(), callback: (v) => \`\${(v/1000).toFixed(0)}K\` } },
       },
     },
   });
@@ -1043,14 +1043,14 @@ const html = `<!DOCTYPE html>
     if (modalChart) { modalChart.destroy(); modalChart = null; }
   }
 
-  document.getElementById('chartModal').addEventListener('click', function(e) {
+  document.getElementById('chartModal').addEventListener('click', (e) => {
     if (e.target === document.getElementById('chartModal')) collapseChart();
   });
 
-  document.addEventListener('keydown', function(e) { if (e.key === 'Escape') collapseChart(); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') collapseChart(); });
 
   function updateChartThemes() {
-    [weeklyChart, growthChart, splitChart, filesChart].forEach(function(chart) {
+    [weeklyChart, growthChart, splitChart, filesChart].forEach((chart) => {
       if (chart.config.type === 'bar' || chart.config.type === 'line') {
         chart.options.scales.x.grid.color = gridColor();
         chart.options.scales.y.grid.color = gridColor();

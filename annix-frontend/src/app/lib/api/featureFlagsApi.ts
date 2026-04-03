@@ -8,7 +8,8 @@ export type FeatureFlagCategory =
   | "admin"
   | "system"
   | "registration"
-  | "rfq";
+  | "rfq"
+  | "addons";
 
 export interface FeatureFlagDetail {
   flagKey: string;

@@ -44,8 +44,8 @@ interface AccountData {
 export default function AccountsReceivablePage() {
   const { showToast } = useToast();
   const previousMonth = DateTime.now().minus({ months: 1 });
-  const [year, setYear] = useState(previousMonth.year);
-  const [month, setMonth] = useState(previousMonth.month);
+  const [year, setYear] = useState<number>(previousMonth.year);
+  const [month, setMonth] = useState<number>(previousMonth.month);
   const [data, setData] = useState<AccountData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);

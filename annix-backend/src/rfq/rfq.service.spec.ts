@@ -16,6 +16,7 @@ import { SupplierProfile } from "../supplier/entities/supplier-profile.entity";
 import { User } from "../user/entities/user.entity";
 import { BendRfq } from "./entities/bend-rfq.entity";
 import { ExpansionJointRfq } from "./entities/expansion-joint-rfq.entity";
+import { FastenerRfq } from "./entities/fastener-rfq.entity";
 import { FittingRfq } from "./entities/fitting-rfq.entity";
 import { InstrumentRfq } from "./entities/instrument-rfq.entity";
 import { PumpRfq } from "./entities/pump-rfq.entity";
@@ -262,6 +263,16 @@ describe("RfqService", () => {
           },
         },
         {
+          provide: getRepositoryToken(FastenerRfq),
+          useValue: {
+            create: jest.fn(),
+            save: jest.fn(),
+            find: jest.fn(),
+            findOne: jest.fn(),
+            remove: jest.fn(),
+          },
+        },
+        {
           provide: getRepositoryToken(RfqDocument),
           useValue: mockRfqDocumentRepo,
         },
@@ -373,6 +384,7 @@ describe("RfqService", () => {
           "items.instrumentDetails",
           "items.pumpDetails",
           "items.tankChuteDetails",
+          "items.fastenerDetails",
           "drawings",
           "boqs",
         ],

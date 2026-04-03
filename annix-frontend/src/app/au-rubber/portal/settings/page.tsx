@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useConfirm } from "@/app/au-rubber/hooks/useConfirm";
 import { useToast } from "@/app/components/Toast";
 import { useAuRubberAuth } from "@/app/context/AuRubberAuthContext";
@@ -1072,7 +1072,206 @@ function AccessControlTab() {
   );
 }
 
-type TabType = "branding" | "access";
+const FEATURE_LABELS: Record<string, { label: string; description: string }> = {
+  ANNIX_ORDERS: {
+    label: "Orders",
+    description: "Order management with import, tracking, and correction workflows",
+  },
+  ANNIX_PRODUCTS: {
+    label: "Products",
+    description: "Product catalog with coding classifications and bulk import",
+  },
+  ANNIX_SUPPLIER_COCS: {
+    label: "Supplier CoCs",
+    description: "Supplier Certificate of Conformance processing and approval workflows",
+  },
+  ANNIX_CERTIFICATES: {
+    label: "AU Certificates",
+    description: "Customer AU Certificates with readiness tracking and document versioning",
+  },
+  ANNIX_DELIVERY_NOTES: {
+    label: "Delivery Notes",
+    description: "Delivery note management for suppliers and customers",
+  },
+  ANNIX_TAX_INVOICES: {
+    label: "Tax Invoices",
+    description: "Tax invoice creation, versioning, and correction tracking",
+  },
+  ANNIX_QUALITY: {
+    label: "Quality Tracking",
+    description: "Quality tracking, roll stock management, and rejection workflows",
+  },
+  ANNIX_STOCK_CONTROL: {
+    label: "Stock Control",
+    description: "Compound inventory, stock movements, locations, and other items",
+  },
+  ANNIX_PRODUCTION: {
+    label: "Production",
+    description: "Production workflow management with batch tracking",
+  },
+  ANNIX_PRICING: {
+    label: "Pricing",
+    description: "Pricing tiers and cost of sale analysis with cost rate management",
+  },
+  ANNIX_SAGE_SYNC: {
+    label: "Sage Sync",
+    description: "Sage Accounting sync for invoices, contacts, and CoC data",
+  },
+  ANNIX_EMAIL_INGESTION: {
+    label: "Email Ingestion",
+    description: "Automatic CoC extraction from monitored email inboxes via AI",
+  },
+  ANNIX_PURCHASE_REQS: {
+    label: "Purchase Requisitions",
+    description: "Internal purchase requisition workflows with approval chains",
+  },
+  ANNIX_COMPANIES: {
+    label: "Companies",
+    description: "Customer and supplier management with statements and Sage linking",
+  },
+  ANNIX_RBAC: {
+    label: "Access Control",
+    description: "Role-based access control with granular permissions per user",
+  },
+  ANNIX_ACCOUNTING: {
+    label: "Accounting",
+    description:
+      "Monthly accounts payable/receivable with director sign-off and statement reconciliation",
+  },
+};
+
+function FeaturesTab() {
+  const { showToast } = useToast();
+  const [flags, setFlags] = useState<
+    Array<{ flagKey: string; enabled: boolean; description: string | null; category: string }>
+  >([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [togglingKey, setTogglingKey] = useState<string | null>(null);
+
+  useEffect(() => {
+    auRubberApiClient
+      .featureFlagsDetailed()
+      .then((data) => {
+        setFlags(data.flags);
+        setLoading(false);
+      })
+      .catch((err) => {
+        setError(err instanceof Error ? err.message : "Failed to load feature flags");
+        setLoading(false);
+      });
+  }, []);
+
+  const addonFlags = useMemo(() => flags.filter((f) => f.category === "addons"), [flags]);
+
+  const handleToggle = async (flagKey: string, currentEnabled: boolean) => {
+    setTogglingKey(flagKey);
+    try {
+      const updated = await auRubberApiClient.updateFeatureFlag(flagKey, !currentEnabled);
+      setFlags((prev) =>
+        prev.map((f) => (f.flagKey === updated.flagKey ? { ...f, enabled: updated.enabled } : f)),
+      );
+      const meta = FEATURE_LABELS[flagKey];
+      showToast(`${meta?.label || flagKey} ${updated.enabled ? "enabled" : "disabled"}`, "success");
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : "Failed to update feature", "error");
+    } finally {
+      setTogglingKey(null);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 px-6 py-12 text-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-yellow-600 mx-auto" />
+        <p className="mt-3 text-sm text-gray-500">Loading features...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 px-6 py-8 text-center">
+        <p className="text-sm text-red-600">{error}</p>
+      </div>
+    );
+  }
+
+  if (addonFlags.length === 0) {
+    return (
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 px-6 py-8 text-center text-sm text-gray-500">
+        No feature modules available
+      </div>
+    );
+  }
+
+  const enabledCount = addonFlags.filter((f) => f.enabled).length;
+
+  return (
+    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+      <div className="flex items-center justify-between mb-1">
+        <h2 className="text-lg font-semibold text-gray-900">App Modules</h2>
+        <span className="text-xs text-gray-500">
+          {enabledCount} of {addonFlags.length} enabled
+        </span>
+      </div>
+      <p className="text-sm text-gray-500 mb-6">
+        Enable or disable modules for this app. Changes take effect immediately.
+      </p>
+
+      <div className="space-y-3">
+        {addonFlags.map((flag) => {
+          const meta = FEATURE_LABELS[flag.flagKey];
+          const isToggling = togglingKey === flag.flagKey;
+
+          return (
+            <div
+              key={flag.flagKey}
+              className="flex items-center justify-between p-4 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors"
+            >
+              <div className="flex-1 mr-4">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium text-gray-900">
+                    {meta?.label || flag.flagKey}
+                  </span>
+                  <span
+                    className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium ${
+                      flag.enabled ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"
+                    }`}
+                  >
+                    {flag.enabled ? "On" : "Off"}
+                  </span>
+                </div>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  {meta?.description || flag.description}
+                </p>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={flag.enabled}
+                aria-label={`Toggle ${meta?.label || flag.flagKey}`}
+                onClick={() => handleToggle(flag.flagKey, flag.enabled)}
+                disabled={isToggling}
+                className={`relative inline-flex h-6 w-11 flex-shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2 ${
+                  flag.enabled ? "bg-yellow-500" : "bg-gray-200"
+                } ${isToggling ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
+              >
+                <span
+                  className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                    flag.enabled ? "translate-x-5" : "translate-x-0"
+                  }`}
+                />
+              </button>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+type TabType = "branding" | "access" | "features";
 
 export default function SettingsPage() {
   const { hasPermission, isLoading: authLoading } = useAuRubberAuth();
@@ -1115,14 +1314,30 @@ export default function SettingsPage() {
                 Access Control
               </button>
             )}
+            {canManageAccess && (
+              <button
+                onClick={() => setActiveTab("features")}
+                className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                  activeTab === "features"
+                    ? "border-yellow-500 text-yellow-600"
+                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                }`}
+              >
+                Features
+              </button>
+            )}
           </nav>
         </div>
 
-        <SageConfigSection />
-        <SageContactSyncSection />
-
-        {activeTab === "branding" && <BrandingTab />}
+        {activeTab === "branding" && (
+          <>
+            <SageConfigSection />
+            <SageContactSyncSection />
+            <BrandingTab />
+          </>
+        )}
         {activeTab === "access" && canManageAccess && <AccessControlTab />}
+        {activeTab === "features" && canManageAccess && <FeaturesTab />}
       </div>
     </RequirePermission>
   );
