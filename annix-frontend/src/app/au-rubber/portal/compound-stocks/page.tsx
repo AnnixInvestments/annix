@@ -332,7 +332,14 @@ function DispatchedSection(props: {
             const linkedDn = calendaredInvoiceDns.get(refId);
             const calInv = calendaredInvoices.get(refId);
             const dnRolls = linkedDn ? rollsFromExtractedData(linkedDn.extractedData) : [];
-            const totalKg = refMovements.reduce((sum, m) => sum + m.quantityKg, 0);
+            const actualRollWeight = dnRolls.reduce(
+              (sum, r) => sum + (r.weightKg != null ? Number(r.weightKg) : 0),
+              0,
+            );
+            const totalKg =
+              actualRollWeight > 0
+                ? actualRollWeight
+                : refMovements.reduce((sum, m) => sum + m.quantityKg, 0);
             const date = refMovements[0]?.createdAt.split("T")[0] || "";
             const returnUrl = encodeURIComponent("/au-rubber/portal/compound-stocks");
 
@@ -393,11 +400,16 @@ function DispatchedSection(props: {
           {nonCalendaringMovements.map((m) => {
             const dn = m.referenceId ? deliveryNotes.get(m.referenceId) : null;
             const rolls = dn ? rollsFromExtractedData(dn.extractedData) : [];
+            const actualRollWeight = rolls.reduce(
+              (sum, r) => sum + (r.weightKg != null ? Number(r.weightKg) : 0),
+              0,
+            );
+            const displayKg = actualRollWeight > 0 ? actualRollWeight : m.quantityKg;
 
             return (
               <div key={m.id} className="p-2 rounded border border-gray-100 bg-red-50 text-sm">
                 <div className="flex items-center justify-between">
-                  <span className="font-medium text-red-700">-{formatKg(m.quantityKg)}</span>
+                  <span className="font-medium text-red-700">-{formatKg(displayKg)}</span>
                   <span className="text-xs text-gray-400">{m.createdAt.split("T")[0]}</span>
                 </div>
                 {dn && (
@@ -527,7 +539,6 @@ export default function CompoundStocksPage() {
           .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 
         const totalReceived = receivedMovements.reduce((sum, m) => sum + m.quantityKg, 0);
-        const totalDispatched = dispatchedMovements.reduce((sum, m) => sum + m.quantityKg, 0);
 
         const linkedInvoices = new Map<number, RubberTaxInvoiceDto>();
         receivedMovements.forEach((m) => {
@@ -565,6 +576,45 @@ export default function CompoundStocksPage() {
             }
           }
         });
+
+        const totalDispatched = (() => {
+          const grouped = new Map<string, RubberCompoundMovementDto[]>();
+          const ungrouped: RubberCompoundMovementDto[] = [];
+          dispatchedMovements.forEach((m) => {
+            if (
+              m.referenceId &&
+              (m.referenceType === "DELIVERY_DEDUCTION" || m.referenceType === "CALENDARING")
+            ) {
+              const key = `${m.referenceType}-${m.referenceId}`;
+              grouped.set(key, [...(grouped.get(key) || []), m]);
+            } else {
+              ungrouped.push(m);
+            }
+          });
+
+          let total = ungrouped.reduce((sum, m) => sum + m.quantityKg, 0);
+
+          grouped.forEach((groupMovements, key) => {
+            const refType = key.split("-")[0];
+            const refId = Number(key.split("-").slice(1).join("-"));
+            const dn =
+              refType === "DELIVERY_DEDUCTION"
+                ? linkedDeliveryNotes.get(refId)
+                : calendaredInvoiceDns.get(refId);
+            const rolls = dn ? rollsFromExtractedData(dn.extractedData) : [];
+            const actualWeight = rolls.reduce(
+              (rSum, r) => rSum + (r.weightKg != null ? Number(r.weightKg) : 0),
+              0,
+            );
+            if (actualWeight > 0) {
+              total += actualWeight;
+            } else {
+              total += groupMovements.reduce((sum, m) => sum + m.quantityKg, 0);
+            }
+          });
+
+          return total;
+        })();
 
         const committedOrders: CompoundSection["committedOrders"] = [];
         let committedKg = 0;
