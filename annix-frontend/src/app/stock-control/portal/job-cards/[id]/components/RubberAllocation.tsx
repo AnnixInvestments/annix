@@ -406,7 +406,7 @@ function CuttingDiagram({
   const rollWidthMm = roll.rollSpec.widthMm;
   const bands = roll.bands;
   const totalBandHeight = bands.reduce((sum, b) => sum + b.heightMm, 0);
-  const diagramHeight = 48;
+  const diagramHeight = 56;
 
   return (
     <div className="bg-white border border-gray-300 rounded-lg p-3 mb-3">
@@ -477,7 +477,7 @@ function CuttingDiagram({
                   return (
                     <div
                       key={panel.label}
-                      className={`${colorClass} flex items-center justify-center h-full`}
+                      className={`${colorClass} flex flex-col items-center justify-center h-full overflow-hidden`}
                       style={{
                         width: `${panelPct}%`,
                         borderRight: isLast
@@ -486,8 +486,11 @@ function CuttingDiagram({
                         borderBottom: "1px solid white",
                       }}
                     >
-                      <span className="text-[10px] text-white font-bold truncate px-1">
+                      <span className="text-[10px] text-white font-bold truncate px-0.5 leading-tight">
                         {cut.itemNo || displayLabel} {panel.label}
+                      </span>
+                      <span className="text-[9px] text-white/80 truncate px-0.5 leading-tight">
+                        {(panel.rubberLengthMm / 1000).toFixed(2)}m x {panel.rubberWidthMm}mm
                       </span>
                     </div>
                   );
@@ -499,7 +502,7 @@ function CuttingDiagram({
           return (
             <div
               key={cut.itemId}
-              className={`absolute ${colorClass} border-r border-b border-white flex items-center justify-center`}
+              className={`absolute ${colorClass} border-r border-b border-white flex flex-col items-center justify-center overflow-hidden`}
               style={{
                 left: `${left}%`,
                 width: `${width}%`,
@@ -508,7 +511,12 @@ function CuttingDiagram({
               }}
               title={`${cut.itemNo ? `[${cut.itemNo}] ` : ""}${cut.description}: ${(cut.lengthMm / 1000).toFixed(2)}m x ${cut.widthMm}mm${rolls > 1 ? ` (${rolls} rolls)` : ""}`}
             >
-              <span className="text-[10px] text-white font-bold truncate px-1">{displayLabel}</span>
+              <span className="text-[10px] text-white font-bold truncate px-0.5 leading-tight">
+                {displayLabel}
+              </span>
+              <span className="text-[9px] text-white/80 truncate px-0.5 leading-tight">
+                {(cut.lengthMm / 1000).toFixed(2)}m x {cut.widthMm}mm
+              </span>
             </div>
           );
         })}
