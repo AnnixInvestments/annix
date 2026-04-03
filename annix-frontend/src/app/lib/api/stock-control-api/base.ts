@@ -323,6 +323,25 @@ export class StockControlApiClient {
     this.triggerDownload(blob, filename);
   }
 
+  async fetchBlobUrl(endpoint: string): Promise<string> {
+    const url = `${this.baseURL}${endpoint}`;
+    let response = await fetch(url, { headers: { ...this.headers() } });
+
+    if (response.status === 401 && this.refreshToken) {
+      const refreshed = await this.refreshAccessToken();
+      if (refreshed) {
+        response = await fetch(url, { headers: { ...this.headers() } });
+      }
+    }
+
+    if (!response.ok) {
+      throw new Error(`Download failed (${response.status})`);
+    }
+
+    const blob = await response.blob();
+    return URL.createObjectURL(blob);
+  }
+
   authHeaders(): Record<string, string> {
     return this.headers();
   }

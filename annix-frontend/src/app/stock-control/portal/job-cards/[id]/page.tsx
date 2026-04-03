@@ -77,6 +77,7 @@ export default function JobCardDetailPage() {
   const [approvingAllocationId, setApprovingAllocationId] = useState<number | null>(null);
   const [rejectingAllocationId, setRejectingAllocationId] = useState<number | null>(null);
   const [isDownloadingQr, setIsDownloadingQr] = useState(false);
+  const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string | null>(null);
   const [capturedFile, setCapturedFile] = useState<File | null>(null);
   const [backgroundSteps, setBackgroundSteps] = useState<BackgroundStepStatus[]>([]);
   const [completingStepKey, setCompletingStepKey] = useState<string | null>(null);
@@ -242,6 +243,18 @@ export default function JobCardDetailPage() {
     try {
       setIsDownloadingQr(true);
       setDownloadError(null);
+      const blobUrl = await stockControlApiClient.previewJobCardPdf(jobId);
+      setPdfPreviewUrl(blobUrl);
+    } catch (err) {
+      setDownloadError(err instanceof Error ? err.message : "Failed to generate job card PDF");
+    } finally {
+      setIsDownloadingQr(false);
+    }
+  };
+
+  const handleExportPdf = async () => {
+    try {
+      setIsDownloadingQr(true);
       await stockControlApiClient.downloadJobCardQrPdf(jobId);
     } catch (err) {
       setDownloadError(err instanceof Error ? err.message : "Failed to download job card PDF");
@@ -2254,6 +2267,62 @@ export default function JobCardDetailPage() {
                   </a>
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+      {pdfPreviewUrl && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-[90vw] h-[90vh] flex flex-col">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700">
+              <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
+                Job Card Preview — {jobCard?.jobNumber}
+              </h3>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleExportPdf}
+                  disabled={isDownloadingQr}
+                  className="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-md bg-teal-600 text-white hover:bg-teal-700 disabled:bg-gray-400 transition-colors"
+                >
+                  <svg
+                    className="w-4 h-4 mr-1.5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                    />
+                  </svg>
+                  {isDownloadingQr ? "Exporting..." : "Export PDF"}
+                </button>
+                <button
+                  onClick={() => {
+                    URL.revokeObjectURL(pdfPreviewUrl);
+                    setPdfPreviewUrl(null);
+                  }}
+                  className="p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
+                </button>
+              </div>
+            </div>
+            <div className="flex-1 overflow-hidden">
+              <iframe
+                src={pdfPreviewUrl}
+                className="w-full h-full border-0"
+                title="Job Card PDF Preview"
+              />
             </div>
           </div>
         </div>

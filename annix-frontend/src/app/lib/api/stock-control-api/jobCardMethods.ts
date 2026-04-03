@@ -122,6 +122,7 @@ declare module "./base" {
       matches: { deliveryItemId: number; cpoItemId: number }[],
     ): Promise<{ success: boolean }>;
     downloadJobCardQrPdf(id: number): Promise<void>;
+    previewJobCardPdf(id: number): Promise<string>;
     sourceFileUrl(jobCardId: number): Promise<{ url: string; fileName: string | null }>;
     bulkReanalyseJobCards(): Promise<{ processed: number; failed: number }>;
     deduplicateJobCards(): Promise<{ merged: number; groups: number }>;
@@ -469,6 +470,10 @@ proto.confirmDeliveryMatches = async function (jobCardId, matches) {
 
 proto.downloadJobCardQrPdf = async function (id) {
   return this.downloadBlob(`/stock-control/workflow/job-cards/${id}/print`, `job-card-${id}.pdf`);
+};
+
+proto.previewJobCardPdf = async function (id) {
+  return this.fetchBlobUrl(`/stock-control/workflow/job-cards/${id}/print`);
 };
 
 proto.sourceFileUrl = async function (jobCardId) {
