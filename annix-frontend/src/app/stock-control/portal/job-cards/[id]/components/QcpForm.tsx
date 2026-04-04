@@ -403,20 +403,27 @@ export function QcpForm({ jobCardId, existingPlan, onSaved, onCancel }: QcpFormP
   }, []);
 
   useEffect(() => {
-    if (isEditing) return;
     const loadJobCardData = async () => {
       try {
         const [jobCard, coatingAnalysis] = await Promise.all([
           stockControlApiClient.jobCardById(jobCardId),
           stockControlApiClient.jobCardCoatingAnalysis(jobCardId),
         ]);
-        setCustomerName(jobCard.customerName || "");
-        setOrderNumber(jobCard.poNumber || "");
-        setJobNumber(jobCard.jobNumber || "");
-        setJobName(jobCard.jobName || "");
 
-        if (coatingAnalysis && coatingAnalysis.status === "accepted") {
-          populateFromCoating(planType, coatingAnalysis);
+        setJobNumber(jobCard.jobNumber || "");
+
+        if (isEditing) {
+          if (!existingPlan?.jobName || existingPlan.jobName.startsWith(`${jobCard.jobNumber} -`)) {
+            setJobName(jobCard.jobName || "");
+          }
+        } else {
+          setCustomerName(jobCard.customerName || "");
+          setOrderNumber(jobCard.poNumber || "");
+          setJobName(jobCard.jobName || "");
+
+          if (coatingAnalysis && coatingAnalysis.status === "accepted") {
+            populateFromCoating(planType, coatingAnalysis);
+          }
         }
       } catch {
         // Non-critical — user can fill in manually
