@@ -74,7 +74,9 @@ export function StockIssuesTab(props: StockIssuesTabProps) {
         </div>
       )}
 
-      <AllocationPlanSection jobId={jobId} allocations={allocations} onRefresh={onRefresh} />
+      <div id="stock-allocation-section">
+        <AllocationPlanSection jobId={jobId} allocations={allocations} onRefresh={onRefresh} />
+      </div>
 
       <div className="border-t border-gray-200 pt-6">
         <div className="flex items-center justify-between mb-4">

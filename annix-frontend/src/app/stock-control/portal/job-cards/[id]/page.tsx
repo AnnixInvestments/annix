@@ -1457,7 +1457,10 @@ export default function JobCardDetailPage() {
                     isRequisitionStep(bg) ? (
                       <button
                         key={bg.stepKey}
-                        onClick={() => handleTabChange("coating")}
+                        onClick={() => {
+                          handleTabChange("coating");
+                          scrollToElementId("stock-decision");
+                        }}
                         className="px-3 py-1.5 text-xs font-medium rounded-md bg-teal-600 text-white hover:bg-teal-700 transition-colors"
                       >
                         Stock Assessment
@@ -1477,7 +1480,10 @@ export default function JobCardDetailPage() {
                     ) : isStockAllocStep(bg) ? (
                       <div key={bg.stepKey} className="flex flex-wrap gap-2">
                         <button
-                          onClick={() => handleTabChange("stock-issues")}
+                          onClick={() => {
+                            handleTabChange("stock-issues");
+                            scrollToElementId("stock-allocation-section");
+                          }}
                           className="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-md bg-teal-600 text-white hover:bg-teal-700 transition-colors"
                         >
                           <svg
@@ -1564,15 +1570,7 @@ export default function JobCardDetailPage() {
                         key={bg.stepKey}
                         onClick={() => {
                           handleTabChange("quality");
-                          const scrollToReview = (attempts: number) => {
-                            const el = document.getElementById("qa-review-section");
-                            if (el) {
-                              el.scrollIntoView({ behavior: "smooth", block: "start" });
-                            } else if (attempts > 0) {
-                              setTimeout(() => scrollToReview(attempts - 1), 150);
-                            }
-                          };
-                          setTimeout(() => scrollToReview(20), 100);
+                          scrollToElementId("qa-review-section");
                         }}
                         className="px-3 py-1.5 text-xs font-medium rounded-md bg-teal-600 text-white hover:bg-teal-700 transition-colors"
                       >
@@ -1583,15 +1581,7 @@ export default function JobCardDetailPage() {
                         key={bg.stepKey}
                         onClick={() => {
                           handleTabChange("quality");
-                          const scrollToReview = (attempts: number) => {
-                            const el = document.getElementById("qa-review-section");
-                            if (el) {
-                              el.scrollIntoView({ behavior: "smooth", block: "start" });
-                            } else if (attempts > 0) {
-                              setTimeout(() => scrollToReview(attempts - 1), 150);
-                            }
-                          };
-                          setTimeout(() => scrollToReview(20), 100);
+                          scrollToElementId("qa-review-section");
                         }}
                         className="px-3 py-1.5 text-xs font-medium rounded-md bg-teal-600 text-white hover:bg-teal-700 transition-colors"
                       >
@@ -1606,15 +1596,7 @@ export default function JobCardDetailPage() {
                         key={bg.stepKey}
                         onClick={() => {
                           handleTabChange("quality");
-                          const scrollToBatch = (attempts: number) => {
-                            const el = document.getElementById("defelsko-batch-section");
-                            if (el) {
-                              el.scrollIntoView({ behavior: "smooth", block: "start" });
-                            } else if (attempts > 0) {
-                              setTimeout(() => scrollToBatch(attempts - 1), 150);
-                            }
-                          };
-                          setTimeout(() => scrollToBatch(20), 100);
+                          scrollToElementId("defelsko-batch-section");
                         }}
                         className="px-3 py-1.5 text-xs font-medium rounded-md bg-blue-600 text-white hover:bg-blue-700 transition-colors"
                       >
@@ -1640,15 +1622,7 @@ export default function JobCardDetailPage() {
                         key={bg.stepKey}
                         onClick={() => {
                           handleTabChange("quality");
-                          const scrollToPhotos = (attempts: number) => {
-                            const el = document.getElementById("qa-final-photos-section");
-                            if (el) {
-                              el.scrollIntoView({ behavior: "smooth", block: "start" });
-                            } else if (attempts > 0) {
-                              setTimeout(() => scrollToPhotos(attempts - 1), 150);
-                            }
-                          };
-                          setTimeout(() => scrollToPhotos(20), 100);
+                          scrollToElementId("qa-final-photos-section");
                         }}
                         className="px-3 py-1.5 text-xs font-medium rounded-md bg-teal-600 text-white hover:bg-teal-700 transition-colors"
                       >
@@ -1667,15 +1641,7 @@ export default function JobCardDetailPage() {
                         key={bg.stepKey}
                         onClick={() => {
                           handleTabChange("quality");
-                          const scrollToDataBook = (attempts: number) => {
-                            const el = document.getElementById("data-book-section");
-                            if (el) {
-                              el.scrollIntoView({ behavior: "smooth", block: "start" });
-                            } else if (attempts > 0) {
-                              setTimeout(() => scrollToDataBook(attempts - 1), 150);
-                            }
-                          };
-                          setTimeout(() => scrollToDataBook(20), 100);
+                          scrollToElementId("data-book-section");
                         }}
                         className="px-3 py-1.5 text-xs font-medium rounded-md bg-teal-600 text-white hover:bg-teal-700 transition-colors"
                       >
@@ -1684,7 +1650,10 @@ export default function JobCardDetailPage() {
                     ) : isJobFileReviewStep(bg) ? (
                       <div key={bg.stepKey} className="flex flex-wrap gap-2">
                         <button
-                          onClick={() => handleTabChange("job-files")}
+                          onClick={() => {
+                            handleTabChange("job-files");
+                            scrollToElementId("job-file-upload-area");
+                          }}
                           className="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-md bg-blue-600 text-white hover:bg-blue-700 transition-colors"
                         >
                           <svg
@@ -1717,7 +1686,10 @@ export default function JobCardDetailPage() {
                     ) : isDocUploadStep(bg) ? (
                       <div key={bg.stepKey} className="flex flex-wrap gap-2">
                         <button
-                          onClick={() => handleTabChange("job-files")}
+                          onClick={() => {
+                            handleTabChange("job-files");
+                            scrollToElementId("document-upload-gate");
+                          }}
                           className="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-md bg-blue-600 text-white hover:bg-blue-700 transition-colors"
                         >
                           <svg

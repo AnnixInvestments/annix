@@ -121,7 +121,10 @@ export function DocumentUploadGate(props: DocumentUploadGateProps) {
 
   return (
     <>
-      <div className="rounded-lg border-2 border-amber-300 bg-amber-50 p-5 shadow-sm">
+      <div
+        id="document-upload-gate"
+        className="rounded-lg border-2 border-amber-300 bg-amber-50 p-5 shadow-sm"
+      >
         <div className="mb-4 flex items-center justify-between">
           <div>
             <h3 className="text-sm font-semibold text-gray-900">Upload Required Documents</h3>

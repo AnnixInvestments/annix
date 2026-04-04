@@ -91,6 +91,7 @@ export function JobFileTab(props: JobFileTabProps) {
   return (
     <div className="py-4 space-y-4">
       <div
+        id="job-file-upload-area"
         onDrop={onDrop}
         onDragOver={onDragOver}
         onDragLeave={onDragLeave}
