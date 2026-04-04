@@ -424,6 +424,7 @@ export default function JobCardDetailPage() {
   const currentStatus = workflowStatus?.currentStatus || null;
   const currentStep = workflowStatus?.currentStep || null;
   const userRole = effectiveRole;
+  const isAdminView = userRole === "admin" && !isPreviewActive;
 
   const canApprove = useMemo(() => {
     if (!currentStep || !workflowStatus) return false;
@@ -560,8 +561,6 @@ export default function JobCardDetailPage() {
       (bg) => bg.stepKey === "qa_review" && bg.completedAt === null,
     );
 
-    const isAdminView = userRole === "admin" && !isPreviewActive;
-
     const allActionable = backgroundSteps.filter((bg) => {
       if (bg.completedAt !== null) return false;
 
@@ -570,10 +569,12 @@ export default function JobCardDetailPage() {
       }
 
       const trigger = bg.triggerAfterStep || "__root__";
+      const originFgIdx = resolveOriginFgIdx(trigger);
+      const isColored = isInColoredBranch(bg.stepKey);
 
-      if (!isAdminView) {
-        const originFgIdx = resolveOriginFgIdx(trigger);
-        const isColored = isInColoredBranch(bg.stepKey);
+      if (isAdminView) {
+        if (originFgIdx >= currentFgIdx) return false;
+      } else {
         if (isColored ? originFgIdx > currentFgIdx : originFgIdx >= currentFgIdx) return false;
 
         if (hasIncompleteColored && !isInColoredBranch(bg.stepKey)) {
@@ -588,16 +589,19 @@ export default function JobCardDetailPage() {
 
       if (bgKeySet.has(trigger) && !completedKeys.has(trigger)) return false;
 
-      const allSiblings = triggerGroups[trigger] || [];
-      const sameBranchSiblings = allSiblings.filter(
-        (s) => (s.branchColor || null) === (bg.branchColor || null),
-      );
-      const myIdx = sameBranchSiblings.findIndex((s) => s.stepKey === bg.stepKey);
-      if (myIdx > 0) {
-        const allPriorComplete = sameBranchSiblings
-          .slice(0, myIdx)
-          .every((s) => completedKeys.has(s.stepKey));
-        if (!allPriorComplete) return false;
+      const isNonBlockingBranch = bg.rejoinAtStep !== null;
+      if (!isNonBlockingBranch) {
+        const allSiblings = triggerGroups[trigger] || [];
+        const sameBranchSiblings = allSiblings.filter(
+          (s) => (s.branchColor || null) === (bg.branchColor || null),
+        );
+        const myIdx = sameBranchSiblings.findIndex((s) => s.stepKey === bg.stepKey);
+        if (myIdx > 0) {
+          const allPriorComplete = sameBranchSiblings
+            .slice(0, myIdx)
+            .every((s) => completedKeys.has(s.stepKey));
+          if (!allPriorComplete) return false;
+        }
       }
 
       const assigned = assignments[bg.stepKey];
@@ -1415,7 +1419,7 @@ export default function JobCardDetailPage() {
                 </button>
               )}
               {userPendingBgSteps.filter((bg) => !isReceptionStep(bg)).length > 0 &&
-                (!canApprove || prevStepBgPending || currentStepBlueBgPending) &&
+                (isAdminView || !canApprove || prevStepBgPending || currentStepBlueBgPending) &&
                 userPendingBgSteps
                   .filter((bg) => !isReceptionStep(bg))
                   .map((bg) =>
