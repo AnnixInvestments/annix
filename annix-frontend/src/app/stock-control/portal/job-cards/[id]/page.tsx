@@ -452,6 +452,17 @@ export default function JobCardDetailPage() {
     if (!assigned || assigned.length === 0) return false;
     return assigned.some((u) => u.name === checkName);
   }, [workflowStatus, user?.name, effectiveName, userRole, isPreviewActive]);
+
+  const adminBlockedFromStep = useCallback(
+    (stepKey: string | null | undefined) => {
+      if (!isAdminView || !stepKey || !workflowStatus) return false;
+      const assigned = workflowStatus.stepAssignments?.[stepKey];
+      if (!assigned || assigned.length === 0) return true;
+      return !assigned.some((u) => u.name === user?.name);
+    },
+    [isAdminView, workflowStatus, user?.name],
+  );
+
   const pipingLossPct = profile?.pipingLossFactorPct || 45;
 
   const validLineItemCount = useMemo(
@@ -1359,7 +1370,7 @@ export default function JobCardDetailPage() {
                 currentStepActionLabel && (
                   <button
                     onClick={handleCompleteFgAction}
-                    disabled={isCompletingFgAction}
+                    disabled={isCompletingFgAction || adminBlockedFromStep(currentStep)}
                     className="px-3 py-1.5 bg-amber-600 text-white rounded-md hover:bg-amber-700 font-medium text-xs disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
                   >
                     {isCompletingFgAction ? "..." : currentStepActionLabel}
@@ -1373,7 +1384,8 @@ export default function JobCardDetailPage() {
                 !prevStepBgPending && (
                   <button
                     onClick={() => openApprovalModal(currentStep)}
-                    className="px-3 py-1.5 bg-green-600 text-white rounded-md hover:bg-green-700 font-medium text-xs transition-colors"
+                    disabled={adminBlockedFromStep(currentStep)}
+                    className="px-3 py-1.5 bg-green-600 text-white rounded-md hover:bg-green-700 font-medium text-xs disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
                   >
                     {currentStepPhaseInfo.phase2ActionLabel || "Release"}
                   </button>
@@ -1381,7 +1393,7 @@ export default function JobCardDetailPage() {
               {canAcceptDraft && (
                 <button
                   onClick={handleDraftAccepted}
-                  disabled={isUpdatingStatus}
+                  disabled={isUpdatingStatus || adminBlockedFromStep("document_upload")}
                   className="px-3 py-1.5 bg-amber-600 text-white rounded-md hover:bg-amber-700 font-medium text-xs disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
                 >
                   {isUpdatingStatus ? "..." : "Draft Accepted"}
@@ -1398,7 +1410,8 @@ export default function JobCardDetailPage() {
                   }}
                   disabled={
                     isDownloadingQr ||
-                    completingStepKey === userPendingBgSteps.find(isReceptionStep)?.stepKey
+                    completingStepKey === userPendingBgSteps.find(isReceptionStep)?.stepKey ||
+                    adminBlockedFromStep(userPendingBgSteps.find(isReceptionStep)?.stepKey)
                   }
                   className="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-md bg-amber-600 text-white hover:bg-amber-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
                 >
@@ -1476,7 +1489,9 @@ export default function JobCardDetailPage() {
                         {hasAllocations && (
                           <button
                             onClick={() => handleCompleteBackgroundStep(bg.stepKey)}
-                            disabled={completingStepKey === bg.stepKey}
+                            disabled={
+                              completingStepKey === bg.stepKey || adminBlockedFromStep(bg.stepKey)
+                            }
                             className="px-3 py-1.5 text-xs font-medium rounded-md bg-amber-600 text-white hover:bg-amber-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
                           >
                             {completingStepKey === bg.stepKey
@@ -1517,7 +1532,9 @@ export default function JobCardDetailPage() {
                         ) : (
                           <button
                             onClick={() => handleCompleteBackgroundStep(bg.stepKey)}
-                            disabled={completingStepKey === bg.stepKey}
+                            disabled={
+                              completingStepKey === bg.stepKey || adminBlockedFromStep(bg.stepKey)
+                            }
                             className="px-3 py-1.5 text-xs font-medium rounded-md bg-amber-600 text-white hover:bg-amber-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
                           >
                             {completingStepKey === bg.stepKey ? "..." : "Complete Ready"}
@@ -1593,7 +1610,9 @@ export default function JobCardDetailPage() {
                       <button
                         key={bg.stepKey}
                         onClick={() => handleCompleteBackgroundStep(bg.stepKey)}
-                        disabled={completingStepKey === bg.stepKey}
+                        disabled={
+                          completingStepKey === bg.stepKey || adminBlockedFromStep(bg.stepKey)
+                        }
                         className="px-3 py-1.5 text-xs font-medium rounded-md bg-amber-600 text-white hover:bg-amber-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
                       >
                         {completingStepKey === bg.stepKey ? "..." : "Batches Completed"}
@@ -1668,7 +1687,9 @@ export default function JobCardDetailPage() {
                         {jobFileGateSatisfied && (
                           <button
                             onClick={() => handleCompleteBackgroundStep(bg.stepKey)}
-                            disabled={completingStepKey === bg.stepKey}
+                            disabled={
+                              completingStepKey === bg.stepKey || adminBlockedFromStep(bg.stepKey)
+                            }
                             className="px-3 py-1.5 text-xs font-medium rounded-md bg-green-600 text-white hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
                           >
                             {completingStepKey === bg.stepKey ? "..." : "Complete File Review"}
@@ -1699,7 +1720,9 @@ export default function JobCardDetailPage() {
                         {docUploadGateSatisfied && (
                           <button
                             onClick={() => handleCompleteBackgroundStep(bg.stepKey)}
-                            disabled={completingStepKey === bg.stepKey}
+                            disabled={
+                              completingStepKey === bg.stepKey || adminBlockedFromStep(bg.stepKey)
+                            }
                             className="px-3 py-1.5 text-xs font-medium rounded-md bg-amber-600 text-white hover:bg-amber-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
                           >
                             {completingStepKey === bg.stepKey
@@ -1722,7 +1745,9 @@ export default function JobCardDetailPage() {
                           <button
                             key={`${bg.stepKey}-${outcome.key}`}
                             onClick={() => handleCompleteBackgroundStep(bg.stepKey, outcome.key)}
-                            disabled={completingStepKey === bg.stepKey}
+                            disabled={
+                              completingStepKey === bg.stepKey || adminBlockedFromStep(bg.stepKey)
+                            }
                             className={`px-3 py-1.5 text-xs font-medium rounded-md text-white disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors ${btnClass}`}
                           >
                             {completingStepKey === bg.stepKey ? "..." : outcome.label}
@@ -1733,7 +1758,9 @@ export default function JobCardDetailPage() {
                       <button
                         key={bg.stepKey}
                         onClick={() => handleCompleteBackgroundStep(bg.stepKey)}
-                        disabled={completingStepKey === bg.stepKey}
+                        disabled={
+                          completingStepKey === bg.stepKey || adminBlockedFromStep(bg.stepKey)
+                        }
                         className="px-3 py-1.5 text-xs font-medium rounded-md bg-amber-600 text-white hover:bg-amber-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
                       >
                         {completingStepKey === bg.stepKey
