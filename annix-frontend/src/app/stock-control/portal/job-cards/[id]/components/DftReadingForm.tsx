@@ -152,10 +152,10 @@ export default function DftReadingForm(props: DftReadingFormProps) {
 
   const filledReadings = useMemo(
     () =>
-      READING_ROWS.map((num) => ({
-        itemNumber: num,
-        value: readings[num] || "",
-      })).filter((r) => r.value !== "" && !Number.isNaN(Number(r.value))),
+      READING_ROWS.map((num) => {
+        const value = readings[num] || "";
+        return { itemNumber: num, value };
+      }).filter((r) => r.value !== "" && !Number.isNaN(Number(r.value))),
     [readings],
   );
 
@@ -329,22 +329,24 @@ export default function DftReadingForm(props: DftReadingFormProps) {
       )}
 
       <div className="mb-4 grid grid-cols-2 gap-x-6 gap-y-1">
-        {READING_ROWS.map((num) => (
-          <div key={num} className="flex items-center gap-2">
-            <span className="w-6 text-right text-sm text-gray-500">{num}</span>
-            <input
-              type="number"
-              value={readings[num] || ""}
-              onChange={(e) => updateReading(num, e.target.value)}
-              placeholder="μm"
-              className={`w-full rounded-md border px-3 py-1.5 text-sm ${
-                readingOutOfSpec(readings[num] || "")
-                  ? "border-red-500 bg-red-50 text-red-700"
-                  : "border-gray-300"
-              }`}
-            />
-          </div>
-        ))}
+        {READING_ROWS.map((num) => {
+          const readingValue = readings[num] || "";
+          const outOfSpec = readingOutOfSpec(readingValue);
+          return (
+            <div key={num} className="flex items-center gap-2">
+              <span className="w-6 text-right text-sm text-gray-500">{num}</span>
+              <input
+                type="number"
+                value={readingValue}
+                onChange={(e) => updateReading(num, e.target.value)}
+                placeholder="μm"
+                className={`w-full rounded-md border px-3 py-1.5 text-sm ${
+                  outOfSpec ? "border-red-500 bg-red-50 text-red-700" : "border-gray-300"
+                }`}
+              />
+            </div>
+          );
+        })}
       </div>
 
       <div className="mb-6 flex items-center gap-2 text-sm">
