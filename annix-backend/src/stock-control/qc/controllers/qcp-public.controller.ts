@@ -76,4 +76,13 @@ export class QcpPublicController {
   ) {
     return this.approvalService.forwardToThirdParty(token, body.email, body.name || null);
   }
+
+  @Post(":token/forward-to-client")
+  @ApiOperation({ summary: "Forward QCP from MPS to end client" })
+  async forwardToClient(
+    @Param("token") token: string,
+    @Body() body: { email: string; name?: string },
+  ) {
+    return this.approvalService.forwardToClient(token, body.email, body.name || null);
+  }
 }

@@ -119,7 +119,7 @@ declare module "./base" {
     resendControlPlanApproval(
       jobCardId: number,
       planId: number,
-      partyRole: "client" | "third_party",
+      partyRole: "mps" | "client" | "third_party",
     ): Promise<QcpApprovalTokenRecord>;
     controlPlanApprovalHistory(
       jobCardId: number,

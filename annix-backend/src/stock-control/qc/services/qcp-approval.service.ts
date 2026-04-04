@@ -47,7 +47,7 @@ export class QcpApprovalService {
     }
 
     await this.tokenRepo.update(
-      { controlPlanId: planId, partyRole: "client", status: QcpApprovalTokenStatus.PENDING },
+      { controlPlanId: planId, partyRole: "mps", status: QcpApprovalTokenStatus.PENDING },
       { status: QcpApprovalTokenStatus.SUPERSEDED },
     );
 
@@ -58,7 +58,7 @@ export class QcpApprovalService {
       companyId,
       controlPlanId: planId,
       controlPlanVersion: plan.version,
-      partyRole: "client" as QcpPartyRole,
+      partyRole: "mps" as QcpPartyRole,
       recipientEmail: clientEmail,
       recipientName: null,
       token,
@@ -71,7 +71,7 @@ export class QcpApprovalService {
 
     const activeParties = ["pls", "mps", "client"];
     await this.planRepo.update(planId, {
-      approvalStatus: "pending_client",
+      approvalStatus: "pending_mps",
       clientEmail,
       activeParties,
     });
@@ -89,11 +89,13 @@ export class QcpApprovalService {
       to: clientEmail,
       subject:
         `QCP Review Request - ${plan.qcpNumber || `QCP #${plan.id}`} - ${plan.jobName || ""}`.trim(),
-      html: this.reviewRequestEmailHtml(companyName, plan, reviewUrl, "client"),
+      html: this.reviewRequestEmailHtml(companyName, plan, reviewUrl, "mps"),
       text: `You have been requested to review QCP ${plan.qcpNumber || plan.id}. Review link: ${reviewUrl}`,
     });
 
-    this.logger.log(`QCP approval token sent to ${clientEmail} for plan ${planId} by ${user.name}`);
+    this.logger.log(
+      `QCP approval token sent to ${clientEmail} (MPS) for plan ${planId} by ${user.name}`,
+    );
 
     return saved;
   }
@@ -169,12 +171,23 @@ export class QcpApprovalService {
       throw new NotFoundException("Control plan no longer exists");
     }
 
+    const partyKeyMap: Record<string, string> = {
+      mps: "mps",
+      client: "client",
+      third_party: "thirdParty",
+    };
+    const roleLabelMap: Record<string, string> = {
+      mps: "MPS",
+      client: "Client",
+      third_party: "3rd Party",
+    };
+
     if (payload.action === "approve") {
       if (!payload.signatureName || !payload.signatureUrl) {
         throw new BadRequestException("Signature is required for approval");
       }
 
-      const partyKey = token.partyRole === "client" ? "client" : "thirdParty";
+      const partyKey = partyKeyMap[token.partyRole] || "client";
       const updatedActivities = (payload.activities || plan.activities).map(
         (activity: any, idx: number) => {
           const planActivity = plan.activities[idx];
@@ -186,7 +199,7 @@ export class QcpApprovalService {
         },
       );
 
-      const sigParty = token.partyRole === "client" ? "Client" : "3rd Party";
+      const sigParty = roleLabelMap[token.partyRole] || "Client";
       const updatedSignatures = plan.approvalSignatures.map((sig) => {
         if (sig.party === sigParty) {
           return {
@@ -200,11 +213,13 @@ export class QcpApprovalService {
       });
 
       const nextStatus =
-        token.partyRole === "client"
-          ? plan.thirdPartyEmail || plan.activeParties?.includes("thirdParty")
-            ? "pending_third_party"
-            : "approved"
-          : "approved";
+        token.partyRole === "mps"
+          ? "approved"
+          : token.partyRole === "client"
+            ? plan.thirdPartyEmail || plan.activeParties?.includes("thirdParty")
+              ? "pending_third_party"
+              : "approved"
+            : "approved";
 
       await this.planRepo.update(plan.id, {
         activities: updatedActivities,
@@ -223,10 +238,11 @@ export class QcpApprovalService {
       });
 
       const company = await this.companyRepo.findOne({ where: { id: token.companyId } });
+      const roleLabel = roleLabelMap[token.partyRole] || token.partyRole;
       await this.emailService.sendEmail(token.companyId, {
         to: company?.notificationEmails?.[0] || token.recipientEmail,
         subject: `QCP Approved - ${plan.qcpNumber || `QCP #${plan.id}`} by ${payload.signatureName}`,
-        html: `<p><strong>${payload.signatureName}</strong> (${token.partyRole === "client" ? "Client" : "3rd Party"}) has approved QCP <strong>${plan.qcpNumber || plan.id}</strong>.</p>`,
+        html: `<p><strong>${payload.signatureName}</strong> (${roleLabel}) has approved QCP <strong>${plan.qcpNumber || plan.id}</strong>.</p>`,
         text: `${payload.signatureName} has approved QCP ${plan.qcpNumber || plan.id}.`,
       });
     } else {
@@ -254,7 +270,7 @@ export class QcpApprovalService {
           to: notifEmail,
           subject: `QCP Changes Requested - ${plan.qcpNumber || `QCP #${plan.id}`}`,
           html: `
-            <p><strong>${token.recipientEmail}</strong> (${token.partyRole === "client" ? "Client" : "3rd Party"}) has requested changes to QCP <strong>${plan.qcpNumber || plan.id}</strong>.</p>
+            <p><strong>${token.recipientEmail}</strong> (${roleLabelMap[token.partyRole] || token.partyRole}) has requested changes to QCP <strong>${plan.qcpNumber || plan.id}</strong>.</p>
             ${payload.overallComments ? `<p><strong>Comments:</strong> ${payload.overallComments}</p>` : ""}
             ${remarksHtml ? `<p><strong>Line remarks:</strong></p><ul>${remarksHtml}</ul>` : ""}
           `,
@@ -308,6 +324,81 @@ export class QcpApprovalService {
     }
 
     return { saved: true };
+  }
+
+  async forwardToClient(
+    tokenStr: string,
+    clientEmail: string,
+    clientName: string | null,
+  ): Promise<QcpApprovalToken> {
+    const mpsToken = await this.tokenRepo.findOne({ where: { token: tokenStr } });
+    if (!mpsToken) {
+      throw new NotFoundException("Review link not found");
+    }
+
+    if (mpsToken.status !== QcpApprovalTokenStatus.APPROVED) {
+      throw new BadRequestException("MPS must approve before forwarding to client");
+    }
+
+    if (mpsToken.partyRole !== "mps") {
+      throw new ForbiddenException("Only MPS tokens can forward to client");
+    }
+
+    const plan = await this.planRepo.findOne({
+      where: { id: mpsToken.controlPlanId, companyId: mpsToken.companyId },
+    });
+    if (!plan) {
+      throw new NotFoundException("Control plan not found");
+    }
+
+    await this.tokenRepo.update(
+      {
+        controlPlanId: plan.id,
+        partyRole: "client",
+        status: QcpApprovalTokenStatus.PENDING,
+      },
+      { status: QcpApprovalTokenStatus.SUPERSEDED },
+    );
+
+    const newToken = randomBytes(32).toString("hex");
+    const expiresAt = now().plus({ days: 14 }).toJSDate();
+
+    const clientToken = this.tokenRepo.create({
+      companyId: mpsToken.companyId,
+      controlPlanId: plan.id,
+      controlPlanVersion: plan.version,
+      partyRole: "client" as QcpPartyRole,
+      recipientEmail: clientEmail,
+      recipientName: clientName,
+      token: newToken,
+      tokenExpiresAt: expiresAt,
+      activitiesSnapshot: plan.activities,
+      sentByParty: "mps",
+    });
+
+    const saved = await this.tokenRepo.save(clientToken);
+
+    await this.planRepo.update(plan.id, {
+      approvalStatus: "pending_client",
+    });
+
+    const company = await this.companyRepo.findOne({ where: { id: mpsToken.companyId } });
+    const companyName = company?.name || "Stock Control";
+    const baseUrl = this.frontendBaseUrl();
+    const reviewUrl = `${baseUrl}/stock-control/qcp-review/${newToken}`;
+
+    await this.emailService.sendEmail(mpsToken.companyId, {
+      to: clientEmail,
+      subject: `QCP Review Request (Client) - ${plan.qcpNumber || `QCP #${plan.id}`}`,
+      html: this.reviewRequestEmailHtml(companyName, plan, reviewUrl, "client"),
+      text: `You have been requested to review QCP ${plan.qcpNumber || plan.id} as client. Review link: ${reviewUrl}`,
+    });
+
+    this.logger.log(
+      `QCP client token sent to ${clientEmail} for plan ${plan.id} (forwarded by MPS)`,
+    );
+
+    return saved;
   }
 
   async forwardToThirdParty(
@@ -441,7 +532,12 @@ export class QcpApprovalService {
       throw new NotFoundException("Control plan not found");
     }
 
-    const email = partyRole === "client" ? plan.clientEmail : plan.thirdPartyEmail;
+    const email =
+      partyRole === "mps"
+        ? plan.clientEmail
+        : partyRole === "client"
+          ? plan.clientEmail
+          : plan.thirdPartyEmail;
     if (!email) {
       throw new BadRequestException(`No ${partyRole} email set on this plan`);
     }
@@ -470,6 +566,7 @@ export class QcpApprovalService {
     const saved = await this.tokenRepo.save(approvalToken);
 
     const statusMap: Record<string, string> = {
+      mps: "pending_mps",
       client: "pending_client",
       third_party: "pending_third_party",
     };
@@ -536,7 +633,12 @@ export class QcpApprovalService {
     reviewUrl: string,
     role: QcpPartyRole,
   ): string {
-    const roleLabel = role === "client" ? "Client" : "3rd Party";
+    const roleLabelLookup: Record<string, string> = {
+      mps: "Polymer Customer",
+      client: "Client",
+      third_party: "3rd Party",
+    };
+    const roleLabel = roleLabelLookup[role] || "Client";
     return `
       <div style="font-family: Arial, sans-serif; padding: 20px; max-width: 600px;">
         <h2 style="color: #0d9488;">QCP Review Request</h2>

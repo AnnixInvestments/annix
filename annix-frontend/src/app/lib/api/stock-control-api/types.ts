@@ -945,6 +945,7 @@ export interface QcpApprovalSignature {
 
 export type QcpApprovalStatus =
   | "draft"
+  | "pending_mps"
   | "pending_client"
   | "pending_third_party"
   | "changes_requested"

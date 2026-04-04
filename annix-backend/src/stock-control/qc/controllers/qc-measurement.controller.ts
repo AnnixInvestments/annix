@@ -536,7 +536,7 @@ export class QcMeasurementController {
   async resendApproval(
     @Req() req: any,
     @Param("id") id: number,
-    @Body() body: { partyRole: "client" | "third_party" },
+    @Body() body: { partyRole: "mps" | "client" | "third_party" },
   ) {
     return this.approvalService.resendApproval(req.user.companyId, id, body.partyRole, req.user);
   }

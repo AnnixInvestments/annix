@@ -16,7 +16,7 @@ export enum QcpApprovalTokenStatus {
   SUPERSEDED = "SUPERSEDED",
 }
 
-export type QcpPartyRole = "client" | "third_party";
+export type QcpPartyRole = "mps" | "client" | "third_party";
 
 @Entity("qcp_approval_tokens")
 export class QcpApprovalToken {

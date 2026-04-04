@@ -15,7 +15,7 @@ type ReviewStatus = "loading" | "ready" | "submitted" | "error";
 interface TokenDetails {
   token: {
     id: number;
-    partyRole: "client" | "third_party";
+    partyRole: "mps" | "client" | "third_party";
     recipientEmail: string;
     status: string;
   };
@@ -56,8 +56,8 @@ export default function QcpReviewPage() {
   const [signatureName, setSignatureName] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submittedAction, setSubmittedAction] = useState<string | null>(null);
-  const [thirdPartyEmail, setThirdPartyEmail] = useState("");
-  const [thirdPartyName, setThirdPartyName] = useState("");
+  const [forwardEmail, setForwardEmail] = useState("");
+  const [forwardName, setForwardName] = useState("");
   const [isForwarding, setIsForwarding] = useState(false);
   const [forwardSuccess, setForwardSuccess] = useState(false);
 
@@ -83,7 +83,12 @@ export default function QcpReviewPage() {
     load();
   }, [tokenStr]);
 
-  const partyKey = details?.token.partyRole === "client" ? "client" : "thirdParty";
+  const partyKeyMap: Record<string, "mps" | "client" | "thirdParty"> = {
+    mps: "mps",
+    client: "client",
+    third_party: "thirdParty",
+  };
+  const partyKey = partyKeyMap[details?.token.partyRole || "client"] || "client";
 
   const updateIntervention = useCallback(
     (activityIndex: number, value: InterventionType | null) => {
@@ -211,15 +216,17 @@ export default function QcpReviewPage() {
   }, [tokenStr, activities, partyKey]);
 
   const handleForward = useCallback(async () => {
-    if (!thirdPartyEmail.trim()) return;
+    if (!forwardEmail.trim()) return;
+    const isMps = details?.token.partyRole === "mps";
+    const endpoint = isMps ? "forward-to-client" : "forward";
     setIsForwarding(true);
     try {
-      const res = await publicApi(`/${tokenStr}/forward`, {
+      const res = await publicApi(`/${tokenStr}/${endpoint}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          email: thirdPartyEmail.trim(),
-          name: thirdPartyName.trim() || null,
+          email: forwardEmail.trim(),
+          name: forwardName.trim() || null,
         }),
       });
 
@@ -235,7 +242,7 @@ export default function QcpReviewPage() {
     } finally {
       setIsForwarding(false);
     }
-  }, [tokenStr, thirdPartyEmail, thirdPartyName]);
+  }, [tokenStr, forwardEmail, forwardName, details?.token.partyRole]);
 
   const primaryColor = details?.company.primaryColor || "#0d9488";
 
@@ -285,44 +292,61 @@ export default function QcpReviewPage() {
               : `Your change request has been sent to ${details?.company.name || "the team"} for revision.`}
           </p>
 
-          {isApproved && details?.token.partyRole === "client" && (
-            <div className="mt-6 rounded-lg border border-gray-200 p-4 text-left">
-              <h3 className="text-sm font-semibold text-gray-900">Forward to 3rd Party?</h3>
-              <p className="mt-1 text-xs text-gray-500">
-                If a third-party inspector needs to review this QCP, enter their details below.
-              </p>
-              {forwardSuccess ? (
-                <p className="mt-3 text-sm text-green-700">
-                  Review request sent to {thirdPartyEmail}
+          {isApproved &&
+            (details?.token.partyRole === "mps" || details?.token.partyRole === "client") && (
+              <div className="mt-6 rounded-lg border border-gray-200 p-4 text-left">
+                <h3 className="text-sm font-semibold text-gray-900">
+                  {details.token.partyRole === "mps"
+                    ? "Forward to End Client?"
+                    : "Forward to 3rd Party?"}
+                </h3>
+                <p className="mt-1 text-xs text-gray-500">
+                  {details.token.partyRole === "mps"
+                    ? "If the end client needs to review this QCP, enter their details below."
+                    : "If a third-party inspector needs to review this QCP, enter their details below."}
                 </p>
-              ) : (
-                <div className="mt-3 space-y-2">
-                  <input
-                    type="email"
-                    value={thirdPartyEmail}
-                    onChange={(e) => setThirdPartyEmail(e.target.value)}
-                    placeholder="3rd party email"
-                    className="w-full rounded border border-gray-300 px-3 py-2 text-sm"
-                  />
-                  <input
-                    type="text"
-                    value={thirdPartyName}
-                    onChange={(e) => setThirdPartyName(e.target.value)}
-                    placeholder="3rd party name (optional)"
-                    className="w-full rounded border border-gray-300 px-3 py-2 text-sm"
-                  />
-                  <button
-                    type="button"
-                    onClick={handleForward}
-                    disabled={isForwarding || !thirdPartyEmail.trim()}
-                    className="w-full rounded-md bg-teal-600 px-4 py-2 text-sm font-medium text-white hover:bg-teal-700 disabled:opacity-50"
-                  >
-                    {isForwarding ? "Sending..." : "Forward to 3rd Party"}
-                  </button>
-                </div>
-              )}
-            </div>
-          )}
+                {forwardSuccess ? (
+                  <p className="mt-3 text-sm text-green-700">
+                    Review request sent to {forwardEmail}
+                  </p>
+                ) : (
+                  <div className="mt-3 space-y-2">
+                    <input
+                      type="email"
+                      value={forwardEmail}
+                      onChange={(e) => setForwardEmail(e.target.value)}
+                      placeholder={
+                        details.token.partyRole === "mps" ? "End client email" : "3rd party email"
+                      }
+                      className="w-full rounded border border-gray-300 px-3 py-2 text-sm"
+                    />
+                    <input
+                      type="text"
+                      value={forwardName}
+                      onChange={(e) => setForwardName(e.target.value)}
+                      placeholder={
+                        details.token.partyRole === "mps"
+                          ? "End client name (optional)"
+                          : "3rd party name (optional)"
+                      }
+                      className="w-full rounded border border-gray-300 px-3 py-2 text-sm"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleForward}
+                      disabled={isForwarding || !forwardEmail.trim()}
+                      className="w-full rounded-md bg-teal-600 px-4 py-2 text-sm font-medium text-white hover:bg-teal-700 disabled:opacity-50"
+                    >
+                      {isForwarding
+                        ? "Sending..."
+                        : details.token.partyRole === "mps"
+                          ? "Forward to End Client"
+                          : "Forward to 3rd Party"}
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
         </div>
       </div>
     );
@@ -331,7 +355,12 @@ export default function QcpReviewPage() {
   const plan = details?.plan;
   if (!plan || !details) return null;
 
-  const roleLabel = details.token.partyRole === "client" ? "Client" : "3rd Party";
+  const roleLabelMap: Record<string, string> = {
+    mps: "Polymer Customer",
+    client: "Client",
+    third_party: "3rd Party",
+  };
+  const roleLabel = roleLabelMap[details.token.partyRole] || "Client";
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-6">

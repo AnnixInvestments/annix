@@ -375,6 +375,7 @@ function templateForType(type: QcpPlanType): QcpActivity[] {
 
 const APPROVAL_STATUS_CONFIG: Record<QcpApprovalStatus, { label: string; color: string }> = {
   draft: { label: "Draft", color: "bg-gray-100 text-gray-800" },
+  pending_mps: { label: "Pending Customer", color: "bg-cyan-100 text-cyan-800" },
   pending_client: { label: "Pending Client", color: "bg-blue-100 text-blue-800" },
   pending_third_party: { label: "Pending 3rd Party", color: "bg-indigo-100 text-indigo-800" },
   changes_requested: { label: "Changes Requested", color: "bg-amber-100 text-amber-800" },
@@ -509,9 +510,13 @@ export function QcpForm({ jobCardId, existingPlan, onSaved, onCancel }: QcpFormP
       const area = type === "paint_external" ? "external" : "internal";
       const relevantCoats = coating.coats.filter((c) => c.area === area);
       if (relevantCoats.length > 0) {
-        const specParts = relevantCoats.map(
-          (c) => `${c.product} (${c.minDftUm}-${c.maxDftUm} μm DFT)`,
-        );
+        const specParts = relevantCoats.map((c) => {
+          const dft =
+            c.minDftUm && c.maxDftUm && c.minDftUm !== c.maxDftUm
+              ? `${c.minDftUm}-${c.maxDftUm}`
+              : `${c.maxDftUm || c.minDftUm}`;
+          return `${c.product} (${dft} μm DFT)`;
+        });
         setSpecification(specParts.join("; "));
       }
       if (coating.surfacePrep) {
@@ -678,7 +683,7 @@ export function QcpForm({ jobCardId, existingPlan, onSaved, onCancel }: QcpFormP
         existingPlan.id,
         clientEmail.trim(),
       );
-      setApprovalStatus("pending_client");
+      setApprovalStatus("pending_mps");
       onSaved();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to send for approval");
@@ -698,13 +703,18 @@ export function QcpForm({ jobCardId, existingPlan, onSaved, onCancel }: QcpFormP
     }
   };
 
-  const handleResendApproval = async (partyRole: "client" | "third_party") => {
+  const handleResendApproval = async (partyRole: "mps" | "client" | "third_party") => {
     if (!existingPlan) return;
     try {
       setIsSendingApproval(true);
       setError(null);
       await stockControlApiClient.resendControlPlanApproval(jobCardId, existingPlan.id, partyRole);
-      setApprovalStatus(partyRole === "client" ? "pending_client" : "pending_third_party");
+      const statusMap: Record<string, QcpApprovalStatus> = {
+        mps: "pending_mps",
+        client: "pending_client",
+        third_party: "pending_third_party",
+      };
+      setApprovalStatus(statusMap[partyRole] || "pending_mps");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to resend approval");
     } finally {
@@ -1100,7 +1110,9 @@ export function QcpForm({ jobCardId, existingPlan, onSaved, onCancel }: QcpFormP
                 placeholder="customer@example.com"
                 className="mt-1 w-full rounded border border-gray-300 px-3 py-2 text-sm"
                 disabled={
-                  approvalStatus === "pending_client" || approvalStatus === "pending_third_party"
+                  approvalStatus === "pending_mps" ||
+                  approvalStatus === "pending_client" ||
+                  approvalStatus === "pending_third_party"
                 }
               />
             </div>
@@ -1124,7 +1136,7 @@ export function QcpForm({ jobCardId, existingPlan, onSaved, onCancel }: QcpFormP
                 </button>
                 <button
                   type="button"
-                  onClick={() => handleResendApproval("client")}
+                  onClick={() => handleResendApproval("mps")}
                   disabled={isSendingApproval}
                   className="rounded-md border border-blue-300 bg-blue-50 px-3 py-2 text-sm font-medium text-blue-700 hover:bg-blue-100 disabled:opacity-50"
                 >

@@ -53,6 +53,7 @@ const INTERVENTION_OPTIONS: Array<{ value: string; label: string }> = [
 
 const APPROVAL_STATUS_COLORS: Record<QcpApprovalStatus, string> = {
   draft: "bg-gray-100 text-gray-700",
+  pending_mps: "bg-cyan-100 text-cyan-800",
   pending_client: "bg-blue-100 text-blue-800",
   pending_third_party: "bg-indigo-100 text-indigo-800",
   changes_requested: "bg-amber-100 text-amber-800",
@@ -61,6 +62,7 @@ const APPROVAL_STATUS_COLORS: Record<QcpApprovalStatus, string> = {
 
 const APPROVAL_STATUS_LABELS: Record<QcpApprovalStatus, string> = {
   draft: "Draft",
+  pending_mps: "Pending Customer",
   pending_client: "Pending Client",
   pending_third_party: "Pending 3rd Party",
   changes_requested: "Changes Requested",
