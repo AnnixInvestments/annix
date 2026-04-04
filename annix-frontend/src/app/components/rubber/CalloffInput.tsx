@@ -3,24 +3,25 @@
 import {
   CALLOFF_STATUS,
   CALLOFF_STATUS_OPTIONS,
-  CalloffStatus,
+  type CalloffStatus,
 } from "@annix/product-data/rubber/calloffStatus";
 import { useState } from "react";
 
 interface CalloffInputProps {
   maxQuantity: number;
   onAdd: (quantity: number, status: CalloffStatus, notes: string) => void;
+  addButtonClassName?: string;
 }
 
 export function CalloffInput(props: CalloffInputProps) {
-  const { maxQuantity, onAdd } = props;
+  const addButtonClassName = props.addButtonClassName ?? "bg-blue-600 hover:bg-blue-700";
   const [quantity, setQuantity] = useState(0);
   const [status, setStatus] = useState<CalloffStatus>(CALLOFF_STATUS.REQUESTED);
   const [notes, setNotes] = useState("");
 
   const handleAdd = () => {
     if (quantity > 0) {
-      onAdd(quantity, status, notes);
+      props.onAdd(quantity, status, notes);
       setQuantity(0);
       setNotes("");
       setStatus(CALLOFF_STATUS.REQUESTED);
@@ -46,13 +47,15 @@ export function CalloffInput(props: CalloffInputProps) {
         <input
           type="number"
           value={quantity}
-          onChange={(e) => setQuantity(Math.min(maxQuantity, Math.max(0, Number(e.target.value))))}
+          onChange={(e) =>
+            setQuantity(Math.min(props.maxQuantity, Math.max(0, Number(e.target.value))))
+          }
           className="w-16 text-center rounded-md border-gray-300 shadow-sm text-sm border p-1"
           min="0"
-          max={maxQuantity}
+          max={props.maxQuantity}
         />
         <button
-          onClick={() => setQuantity(Math.min(maxQuantity, quantity + 1))}
+          onClick={() => setQuantity(Math.min(props.maxQuantity, quantity + 1))}
           className="p-1 text-gray-400 hover:text-gray-600 border rounded"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -83,7 +86,7 @@ export function CalloffInput(props: CalloffInputProps) {
         <button
           onClick={handleAdd}
           disabled={quantity === 0}
-          className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
+          className={`px-3 py-1 text-sm text-white rounded disabled:opacity-50 ${addButtonClassName}`}
         >
           Add Calloff
         </button>

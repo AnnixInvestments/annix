@@ -25,6 +25,7 @@ import { useParams, useRouter } from "next/navigation";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Breadcrumb } from "@/app/au-rubber/components/Breadcrumb";
 import { useConfirm } from "@/app/au-rubber/hooks/useConfirm";
+import { CalloffInput } from "@/app/components/rubber/CalloffInput";
 import { useToast } from "@/app/components/Toast";
 import { auRubberApiClient } from "@/app/lib/api/auRubberApi";
 import type {
@@ -34,7 +35,6 @@ import type {
   RubberProductDto,
 } from "@/app/lib/api/rubberPortalApi";
 import { formatDateTimeZA, formatDateZA, fromMillis, nowMillis } from "@/app/lib/datetime";
-import { CalloffInput } from "../components/CalloffInput";
 
 function CalloffStatusUpdate({
   currentStatus,
@@ -1225,6 +1225,7 @@ export default function AuRubberOrderDetailPage() {
                                     onAdd={(qty, status, notes) =>
                                       addCalloff(index, qty, status, notes)
                                     }
+                                    addButtonClassName="bg-yellow-600 hover:bg-yellow-700"
                                   />
                                 </div>
                               )}
