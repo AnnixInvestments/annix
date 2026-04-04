@@ -6,6 +6,12 @@ type PDFDoc = InstanceType<typeof PDFDocument>;
 
 import { Repository } from "typeorm";
 import { now } from "../../lib/datetime";
+import {
+  A4_PORTRAIT as A4,
+  A4_LANDSCAPE,
+  PDF_FONTS as FONT,
+  type PageLayout,
+} from "../../lib/pdf-builder";
 import { type IStorageService, STORAGE_SERVICE } from "../../storage/storage.interface";
 import { JobCard } from "../entities/job-card.entity";
 import { StockControlCompany } from "../entities/stock-control-company.entity";
@@ -17,35 +23,6 @@ import { QcItemsRelease } from "../qc/entities/qc-items-release.entity";
 import { QcPullTest } from "../qc/entities/qc-pull-test.entity";
 import { QcReleaseCertificate } from "../qc/entities/qc-release-certificate.entity";
 import { QcShoreHardness } from "../qc/entities/qc-shore-hardness.entity";
-
-interface PageLayout {
-  margin: number;
-  contentWidth: number;
-  headerHeight: number;
-  pageHeight: number;
-  pageWidth: number;
-}
-
-const A4: PageLayout = {
-  margin: 40,
-  contentWidth: 595.28 - 80,
-  headerHeight: 70,
-  pageHeight: 841.89,
-  pageWidth: 595.28,
-};
-
-const A4_LANDSCAPE: PageLayout = {
-  margin: 30,
-  contentWidth: 841.89 - 60,
-  headerHeight: 70,
-  pageHeight: 595.28,
-  pageWidth: 841.89,
-};
-
-const FONT = {
-  BOLD: "Helvetica-Bold",
-  REGULAR: "Helvetica",
-};
 
 interface DocNumberEntry {
   docNumber: string;
