@@ -646,6 +646,7 @@ export class JobCardsController {
       lengthM: lengthM,
       isLeftover: true,
       sourceJobCardId: id,
+      sourceRollNumber: null,
     });
     const savedOffcut = await this.stockItemRepo.save(offcutItem);
 
@@ -685,6 +686,8 @@ export class JobCardsController {
           lengthM,
           isLeftover: true,
           sourceJobCardId: id,
+          rollNumber: offcut.rollNumber || null,
+          sourceRollNumber: offcut.rollNumber || null,
         });
         const saved = await this.stockItemRepo.save(stockItem);
 
@@ -705,6 +708,12 @@ export class JobCardsController {
     );
 
     return { created: createdItems };
+  }
+
+  @Get(":id/offcuts-used")
+  @ApiOperation({ summary: "Offcuts allocated to this job card with traceability info" })
+  async offcutsUsed(@Req() req: any, @Param("id") id: number) {
+    return this.jobCardService.offcutsUsedOnJobCard(req.user.companyId, id);
   }
 
   private async upsertDimensionOverrides(companyId: number, overrides: any[]): Promise<void> {

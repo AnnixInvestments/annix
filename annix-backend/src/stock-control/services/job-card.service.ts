@@ -566,6 +566,16 @@ export class JobCardService {
     });
   }
 
+  async offcutsUsedOnJobCard(companyId: number, jobCardId: number): Promise<StockAllocation[]> {
+    const allocations = await this.allocationRepo.find({
+      where: { jobCard: { id: jobCardId }, companyId },
+      relations: ["stockItem", "stockItem.sourceJobCard"],
+      order: { createdAt: "ASC" },
+    });
+
+    return allocations.filter((a) => a.stockItem?.isLeftover === true);
+  }
+
   async allocationsByJobCard(companyId: number, jobCardId: number): Promise<StockAllocation[]> {
     return this.allocationRepo.find({
       where: { jobCard: { id: jobCardId }, companyId },

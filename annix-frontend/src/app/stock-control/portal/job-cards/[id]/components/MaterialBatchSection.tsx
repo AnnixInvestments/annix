@@ -27,6 +27,7 @@ interface MaterialBatchSectionProps {
   hasRubber: boolean;
   hasPaint: boolean;
   coatingAnalysis: CoatingAnalysis | null;
+  rubberPlanOverride?: { manualRolls?: any[] | null } | null;
 }
 
 interface GroupedProduct {
@@ -50,11 +51,13 @@ interface ManualEntry {
   value: string;
 }
 
-const RUBBER_MANUAL_FIELDS: { fieldKey: string; label: string }[] = [
-  { fieldKey: "rubber_roll_number", label: "Roll Number" },
-  { fieldKey: "rubber_batch_number", label: "Rubber Batch Number" },
-  { fieldKey: "solution_batch_number", label: "Solution Batch Number" },
-];
+function rubberManualFields(rollCount: number): { fieldKey: string; label: string }[] {
+  const rollFields = Array.from({ length: rollCount }, (_, i) => ({
+    fieldKey: `rubber_roll_batch_${i}`,
+    label: rollCount === 1 ? "Roll/Batch Number" : `Roll/Batch Number ${i + 1}`,
+  }));
+  return [...rollFields, { fieldKey: "solution_batch_number", label: "Solution Batch Number" }];
+}
 
 function paintProductRows(coats: CoatingAnalysis["coats"] | null): PaintProductRow[] {
   if (!coats || coats.length === 0) {
@@ -154,8 +157,19 @@ function deduplicateParts(parts: GroupedProduct["parts"]): GroupedProduct["parts
   }, []);
 }
 
+interface OffcutUsedInfo {
+  sourceRollNumber: string | null;
+  rollNumber: string | null;
+  sourceJobCardId: number | null;
+  sourceJobCard: { jobNumber: string | null } | null;
+  widthMm: number | null;
+  lengthM: number | null;
+  thicknessMm: number | null;
+}
+
 export function MaterialBatchSection(props: MaterialBatchSectionProps) {
-  const { jobCardId, batchRecords, hasRubber, hasPaint, coatingAnalysis } = props;
+  const { jobCardId, batchRecords, hasRubber, hasPaint, coatingAnalysis, rubberPlanOverride } =
+    props;
 
   const productRows = useMemo(
     () => paintProductRows(coatingAnalysis?.coats || null),
@@ -167,9 +181,28 @@ export function MaterialBatchSection(props: MaterialBatchSectionProps) {
     [productRows],
   );
 
+  const rubberRollCount = useMemo(() => {
+    if (rubberPlanOverride?.manualRolls && rubberPlanOverride.manualRolls.length > 0) {
+      return rubberPlanOverride.manualRolls.length;
+    }
+    const rubberBatchItems = batchRecords.filter((r) => {
+      const name = r.stockItem?.name || "";
+      return RUBBER_PATTERN.test(name) && !SOLUTION_PATTERN.test(name);
+    });
+    const uniqueRolls = new Set(
+      rubberBatchItems.map((r) => r.stockItem?.rollNumber).filter(Boolean),
+    );
+    if (uniqueRolls.size > 0) return uniqueRolls.size;
+    return 1;
+  }, [rubberPlanOverride, batchRecords]);
+
+  const rubberFields = useMemo(() => rubberManualFields(rubberRollCount), [rubberRollCount]);
+
   const [rubberManual, setRubberManual] = useState<ManualEntry[]>(
-    RUBBER_MANUAL_FIELDS.map((f) => ({ ...f, value: "" })),
+    rubberFields.map((f) => ({ ...f, value: "" })),
   );
+
+  const [offcutsUsed, setOffcutsUsed] = useState<OffcutUsedInfo[]>([]);
   const [paintValues, setPaintValues] = useState<Record<string, string>>({});
   const [certLinks, setCertLinks] = useState<Record<string, number | null>>({});
   const [isSaving, setIsSaving] = useState(false);
@@ -189,6 +222,10 @@ export function MaterialBatchSection(props: MaterialBatchSectionProps) {
     });
   }, [allPaintFieldKeys]);
 
+  useEffect(() => {
+    setRubberManual(rubberFields.map((f) => ({ ...f, value: "" })));
+  }, [rubberFields]);
+
   const loadSavedBatches = useCallback(async () => {
     try {
       const saved = await stockControlApiClient.defelskoBatchesForJobCard(jobCardId);
@@ -198,14 +235,36 @@ export function MaterialBatchSection(props: MaterialBatchSectionProps) {
       );
 
       if (materialEntries.length > 0) {
-        setRubberManual((prev) =>
-          prev.map((entry) => {
+        setRubberManual((prev) => {
+          const migratedPrev = prev.map((entry) => {
             const match = materialEntries.find(
               (s: QcDefelskoBatchRecord) => s.fieldKey === entry.fieldKey,
             );
             return match ? { ...entry, value: match.batchNumber || "" } : entry;
-          }),
-        );
+          });
+
+          const hasNewKeys = materialEntries.some(
+            (s: QcDefelskoBatchRecord) => s.fieldKey === "rubber_roll_batch_0",
+          );
+          if (!hasNewKeys) {
+            const oldRollVal =
+              materialEntries.find(
+                (s: QcDefelskoBatchRecord) => s.fieldKey === "rubber_roll_number",
+              )?.batchNumber || "";
+            const oldBatchVal =
+              materialEntries.find(
+                (s: QcDefelskoBatchRecord) => s.fieldKey === "rubber_batch_number",
+              )?.batchNumber || "";
+            const mergedVal = [oldRollVal, oldBatchVal].filter(Boolean).join(" / ");
+            if (mergedVal) {
+              return migratedPrev.map((entry) =>
+                entry.fieldKey === "rubber_roll_batch_0" ? { ...entry, value: mergedVal } : entry,
+              );
+            }
+          }
+
+          return migratedPrev;
+        });
         setPaintValues((prev) => {
           const next = { ...prev };
           materialEntries.forEach((s: QcDefelskoBatchRecord) => {
@@ -235,6 +294,25 @@ export function MaterialBatchSection(props: MaterialBatchSectionProps) {
   useEffect(() => {
     loadSavedBatches();
   }, [loadSavedBatches]);
+
+  useEffect(() => {
+    if (!hasRubber) return;
+    stockControlApiClient
+      .jobCardOffcutsUsed(jobCardId)
+      .then((allocations) => {
+        const mapped = (allocations || []).map((a: any) => ({
+          sourceRollNumber: a.stockItem?.sourceRollNumber || null,
+          rollNumber: a.stockItem?.rollNumber || null,
+          sourceJobCardId: a.stockItem?.sourceJobCardId || null,
+          sourceJobCard: a.stockItem?.sourceJobCard || null,
+          widthMm: a.stockItem?.widthMm || null,
+          lengthM: a.stockItem?.lengthM || null,
+          thicknessMm: a.stockItem?.thicknessMm || null,
+        }));
+        setOffcutsUsed(mapped);
+      })
+      .catch(() => setOffcutsUsed([]));
+  }, [jobCardId, hasRubber]);
 
   const handleSave = async () => {
     setIsSaving(true);
@@ -392,6 +470,54 @@ export function MaterialBatchSection(props: MaterialBatchSectionProps) {
                       />
                     </div>
                   ))}
+                </div>
+              )}
+
+              {offcutsUsed.length > 0 && (
+                <div className="mt-4 space-y-2">
+                  <div className="text-[10px] font-medium text-gray-400 uppercase tracking-wider">
+                    Offcuts Used
+                  </div>
+                  <div className="space-y-1.5">
+                    {offcutsUsed.map((offcut, idx) => {
+                      const rollDisplay = offcut.sourceRollNumber || offcut.rollNumber || "—";
+                      const sourceRef = offcut.sourceJobCard?.jobNumber
+                        ? `JC ${offcut.sourceJobCard.jobNumber}`
+                        : offcut.sourceJobCardId
+                          ? `JC #${offcut.sourceJobCardId}`
+                          : "—";
+                      const dims = [
+                        offcut.widthMm ? `${offcut.widthMm}mm W` : null,
+                        offcut.lengthM ? `${Number(offcut.lengthM) * 1000}mm L` : null,
+                        offcut.thicknessMm ? `${offcut.thicknessMm}mm T` : null,
+                      ]
+                        .filter(Boolean)
+                        .join(" x ");
+                      return (
+                        <div
+                          key={`offcut-used-${idx}`}
+                          className="flex items-center gap-3 text-xs text-gray-600 bg-amber-50 border border-amber-200 rounded px-2 py-1.5"
+                        >
+                          <span className="inline-flex items-center rounded bg-amber-100 px-1.5 py-0.5 font-medium text-amber-800">
+                            Offcut
+                          </span>
+                          <span>Roll: {rollDisplay}</span>
+                          <span className="text-gray-400">|</span>
+                          <span>From: {sourceRef}</span>
+                          {dims && (
+                            <>
+                              <span className="text-gray-400">|</span>
+                              <span>{dims}</span>
+                            </>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <p className="text-[10px] text-gray-400 italic">
+                    Offcut certificates are for internal traceability only and are not included in
+                    the data book
+                  </p>
                 </div>
               )}
             </div>

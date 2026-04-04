@@ -54,6 +54,10 @@ export class RubberOffcutReturnItem {
   @IsOptional()
   @IsString()
   color?: string | null;
+
+  @IsOptional()
+  @IsString()
+  rollNumber?: string | null;
 }
 
 export class ReturnRubberOffcutsDto {

@@ -2140,6 +2140,7 @@ export default function JobCardDetailPage() {
                 activeBgStepKeys={activeBgStepKeys}
                 stepAssignments={workflowStatus?.stepAssignments || {}}
                 currentUserName={user?.name || null}
+                rubberPlanOverride={jobCard?.rubberPlanOverride || null}
                 onBatchComplete={
                   userPendingBgSteps.some((bg) => bg.branchColor && bg.stepKey === "qc_batch_certs")
                     ? () => {

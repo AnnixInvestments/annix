@@ -78,11 +78,13 @@ declare module "./base" {
           lengthMm: number;
           thicknessMm: number;
           color: string | null;
+          rollNumber?: string | null;
         }>;
       },
     ): Promise<{
       created: Array<{ stockItemId: number; widthMm: number; lengthMm: number }>;
     }>;
+    jobCardOffcutsUsed(jobCardId: number): Promise<StockAllocation[]>;
     rubberDimensionSuggestions(params: {
       itemType?: string | null;
       nbMm?: number | null;
@@ -322,6 +324,10 @@ proto.returnRubberOffcuts = async function (jobCardId, data) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
   });
+};
+
+proto.jobCardOffcutsUsed = async function (jobCardId) {
+  return this.request(`/stock-control/job-cards/${jobCardId}/offcuts-used`);
 };
 
 proto.rubberDimensionSuggestions = async function (params) {
