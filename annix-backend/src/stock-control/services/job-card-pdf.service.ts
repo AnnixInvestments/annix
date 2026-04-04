@@ -5,6 +5,7 @@ import PDFDocument from "pdfkit";
 import * as QRCode from "qrcode";
 import { ILike, MoreThan, Repository } from "typeorm";
 import { formatDateTime, now } from "../../lib/datetime";
+import { createPdfDocument } from "../../lib/pdf-builder";
 import { IStorageService, STORAGE_SERVICE } from "../../storage/storage.interface";
 import { JobCardCoatingAnalysis } from "../entities/coating-analysis.entity";
 import type { RubberPlanManualRoll } from "../entities/job-card.entity";
@@ -112,40 +113,27 @@ export class JobCardPdfService {
     const rubberAllocationResult = await this.prepareRubberAllocation(jobCard);
     const signatureBuffers = await this.fetchSignatureBuffers(approvals);
 
-    return new Promise((resolve, reject) => {
-      const doc = new PDFDocument({ size: "A4", margin: 50, bufferPages: true });
-      const chunks: Buffer[] = [];
+    const { doc, toBuffer } = createPdfDocument({ margin: 50 });
 
-      doc.on("data", (chunk) => chunks.push(chunk));
-      doc.on("end", () => resolve(Buffer.concat(chunks)));
-      doc.on("error", reject);
+    const { filteredItems: pipeItems, noteItems } = this.partitionLineItems(jobCard.lineItems);
+    const totalPipeQty = pipeItems.reduce(
+      (sum, li) => sum + (li.quantity ? Number(li.quantity) : 0),
+      0,
+    );
 
-      const { filteredItems: pipeItems, noteItems } = this.partitionLineItems(jobCard.lineItems);
-      const totalPipeQty = pipeItems.reduce(
-        (sum, li) => sum + (li.quantity ? Number(li.quantity) : 0),
-        0,
-      );
+    this.drawHeader(doc, company, jobCard, logoBuffer, qrDataUrl);
+    const detailsEndY = this.drawJobCardDetails(doc, jobCard, noteItems);
+    this.drawJobNumber(doc, jobCard.jobNumber);
 
-      this.drawHeader(doc, company, jobCard, logoBuffer, qrDataUrl);
-      const detailsEndY = this.drawJobCardDetails(doc, jobCard, noteItems);
-      this.drawJobNumber(doc, jobCard.jobNumber);
+    let currentY = Math.max(160, detailsEndY);
+    currentY = this.drawLineItems(doc, jobCard, currentY);
+    currentY = this.drawRubberAllocationSync(doc, jobCard, rubberAllocationResult, currentY);
+    currentY = this.drawCoatingSpecification(doc, coatingAnalysis, currentY, company, totalPipeQty);
+    currentY = this.drawAllocations(doc, jobCard, currentY);
+    currentY = this.drawSignatureBoxes(doc, approvals, currentY, stepConfigs, signatureBuffers);
+    this.drawFooter(doc);
 
-      let currentY = Math.max(160, detailsEndY);
-      currentY = this.drawLineItems(doc, jobCard, currentY);
-      currentY = this.drawRubberAllocationSync(doc, jobCard, rubberAllocationResult, currentY);
-      currentY = this.drawCoatingSpecification(
-        doc,
-        coatingAnalysis,
-        currentY,
-        company,
-        totalPipeQty,
-      );
-      currentY = this.drawAllocations(doc, jobCard, currentY);
-      currentY = this.drawSignatureBoxes(doc, approvals, currentY, stepConfigs, signatureBuffers);
-      this.drawFooter(doc);
-
-      doc.end();
-    });
+    return toBuffer();
   }
 
   private async fetchSignatureBuffers(approvals: JobCardApproval[]): Promise<Map<string, Buffer>> {

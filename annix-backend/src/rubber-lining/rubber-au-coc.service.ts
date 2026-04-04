@@ -5,11 +5,11 @@ import { ConfigService } from "@nestjs/config";
 import { InjectRepository } from "@nestjs/typeorm";
 import PDFMerger from "pdf-merger-js";
 import { pdfToPng } from "pdf-to-png-converter";
-import PDFDocument from "pdfkit";
 import sharp from "sharp";
 import { In, Repository } from "typeorm";
 import { EmailService } from "../email/email.service";
 import { formatDateZA, generateUniqueId, now, nowISO } from "../lib/datetime";
+import { createPdfDocument } from "../lib/pdf-builder";
 import { IStorageService, STORAGE_SERVICE } from "../storage/storage.interface";
 import {
   CreateAuCocDto,
@@ -1152,22 +1152,15 @@ export class RubberAuCocService {
   }
 
   private async createPdf(data: CocPdfData): Promise<Buffer> {
-    return new Promise((resolve, reject) => {
-      const doc = new PDFDocument({ size: "A4", margin: 40 });
-      const chunks: Buffer[] = [];
+    const { doc, toBuffer } = createPdfDocument({ margin: 40 });
 
-      doc.on("data", (chunk) => chunks.push(chunk));
-      doc.on("end", () => resolve(Buffer.concat(chunks)));
-      doc.on("error", reject);
+    this.drawHeader(doc);
+    this.drawDetailsSection(doc, data);
+    this.drawLabDataTable(doc, data);
+    this.drawComments(doc);
+    this.drawFooter(doc, data);
 
-      this.drawHeader(doc);
-      this.drawDetailsSection(doc, data);
-      this.drawLabDataTable(doc, data);
-      this.drawComments(doc);
-      this.drawFooter(doc, data);
-
-      doc.end();
-    });
+    return toBuffer();
   }
 
   private drawHeader(doc: PDFKit.PDFDocument): void {
@@ -1712,22 +1705,15 @@ export class RubberAuCocService {
     }
   }
 
-  private createPdfFromImage(imageBuffer: Buffer): Promise<Buffer> {
-    return new Promise((resolve, reject) => {
-      const doc = new PDFDocument({ size: "A4", layout: "landscape", margin: 0 });
-      const chunks: Buffer[] = [];
+  private async createPdfFromImage(imageBuffer: Buffer): Promise<Buffer> {
+    const { doc, toBuffer } = createPdfDocument({ layout: "landscape", margin: 0 });
 
-      doc.on("data", (chunk) => chunks.push(chunk));
-      doc.on("end", () => resolve(Buffer.concat(chunks)));
-      doc.on("error", reject);
-
-      doc.image(imageBuffer, 20, 20, {
-        fit: [800, 555],
-        align: "center",
-        valign: "center",
-      });
-
-      doc.end();
+    doc.image(imageBuffer, 20, 20, {
+      fit: [800, 555],
+      align: "center",
+      valign: "center",
     });
+
+    return toBuffer();
   }
 }
