@@ -27,7 +27,7 @@ export function StockControlHeader() {
   const { colors, logoUrl } = useStockControlBranding();
   const { user, logout } = useStockControlAuth();
   const { rbacConfig } = useStockControlRbac();
-  const { effectiveRole, isPreviewActive } = useViewAs();
+  const { effectiveRole, isPreviewActive, companyRoles } = useViewAs();
 
   const openSearch = useCallback(() => setSearchOpen(true), []);
   const closeSearch = useCallback(() => setSearchOpen(false), []);
@@ -423,8 +423,10 @@ export function StockControlHeader() {
             />
           </svg>
           <span className="text-xs font-medium text-amber-700">
-            Previewing as {effectiveRole.charAt(0).toUpperCase() + effectiveRole.slice(1)} — pages
-            and navigation reflect this role&apos;s access
+            Previewing as{" "}
+            {companyRoles.find((r) => r.key === effectiveRole)?.label ||
+              effectiveRole.charAt(0).toUpperCase() + effectiveRole.slice(1)}{" "}
+            — pages and navigation reflect this role&apos;s access
           </span>
         </div>
       )}
