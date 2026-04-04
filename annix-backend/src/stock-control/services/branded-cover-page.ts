@@ -131,13 +131,19 @@ export async function generateBrandedCoverPage(
 
       if (extCoats.length > 0) {
         const extSpec = extCoats
-          .map((c: any) => `${c.product} (${c.minDftUm}-${c.maxDftUm} \u03BCm)`)
+          .map((c: any) => {
+            const dft = c.minDftUm === c.maxDftUm ? `${c.minDftUm}` : `${c.minDftUm}-${c.maxDftUm}`;
+            return `${c.product} (${dft} \u03BCm)`;
+          })
           .join(", ");
         drawDetailRow("Paint Spec (External)", extSpec);
       }
       if (intCoats.length > 0) {
         const intSpec = intCoats
-          .map((c: any) => `${c.product} (${c.minDftUm}-${c.maxDftUm} \u03BCm)`)
+          .map((c: any) => {
+            const dft = c.minDftUm === c.maxDftUm ? `${c.minDftUm}` : `${c.minDftUm}-${c.maxDftUm}`;
+            return `${c.product} (${dft} \u03BCm)`;
+          })
           .join(", ");
         drawDetailRow("Paint Spec (Internal)", intSpec);
       }

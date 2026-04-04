@@ -320,7 +320,11 @@ export class QrCodeService {
         doc.fillColor("#111827");
         doc.text(coat.product, xPos, y + 4, { width: coatColWidths[0] - 6 });
         xPos += coatColWidths[0];
-        doc.text(`${coat.minDftUm}-${coat.maxDftUm}`, xPos, y + 4, {
+        const dftLabel =
+          coat.minDftUm === coat.maxDftUm
+            ? `${coat.minDftUm}`
+            : `${coat.minDftUm}-${coat.maxDftUm}`;
+        doc.text(dftLabel, xPos, y + 4, {
           width: coatColWidths[1] - 6,
           align: "right",
         });

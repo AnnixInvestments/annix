@@ -550,7 +550,7 @@ export function QcpForm({ jobCardId, existingPlan, onSaved, onCancel }: QcpFormP
   );
 
   const updateActivity = useCallback(
-    (index: number, field: keyof QcpActivity, value: string | null) => {
+    (index: number, field: keyof QcpActivity, value: string | number | null) => {
       setActivities((prev) => prev.map((a, i) => (i === index ? { ...a, [field]: value } : a)));
     },
     [],
@@ -673,6 +673,14 @@ export function QcpForm({ jobCardId, existingPlan, onSaved, onCancel }: QcpFormP
       return;
     }
     if (!existingPlan) return;
+    const blastRows = activities.filter((a) => isBlastingRow(a.description));
+    const missingBlast = blastRows.some((a) => !a.specification);
+    if (missingBlast) {
+      setError(
+        "Please select a blast profile for all blasting activities before sending for approval",
+      );
+      return;
+    }
 
     try {
       setIsSendingApproval(true);
@@ -889,7 +897,22 @@ export function QcpForm({ jobCardId, existingPlan, onSaved, onCancel }: QcpFormP
             {activities.map((activity, idx) => (
               <tr key={idx} className="hover:bg-gray-50">
                 <td className="px-2 py-1.5 text-center font-medium text-gray-700">
-                  {activity.operationNumber}
+                  <input
+                    type="number"
+                    value={activity.operationNumber}
+                    onChange={(e) => {
+                      const newNum = parseInt(e.target.value, 10);
+                      if (Number.isNaN(newNum)) return;
+                      updateActivity(idx, "operationNumber", newNum);
+                    }}
+                    onBlur={() => {
+                      setActivities((prev) =>
+                        [...prev].sort((a, b) => a.operationNumber - b.operationNumber),
+                      );
+                    }}
+                    className="w-10 rounded border border-gray-300 px-1 py-1 text-center text-sm"
+                    min={1}
+                  />
                 </td>
                 <td className="px-2 py-1.5">
                   <input

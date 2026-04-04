@@ -472,7 +472,11 @@ export function CoatingAnalysisTab(props: CoatingAnalysisTabProps) {
                       </div>
                       <div className="flex items-center gap-4 text-sm">
                         <span className="text-gray-500">
-                          DFT: {coat.minDftUm}-{coat.maxDftUm} µm
+                          DFT:{" "}
+                          {coat.minDftUm === coat.maxDftUm
+                            ? coat.minDftUm
+                            : `${coat.minDftUm}-${coat.maxDftUm}`}{" "}
+                          µm
                         </span>
                         <span className="text-gray-500">
                           Coverage: {coat.coverageM2PerLiter} m²/L

@@ -442,7 +442,9 @@ function ReadingSummaryBar({
 function coatLabel(coat: CoatDetail): string {
   const area = coat.area === "external" ? "Ext" : "Int";
   const type = coat.genericType ?? coat.product;
-  return `${type} (${area}) — ${coat.minDftUm}–${coat.maxDftUm} µm`;
+  const dft =
+    coat.minDftUm === coat.maxDftUm ? `${coat.minDftUm}` : `${coat.minDftUm}–${coat.maxDftUm}`;
+  return `${type} (${area}) — ${dft} µm`;
 }
 
 function StartSessionForm({

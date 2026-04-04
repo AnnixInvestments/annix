@@ -580,7 +580,15 @@ export class QcMeasurementService {
 
       paintCoats.forEach((coat: any) => {
         const dftSpec =
-          coat.minDftUm && coat.maxDftUm ? `${coat.minDftUm}-${coat.maxDftUm}µm` : null;
+          coat.minDftUm && coat.maxDftUm
+            ? Number(coat.minDftUm) === Number(coat.maxDftUm)
+              ? `${coat.minDftUm}µm`
+              : `${coat.minDftUm}-${coat.maxDftUm}µm`
+            : coat.minDftUm
+              ? `${coat.minDftUm}µm`
+              : coat.maxDftUm
+                ? `${coat.maxDftUm}µm`
+                : null;
         if (coat.minDftUm) totalMinDft += Number(coat.minDftUm);
         if (coat.maxDftUm) totalMaxDft += Number(coat.maxDftUm);
         const areaPrefix = hasBothAreas ? (coat.area === "internal" ? "INT: " : "EXT: ") : "";
@@ -594,7 +602,11 @@ export class QcMeasurementService {
       }
 
       const totalDftSpec =
-        totalMinDft > 0 || totalMaxDft > 0 ? `${totalMinDft}-${totalMaxDft}µm` : null;
+        totalMinDft > 0 || totalMaxDft > 0
+          ? totalMinDft === totalMaxDft
+            ? `${totalMinDft}µm`
+            : `${totalMinDft}-${totalMaxDft}µm`
+          : null;
 
       activities.push(buildActivity(opNum++, "Total DFTs", totalDftSpec, "RECORD READINGS"));
       activities.push(
