@@ -9,7 +9,7 @@ import {
   Text,
 } from "@react-three/drei";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import {
   AngularDimension,
@@ -37,6 +37,7 @@ import {
 import { FlangeSpecData } from "@/app/lib/hooks/useFlangeSpecs";
 import { log } from "@/app/lib/logger";
 import { useNbToOdLookup } from "@/app/lib/query/hooks";
+import { CaptureHelper } from "./shared";
 
 interface SimpleLineProps {
   points: Array<[number, number, number]>;
@@ -45,26 +46,6 @@ interface SimpleLineProps {
   dashed?: boolean;
   dashSize?: number;
   gapSize?: number;
-}
-
-function CaptureHelper({
-  captureRef,
-}: {
-  captureRef: React.MutableRefObject<(() => string | null) | null>;
-}) {
-  const { gl, scene, camera } = useThree();
-
-  useEffect(() => {
-    captureRef.current = () => {
-      gl.render(scene, camera);
-      return gl.domElement.toDataURL("image/png");
-    };
-    return () => {
-      captureRef.current = null;
-    };
-  }, [gl, scene, camera, captureRef]);
-
-  return null;
 }
 
 const Line = ({

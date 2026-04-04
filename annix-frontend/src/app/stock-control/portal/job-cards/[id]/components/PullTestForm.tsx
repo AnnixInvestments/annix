@@ -10,6 +10,7 @@ import type {
 } from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { now } from "@/app/lib/datetime";
+import { QcFormModal } from "./QcFormModal";
 
 interface PullTestFormProps {
   isOpen: boolean;
@@ -113,14 +114,11 @@ const initialForceGauge = (existing: QcPullTestRecord | null | undefined): Force
 
 const DEFAULT_MIN_FORCE_MPA = 3.5;
 
-export function PullTestForm({
-  isOpen,
-  onClose,
-  jobCardId,
-  existing = null,
-  onSaved,
-  batchRecords = [],
-}: PullTestFormProps) {
+export function PullTestForm(props: PullTestFormProps) {
+  const { isOpen, onClose, jobCardId, onSaved } = props;
+  const existing = props.existing ?? null;
+  const batchRecords = props.batchRecords ?? [];
+
   const [itemDescription, setItemDescription] = useState(existing?.itemDescription || "");
   const [quantity, setQuantity] = useState<number | null>(existing?.quantity || null);
   const [minForceMpa, setMinForceMpa] = useState<string>(String(DEFAULT_MIN_FORCE_MPA));
@@ -244,129 +242,244 @@ export function PullTestForm({
     onClose,
   ]);
 
-  if (!isOpen) {
-    return null;
-  }
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/10 backdrop-blur-md p-4">
-      <div className="w-full max-w-3xl rounded-lg bg-white p-6 shadow-xl max-h-[90vh] overflow-y-auto">
-        <h2 className="mb-4 text-lg font-semibold text-gray-900">
-          {existing ? "Edit Pull Test (Adhesion)" : "New Pull Test (Adhesion)"}
-        </h2>
-
-        {error && <div className="mb-4 rounded-md bg-red-50 p-3 text-sm text-red-700">{error}</div>}
-
-        <div className="mb-6">
-          <h3 className="mb-3 text-sm font-semibold text-gray-800 uppercase tracking-wide">
-            General Info
-          </h3>
-          <div className="grid grid-cols-4 gap-4">
-            <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700">
-                Item Description
-              </label>
-              <input
-                type="text"
-                value={itemDescription}
-                onChange={(e) => setItemDescription(e.target.value)}
-                placeholder="e.g. Pipe Spool 200NB"
-                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
-              />
-            </div>
-            <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700">Quantity</label>
-              <input
-                type="number"
-                value={quantity ?? ""}
-                onChange={(e) => setQuantity(e.target.value === "" ? null : Number(e.target.value))}
-                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
-              />
-            </div>
-            <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700">
-                Min Force (MPa)
-              </label>
-              <input
-                type="number"
-                step="0.1"
-                value={minForceMpa}
-                onChange={(e) => setMinForceMpa(e.target.value)}
-                placeholder="3.5"
-                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
-              />
-            </div>
-            <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700">
-                Reading Date <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="date"
-                value={readingDate}
-                onChange={(e) => setReadingDate(e.target.value)}
-                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
-              />
-            </div>
+    <QcFormModal
+      isOpen={isOpen}
+      onClose={onClose}
+      title={existing ? "Edit Pull Test (Adhesion)" : "New Pull Test (Adhesion)"}
+      error={error}
+      saving={isSaving}
+      onSave={handleSave}
+      maxWidth="max-w-3xl"
+    >
+      <div className="mb-6">
+        <h3 className="mb-3 text-sm font-semibold text-gray-800 uppercase tracking-wide">
+          General Info
+        </h3>
+        <div className="grid grid-cols-4 gap-4">
+          <div>
+            <label className="mb-1 block text-sm font-medium text-gray-700">Item Description</label>
+            <input
+              type="text"
+              value={itemDescription}
+              onChange={(e) => setItemDescription(e.target.value)}
+              placeholder="e.g. Pipe Spool 200NB"
+              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-sm font-medium text-gray-700">Quantity</label>
+            <input
+              type="number"
+              value={quantity ?? ""}
+              onChange={(e) => setQuantity(e.target.value === "" ? null : Number(e.target.value))}
+              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-sm font-medium text-gray-700">Min Force (MPa)</label>
+            <input
+              type="number"
+              step="0.1"
+              value={minForceMpa}
+              onChange={(e) => setMinForceMpa(e.target.value)}
+              placeholder="3.5"
+              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-sm font-medium text-gray-700">
+              Reading Date <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="date"
+              value={readingDate}
+              onChange={(e) => setReadingDate(e.target.value)}
+              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+            />
           </div>
         </div>
+      </div>
 
-        <div className="mb-6">
-          <div className="mb-3 flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-gray-800 uppercase tracking-wide">
-              Solutions Used
-            </h3>
-            <button
-              type="button"
-              onClick={addSolution}
-              className="rounded-md bg-teal-600 px-3 py-1 text-xs font-medium text-white hover:bg-teal-700"
-            >
-              Add Solution
-            </button>
+      <div className="mb-6">
+        <div className="mb-3 flex items-center justify-between">
+          <h3 className="text-sm font-semibold text-gray-800 uppercase tracking-wide">
+            Solutions Used
+          </h3>
+          <button
+            type="button"
+            onClick={addSolution}
+            className="rounded-md bg-teal-600 px-3 py-1 text-xs font-medium text-white hover:bg-teal-700"
+          >
+            Add Solution
+          </button>
+        </div>
+        <div className="space-y-3">
+          {solutions.map((solution, idx) => (
+            <div key={idx} className="flex items-end gap-3 rounded-md border border-gray-200 p-3">
+              <div className="flex-1">
+                <label className="mb-1 block text-sm font-medium text-gray-700">
+                  Product <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={solution.product}
+                  onChange={(e) => updateSolution(idx, "product", e.target.value)}
+                  placeholder="e.g. Chemosil 211"
+                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                />
+              </div>
+              <div className="flex-1">
+                <label className="mb-1 block text-sm font-medium text-gray-700">Batch Number</label>
+                <input
+                  type="text"
+                  value={solution.batchNumber}
+                  onChange={(e) => updateSolution(idx, "batchNumber", e.target.value)}
+                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() =>
+                    updateSolution(idx, "result", solution.result === "pass" ? "fail" : "pass")
+                  }
+                  className={`rounded-md px-3 py-2 text-xs font-semibold ${
+                    solution.result === "pass" ? "bg-green-600 text-white" : "bg-red-600 text-white"
+                  }`}
+                >
+                  {solution.result === "pass" ? "PASS" : "FAIL"}
+                </button>
+                {solutions.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => removeSolution(idx)}
+                    className="rounded-md px-2 py-2 text-sm text-red-500 hover:bg-red-50"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="mb-6">
+        <h3 className="mb-3 text-sm font-semibold text-gray-800 uppercase tracking-wide">
+          Force Gauge Details
+        </h3>
+        <div className="grid grid-cols-3 gap-4">
+          <div>
+            <label className="mb-1 block text-sm font-medium text-gray-700">
+              Make <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              value={forceGauge.make}
+              onChange={(e) => updateForceGaugeField("make", e.target.value)}
+              placeholder="e.g. Elcometer"
+              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+            />
           </div>
-          <div className="space-y-3">
-            {solutions.map((solution, idx) => (
+          <div>
+            <label className="mb-1 block text-sm font-medium text-gray-700">
+              Certificate Number
+            </label>
+            <input
+              type="text"
+              value={forceGauge.certificateNumber}
+              onChange={(e) => updateForceGaugeField("certificateNumber", e.target.value)}
+              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-sm font-medium text-gray-700">Expiry Date</label>
+            <input
+              type="date"
+              value={forceGauge.expiryDate}
+              onChange={(e) => updateForceGaugeField("expiryDate", e.target.value)}
+              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+            />
+          </div>
+        </div>
+      </div>
+
+      <div className="mb-6">
+        <div className="mb-3 flex items-center justify-between">
+          <h3 className="text-sm font-semibold text-gray-800 uppercase tracking-wide">
+            Area Readings
+          </h3>
+          <button
+            type="button"
+            onClick={addAreaReading}
+            className="rounded-md bg-teal-600 px-3 py-1 text-xs font-medium text-white hover:bg-teal-700"
+          >
+            Add Reading
+          </button>
+        </div>
+        <div className="space-y-3">
+          {areaReadings.map((reading, idx) => {
+            const numericReading = parseFloat(reading.reading);
+            const threshold = parseFloat(minForceMpa);
+            const isBelowThreshold =
+              !Number.isNaN(numericReading) &&
+              !Number.isNaN(threshold) &&
+              threshold > 0 &&
+              numericReading < threshold;
+
+            return (
               <div key={idx} className="flex items-end gap-3 rounded-md border border-gray-200 p-3">
                 <div className="flex-1">
                   <label className="mb-1 block text-sm font-medium text-gray-700">
-                    Product <span className="text-red-500">*</span>
+                    Area <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
-                    value={solution.product}
-                    onChange={(e) => updateSolution(idx, "product", e.target.value)}
-                    placeholder="e.g. Chemosil 211"
+                    value={reading.area}
+                    onChange={(e) => updateAreaReading(idx, "area", e.target.value)}
+                    placeholder="e.g. Area 1, Flange Face"
                     className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
                   />
                 </div>
                 <div className="flex-1">
                   <label className="mb-1 block text-sm font-medium text-gray-700">
-                    Batch Number
+                    Reading (MPa) <span className="text-red-500">*</span>
                   </label>
                   <input
-                    type="text"
-                    value={solution.batchNumber}
-                    onChange={(e) => updateSolution(idx, "batchNumber", e.target.value)}
-                    className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                    type="number"
+                    step="0.1"
+                    value={reading.reading}
+                    onChange={(e) => updateAreaReading(idx, "reading", e.target.value)}
+                    placeholder="e.g. 4.5"
+                    className={`w-full rounded-md border px-3 py-2 text-sm ${
+                      isBelowThreshold ? "border-red-400 bg-red-50 text-red-700" : "border-gray-300"
+                    }`}
                   />
                 </div>
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
                     onClick={() =>
-                      updateSolution(idx, "result", solution.result === "pass" ? "fail" : "pass")
+                      updateAreaReading(idx, "result", reading.result === "pass" ? "fail" : "pass")
                     }
                     className={`rounded-md px-3 py-2 text-xs font-semibold ${
-                      solution.result === "pass"
+                      reading.result === "pass"
                         ? "bg-green-600 text-white"
                         : "bg-red-600 text-white"
                     }`}
                   >
-                    {solution.result === "pass" ? "PASS" : "FAIL"}
+                    {reading.result === "pass" ? "PASS" : "FAIL"}
                   </button>
-                  {solutions.length > 1 && (
+                  {isBelowThreshold && (
+                    <span className="inline-flex items-center rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-800">
+                      Below min
+                    </span>
+                  )}
+                  {areaReadings.length > 1 && (
                     <button
                       type="button"
-                      onClick={() => removeSolution(idx)}
+                      onClick={() => removeAreaReading(idx)}
                       className="rounded-md px-2 py-2 text-sm text-red-500 hover:bg-red-50"
                     >
                       ✕
@@ -374,177 +487,22 @@ export function PullTestForm({
                   )}
                 </div>
               </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="mb-6">
-          <h3 className="mb-3 text-sm font-semibold text-gray-800 uppercase tracking-wide">
-            Force Gauge Details
-          </h3>
-          <div className="grid grid-cols-3 gap-4">
-            <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700">
-                Make <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                value={forceGauge.make}
-                onChange={(e) => updateForceGaugeField("make", e.target.value)}
-                placeholder="e.g. Elcometer"
-                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
-              />
-            </div>
-            <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700">
-                Certificate Number
-              </label>
-              <input
-                type="text"
-                value={forceGauge.certificateNumber}
-                onChange={(e) => updateForceGaugeField("certificateNumber", e.target.value)}
-                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
-              />
-            </div>
-            <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700">Expiry Date</label>
-              <input
-                type="date"
-                value={forceGauge.expiryDate}
-                onChange={(e) => updateForceGaugeField("expiryDate", e.target.value)}
-                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
-              />
-            </div>
-          </div>
-        </div>
-
-        <div className="mb-6">
-          <div className="mb-3 flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-gray-800 uppercase tracking-wide">
-              Area Readings
-            </h3>
-            <button
-              type="button"
-              onClick={addAreaReading}
-              className="rounded-md bg-teal-600 px-3 py-1 text-xs font-medium text-white hover:bg-teal-700"
-            >
-              Add Reading
-            </button>
-          </div>
-          <div className="space-y-3">
-            {areaReadings.map((reading, idx) => {
-              const numericReading = parseFloat(reading.reading);
-              const threshold = parseFloat(minForceMpa);
-              const isBelowThreshold =
-                !Number.isNaN(numericReading) &&
-                !Number.isNaN(threshold) &&
-                threshold > 0 &&
-                numericReading < threshold;
-
-              return (
-                <div
-                  key={idx}
-                  className="flex items-end gap-3 rounded-md border border-gray-200 p-3"
-                >
-                  <div className="flex-1">
-                    <label className="mb-1 block text-sm font-medium text-gray-700">
-                      Area <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      value={reading.area}
-                      onChange={(e) => updateAreaReading(idx, "area", e.target.value)}
-                      placeholder="e.g. Area 1, Flange Face"
-                      className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
-                    />
-                  </div>
-                  <div className="flex-1">
-                    <label className="mb-1 block text-sm font-medium text-gray-700">
-                      Reading (MPa) <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="number"
-                      step="0.1"
-                      value={reading.reading}
-                      onChange={(e) => updateAreaReading(idx, "reading", e.target.value)}
-                      placeholder="e.g. 4.5"
-                      className={`w-full rounded-md border px-3 py-2 text-sm ${
-                        isBelowThreshold
-                          ? "border-red-400 bg-red-50 text-red-700"
-                          : "border-gray-300"
-                      }`}
-                    />
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() =>
-                        updateAreaReading(
-                          idx,
-                          "result",
-                          reading.result === "pass" ? "fail" : "pass",
-                        )
-                      }
-                      className={`rounded-md px-3 py-2 text-xs font-semibold ${
-                        reading.result === "pass"
-                          ? "bg-green-600 text-white"
-                          : "bg-red-600 text-white"
-                      }`}
-                    >
-                      {reading.result === "pass" ? "PASS" : "FAIL"}
-                    </button>
-                    {isBelowThreshold && (
-                      <span className="inline-flex items-center rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-800">
-                        Below min
-                      </span>
-                    )}
-                    {areaReadings.length > 1 && (
-                      <button
-                        type="button"
-                        onClick={() => removeAreaReading(idx)}
-                        className="rounded-md px-2 py-2 text-sm text-red-500 hover:bg-red-50"
-                      >
-                        ✕
-                      </button>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        <div className="mb-6">
-          <h3 className="mb-3 text-sm font-semibold text-gray-800 uppercase tracking-wide">
-            Comments
-          </h3>
-          <textarea
-            value={comments}
-            onChange={(e) => setComments(e.target.value)}
-            rows={3}
-            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
-          />
-        </div>
-
-        <div className="flex justify-end gap-3">
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={isSaving}
-            className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            onClick={handleSave}
-            disabled={isSaving}
-            className="rounded-md bg-teal-600 px-4 py-2 text-sm font-medium text-white hover:bg-teal-700 disabled:opacity-50"
-          >
-            {isSaving ? "Saving..." : "Save"}
-          </button>
+            );
+          })}
         </div>
       </div>
-    </div>
+
+      <div className="mb-6">
+        <h3 className="mb-3 text-sm font-semibold text-gray-800 uppercase tracking-wide">
+          Comments
+        </h3>
+        <textarea
+          value={comments}
+          onChange={(e) => setComments(e.target.value)}
+          rows={3}
+          className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+        />
+      </div>
+    </QcFormModal>
   );
 }

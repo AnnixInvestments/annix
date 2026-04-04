@@ -2,7 +2,7 @@
 
 import { NACE_MAX_HARDNESS_HRC, STEEL_DENSITY_KG_M3 } from "@annix/product-data/steel";
 import Link from "next/link";
-import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { memo, useCallback, useEffect, useRef, useState } from "react";
 import { TangentExtensionsSection } from "@/app/components/rfq/sections/TangentExtensionsSection";
 import { WorkingConditionsSection } from "@/app/components/rfq/sections/WorkingConditionsSection";
 import { ClosureLengthSelector } from "@/app/components/rfq/selectors/ClosureLengthSelector";
@@ -67,13 +67,16 @@ import {
   sabs62AvailableAngles,
   sabs62CFInterpolated,
 } from "@/app/lib/utils/sabs62CfData";
-import { groupSteelSpecifications, isApi5LSpec } from "@/app/lib/utils/steelSpecGroups";
+import { isApi5LSpec } from "@/app/lib/utils/steelSpecGroups";
 import { roundToWeldIncrement } from "@/app/lib/utils/weldThicknessLookup";
+import {
+  type FlangeStandardItem,
+  type FlangeTypeItem,
+  type PressureClassItem,
+  type SteelSpecItem,
+  useGroupedSteelOptions,
+} from "./shared";
 
-type SteelSpecItem = NonNullable<MasterData["steelSpecs"]>[number];
-type FlangeStandardItem = NonNullable<MasterData["flangeStandards"]>[number];
-type PressureClassItem = NonNullable<MasterData["pressureClasses"]>[number];
-type FlangeTypeItem = NonNullable<MasterData["flangeTypes"]>[number];
 type ScheduleItem = { id: number; scheduleDesignation: string; wallThicknessMm: number };
 
 export interface BendFormProps {
@@ -152,10 +155,7 @@ function BendFormComponent(props: BendFormProps) {
   const bendEndConfiguration = specs.bendEndConfiguration || "PE";
   const hasFlanges = bendEndConfiguration !== "PE";
 
-  const groupedSteelOptions = useMemo(
-    () => (masterData?.steelSpecs ? groupSteelSpecifications(masterData.steelSpecs) : []),
-    [masterData?.steelSpecs],
-  );
+  const groupedSteelOptions = useGroupedSteelOptions(masterData);
 
   const flangeTypesLength = masterData?.flangeTypes?.length || 0;
 

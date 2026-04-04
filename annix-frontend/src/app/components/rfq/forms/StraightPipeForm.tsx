@@ -2,7 +2,7 @@
 
 import { NACE_MAX_HARDNESS_HRC, STEEL_DENSITY_KG_M3 } from "@annix/product-data/steel";
 import Link from "next/link";
-import React, { memo, useCallback, useEffect, useMemo, useState } from "react";
+import React, { memo, useCallback, useEffect, useState } from "react";
 import { SpigotConfigurationSection } from "@/app/components/rfq/sections/SpigotConfigurationSection";
 import { ClosureLengthSelector } from "@/app/components/rfq/selectors/ClosureLengthSelector";
 import {
@@ -63,14 +63,16 @@ import {
   findRecommendedSchedule,
 } from "@/app/lib/utils/pipeCalculations";
 import { validatePressureClass } from "@/app/lib/utils/pressureClassValidation";
-import { groupSteelSpecifications, isApi5LSpec } from "@/app/lib/utils/steelSpecGroups";
+import { isApi5LSpec } from "@/app/lib/utils/steelSpecGroups";
 import { getPipeEndConfigurationDetails } from "@/app/lib/utils/systemUtils";
 import { roundToWeldIncrement } from "@/app/lib/utils/weldThicknessLookup";
-
-type SteelSpecItem = NonNullable<MasterData["steelSpecs"]>[number];
-type FlangeStandardItem = NonNullable<MasterData["flangeStandards"]>[number];
-type PressureClassItem = NonNullable<MasterData["pressureClasses"]>[number];
-type FlangeTypeItem = NonNullable<MasterData["flangeTypes"]>[number];
+import {
+  type FlangeStandardItem,
+  type FlangeTypeItem,
+  type PressureClassItem,
+  type SteelSpecItem,
+  useGroupedSteelOptions,
+} from "./shared";
 
 const formatWeight = (weight: number | undefined) => {
   if (weight === undefined || weight === null || Number.isNaN(weight)) return "Not calculated";
@@ -240,10 +242,7 @@ function StraightPipeFormComponent({
   const pipeEndConfiguration = specs.pipeEndConfiguration || "PE";
   const hasFlanges = pipeEndConfiguration !== "PE";
 
-  const groupedSteelOptions = useMemo(
-    () => (masterData?.steelSpecs ? groupSteelSpecifications(masterData.steelSpecs) : []),
-    [masterData?.steelSpecs],
-  );
+  const groupedSteelOptions = useGroupedSteelOptions(masterData);
 
   const flangeTypesLength = masterData?.flangeTypes?.length || 0;
 

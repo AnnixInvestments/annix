@@ -23,31 +23,12 @@ import {
 } from "@/app/lib/config/rfq/rendering3DStandards";
 import { log } from "@/app/lib/logger";
 import { useNbToOdLookup } from "@/app/lib/query/hooks";
+import { CaptureHelper, useDebouncedProps } from "./shared";
 
 const Line = (props: React.ComponentProps<typeof DreiLine>) => {
   const { size } = useThree();
   return <DreiLine {...props} resolution={new THREE.Vector2(size.width, size.height)} />;
 };
-
-function CaptureHelper({
-  captureRef,
-}: {
-  captureRef: React.MutableRefObject<(() => string | null) | null>;
-}) {
-  const { gl, scene, camera } = useThree();
-
-  React.useEffect(() => {
-    captureRef.current = () => {
-      gl.render(scene, camera);
-      return gl.domElement.toDataURL("image/png");
-    };
-    return () => {
-      captureRef.current = null;
-    };
-  }, [gl, scene, camera, captureRef]);
-
-  return null;
-}
 
 import { FlangeSpecData } from "@/app/lib/hooks/useFlangeSpecs";
 import {
@@ -56,28 +37,6 @@ import {
   getTeeHeight,
   Sabs719TeeType,
 } from "@/app/lib/utils/sabs719TeeData";
-
-const useDebouncedProps = <T extends Record<string, any>>(props: T, delay: number = 150): T => {
-  const [debouncedProps, setDebouncedProps] = useState(props);
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
-
-  useEffect(() => {
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
-    }
-    timeoutRef.current = setTimeout(() => {
-      setDebouncedProps(props);
-    }, delay);
-
-    return () => {
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-      }
-    };
-  }, [props, delay]);
-
-  return debouncedProps;
-};
 
 const SCALE_FACTOR = GEOMETRY_CONSTANTS.FITTING_SCALE;
 const PREVIEW_SCALE = SCENE_CONSTANTS.PREVIEW_SCALE;

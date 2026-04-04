@@ -4,6 +4,7 @@ import { useCallback, useMemo, useState } from "react";
 import type { IssuanceBatchRecord, QcShoreHardnessRecord } from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { now } from "@/app/lib/datetime";
+import { QcFormModal } from "./QcFormModal";
 
 interface ShoreHardnessFormProps {
   isOpen: boolean;
@@ -63,14 +64,11 @@ const rubberBatchDefaults = (
   return { spec: "", batchNumber: "" };
 };
 
-export function ShoreHardnessForm({
-  isOpen,
-  onClose,
-  jobCardId,
-  existing = null,
-  onSaved,
-  batchRecords = [],
-}: ShoreHardnessFormProps) {
+export function ShoreHardnessForm(props: ShoreHardnessFormProps) {
+  const { isOpen, onClose, jobCardId, onSaved } = props;
+  const existing = props.existing ?? null;
+  const batchRecords = props.batchRecords ?? [];
+
   const defaults = existing ? null : rubberBatchDefaults(batchRecords);
   const [rubberSpec, setRubberSpec] = useState(existing?.rubberSpec || defaults?.spec || "");
   const [rubberBatchNumber, setRubberBatchNumber] = useState(
@@ -200,158 +198,135 @@ export function ShoreHardnessForm({
     onClose,
   ]);
 
-  if (!isOpen) {
-    return null;
-  }
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/10 backdrop-blur-md p-4">
-      <div className="w-full max-w-3xl rounded-lg bg-white p-6 shadow-xl max-h-[90vh] overflow-y-auto">
-        <h2 className="mb-4 text-lg font-semibold text-gray-900">
-          {existing ? "Edit Shore Hardness Record" : "New Shore Hardness Record"}
-        </h2>
-
-        {error && <div className="mb-4 rounded-md bg-red-50 p-3 text-sm text-red-700">{error}</div>}
-
-        <div className="mb-4 grid grid-cols-2 gap-4">
-          <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">
-              Rubber Spec <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              value={rubberSpec}
-              onChange={(e) => setRubberSpec(e.target.value)}
-              placeholder="e.g. NR/SBR 60 Shore"
-              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
-            />
-          </div>
-          <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">
-              Rubber Batch Number
-            </label>
-            <input
-              type="text"
-              value={rubberBatchNumber}
-              onChange={(e) => setRubberBatchNumber(e.target.value)}
-              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
-            />
-          </div>
-          <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">
-              Required Shore <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="number"
-              value={requiredShore ?? ""}
-              onChange={(e) =>
-                setRequiredShore(e.target.value === "" ? null : Number(e.target.value))
-              }
-              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
-            />
-          </div>
-          <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">
-              Reading Date <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="date"
-              value={readingDate}
-              onChange={(e) => setReadingDate(e.target.value)}
-              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
-            />
-          </div>
+    <QcFormModal
+      isOpen={isOpen}
+      onClose={onClose}
+      title={existing ? "Edit Shore Hardness Record" : "New Shore Hardness Record"}
+      error={error}
+      saving={isSaving}
+      onSave={handleSave}
+      maxWidth="max-w-3xl"
+    >
+      <div className="mb-4 grid grid-cols-2 gap-4">
+        <div>
+          <label className="mb-1 block text-sm font-medium text-gray-700">
+            Rubber Spec <span className="text-red-500">*</span>
+          </label>
+          <input
+            type="text"
+            value={rubberSpec}
+            onChange={(e) => setRubberSpec(e.target.value)}
+            placeholder="e.g. NR/SBR 60 Shore"
+            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+          />
         </div>
-
-        <div className="mb-4 overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-gray-200">
-                <th className="px-2 py-2 text-left font-medium text-gray-700">Item</th>
-                {COLUMN_LABELS.map((label) => (
-                  <th key={label} className="px-2 py-2 text-center font-medium text-gray-700">
-                    {label}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {ROW_INDICES.map((rowIdx) => (
-                <tr key={rowIdx} className="border-b border-gray-100">
-                  <td className="px-1 py-1">
-                    <input
-                      type="text"
-                      value={itemLabels[rowIdx]}
-                      onChange={(e) => updateItemLabel(rowIdx, e.target.value)}
-                      placeholder={String(rowIdx + 1)}
-                      className="w-full rounded-md border border-gray-200 px-2 py-2 text-sm text-center text-gray-600 placeholder:text-gray-400"
-                    />
-                  </td>
-                  {COLUMNS.map((col) => (
-                    <td key={col} className="px-2 py-1">
-                      <input
-                        type="number"
-                        value={readings[col][rowIdx] ?? ""}
-                        onChange={(e) => updateReading(col, rowIdx, e.target.value)}
-                        className={`w-full rounded-md border px-3 py-2 text-sm text-center ${
-                          isOutOfRange(readings[col][rowIdx])
-                            ? "border-red-400 bg-red-50 text-red-700"
-                            : "border-gray-300"
-                        }`}
-                      />
-                    </td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-            <tfoot>
-              <tr className="border-t-2 border-gray-300">
-                <td className="px-2 py-2 font-semibold text-gray-700">Avg</td>
-                {COLUMNS.map((col) => (
-                  <td
-                    key={col}
-                    className={`px-2 py-2 text-center font-semibold ${
-                      isOutOfRange(averages[col]) ? "text-red-700" : "text-gray-900"
-                    }`}
-                  >
-                    {averages[col] !== null ? averages[col] : "—"}
-                  </td>
-                ))}
-              </tr>
-            </tfoot>
-          </table>
+        <div>
+          <label className="mb-1 block text-sm font-medium text-gray-700">
+            Rubber Batch Number
+          </label>
+          <input
+            type="text"
+            value={rubberBatchNumber}
+            onChange={(e) => setRubberBatchNumber(e.target.value)}
+            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+          />
         </div>
-
-        <div className="mb-6 flex items-center gap-2 text-sm">
-          <span className="font-medium text-gray-700">Overall Average:</span>
-          <span
-            className={`font-semibold ${
-              isOutOfRange(averages.overall) ? "text-red-700" : "text-gray-900"
-            }`}
-          >
-            {averages.overall !== null ? averages.overall : "—"}
-          </span>
+        <div>
+          <label className="mb-1 block text-sm font-medium text-gray-700">
+            Required Shore <span className="text-red-500">*</span>
+          </label>
+          <input
+            type="number"
+            value={requiredShore ?? ""}
+            onChange={(e) =>
+              setRequiredShore(e.target.value === "" ? null : Number(e.target.value))
+            }
+            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+          />
         </div>
-
-        <div className="flex justify-end gap-3">
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={isSaving}
-            className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            onClick={handleSave}
-            disabled={isSaving}
-            className="rounded-md bg-teal-600 px-4 py-2 text-sm font-medium text-white hover:bg-teal-700 disabled:opacity-50"
-          >
-            {isSaving ? "Saving..." : "Save"}
-          </button>
+        <div>
+          <label className="mb-1 block text-sm font-medium text-gray-700">
+            Reading Date <span className="text-red-500">*</span>
+          </label>
+          <input
+            type="date"
+            value={readingDate}
+            onChange={(e) => setReadingDate(e.target.value)}
+            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+          />
         </div>
       </div>
-    </div>
+
+      <div className="mb-4 overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-gray-200">
+              <th className="px-2 py-2 text-left font-medium text-gray-700">Item</th>
+              {COLUMN_LABELS.map((label) => (
+                <th key={label} className="px-2 py-2 text-center font-medium text-gray-700">
+                  {label}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {ROW_INDICES.map((rowIdx) => (
+              <tr key={rowIdx} className="border-b border-gray-100">
+                <td className="px-1 py-1">
+                  <input
+                    type="text"
+                    value={itemLabels[rowIdx]}
+                    onChange={(e) => updateItemLabel(rowIdx, e.target.value)}
+                    placeholder={String(rowIdx + 1)}
+                    className="w-full rounded-md border border-gray-200 px-2 py-2 text-sm text-center text-gray-600 placeholder:text-gray-400"
+                  />
+                </td>
+                {COLUMNS.map((col) => (
+                  <td key={col} className="px-2 py-1">
+                    <input
+                      type="number"
+                      value={readings[col][rowIdx] ?? ""}
+                      onChange={(e) => updateReading(col, rowIdx, e.target.value)}
+                      className={`w-full rounded-md border px-3 py-2 text-sm text-center ${
+                        isOutOfRange(readings[col][rowIdx])
+                          ? "border-red-400 bg-red-50 text-red-700"
+                          : "border-gray-300"
+                      }`}
+                    />
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+          <tfoot>
+            <tr className="border-t-2 border-gray-300">
+              <td className="px-2 py-2 font-semibold text-gray-700">Avg</td>
+              {COLUMNS.map((col) => (
+                <td
+                  key={col}
+                  className={`px-2 py-2 text-center font-semibold ${
+                    isOutOfRange(averages[col]) ? "text-red-700" : "text-gray-900"
+                  }`}
+                >
+                  {averages[col] !== null ? averages[col] : "—"}
+                </td>
+              ))}
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+
+      <div className="mb-6 flex items-center gap-2 text-sm">
+        <span className="font-medium text-gray-700">Overall Average:</span>
+        <span
+          className={`font-semibold ${
+            isOutOfRange(averages.overall) ? "text-red-700" : "text-gray-900"
+          }`}
+        >
+          {averages.overall !== null ? averages.overall : "—"}
+        </span>
+      </div>
+    </QcFormModal>
   );
 }

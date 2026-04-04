@@ -7,6 +7,7 @@ import {
   stockControlApiClient,
 } from "@/app/lib/api/stockControlApi";
 import { now } from "@/app/lib/datetime";
+import { QcFormModal } from "./QcFormModal";
 
 interface DustDebrisFormProps {
   isOpen: boolean;
@@ -152,6 +153,7 @@ export default function DustDebrisForm(props: DustDebrisFormProps) {
     return Array.from({ length: INITIAL_ROW_COUNT }, (_, i) => emptyRow(i + 1));
   });
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const parsedMaxQuantity = maxQuantity !== "" ? parseInt(maxQuantity, 10) : null;
   const parsedMaxSizeClass = maxSizeClass !== "" ? parseInt(maxSizeClass, 10) : null;
@@ -196,10 +198,12 @@ export default function DustDebrisForm(props: DustDebrisFormProps) {
 
   const handleSave = async () => {
     if (!readingDate) {
+      setError("Reading date is required.");
       return;
     }
 
     setSaving(true);
+    setError(null);
 
     const nonEmptyRows = rows.filter((row) => !rowIsEmpty(row));
 
@@ -242,351 +246,333 @@ export default function DustDebrisForm(props: DustDebrisFormProps) {
       }
       onSaved();
       onClose();
-    } catch {
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to save dust tape test");
+    } finally {
       setSaving(false);
     }
   };
 
-  if (!isOpen) {
-    return null;
-  }
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/10 backdrop-blur-md p-4">
-      <div className="w-full max-w-5xl rounded-lg bg-white p-6 shadow-xl max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold">{existing ? "Edit" : "New"} Dust Tape Test</h2>
-          <span className="text-xs text-gray-400">ISO 8502-3</span>
+    <QcFormModal
+      isOpen={isOpen}
+      onClose={onClose}
+      title={`${existing ? "Edit" : "New"} Dust Tape Test`}
+      error={error}
+      saving={saving}
+      onSave={handleSave}
+      saveDisabled={!readingDate}
+      maxWidth="max-w-5xl"
+      headerRight={<span className="text-xs text-gray-400">ISO 8502-3</span>}
+    >
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-5">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Reading Date *</label>
+          <input
+            type="date"
+            value={readingDate}
+            onChange={(e) => setReadingDate(e.target.value)}
+            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+            required
+          />
         </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-5">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Surface Preparation
+          </label>
+          <select
+            value={surfacePrepMethod}
+            onChange={(e) => setSurfacePrepMethod(e.target.value)}
+            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+          >
+            <option value="">Select method...</option>
+            {SURFACE_PREP_OPTIONS.map((opt) => (
+              <option key={opt} value={opt}>
+                {opt}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="grid grid-cols-2 gap-2">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Reading Date *</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Temp (&deg;C)</label>
             <input
-              type="date"
-              value={readingDate}
-              onChange={(e) => setReadingDate(e.target.value)}
+              type="number"
+              value={temperatureC}
+              onChange={(e) => setTemperatureC(e.target.value)}
               className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
-              required
+              placeholder="\u00b0C"
+              step="0.1"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Surface Preparation
-            </label>
-            <select
-              value={surfacePrepMethod}
-              onChange={(e) => setSurfacePrepMethod(e.target.value)}
+            <label className="block text-sm font-medium text-gray-700 mb-1">RH (%)</label>
+            <input
+              type="number"
+              value={humidityPercent}
+              onChange={(e) => setHumidityPercent(e.target.value)}
               className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
-            >
-              <option value="">Select method...</option>
-              {SURFACE_PREP_OPTIONS.map((opt) => (
-                <option key={opt} value={opt}>
-                  {opt}
-                </option>
-              ))}
-            </select>
+              placeholder="%"
+              min="0"
+              max="100"
+              step="0.1"
+            />
           </div>
-          <div className="grid grid-cols-2 gap-2">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Temp (&deg;C)</label>
-              <input
-                type="number"
-                value={temperatureC}
-                onChange={(e) => setTemperatureC(e.target.value)}
-                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
-                placeholder="\u00b0C"
-                step="0.1"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">RH (%)</label>
-              <input
-                type="number"
-                value={humidityPercent}
-                onChange={(e) => setHumidityPercent(e.target.value)}
-                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
-                placeholder="%"
-                min="0"
-                max="100"
-                step="0.1"
-              />
-            </div>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-4 mb-5 p-3 bg-amber-50 border border-amber-200 rounded-md">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Max Quantity Rating (0-5)
-            </label>
-            <select
-              value={maxQuantity}
-              onChange={(e) => setMaxQuantity(e.target.value)}
-              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
-            >
-              {RATING_OPTIONS.map((r) => (
-                <option key={r} value={r}>
-                  {r} - {QUANTITY_DESCRIPTIONS[r]}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Max Size Class (0-5)
-            </label>
-            <select
-              value={maxSizeClass}
-              onChange={(e) => setMaxSizeClass(e.target.value)}
-              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
-            >
-              {RATING_OPTIONS.map((r) => (
-                <option key={r} value={r}>
-                  {r} - {SIZE_CLASS_DESCRIPTIONS[r]}
-                </option>
-              ))}
-            </select>
-          </div>
-          <p className="col-span-2 text-xs text-amber-700">
-            Acceptance Criteria: Tests with quantity or size class exceeding these limits will
-            auto-fail.
-          </p>
-        </div>
-
-        <div className="mb-4">
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="text-sm font-semibold text-gray-700">Tape Test Readings</h3>
-            <button
-              type="button"
-              onClick={addRow}
-              className="rounded-md bg-teal-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-teal-700"
-            >
-              + Add Test
-            </button>
-          </div>
-
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-gray-200 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  <th className="pb-2 pr-2 w-10">#</th>
-                  <th className="pb-2 pr-2">Location</th>
-                  <th className="pb-2 pr-2">Qty (0-5)</th>
-                  <th className="pb-2 pr-2">Size (0-5)</th>
-                  <th className="pb-2 pr-2">Coating Type</th>
-                  <th className="pb-2 pr-2">Item No.</th>
-                  <th className="pb-2 pr-2">Result</th>
-                  <th className="pb-2 pr-2">Time</th>
-                  <th className="pb-2 w-8"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((row, index) => {
-                  const exceedsCriteria = ratingExceedsCriteria(
-                    row.quantity,
-                    row.sizeClass,
-                    parsedMaxQuantity,
-                    parsedMaxSizeClass,
-                  );
-                  return (
-                    <tr
-                      key={row.testNumber}
-                      className={`border-b border-gray-100 ${exceedsCriteria ? "bg-red-50" : ""}`}
-                    >
-                      <td className="py-2 pr-2 text-xs text-gray-500 font-medium">
-                        {row.testNumber}
-                      </td>
-                      <td className="py-2 pr-2">
-                        <input
-                          type="text"
-                          value={row.location}
-                          onChange={(e) => updateRow(index, "location", e.target.value)}
-                          className="w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm"
-                          placeholder="e.g. Top plate"
-                        />
-                      </td>
-                      <td className="py-2 pr-2">
-                        <select
-                          value={row.quantity}
-                          onChange={(e) => updateRow(index, "quantity", e.target.value)}
-                          className={`w-full rounded-md border px-2 py-1.5 text-sm ${
-                            row.quantity !== "" &&
-                            parsedMaxQuantity !== null &&
-                            parseInt(row.quantity, 10) > parsedMaxQuantity
-                              ? "border-red-400 bg-red-50"
-                              : "border-gray-300"
-                          }`}
-                          title={
-                            row.quantity !== ""
-                              ? QUANTITY_DESCRIPTIONS[parseInt(row.quantity, 10)]
-                              : ""
-                          }
-                        >
-                          <option value="">-</option>
-                          {RATING_OPTIONS.map((r) => (
-                            <option key={r} value={r}>
-                              {r}
-                            </option>
-                          ))}
-                        </select>
-                      </td>
-                      <td className="py-2 pr-2">
-                        <select
-                          value={row.sizeClass}
-                          onChange={(e) => updateRow(index, "sizeClass", e.target.value)}
-                          className={`w-full rounded-md border px-2 py-1.5 text-sm ${
-                            row.sizeClass !== "" &&
-                            parsedMaxSizeClass !== null &&
-                            parseInt(row.sizeClass, 10) > parsedMaxSizeClass
-                              ? "border-red-400 bg-red-50"
-                              : "border-gray-300"
-                          }`}
-                          title={
-                            row.sizeClass !== ""
-                              ? SIZE_CLASS_DESCRIPTIONS[parseInt(row.sizeClass, 10)]
-                              : ""
-                          }
-                        >
-                          <option value="">-</option>
-                          {RATING_OPTIONS.map((r) => (
-                            <option key={r} value={r}>
-                              {r}
-                            </option>
-                          ))}
-                        </select>
-                      </td>
-                      <td className="py-2 pr-2">
-                        <input
-                          type="text"
-                          value={row.coatingType}
-                          onChange={(e) => updateRow(index, "coatingType", e.target.value)}
-                          className="w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm"
-                          placeholder="e.g. Primer"
-                        />
-                      </td>
-                      <td className="py-2 pr-2">
-                        <input
-                          type="text"
-                          value={row.itemNumber}
-                          onChange={(e) => updateRow(index, "itemNumber", e.target.value)}
-                          className="w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm"
-                          placeholder="Item #"
-                        />
-                      </td>
-                      <td className="py-2 pr-2">
-                        <div className="flex gap-1">
-                          <button
-                            type="button"
-                            onClick={() => toggleResult(index, "pass")}
-                            className={`rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors ${
-                              row.result === "pass"
-                                ? "bg-green-600 text-white"
-                                : "bg-gray-100 text-gray-500 hover:bg-gray-200"
-                            }`}
-                          >
-                            Pass
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => toggleResult(index, "fail")}
-                            className={`rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors ${
-                              row.result === "fail"
-                                ? "bg-red-600 text-white"
-                                : "bg-gray-100 text-gray-500 hover:bg-gray-200"
-                            }`}
-                          >
-                            Fail
-                          </button>
-                        </div>
-                      </td>
-                      <td className="py-2 pr-2">
-                        <input
-                          type="time"
-                          value={row.testedAt}
-                          onChange={(e) => updateRow(index, "testedAt", e.target.value)}
-                          className="w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm"
-                        />
-                      </td>
-                      <td className="py-2">
-                        <button
-                          type="button"
-                          onClick={() => removeRow(index)}
-                          className="rounded-md p-1 text-gray-400 hover:text-red-600 hover:bg-red-50"
-                        >
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            width="16"
-                            height="16"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          >
-                            <line x1="18" y1="6" x2="6" y2="18" />
-                            <line x1="6" y1="6" x2="18" y2="18" />
-                          </svg>
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-
-          {rows.length === 0 && (
-            <p className="text-center text-sm text-gray-400 py-4">
-              No test entries. Click &quot;Add Test&quot; to begin.
-            </p>
-          )}
-        </div>
-
-        <div className="mb-4 p-3 bg-gray-50 border border-gray-200 rounded-md">
-          <h4 className="text-xs font-semibold text-gray-600 mb-2 uppercase tracking-wider">
-            ISO 8502-3 Rating Reference
-          </h4>
-          <div className="grid grid-cols-2 gap-4 text-xs text-gray-600">
-            <div>
-              <p className="font-medium mb-1">Dust Quantity Rating</p>
-              {RATING_OPTIONS.map((r) => (
-                <p key={`q-${r}`}>
-                  <span className="font-medium">{r}</span> — {QUANTITY_DESCRIPTIONS[r]}
-                </p>
-              ))}
-            </div>
-            <div>
-              <p className="font-medium mb-1">Dust Size Classification</p>
-              {RATING_OPTIONS.map((r) => (
-                <p key={`s-${r}`}>
-                  <span className="font-medium">{r}</span> — {SIZE_CLASS_DESCRIPTIONS[r]}
-                </p>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        <div className="flex justify-end gap-3">
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={saving}
-            className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            onClick={handleSave}
-            disabled={saving || !readingDate}
-            className="rounded-md bg-teal-600 px-4 py-2 text-sm font-medium text-white hover:bg-teal-700 disabled:opacity-50"
-          >
-            {saving ? "Saving..." : "Save"}
-          </button>
         </div>
       </div>
-    </div>
+
+      <div className="grid grid-cols-2 gap-4 mb-5 p-3 bg-amber-50 border border-amber-200 rounded-md">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Max Quantity Rating (0-5)
+          </label>
+          <select
+            value={maxQuantity}
+            onChange={(e) => setMaxQuantity(e.target.value)}
+            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+          >
+            {RATING_OPTIONS.map((r) => (
+              <option key={r} value={r}>
+                {r} - {QUANTITY_DESCRIPTIONS[r]}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Max Size Class (0-5)
+          </label>
+          <select
+            value={maxSizeClass}
+            onChange={(e) => setMaxSizeClass(e.target.value)}
+            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+          >
+            {RATING_OPTIONS.map((r) => (
+              <option key={r} value={r}>
+                {r} - {SIZE_CLASS_DESCRIPTIONS[r]}
+              </option>
+            ))}
+          </select>
+        </div>
+        <p className="col-span-2 text-xs text-amber-700">
+          Acceptance Criteria: Tests with quantity or size class exceeding these limits will
+          auto-fail.
+        </p>
+      </div>
+
+      <div className="mb-4">
+        <div className="flex items-center justify-between mb-2">
+          <h3 className="text-sm font-semibold text-gray-700">Tape Test Readings</h3>
+          <button
+            type="button"
+            onClick={addRow}
+            className="rounded-md bg-teal-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-teal-700"
+          >
+            + Add Test
+          </button>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-gray-200 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="pb-2 pr-2 w-10">#</th>
+                <th className="pb-2 pr-2">Location</th>
+                <th className="pb-2 pr-2">Qty (0-5)</th>
+                <th className="pb-2 pr-2">Size (0-5)</th>
+                <th className="pb-2 pr-2">Coating Type</th>
+                <th className="pb-2 pr-2">Item No.</th>
+                <th className="pb-2 pr-2">Result</th>
+                <th className="pb-2 pr-2">Time</th>
+                <th className="pb-2 w-8"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((row, index) => {
+                const exceedsCriteria = ratingExceedsCriteria(
+                  row.quantity,
+                  row.sizeClass,
+                  parsedMaxQuantity,
+                  parsedMaxSizeClass,
+                );
+                return (
+                  <tr
+                    key={row.testNumber}
+                    className={`border-b border-gray-100 ${exceedsCriteria ? "bg-red-50" : ""}`}
+                  >
+                    <td className="py-2 pr-2 text-xs text-gray-500 font-medium">
+                      {row.testNumber}
+                    </td>
+                    <td className="py-2 pr-2">
+                      <input
+                        type="text"
+                        value={row.location}
+                        onChange={(e) => updateRow(index, "location", e.target.value)}
+                        className="w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm"
+                        placeholder="e.g. Top plate"
+                      />
+                    </td>
+                    <td className="py-2 pr-2">
+                      <select
+                        value={row.quantity}
+                        onChange={(e) => updateRow(index, "quantity", e.target.value)}
+                        className={`w-full rounded-md border px-2 py-1.5 text-sm ${
+                          row.quantity !== "" &&
+                          parsedMaxQuantity !== null &&
+                          parseInt(row.quantity, 10) > parsedMaxQuantity
+                            ? "border-red-400 bg-red-50"
+                            : "border-gray-300"
+                        }`}
+                        title={
+                          row.quantity !== ""
+                            ? QUANTITY_DESCRIPTIONS[parseInt(row.quantity, 10)]
+                            : ""
+                        }
+                      >
+                        <option value="">-</option>
+                        {RATING_OPTIONS.map((r) => (
+                          <option key={r} value={r}>
+                            {r}
+                          </option>
+                        ))}
+                      </select>
+                    </td>
+                    <td className="py-2 pr-2">
+                      <select
+                        value={row.sizeClass}
+                        onChange={(e) => updateRow(index, "sizeClass", e.target.value)}
+                        className={`w-full rounded-md border px-2 py-1.5 text-sm ${
+                          row.sizeClass !== "" &&
+                          parsedMaxSizeClass !== null &&
+                          parseInt(row.sizeClass, 10) > parsedMaxSizeClass
+                            ? "border-red-400 bg-red-50"
+                            : "border-gray-300"
+                        }`}
+                        title={
+                          row.sizeClass !== ""
+                            ? SIZE_CLASS_DESCRIPTIONS[parseInt(row.sizeClass, 10)]
+                            : ""
+                        }
+                      >
+                        <option value="">-</option>
+                        {RATING_OPTIONS.map((r) => (
+                          <option key={r} value={r}>
+                            {r}
+                          </option>
+                        ))}
+                      </select>
+                    </td>
+                    <td className="py-2 pr-2">
+                      <input
+                        type="text"
+                        value={row.coatingType}
+                        onChange={(e) => updateRow(index, "coatingType", e.target.value)}
+                        className="w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm"
+                        placeholder="e.g. Primer"
+                      />
+                    </td>
+                    <td className="py-2 pr-2">
+                      <input
+                        type="text"
+                        value={row.itemNumber}
+                        onChange={(e) => updateRow(index, "itemNumber", e.target.value)}
+                        className="w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm"
+                        placeholder="Item #"
+                      />
+                    </td>
+                    <td className="py-2 pr-2">
+                      <div className="flex gap-1">
+                        <button
+                          type="button"
+                          onClick={() => toggleResult(index, "pass")}
+                          className={`rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors ${
+                            row.result === "pass"
+                              ? "bg-green-600 text-white"
+                              : "bg-gray-100 text-gray-500 hover:bg-gray-200"
+                          }`}
+                        >
+                          Pass
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => toggleResult(index, "fail")}
+                          className={`rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors ${
+                            row.result === "fail"
+                              ? "bg-red-600 text-white"
+                              : "bg-gray-100 text-gray-500 hover:bg-gray-200"
+                          }`}
+                        >
+                          Fail
+                        </button>
+                      </div>
+                    </td>
+                    <td className="py-2 pr-2">
+                      <input
+                        type="time"
+                        value={row.testedAt}
+                        onChange={(e) => updateRow(index, "testedAt", e.target.value)}
+                        className="w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm"
+                      />
+                    </td>
+                    <td className="py-2">
+                      <button
+                        type="button"
+                        onClick={() => removeRow(index)}
+                        className="rounded-md p-1 text-gray-400 hover:text-red-600 hover:bg-red-50"
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          width="16"
+                          height="16"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        >
+                          <line x1="18" y1="6" x2="6" y2="18" />
+                          <line x1="6" y1="6" x2="18" y2="18" />
+                        </svg>
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+
+        {rows.length === 0 && (
+          <p className="text-center text-sm text-gray-400 py-4">
+            No test entries. Click &quot;Add Test&quot; to begin.
+          </p>
+        )}
+      </div>
+
+      <div className="mb-4 p-3 bg-gray-50 border border-gray-200 rounded-md">
+        <h4 className="text-xs font-semibold text-gray-600 mb-2 uppercase tracking-wider">
+          ISO 8502-3 Rating Reference
+        </h4>
+        <div className="grid grid-cols-2 gap-4 text-xs text-gray-600">
+          <div>
+            <p className="font-medium mb-1">Dust Quantity Rating</p>
+            {RATING_OPTIONS.map((r) => (
+              <p key={`q-${r}`}>
+                <span className="font-medium">{r}</span> — {QUANTITY_DESCRIPTIONS[r]}
+              </p>
+            ))}
+          </div>
+          <div>
+            <p className="font-medium mb-1">Dust Size Classification</p>
+            {RATING_OPTIONS.map((r) => (
+              <p key={`s-${r}`}>
+                <span className="font-medium">{r}</span> — {SIZE_CLASS_DESCRIPTIONS[r]}
+              </p>
+            ))}
+          </div>
+        </div>
+      </div>
+    </QcFormModal>
   );
 }

@@ -69,13 +69,16 @@ import {
   LateralAngleRange,
 } from "@/app/lib/utils/sabs719LateralData";
 import { getGussetSection } from "@/app/lib/utils/sabs719TeeData";
-import { groupSteelSpecifications, isApi5LSpec } from "@/app/lib/utils/steelSpecGroups";
+import { isApi5LSpec } from "@/app/lib/utils/steelSpecGroups";
 import { getPipeEndConfigurationDetails } from "@/app/lib/utils/systemUtils";
 import { roundToWeldIncrement } from "@/app/lib/utils/weldThicknessLookup";
+import {
+  type FlangeStandardItem,
+  type PressureClassItem,
+  type SteelSpecItem,
+  useGroupedSteelOptions,
+} from "./shared";
 
-type SteelSpecItem = NonNullable<MasterData["steelSpecs"]>[number];
-type FlangeStandardItem = NonNullable<MasterData["flangeStandards"]>[number];
-type PressureClassItem = NonNullable<MasterData["pressureClasses"]>[number];
 type ScheduleItem = {
   id: number;
   scheduleDesignation: string;
@@ -271,10 +274,7 @@ function FittingFormComponent({
 
   const flangeTypesLength = masterData?.flangeTypes?.length || 0;
 
-  const groupedSteelOptions = useMemo(
-    () => (masterData?.steelSpecs ? groupSteelSpecifications(masterData.steelSpecs) : []),
-    [masterData?.steelSpecs],
-  );
+  const groupedSteelOptions = useGroupedSteelOptions(masterData);
 
   useEffect(() => {
     log.info(`🔥 FittingForm useEffect[flangeSpecs] FIRED - entry.id: ${entry.id}`);
