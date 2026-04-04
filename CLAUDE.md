@@ -26,16 +26,26 @@
     - ❌ Direct `===` for object comparisons
 
 ### SWC-Safe Patterns (Frontend Only)
-- **Never combine `?.` with `??`**: SWC miscompiles `obj?.prop ?? fallback` into undeclared `_ref` variables in production builds, causing `ReferenceError: _ref is not defined`. Always use `||` instead of `??` when the expression also contains `?.`
+**This is one of the most common sources of production crashes in this codebase. Read carefully before writing any nullish-coalescing expression on the frontend.**
+
+- **Default to `||` for fallbacks on any member/index access**: SWC (both webpack and Turbopack builds) miscompiles `??` into undeclared `_ref` / `_obj_prop` variables whenever the left-hand side is anything other than a plain identifier. This crashes the page at runtime with `ReferenceError: _<something> is not defined`. The safe default on the frontend is `||` — only use `??` in the narrow cases listed below.
+    - ❌ `user?.name ?? "Anonymous"` → compiles to broken `_user_name`
+    - ❌ `items?.length ?? 0` → compiles to broken `_items_length`
+    - ❌ `readings[num] ?? ""` → compiles to broken `_readings_num` (bracket access breaks even without `?.`)
+    - ❌ `obj.prop ?? fallback` inside JSX expressions → also miscompiles in many cases
+    - ❌ `arr[i].field ?? fallback`
     - ✅ `user?.name || "Anonymous"`
     - ✅ `items?.length || 0`
-    - ✅ `config?.theme || "default"`
-    - ❌ `user?.name ?? "Anonymous"`
-    - ❌ `items?.length ?? 0`
-- **No destructuring defaults in function parameters**: SWC miscompiles `({ prop = value }) =>` into broken `_ref` references. Destructure from `props` in the function body and use `??` for defaults
-    - ✅ `function Foo(props: FooProps) { const size = props.size ?? "md"; }`
+    - ✅ `readings[num] || ""`
+    - ✅ `obj.prop || fallback`
+- **When `||` is not semantically safe** (e.g. `0`, `""`, or `false` are legitimate values you must preserve): pull the value into a local `const` first, then use `??` on the plain identifier.
+    - ✅ `const raw = readings[num]; const value = raw ?? "";`
+    - ❌ `const value = readings[num] ?? "";`
+- **`??` is only safe on plain identifiers**: `const x = value ?? fallback` where `value` is a local variable or destructured const compiles correctly. Anything with a `.`, `?.`, or `[...]` on the left of `??` is a landmine.
+- **No destructuring defaults in function parameters**: SWC miscompiles `({ prop = value }) =>` into broken `_ref` references. Destructure from `props` in the function body and use the rules above for defaults.
+    - ✅ `function Foo(props: FooProps) { const size = props.size || "md"; }`
     - ❌ `function Foo({ size = "md" }: FooProps) {}`
-- **Standalone `??` (without `?.`) is fine**: `const x = props.value ?? fallback` compiles correctly
+- **Rule of thumb when authoring**: if you're about to type `??` and the thing to the left is not a bare identifier, stop and write `||` instead (or hoist to a const first). This rule has been broken repeatedly — treat `??` on member access as forbidden by default.
 
 ### Date/Time Handling
 - **Always use Luxon via the datetime module**: Never use native `Date`, `Date.now()`, or `Date.parse()`

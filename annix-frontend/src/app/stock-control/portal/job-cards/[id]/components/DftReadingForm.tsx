@@ -154,7 +154,7 @@ export default function DftReadingForm(props: DftReadingFormProps) {
     () =>
       READING_ROWS.map((num) => ({
         itemNumber: num,
-        value: readings[num] ?? "",
+        value: readings[num] || "",
       })).filter((r) => r.value !== "" && !Number.isNaN(Number(r.value))),
     [readings],
   );
@@ -334,11 +334,11 @@ export default function DftReadingForm(props: DftReadingFormProps) {
             <span className="w-6 text-right text-sm text-gray-500">{num}</span>
             <input
               type="number"
-              value={readings[num] ?? ""}
+              value={readings[num] || ""}
               onChange={(e) => updateReading(num, e.target.value)}
               placeholder="μm"
               className={`w-full rounded-md border px-3 py-1.5 text-sm ${
-                readingOutOfSpec(readings[num] ?? "")
+                readingOutOfSpec(readings[num] || "")
                   ? "border-red-500 bg-red-50 text-red-700"
                   : "border-gray-300"
               }`}
