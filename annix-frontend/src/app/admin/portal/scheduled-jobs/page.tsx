@@ -1,5 +1,6 @@
 "use client";
 
+import { useCallback, useMemo, useState } from "react";
 import type { ScheduledJobDto } from "@/app/lib/api/adminApi";
 import { fromISO } from "@/app/lib/datetime";
 import {
@@ -160,6 +161,8 @@ function JobRow(props: { job: ScheduledJobDto }) {
 
   const currentValue = currentCronToPresetValue(job.cronTime);
   const isCustomCron = !PRESET_FREQUENCIES.some((p) => p.value === currentValue);
+  const defaultValue = job.defaultCron ? normalizeCronToFiveField(job.defaultCron) : null;
+  const isOverridden = defaultValue ? currentValue !== defaultValue : false;
 
   return (
     <tr className="hover:bg-gray-50 dark:hover:bg-slate-700/30">
@@ -184,21 +187,33 @@ function JobRow(props: { job: ScheduledJobDto }) {
         </span>
       </td>
       <td className="whitespace-nowrap px-4 py-3 text-sm">
-        <select
-          value={currentValue}
-          onChange={(e) => handleFrequencyChange(e.target.value)}
-          disabled={isMutating}
-          className="rounded-md border border-gray-300 bg-white px-2 py-1 text-sm text-gray-700 hover:border-gray-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 disabled:opacity-50 dark:border-slate-600 dark:bg-slate-700 dark:text-gray-200"
-        >
-          {isCustomCron ? (
-            <option value={currentValue}>{friendlyCron(job.cronTime)} (custom)</option>
+        <div className="flex items-center gap-1">
+          <select
+            value={currentValue}
+            onChange={(e) => handleFrequencyChange(e.target.value)}
+            disabled={isMutating}
+            className="rounded-md border border-gray-300 bg-white px-2 py-1 text-sm text-gray-700 hover:border-gray-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 disabled:opacity-50 dark:border-slate-600 dark:bg-slate-700 dark:text-gray-200"
+          >
+            {isCustomCron ? (
+              <option value={currentValue}>{friendlyCron(job.cronTime)} (custom)</option>
+            ) : null}
+            {PRESET_FREQUENCIES.map((preset) => (
+              <option key={preset.value} value={preset.value}>
+                {preset.label}
+              </option>
+            ))}
+          </select>
+          {isOverridden && defaultValue ? (
+            <button
+              onClick={() => handleFrequencyChange(defaultValue)}
+              disabled={isMutating}
+              title={`Reset to default: ${friendlyCron(defaultValue)}`}
+              className="rounded px-1.5 py-0.5 text-xs text-gray-400 hover:bg-gray-100 hover:text-gray-600 disabled:opacity-50 dark:hover:bg-slate-600 dark:hover:text-gray-300"
+            >
+              Reset
+            </button>
           ) : null}
-          {PRESET_FREQUENCIES.map((preset) => (
-            <option key={preset.value} value={preset.value}>
-              {preset.label}
-            </option>
-          ))}
-        </select>
+        </div>
       </td>
       <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-500 dark:text-gray-400">
         {formatDate(job.lastExecution)}
@@ -252,10 +267,89 @@ function SyncBar() {
   );
 }
 
+type SortKey = "module" | "description" | "status" | "frequency" | "lastRun" | "nextRun";
+type SortDir = "asc" | "desc";
+
+function JobSortIcon(props: { active: boolean; direction: SortDir }) {
+  if (!props.active) {
+    return (
+      <svg className="ml-1 inline h-3 w-3 text-gray-400" viewBox="0 0 12 12" fill="currentColor">
+        <path d="M6 1.5L9.5 5.5H2.5L6 1.5Z" opacity="0.4" />
+        <path d="M6 10.5L2.5 6.5H9.5L6 10.5Z" opacity="0.4" />
+      </svg>
+    );
+  }
+  if (props.direction === "asc") {
+    return (
+      <svg className="ml-1 inline h-3 w-3 text-blue-600" viewBox="0 0 12 12" fill="currentColor">
+        <path d="M6 1.5L9.5 5.5H2.5L6 1.5Z" />
+      </svg>
+    );
+  }
+  return (
+    <svg className="ml-1 inline h-3 w-3 text-blue-600" viewBox="0 0 12 12" fill="currentColor">
+      <path d="M6 10.5L2.5 6.5H9.5L6 10.5Z" />
+    </svg>
+  );
+}
+
+function jobSortValue(job: ScheduledJobDto, key: SortKey): string {
+  if (key === "module") return job.module.toLowerCase();
+  if (key === "description") return job.description.toLowerCase();
+  if (key === "status") return job.active ? "active" : "paused";
+  if (key === "frequency") return friendlyCron(job.cronTime).toLowerCase();
+  if (key === "lastRun") return job.lastExecution || "";
+  if (key === "nextRun") return job.nextExecution || "";
+  return "";
+}
+
 export default function ScheduledJobsPage() {
   const { data: jobs, isLoading } = useScheduledJobs();
+  const [sortKey, setSortKey] = useState<SortKey | null>("module");
+  const [sortDir, setSortDir] = useState<SortDir>("asc");
 
-  const sortedJobs = (jobs || []).toSorted((a, b) => a.module.localeCompare(b.module));
+  const handleSort = useCallback(
+    (key: SortKey) => {
+      if (sortKey === key) {
+        if (sortDir === "asc") {
+          setSortDir("desc");
+        } else {
+          setSortKey(null);
+          setSortDir("asc");
+        }
+      } else {
+        setSortKey(key);
+        setSortDir("asc");
+      }
+    },
+    [sortKey, sortDir],
+  );
+
+  const sortedJobs = useMemo(() => {
+    const list = jobs || [];
+    if (!sortKey) return list;
+    return [...list].sort((a, b) => {
+      const aVal = jobSortValue(a, sortKey);
+      const bVal = jobSortValue(b, sortKey);
+      const cmp = aVal.localeCompare(bVal, undefined, { numeric: true });
+      return sortDir === "asc" ? cmp : -cmp;
+    });
+  }, [jobs, sortKey, sortDir]);
+
+  const columns: Array<{ key: SortKey | null; label: string }> = [
+    { key: "module", label: "Module" },
+    { key: "description", label: "Description" },
+    { key: "status", label: "Status" },
+    { key: "frequency", label: "Frequency" },
+    { key: "lastRun", label: "Last Run" },
+    { key: "nextRun", label: "Next Run" },
+    { key: null, label: "Actions" },
+  ];
+
+  const thSortable =
+    "px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400 cursor-pointer select-none hover:text-gray-700 hover:bg-gray-100 dark:hover:text-gray-200 dark:hover:bg-slate-600/50 transition-colors";
+  const thStatic =
+    "px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400";
 
   return (
     <div className="space-y-6">
@@ -274,22 +368,22 @@ export default function ScheduledJobsPage() {
           <table className="min-w-full divide-y divide-gray-200 dark:divide-slate-700">
             <thead className="bg-gray-50 dark:bg-slate-700/50">
               <tr>
-                {[
-                  "Module",
-                  "Description",
-                  "Status",
-                  "Frequency",
-                  "Last Run",
-                  "Next Run",
-                  "Actions",
-                ].map((header) => (
-                  <th
-                    key={header}
-                    className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400"
-                  >
-                    {header}
-                  </th>
-                ))}
+                {columns.map((col) =>
+                  col.key ? (
+                    <th
+                      key={col.label}
+                      className={thSortable}
+                      onClick={() => handleSort(col.key as SortKey)}
+                    >
+                      {col.label}
+                      <JobSortIcon active={sortKey === col.key} direction={sortDir} />
+                    </th>
+                  ) : (
+                    <th key={col.label} className={thStatic}>
+                      {col.label}
+                    </th>
+                  ),
+                )}
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200 dark:divide-slate-700">

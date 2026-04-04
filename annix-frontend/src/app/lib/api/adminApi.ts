@@ -1889,6 +1889,7 @@ export interface ScheduledJobDto {
   module: string;
   active: boolean;
   cronTime: string;
+  defaultCron: string;
   lastExecution: string | null;
   nextExecution: string | null;
 }

@@ -39,7 +39,7 @@ export class InboundEmailMonitorService {
     private readonly storageService: IStorageService,
   ) {}
 
-  @Cron(CronExpression.EVERY_10_MINUTES, { name: "inbound-email:poll-all" })
+  @Cron(CronExpression.EVERY_30_MINUTES, { name: "inbound-email:poll-all" })
   async pollAllConfigs(): Promise<void> {
     if (this.isPolling) {
       return;

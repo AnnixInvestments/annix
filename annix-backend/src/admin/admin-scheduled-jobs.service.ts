@@ -12,6 +12,7 @@ export interface ScheduledJobDto {
   module: string;
   active: boolean;
   cronTime: string;
+  defaultCron: string;
   lastExecution: string | null;
   nextExecution: string | null;
 }
@@ -28,102 +29,126 @@ export interface SyncResultDto {
   timestamp: string;
 }
 
-const JOB_METADATA: Record<string, { description: string; module: string }> = {
+const JOB_METADATA: Record<string, { description: string; module: string; defaultCron: string }> = {
   "fieldflow:sync-meetings": {
     description: "Sync completed meetings from calendar providers",
     module: "FieldFlow",
+    defaultCron: "*/30 * * * *",
   },
   "fieldflow:download-recordings": {
     description: "Download pending meeting recordings",
     module: "FieldFlow",
+    defaultCron: "*/30 * * * *",
   },
   "fieldflow:refresh-tokens": {
     description: "Refresh expiring OAuth tokens for integrations",
     module: "FieldFlow",
+    defaultCron: "0 * * * *",
   },
   "fieldflow:weekly-full-sync": {
     description: "Full weekly sync of all meeting data",
     module: "FieldFlow",
+    defaultCron: "0 2 * * *",
   },
   "fieldflow:cleanup-old-records": {
     description: "Clean up old meeting and recording records",
     module: "FieldFlow",
+    defaultCron: "0 3 * * *",
   },
   "fieldflow:daily-reminders": {
     description: "Send daily follow-up reminder emails",
     module: "FieldFlow",
+    defaultCron: "0 8 * * *",
   },
   "fieldflow:crm-sync": {
     description: "Sync CRM data (Salesforce, HubSpot, Pipedrive)",
     module: "FieldFlow",
+    defaultCron: "*/30 * * * *",
   },
   "fieldflow:calendar-sync": {
     description: "Sync active calendar connections",
     module: "FieldFlow",
+    defaultCron: "*/30 * * * *",
   },
   "cv-assistant:purge-inactive": {
     description: "POPIA purge of inactive candidate data",
     module: "CV Assistant",
+    defaultCron: "0 2 * * *",
   },
   "cv-assistant:poll-emails": {
     description: "Poll inbound emails for CV submissions",
     module: "CV Assistant",
+    defaultCron: "*/30 * * * *",
   },
   "cv-assistant:poll-job-sources": {
     description: "Poll external job listing sources",
     module: "CV Assistant",
+    defaultCron: "0 * * * *",
   },
   "cv-assistant:weekly-digests": {
     description: "Send weekly candidate digest emails",
     module: "CV Assistant",
+    defaultCron: "0 0 * * 0",
   },
   "cv-assistant:job-alerts": {
     description: "Send daily candidate job alert emails",
     module: "CV Assistant",
+    defaultCron: "0 9 * * *",
   },
   "customers:bee-expiry-check": {
     description: "Check B-BEE certificate expiry and send notifications",
     module: "Customers",
+    defaultCron: "0 8 * * *",
   },
   "comply-sa:regulatory-sync": {
     description: "Sync regulatory updates from government sources",
     module: "Comply SA",
+    defaultCron: "0 5 * * *",
   },
   "comply-sa:deadline-notifications": {
     description: "Process compliance deadline notifications",
     module: "Comply SA",
+    defaultCron: "0 6 * * *",
   },
   "comply-sa:document-expiry": {
     description: "Check document expiry and send warnings",
     module: "Comply SA",
+    defaultCron: "0 7 * * *",
   },
   "comply-sa:data-retention-cleanup": {
     description: "Monthly POPIA data retention cleanup for Comply SA",
     module: "Comply SA",
+    defaultCron: "0 3 1 * *",
   },
   "inbound-email:poll-all": {
     description: "Poll all configured inbound email accounts",
     module: "Inbound Email",
+    defaultCron: "*/30 * * * *",
   },
   "au-rubber:poll-emails": {
     description: "Poll AU Rubber inbound emails for CoCs and DNs",
     module: "AU Rubber",
+    defaultCron: "*/30 * * * *",
   },
   "secure-docs:cleanup-deleted": {
     description: "Permanently delete soft-deleted secure document folders",
     module: "Secure Docs",
+    defaultCron: "0 2 * * *",
   },
   "stock-control:calibration-expiry": {
     description: "Check calibration certificate expiry notifications",
     module: "Stock Control",
+    defaultCron: "0 8 * * *",
   },
   "stock-control:uninvoiced-arrivals": {
     description: "Check for CPO arrivals without matching invoices",
     module: "Stock Control",
+    defaultCron: "0 8 * * *",
   },
   "scheduled-jobs:sync-from-prod": {
     description: "Sync scheduled job settings from production server",
     module: "Admin",
+    defaultCron: "0 * * * *",
   },
 };
 
@@ -156,24 +181,31 @@ export class AdminScheduledJobsService implements OnApplicationBootstrap {
     }
 
     const overrides = await this.overrideRepo.find();
+    const overridesByName = new Map(overrides.map((o) => [o.jobName, o]));
 
-    overrides.forEach((override) => {
+    Object.entries(JOB_METADATA).forEach(([name, meta]) => {
       try {
-        const job = this.schedulerRegistry.getCronJob(override.jobName);
+        const job = this.schedulerRegistry.getCronJob(name);
+        const override = overridesByName.get(name);
 
-        if (override.cronExpression) {
-          job.setTime(new CronTime(override.cronExpression));
-          this.logger.log(`Restored frequency for ${override.jobName}: ${override.cronExpression}`);
-        }
+        if (override) {
+          if (override.cronExpression) {
+            job.setTime(new CronTime(override.cronExpression));
+            this.logger.log(`Restored frequency for ${name}: ${override.cronExpression}`);
+          }
 
-        if (override.active) {
-          job.start();
+          if (override.active) {
+            job.start();
+          } else {
+            job.stop();
+            this.logger.log(`Restored paused state for ${name}`);
+          }
         } else {
-          job.stop();
-          this.logger.log(`Restored paused state for ${override.jobName}`);
+          job.setTime(new CronTime(meta.defaultCron));
+          this.logger.log(`Applied default frequency for ${name}: ${meta.defaultCron}`);
         }
       } catch {
-        this.logger.warn(`Skipping override for unknown job: ${override.jobName}`);
+        this.logger.warn(`Skipping bootstrap for unregistered job: ${name}`);
       }
     });
 
@@ -278,7 +310,7 @@ export class AdminScheduledJobsService implements OnApplicationBootstrap {
     };
   }
 
-  @Cron(CronExpression.EVERY_10_MINUTES, { name: "scheduled-jobs:sync-from-prod" })
+  @Cron(CronExpression.EVERY_HOUR, { name: "scheduled-jobs:sync-from-prod" })
   async periodicSync(): Promise<void> {
     if (!this.syncSource) {
       return;
@@ -323,13 +355,18 @@ export class AdminScheduledJobsService implements OnApplicationBootstrap {
   }
 
   private jobToDto(name: string, job: any): ScheduledJobDto {
-    const meta = JOB_METADATA[name] || { description: name, module: "Unknown" };
+    const meta = JOB_METADATA[name] || {
+      description: name,
+      module: "Unknown",
+      defaultCron: "0 * * * *",
+    };
     return {
       name,
       description: meta.description,
       module: meta.module,
       active: job.isActive,
       cronTime: this.normalizeCronToFiveField(String(job.cronTime.source)),
+      defaultCron: meta.defaultCron,
       lastExecution: job.lastExecution ? job.lastExecution.toISOString() : null,
       nextExecution: String(job.nextDate().toISO()),
     };

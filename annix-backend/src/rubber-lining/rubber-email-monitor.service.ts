@@ -55,7 +55,7 @@ export class RubberEmailMonitorService implements OnModuleInit {
     }
   }
 
-  @Cron(CronExpression.EVERY_10_MINUTES, { name: "au-rubber:poll-emails" })
+  @Cron(CronExpression.EVERY_30_MINUTES, { name: "au-rubber:poll-emails" })
   async pollEmails(): Promise<void> {
     if (!this.isMonitoringEnabled) {
       return;
