@@ -431,6 +431,20 @@ export class SeedExpandedFastenerData1797100000000 implements MigrationInterface
       VALUES ${stepValues.join(",\n")}
       ON CONFLICT (designation) DO NOTHING
     `);
+
+    const twelvePtSizes = ["M6", "M8", "M10", "M12", "M14", "M16", "M20", "M24"];
+    const twelvePtValues = twelvePtSizes.flatMap((size) =>
+      ["10.9", "12.9"].map(
+        (grade) =>
+          `('${size}-12PT-${grade}', '${grade}', 'Alloy Steel', '12_point', 'coarse', NULL, 'plain', NULL, 'special', '12_point', NULL)`,
+      ),
+    );
+
+    await queryRunner.query(`
+      INSERT INTO bolts (designation, grade, material, head_style, thread_type, thread_pitch_mm, finish, standard, category, drive_type, point_type)
+      VALUES ${twelvePtValues.join(",\n")}
+      ON CONFLICT (designation) DO NOTHING
+    `);
   }
 
   private async seedSetScrews(queryRunner: QueryRunner): Promise<void> {

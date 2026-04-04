@@ -14,6 +14,7 @@ import { StockIssuance } from "../entities/stock-issuance.entity";
 import { StockItem } from "../entities/stock-item.entity";
 import { MovementType, ReferenceType, StockMovement } from "../entities/stock-movement.entity";
 import { SupplierCertificate } from "../entities/supplier-certificate.entity";
+import { CertificateService } from "./certificate.service";
 import { WorkflowNotificationService } from "./workflow-notification.service";
 
 interface UserContext {
@@ -94,6 +95,7 @@ export class IssuanceService {
     private readonly dataSource: DataSource,
     private readonly auditService: AuditService,
     private readonly notificationService: WorkflowNotificationService,
+    private readonly certificateService: CertificateService,
   ) {}
 
   async parseAndValidateQr(companyId: number, rawQr: string): Promise<ScanResult> {
@@ -812,41 +814,6 @@ export class IssuanceService {
     });
   }
 
-  private normalizeBatch(batch: string): string {
-    return batch.replace(/[^a-zA-Z0-9]/g, "").toLowerCase();
-  }
-
-  private async findMatchingCertificate(
-    companyId: number,
-    batchNumber: string,
-  ): Promise<SupplierCertificate | null> {
-    const exactMatch = await this.certRepo.findOne({
-      where: { companyId, batchNumber },
-    });
-
-    if (exactMatch) {
-      return exactMatch;
-    }
-
-    const normalizedInput = this.normalizeBatch(batchNumber);
-    if (normalizedInput.length < 4) {
-      return null;
-    }
-
-    const candidates = await this.certRepo.find({ where: { companyId } });
-    const match = candidates.find(
-      (cert) => this.normalizeBatch(cert.batchNumber) === normalizedInput,
-    );
-
-    if (match) {
-      this.logger.log(
-        `Fuzzy batch match: issuance="${batchNumber}" matched cert="${match.batchNumber}" (id=${match.id})`,
-      );
-    }
-
-    return match || null;
-  }
-
   private async createBatchRecord(
     companyId: number,
     issuanceId: number,
@@ -857,7 +824,10 @@ export class IssuanceService {
   ): Promise<void> {
     const trimmedBatch = batchNumber.trim();
 
-    const matchingCert = await this.findMatchingCertificate(companyId, trimmedBatch);
+    const matchingCert = await this.certificateService.findMatchingCertificate(
+      companyId,
+      trimmedBatch,
+    );
 
     if (matchingCert && jobCardId && !matchingCert.jobCardId) {
       await this.certRepo.update(matchingCert.id, { jobCardId });

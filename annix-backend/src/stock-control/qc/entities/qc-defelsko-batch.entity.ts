@@ -8,6 +8,7 @@ import {
   UpdateDateColumn,
 } from "typeorm";
 import { StockControlCompany } from "../../entities/stock-control-company.entity";
+import { SupplierCertificate } from "../../entities/supplier-certificate.entity";
 
 @Entity("qc_defelsko_batches")
 export class QcDefelskoBatch {
@@ -44,6 +45,13 @@ export class QcDefelskoBatch {
 
   @Column({ name: "captured_by_id", type: "integer", nullable: true })
   capturedById: number | null;
+
+  @ManyToOne(() => SupplierCertificate, { nullable: true, onDelete: "SET NULL" })
+  @JoinColumn({ name: "supplier_certificate_id" })
+  supplierCertificate: SupplierCertificate | null;
+
+  @Column({ name: "supplier_certificate_id", nullable: true })
+  supplierCertificateId: number | null;
 
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;

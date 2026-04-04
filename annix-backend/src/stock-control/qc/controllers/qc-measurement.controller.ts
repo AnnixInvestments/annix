@@ -20,6 +20,7 @@ import {
   StockControlRoleGuard,
   StockControlRoles,
 } from "../../guards/stock-control-role.guard";
+import { CertificateService } from "../../services/certificate.service";
 import { DataBookPdfService } from "../../services/data-book-pdf.service";
 import { QcEnabledGuard } from "../guards/qc-enabled.guard";
 import { QcMeasurementService } from "../services/qc-measurement.service";
@@ -33,6 +34,7 @@ export class QcMeasurementController {
   constructor(
     private readonly qcService: QcMeasurementService,
     private readonly dataBookPdfService: DataBookPdfService,
+    private readonly certificateService: CertificateService,
   ) {}
 
   // ── Aggregate ──────────────────────────────────────────────────────
@@ -513,6 +515,32 @@ export class QcMeasurementController {
     @Param("jobCardId") jobCardId: number,
     @Body() body: any,
   ) {
-    return this.qcService.saveDefelskoBatches(req.user.companyId, jobCardId, body, req.user);
+    const saved = await this.qcService.saveDefelskoBatches(
+      req.user.companyId,
+      jobCardId,
+      body,
+      req.user,
+    );
+
+    const materialCategories = new Set(["material_paint", "material_rubber"]);
+    const materialBatches = (body.batches || []).filter(
+      (b: { category: string; batchNumber: string | null }) =>
+        materialCategories.has(b.category) && b.batchNumber,
+    );
+
+    materialBatches.forEach((entry: { fieldKey: string; batchNumber: string }) => {
+      this.certificateService
+        .linkMaterialBatchToCertificate(
+          req.user.companyId,
+          jobCardId,
+          entry.fieldKey,
+          entry.batchNumber,
+        )
+        .catch((err: Error) =>
+          this.logger.warn(`Auto-link cert for field ${entry.fieldKey} failed: ${err.message}`),
+        );
+    });
+
+    return saved;
   }
 }

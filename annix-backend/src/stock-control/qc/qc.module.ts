@@ -4,15 +4,21 @@ import { JwtModule } from "@nestjs/jwt";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { StorageModule } from "../../storage/storage.module";
 import { JobCardCoatingAnalysis } from "../entities/coating-analysis.entity";
+import { IssuanceBatchRecord } from "../entities/issuance-batch-record.entity";
 import { JobCard } from "../entities/job-card.entity";
+import { JobCardDataBook } from "../entities/job-card-data-book.entity";
 import { PushSubscription } from "../entities/push-subscription.entity";
 import { StockControlActionPermission } from "../entities/stock-control-action-permission.entity";
 import { StockControlCompany } from "../entities/stock-control-company.entity";
+import { StockControlSupplier } from "../entities/stock-control-supplier.entity";
 import { StockControlUser } from "../entities/stock-control-user.entity";
+import { StockItem } from "../entities/stock-item.entity";
+import { SupplierCertificate } from "../entities/supplier-certificate.entity";
 import { WorkflowNotification } from "../entities/workflow-notification.entity";
 import { StockControlAuthGuard } from "../guards/stock-control-auth.guard";
 import { StockControlRoleGuard } from "../guards/stock-control-role.guard";
 import { ActionPermissionService } from "../services/action-permission.service";
+import { CertificateService } from "../services/certificate.service";
 import { CompanyEmailService } from "../services/company-email.service";
 import { DataBookPdfService } from "../services/data-book-pdf.service";
 import { JobCardWorkItemProvider } from "../services/job-card-work-item-provider";
@@ -44,8 +50,10 @@ import { WORK_ITEM_PROVIDER } from "./work-item-provider.interface";
   imports: [
     TypeOrmModule.forFeature([
       CalibrationCertificate,
+      IssuanceBatchRecord,
       JobCard,
       JobCardCoatingAnalysis,
+      JobCardDataBook,
       PositectorDevice,
       PushSubscription,
       QcBlastProfile,
@@ -59,7 +67,10 @@ import { WORK_ITEM_PROVIDER } from "./work-item-provider.interface";
       QcShoreHardness,
       StockControlCompany,
       StockControlActionPermission,
+      StockControlSupplier,
       StockControlUser,
+      StockItem,
+      SupplierCertificate,
       WorkflowNotification,
     ]),
     JwtModule.registerAsync({
@@ -84,6 +95,7 @@ import { WORK_ITEM_PROVIDER } from "./work-item-provider.interface";
     StockControlRoleGuard,
     QcEnabledGuard,
     CalibrationCertificateService,
+    CertificateService,
     CompanyEmailService,
     DataBookPdfService,
     QcMeasurementService,

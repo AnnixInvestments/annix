@@ -834,6 +834,7 @@ export interface QcDefelskoBatchRecord {
   notApplicable: boolean;
   capturedByName: string;
   capturedById: number | null;
+  supplierCertificateId: number | null;
   createdAt: string;
   updatedAt: string;
 }

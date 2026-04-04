@@ -2,7 +2,7 @@ import { Readable } from "node:stream";
 import { BadRequestException, Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { PDFDocument } from "pdf-lib";
-import { Repository } from "typeorm";
+import { In, IsNull, Not, Repository } from "typeorm";
 import { fromISO, now } from "../../lib/datetime";
 import {
   type IStorageService,
@@ -19,6 +19,7 @@ import { StockItem } from "../entities/stock-item.entity";
 import { SupplierCertificate } from "../entities/supplier-certificate.entity";
 import { CalibrationCertificate } from "../qc/entities/calibration-certificate.entity";
 import { QcControlPlan } from "../qc/entities/qc-control-plan.entity";
+import { QcDefelskoBatch } from "../qc/entities/qc-defelsko-batch.entity";
 import { QcReleaseCertificate } from "../qc/entities/qc-release-certificate.entity";
 import { QcMeasurementService } from "../qc/services/qc-measurement.service";
 import { generateBrandedCoverPage } from "./branded-cover-page";
@@ -102,6 +103,8 @@ export class CertificateService {
     private readonly controlPlanRepo: Repository<QcControlPlan>,
     @InjectRepository(QcReleaseCertificate)
     private readonly releaseCertRepo: Repository<QcReleaseCertificate>,
+    @InjectRepository(QcDefelskoBatch)
+    private readonly defelskoBatchRepo: Repository<QcDefelskoBatch>,
     @Inject(STORAGE_SERVICE)
     private readonly storageService: IStorageService,
     private readonly dataBookPdfService: DataBookPdfService,
@@ -183,6 +186,10 @@ export class CertificateService {
     const saved = await this.certRepo.save(certificate);
     this.logger.log(
       `Certificate uploaded: ${dto.certificateType} batch=${dto.batchNumber} supplier=${supplier.name} by ${user.name}`,
+    );
+
+    this.linkUnlinkedBatchRecords(companyId, saved.id).catch((err) =>
+      this.logger.error(`Auto-link batch records failed for cert ${saved.id}: ${err.message}`),
     );
 
     return this.findById(companyId, saved.id);
@@ -281,8 +288,25 @@ export class CertificateService {
       .filter((br) => br.supplierCertificate !== null)
       .map((br) => br.supplierCertificate as SupplierCertificate);
 
+    const materialBatches = await this.defelskoBatchRepo.find({
+      where: {
+        companyId,
+        jobCardId,
+        supplierCertificateId: Not(IsNull()) as any,
+      },
+      relations: [
+        "supplierCertificate",
+        "supplierCertificate.supplier",
+        "supplierCertificate.stockItem",
+      ],
+    });
+
+    const materialCerts = materialBatches
+      .filter((b) => b.supplierCertificate !== null)
+      .map((b) => b.supplierCertificate as SupplierCertificate);
+
     const certMap = new Map<number, SupplierCertificate>();
-    [...directCerts, ...linkedCerts].forEach((cert) => {
+    [...directCerts, ...linkedCerts, ...materialCerts].forEach((cert) => {
       certMap.set(cert.id, cert);
     });
 
@@ -983,6 +1007,144 @@ export class CertificateService {
       return { key, label, status: "missing", count, warnings: [], group: null };
     }
     return { key, label, status: "complete", count, warnings: [], group: null };
+  }
+
+  private normalizeBatch(batch: string): string {
+    return batch.replace(/[^a-zA-Z0-9]/g, "").toLowerCase();
+  }
+
+  async findMatchingCertificate(
+    companyId: number,
+    batchNumber: string,
+  ): Promise<SupplierCertificate | null> {
+    const exactMatch = await this.certRepo.findOne({
+      where: { companyId, batchNumber },
+    });
+
+    if (exactMatch) {
+      return exactMatch;
+    }
+
+    const normalizedInput = this.normalizeBatch(batchNumber);
+    if (normalizedInput.length < 4) {
+      return null;
+    }
+
+    const candidates = await this.certRepo.find({ where: { companyId } });
+    const match = candidates.find(
+      (cert) => this.normalizeBatch(cert.batchNumber) === normalizedInput,
+    );
+
+    if (match) {
+      this.logger.log(
+        `Fuzzy batch match: "${batchNumber}" matched cert="${match.batchNumber}" (id=${match.id})`,
+      );
+    }
+
+    return match || null;
+  }
+
+  async linkUnlinkedBatchRecords(companyId: number, certificateId: number): Promise<void> {
+    const cert = await this.certRepo.findOne({ where: { id: certificateId, companyId } });
+    if (!cert) return;
+
+    const normalizedCertBatch = this.normalizeBatch(cert.batchNumber);
+
+    const unlinkedIssuanceBatches = await this.batchRecordRepo.find({
+      where: { companyId, supplierCertificateId: IsNull() as any },
+    });
+
+    const matchedIssuanceBatches = unlinkedIssuanceBatches.filter(
+      (br) =>
+        br.batchNumber === cert.batchNumber ||
+        (normalizedCertBatch.length >= 4 &&
+          this.normalizeBatch(br.batchNumber) === normalizedCertBatch),
+    );
+
+    const issuanceJobCardIds = new Set<number>();
+    await matchedIssuanceBatches.reduce(async (prev, br) => {
+      await prev;
+      await this.batchRecordRepo.update(br.id, { supplierCertificateId: cert.id });
+      if (br.jobCardId) issuanceJobCardIds.add(br.jobCardId);
+      this.logger.log(
+        `Linked issuance batch record ${br.id} (batch="${br.batchNumber}") to cert ${cert.id}`,
+      );
+    }, Promise.resolve());
+
+    const materialCategories = ["material_paint", "material_rubber"];
+    const unlinkedDefelskoBatches = await this.defelskoBatchRepo.find({
+      where: {
+        companyId,
+        supplierCertificateId: IsNull() as any,
+        category: In(materialCategories),
+      },
+    });
+
+    const matchedDefelsko = unlinkedDefelskoBatches.filter(
+      (db) =>
+        db.batchNumber !== null &&
+        (db.batchNumber === cert.batchNumber ||
+          (normalizedCertBatch.length >= 4 &&
+            this.normalizeBatch(db.batchNumber) === normalizedCertBatch)),
+    );
+
+    const defelskJobCardIds = new Set<number>();
+    await matchedDefelsko.reduce(async (prev, db) => {
+      await prev;
+      await this.defelskoBatchRepo.update(db.id, { supplierCertificateId: cert.id });
+      defelskJobCardIds.add(db.jobCardId);
+      this.logger.log(
+        `Linked defelsko batch ${db.id} (batch="${db.batchNumber}") to cert ${cert.id}`,
+      );
+    }, Promise.resolve());
+
+    const allJobCardIds = new Set([...issuanceJobCardIds, ...defelskJobCardIds]);
+
+    if (!cert.jobCardId && allJobCardIds.size > 0) {
+      const firstJobCardId = allJobCardIds.values().next().value;
+      await this.certRepo.update(cert.id, { jobCardId: firstJobCardId });
+      this.logger.log(`Linked certificate ${cert.id} to job card ${firstJobCardId}`);
+    }
+
+    await [...allJobCardIds].reduce(async (prev, jcId) => {
+      await prev;
+      await this.markDataBookStale(companyId, jcId);
+    }, Promise.resolve());
+
+    const totalLinked = matchedIssuanceBatches.length + matchedDefelsko.length;
+    if (totalLinked > 0) {
+      this.logger.log(
+        `Certificate ${cert.id} (batch="${cert.batchNumber}") auto-linked to ${totalLinked} batch record(s)`,
+      );
+    }
+  }
+
+  async linkMaterialBatchToCertificate(
+    companyId: number,
+    jobCardId: number,
+    fieldKey: string,
+    batchNumber: string,
+  ): Promise<void> {
+    const cert = await this.findMatchingCertificate(companyId, batchNumber);
+    if (!cert) return;
+
+    const batch = await this.defelskoBatchRepo.findOne({
+      where: { companyId, jobCardId, fieldKey },
+    });
+
+    if (!batch) return;
+
+    await this.defelskoBatchRepo.update(batch.id, { supplierCertificateId: cert.id });
+    this.logger.log(
+      `Linked defelsko batch ${batch.id} (field="${fieldKey}", batch="${batchNumber}") to cert ${cert.id}`,
+    );
+
+    if (!cert.jobCardId) {
+      await this.certRepo.update(cert.id, { jobCardId });
+      this.logger.log(`Linked certificate ${cert.id} to job card ${jobCardId}`);
+    }
+
+    await this.markDataBookStale(companyId, jobCardId);
   }
 
   private async extractPdfPages(

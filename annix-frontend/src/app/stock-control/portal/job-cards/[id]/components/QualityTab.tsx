@@ -202,6 +202,8 @@ export function QualityTab(props: QualityTabProps) {
         </div>
       )}
 
+      <QcpSection jobCardId={jobCardId} />
+
       {coatingLoaded && (
         <DefelskoBatchSection
           jobCardId={jobCardId}
@@ -216,6 +218,7 @@ export function QualityTab(props: QualityTabProps) {
         batchRecords={batchRecords}
         hasRubber={coatingAnalysis?.hasInternalLining === true}
         hasPaint={(coatingAnalysis?.coats || []).length > 0}
+        coatingAnalysis={coatingAnalysis}
       />
 
       <QaReviewSection
@@ -375,8 +378,6 @@ export function QualityTab(props: QualityTabProps) {
               </div>
             )}
           </div>
-
-          <QcpSection jobCardId={jobCardId} />
 
           <div className="rounded-lg border border-gray-200 bg-white shadow-sm">
             <div className="flex items-center justify-between border-b border-gray-200 px-5 py-3">
