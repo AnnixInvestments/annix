@@ -130,7 +130,7 @@ export class JobCardService {
   ): Promise<{ previousId: number | null; nextId: number | null }> {
     const current = await this.jobCardRepo.findOne({
       where: { id, companyId },
-      select: ["id", "createdAt"],
+      select: ["id"],
     });
     if (!current) {
       throw new NotFoundException("Job card not found");
@@ -139,14 +139,14 @@ export class JobCardService {
     const baseWhere = { companyId, supersededById: IsNull() };
 
     const previous = await this.jobCardRepo.findOne({
-      where: { ...baseWhere, createdAt: LessThan(current.createdAt) },
-      order: { createdAt: "DESC" },
+      where: { ...baseWhere, id: LessThan(current.id) },
+      order: { id: "DESC" },
       select: ["id"],
     });
 
     const next = await this.jobCardRepo.findOne({
-      where: { ...baseWhere, createdAt: MoreThan(current.createdAt) },
-      order: { createdAt: "ASC" },
+      where: { ...baseWhere, id: MoreThan(current.id) },
+      order: { id: "ASC" },
       select: ["id"],
     });
 

@@ -1,31 +1,18 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { FeatureFlagsResponse, featureFlagsApi } from "@/app/lib/api/featureFlagsApi";
+import { useQuery } from "@tanstack/react-query";
+import { useCallback } from "react";
+import { type FeatureFlagsResponse, featureFlagsApi } from "@/app/lib/api/featureFlagsApi";
+import { featureFlagKeys } from "@/app/lib/query/keys";
 
 export function useFeatureFlags() {
-  const [flags, setFlags] = useState<FeatureFlagsResponse | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const query = useQuery<FeatureFlagsResponse>({
+    queryKey: featureFlagKeys.public(),
+    queryFn: () => featureFlagsApi.allFlags(),
+    staleTime: 5 * 60 * 1000,
+  });
 
-  const fetchFlags = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      const result = await featureFlagsApi.allFlags();
-      setFlags(result);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to fetch feature flags");
-      setFlags(null);
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchFlags();
-  }, [fetchFlags]);
+  const flags = query.data ?? null;
 
   const isEnabled = useCallback(
     (flagKey: string): boolean => {
@@ -38,8 +25,8 @@ export function useFeatureFlags() {
   return {
     flags,
     isEnabled,
-    isLoading,
-    error,
-    refresh: fetchFlags,
+    isLoading: query.isLoading,
+    error: query.error ? (query.error as Error).message : null,
+    refresh: () => query.refetch(),
   };
 }
