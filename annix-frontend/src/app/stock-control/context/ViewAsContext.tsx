@@ -2,32 +2,39 @@
 
 import React, { createContext, useCallback, useContext, useMemo, useState } from "react";
 import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
-import type { CompanyRole } from "@/app/lib/api/stockControlApi";
-import { useCompanyRoles } from "@/app/lib/query/hooks";
+import type { CompanyRole, StockControlTeamMember } from "@/app/lib/api/stockControlApi";
+import { useCompanyRoles, useSettingsTeamMembers } from "@/app/lib/query/hooks";
 
 interface ViewAsContextValue {
   effectiveRole: string;
   viewAsRole: string | null;
-  setViewAsRole: (role: string | null) => void;
+  viewAsUser: StockControlTeamMember | null;
+  setViewAsUser: (member: StockControlTeamMember | null) => void;
   isPreviewActive: boolean;
   companyRoles: CompanyRole[];
   companyRolesLoading: boolean;
+  teamMembers: StockControlTeamMember[];
+  effectiveName: string | null;
 }
 
 const ViewAsContext = createContext<ViewAsContextValue>({
   effectiveRole: "viewer",
   viewAsRole: null,
-  setViewAsRole: () => {},
+  viewAsUser: null,
+  setViewAsUser: () => {},
   isPreviewActive: false,
   companyRoles: [],
   companyRolesLoading: true,
+  teamMembers: [],
+  effectiveName: null,
 });
 
 export function ViewAsProvider(props: { children: React.ReactNode }) {
   const { children } = props;
   const { user } = useStockControlAuth();
-  const [viewAsRole, setViewAsRoleState] = useState<string | null>(null);
+  const [viewAsUser, setViewAsUserState] = useState<StockControlTeamMember | null>(null);
   const { data: companyRoles = [], isLoading: companyRolesLoading } = useCompanyRoles();
+  const { data: teamMembers = [] } = useSettingsTeamMembers();
 
   const actualRole = user?.role || "viewer";
   const isAdmin = actualRole === "admin";
@@ -37,48 +44,52 @@ export function ViewAsProvider(props: { children: React.ReactNode }) {
     [companyRoles],
   );
 
-  const previewableKeys = useMemo(
-    () => new Set(previewableRoles.map((r) => r.key)),
-    [previewableRoles],
+  const previewableMembers = useMemo(
+    () => teamMembers.filter((m) => m.role !== "admin"),
+    [teamMembers],
   );
 
-  const setViewAsRole = useCallback(
-    (role: string | null) => {
+  const setViewAsUser = useCallback(
+    (member: StockControlTeamMember | null) => {
       if (!isAdmin) return;
-      if (role === null || role === actualRole) {
-        setViewAsRoleState(null);
-        return;
-      }
-      if (previewableKeys.has(role)) {
-        setViewAsRoleState(role);
-      }
+      setViewAsUserState(member);
     },
-    [isAdmin, actualRole, previewableKeys],
+    [isAdmin],
   );
 
   const effectiveRole = useMemo(
-    () => (isAdmin && viewAsRole ? viewAsRole : actualRole),
-    [isAdmin, viewAsRole, actualRole],
+    () => (isAdmin && viewAsUser ? viewAsUser.role : actualRole),
+    [isAdmin, viewAsUser, actualRole],
   );
 
-  const isPreviewActive = isAdmin && viewAsRole !== null;
+  const effectiveName = useMemo(
+    () => (isAdmin && viewAsUser ? viewAsUser.name : user?.name || null),
+    [isAdmin, viewAsUser, user?.name],
+  );
+
+  const isPreviewActive = isAdmin && viewAsUser !== null;
 
   const value = useMemo(
     () => ({
       effectiveRole,
-      viewAsRole,
-      setViewAsRole,
+      viewAsRole: viewAsUser?.role || null,
+      viewAsUser,
+      setViewAsUser,
       isPreviewActive,
       companyRoles: previewableRoles,
       companyRolesLoading,
+      teamMembers: previewableMembers,
+      effectiveName,
     }),
     [
       effectiveRole,
-      viewAsRole,
-      setViewAsRole,
+      viewAsUser,
+      setViewAsUser,
       isPreviewActive,
       previewableRoles,
       companyRolesLoading,
+      previewableMembers,
+      effectiveName,
     ],
   );
 

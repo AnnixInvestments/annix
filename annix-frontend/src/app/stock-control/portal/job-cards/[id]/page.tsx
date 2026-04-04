@@ -52,7 +52,7 @@ export default function JobCardDetailPage() {
   const authContext = useStockControlAuth();
   const user = authContext.user;
   const profile = authContext.profile;
-  const { effectiveRole } = useViewAs();
+  const { effectiveRole, isPreviewActive, effectiveName } = useViewAs();
   const { confirm, ConfirmDialog } = useConfirm();
   const invalidateJobCardsList = useInvalidateJobCards();
   const jobId = Number(params.id);
@@ -429,16 +429,25 @@ export default function JobCardDetailPage() {
     if (!currentStep || !workflowStatus) return false;
     if (workflowStatus.jobCardStatus !== "active") return false;
 
+    if (isPreviewActive) {
+      const checkName = effectiveName;
+      if (!checkName) return false;
+      const assigned = workflowStatus.stepAssignments[currentStep];
+      if (!assigned || assigned.length === 0) return false;
+      return assigned.some((u) => u.name === checkName);
+    }
+
     return workflowStatus.canApprove;
-  }, [currentStep, workflowStatus]);
+  }, [currentStep, workflowStatus, isPreviewActive, effectiveName]);
 
   const canAcceptDraft = useMemo(() => {
     if (!workflowStatus || workflowStatus.jobCardStatus !== "draft") return false;
-    if (!user?.name) return false;
+    const checkName = effectiveName || user?.name;
+    if (!checkName) return false;
     const assigned = workflowStatus.stepAssignments?.["document_upload"];
     if (!assigned || assigned.length === 0) return false;
-    return assigned.some((u) => u.name === user.name);
-  }, [workflowStatus, user?.name]);
+    return assigned.some((u) => u.name === checkName);
+  }, [workflowStatus, user?.name, effectiveName]);
   const pipingLossPct = profile?.pipingLossFactorPct || 45;
 
   const validLineItemCount = useMemo(
@@ -498,7 +507,8 @@ export default function JobCardDetailPage() {
   }, [jobCard, validLineItemCount, allocations.length, currentStatus]);
 
   const userPendingBgSteps = useMemo(() => {
-    if (!workflowStatus || !user?.name) return [];
+    const checkName = effectiveName || user?.name;
+    if (!workflowStatus || !checkName) return [];
     if (workflowStatus.jobCardStatus === "draft") return [];
     const fgSteps = workflowStatus.foregroundSteps || [];
     const fgKeys = fgSteps.filter((s) => s.key !== "draft").map((s) => s.key);
@@ -583,7 +593,7 @@ export default function JobCardDetailPage() {
       }
 
       const assigned = assignments[bg.stepKey];
-      if (!assigned || assigned.length === 0 || !assigned.some((u) => u.name === user.name)) {
+      if (!assigned || assigned.length === 0 || !assigned.some((u) => u.name === checkName)) {
         return false;
       }
 
@@ -598,7 +608,7 @@ export default function JobCardDetailPage() {
       const originIdx = resolveOriginFgIdx(bg.triggerAfterStep || "__root__");
       return originIdx === firstOriginIdx;
     });
-  }, [workflowStatus, backgroundSteps, currentStatus, user?.name]);
+  }, [workflowStatus, backgroundSteps, currentStatus, user?.name, effectiveName]);
 
   const activeBgStepKeys = useMemo(
     () => new Set(userPendingBgSteps.map((bg) => bg.stepKey)),
@@ -704,7 +714,8 @@ export default function JobCardDetailPage() {
   const hasBlueLineTasks = currentStepPhaseInfo.isMultiPhase;
 
   const fgActionAssignedToOther = useMemo(() => {
-    if (!workflowStatus || !currentStep || !user?.name) return false;
+    const checkName = effectiveName || user?.name;
+    if (!workflowStatus || !currentStep || !checkName) return false;
     if (!currentStepActionLabel) return false;
     const assignments = workflowStatus.stepAssignments || {};
     const bgSteps: BackgroundStepStatus[] = workflowStatus.backgroundSteps || [];
@@ -715,9 +726,9 @@ export default function JobCardDetailPage() {
     return currentStepBgTasks.some((bg) => {
       const assigned = assignments[bg.stepKey];
       if (!assigned || assigned.length === 0) return true;
-      return !assigned.some((u) => u.name === user.name);
+      return !assigned.some((u) => u.name === checkName);
     });
-  }, [workflowStatus, currentStep, currentStepActionLabel, user?.name]);
+  }, [workflowStatus, currentStep, currentStepActionLabel, user?.name, effectiveName]);
 
   const isReceptionStep = useCallback(
     (bg: BackgroundStepStatus) =>
@@ -972,7 +983,8 @@ export default function JobCardDetailPage() {
 
   const requisitionIsPending = useMemo(() => {
     if (userPendingBgSteps.some(isRequisitionStep)) return true;
-    if (!workflowStatus || !user?.name) return false;
+    const checkName = effectiveName || user?.name;
+    if (!workflowStatus || !checkName) return false;
     const reqStep = backgroundSteps.find(
       (bg) =>
         (bg.stepKey === "requisition" || bg.label?.toLowerCase() === "requisition") &&
@@ -980,8 +992,15 @@ export default function JobCardDetailPage() {
     );
     if (!reqStep) return false;
     const assigned = workflowStatus.stepAssignments?.[reqStep.stepKey];
-    return !!assigned && assigned.some((u) => u.name === user.name);
-  }, [userPendingBgSteps, isRequisitionStep, workflowStatus, backgroundSteps, user?.name]);
+    return !!assigned && assigned.some((u) => u.name === checkName);
+  }, [
+    userPendingBgSteps,
+    isRequisitionStep,
+    workflowStatus,
+    backgroundSteps,
+    user?.name,
+    effectiveName,
+  ]);
 
   const [batchesSavedLocal, setBatchesSaved] = useState(false);
   const batchesSaved =
@@ -1848,7 +1867,7 @@ export default function JobCardDetailPage() {
           stepAssignments={workflowStatus.stepAssignments || {}}
           foregroundSteps={workflowStatus.foregroundSteps || []}
           backgroundSteps={backgroundSteps}
-          currentUserName={user?.name || null}
+          currentUserName={effectiveName || user?.name || null}
         />
       )}
 
@@ -2143,7 +2162,7 @@ export default function JobCardDetailPage() {
                 backgroundSteps={backgroundSteps}
                 activeBgStepKeys={activeBgStepKeys}
                 stepAssignments={workflowStatus?.stepAssignments || {}}
-                currentUserName={user?.name || null}
+                currentUserName={effectiveName || user?.name || null}
                 rubberPlanOverride={jobCard?.rubberPlanOverride || null}
                 onBatchComplete={
                   userPendingBgSteps.some((bg) => bg.branchColor && bg.stepKey === "qc_batch_certs")

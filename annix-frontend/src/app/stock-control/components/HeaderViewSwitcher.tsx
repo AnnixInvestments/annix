@@ -1,12 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useDisclosure } from "@/app/lib/hooks/useDisclosure";
 import { useViewAs } from "../context/ViewAsContext";
 
 export function HeaderViewSwitcher() {
-  const { viewAsRole, setViewAsRole, isPreviewActive, companyRoles, companyRolesLoading } =
-    useViewAs();
+  const { viewAsUser, setViewAsUser, isPreviewActive, teamMembers, companyRoles } = useViewAs();
   const { isOpen, close, toggle } = useDisclosure();
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -27,7 +26,38 @@ export function HeaderViewSwitcher() {
     return undefined;
   }, [isOpen, handleClickOutside]);
 
-  const activeLabel = companyRoles.find((r) => r.key === viewAsRole)?.label || null;
+  const roleLabelMap = useMemo(
+    () => new Map(companyRoles.map((r) => [r.key, r.label])),
+    [companyRoles],
+  );
+
+  const membersByRole = useMemo(() => {
+    const groups: { roleKey: string; roleLabel: string; members: typeof teamMembers }[] = [];
+    const roleOrder = companyRoles.map((r) => r.key);
+    const grouped = teamMembers.reduce<Record<string, typeof teamMembers>>((acc, m) => {
+      const key = m.role;
+      return { ...acc, [key]: [...(acc[key] || []), m] };
+    }, {});
+    roleOrder.forEach((roleKey) => {
+      if (grouped[roleKey]) {
+        groups.push({
+          roleKey,
+          roleLabel: roleLabelMap.get(roleKey) || roleKey,
+          members: grouped[roleKey],
+        });
+      }
+    });
+    Object.keys(grouped).forEach((roleKey) => {
+      if (!roleOrder.includes(roleKey)) {
+        groups.push({
+          roleKey,
+          roleLabel: roleLabelMap.get(roleKey) || roleKey,
+          members: grouped[roleKey],
+        });
+      }
+    });
+    return groups;
+  }, [teamMembers, companyRoles, roleLabelMap]);
 
   return (
     <div className="relative" ref={containerRef}>
@@ -55,19 +85,19 @@ export function HeaderViewSwitcher() {
           />
         </svg>
         <span className="hidden sm:inline">
-          {isPreviewActive ? `Viewing: ${activeLabel}` : "View as..."}
+          {isPreviewActive ? `Viewing: ${viewAsUser?.name}` : "View as..."}
         </span>
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
+        <div className="absolute right-0 mt-2 w-56 bg-white border border-gray-200 rounded-lg shadow-lg z-50 max-h-80 overflow-y-auto">
           <div className="py-1">
             {isPreviewActive && (
               <>
                 <button
                   type="button"
                   onClick={() => {
-                    setViewAsRole(null);
+                    setViewAsUser(null);
                     close();
                   }}
                   className="w-full flex items-center gap-2 px-4 py-2 text-sm text-teal-700 hover:bg-teal-50 transition-colors font-medium"
@@ -85,40 +115,47 @@ export function HeaderViewSwitcher() {
                 <div className="border-t border-gray-200 my-1" />
               </>
             )}
-            {companyRolesLoading ? (
-              <div className="px-4 py-2 text-sm text-gray-400">Loading roles...</div>
+            {membersByRole.length === 0 ? (
+              <div className="px-4 py-2 text-sm text-gray-400">Loading team...</div>
             ) : (
-              companyRoles.map((role) => (
-                <button
-                  key={role.key}
-                  type="button"
-                  onClick={() => {
-                    setViewAsRole(role.key);
-                    close();
-                  }}
-                  className={`w-full flex items-center justify-between px-4 py-2 text-sm transition-colors ${
-                    viewAsRole === role.key
-                      ? "bg-amber-50 text-amber-700 font-medium"
-                      : "text-gray-700 hover:bg-gray-50"
-                  }`}
-                >
-                  <span>{role.label}</span>
-                  {viewAsRole === role.key && (
-                    <svg
-                      className="w-4 h-4 text-amber-600"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
+              membersByRole.map((group) => (
+                <div key={group.roleKey}>
+                  <div className="px-4 py-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">
+                    {group.roleLabel}
+                  </div>
+                  {group.members.map((member) => (
+                    <button
+                      key={member.id}
+                      type="button"
+                      onClick={() => {
+                        setViewAsUser(member);
+                        close();
+                      }}
+                      className={`w-full flex items-center justify-between px-4 py-1.5 text-sm transition-colors ${
+                        viewAsUser?.id === member.id
+                          ? "bg-amber-50 text-amber-700 font-medium"
+                          : "text-gray-700 hover:bg-gray-50"
+                      }`}
                     >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M5 13l4 4L19 7"
-                      />
-                    </svg>
-                  )}
-                </button>
+                      <span>{member.name}</span>
+                      {viewAsUser?.id === member.id && (
+                        <svg
+                          className="w-4 h-4 text-amber-600"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M5 13l4 4L19 7"
+                          />
+                        </svg>
+                      )}
+                    </button>
+                  ))}
+                </div>
               ))
             )}
           </div>
