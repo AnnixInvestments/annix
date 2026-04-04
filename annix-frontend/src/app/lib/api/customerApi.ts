@@ -1,5 +1,5 @@
-import { getStoredFingerprint } from "@/app/hooks/useDeviceFingerprint";
 import { throwIfNotOk } from "@/app/lib/api/apiError";
+import { PortalTokenStore } from "@/app/lib/api/portalTokenStore";
 import { API_BASE_URL } from "@/lib/api-config";
 
 // Types for customer portal - must match backend DTOs
@@ -156,90 +156,34 @@ export interface CustomerDashboardResponse {
 
 class CustomerApiClient {
   private baseURL: string;
-  private accessToken: string | null = null;
-  private refreshToken: string | null = null;
-  private rememberMe: boolean = true;
+  private rememberMeFlag = true;
+  private tokens = new PortalTokenStore({
+    accessToken: "customerAccessToken",
+    refreshToken: "customerRefreshToken",
+  });
 
   constructor(baseURL: string = API_BASE_URL) {
     this.baseURL = baseURL;
-
-    if (typeof window !== "undefined") {
-      this.accessToken =
-        localStorage.getItem("customerAccessToken") ??
-        sessionStorage.getItem("customerAccessToken");
-      this.refreshToken =
-        localStorage.getItem("customerRefreshToken") ??
-        sessionStorage.getItem("customerRefreshToken");
-    }
   }
 
   setRememberMe(remember: boolean) {
-    this.rememberMe = remember;
+    this.rememberMeFlag = remember;
   }
 
   private getHeaders(): Record<string, string> {
-    const headers: Record<string, string> = {
-      "Content-Type": "application/json",
-    };
-
-    let token = this.accessToken;
-    if (typeof window !== "undefined") {
-      const storedToken =
-        localStorage.getItem("customerAccessToken") ??
-        sessionStorage.getItem("customerAccessToken");
-      if (storedToken) {
-        token = storedToken;
-        this.accessToken = storedToken;
-      }
-    }
-
-    if (token) {
-      headers["Authorization"] = `Bearer ${token}`;
-    }
-
-    const fingerprint = getStoredFingerprint();
-    if (fingerprint) {
-      headers["x-device-fingerprint"] = fingerprint;
-    }
-
-    return headers;
+    return this.tokens.authHeaders();
   }
 
   private setTokens(accessToken: string, refreshToken: string) {
-    this.accessToken = accessToken;
-    this.refreshToken = refreshToken;
-    if (typeof window !== "undefined") {
-      const storage = this.rememberMe ? localStorage : sessionStorage;
-      storage.setItem("customerAccessToken", accessToken);
-      storage.setItem("customerRefreshToken", refreshToken);
-    }
+    this.tokens.setTokens(accessToken, refreshToken, this.rememberMeFlag);
   }
 
   clearTokens() {
-    this.accessToken = null;
-    this.refreshToken = null;
-    if (typeof window !== "undefined") {
-      localStorage.removeItem("customerAccessToken");
-      localStorage.removeItem("customerRefreshToken");
-      sessionStorage.removeItem("customerAccessToken");
-      sessionStorage.removeItem("customerRefreshToken");
-    }
+    this.tokens.clear();
   }
 
   isAuthenticated(): boolean {
-    if (typeof window !== "undefined") {
-      const token =
-        localStorage.getItem("customerAccessToken") ??
-        sessionStorage.getItem("customerAccessToken");
-      if (token && !this.accessToken) {
-        this.accessToken = token;
-        this.refreshToken =
-          localStorage.getItem("customerRefreshToken") ??
-          sessionStorage.getItem("customerRefreshToken");
-      }
-      return !!token;
-    }
-    return !!this.accessToken;
+    return this.tokens.isAuthenticated();
   }
 
   private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
@@ -255,11 +199,9 @@ class CustomerApiClient {
 
     const response = await fetch(url, config);
 
-    if (response.status === 401 && this.refreshToken) {
-      // Try to refresh token
+    if (response.status === 401 && this.tokens.refreshToken()) {
       const refreshed = await this.refreshAccessToken();
       if (refreshed) {
-        // Retry the request with new token
         config.headers = {
           ...this.getHeaders(),
           ...(options.headers as Record<string, string>),
@@ -320,20 +262,14 @@ class CustomerApiClient {
   }
 
   async refreshAccessToken(): Promise<boolean> {
-    let refreshToken = this.refreshToken;
-    if (typeof window !== "undefined") {
-      refreshToken =
-        localStorage.getItem("customerRefreshToken") ??
-        sessionStorage.getItem("customerRefreshToken");
-    }
-
-    if (!refreshToken) return false;
+    const currentRefreshToken = this.tokens.refreshToken();
+    if (!currentRefreshToken) return false;
 
     try {
       const result = await fetch(`${this.baseURL}/customer/auth/refresh`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ refreshToken }),
+        body: JSON.stringify({ refreshToken: currentRefreshToken }),
       });
 
       if (!result.ok) {
@@ -342,22 +278,11 @@ class CustomerApiClient {
       }
 
       const data = await result.json();
-      // Handle both snake_case and camelCase response formats
       const accessToken = data.access_token || data.accessToken;
       const newRefreshToken = data.refresh_token || data.refreshToken;
 
       if (accessToken && newRefreshToken) {
-        this.accessToken = accessToken;
-        this.refreshToken = newRefreshToken;
-        if (typeof window !== "undefined") {
-          if (localStorage.getItem("customerRefreshToken")) {
-            localStorage.setItem("customerAccessToken", accessToken);
-            localStorage.setItem("customerRefreshToken", newRefreshToken);
-          } else {
-            sessionStorage.setItem("customerAccessToken", accessToken);
-            sessionStorage.setItem("customerRefreshToken", newRefreshToken);
-          }
-        }
+        this.tokens.setTokens(accessToken, newRefreshToken, this.tokens.rememberMe());
         return true;
       }
 
@@ -613,7 +538,7 @@ class CustomerDocumentApi {
     const response = await fetch(`${this.client["baseURL"]}/customer/documents`, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${this.client["accessToken"]}`,
+        Authorization: `Bearer ${this.client["tokens"].accessToken()}`,
       },
       body: formData,
     });

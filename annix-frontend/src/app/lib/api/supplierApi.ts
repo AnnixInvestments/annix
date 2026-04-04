@@ -1,5 +1,6 @@
 import { getStoredFingerprint } from "@/app/hooks/useDeviceFingerprint";
 import { throwIfNotOk } from "@/app/lib/api/apiError";
+import { PortalTokenStore } from "@/app/lib/api/portalTokenStore";
 import { API_BASE_URL } from "@/lib/api-config";
 
 // Types for supplier portal - must match backend DTOs
@@ -346,104 +347,29 @@ export interface RfqItemDetail {
 
 class SupplierApiClient {
   private baseURL: string;
-  private accessToken: string | null = null;
-  private refreshToken: string | null = null;
-  private rememberMe: boolean = false;
+  private tokens = new PortalTokenStore({
+    accessToken: "supplierAccessToken",
+    refreshToken: "supplierRefreshToken",
+  });
 
   constructor(baseURL: string = API_BASE_URL) {
     this.baseURL = baseURL;
-
-    // Load tokens from storage - check localStorage first (remember me), then sessionStorage
-    if (typeof window !== "undefined") {
-      const localAccessToken = localStorage.getItem("supplierAccessToken");
-      const sessionAccessToken = sessionStorage.getItem("supplierAccessToken");
-
-      if (localAccessToken) {
-        this.accessToken = localAccessToken;
-        this.refreshToken = localStorage.getItem("supplierRefreshToken");
-        this.rememberMe = true;
-      } else if (sessionAccessToken) {
-        this.accessToken = sessionAccessToken;
-        this.refreshToken = sessionStorage.getItem("supplierRefreshToken");
-        this.rememberMe = false;
-      }
-    }
   }
 
   private getHeaders(): Record<string, string> {
-    if (!this.accessToken && typeof window !== "undefined") {
-      const localAccessToken = localStorage.getItem("supplierAccessToken");
-      const sessionAccessToken = sessionStorage.getItem("supplierAccessToken");
-
-      if (localAccessToken) {
-        this.accessToken = localAccessToken;
-        this.refreshToken = localStorage.getItem("supplierRefreshToken");
-        this.rememberMe = true;
-      } else if (sessionAccessToken) {
-        this.accessToken = sessionAccessToken;
-        this.refreshToken = sessionStorage.getItem("supplierRefreshToken");
-        this.rememberMe = false;
-      }
-    }
-
-    const headers: Record<string, string> = {
-      "Content-Type": "application/json",
-    };
-
-    if (this.accessToken) {
-      headers["Authorization"] = `Bearer ${this.accessToken}`;
-    }
-
-    const fingerprint = getStoredFingerprint();
-    if (fingerprint) {
-      headers["x-device-fingerprint"] = fingerprint;
-    }
-
-    return headers;
+    return this.tokens.authHeaders();
   }
 
-  private setTokens(accessToken: string, refreshToken: string, rememberMe: boolean = false) {
-    this.accessToken = accessToken;
-    this.refreshToken = refreshToken;
-    this.rememberMe = rememberMe;
-    if (typeof window !== "undefined") {
-      const storage = rememberMe ? localStorage : sessionStorage;
-      const otherStorage = rememberMe ? sessionStorage : localStorage;
-      otherStorage.removeItem("supplierAccessToken");
-      otherStorage.removeItem("supplierRefreshToken");
-      storage.setItem("supplierAccessToken", accessToken);
-      storage.setItem("supplierRefreshToken", refreshToken);
-    }
+  private setTokens(accessToken: string, refreshToken: string, rememberMe = false) {
+    this.tokens.setTokens(accessToken, refreshToken, rememberMe);
   }
 
   clearTokens() {
-    this.accessToken = null;
-    this.refreshToken = null;
-    this.rememberMe = false;
-    if (typeof window !== "undefined") {
-      localStorage.removeItem("supplierAccessToken");
-      localStorage.removeItem("supplierRefreshToken");
-      sessionStorage.removeItem("supplierAccessToken");
-      sessionStorage.removeItem("supplierRefreshToken");
-    }
+    this.tokens.clear();
   }
 
   isAuthenticated(): boolean {
-    if (!this.accessToken && typeof window !== "undefined") {
-      const localAccessToken = localStorage.getItem("supplierAccessToken");
-      const sessionAccessToken = sessionStorage.getItem("supplierAccessToken");
-
-      if (localAccessToken) {
-        this.accessToken = localAccessToken;
-        this.refreshToken = localStorage.getItem("supplierRefreshToken");
-        this.rememberMe = true;
-      } else if (sessionAccessToken) {
-        this.accessToken = sessionAccessToken;
-        this.refreshToken = sessionStorage.getItem("supplierRefreshToken");
-        this.rememberMe = false;
-      }
-    }
-    return !!this.accessToken;
+    return this.tokens.isAuthenticated();
   }
 
   private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
@@ -459,7 +385,7 @@ class SupplierApiClient {
 
     const response = await fetch(url, config);
 
-    if (response.status === 401 && this.refreshToken) {
+    if (response.status === 401 && this.tokens.refreshToken()) {
       const refreshed = await this.refreshAccessToken();
       if (refreshed) {
         config.headers = {
@@ -530,14 +456,15 @@ class SupplierApiClient {
   }
 
   async refreshAccessToken(): Promise<boolean> {
-    if (!this.refreshToken) return false;
+    const currentRefreshToken = this.tokens.refreshToken();
+    if (!currentRefreshToken) return false;
 
     try {
       const fingerprint = getStoredFingerprint();
       const result = await fetch(`${this.baseURL}/supplier/auth/refresh`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ refreshToken: this.refreshToken, deviceFingerprint: fingerprint }),
+        body: JSON.stringify({ refreshToken: currentRefreshToken, deviceFingerprint: fingerprint }),
       });
 
       if (!result.ok) {
@@ -616,8 +543,9 @@ class SupplierApiClient {
     }
 
     const headers: Record<string, string> = {};
-    if (this.accessToken) {
-      headers["Authorization"] = `Bearer ${this.accessToken}`;
+    const token = this.tokens.accessToken();
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
     }
 
     const response = await fetch(`${this.baseURL}/supplier/onboarding/documents`, {
@@ -663,7 +591,7 @@ class SupplierApiClient {
 
     const response = await fetch(url, {
       headers: {
-        Authorization: `Bearer ${this.accessToken}`,
+        Authorization: `Bearer ${this.tokens.accessToken()}`,
       },
     });
 
