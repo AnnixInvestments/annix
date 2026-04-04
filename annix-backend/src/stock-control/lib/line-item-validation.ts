@@ -1,5 +1,15 @@
 import type { LineItemImportRow } from "../services/job-card-import.service";
 
+export const JUNK_SUFFIX_PATTERNS = [
+  /\s+foreman?\s*sign(?:off|ed)?$/i,
+  /\s+forman\s*sign(?:off|ed)?$/i,
+  /\s+supervisor\s*sign(?:off|ed)?$/i,
+];
+
+export function stripJunkSuffixes(text: string): string {
+  return JUNK_SUFFIX_PATTERNS.reduce((acc, pattern) => acc.replace(pattern, ""), text);
+}
+
 export const INVALID_LINE_ITEM_PATTERNS = [
   /^production\b/i,
   /^foreman?\s*sign/i,

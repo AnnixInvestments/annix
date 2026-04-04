@@ -4,7 +4,7 @@ import { Repository } from "typeorm";
 import { JobCardCoatingAnalysis } from "../../entities/coating-analysis.entity";
 import { JobCard } from "../../entities/job-card.entity";
 import { StockControlCompany } from "../../entities/stock-control-company.entity";
-import { INVALID_LINE_ITEM_PATTERNS } from "../../lib/line-item-validation";
+import { INVALID_LINE_ITEM_PATTERNS, stripJunkSuffixes } from "../../lib/line-item-validation";
 import { QcBlastProfile } from "../entities/qc-blast-profile.entity";
 import {
   InterventionType,
@@ -453,7 +453,7 @@ export class QcMeasurementService {
     const jobNumber = jobCard.jobNumber || null;
     const jobName = (jobCard.jobName || "").trim() || null;
     const itemDescriptions = (jobCard.lineItems || [])
-      .map((li: any) => (li.itemDescription || "").trim())
+      .map((li: any) => stripJunkSuffixes((li.itemDescription || "").trim()))
       .filter(
         (desc: string) =>
           desc.length > 0 && !INVALID_LINE_ITEM_PATTERNS.some((pattern) => pattern.test(desc)),
@@ -510,16 +510,30 @@ export class QcMeasurementService {
       const parts = notes
         .split(/(?=\bINT\s*:|EXT\s*:)/i)
         .filter((p) => p.trim().toUpperCase().startsWith(`${area}`))
-        .map((p) => p.trim());
+        .map((p) => stripJunkSuffixes(p.trim()));
       return parts.length > 0 ? [...new Set(parts)].join(" ") : "TBC";
+    };
+
+    const blastSpecLabel = (surfPrep: string | null): string => {
+      const labels: Record<string, string> = {
+        sa3_blast: "SA3 BLAST ISO 8501-1",
+        sa2_5_blast: "SA2.5 BLAST ISO 8501-1",
+        sa2_blast: "SA2 BLAST ISO 8501-1",
+        sa1_blast: "SA1 BLAST ISO 8501-1",
+        blast: "BLAST ISO 8501-1",
+        hand_tool: "HAND TOOL PREP ST3",
+        power_tool: "POWER TOOL PREP ST3",
+      };
+      return (surfPrep && labels[surfPrep]) || surfPrep || "SA2.5 BLAST ISO 8501-1";
     };
 
     const rubberActivities = (): QcpActivity[] => {
       const rubberSpec = extractSpecByArea(coating?.rawNotes, "INT");
+      const intSurfPrep = coating?.intSurfacePrep || coating?.surfacePrep || "sa3_blast";
       return [
         buildActivity(1, "Obtain Approval of QCP", null, "QC Document"),
         buildActivity(2, "Check Cleanliness", "SANS 1201-2005", "QD_PLS_16"),
-        buildActivity(3, "Sand Blast 3 S A", "SANS 1201-2005", "QD_PLS_16"),
+        buildActivity(3, "Blasting", blastSpecLabel(intSurfPrep), "RECORD READINGS"),
         buildActivity(4, "Hero Bond 080", "CERTIFICATE OF ANALYSIS", "QD_PLS_16"),
         buildActivity(5, "Hero Bond 082", "CERTIFICATE OF ANALYSIS", "QD_PLS_16"),
         buildActivity(6, "TY Bond 086", "CERTIFICATE OF ANALYSIS", "QD_PLS_16"),
@@ -551,7 +565,7 @@ export class QcMeasurementService {
         buildActivity(
           6,
           surfPrep === "no_blasting" ? "Surface Preparation" : "Blasting",
-          surfPrep === "no_blasting" ? "NO BLASTING" : surfPrep || "CLEAN SA.2.5 ISO 8501-1988",
+          surfPrep === "no_blasting" ? "NO BLASTING" : blastSpecLabel(surfPrep),
           surfPrep === "no_blasting" ? "N/A" : "RECORD READINGS",
         ),
       ];
