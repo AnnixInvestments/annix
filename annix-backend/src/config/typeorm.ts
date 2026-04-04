@@ -14,13 +14,13 @@ const config: DataSourceOptions = {
   database: process.env.DATABASE_NAME,
   entities: [`${__dirname}/../**/*.entity{.ts,.js}`],
   synchronize: false,
-  logging: process.env.NODE_ENV !== "production",
+  logging: process.env.TYPEORM_LOGGING === "true",
   ssl:
     process.env.DATABASE_SSL === "true"
       ? { rejectUnauthorized: process.env.NODE_ENV === "production" }
       : false,
   extra: {
-    max: 25,
+    max: 5,
     min: 0,
     idleTimeoutMillis: 10000,
     connectionTimeoutMillis: 30000,
