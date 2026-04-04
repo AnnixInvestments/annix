@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { QcControlPlanRecord } from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { formatDateZA } from "@/app/lib/datetime";
@@ -19,10 +19,56 @@ const PLAN_TYPE_BADGE_COLORS: Record<string, string> = {
   hdpe: "bg-orange-100 text-orange-800",
 };
 
+type SortKey =
+  | "qcpNumber"
+  | "jobNumber"
+  | "planType"
+  | "documentRef"
+  | "revision"
+  | "customerName"
+  | "jobName"
+  | "createdByName"
+  | "createdAt";
+
+type SortDir = "asc" | "desc";
+
+function sortValue(plan: QcControlPlanRecord, key: SortKey): string {
+  if (key === "qcpNumber") return (plan.qcpNumber || `QCP #${plan.id}`).toLowerCase();
+  if (key === "planType") return (PLAN_TYPE_LABELS[plan.planType] || plan.planType).toLowerCase();
+  if (key === "createdAt") return plan.createdAt || "";
+  const val = plan[key as keyof QcControlPlanRecord];
+  return (typeof val === "string" ? val : "").toLowerCase();
+}
+
+function SortIcon(props: { active: boolean; direction: SortDir }) {
+  if (!props.active) {
+    return (
+      <svg className="ml-1 inline h-3 w-3 text-gray-400" viewBox="0 0 12 12" fill="currentColor">
+        <path d="M6 1.5L9.5 5.5H2.5L6 1.5Z" opacity="0.4" />
+        <path d="M6 10.5L2.5 6.5H9.5L6 10.5Z" opacity="0.4" />
+      </svg>
+    );
+  }
+  if (props.direction === "asc") {
+    return (
+      <svg className="ml-1 inline h-3 w-3 text-teal-600" viewBox="0 0 12 12" fill="currentColor">
+        <path d="M6 1.5L9.5 5.5H2.5L6 1.5Z" />
+      </svg>
+    );
+  }
+  return (
+    <svg className="ml-1 inline h-3 w-3 text-teal-600" viewBox="0 0 12 12" fill="currentColor">
+      <path d="M6 10.5L2.5 6.5H9.5L6 10.5Z" />
+    </svg>
+  );
+}
+
 export default function QcpLogPage() {
   const [plans, setPlans] = useState<QcControlPlanRecord[]>([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
+  const [sortKey, setSortKey] = useState<SortKey | null>(null);
+  const [sortDir, setSortDir] = useState<SortDir>("asc");
 
   const loadPlans = useCallback(async (searchTerm: string) => {
     setLoading(true);
@@ -66,6 +112,48 @@ export default function QcpLogPage() {
     }
   }, []);
 
+  const handleSort = useCallback(
+    (key: SortKey) => {
+      if (sortKey === key) {
+        if (sortDir === "asc") {
+          setSortDir("desc");
+        } else {
+          setSortKey(null);
+          setSortDir("asc");
+        }
+      } else {
+        setSortKey(key);
+        setSortDir("asc");
+      }
+    },
+    [sortKey, sortDir],
+  );
+
+  const sortedPlans = useMemo(() => {
+    if (!sortKey) return plans;
+    return [...plans].sort((a, b) => {
+      const aVal = sortValue(a, sortKey);
+      const bVal = sortValue(b, sortKey);
+      const cmp = aVal.localeCompare(bVal, undefined, { numeric: true });
+      return sortDir === "asc" ? cmp : -cmp;
+    });
+  }, [plans, sortKey, sortDir]);
+
+  const thClass =
+    "px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 cursor-pointer select-none hover:text-gray-700 hover:bg-gray-100 transition-colors";
+
+  const columns: Array<{ key: SortKey; label: string }> = [
+    { key: "qcpNumber", label: "QCP Number" },
+    { key: "jobNumber", label: "Job Number" },
+    { key: "planType", label: "Type" },
+    { key: "documentRef", label: "Doc Ref" },
+    { key: "revision", label: "Rev" },
+    { key: "customerName", label: "Customer" },
+    { key: "jobName", label: "Job Name" },
+    { key: "createdByName", label: "Created By" },
+    { key: "createdAt", label: "Date" },
+  ];
+
   return (
     <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
       <div className="mb-6">
@@ -107,33 +195,12 @@ export default function QcpLogPage() {
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                QCP Number
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                Job Number
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                Type
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                Doc Ref
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                Rev
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                Customer
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                Job Name
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                Created By
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                Date
-              </th>
+              {columns.map((col) => (
+                <th key={col.key} className={thClass} onClick={() => handleSort(col.key)}>
+                  {col.label}
+                  <SortIcon active={sortKey === col.key} direction={sortDir} />
+                </th>
+              ))}
               <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
                 PDF
               </th>
@@ -146,14 +213,14 @@ export default function QcpLogPage() {
                   Loading...
                 </td>
               </tr>
-            ) : plans.length === 0 ? (
+            ) : sortedPlans.length === 0 ? (
               <tr>
                 <td colSpan={10} className="px-4 py-8 text-center text-sm text-gray-500">
                   {search ? "No QCPs found matching your search" : "No QCPs created yet"}
                 </td>
               </tr>
             ) : (
-              plans.map((plan) => (
+              sortedPlans.map((plan) => (
                 <tr key={plan.id} className="hover:bg-gray-50">
                   <td className="whitespace-nowrap px-4 py-3 text-sm font-medium text-gray-900">
                     {plan.qcpNumber || `QCP #${plan.id}`}
@@ -174,11 +241,15 @@ export default function QcpLogPage() {
                   <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-500">
                     v{plan.revision || "01"}
                   </td>
-                  <td className="max-w-[180px] truncate px-4 py-3 text-sm text-gray-500">
-                    {plan.customerName || "-"}
+                  <td className="max-w-[180px] px-4 py-3 text-sm text-gray-500">
+                    <div className="overflow-x-auto whitespace-nowrap scrollbar-thin">
+                      {plan.customerName || "-"}
+                    </div>
                   </td>
-                  <td className="max-w-[200px] truncate px-4 py-3 text-sm text-gray-500">
-                    {plan.jobName || "-"}
+                  <td className="max-w-[200px] px-4 py-3 text-sm text-gray-500">
+                    <div className="overflow-x-auto whitespace-nowrap scrollbar-thin">
+                      {plan.jobName || "-"}
+                    </div>
                   </td>
                   <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-500">
                     {plan.createdByName || "-"}
