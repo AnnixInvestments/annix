@@ -290,6 +290,7 @@ export interface StockItem {
   componentRole: string | null;
   mixRatio: string | null;
   rollNumber: string | null;
+  sourceRollNumber: string | null;
   isLeftover: boolean;
   sourceJobCardId: number | null;
   createdAt: string;
@@ -951,6 +952,7 @@ export interface QcControlPlanRecord {
   revision: string | null;
   customerName: string | null;
   orderNumber: string | null;
+  jobNumber: string | null;
   jobName: string | null;
   specification: string | null;
   itemDescription: string | null;

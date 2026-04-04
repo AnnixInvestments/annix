@@ -331,7 +331,9 @@ export class QcMeasurementService {
       .orderBy("qcp.created_at", "DESC");
 
     if (search) {
-      qb.andWhere("qcp.qcp_number ILIKE :search", { search: `%${search}%` });
+      qb.andWhere("(qcp.qcp_number ILIKE :search OR qcp.job_number ILIKE :search)", {
+        search: `%${search}%`,
+      });
     }
 
     return qb.getMany();
@@ -448,7 +450,8 @@ export class QcMeasurementService {
 
     const customerName = jobCard.customerName || null;
     const orderNumber = jobCard.poNumber || null;
-    const jobName = `${jobCard.jobNumber} - ${jobCard.jobName || ""}`.trim();
+    const jobNumber = jobCard.jobNumber || null;
+    const jobName = (jobCard.jobName || "").trim() || null;
     const itemDescriptions = (jobCard.lineItems || [])
       .map((li: any) => (li.itemDescription || "").trim())
       .filter(
@@ -631,6 +634,7 @@ export class QcMeasurementService {
         existingPlan.documentRef = documentRef;
         existingPlan.customerName = customerName;
         existingPlan.orderNumber = orderNumber;
+        existingPlan.jobNumber = jobNumber;
         existingPlan.jobName = jobName;
         existingPlan.specification = specificationForType(planType);
         existingPlan.itemDescription = itemDescriptions || null;
@@ -648,6 +652,7 @@ export class QcMeasurementService {
           revision,
           customerName,
           orderNumber,
+          jobNumber,
           jobName,
           specification: specificationForType(planType),
           itemDescription: itemDescriptions || null,

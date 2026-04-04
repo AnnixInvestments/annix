@@ -365,6 +365,7 @@ export function QcpForm({ jobCardId, existingPlan, onSaved, onCancel }: QcpFormP
   const [revision, setRevision] = useState(existingPlan?.revision || "01");
   const [customerName, setCustomerName] = useState(existingPlan?.customerName || "");
   const [orderNumber, setOrderNumber] = useState(existingPlan?.orderNumber || "");
+  const [jobNumber, setJobNumber] = useState(existingPlan?.jobNumber || "");
   const [jobName, setJobName] = useState(existingPlan?.jobName || "");
   const [specification, setSpecification] = useState(existingPlan?.specification || "");
   const [itemDescription, setItemDescription] = useState(existingPlan?.itemDescription || "");
@@ -411,6 +412,7 @@ export function QcpForm({ jobCardId, existingPlan, onSaved, onCancel }: QcpFormP
         ]);
         setCustomerName(jobCard.customerName || "");
         setOrderNumber(jobCard.poNumber || "");
+        setJobNumber(jobCard.jobNumber || "");
         setJobName(jobCard.jobName || "");
 
         if (coatingAnalysis && coatingAnalysis.status === "accepted") {
@@ -573,6 +575,7 @@ export function QcpForm({ jobCardId, existingPlan, onSaved, onCancel }: QcpFormP
         revision: revision || null,
         customerName: customerName || null,
         orderNumber: orderNumber || null,
+        jobNumber: jobNumber || null,
         jobName: jobName || null,
         specification: specification || null,
         itemDescription: itemDescription || null,
@@ -655,7 +658,16 @@ export function QcpForm({ jobCardId, existingPlan, onSaved, onCancel }: QcpFormP
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-4 gap-4">
+        <div>
+          <label className="block text-xs font-medium text-gray-700">Job Number</label>
+          <input
+            type="text"
+            value={jobNumber}
+            readOnly
+            className="mt-1 w-full rounded border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-500 cursor-not-allowed"
+          />
+        </div>
         <div>
           <label className="block text-xs font-medium text-gray-700">Customer</label>
           <input

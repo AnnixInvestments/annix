@@ -79,7 +79,7 @@ export default function QcpLogPage() {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="Search by QCP number..."
+          placeholder="Search by QCP or job number..."
           className="w-72 rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500"
         />
         <button
@@ -111,6 +111,9 @@ export default function QcpLogPage() {
                 QCP Number
               </th>
               <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                Job Number
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
                 Type
               </th>
               <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
@@ -139,13 +142,13 @@ export default function QcpLogPage() {
           <tbody className="divide-y divide-gray-200 bg-white">
             {loading ? (
               <tr>
-                <td colSpan={9} className="px-4 py-8 text-center text-sm text-gray-500">
+                <td colSpan={10} className="px-4 py-8 text-center text-sm text-gray-500">
                   Loading...
                 </td>
               </tr>
             ) : plans.length === 0 ? (
               <tr>
-                <td colSpan={9} className="px-4 py-8 text-center text-sm text-gray-500">
+                <td colSpan={10} className="px-4 py-8 text-center text-sm text-gray-500">
                   {search ? "No QCPs found matching your search" : "No QCPs created yet"}
                 </td>
               </tr>
@@ -154,6 +157,9 @@ export default function QcpLogPage() {
                 <tr key={plan.id} className="hover:bg-gray-50">
                   <td className="whitespace-nowrap px-4 py-3 text-sm font-medium text-gray-900">
                     {plan.qcpNumber || `QCP #${plan.id}`}
+                  </td>
+                  <td className="whitespace-nowrap px-4 py-3 text-sm font-medium text-gray-700">
+                    {plan.jobNumber || "-"}
                   </td>
                   <td className="whitespace-nowrap px-4 py-3 text-sm">
                     <span

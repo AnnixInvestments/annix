@@ -86,6 +86,9 @@ export class QcControlPlan {
   @Column({ name: "order_number", type: "varchar", length: 255, nullable: true })
   orderNumber: string | null;
 
+  @Column({ name: "job_number", type: "varchar", length: 50, nullable: true })
+  jobNumber: string | null;
+
   @Column({ name: "job_name", type: "varchar", length: 255, nullable: true })
   jobName: string | null;
 
