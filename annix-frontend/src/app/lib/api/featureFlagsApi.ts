@@ -1,3 +1,4 @@
+import { throwIfNotOk } from "@/app/lib/api/apiError";
 import { API_BASE_URL } from "@/lib/api-config";
 
 export type FeatureFlagsResponse = Record<string, boolean>;
@@ -48,9 +49,7 @@ class FeatureFlagsApiClient {
   async allFlags(): Promise<FeatureFlagsResponse> {
     const response = await fetch(`${this.baseURL}/feature-flags`);
 
-    if (!response.ok) {
-      throw new Error("Failed to fetch feature flags");
-    }
+    await throwIfNotOk(response);
 
     return response.json();
   }
@@ -60,9 +59,7 @@ class FeatureFlagsApiClient {
       headers: this.adminHeaders(),
     });
 
-    if (!response.ok) {
-      throw new Error("Failed to fetch feature flag details");
-    }
+    await throwIfNotOk(response);
 
     return response.json();
   }
@@ -74,10 +71,7 @@ class FeatureFlagsApiClient {
       body: JSON.stringify({ flagKey, enabled }),
     });
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.message || "Failed to update feature flag");
-    }
+    await throwIfNotOk(response);
 
     return response.json();
   }

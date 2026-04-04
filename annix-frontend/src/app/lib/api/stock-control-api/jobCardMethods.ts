@@ -1,3 +1,4 @@
+import { throwIfNotOk } from "@/app/lib/api/apiError";
 import { StockControlApiClient } from "./base";
 import type {
   AllocationPlanResponse,
@@ -448,10 +449,7 @@ proto.uploadDrawingFiles = async function (files) {
     }
   }
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`Drawing import failed: ${errorText}`);
-  }
+  await throwIfNotOk(response);
 
   return response.json();
 };

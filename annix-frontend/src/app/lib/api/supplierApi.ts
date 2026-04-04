@@ -1,4 +1,5 @@
 import { getStoredFingerprint } from "@/app/hooks/useDeviceFingerprint";
+import { throwIfNotOk } from "@/app/lib/api/apiError";
 import { API_BASE_URL } from "@/lib/api-config";
 
 // Types for supplier portal - must match backend DTOs
@@ -466,29 +467,12 @@ class SupplierApiClient {
           ...(options.headers as Record<string, string>),
         };
         const retryResponse = await fetch(url, config);
-        if (!retryResponse.ok) {
-          const errorText = await retryResponse.text();
-          throw new Error(`API Error (${retryResponse.status}): ${errorText}`);
-        }
+        await throwIfNotOk(retryResponse);
         return retryResponse.json();
       }
     }
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      let errorMessage = `API Error (${response.status}): ${errorText}`;
-
-      try {
-        const errorJson = JSON.parse(errorText);
-        if (errorJson.message) {
-          errorMessage = errorJson.message;
-        }
-      } catch {
-        // Use raw error text
-      }
-
-      throw new Error(errorMessage);
-    }
+    await throwIfNotOk(response);
 
     return response.json();
   }
@@ -507,19 +491,7 @@ class SupplierApiClient {
       body: formData,
     });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      let errorMessage = `Registration failed (${response.status})`;
-      try {
-        const errorJson = JSON.parse(errorText);
-        if (errorJson.message) {
-          errorMessage = errorJson.message;
-        }
-      } catch {
-        // Use raw error text
-      }
-      throw new Error(errorMessage);
-    }
+    await throwIfNotOk(response);
 
     const result = await response.json();
     this.setTokens(result.accessToken, result.refreshToken);
@@ -654,10 +626,7 @@ class SupplierApiClient {
       body: formData,
     });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Upload failed: ${errorText}`);
-    }
+    await throwIfNotOk(response);
 
     return response.json();
   }
@@ -698,15 +667,7 @@ class SupplierApiClient {
       },
     });
 
-    if (!response.ok) {
-      if (response.status === 401) {
-        throw new Error("Please log in to view this document");
-      }
-      if (response.status === 404) {
-        throw new Error("Document not found");
-      }
-      throw new Error("Failed to load document. Please try again.");
-    }
+    await throwIfNotOk(response);
 
     const contentDisposition = response.headers.get("Content-Disposition");
     let filename = "document";

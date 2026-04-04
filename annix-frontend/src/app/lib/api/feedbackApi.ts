@@ -1,4 +1,5 @@
 import { getStoredFingerprint } from "@/app/hooks/useDeviceFingerprint";
+import { throwIfNotOk } from "@/app/lib/api/apiError";
 import { API_BASE_URL } from "@/lib/api-config";
 
 export interface SubmitFeedbackDto {
@@ -77,19 +78,7 @@ export const customerFeedbackApi = {
       body: JSON.stringify(dto),
     });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      let errorMessage = "Failed to submit feedback";
-      try {
-        const errorJson = JSON.parse(errorText);
-        if (errorJson.message) {
-          errorMessage = errorJson.message;
-        }
-      } catch {
-        errorMessage = errorText || errorMessage;
-      }
-      throw new Error(errorMessage);
-    }
+    await throwIfNotOk(response);
 
     return response.json();
   },
@@ -131,19 +120,7 @@ export async function submitFeedbackWithAttachments(
     body: formData,
   });
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    let errorMessage = "Failed to submit feedback";
-    try {
-      const errorJson = JSON.parse(errorText);
-      if (errorJson.message) {
-        errorMessage = errorJson.message;
-      }
-    } catch {
-      errorMessage = errorText || errorMessage;
-    }
-    throw new Error(errorMessage);
-  }
+  await throwIfNotOk(response);
 
   return response.json();
 }

@@ -1,3 +1,4 @@
+import { throwIfNotOk } from "@/app/lib/api/apiError";
 import { API_BASE_URL } from "@/lib/api-config";
 
 export const TOKEN_KEYS = {
@@ -119,29 +120,12 @@ export class StockControlApiClient {
           ...(options.headers as Record<string, string>),
         };
         const retryResponse = await fetch(url, config);
-        if (!retryResponse.ok) {
-          const errorText = await retryResponse.text();
-          throw new Error(`API Error (${retryResponse.status}): ${errorText}`);
-        }
+        await throwIfNotOk(retryResponse);
         return retryResponse.json();
       }
     }
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      let errorMessage = `API Error (${response.status}): ${errorText}`;
-
-      try {
-        const errorData = JSON.parse(errorText);
-        if (errorData.message) {
-          errorMessage = errorData.message;
-        }
-      } catch {
-        // Use raw error text if not JSON
-      }
-
-      throw new Error(errorMessage);
-    }
+    await throwIfNotOk(response);
 
     const text = await response.text();
     if (!text || text.trim() === "") {
@@ -172,16 +156,12 @@ export class StockControlApiClient {
           ...(options.headers as Record<string, string>),
         };
         const retryResponse = await fetch(url, config);
-        if (!retryResponse.ok) {
-          throw new Error(`PDF download failed (${retryResponse.status})`);
-        }
+        await throwIfNotOk(retryResponse);
         return retryResponse.blob();
       }
     }
 
-    if (!response.ok) {
-      throw new Error(`PDF download failed (${response.status})`);
-    }
+    await throwIfNotOk(response);
 
     return response.blob();
   }
@@ -216,27 +196,12 @@ export class StockControlApiClient {
           headers: { Authorization: `Bearer ${this.accessToken}` },
           body: formData,
         });
-        if (!retryResponse.ok) {
-          const errorText = await retryResponse.text();
-          throw new Error(`Upload failed (${retryResponse.status}): ${errorText}`);
-        }
+        await throwIfNotOk(retryResponse);
         return retryResponse.json();
       }
     }
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      let errorMessage = `Upload failed (${response.status}): ${errorText}`;
-      try {
-        const errorData = JSON.parse(errorText);
-        if (errorData.message) {
-          errorMessage = errorData.message;
-        }
-      } catch {
-        // Use raw error text if not JSON
-      }
-      throw new Error(errorMessage);
-    }
+    await throwIfNotOk(response);
 
     return response.json();
   }
@@ -306,18 +271,14 @@ export class StockControlApiClient {
         const retryResponse = await fetch(url, {
           headers: { ...this.headers() },
         });
-        if (!retryResponse.ok) {
-          throw new Error(`Download failed (${retryResponse.status})`);
-        }
+        await throwIfNotOk(retryResponse);
         const blob = await retryResponse.blob();
         this.triggerDownload(blob, filename);
         return;
       }
     }
 
-    if (!response.ok) {
-      throw new Error(`Download failed (${response.status})`);
-    }
+    await throwIfNotOk(response);
 
     const blob = await response.blob();
     this.triggerDownload(blob, filename);
@@ -334,9 +295,7 @@ export class StockControlApiClient {
       }
     }
 
-    if (!response.ok) {
-      throw new Error(`Download failed (${response.status})`);
-    }
+    await throwIfNotOk(response);
 
     const blob = await response.blob();
     return URL.createObjectURL(blob);

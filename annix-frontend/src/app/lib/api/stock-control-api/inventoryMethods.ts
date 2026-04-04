@@ -1,3 +1,4 @@
+import { throwIfNotOk } from "@/app/lib/api/apiError";
 import { API_BASE_URL } from "@/lib/api-config";
 import { StockControlApiClient } from "./base";
 import type {
@@ -195,9 +196,7 @@ proto.downloadBatchLabelsPdf = async function (body) {
     body: JSON.stringify(body),
   });
 
-  if (!response.ok) {
-    throw new Error(`Failed to download labels PDF: ${response.status}`);
-  }
+  await throwIfNotOk(response);
 
   const blob = await response.blob();
   const url = window.URL.createObjectURL(blob);

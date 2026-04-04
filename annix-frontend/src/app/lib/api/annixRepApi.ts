@@ -1,3 +1,4 @@
+import { throwIfNotOk } from "@/app/lib/api/apiError";
 import { annixRepAuthHeaders, browserBaseUrl } from "@/lib/api-config";
 
 export interface TargetCustomerProfile {
@@ -1159,10 +1160,7 @@ export interface DiscoveryQuota {
 }
 
 async function handleResponse<T>(response: Response): Promise<T> {
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({ message: "Request failed" }));
-    throw new Error(error.message || `HTTP ${response.status}`);
-  }
+  await throwIfNotOk(response);
   return response.json();
 }
 
@@ -1303,10 +1301,7 @@ export const annixRepApi = {
         method: "DELETE",
         headers: annixRepAuthHeaders(),
       });
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({ message: "Delete failed" }));
-        throw new Error(error.message);
-      }
+      await throwIfNotOk(response);
     },
 
     nearby: async (
@@ -1373,10 +1368,7 @@ export const annixRepApi = {
       const response = await fetch(`${browserBaseUrl()}/annix-rep/prospects/export/csv`, {
         headers: annixRepAuthHeaders(),
       });
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({ message: "Export failed" }));
-        throw new Error(error.message);
-      }
+      await throwIfNotOk(response);
       return response.blob();
     },
 
@@ -1506,10 +1498,7 @@ export const annixRepApi = {
         method: "DELETE",
         headers: annixRepAuthHeaders(),
       });
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({ message: "Delete failed" }));
-        throw new Error(error.message);
-      }
+      await throwIfNotOk(response);
     },
 
     reorder: async (orderedIds: number[]): Promise<CustomFieldDefinition[]> => {
@@ -1628,10 +1617,7 @@ export const annixRepApi = {
         method: "DELETE",
         headers: annixRepAuthHeaders(),
       });
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({ message: "Delete failed" }));
-        throw new Error(error.message);
-      }
+      await throwIfNotOk(response);
     },
 
     createRecurring: async (dto: CreateRecurringMeetingDto): Promise<Meeting> => {
@@ -1688,10 +1674,7 @@ export const annixRepApi = {
         },
         body: JSON.stringify(dto),
       });
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({ message: "Delete failed" }));
-        throw new Error(error.message);
-      }
+      await throwIfNotOk(response);
     },
   },
 
@@ -1813,10 +1796,7 @@ export const annixRepApi = {
         method: "DELETE",
         headers: annixRepAuthHeaders(),
       });
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({ message: "Disconnect failed" }));
-        throw new Error(error.message);
-      }
+      await throwIfNotOk(response);
     },
 
     availableCalendars: async (connectionId: number): Promise<CalendarListItem[]> => {
@@ -1887,10 +1867,7 @@ export const annixRepApi = {
           body: JSON.stringify({ colorValue }),
         },
       );
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({ message: "Set color failed" }));
-        throw new Error(error.message);
-      }
+      await throwIfNotOk(response);
     },
 
     resetColors: async (colorType?: CalendarColorType): Promise<{ success: boolean }> => {
@@ -2041,10 +2018,7 @@ export const annixRepApi = {
         method: "DELETE",
         headers: annixRepAuthHeaders(),
       });
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({ message: "Delete failed" }));
-        throw new Error(error.message);
-      }
+      await throwIfNotOk(response);
     },
 
     streamUrl: (recordingId: number): string | null => {
@@ -2120,10 +2094,7 @@ export const annixRepApi = {
           headers: annixRepAuthHeaders(),
         },
       );
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({ message: "Delete failed" }));
-        throw new Error(error.message);
-      }
+      await throwIfNotOk(response);
     },
   },
 
@@ -2205,10 +2176,7 @@ export const annixRepApi = {
         method: "DELETE",
         headers: annixRepAuthHeaders(),
       });
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({ message: "Delete failed" }));
-        throw new Error(error.message);
-      }
+      await throwIfNotOk(response);
     },
 
     testConnection: async (id: number): Promise<{ success: boolean; message: string }> => {
@@ -2264,10 +2232,7 @@ export const annixRepApi = {
       const response = await fetch(`${browserBaseUrl()}/annix-rep/crm/export/prospects${params}`, {
         headers: annixRepAuthHeaders(),
       });
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({ message: "Export failed" }));
-        throw new Error(error.message);
-      }
+      await throwIfNotOk(response);
       return response.blob();
     },
 
@@ -2276,10 +2241,7 @@ export const annixRepApi = {
       const response = await fetch(`${browserBaseUrl()}/annix-rep/crm/export/meetings${params}`, {
         headers: annixRepAuthHeaders(),
       });
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({ message: "Export failed" }));
-        throw new Error(error.message);
-      }
+      await throwIfNotOk(response);
       return response.blob();
     },
 
@@ -2604,10 +2566,7 @@ export const annixRepApi = {
         method: "DELETE",
         headers: annixRepAuthHeaders(),
       });
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({ message: "Delete failed" }));
-        throw new Error(error.message);
-      }
+      await throwIfNotOk(response);
     },
   },
 
@@ -2655,10 +2614,7 @@ export const annixRepApi = {
         method: "DELETE",
         headers: annixRepAuthHeaders(),
       });
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({ message: "Delete failed" }));
-        throw new Error(error.message);
-      }
+      await throwIfNotOk(response);
     },
 
     progress: async (period: GoalPeriod): Promise<GoalProgress> => {
@@ -2689,10 +2645,7 @@ export const annixRepApi = {
           headers: annixRepAuthHeaders(),
         },
       );
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({ message: "PDF generation failed" }));
-        throw new Error(error.message);
-      }
+      await throwIfNotOk(response);
       return response.blob();
     },
 
@@ -2715,10 +2668,7 @@ export const annixRepApi = {
           headers: annixRepAuthHeaders(),
         },
       );
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({ message: "PDF generation failed" }));
-        throw new Error(error.message);
-      }
+      await throwIfNotOk(response);
       return response.blob();
     },
 
@@ -2744,10 +2694,7 @@ export const annixRepApi = {
           headers: annixRepAuthHeaders(),
         },
       );
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({ message: "PDF generation failed" }));
-        throw new Error(error.message);
-      }
+      await throwIfNotOk(response);
       return response.blob();
     },
 
@@ -2770,10 +2717,7 @@ export const annixRepApi = {
           headers: annixRepAuthHeaders(),
         },
       );
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({ message: "PDF generation failed" }));
-        throw new Error(error.message);
-      }
+      await throwIfNotOk(response);
       return response.blob();
     },
   },
@@ -3305,10 +3249,7 @@ export const teamApi = {
         method: "DELETE",
         headers: annixRepAuthHeaders(),
       });
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({ message: "Delete failed" }));
-        throw new Error(error.message);
-      }
+      await throwIfNotOk(response);
     },
 
     stats: async (id: number): Promise<OrganizationStats> => {
@@ -3351,10 +3292,7 @@ export const teamApi = {
         method: "DELETE",
         headers: annixRepAuthHeaders(),
       });
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({ message: "Remove failed" }));
-        throw new Error(error.message);
-      }
+      await throwIfNotOk(response);
     },
 
     setReportsTo: async (id: number, reportsToId: number | null): Promise<TeamMember> => {
@@ -3429,10 +3367,7 @@ export const teamApi = {
           method: "POST",
         },
       );
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({ message: "Decline failed" }));
-        throw new Error(error.message);
-      }
+      await throwIfNotOk(response);
     },
 
     cancel: async (id: number): Promise<void> => {
@@ -3440,10 +3375,7 @@ export const teamApi = {
         method: "DELETE",
         headers: annixRepAuthHeaders(),
       });
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({ message: "Cancel failed" }));
-        throw new Error(error.message);
-      }
+      await throwIfNotOk(response);
     },
 
     resend: async (id: number): Promise<TeamInvitation> => {
@@ -3506,10 +3438,7 @@ export const teamApi = {
         method: "DELETE",
         headers: annixRepAuthHeaders(),
       });
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({ message: "Delete failed" }));
-        throw new Error(error.message);
-      }
+      await throwIfNotOk(response);
     },
 
     assign: async (id: number, userId: number | null): Promise<Territory> => {

@@ -1,3 +1,5 @@
+import { throwIfNotOk } from "@/app/lib/api/apiError";
+
 const VOICE_FILTER_API_URL = "http://localhost:47823";
 
 export interface VoiceFilterUser {
@@ -69,7 +71,7 @@ export const voiceFilterApi = {
 
   calendarProviders: async (): Promise<{ providers: VoiceFilterCalendarProvider[] }> => {
     const response = await fetchWithCredentials(`${VOICE_FILTER_API_URL}/api/calendar/providers`);
-    if (!response.ok) throw new Error("Failed to fetch calendar providers");
+    await throwIfNotOk(response);
     return response.json();
   },
 
@@ -86,7 +88,7 @@ export const voiceFilterApi = {
     if (params?.limit) url.searchParams.set("limit", params.limit.toString());
 
     const response = await fetchWithCredentials(url.toString());
-    if (!response.ok) throw new Error("Failed to fetch calendar events");
+    await throwIfNotOk(response);
     return response.json();
   },
 
@@ -94,7 +96,7 @@ export const voiceFilterApi = {
     const response = await fetchWithCredentials(
       `${VOICE_FILTER_API_URL}/api/calendar/upcoming?limit=${limit}`,
     );
-    if (!response.ok) throw new Error("Failed to fetch upcoming events");
+    await throwIfNotOk(response);
     return response.json();
   },
 
@@ -104,7 +106,7 @@ export const voiceFilterApi = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ provider, fullSync }),
     });
-    if (!response.ok) throw new Error("Failed to sync calendar");
+    await throwIfNotOk(response);
   },
 
   calendarDisconnect: async (provider: string): Promise<void> => {
@@ -112,7 +114,7 @@ export const voiceFilterApi = {
       `${VOICE_FILTER_API_URL}/api/calendar/disconnect/${provider}`,
       { method: "POST" },
     );
-    if (!response.ok) throw new Error("Failed to disconnect calendar");
+    await throwIfNotOk(response);
   },
 
   calendarOauthUrl: (provider: string): string => {

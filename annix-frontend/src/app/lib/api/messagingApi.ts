@@ -1,5 +1,6 @@
 "use client";
 
+import { throwIfNotOk } from "@/app/lib/api/apiError";
 import { browserBaseUrl } from "@/lib/api-config";
 
 export enum ConversationType {
@@ -238,10 +239,7 @@ async function request<T>(
     },
   });
 
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({}));
-    throw new Error(error.message || `Request failed: ${response.status}`);
-  }
+  await throwIfNotOk(response);
 
   const text = await response.text();
   return text ? JSON.parse(text) : ({} as T);

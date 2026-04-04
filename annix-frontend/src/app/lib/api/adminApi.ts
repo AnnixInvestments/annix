@@ -1,3 +1,4 @@
+import { throwIfNotOk } from "@/app/lib/api/apiError";
 import { API_BASE_URL } from "@/lib/api-config";
 
 // Types for admin portal - must match backend DTOs
@@ -529,29 +530,12 @@ class AdminApiClient {
           ...(options.headers as Record<string, string>),
         };
         const retryResponse = await fetch(url, config);
-        if (!retryResponse.ok) {
-          const errorText = await retryResponse.text();
-          throw new Error(`API Error (${retryResponse.status}): ${errorText}`);
-        }
+        await throwIfNotOk(retryResponse);
         return retryResponse.json();
       }
     }
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      let errorMessage = `API Error (${response.status}): ${errorText}`;
-
-      try {
-        const errorData = JSON.parse(errorText);
-        if (errorData.message) {
-          errorMessage = errorData.message;
-        }
-      } catch {
-        // Use raw error text if not JSON
-      }
-
-      throw new Error(errorMessage);
-    }
+    await throwIfNotOk(response);
 
     const contentType = response.headers.get("content-type");
     if (contentType?.includes("application/json")) {
@@ -1001,10 +985,7 @@ class AdminApiClient {
       body: formData,
     });
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.message || `Upload failed: ${response.statusText}`);
-    }
+    await throwIfNotOk(response);
 
     return response.json();
   }

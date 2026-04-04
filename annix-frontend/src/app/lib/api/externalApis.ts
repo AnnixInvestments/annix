@@ -10,6 +10,7 @@
  * - OpenWeatherMap: Temperature & Humidity (Global, requires API key)
  */
 
+import { throwIfNotOk } from "@/app/lib/api/apiError";
 import { generateUniqueId, nowMillis } from "@/app/lib/datetime";
 import { log } from "@/app/lib/logger";
 
@@ -628,9 +629,7 @@ export async function fetchSsurgoDrainage(lat: number, lng: number): Promise<str
       signal: controller.signal,
     });
 
-    if (!response.ok) {
-      throw new Error(`SSURGO API error: ${response.status}`);
-    }
+    await throwIfNotOk(response);
 
     const data: SsurgoResponse = await response.json();
 
@@ -734,9 +733,7 @@ export async function fetchOpenMeteoData(lat: number, lng: number): Promise<Open
       { signal: controller.signal },
     );
 
-    if (!response.ok) {
-      throw new Error(`Open-Meteo API error: ${response.status}`);
-    }
+    await throwIfNotOk(response);
 
     return await response.json();
   } finally {
@@ -1297,9 +1294,7 @@ async function fetchOpenWeatherMapFallback(
       { signal: controller.signal },
     );
 
-    if (!response.ok) {
-      throw new Error(`OpenWeatherMap API error: ${response.status}`);
-    }
+    await throwIfNotOk(response);
 
     const data = await response.json();
 
@@ -1538,9 +1533,7 @@ export async function fetchAirPollutionData(
       { signal: controller.signal },
     );
 
-    if (!response.ok) {
-      throw new Error(`OpenWeatherMap Air Pollution API error: ${response.status}`);
-    }
+    await throwIfNotOk(response);
 
     return await response.json();
   } catch (error) {

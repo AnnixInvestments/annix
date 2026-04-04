@@ -1,3 +1,4 @@
+import { throwIfNotOk } from "@/app/lib/api/apiError";
 import { StockControlApiClient } from "./base";
 import type {
   CpoCalloffBreakdown,
@@ -221,9 +222,7 @@ proto.cpoOverdueInvoices = async function () {
 proto.cpoExportCsv = async function () {
   const h = this.authHeaders();
   const response = await fetch(`${this.baseURL}/stock-control/cpos/reports/export`, { headers: h });
-  if (!response.ok) {
-    throw new Error("Failed to export CSV");
-  }
+  await throwIfNotOk(response);
   return response.blob();
 };
 

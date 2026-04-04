@@ -1,3 +1,4 @@
+import { throwIfNotOk } from "@/app/lib/api/apiError";
 import { API_BASE_URL } from "@/lib/api-config";
 import { StockControlApiClient } from "./base";
 import type { StaffMember, StaffSignature } from "./types";
@@ -63,16 +64,7 @@ proto.downloadStaffIdCardPdf = async function (staffId) {
     headers: { Authorization: h.Authorization ?? "" },
   });
 
-  if (!response.ok) {
-    const contentType = response.headers.get("content-type");
-    if (contentType?.includes("application/json")) {
-      const errorData = await response.json();
-      throw new Error(
-        errorData.message ?? `Failed to download staff ID card PDF: ${response.status}`,
-      );
-    }
-    throw new Error(`Failed to download staff ID card PDF: ${response.status}`);
-  }
+  await throwIfNotOk(response);
 
   const blob = await response.blob();
   const url = window.URL.createObjectURL(blob);
@@ -90,14 +82,7 @@ proto.downloadBatchStaffIdCards = async function (ids) {
     body: JSON.stringify({ ids }),
   });
 
-  if (!response.ok) {
-    const contentType = response.headers.get("content-type");
-    if (contentType?.includes("application/json")) {
-      const errorData = await response.json();
-      throw new Error(errorData.message ?? `Failed to download batch ID cards: ${response.status}`);
-    }
-    throw new Error(`Failed to download batch ID cards: ${response.status}`);
-  }
+  await throwIfNotOk(response);
 
   const blob = await response.blob();
   const url = window.URL.createObjectURL(blob);

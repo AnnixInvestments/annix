@@ -1,3 +1,4 @@
+import { throwIfNotOk } from "@/app/lib/api/apiError";
 import { nowMillis } from "@/app/lib/datetime";
 import { API_BASE_URL } from "@/lib/api-config";
 import { StockControlApiClient } from "./base";
@@ -293,10 +294,7 @@ proto.uploadDispatchLoadPhotos = async function (jobCardId, files) {
     `${API_BASE_URL}/stock-control/workflow/job-cards/${jobCardId}/dispatch/load-photos`,
     { method: "POST", headers: { Authorization: h.Authorization || "" }, body: formData },
   );
-  if (!response.ok) {
-    const err = await response.json().catch(() => ({ message: response.statusText }));
-    throw new Error(err.message || "Upload failed");
-  }
+  await throwIfNotOk(response);
   return response.json();
 };
 
@@ -319,9 +317,7 @@ proto.downloadSignedJobCardPdf = async function (jobCardId) {
     { headers: { Authorization: h.Authorization ?? "" }, cache: "no-store" },
   );
 
-  if (!response.ok) {
-    throw new Error(`Failed to download signed job card PDF: ${response.status}`);
-  }
+  await throwIfNotOk(response);
 
   const blob = await response.blob();
   const url = window.URL.createObjectURL(blob);

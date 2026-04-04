@@ -1,3 +1,4 @@
+import { throwIfNotOk } from "@/app/lib/api/apiError";
 import { StockControlApiClient } from "./base";
 import type {
   CalibrationCertificate,
@@ -173,9 +174,7 @@ proto.downloadDataBook = async function (jobCardId) {
     headers: { Authorization: `Bearer ${this.accessToken}` },
   });
 
-  if (!response.ok) {
-    throw new Error("Failed to download data book");
-  }
+  await throwIfNotOk(response);
 
   const blob = await response.blob();
   const blobUrl = URL.createObjectURL(blob);

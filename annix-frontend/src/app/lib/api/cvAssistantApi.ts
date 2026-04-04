@@ -1,3 +1,4 @@
+import { throwIfNotOk } from "@/app/lib/api/apiError";
 import { API_BASE_URL } from "@/lib/api-config";
 
 export interface CvAssistantLoginDto {
@@ -450,29 +451,12 @@ class CvAssistantApiClient {
           ...(options.headers as Record<string, string>),
         };
         const retryResponse = await fetch(url, config);
-        if (!retryResponse.ok) {
-          const errorText = await retryResponse.text();
-          throw new Error(`API Error (${retryResponse.status}): ${errorText}`);
-        }
+        await throwIfNotOk(retryResponse);
         return retryResponse.json();
       }
     }
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      let errorMessage = `API Error (${response.status}): ${errorText}`;
-
-      try {
-        const errorData = JSON.parse(errorText);
-        if (errorData.message) {
-          errorMessage = errorData.message;
-        }
-      } catch {
-        // Use raw error text
-      }
-
-      throw new Error(errorMessage);
-    }
+    await throwIfNotOk(response);
 
     const text = await response.text();
     if (!text || text.trim() === "") {
@@ -694,10 +678,7 @@ class CvAssistantApiClient {
       body: formData,
     });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Upload failed: ${errorText}`);
-    }
+    await throwIfNotOk(response);
 
     return response.json();
   }

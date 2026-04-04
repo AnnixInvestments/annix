@@ -1,5 +1,6 @@
 import type { CalloffStatus } from "@annix/product-data/rubber/calloffStatus";
 import type { StatusHistoryEvent } from "@annix/product-data/rubber/orderStatus";
+import { throwIfNotOk } from "@/app/lib/api/apiError";
 import { API_BASE_URL } from "@/lib/api-config";
 
 export interface RubberProductCodingDto {
@@ -242,10 +243,7 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
 
   const response = await fetch(url, config);
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`API Error (${response.status}): ${errorText}`);
-  }
+  await throwIfNotOk(response);
 
   const text = await response.text();
   if (!text || text.trim() === "") {

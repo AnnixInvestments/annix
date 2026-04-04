@@ -1,4 +1,5 @@
 import { getStoredFingerprint } from "@/app/hooks/useDeviceFingerprint";
+import { throwIfNotOk } from "@/app/lib/api/apiError";
 import { API_BASE_URL } from "@/lib/api-config";
 
 // Types for customer portal - must match backend DTOs
@@ -264,29 +265,12 @@ class CustomerApiClient {
           ...(options.headers as Record<string, string>),
         };
         const retryResponse = await fetch(url, config);
-        if (!retryResponse.ok) {
-          const errorText = await retryResponse.text();
-          throw new Error(`API Error (${retryResponse.status}): ${errorText}`);
-        }
+        await throwIfNotOk(retryResponse);
         return retryResponse.json();
       }
     }
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      let errorMessage = `API Error (${response.status}): ${errorText}`;
-
-      try {
-        const errorJson = JSON.parse(errorText);
-        if (errorJson.message) {
-          errorMessage = errorJson.message;
-        }
-      } catch {
-        // Use raw error text
-      }
-
-      throw new Error(errorMessage);
-    }
+    await throwIfNotOk(response);
 
     return response.json();
   }
@@ -308,19 +292,7 @@ class CustomerApiClient {
       body: formData,
     });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      let errorMessage = `Registration failed (${response.status})`;
-      try {
-        const errorJson = JSON.parse(errorText);
-        if (errorJson.message) {
-          errorMessage = errorJson.message;
-        }
-      } catch {
-        // Use raw error text
-      }
-      throw new Error(errorMessage);
-    }
+    await throwIfNotOk(response);
 
     const result = await response.json();
     this.setTokens(result.accessToken, result.refreshToken);
@@ -486,15 +458,7 @@ export const customerAuthApi = {
       body: formData,
     });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      try {
-        const errorJson = JSON.parse(errorText);
-        throw new Error(errorJson.message || "Document validation failed");
-      } catch {
-        throw new Error("Document validation failed");
-      }
-    }
+    await throwIfNotOk(response);
 
     return response.json();
   },
@@ -654,10 +618,7 @@ class CustomerDocumentApi {
       body: formData,
     });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(errorText);
-    }
+    await throwIfNotOk(response);
 
     return response.json();
   }
@@ -706,15 +667,7 @@ class CustomerDocumentApi {
       },
     });
 
-    if (!response.ok) {
-      if (response.status === 401) {
-        throw new Error("Please log in to view this document");
-      }
-      if (response.status === 404) {
-        throw new Error("Document not found");
-      }
-      throw new Error("Failed to load document. Please try again.");
-    }
+    await throwIfNotOk(response);
 
     // Get filename from Content-Disposition header or use default
     const contentDisposition = response.headers.get("Content-Disposition");
@@ -837,15 +790,7 @@ class CustomerSupplierApi {
 export const customerEmailApi = {
   verifyEmail: async (token: string): Promise<{ success: boolean; message: string }> => {
     const response = await fetch(`${API_BASE_URL}/customer/auth/verify-email/${token}`);
-    if (!response.ok) {
-      const errorText = await response.text();
-      try {
-        const errorJson = JSON.parse(errorText);
-        throw new Error(errorJson.message || "Verification failed");
-      } catch {
-        throw new Error("Verification failed");
-      }
-    }
+    await throwIfNotOk(response);
     return response.json();
   },
 
@@ -855,15 +800,7 @@ export const customerEmailApi = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email }),
     });
-    if (!response.ok) {
-      const errorText = await response.text();
-      try {
-        const errorJson = JSON.parse(errorText);
-        throw new Error(errorJson.message || "Failed to resend verification");
-      } catch {
-        throw new Error("Failed to resend verification");
-      }
-    }
+    await throwIfNotOk(response);
     return response.json();
   },
 };

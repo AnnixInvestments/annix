@@ -1,3 +1,4 @@
+import { throwIfNotOk } from "@/app/lib/api/apiError";
 import { StockControlApiClient } from "./base";
 import type {
   CreateInvoiceDto,
@@ -176,9 +177,6 @@ proto.sageExportCsv = async function (params) {
     query.set("excludeExported", String(params.excludeExported));
   const url = `${this.baseURL}/stock-control/invoices/export/sage-csv?${query.toString()}`;
   const response = await fetch(url, { headers: this.headers() });
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`Export failed: ${errorText}`);
-  }
+  await throwIfNotOk(response);
   return response.blob();
 };

@@ -1,3 +1,4 @@
+import { throwIfNotOk } from "@/app/lib/api/apiError";
 import { API_BASE_URL } from "@/lib/api-config";
 import type {
   CallOff,
@@ -1251,29 +1252,12 @@ class AuRubberApiClient {
           ...(options.headers as Record<string, string>),
         };
         const retryResponse = await fetch(url, config);
-        if (!retryResponse.ok) {
-          const errorText = await retryResponse.text();
-          throw new Error(`API Error (${retryResponse.status}): ${errorText}`);
-        }
+        await throwIfNotOk(retryResponse);
         return retryResponse.json();
       }
     }
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      let errorMessage = `API Error (${response.status}): ${errorText}`;
-
-      try {
-        const errorData = JSON.parse(errorText);
-        if (errorData.message) {
-          errorMessage = errorData.message;
-        }
-      } catch {
-        // Use raw error text if not JSON
-      }
-
-      throw new Error(errorMessage);
-    }
+    await throwIfNotOk(response);
 
     const text = await response.text();
     if (!text || text.trim() === "") {
@@ -1324,27 +1308,12 @@ class AuRubberApiClient {
           headers,
           body: formData,
         });
-        if (!retryResponse.ok) {
-          const errorText = await retryResponse.text();
-          throw new Error(`API Error (${retryResponse.status}): ${errorText}`);
-        }
+        await throwIfNotOk(retryResponse);
         return retryResponse.json();
       }
     }
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      let errorMessage = `API Error (${response.status}): ${errorText}`;
-      try {
-        const errorData = JSON.parse(errorText);
-        if (errorData.message) {
-          errorMessage = errorData.message;
-        }
-      } catch {
-        // Use raw error text if not JSON
-      }
-      throw new Error(errorMessage);
-    }
+    await throwIfNotOk(response);
 
     const text = await response.text();
     if (!text || text.trim() === "") {
@@ -2089,10 +2058,7 @@ class AuRubberApiClient {
       body: formData,
     });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`API Error (${response.status}): ${errorText}`);
-    }
+    await throwIfNotOk(response);
 
     return response.json();
   }
@@ -2326,10 +2292,7 @@ class AuRubberApiClient {
       body: formData,
     });
 
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({ message: "Request failed" }));
-      throw new Error(error.message || `HTTP ${response.status}`);
-    }
+    await throwIfNotOk(response);
 
     return response.json();
   }
@@ -2356,10 +2319,7 @@ class AuRubberApiClient {
       },
     );
 
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({ message: "Request failed" }));
-      throw new Error(error.message || `HTTP ${response.status}`);
-    }
+    await throwIfNotOk(response);
 
     return response.json();
   }
@@ -2415,10 +2375,7 @@ class AuRubberApiClient {
       body: formData,
     });
 
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({ message: "Request failed" }));
-      throw new Error(error.message || `HTTP ${response.status}`);
-    }
+    await throwIfNotOk(response);
 
     return response.json();
   }
@@ -2453,10 +2410,7 @@ class AuRubberApiClient {
       body: formData,
     });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`API Error (${response.status}): ${errorText}`);
-    }
+    await throwIfNotOk(response);
 
     return response.json();
   }
@@ -2643,9 +2597,7 @@ class AuRubberApiClient {
     const response = await fetch(`${this.baseURL}/rubber-lining/portal/au-cocs/${id}/pdf`, {
       headers: this.authHeaders(),
     });
-    if (!response.ok) {
-      throw new Error(`Failed to load PDF: ${response.statusText}`);
-    }
+    await throwIfNotOk(response);
     const blob = await response.blob();
     return URL.createObjectURL(blob);
   }
@@ -2654,9 +2606,7 @@ class AuRubberApiClient {
     const response = await fetch(`${this.baseURL}/rubber-lining/portal/au-cocs/${id}/pdf`, {
       headers: this.authHeaders(),
     });
-    if (!response.ok) {
-      throw new Error(`Failed to download PDF: ${response.statusText}`);
-    }
+    await throwIfNotOk(response);
     const blob = await response.blob();
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -2967,10 +2917,7 @@ class AuRubberApiClient {
       body: formData,
     });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`API Error (${response.status}): ${errorText}`);
-    }
+    await throwIfNotOk(response);
 
     return response.json();
   }
@@ -3193,9 +3140,7 @@ class AuRubberApiClient {
     const url = `${this.baseURL}/rubber-lining/portal/supplier-cocs/export/sage-csv?${query.toString()}`;
     const headers = this.authHeaders();
     const response = await fetch(url, { headers });
-    if (!response.ok) {
-      throw new Error(`Failed to download CSV: ${response.statusText}`);
-    }
+    await throwIfNotOk(response);
     return response.blob();
   }
 
@@ -3229,9 +3174,7 @@ class AuRubberApiClient {
     const url = `${this.baseURL}/rubber-lining/portal/tax-invoices/export/sage-csv?${query.toString()}`;
     const headers = this.authHeaders();
     const response = await fetch(url, { headers });
-    if (!response.ok) {
-      throw new Error(`Failed to download CSV: ${response.statusText}`);
-    }
+    await throwIfNotOk(response);
     return response.blob();
   }
 
@@ -3265,9 +3208,7 @@ class AuRubberApiClient {
     const url = `${this.baseURL}/rubber-lining/portal/tax-invoices/export/customer-sage-csv?${query.toString()}`;
     const headers = this.authHeaders();
     const response = await fetch(url, { headers });
-    if (!response.ok) {
-      throw new Error(`Failed to download CSV: ${response.statusText}`);
-    }
+    await throwIfNotOk(response);
     return response.blob();
   }
 
@@ -3503,7 +3444,7 @@ class AuRubberApiClient {
     const response = await fetch(`${this.baseURL}/rubber-lining/portal/accounting/${id}/pdf`, {
       headers: this.headers(),
     });
-    if (!response.ok) throw new Error(`Failed to download PDF: ${response.statusText}`);
+    await throwIfNotOk(response);
     const blob = await response.blob();
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");

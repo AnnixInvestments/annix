@@ -69,6 +69,7 @@ import type {
   WeldType,
 } from "@annix/product-data/rfq";
 import { sessionExpiredEvent } from "@/app/components/SessionExpiredModal";
+import { throwIfNotOk } from "@/app/lib/api/apiError";
 import { log } from "@/app/lib/logger";
 import { API_BASE_URL } from "@/lib/api-config";
 
@@ -409,10 +410,7 @@ class ApiClient {
       // Don't set Content-Type header - browser will set it with boundary for multipart
     });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`API Error (${response.status}): ${errorText}`);
-    }
+    await throwIfNotOk(response);
 
     // Handle empty responses gracefully
     const text = await response.text();
@@ -436,10 +434,7 @@ class ApiClient {
     const url = `${this.baseURL}/rfq/documents/${documentId}/download`;
     const response = await fetch(url);
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`API Error (${response.status}): ${errorText}`);
-    }
+    await throwIfNotOk(response);
 
     return response.blob();
   }
@@ -1434,7 +1429,7 @@ export const flangeWeightApi = {
 export const coatingSpecificationApi = {
   getCorrosivityCategories: async (): Promise<{ category: string; description: string }[]> => {
     const response = await fetch(`${API_BASE_URL}/coating-specifications/corrosivity-categories`);
-    if (!response.ok) throw new Error("Failed to fetch corrosivity categories");
+    await throwIfNotOk(response);
     return response.json();
   },
 
@@ -1445,7 +1440,7 @@ export const coatingSpecificationApi = {
     const response = await fetch(
       `${API_BASE_URL}/coating-specifications/iso12944/systems-by-durability?category=${category}&durability=${durability}`,
     );
-    if (!response.ok) throw new Error("Failed to fetch systems by durability");
+    await throwIfNotOk(response);
     return response.json();
   },
 
@@ -1453,7 +1448,7 @@ export const coatingSpecificationApi = {
     const response = await fetch(
       `${API_BASE_URL}/coating-specifications/iso12944/systems-by-category?category=${category}`,
     );
-    if (!response.ok) throw new Error("Failed to fetch systems by category");
+    await throwIfNotOk(response);
     return response.json();
   },
 
@@ -1461,7 +1456,7 @@ export const coatingSpecificationApi = {
     const response = await fetch(
       `${API_BASE_URL}/coating-specifications/iso12944/durabilities?category=${category}`,
     );
-    if (!response.ok) throw new Error("Failed to fetch available durabilities");
+    await throwIfNotOk(response);
     return response.json();
   },
 
@@ -1469,7 +1464,7 @@ export const coatingSpecificationApi = {
     const response = await fetch(
       `${API_BASE_URL}/coating-specifications/iso12944/system-by-code?systemCode=${systemCode}`,
     );
-    if (!response.ok) throw new Error("Failed to fetch system by code");
+    await throwIfNotOk(response);
     return response.json();
   },
 };
@@ -1509,9 +1504,7 @@ export const draftsApi = {
       },
       body: JSON.stringify({ rfqId }),
     });
-    if (!response.ok) {
-      throw new Error("Failed to mark draft as converted");
-    }
+    await throwIfNotOk(response);
   },
 };
 
@@ -1524,9 +1517,7 @@ export const anonymousDraftsApi = {
       },
       body: JSON.stringify(dto),
     });
-    if (!response.ok) {
-      throw new Error("Failed to save anonymous draft");
-    }
+    await throwIfNotOk(response);
     return response.json();
   },
 
@@ -1537,12 +1528,7 @@ export const anonymousDraftsApi = {
         "Content-Type": "application/json",
       },
     });
-    if (!response.ok) {
-      if (response.status === 404) {
-        throw new Error("Draft not found or expired");
-      }
-      throw new Error("Failed to retrieve anonymous draft");
-    }
+    await throwIfNotOk(response);
     return response.json();
   },
 
@@ -1554,9 +1540,7 @@ export const anonymousDraftsApi = {
       },
       body: JSON.stringify({ customerEmail }),
     });
-    if (!response.ok) {
-      throw new Error("Failed to request recovery email");
-    }
+    await throwIfNotOk(response);
     return response.json();
   },
 
@@ -1573,9 +1557,7 @@ export const anonymousDraftsApi = {
         },
       },
     );
-    if (!response.ok) {
-      throw new Error("Failed to claim draft");
-    }
+    await throwIfNotOk(response);
     return response.json();
   },
 };
@@ -1591,10 +1573,7 @@ export const boqApi = {
       body: JSON.stringify(dto),
     });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Failed to create BOQ: ${errorText}`);
-    }
+    await throwIfNotOk(response);
 
     return response.json();
   },
@@ -1609,10 +1588,7 @@ export const boqApi = {
       body: JSON.stringify(dto),
     });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Failed to submit BOQ: ${errorText}`);
-    }
+    await throwIfNotOk(response);
 
     return response.json();
   },
@@ -1627,10 +1603,7 @@ export const boqApi = {
       body: JSON.stringify(dto),
     });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Failed to update BOQ: ${errorText}`);
-    }
+    await throwIfNotOk(response);
 
     return response.json();
   },
@@ -1644,10 +1617,7 @@ export const boqApi = {
       },
     });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Failed to get BOQ by RFQ ID: ${errorText}`);
-    }
+    await throwIfNotOk(response);
 
     const result = await response.json();
     return result.data && result.data.length > 0 ? result.data[0] : null;
@@ -1679,9 +1649,7 @@ export const ptRatingApi = {
       `${API_BASE_URL}/flange-pt-ratings/recommendations?${queryParams.toString()}`,
     );
 
-    if (!response.ok) {
-      throw new Error("Failed to fetch P-T recommendations");
-    }
+    await throwIfNotOk(response);
 
     return response.json();
   },
@@ -1710,9 +1678,7 @@ export const pumpProductApi = {
       headers: authHeaders(),
     });
 
-    if (!response.ok) {
-      throw new Error("Failed to fetch pump products");
-    }
+    await throwIfNotOk(response);
 
     return response.json();
   },
@@ -1722,9 +1688,7 @@ export const pumpProductApi = {
       headers: authHeaders(),
     });
 
-    if (!response.ok) {
-      throw new Error("Failed to fetch pump product");
-    }
+    await throwIfNotOk(response);
 
     return response.json();
   },
@@ -1746,9 +1710,7 @@ export const pumpProductApi = {
       headers: authHeaders(),
     });
 
-    if (!response.ok) {
-      throw new Error("Failed to fetch manufacturers");
-    }
+    await throwIfNotOk(response);
 
     return response.json();
   },
@@ -1761,9 +1723,7 @@ export const pumpProductApi = {
       },
     );
 
-    if (!response.ok) {
-      throw new Error("Failed to fetch products by category");
-    }
+    await throwIfNotOk(response);
 
     return response.json();
   },
@@ -1778,9 +1738,7 @@ export const pumpProductApi = {
       body: JSON.stringify(params),
     });
 
-    if (!response.ok) {
-      throw new Error("Failed to calculate pump requirements");
-    }
+    await throwIfNotOk(response);
 
     return response.json();
   },

@@ -1,3 +1,4 @@
+import { throwIfNotOk } from "@/app/lib/api/apiError";
 import { API_BASE_URL } from "@/lib/api-config";
 
 export type RemoteAccessRequestType = "VIEW" | "EDIT";
@@ -114,10 +115,7 @@ class RemoteAccessApiClient {
 
     const response = await fetch(url, config);
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.message || `Request failed with status ${response.status}`);
-    }
+    await throwIfNotOk(response);
 
     return response.json();
   }
