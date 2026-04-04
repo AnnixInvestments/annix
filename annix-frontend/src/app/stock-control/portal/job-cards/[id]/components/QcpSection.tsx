@@ -5,6 +5,7 @@ import type {
   InterventionType,
   QcControlPlanRecord,
   QcpActivity,
+  QcpApprovalStatus,
   QcpPlanType,
 } from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
@@ -48,6 +49,22 @@ const INTERVENTION_OPTIONS: Array<{ value: string; label: string }> = [
   { value: "S", label: "S" },
   { value: "V", label: "V" },
 ];
+
+const APPROVAL_STATUS_COLORS: Record<QcpApprovalStatus, string> = {
+  draft: "bg-gray-100 text-gray-700",
+  pending_client: "bg-blue-100 text-blue-800",
+  pending_third_party: "bg-indigo-100 text-indigo-800",
+  changes_requested: "bg-amber-100 text-amber-800",
+  approved: "bg-green-100 text-green-800",
+};
+
+const APPROVAL_STATUS_LABELS: Record<QcpApprovalStatus, string> = {
+  draft: "Draft",
+  pending_client: "Pending Client",
+  pending_third_party: "Pending 3rd Party",
+  changes_requested: "Changes Requested",
+  approved: "Approved",
+};
 
 const IGNORED_WORDS = new Set([
   "pty",
@@ -399,6 +416,17 @@ export function QcpSection({ jobCardId }: QcpSectionProps) {
                           V{plan.revision}
                         </span>
                       )}
+                      {plan.approvalStatus && plan.approvalStatus !== "draft" && (
+                        <span
+                          className={`ml-1.5 inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ${APPROVAL_STATUS_COLORS[plan.approvalStatus as QcpApprovalStatus] || ""}`}
+                        >
+                          {APPROVAL_STATUS_LABELS[plan.approvalStatus as QcpApprovalStatus] ||
+                            plan.approvalStatus}
+                        </span>
+                      )}
+                      {plan.version > 1 && (
+                        <span className="ml-1.5 text-[10px] text-gray-400">v{plan.version}</span>
+                      )}
                       {plan.specification && (
                         <span className="ml-2 text-xs text-gray-500">
                           {filteredSpec(plan.specification, plan.planType)}
@@ -474,90 +502,79 @@ export function QcpSection({ jobCardId }: QcpSectionProps) {
                       </div>
                     </div>
 
-                    <table className="w-full divide-y divide-gray-200 text-xs">
-                      <thead>
-                        <tr className="bg-gray-100">
-                          <th className="px-2 py-1.5 text-left font-medium text-gray-500">Op</th>
-                          <th className="px-2 py-1.5 text-left font-medium text-gray-500">
-                            Activity
-                          </th>
-                          <th className="px-2 py-1.5 text-left font-medium text-gray-500">
-                            Spec/Proc
-                          </th>
-                          <th className="px-2 py-1.5 text-left font-medium text-gray-500">Doc</th>
-                          <th className="px-2 py-1.5 text-center font-medium text-gray-500">PLS</th>
-                          <th className="px-2 py-1.5 text-center font-medium text-gray-500">
-                            {custLabel}
-                          </th>
-                          <th className="px-2 py-1.5 text-center font-medium text-gray-500">
-                            Client
-                          </th>
-                          <th className="px-2 py-1.5 text-center font-medium text-gray-500">
-                            3rd Party
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-100">
-                        {plan.activities.map((a, i) => (
-                          <tr key={i}>
-                            <td className="px-2 py-1.5 text-center">{a.operationNumber}</td>
-                            <td className="px-2 py-1.5">{a.description}</td>
-                            <td className="px-2 py-1.5 text-gray-500">{a.specification || "-"}</td>
-                            <td className="px-2 py-1.5 text-gray-500">
-                              {(a as any).documentation || a.procedureRequired || "-"}
-                            </td>
-                            <PartyCell
-                              activity={a}
-                              activityIndex={i}
-                              party="pls"
-                              editable={true}
-                              onChangeIntervention={(idx, party, val) =>
-                                handlePartyInterventionChange(plan.id, idx, party, val)
-                              }
-                              onChangeInitial={(idx, party, val) =>
-                                handlePartyInitialChange(plan.id, idx, party, val)
-                              }
-                            />
-                            <PartyCell
-                              activity={a}
-                              activityIndex={i}
-                              party="mps"
-                              editable={true}
-                              onChangeIntervention={(idx, party, val) =>
-                                handlePartyInterventionChange(plan.id, idx, party, val)
-                              }
-                              onChangeInitial={(idx, party, val) =>
-                                handlePartyInitialChange(plan.id, idx, party, val)
-                              }
-                            />
-                            <PartyCell
-                              activity={a}
-                              activityIndex={i}
-                              party="client"
-                              editable={true}
-                              onChangeIntervention={(idx, party, val) =>
-                                handlePartyInterventionChange(plan.id, idx, party, val)
-                              }
-                              onChangeInitial={(idx, party, val) =>
-                                handlePartyInitialChange(plan.id, idx, party, val)
-                              }
-                            />
-                            <PartyCell
-                              activity={a}
-                              activityIndex={i}
-                              party="thirdParty"
-                              editable={true}
-                              onChangeIntervention={(idx, party, val) =>
-                                handlePartyInterventionChange(plan.id, idx, party, val)
-                              }
-                              onChangeInitial={(idx, party, val) =>
-                                handlePartyInitialChange(plan.id, idx, party, val)
-                              }
-                            />
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                    {(() => {
+                      const allParties: Array<{ key: PartyKey; label: string }> = [
+                        { key: "pls", label: "PLS" },
+                        { key: "mps", label: custLabel },
+                        { key: "client", label: "Client" },
+                        { key: "thirdParty", label: "3rd Party" },
+                      ];
+                      const activeKeys = (plan.activeParties as string[] | null) || [
+                        "pls",
+                        "mps",
+                        "client",
+                        "thirdParty",
+                      ];
+                      const visibleParties = allParties.filter((p) => activeKeys.includes(p.key));
+
+                      return (
+                        <table className="w-full divide-y divide-gray-200 text-xs">
+                          <thead>
+                            <tr className="bg-gray-100">
+                              <th className="px-2 py-1.5 text-left font-medium text-gray-500">
+                                Op
+                              </th>
+                              <th className="px-2 py-1.5 text-left font-medium text-gray-500">
+                                Activity
+                              </th>
+                              <th className="px-2 py-1.5 text-left font-medium text-gray-500">
+                                Spec/Proc
+                              </th>
+                              <th className="px-2 py-1.5 text-left font-medium text-gray-500">
+                                Doc
+                              </th>
+                              {visibleParties.map((p) => (
+                                <th
+                                  key={p.key}
+                                  className="px-2 py-1.5 text-center font-medium text-gray-500"
+                                >
+                                  {p.label}
+                                </th>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-gray-100">
+                            {plan.activities.map((a, i) => (
+                              <tr key={i}>
+                                <td className="px-2 py-1.5 text-center">{a.operationNumber}</td>
+                                <td className="px-2 py-1.5">{a.description}</td>
+                                <td className="px-2 py-1.5 text-gray-500">
+                                  {a.specification || "-"}
+                                </td>
+                                <td className="px-2 py-1.5 text-gray-500">
+                                  {(a as any).documentation || a.procedureRequired || "-"}
+                                </td>
+                                {visibleParties.map((p) => (
+                                  <PartyCell
+                                    key={p.key}
+                                    activity={a}
+                                    activityIndex={i}
+                                    party={p.key}
+                                    editable={p.key === "pls" || p.key === "mps"}
+                                    onChangeIntervention={(idx, party, val) =>
+                                      handlePartyInterventionChange(plan.id, idx, party, val)
+                                    }
+                                    onChangeInitial={(idx, party, val) =>
+                                      handlePartyInitialChange(plan.id, idx, party, val)
+                                    }
+                                  />
+                                ))}
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      );
+                    })()}
 
                     {plan.approvalSignatures.some((s) => s.name) && (
                       <div className="mt-3 flex gap-4">

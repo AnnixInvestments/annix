@@ -8,6 +8,8 @@ import type {
   QcItemsReleaseRecord,
   QcMeasurementsAggregate,
   QcPullTestRecord,
+  QcpApprovalTokenRecord,
+  QcpCustomerPreferenceRecord,
   QcReleaseCertificateRecord,
   QcReleaseDocumentsResult,
   QcShoreHardnessRecord,
@@ -108,6 +110,22 @@ declare module "./base" {
     openReleaseCertificatePdf(jobCardId: number, id: number): Promise<void>;
     openItemsReleasePdf(jobCardId: number, id: number): Promise<void>;
     openControlPlanPdf(jobCardId: number, id: number): Promise<void>;
+    sendControlPlanForApproval(
+      jobCardId: number,
+      planId: number,
+      clientEmail: string,
+    ): Promise<QcpApprovalTokenRecord>;
+    cancelControlPlanApproval(jobCardId: number, planId: number): Promise<{ cancelled: boolean }>;
+    resendControlPlanApproval(
+      jobCardId: number,
+      planId: number,
+      partyRole: "client" | "third_party",
+    ): Promise<QcpApprovalTokenRecord>;
+    controlPlanApprovalHistory(
+      jobCardId: number,
+      planId: number,
+    ): Promise<QcpApprovalTokenRecord[]>;
+    customerQcpPreferences(customerName: string): Promise<QcpCustomerPreferenceRecord>;
     qcpLog(search?: string): Promise<QcControlPlanRecord[]>;
     defelskoBatchesForJobCard(jobCardId: number): Promise<QcDefelskoBatchRecord[]>;
     saveDefelskoBatches(
@@ -390,4 +408,45 @@ proto.saveDefelskoBatches = async function (jobCardId, data) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
   });
+};
+
+proto.sendControlPlanForApproval = async function (jobCardId, planId, clientEmail) {
+  return this.request(
+    `/stock-control/job-cards/${jobCardId}/qc/control-plans/${planId}/send-for-approval`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ clientEmail }),
+    },
+  );
+};
+
+proto.cancelControlPlanApproval = async function (jobCardId, planId) {
+  return this.request(
+    `/stock-control/job-cards/${jobCardId}/qc/control-plans/${planId}/cancel-approval`,
+    { method: "POST" },
+  );
+};
+
+proto.resendControlPlanApproval = async function (jobCardId, planId, partyRole) {
+  return this.request(
+    `/stock-control/job-cards/${jobCardId}/qc/control-plans/${planId}/resend-approval`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ partyRole }),
+    },
+  );
+};
+
+proto.controlPlanApprovalHistory = async function (jobCardId, planId) {
+  return this.request(
+    `/stock-control/job-cards/${jobCardId}/qc/control-plans/${planId}/approval-history`,
+  );
+};
+
+proto.customerQcpPreferences = async function (customerName) {
+  return this.request(
+    `/stock-control/job-cards/0/qc/customer-qcp-preferences/${encodeURIComponent(customerName)}`,
+  );
 };

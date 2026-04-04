@@ -24,6 +24,7 @@ import { CertificateService } from "../../services/certificate.service";
 import { DataBookPdfService } from "../../services/data-book-pdf.service";
 import { QcEnabledGuard } from "../guards/qc-enabled.guard";
 import { QcMeasurementService } from "../services/qc-measurement.service";
+import { QcpApprovalService } from "../services/qcp-approval.service";
 
 @ApiTags("Stock Control - QC Measurements")
 @Controller("stock-control/job-cards/:jobCardId/qc")
@@ -35,6 +36,7 @@ export class QcMeasurementController {
     private readonly qcService: QcMeasurementService,
     private readonly dataBookPdfService: DataBookPdfService,
     private readonly certificateService: CertificateService,
+    private readonly approvalService: QcpApprovalService,
   ) {}
 
   // ── Aggregate ──────────────────────────────────────────────────────
@@ -498,6 +500,62 @@ export class QcMeasurementController {
   async deleteItemsRelease(@Req() req: any, @Param("id") id: number) {
     await this.qcService.deleteItemsRelease(req.user.companyId, id);
     return { deleted: true };
+  }
+
+  // ── QCP Approval Workflow ─────────────────────────────────────
+
+  @Post("control-plans/:id/send-for-approval")
+  @StockControlRoles("quality", "manager", "admin")
+  @PermissionKey("qc.measurements")
+  @ApiOperation({ summary: "Send control plan for client approval via email" })
+  async sendForApproval(
+    @Req() req: any,
+    @Param("id") id: number,
+    @Body() body: { clientEmail: string },
+  ) {
+    return this.approvalService.sendForClientApproval(
+      req.user.companyId,
+      id,
+      body.clientEmail,
+      req.user,
+    );
+  }
+
+  @Post("control-plans/:id/cancel-approval")
+  @StockControlRoles("quality", "manager", "admin")
+  @PermissionKey("qc.measurements")
+  @ApiOperation({ summary: "Cancel pending QCP approval" })
+  async cancelApproval(@Req() req: any, @Param("id") id: number) {
+    return this.approvalService.cancelApproval(req.user.companyId, id);
+  }
+
+  @Post("control-plans/:id/resend-approval")
+  @StockControlRoles("quality", "manager", "admin")
+  @PermissionKey("qc.measurements")
+  @ApiOperation({ summary: "Resend QCP approval email" })
+  async resendApproval(
+    @Req() req: any,
+    @Param("id") id: number,
+    @Body() body: { partyRole: "client" | "third_party" },
+  ) {
+    return this.approvalService.resendApproval(req.user.companyId, id, body.partyRole, req.user);
+  }
+
+  @Get("control-plans/:id/approval-history")
+  @PermissionKey("qc.measurements")
+  @ApiOperation({ summary: "Approval token history for a control plan" })
+  async approvalHistory(@Req() req: any, @Param("id") id: number) {
+    return this.approvalService.approvalHistory(req.user.companyId, id);
+  }
+
+  @Get("customer-qcp-preferences/:customerName")
+  @PermissionKey("qc.measurements")
+  @ApiOperation({ summary: "Remembered email and intervention defaults for a customer" })
+  async customerPreferences(@Req() req: any, @Param("customerName") customerName: string) {
+    return this.approvalService.clientPreferences(
+      req.user.companyId,
+      decodeURIComponent(customerName),
+    );
   }
 
   // ── Defelsko Batches ──────────────────────────────────────────────

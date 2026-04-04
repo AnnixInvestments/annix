@@ -22,6 +22,19 @@ const RECORD_ID = 100;
 
 const mockUser = { id: 5, companyId: COMPANY_ID, name: "QC Inspector" };
 
+function mockQueryBuilder() {
+  const qb: any = {
+    where: jest.fn().mockReturnThis(),
+    andWhere: jest.fn().mockReturnThis(),
+    orderBy: jest.fn().mockReturnThis(),
+    select: jest.fn().mockReturnThis(),
+    limit: jest.fn().mockReturnThis(),
+    getMany: jest.fn().mockResolvedValue([]),
+    getRawOne: jest.fn().mockResolvedValue(null),
+  };
+  return qb;
+}
+
 function mockRepo() {
   return {
     find: jest.fn().mockResolvedValue([]),
@@ -31,6 +44,7 @@ function mockRepo() {
       .fn()
       .mockImplementation((entity: any) => Promise.resolve({ id: RECORD_ID, ...entity })),
     remove: jest.fn().mockResolvedValue(undefined),
+    createQueryBuilder: jest.fn().mockReturnValue(mockQueryBuilder()),
   };
 }
 

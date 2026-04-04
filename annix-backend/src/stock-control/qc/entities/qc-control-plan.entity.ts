@@ -98,6 +98,21 @@ export class QcControlPlan {
   @Column({ name: "item_description", type: "varchar", length: 500, nullable: true })
   itemDescription: string | null;
 
+  @Column({ name: "version", type: "int", default: 1 })
+  version: number;
+
+  @Column({ name: "approval_status", type: "varchar", length: 30, default: "draft" })
+  approvalStatus: string;
+
+  @Column({ name: "client_email", type: "varchar", length: 255, nullable: true })
+  clientEmail: string | null;
+
+  @Column({ name: "third_party_email", type: "varchar", length: 255, nullable: true })
+  thirdPartyEmail: string | null;
+
+  @Column({ name: "active_parties", type: "jsonb", nullable: true })
+  activeParties: string[] | null;
+
   @Column({ name: "activities", type: "jsonb" })
   activities: QcpActivity[];
 

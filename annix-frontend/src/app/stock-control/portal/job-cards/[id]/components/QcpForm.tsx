@@ -7,6 +7,8 @@ import type {
   QcControlPlanRecord,
   QcpActivity,
   QcpApprovalSignature,
+  QcpApprovalStatus,
+  QcpApprovalTokenRecord,
   QcpPartySignOff,
   QcpPlanType,
 } from "@/app/lib/api/stockControlApi";
@@ -354,6 +356,25 @@ function templateForType(type: QcpPlanType): QcpActivity[] {
   return hdpeTemplate();
 }
 
+const APPROVAL_STATUS_CONFIG: Record<QcpApprovalStatus, { label: string; color: string }> = {
+  draft: { label: "Draft", color: "bg-gray-100 text-gray-800" },
+  pending_client: { label: "Pending Client", color: "bg-blue-100 text-blue-800" },
+  pending_third_party: { label: "Pending 3rd Party", color: "bg-indigo-100 text-indigo-800" },
+  changes_requested: { label: "Changes Requested", color: "bg-amber-100 text-amber-800" },
+  approved: { label: "Approved", color: "bg-green-100 text-green-800" },
+};
+
+function ApprovalStatusBadge(props: { status: QcpApprovalStatus }) {
+  const config = APPROVAL_STATUS_CONFIG[props.status] || APPROVAL_STATUS_CONFIG.draft;
+  return (
+    <span
+      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${config.color}`}
+    >
+      {config.label}
+    </span>
+  );
+}
+
 export function QcpForm({ jobCardId, existingPlan, onSaved, onCancel }: QcpFormProps) {
   const isEditing = existingPlan !== null;
 
@@ -381,6 +402,12 @@ export function QcpForm({ jobCardId, existingPlan, onSaved, onCancel }: QcpFormP
           date: null,
         })),
   );
+  const [clientEmail, setClientEmail] = useState(existingPlan?.clientEmail || "");
+  const [approvalStatus, setApprovalStatus] = useState<QcpApprovalStatus>(
+    (existingPlan?.approvalStatus as QcpApprovalStatus) || "draft",
+  );
+  const [approvalHistory, setApprovalHistory] = useState<QcpApprovalTokenRecord[]>([]);
+  const [isSendingApproval, setIsSendingApproval] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [signingPartyIndex, setSigningPartyIndex] = useState<number | null>(null);
@@ -389,6 +416,11 @@ export function QcpForm({ jobCardId, existingPlan, onSaved, onCancel }: QcpFormP
     party: PartyKey;
   } | null>(null);
   const [currentUserName, setCurrentUserName] = useState("");
+
+  const visiblePartyKeys: PartyKey[] = existingPlan?.activeParties
+    ? PARTY_KEYS.filter((k) => (existingPlan.activeParties as string[]).includes(k))
+    : PARTY_KEYS;
+  const visiblePartyLabels: string[] = visiblePartyKeys.map((k) => PARTIES[PARTY_KEYS.indexOf(k)]);
 
   useEffect(() => {
     stockControlApiClient
@@ -400,6 +432,26 @@ export function QcpForm({ jobCardId, existingPlan, onSaved, onCancel }: QcpFormP
       })
       .catch(() => {});
   }, []);
+
+  useEffect(() => {
+    if (!isEditing || !existingPlan) return;
+    stockControlApiClient
+      .controlPlanApprovalHistory(jobCardId, existingPlan.id)
+      .then(setApprovalHistory)
+      .catch(() => {});
+  }, [isEditing, existingPlan, jobCardId]);
+
+  useEffect(() => {
+    if (isEditing || !customerName) return;
+    stockControlApiClient
+      .customerQcpPreferences(customerName)
+      .then((data) => {
+        if (data.email && !clientEmail) {
+          setClientEmail(data.email);
+        }
+      })
+      .catch(() => {});
+  }, [customerName, isEditing]);
 
   useEffect(() => {
     const loadJobCardData = async () => {
@@ -566,31 +618,84 @@ export function QcpForm({ jobCardId, existingPlan, onSaved, onCancel }: QcpFormP
     [signingPartyIndex],
   );
 
+  const savePayload = async (): Promise<void> => {
+    const payload: Partial<QcControlPlanRecord> = {
+      planType,
+      qcpNumber: qcpNumber || null,
+      documentRef: documentRef || null,
+      revision: revision || null,
+      customerName: customerName || null,
+      orderNumber: orderNumber || null,
+      jobNumber: jobNumber || null,
+      jobName: jobName || null,
+      specification: specification || null,
+      itemDescription: null,
+      activities: activities.filter((a) => a.description.trim() !== ""),
+      approvalSignatures,
+    };
+
+    if (isEditing && existingPlan) {
+      await stockControlApiClient.updateControlPlan(jobCardId, existingPlan.id, payload);
+    } else {
+      await stockControlApiClient.createControlPlan(jobCardId, payload);
+    }
+  };
+
+  const handleSendForApproval = async () => {
+    if (!clientEmail.trim()) {
+      setError("Please enter a customer email address");
+      return;
+    }
+    if (!existingPlan) return;
+
+    try {
+      setIsSendingApproval(true);
+      setError(null);
+      await savePayload();
+      await stockControlApiClient.sendControlPlanForApproval(
+        jobCardId,
+        existingPlan.id,
+        clientEmail.trim(),
+      );
+      setApprovalStatus("pending_client");
+      onSaved();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to send for approval");
+    } finally {
+      setIsSendingApproval(false);
+    }
+  };
+
+  const handleCancelApproval = async () => {
+    if (!existingPlan) return;
+    try {
+      setError(null);
+      await stockControlApiClient.cancelControlPlanApproval(jobCardId, existingPlan.id);
+      setApprovalStatus("draft");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to cancel approval");
+    }
+  };
+
+  const handleResendApproval = async (partyRole: "client" | "third_party") => {
+    if (!existingPlan) return;
+    try {
+      setIsSendingApproval(true);
+      setError(null);
+      await stockControlApiClient.resendControlPlanApproval(jobCardId, existingPlan.id, partyRole);
+      setApprovalStatus(partyRole === "client" ? "pending_client" : "pending_third_party");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to resend approval");
+    } finally {
+      setIsSendingApproval(false);
+    }
+  };
+
   const handleSave = async () => {
     try {
       setIsSaving(true);
       setError(null);
-
-      const payload: Partial<QcControlPlanRecord> = {
-        planType,
-        qcpNumber: qcpNumber || null,
-        documentRef: documentRef || null,
-        revision: revision || null,
-        customerName: customerName || null,
-        orderNumber: orderNumber || null,
-        jobNumber: jobNumber || null,
-        jobName: jobName || null,
-        specification: specification || null,
-        itemDescription: null,
-        activities: activities.filter((a) => a.description.trim() !== ""),
-        approvalSignatures,
-      };
-
-      if (isEditing) {
-        await stockControlApiClient.updateControlPlan(jobCardId, existingPlan.id, payload);
-      } else {
-        await stockControlApiClient.createControlPlan(jobCardId, payload);
-      }
+      await savePayload();
       onSaved();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save control plan");
@@ -734,7 +839,7 @@ export function QcpForm({ jobCardId, existingPlan, onSaved, onCancel }: QcpFormP
               <th className="w-28 px-2 py-2 text-left text-xs font-medium uppercase text-gray-500">
                 Documentation
               </th>
-              {PARTIES.map((party, pIdx) => (
+              {visiblePartyLabels.map((party) => (
                 <th
                   key={party}
                   className="w-24 px-1 py-2 text-center text-xs font-medium uppercase text-gray-500"
@@ -782,7 +887,7 @@ export function QcpForm({ jobCardId, existingPlan, onSaved, onCancel }: QcpFormP
                     placeholder="Doc ref"
                   />
                 </td>
-                {PARTY_KEYS.map((partyKey, pIdx) => {
+                {visiblePartyKeys.map((partyKey) => {
                   const signOff = activity[partyKey] || emptyPartySignOff();
                   return (
                     <td key={partyKey} className="px-1 py-1.5">
@@ -868,33 +973,43 @@ export function QcpForm({ jobCardId, existingPlan, onSaved, onCancel }: QcpFormP
         <h4 className="text-sm font-semibold text-gray-900">Approval Signatures</h4>
       </div>
 
-      <div className="grid grid-cols-4 gap-4">
-        {approvalSignatures.map((sig, idx) => (
-          <div key={idx} className="rounded border border-gray-200 bg-gray-50 p-3">
-            <p className="mb-2 text-xs font-semibold text-gray-700">{sig.party}</p>
-            {sig.name ? (
-              <div className="space-y-1">
-                <p className="text-sm text-gray-900">{sig.name}</p>
-                {sig.date && <p className="text-xs text-gray-500">{sig.date}</p>}
-                {sig.signatureUrl && (
-                  <img
-                    src={sig.signatureUrl}
-                    alt="Signature"
-                    className="h-10 rounded border border-gray-200 bg-white p-0.5"
-                  />
-                )}
-              </div>
-            ) : (
-              <button
-                type="button"
-                onClick={() => handleApprovalSignOff(idx)}
-                className="text-xs text-teal-600 hover:text-teal-800"
-              >
-                Sign & approve
-              </button>
-            )}
-          </div>
-        ))}
+      <div className={`grid grid-cols-${visiblePartyKeys.length} gap-4`}>
+        {approvalSignatures
+          .filter((sig) => {
+            const keyMap: Record<string, PartyKey> = {
+              PLS: "pls",
+              MPS: "mps",
+              Client: "client",
+              "3rd Party": "thirdParty",
+            };
+            return visiblePartyKeys.includes(keyMap[sig.party]);
+          })
+          .map((sig, idx) => (
+            <div key={idx} className="rounded border border-gray-200 bg-gray-50 p-3">
+              <p className="mb-2 text-xs font-semibold text-gray-700">{sig.party}</p>
+              {sig.name ? (
+                <div className="space-y-1">
+                  <p className="text-sm text-gray-900">{sig.name}</p>
+                  {sig.date && <p className="text-xs text-gray-500">{sig.date}</p>}
+                  {sig.signatureUrl && (
+                    <img
+                      src={sig.signatureUrl}
+                      alt="Signature"
+                      className="h-10 rounded border border-gray-200 bg-white p-0.5"
+                    />
+                  )}
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => handleApprovalSignOff(idx)}
+                  className="text-xs text-teal-600 hover:text-teal-800"
+                >
+                  Sign & approve
+                </button>
+              )}
+            </div>
+          ))}
       </div>
 
       {signingPartyIndex !== null && (
@@ -908,6 +1023,93 @@ export function QcpForm({ jobCardId, existingPlan, onSaved, onCancel }: QcpFormP
             width={360}
             height={120}
           />
+        </div>
+      )}
+
+      {isEditing && (
+        <div className="border-b border-gray-200 pb-1 pt-4">
+          <h4 className="text-sm font-semibold text-gray-900">External Approval</h4>
+        </div>
+      )}
+
+      {isEditing && (
+        <div className="space-y-3">
+          <div className="flex items-center gap-3">
+            <ApprovalStatusBadge status={approvalStatus} />
+            {existingPlan && existingPlan.version > 1 && (
+              <span className="text-xs text-gray-500">Version {existingPlan.version}</span>
+            )}
+          </div>
+
+          <div className="flex items-center gap-3">
+            <div className="flex-1">
+              <label className="block text-xs font-medium text-gray-700">Customer Email</label>
+              <input
+                type="email"
+                value={clientEmail}
+                onChange={(e) => setClientEmail(e.target.value)}
+                placeholder="customer@example.com"
+                className="mt-1 w-full rounded border border-gray-300 px-3 py-2 text-sm"
+                disabled={
+                  approvalStatus === "pending_client" || approvalStatus === "pending_third_party"
+                }
+              />
+            </div>
+            {approvalStatus === "draft" || approvalStatus === "changes_requested" ? (
+              <button
+                type="button"
+                onClick={handleSendForApproval}
+                disabled={isSendingApproval || !clientEmail.trim()}
+                className="mt-5 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+              >
+                {isSendingApproval ? "Sending..." : "Save & Send for Approval"}
+              </button>
+            ) : (
+              <div className="mt-5 flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleCancelApproval}
+                  className="rounded-md border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                >
+                  Cancel Approval
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleResendApproval("client")}
+                  disabled={isSendingApproval}
+                  className="rounded-md border border-blue-300 bg-blue-50 px-3 py-2 text-sm font-medium text-blue-700 hover:bg-blue-100 disabled:opacity-50"
+                >
+                  Resend
+                </button>
+              </div>
+            )}
+          </div>
+
+          {approvalStatus === "changes_requested" &&
+            approvalHistory.length > 0 &&
+            (() => {
+              const latestChanges = approvalHistory.find((t) => t.status === "CHANGES_REQUESTED");
+              if (!latestChanges) return null;
+              return (
+                <div className="rounded-md border border-amber-200 bg-amber-50 p-3">
+                  <p className="text-xs font-semibold text-amber-800">
+                    Changes requested by {latestChanges.recipientEmail}
+                  </p>
+                  {latestChanges.overallComments && (
+                    <p className="mt-1 text-sm text-amber-900">{latestChanges.overallComments}</p>
+                  )}
+                  {latestChanges.lineRemarks && latestChanges.lineRemarks.length > 0 && (
+                    <ul className="mt-2 space-y-1">
+                      {latestChanges.lineRemarks.map((r, i) => (
+                        <li key={i} className="text-xs text-amber-800">
+                          Activity {r.operationNumber}: {r.remark}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              );
+            })()}
         </div>
       )}
 

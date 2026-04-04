@@ -943,6 +943,13 @@ export interface QcpApprovalSignature {
   date: string | null;
 }
 
+export type QcpApprovalStatus =
+  | "draft"
+  | "pending_client"
+  | "pending_third_party"
+  | "changes_requested"
+  | "approved";
+
 export interface QcControlPlanRecord {
   id: number;
   companyId: number;
@@ -957,12 +964,46 @@ export interface QcControlPlanRecord {
   jobName: string | null;
   specification: string | null;
   itemDescription: string | null;
+  version: number;
+  approvalStatus: QcpApprovalStatus;
+  clientEmail: string | null;
+  thirdPartyEmail: string | null;
+  activeParties: string[] | null;
   activities: QcpActivity[];
   approvalSignatures: QcpApprovalSignature[];
   createdByName: string;
   createdById: number | null;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface QcpApprovalTokenRecord {
+  id: number;
+  companyId: number;
+  controlPlanId: number;
+  controlPlanVersion: number;
+  partyRole: "client" | "third_party";
+  recipientEmail: string;
+  recipientName: string | null;
+  token: string;
+  tokenExpiresAt: string;
+  status: "PENDING" | "APPROVED" | "CHANGES_REQUESTED" | "SUPERSEDED";
+  lineRemarks: Array<{ operationNumber: number; remark: string }> | null;
+  overallComments: string | null;
+  signatureName: string | null;
+  signatureUrl: string | null;
+  signedAt: string | null;
+  sentByParty: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface QcpCustomerPreferenceRecord {
+  email: string | null;
+  preferences: Array<{
+    planType: string;
+    interventionDefaults: Record<number, string> | null;
+  }>;
 }
 
 export interface QcMeasurementsAggregate {

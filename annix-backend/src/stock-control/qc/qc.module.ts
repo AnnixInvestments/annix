@@ -28,6 +28,7 @@ import { PositectorController } from "./controllers/positector.controller";
 import { PositectorStreamingController } from "./controllers/positector-streaming.controller";
 import { QcMeasurementController } from "./controllers/qc-measurement.controller";
 import { QcpLogController } from "./controllers/qcp-log.controller";
+import { QcpPublicController } from "./controllers/qcp-public.controller";
 import { CalibrationCertificate } from "./entities/calibration-certificate.entity";
 import { PositectorDevice } from "./entities/positector-device.entity";
 import { QcBlastProfile } from "./entities/qc-blast-profile.entity";
@@ -39,12 +40,15 @@ import { QcItemsRelease } from "./entities/qc-items-release.entity";
 import { QcPullTest } from "./entities/qc-pull-test.entity";
 import { QcReleaseCertificate } from "./entities/qc-release-certificate.entity";
 import { QcShoreHardness } from "./entities/qc-shore-hardness.entity";
+import { QcpApprovalToken } from "./entities/qcp-approval-token.entity";
+import { QcpCustomerPreference } from "./entities/qcp-customer-preference.entity";
 import { QcEnabledGuard } from "./guards/qc-enabled.guard";
 import { CalibrationCertificateService } from "./services/calibration-certificate.service";
 import { PositectorService } from "./services/positector.service";
 import { PositectorImportService } from "./services/positector-import.service";
 import { PositectorStreamingService } from "./services/positector-streaming.service";
 import { QcMeasurementService } from "./services/qc-measurement.service";
+import { QcpApprovalService } from "./services/qcp-approval.service";
 import { WORK_ITEM_PROVIDER } from "./work-item-provider.interface";
 
 @Module({
@@ -59,6 +63,8 @@ import { WORK_ITEM_PROVIDER } from "./work-item-provider.interface";
       PushSubscription,
       QcBlastProfile,
       QcControlPlan,
+      QcpApprovalToken,
+      QcpCustomerPreference,
       QcDefelskoBatch,
       QcDftReading,
       QcDustDebrisTest,
@@ -88,6 +94,7 @@ import { WORK_ITEM_PROVIDER } from "./work-item-provider.interface";
     CalibrationCertificateController,
     QcMeasurementController,
     QcpLogController,
+    QcpPublicController,
     PositectorController,
     PositectorStreamingController,
   ],
@@ -101,6 +108,7 @@ import { WORK_ITEM_PROVIDER } from "./work-item-provider.interface";
     CompanyEmailService,
     DataBookPdfService,
     QcMeasurementService,
+    QcpApprovalService,
     PositectorService,
     PositectorImportService,
     PositectorStreamingService,

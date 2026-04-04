@@ -13,6 +13,7 @@ import { StockIssuance } from "../entities/stock-issuance.entity";
 import { StockItem } from "../entities/stock-item.entity";
 import { MovementType, ReferenceType, StockMovement } from "../entities/stock-movement.entity";
 import { SupplierCertificate } from "../entities/supplier-certificate.entity";
+import { CertificateService } from "./certificate.service";
 import { IssuanceService } from "./issuance.service";
 import { WorkflowNotificationService } from "./workflow-notification.service";
 
@@ -75,6 +76,10 @@ describe("IssuanceService", () => {
     notifyOverAllocationApproval: jest.fn().mockResolvedValue(undefined),
   };
 
+  const mockCertificateService = {
+    findMatchingCertificate: jest.fn().mockResolvedValue(null),
+  };
+
   const mockQueryRunnerManager = {
     find: jest.fn().mockResolvedValue([]),
     findOne: jest.fn(),
@@ -118,6 +123,7 @@ describe("IssuanceService", () => {
         { provide: DataSource, useValue: mockDataSource },
         { provide: AuditService, useValue: mockAuditService },
         { provide: WorkflowNotificationService, useValue: mockNotificationService },
+        { provide: CertificateService, useValue: mockCertificateService },
       ],
     }).compile();
 
