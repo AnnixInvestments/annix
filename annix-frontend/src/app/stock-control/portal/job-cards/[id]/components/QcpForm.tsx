@@ -368,7 +368,6 @@ export function QcpForm({ jobCardId, existingPlan, onSaved, onCancel }: QcpFormP
   const [jobNumber, setJobNumber] = useState(existingPlan?.jobNumber || "");
   const [jobName, setJobName] = useState(existingPlan?.jobName || "");
   const [specification, setSpecification] = useState(existingPlan?.specification || "");
-  const [itemDescription, setItemDescription] = useState(existingPlan?.itemDescription || "");
   const [activities, setActivities] = useState<QcpActivity[]>(
     existingPlan?.activities?.length ? existingPlan.activities : templateForType("paint_external"),
   );
@@ -441,9 +440,6 @@ export function QcpForm({ jobCardId, existingPlan, onSaved, onCancel }: QcpFormP
           (c) => `${c.product} (${c.minDftUm}-${c.maxDftUm} μm DFT)`,
         );
         setSpecification(specParts.join("; "));
-        setItemDescription(
-          `${area === "external" ? "External" : "Internal"} coating — ${relevantCoats.length} coat${relevantCoats.length !== 1 ? "s" : ""}`,
-        );
       }
       if (coating.surfacePrep) {
         const prepLabels: Record<string, string> = {
@@ -585,7 +581,7 @@ export function QcpForm({ jobCardId, existingPlan, onSaved, onCancel }: QcpFormP
         jobNumber: jobNumber || null,
         jobName: jobName || null,
         specification: specification || null,
-        itemDescription: itemDescription || null,
+        itemDescription: null,
         activities: activities.filter((a) => a.description.trim() !== ""),
         approvalSignatures,
       };
@@ -704,27 +700,15 @@ export function QcpForm({ jobCardId, existingPlan, onSaved, onCancel }: QcpFormP
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label className="block text-xs font-medium text-gray-700">Specification</label>
-          <input
-            type="text"
-            value={specification}
-            onChange={(e) => setSpecification(e.target.value)}
-            className="mt-1 w-full rounded border border-gray-300 px-3 py-2 text-sm"
-            placeholder="Coating/lining specification"
-          />
-        </div>
-        <div>
-          <label className="block text-xs font-medium text-gray-700">Item Description</label>
-          <input
-            type="text"
-            value={itemDescription}
-            onChange={(e) => setItemDescription(e.target.value)}
-            className="mt-1 w-full rounded border border-gray-300 px-3 py-2 text-sm"
-            placeholder="What is being inspected"
-          />
-        </div>
+      <div>
+        <label className="block text-xs font-medium text-gray-700">Specification</label>
+        <input
+          type="text"
+          value={specification}
+          onChange={(e) => setSpecification(e.target.value)}
+          className="mt-1 w-full rounded border border-gray-300 px-3 py-2 text-sm"
+          placeholder="Coating/lining specification"
+        />
       </div>
 
       <div className="border-b border-gray-200 pb-1 pt-4">
