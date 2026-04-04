@@ -6,9 +6,11 @@ import {
   Logger,
   NotFoundException,
 } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { now, nowISO } from "../../../lib/datetime";
+import { S3StorageService } from "../../../storage/s3-storage.service";
 import { StockControlCompany } from "../../entities/stock-control-company.entity";
 import { CompanyEmailService } from "../../services/company-email.service";
 import { QcControlPlan } from "../entities/qc-control-plan.entity";
@@ -22,6 +24,7 @@ import { QcpCustomerPreference } from "../entities/qcp-customer-preference.entit
 @Injectable()
 export class QcpApprovalService {
   private readonly logger = new Logger(QcpApprovalService.name);
+  private readonly storageType: string;
 
   constructor(
     @InjectRepository(QcpApprovalToken)
@@ -33,7 +36,24 @@ export class QcpApprovalService {
     @InjectRepository(StockControlCompany)
     private readonly companyRepo: Repository<StockControlCompany>,
     private readonly emailService: CompanyEmailService,
-  ) {}
+    private readonly s3StorageService: S3StorageService,
+    private readonly configService: ConfigService,
+  ) {
+    this.storageType = this.configService.get<string>("STORAGE_TYPE") || "local";
+  }
+
+  private async resolveStorageUrl(path: string | null): Promise<string | null> {
+    if (!path) {
+      return null;
+    }
+    if (path.startsWith("http://") || path.startsWith("https://")) {
+      return path;
+    }
+    if (this.storageType === "s3") {
+      return await this.s3StorageService.presignedUrl(path, 86400);
+    }
+    return path;
+  }
 
   async sendForClientApproval(
     companyId: number,
@@ -128,13 +148,14 @@ export class QcpApprovalService {
     }
 
     const company = await this.companyRepo.findOne({ where: { id: token.companyId } });
+    const resolvedLogoUrl = await this.resolveStorageUrl(company?.logoUrl || null);
 
     return {
       token,
       plan,
       company: {
         name: company?.name || "",
-        logoUrl: company?.logoUrl || null,
+        logoUrl: resolvedLogoUrl,
         primaryColor: company?.primaryColor || null,
       },
     };
