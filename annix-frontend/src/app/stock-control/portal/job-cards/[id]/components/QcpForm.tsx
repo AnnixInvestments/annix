@@ -28,6 +28,13 @@ const PLAN_TYPE_LABELS: Record<QcpPlanType, string> = {
   hdpe: "HDPE Lining",
 };
 
+const PLAN_TYPE_DOC_REFS: Record<QcpPlanType, string> = {
+  paint_external: "QD_PLS_11",
+  paint_internal: "QD_PLS_11",
+  rubber: "QD_PLS_07",
+  hdpe: "QD_PLS_07",
+};
+
 const INTERVENTION_LABELS: Record<InterventionType, string> = {
   H: "Hold",
   I: "Inspection",
@@ -352,7 +359,9 @@ export function QcpForm({ jobCardId, existingPlan, onSaved, onCancel }: QcpFormP
 
   const [planType, setPlanType] = useState<QcpPlanType>(existingPlan?.planType || "paint_external");
   const [qcpNumber, setQcpNumber] = useState(existingPlan?.qcpNumber || "");
-  const [documentRef, setDocumentRef] = useState(existingPlan?.documentRef || "");
+  const [documentRef, setDocumentRef] = useState(
+    existingPlan?.documentRef || PLAN_TYPE_DOC_REFS[existingPlan?.planType || "paint_external"],
+  );
   const [revision, setRevision] = useState(existingPlan?.revision || "01");
   const [customerName, setCustomerName] = useState(existingPlan?.customerName || "");
   const [orderNumber, setOrderNumber] = useState(existingPlan?.orderNumber || "");
@@ -449,6 +458,7 @@ export function QcpForm({ jobCardId, existingPlan, onSaved, onCancel }: QcpFormP
   const handlePlanTypeChange = useCallback(
     (newType: QcpPlanType) => {
       setPlanType(newType);
+      setDocumentRef(PLAN_TYPE_DOC_REFS[newType]);
       if (!isEditing) {
         setActivities(templateForType(newType));
       }
@@ -631,9 +641,8 @@ export function QcpForm({ jobCardId, existingPlan, onSaved, onCancel }: QcpFormP
           <input
             type="text"
             value={documentRef}
-            onChange={(e) => setDocumentRef(e.target.value)}
-            className="mt-1 w-full rounded border border-gray-300 px-3 py-2 text-sm"
-            placeholder="e.g. QD_PLS_04"
+            readOnly
+            className="mt-1 w-full rounded border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-500 cursor-not-allowed"
           />
         </div>
         <div>

@@ -569,6 +569,13 @@ export class QcMeasurementService {
       return String(num + 1).padStart(2, "0");
     };
 
+    const planTypeDocRefs: Record<string, string> = {
+      [QcpPlanType.PAINT_EXTERNAL]: "QD_PLS_11",
+      [QcpPlanType.PAINT_INTERNAL]: "QD_PLS_11",
+      [QcpPlanType.RUBBER]: "QD_PLS_07",
+      [QcpPlanType.HDPE]: "QD_PLS_07",
+    };
+
     const created = await Promise.all(
       planTypes.map((planType) => {
         const existingPlan = existingByType[planType] || null;
@@ -576,9 +583,11 @@ export class QcMeasurementService {
           existingPlan?.qcpNumber ||
           `${companyPrefix}-${jobCard.jobNumber}-${planType.toUpperCase().replace("_", "-")}`;
         const revision = existingPlan ? nextRevision(existingPlan.revision) : "01";
+        const documentRef = planTypeDocRefs[planType] || null;
 
         if (existingPlan) {
           existingPlan.revision = revision;
+          existingPlan.documentRef = documentRef;
           existingPlan.customerName = customerName;
           existingPlan.orderNumber = orderNumber;
           existingPlan.jobName = jobName;
@@ -594,7 +603,7 @@ export class QcMeasurementService {
           jobCardId,
           planType,
           qcpNumber,
-          documentRef: null,
+          documentRef,
           revision,
           customerName,
           orderNumber,
