@@ -2,8 +2,13 @@
 
 import { Check, ChevronDown, ChevronUp, Circle, Clock, Minus, RefreshCw, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { BackgroundStepStatus, JobCardApproval } from "@/app/lib/api/stockControlApi";
+import {
+  BackgroundStepStatus,
+  JobCardApproval,
+  WorkflowStepConfig,
+} from "@/app/lib/api/stockControlApi";
 import { formatDateLongZA } from "@/app/lib/datetime";
+import { useWorkflowStepConfigs } from "@/app/lib/query/hooks";
 
 interface ForegroundStep {
   key: string;
@@ -18,6 +23,17 @@ const DEFAULT_FOREGROUND_STEPS: ForegroundStep[] = [
   { key: "quality_check", label: "Quality", sortOrder: 3, actionLabel: "Quality Approved" },
   { key: "dispatched", label: "Dispatched", sortOrder: 4, actionLabel: "Dispatched" },
 ];
+
+const toForegroundSteps = (configs: WorkflowStepConfig[]): ForegroundStep[] =>
+  configs
+    .filter((c) => !c.isBackground)
+    .map((c) => ({
+      key: c.key,
+      label: c.label,
+      sortOrder: c.sortOrder,
+      actionLabel: c.actionLabel,
+    }))
+    .sort((a, b) => a.sortOrder - b.sortOrder);
 
 const LEGACY_STATUS_TO_STEP: Record<string, string> = {
   document_uploaded: "admin_approval",
@@ -1961,9 +1977,16 @@ export function WorkflowStepper(props: WorkflowStepperProps) {
     currentUserName = null,
   } = props;
 
+  const { data: stepConfigs } = useWorkflowStepConfigs();
+  const dynamicFgSteps = stepConfigs ? toForegroundSteps(stepConfigs) : [];
+
   const filteredFgSteps = foregroundSteps.filter((s) => s.key !== "draft");
   const allSteps: ForegroundStep[] =
-    filteredFgSteps.length > 0 ? filteredFgSteps : DEFAULT_FOREGROUND_STEPS;
+    filteredFgSteps.length > 0
+      ? filteredFgSteps
+      : dynamicFgSteps.length > 0
+        ? dynamicFgSteps
+        : DEFAULT_FOREGROUND_STEPS;
 
   const currentStepIndex = resolveCurrentStepIndex(currentStatus, allSteps);
   const approvalByStep = buildApprovalMap(approvals);
@@ -2106,10 +2129,15 @@ interface CompactWorkflowStepperProps {
 
 export function CompactWorkflowStepper(props: CompactWorkflowStepperProps) {
   const { workflowStatus } = props;
+  const { data: stepConfigs } = useWorkflowStepConfigs();
+  const dynamicFgSteps = stepConfigs ? toForegroundSteps(stepConfigs) : [];
+
   const steps =
     props.foregroundSteps && props.foregroundSteps.length > 0
       ? props.foregroundSteps
-      : DEFAULT_FOREGROUND_STEPS;
+      : dynamicFgSteps.length > 0
+        ? dynamicFgSteps
+        : DEFAULT_FOREGROUND_STEPS;
   const currentStepIndex = resolveCurrentStepIndex(workflowStatus, steps);
 
   return (

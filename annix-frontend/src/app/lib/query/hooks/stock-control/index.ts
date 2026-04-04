@@ -137,3 +137,7 @@ export {
   useStaffDepartments,
   useStaffMembers,
 } from "./useStockControlStaff";
+export {
+  useBackgroundStepConfigs,
+  useWorkflowStepConfigs,
+} from "./useWorkflowConfig";

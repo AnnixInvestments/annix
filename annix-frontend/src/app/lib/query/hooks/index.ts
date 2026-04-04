@@ -653,6 +653,7 @@ export {
   useAnalyzeDeliveryNote,
   useApproveOverAllocation,
   useApproveWorkflowStep,
+  useBackgroundStepConfigs,
   useCalibrationCertificates,
   useCertificateStockItems,
   useCertificateSuppliers,
@@ -773,6 +774,7 @@ export {
   useUploadStockItemPhoto,
   useWorkflowLaneCounts,
   useWorkflowNotifications,
+  useWorkflowStepConfigs,
 } from "./stock-control";
 export {
   useDeclineBoq,

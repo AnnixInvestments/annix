@@ -1,7 +1,17 @@
 "use client";
 
-import type { CpoSummary, WorkflowLaneCounts } from "@/app/lib/api/stockControlApi";
+import type {
+  CpoSummary,
+  WorkflowLaneCounts,
+  WorkflowStepConfig,
+} from "@/app/lib/api/stockControlApi";
+import { useWorkflowStepConfigs } from "@/app/lib/query/hooks";
 import { CountBadge, LaneSkeleton } from "./CountBadge";
+
+const stepLabel = (stepKey: string, fallback: string, configs: WorkflowStepConfig[]): string => {
+  const match = configs.find((c) => c.key === stepKey);
+  return match ? match.label : fallback;
+};
 
 interface WorkflowLanesSectionProps {
   lanes: WorkflowLaneCounts | undefined;
@@ -62,7 +72,13 @@ function InboundLane({ lanes }: { lanes: WorkflowLaneCounts | undefined }) {
   );
 }
 
-function WorkshopLane({ lanes }: { lanes: WorkflowLaneCounts | undefined }) {
+function WorkshopLane({
+  lanes,
+  stepConfigs,
+}: {
+  lanes: WorkflowLaneCounts | undefined;
+  stepConfigs: WorkflowStepConfig[];
+}) {
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
       <div className="px-4 py-3 bg-teal-600">
@@ -81,19 +97,19 @@ function WorkshopLane({ lanes }: { lanes: WorkflowLaneCounts | undefined }) {
         />
         <CountBadge
           count={lanes?.workshop.jobCardsPendingAdmin || 0}
-          label="Pending admin approval"
+          label={`Pending ${stepLabel("admin_approval", "admin", stepConfigs).toLowerCase()} approval`}
           href="/stock-control/portal/job-cards?status=admin_approval"
           variant="warning"
         />
         <CountBadge
           count={lanes?.workshop.jobCardsPendingManager || 0}
-          label="Pending manager approval"
+          label={`Pending ${stepLabel("manager_approval", "manager", stepConfigs).toLowerCase()} approval`}
           href="/stock-control/portal/job-cards?status=manager_approval"
           variant="warning"
         />
         <CountBadge
           count={lanes?.workshop.jobCardsPendingAllocation || 0}
-          label="Quality check"
+          label={stepLabel("quality_check", "Quality check", stepConfigs)}
           href="/stock-control/portal/job-cards?status=quality_check"
           variant="info"
         />
@@ -148,9 +164,11 @@ function WorkshopLane({ lanes }: { lanes: WorkflowLaneCounts | undefined }) {
 function OutboundLane({
   lanes,
   cpoSummary,
+  stepConfigs,
 }: {
   lanes: WorkflowLaneCounts | undefined;
   cpoSummary: CpoSummary | undefined;
+  stepConfigs: WorkflowStepConfig[];
 }) {
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
@@ -164,7 +182,7 @@ function OutboundLane({
         </p>
         <CountBadge
           count={lanes?.outbound.jobCardsDispatched || 0}
-          label="Dispatched"
+          label={stepLabel("dispatched", "Dispatched", stepConfigs)}
           href="/stock-control/portal/job-cards?status=dispatched"
           variant="warning"
         />
@@ -229,6 +247,9 @@ export function WorkflowLanesSection({
   showWorkshop,
   showOutbound,
 }: WorkflowLanesSectionProps) {
+  const { data: stepConfigs } = useWorkflowStepConfigs();
+  const configs = stepConfigs || [];
+
   return (
     <>
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
@@ -243,14 +264,14 @@ export function WorkflowLanesSection({
           (lanesLoading ? (
             <LaneSkeleton title="Workshop" color="bg-teal-600" />
           ) : (
-            <WorkshopLane lanes={lanes} />
+            <WorkshopLane lanes={lanes} stepConfigs={configs} />
           ))}
 
         {showOutbound &&
           (lanesLoading ? (
             <LaneSkeleton title="Outbound" color="bg-purple-600" />
           ) : (
-            <OutboundLane lanes={lanes} cpoSummary={cpoSummary} />
+            <OutboundLane lanes={lanes} cpoSummary={cpoSummary} stepConfigs={configs} />
           ))}
       </div>
 

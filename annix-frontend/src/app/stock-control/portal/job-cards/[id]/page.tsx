@@ -719,7 +719,9 @@ export default function JobCardDetailPage() {
 
   const isReceptionStep = useCallback(
     (bg: BackgroundStepStatus) =>
-      bg.stepKey === "reception" || bg.label?.toLowerCase() === "reception",
+      bg.stepKey === "reception" ||
+      bg.stepKey === "custom_reception" ||
+      bg.label?.toLowerCase() === "reception",
     [],
   );
 

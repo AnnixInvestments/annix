@@ -134,4 +134,9 @@ export const stockControlKeys = {
     companyRoles: () => [...stockControlKeys.settings.all, "company-roles"] as const,
     teamMembers: () => [...stockControlKeys.settings.all, "team-members"] as const,
   },
+  workflowConfig: {
+    all: ["stock-control", "workflow-config"] as const,
+    foreground: () => [...stockControlKeys.workflowConfig.all, "foreground"] as const,
+    background: () => [...stockControlKeys.workflowConfig.all, "background"] as const,
+  },
 };
