@@ -15,6 +15,7 @@ import type {
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { formatDateZA } from "@/app/lib/datetime";
 import { InvoiceNextAction } from "@/app/stock-control/components/NextActionBanner";
+import { useViewAs } from "@/app/stock-control/context/ViewAsContext";
 import InvoiceClarificationPopup from "./InvoiceClarificationPopup";
 import PriceUpdateReview from "./PriceUpdateReview";
 
@@ -48,6 +49,7 @@ export default function InvoiceDetailPage() {
   const params = useParams();
   const router = useRouter();
   const { user } = useStockControlAuth();
+  const { effectiveRole } = useViewAs();
   const invoiceId = Number(params.id);
 
   const [invoice, setInvoice] = useState<SupplierInvoice | null>(null);
@@ -284,9 +286,10 @@ export default function InvoiceDetailPage() {
     }
   };
 
-  const canEdit = user?.role === "accounts" || user?.role === "admin" || user?.role === "manager";
+  const canEdit =
+    effectiveRole === "accounts" || effectiveRole === "admin" || effectiveRole === "manager";
   const canAdjustPrice =
-    user?.role === "accounts" || user?.role === "admin" || user?.role === "manager";
+    effectiveRole === "accounts" || effectiveRole === "admin" || effectiveRole === "manager";
 
   const handleAdjustItem = async (
     itemId: number,
@@ -357,7 +360,7 @@ export default function InvoiceDetailPage() {
         extractionStatus={invoice.extractionStatus}
         pendingClarificationCount={clarifications.filter((c) => c.status === "pending").length}
         hasPriceChanges={priceSummary !== null && priceSummary.items.length > 0}
-        userRole={user?.role || null}
+        userRole={effectiveRole}
         onApprove={() => setShowApprovalModal(true)}
       />
 

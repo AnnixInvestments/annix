@@ -21,6 +21,7 @@ import { useInvalidateJobCards } from "@/app/lib/query/hooks";
 import { ApprovalModal } from "@/app/stock-control/components/ApprovalModal";
 import { JobCardNextAction } from "@/app/stock-control/components/NextActionBanner";
 import { WorkflowStatus } from "@/app/stock-control/components/WorkflowStatus";
+import { useViewAs } from "@/app/stock-control/context/ViewAsContext";
 import { useConfirm } from "@/app/stock-control/hooks/useConfirm";
 import { CoatingAnalysisTab } from "./components/CoatingAnalysisTab";
 import { DetailsTab } from "./components/DetailsTab";
@@ -51,6 +52,7 @@ export default function JobCardDetailPage() {
   const authContext = useStockControlAuth();
   const user = authContext.user;
   const profile = authContext.profile;
+  const { effectiveRole } = useViewAs();
   const { confirm, ConfirmDialog } = useConfirm();
   const invalidateJobCardsList = useInvalidateJobCards();
   const jobId = Number(params.id);
@@ -421,7 +423,7 @@ export default function JobCardDetailPage() {
 
   const currentStatus = workflowStatus?.currentStatus || null;
   const currentStep = workflowStatus?.currentStep || null;
-  const userRole = user?.role || null;
+  const userRole = effectiveRole;
 
   const canApprove = useMemo(() => {
     if (!currentStep || !workflowStatus) return false;

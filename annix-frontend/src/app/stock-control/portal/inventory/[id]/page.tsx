@@ -15,6 +15,7 @@ import {
   useUploadStockItemPhoto,
 } from "@/app/lib/query/hooks";
 import { PhotoCapture } from "@/app/stock-control/components/PhotoCapture";
+import { useViewAs } from "@/app/stock-control/context/ViewAsContext";
 import { formatZAR } from "@/app/stock-control/lib/currency";
 
 function movementTypeBadge(type: string): string {
@@ -31,6 +32,7 @@ export default function InventoryDetailPage() {
   const params = useParams();
   const itemId = Number(params.id);
   const { user } = useStockControlAuth();
+  const { effectiveRole } = useViewAs();
 
   const { data: item, isLoading: isLoadingItem, error: itemError } = useInventoryItemDetail(itemId);
   const { data: movements = [] } = useStockMovements(itemId);
@@ -128,7 +130,7 @@ export default function InventoryDetailPage() {
     }
   };
 
-  const canAdjustStock = user?.role === "manager" || user?.role === "admin";
+  const canAdjustStock = effectiveRole === "manager" || effectiveRole === "admin";
 
   if (isLoadingItem) {
     return (

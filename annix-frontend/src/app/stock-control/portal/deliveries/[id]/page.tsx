@@ -14,6 +14,7 @@ import {
 } from "@/app/lib/query/hooks";
 import { DeliveryNextAction } from "@/app/stock-control/components/NextActionBanner";
 import { PhotoCapture } from "@/app/stock-control/components/PhotoCapture";
+import { useViewAs } from "@/app/stock-control/context/ViewAsContext";
 import { useConfirm } from "@/app/stock-control/hooks/useConfirm";
 
 interface ExtractedLineItem {
@@ -43,6 +44,7 @@ export default function DeliveryDetailPage() {
   const params = useParams();
   const router = useRouter();
   const { user } = useStockControlAuth();
+  const { effectiveRole } = useViewAs();
   const { confirm, ConfirmDialog } = useConfirm();
   const deliveryId = Number(params.id);
 
@@ -232,7 +234,7 @@ export default function DeliveryDetailPage() {
         extractionStatus={delivery.extractionStatus}
         hasLinkedItems={delivery.items !== undefined && delivery.items.length > 0}
         extractedItemCount={extractedLineItems(delivery).length}
-        userRole={user?.role || null}
+        userRole={effectiveRole}
         onLinkToStock={handleLinkToStock}
       />
 
