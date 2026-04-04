@@ -630,10 +630,9 @@ export function QcpForm({ jobCardId, existingPlan, onSaved, onCancel }: QcpFormP
           <label className="block text-xs font-medium text-gray-700">QCP Number</label>
           <input
             type="text"
-            value={qcpNumber}
-            onChange={(e) => setQcpNumber(e.target.value)}
-            className="mt-1 w-full rounded border border-gray-300 px-3 py-2 text-sm"
-            placeholder="e.g. QCP-001"
+            value={qcpNumber || "Auto-generated on save"}
+            readOnly
+            className="mt-1 w-full rounded border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-500 cursor-not-allowed"
           />
         </div>
         <div>

@@ -27,6 +27,7 @@ import { CalibrationCertificateController } from "./controllers/calibration-cert
 import { PositectorController } from "./controllers/positector.controller";
 import { PositectorStreamingController } from "./controllers/positector-streaming.controller";
 import { QcMeasurementController } from "./controllers/qc-measurement.controller";
+import { QcpLogController } from "./controllers/qcp-log.controller";
 import { CalibrationCertificate } from "./entities/calibration-certificate.entity";
 import { PositectorDevice } from "./entities/positector-device.entity";
 import { QcBlastProfile } from "./entities/qc-blast-profile.entity";
@@ -86,6 +87,7 @@ import { WORK_ITEM_PROVIDER } from "./work-item-provider.interface";
   controllers: [
     CalibrationCertificateController,
     QcMeasurementController,
+    QcpLogController,
     PositectorController,
     PositectorStreamingController,
   ],

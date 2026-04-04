@@ -108,6 +108,7 @@ declare module "./base" {
     openReleaseCertificatePdf(jobCardId: number, id: number): Promise<void>;
     openItemsReleasePdf(jobCardId: number, id: number): Promise<void>;
     openControlPlanPdf(jobCardId: number, id: number): Promise<void>;
+    qcpLog(search?: string): Promise<QcControlPlanRecord[]>;
     defelskoBatchesForJobCard(jobCardId: number): Promise<QcDefelskoBatchRecord[]>;
     saveDefelskoBatches(
       jobCardId: number,
@@ -372,6 +373,11 @@ proto.openControlPlanPdf = async function (jobCardId, id) {
   );
   const url = URL.createObjectURL(blob);
   window.open(url, "_blank");
+};
+
+proto.qcpLog = async function (search) {
+  const params = search ? `?search=${encodeURIComponent(search)}` : "";
+  return this.request(`/stock-control/qcp-log${params}`);
 };
 
 proto.defelskoBatchesForJobCard = async function (jobCardId) {

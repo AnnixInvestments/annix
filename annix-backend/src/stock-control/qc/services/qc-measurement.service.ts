@@ -324,8 +324,46 @@ export class QcMeasurementService {
     });
   }
 
+  async allControlPlans(companyId: number, search: string | null): Promise<QcControlPlan[]> {
+    const qb = this.controlPlanRepo
+      .createQueryBuilder("qcp")
+      .where("qcp.company_id = :companyId", { companyId })
+      .orderBy("qcp.created_at", "DESC");
+
+    if (search) {
+      qb.andWhere("qcp.qcp_number ILIKE :search", { search: `%${search}%` });
+    }
+
+    return qb.getMany();
+  }
+
   async controlPlanById(companyId: number, id: number): Promise<QcControlPlan> {
     return this.findOrFail(this.controlPlanRepo, companyId, id, "Control plan");
+  }
+
+  private async nextQcpNumber(companyId: number, planType: QcpPlanType): Promise<string> {
+    const isPaint =
+      planType === QcpPlanType.PAINT_EXTERNAL || planType === QcpPlanType.PAINT_INTERNAL;
+    const prefix = isPaint ? "QCP-P" : "QCP-R";
+    const startNumber = 10001;
+
+    const result = await this.controlPlanRepo
+      .createQueryBuilder("qcp")
+      .select("qcp.qcp_number", "qcpNumber")
+      .where("qcp.company_id = :companyId", { companyId })
+      .andWhere("qcp.qcp_number LIKE :prefix", { prefix: `${prefix}%` })
+      .orderBy("qcp.qcp_number", "DESC")
+      .limit(1)
+      .getRawOne();
+
+    if (result?.qcpNumber) {
+      const numPart = parseInt(result.qcpNumber.replace(prefix, ""), 10);
+      if (!Number.isNaN(numPart)) {
+        return `${prefix}${numPart + 1}`;
+      }
+    }
+
+    return `${prefix}${startNumber}`;
   }
 
   async createControlPlan(
@@ -334,10 +372,20 @@ export class QcMeasurementService {
     data: Partial<QcControlPlan>,
     user: UserContext,
   ): Promise<QcControlPlan> {
+    const planType = data.planType || QcpPlanType.PAINT_EXTERNAL;
+    const qcpNumber = await this.nextQcpNumber(companyId, planType);
+    const planTypeDocRefs: Record<string, string> = {
+      [QcpPlanType.PAINT_EXTERNAL]: "QD_PLS_11",
+      [QcpPlanType.PAINT_INTERNAL]: "QD_PLS_11",
+      [QcpPlanType.RUBBER]: "QD_PLS_07",
+      [QcpPlanType.HDPE]: "QD_PLS_07",
+    };
     const record = this.controlPlanRepo.create({
       ...data,
       companyId,
       jobCardId,
+      qcpNumber,
+      documentRef: planTypeDocRefs[planType] || null,
       createdByName: user.name,
       createdById: user.id,
     });
@@ -560,10 +608,6 @@ export class QcMeasurementService {
       return coating?.rawNotes || null;
     };
 
-    const companyPrefix = company?.name
-      ? company.name.split(" ")[0].toUpperCase().slice(0, 3)
-      : "QCP";
-
     const nextRevision = (current: string | null): string => {
       const num = parseInt(current || "0", 10);
       return String(num + 1).padStart(2, "0");
@@ -576,28 +620,25 @@ export class QcMeasurementService {
       [QcpPlanType.HDPE]: "QD_PLS_07",
     };
 
-    const created = await Promise.all(
-      planTypes.map((planType) => {
-        const existingPlan = existingByType[planType] || null;
-        const qcpNumber =
-          existingPlan?.qcpNumber ||
-          `${companyPrefix}-${jobCard.jobNumber}-${planType.toUpperCase().replace("_", "-")}`;
-        const revision = existingPlan ? nextRevision(existingPlan.revision) : "01";
-        const documentRef = planTypeDocRefs[planType] || null;
+    const created: QcControlPlan[] = [];
+    for (const planType of planTypes) {
+      const existingPlan = existingByType[planType] || null;
+      const revision = existingPlan ? nextRevision(existingPlan.revision) : "01";
+      const documentRef = planTypeDocRefs[planType] || null;
 
-        if (existingPlan) {
-          existingPlan.revision = revision;
-          existingPlan.documentRef = documentRef;
-          existingPlan.customerName = customerName;
-          existingPlan.orderNumber = orderNumber;
-          existingPlan.jobName = jobName;
-          existingPlan.specification = specificationForType(planType);
-          existingPlan.itemDescription = itemDescriptions || null;
-          existingPlan.activities = activitiesForType(planType);
-          existingPlan.approvalSignatures = defaultApprovals();
-          return this.controlPlanRepo.save(existingPlan);
-        }
-
+      if (existingPlan) {
+        existingPlan.revision = revision;
+        existingPlan.documentRef = documentRef;
+        existingPlan.customerName = customerName;
+        existingPlan.orderNumber = orderNumber;
+        existingPlan.jobName = jobName;
+        existingPlan.specification = specificationForType(planType);
+        existingPlan.itemDescription = itemDescriptions || null;
+        existingPlan.activities = activitiesForType(planType);
+        existingPlan.approvalSignatures = defaultApprovals();
+        created.push(await this.controlPlanRepo.save(existingPlan));
+      } else {
+        const qcpNumber = await this.nextQcpNumber(companyId, planType);
         const record = this.controlPlanRepo.create({
           companyId,
           jobCardId,
@@ -615,9 +656,9 @@ export class QcMeasurementService {
           createdByName: user.name,
           createdById: user.id,
         });
-        return this.controlPlanRepo.save(record);
-      }),
-    );
+        created.push(await this.controlPlanRepo.save(record));
+      }
+    }
 
     this.logger.log(
       `Auto-generated ${created.length} QCP(s) for job card ${jobCardId}: ${planTypes.join(", ")}`,
