@@ -1,4 +1,5 @@
 import { Test, TestingModule } from "@nestjs/testing";
+import { AdminAuthGuard } from "../../admin/guards/admin-auth.guard";
 import { StockControlAuthGuard } from "../guards/stock-control-auth.guard";
 import { StockControlRoleGuard } from "../guards/stock-control-role.guard";
 import { ActionPermissionService } from "../services/action-permission.service";
@@ -60,6 +61,8 @@ describe("StockControlAuthController - RBAC endpoints", () => {
       .overrideGuard(StockControlAuthGuard)
       .useValue({ canActivate: () => true })
       .overrideGuard(StockControlRoleGuard)
+      .useValue({ canActivate: () => true })
+      .overrideGuard(AdminAuthGuard)
       .useValue({ canActivate: () => true })
       .compile();
 

@@ -1,5 +1,5 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { browserBaseUrl } from "@/lib/api-config";
+import { createMutationHook, createQueryHook } from "../../factories";
 import { nixKeys } from "../../keys/nixKeys";
 import { retryableFetch } from "../../retry";
 
@@ -152,377 +152,200 @@ export interface CreateItemsResponse {
   }>;
 }
 
-async function fetchSession(sessionId: number): Promise<ChatSession> {
-  const response = await retryableFetch(`${browserBaseUrl()}/nix/chat/session/${sessionId}`, {
-    headers: nixAuthHeaders(),
+async function nixRequest<TResponse>(
+  path: string,
+  options: {
+    method?: "GET" | "POST";
+    body?: unknown;
+    portalContext?: PortalContext;
+    errorLabel: string;
+    parseErrorBody?: boolean;
+  },
+): Promise<TResponse> {
+  const headers: Record<string, string> = { ...nixAuthHeaders(options.portalContext) };
+  if (options.body !== undefined) {
+    headers["Content-Type"] = "application/json";
+  }
+
+  const response = await retryableFetch(`${browserBaseUrl()}${path}`, {
+    method: options.method ?? "GET",
+    headers,
+    ...(options.body !== undefined ? { body: JSON.stringify(options.body) } : {}),
   });
 
   if (!response.ok) {
-    throw new Error(`Failed to fetch session: ${response.statusText}`);
+    if (options.parseErrorBody) {
+      const body = await response.json().catch(() => null);
+      const errorMessage = body?.error || `${options.errorLabel}: ${response.statusText}`;
+      throw new Error(errorMessage);
+    }
+    throw new Error(`${options.errorLabel}: ${response.statusText}`);
   }
 
   return response.json();
 }
 
-async function fetchHistory(
-  sessionId: number,
-): Promise<{ sessionId: number; messages: ChatMessage[] }> {
-  const response = await retryableFetch(
-    `${browserBaseUrl()}/nix/chat/session/${sessionId}/history`,
-    {
-      headers: nixAuthHeaders(),
-    },
-  );
+export const useNixSession = createQueryHook(
+  (sessionId: number | null) => nixKeys.sessions.detail(sessionId ?? 0),
+  (sessionId: number | null) =>
+    nixRequest<ChatSession>(`/nix/chat/session/${sessionId}`, {
+      errorLabel: "Failed to fetch session",
+    }),
+  { enabled: (sessionId: number | null) => sessionId !== null && sessionId > 0 },
+);
 
-  if (!response.ok) {
-    throw new Error(`Failed to fetch chat history: ${response.statusText}`);
+export const useNixHistory = createQueryHook(
+  (sessionId: number | null) => nixKeys.sessions.history(sessionId ?? 0),
+  (sessionId: number | null) =>
+    nixRequest<{ sessionId: number; messages: ChatMessage[] }>(
+      `/nix/chat/session/${sessionId}/history`,
+      { errorLabel: "Failed to fetch chat history" },
+    ),
+  { enabled: (sessionId: number | null) => sessionId !== null && sessionId > 0 },
+);
+
+export const useCreateNixSession = createMutationHook<
+  { sessionId: number },
+  { rfqId?: number; portalContext?: PortalContext }
+>(
+  ({ rfqId, portalContext }) =>
+    nixRequest<{ sessionId: number }>("/nix/chat/session", {
+      method: "POST",
+      body: { rfqId },
+      portalContext,
+      errorLabel: "Failed to create chat session",
+    }),
+  (data) => [nixKeys.sessions.all, nixKeys.sessions.detail(data.sessionId)],
+);
+
+export const useSendNixMessage = createMutationHook<
+  { sessionId: number; messageId: number; content: string; metadata?: unknown },
+  {
+    sessionId: number;
+    message: string;
+    context?: {
+      currentRfqItems?: unknown[];
+      lastValidationIssues?: unknown[];
+      pageContext?: {
+        currentPage: string;
+        rfqType?: string;
+        portalContext: "customer" | "supplier" | "admin" | "general";
+      };
+    };
+    portalContext?: PortalContext;
   }
+>(
+  ({ sessionId, message, context, portalContext }) => {
+    const effectivePortalContext =
+      portalContext || (context?.pageContext?.portalContext as PortalContext) || undefined;
+    return nixRequest(`/nix/chat/session/${sessionId}/message`, {
+      method: "POST",
+      body: { message, context },
+      portalContext: effectivePortalContext,
+      errorLabel: "Failed to send message",
+      parseErrorBody: true,
+    });
+  },
+  (_data, variables) => [nixKeys.sessions.history(variables.sessionId)],
+);
 
-  return response.json();
-}
+export const useUpdateNixPreferences = createMutationHook<
+  { success: boolean },
+  { sessionId: number; preferences: Partial<ChatSession["userPreferences"]> }
+>(
+  ({ sessionId, preferences }) =>
+    nixRequest<{ success: boolean }>(`/nix/chat/session/${sessionId}/preferences`, {
+      method: "POST",
+      body: preferences,
+      errorLabel: "Failed to update preferences",
+    }),
+  (_data, variables) => [nixKeys.sessions.detail(variables.sessionId)],
+);
 
-export function useNixSession(sessionId: number | null) {
-  return useQuery<ChatSession>({
-    queryKey: nixKeys.sessions.detail(sessionId ?? 0),
-    queryFn: () => fetchSession(sessionId!),
-    enabled: sessionId !== null && sessionId > 0,
-  });
-}
+export const useRecordNixCorrection = createMutationHook<
+  { success: boolean },
+  {
+    sessionId: number;
+    correction: { extractedValue: string; correctedValue: string; fieldType: string };
+  }
+>(({ sessionId, correction }) =>
+  nixRequest<{ success: boolean }>(`/nix/chat/session/${sessionId}/correction`, {
+    method: "POST",
+    body: correction,
+    errorLabel: "Failed to record correction",
+  }),
+);
 
-export function useNixHistory(sessionId: number | null) {
-  return useQuery<{ sessionId: number; messages: ChatMessage[] }>({
-    queryKey: nixKeys.sessions.history(sessionId ?? 0),
-    queryFn: () => fetchHistory(sessionId!),
-    enabled: sessionId !== null && sessionId > 0,
-  });
-}
+export const useEndNixSession = createMutationHook<{ success: boolean }, number>(
+  (sessionId) =>
+    nixRequest<{ success: boolean }>(`/nix/chat/session/${sessionId}/end`, {
+      method: "POST",
+      errorLabel: "Failed to end session",
+    }),
+  (_data, sessionId) => [nixKeys.sessions.detail(sessionId), nixKeys.sessions.history(sessionId)],
+);
 
-export function useCreateNixSession() {
-  const queryClient = useQueryClient();
+export const useParseNixItems = createMutationHook<
+  ParseItemsResponse,
+  {
+    sessionId: number;
+    message: string;
+    context?: { currentItems?: unknown[]; recentMessages?: string[] };
+  }
+>(({ sessionId, message, context }) =>
+  nixRequest<ParseItemsResponse>(`/nix/chat/session/${sessionId}/parse-items`, {
+    method: "POST",
+    body: { message, context },
+    errorLabel: "Failed to parse items",
+    parseErrorBody: true,
+  }),
+);
 
-  return useMutation({
-    mutationFn: async ({
-      rfqId,
-      portalContext,
-    }: {
-      rfqId?: number;
-      portalContext?: PortalContext;
-    }): Promise<{ sessionId: number }> => {
-      const response = await retryableFetch(`${browserBaseUrl()}/nix/chat/session`, {
-        method: "POST",
-        headers: {
-          ...nixAuthHeaders(portalContext),
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ rfqId }),
-      });
+export const useCreateNixItems = createMutationHook<
+  CreateItemsResponse,
+  {
+    sessionId: number;
+    items: ParsedItem[];
+    options?: { confirmations?: ItemConfirmation[]; rfqId?: number; rfqTitle?: string };
+  }
+>(
+  ({ sessionId, items, options }) =>
+    nixRequest<CreateItemsResponse>(`/nix/chat/session/${sessionId}/create-items`, {
+      method: "POST",
+      body: {
+        items,
+        confirmations: options?.confirmations,
+        rfqId: options?.rfqId,
+        rfqTitle: options?.rfqTitle,
+      },
+      errorLabel: "Failed to create items",
+      parseErrorBody: true,
+    }),
+  [["rfq"]],
+);
 
-      if (!response.ok) {
-        throw new Error(`Failed to create chat session: ${response.statusText}`);
-      }
+export const useValidateNixItem = createMutationHook<
+  { valid: boolean; issues: ValidationIssue[] },
+  { item: unknown; context?: { allItems?: unknown[]; itemIndex?: number } }
+>(({ item, context }) =>
+  nixRequest<{ valid: boolean; issues: ValidationIssue[] }>("/nix/chat/validate/item", {
+    method: "POST",
+    body: { item, context },
+    errorLabel: "Failed to validate item",
+  }),
+);
 
-      return response.json();
-    },
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: nixKeys.sessions.all });
-      queryClient.invalidateQueries({ queryKey: nixKeys.sessions.detail(data.sessionId) });
-    },
-  });
-}
-
-export function useSendNixMessage() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async ({
-      sessionId,
-      message,
-      context,
-      portalContext,
-    }: {
-      sessionId: number;
-      message: string;
-      context?: {
-        currentRfqItems?: unknown[];
-        lastValidationIssues?: unknown[];
-        pageContext?: {
-          currentPage: string;
-          rfqType?: string;
-          portalContext: "customer" | "supplier" | "admin" | "general";
-        };
-      };
-      portalContext?: PortalContext;
-    }): Promise<{
-      sessionId: number;
-      messageId: number;
-      content: string;
-      metadata?: unknown;
-    }> => {
-      const effectivePortalContext =
-        portalContext || (context?.pageContext?.portalContext as PortalContext) || undefined;
-      const response = await retryableFetch(
-        `${browserBaseUrl()}/nix/chat/session/${sessionId}/message`,
-        {
-          method: "POST",
-          headers: {
-            ...nixAuthHeaders(effectivePortalContext),
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ message, context }),
-        },
-      );
-
-      if (!response.ok) {
-        const body = await response.json().catch(() => null);
-        const errorMessage = body?.error || `Failed to send message: ${response.statusText}`;
-        throw new Error(errorMessage);
-      }
-
-      return response.json();
-    },
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: nixKeys.sessions.history(variables.sessionId) });
-    },
-  });
-}
-
-export function useUpdateNixPreferences() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async ({
-      sessionId,
-      preferences,
-    }: {
-      sessionId: number;
-      preferences: Partial<ChatSession["userPreferences"]>;
-    }): Promise<{ success: boolean }> => {
-      const response = await retryableFetch(
-        `${browserBaseUrl()}/nix/chat/session/${sessionId}/preferences`,
-        {
-          method: "POST",
-          headers: {
-            ...nixAuthHeaders(),
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(preferences),
-        },
-      );
-
-      if (!response.ok) {
-        throw new Error(`Failed to update preferences: ${response.statusText}`);
-      }
-
-      return response.json();
-    },
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: nixKeys.sessions.detail(variables.sessionId) });
-    },
-  });
-}
-
-export function useRecordNixCorrection() {
-  return useMutation({
-    mutationFn: async ({
-      sessionId,
-      correction,
-    }: {
-      sessionId: number;
-      correction: {
-        extractedValue: string;
-        correctedValue: string;
-        fieldType: string;
-      };
-    }): Promise<{ success: boolean }> => {
-      const response = await retryableFetch(
-        `${browserBaseUrl()}/nix/chat/session/${sessionId}/correction`,
-        {
-          method: "POST",
-          headers: {
-            ...nixAuthHeaders(),
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(correction),
-        },
-      );
-
-      if (!response.ok) {
-        throw new Error(`Failed to record correction: ${response.statusText}`);
-      }
-
-      return response.json();
-    },
-  });
-}
-
-export function useEndNixSession() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async (sessionId: number): Promise<{ success: boolean }> => {
-      const response = await retryableFetch(
-        `${browserBaseUrl()}/nix/chat/session/${sessionId}/end`,
-        {
-          method: "POST",
-          headers: nixAuthHeaders(),
-        },
-      );
-
-      if (!response.ok) {
-        throw new Error(`Failed to end session: ${response.statusText}`);
-      }
-
-      return response.json();
-    },
-    onSuccess: (_, sessionId) => {
-      queryClient.invalidateQueries({ queryKey: nixKeys.sessions.detail(sessionId) });
-      queryClient.invalidateQueries({ queryKey: nixKeys.sessions.history(sessionId) });
-    },
-  });
-}
-
-export function useParseNixItems() {
-  return useMutation({
-    mutationFn: async ({
-      sessionId,
-      message,
-      context,
-    }: {
-      sessionId: number;
-      message: string;
-      context?: {
-        currentItems?: unknown[];
-        recentMessages?: string[];
-      };
-    }): Promise<ParseItemsResponse> => {
-      const response = await retryableFetch(
-        `${browserBaseUrl()}/nix/chat/session/${sessionId}/parse-items`,
-        {
-          method: "POST",
-          headers: {
-            ...nixAuthHeaders(),
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ message, context }),
-        },
-      );
-
-      if (!response.ok) {
-        const body = await response.json().catch(() => null);
-        const errorMessage = body?.error || `Failed to parse items: ${response.statusText}`;
-        throw new Error(errorMessage);
-      }
-
-      return response.json();
-    },
-  });
-}
-
-export function useCreateNixItems() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async ({
-      sessionId,
-      items,
-      options,
-    }: {
-      sessionId: number;
-      items: ParsedItem[];
-      options?: {
-        confirmations?: ItemConfirmation[];
-        rfqId?: number;
-        rfqTitle?: string;
-      };
-    }): Promise<CreateItemsResponse> => {
-      const response = await retryableFetch(
-        `${browserBaseUrl()}/nix/chat/session/${sessionId}/create-items`,
-        {
-          method: "POST",
-          headers: {
-            ...nixAuthHeaders(),
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            items,
-            confirmations: options?.confirmations,
-            rfqId: options?.rfqId,
-            rfqTitle: options?.rfqTitle,
-          }),
-        },
-      );
-
-      if (!response.ok) {
-        const body = await response.json().catch(() => null);
-        const errorMessage = body?.error || `Failed to create items: ${response.statusText}`;
-        throw new Error(errorMessage);
-      }
-
-      return response.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["rfq"] });
-    },
-  });
-}
-
-export function useValidateNixItem() {
-  return useMutation({
-    mutationFn: async ({
-      item,
-      context,
-    }: {
-      item: unknown;
-      context?: { allItems?: unknown[]; itemIndex?: number };
-    }): Promise<{
-      valid: boolean;
-      issues: ValidationIssue[];
-    }> => {
-      const response = await retryableFetch(`${browserBaseUrl()}/nix/chat/validate/item`, {
-        method: "POST",
-        headers: {
-          ...nixAuthHeaders(),
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ item, context }),
-      });
-
-      if (!response.ok) {
-        throw new Error(`Failed to validate item: ${response.statusText}`);
-      }
-
-      return response.json();
-    },
-  });
-}
-
-export function useValidateNixRfq() {
-  return useMutation({
-    mutationFn: async (
-      items: unknown[],
-    ): Promise<{
-      valid: boolean;
-      issues: ValidationIssue[];
-      summary: {
-        errors: number;
-        warnings: number;
-        info: number;
-      };
-    }> => {
-      const response = await retryableFetch(`${browserBaseUrl()}/nix/chat/validate/rfq`, {
-        method: "POST",
-        headers: {
-          ...nixAuthHeaders(),
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ items }),
-      });
-
-      if (!response.ok) {
-        throw new Error(`Failed to validate RFQ: ${response.statusText}`);
-      }
-
-      return response.json();
-    },
-  });
-}
+export const useValidateNixRfq = createMutationHook<
+  {
+    valid: boolean;
+    issues: ValidationIssue[];
+    summary: { errors: number; warnings: number; info: number };
+  },
+  unknown[]
+>((items) =>
+  nixRequest("/nix/chat/validate/rfq", {
+    method: "POST",
+    body: { items },
+    errorLabel: "Failed to validate RFQ",
+  }),
+);
