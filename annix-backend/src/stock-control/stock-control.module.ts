@@ -3,6 +3,7 @@ import { ConfigModule, ConfigService } from "@nestjs/config";
 import { JwtModule } from "@nestjs/jwt";
 import { MulterModule } from "@nestjs/platform-express";
 import { TypeOrmModule } from "@nestjs/typeorm";
+import { AdminModule } from "../admin/admin.module";
 import { EmailModule } from "../email/email.module";
 import { FlangeDimensionModule } from "../flange-dimension/flange-dimension.module";
 import { NbOdLookupModule } from "../nb-od-lookup/nb-od-lookup.module";
@@ -245,6 +246,7 @@ import { WorkflowStepConfigService } from "./services/workflow-step-config.servi
       DnExtractionCorrection,
       NixLearning,
     ]),
+    AdminModule,
     EmailModule,
     FlangeDimensionModule,
     JwtModule.registerAsync({

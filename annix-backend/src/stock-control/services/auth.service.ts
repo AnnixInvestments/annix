@@ -754,6 +754,30 @@ export class StockControlAuthService {
     return { transferred: true, message: "Admin transfer completed successfully." };
   }
 
+  async adminBridge(adminEmail: string) {
+    const normalizedEmail = adminEmail.toLowerCase().trim();
+    const scUser = await this.userRepo.findOne({
+      where: { email: normalizedEmail },
+    });
+
+    if (!scUser) {
+      throw new NotFoundException(
+        "No Stock Control account found for this admin email. Please register first.",
+      );
+    }
+
+    const tokens = this.generateTokens(scUser);
+    return {
+      ...tokens,
+      user: {
+        id: scUser.id,
+        email: scUser.email,
+        name: scUser.name,
+        role: scUser.role,
+      },
+    };
+  }
+
   private generateTokens(user: StockControlUser) {
     const accessToken = this.jwtService.sign(
       {

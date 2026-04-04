@@ -33,13 +33,32 @@ export function StockControlAuthProvider(props: { children: ReactNode }) {
 
   const checkAuth = useCallback(async () => {
     if (!stockControlApiClient.isAuthenticated()) {
-      setState({
-        isAuthenticated: false,
-        isLoading: false,
-        user: null,
-        profile: null,
-      });
-      return;
+      const adminToken =
+        typeof window !== "undefined"
+          ? localStorage.getItem("adminAccessToken") || sessionStorage.getItem("adminAccessToken")
+          : null;
+
+      if (adminToken) {
+        try {
+          await stockControlApiClient.adminBridge(adminToken);
+        } catch {
+          setState({
+            isAuthenticated: false,
+            isLoading: false,
+            user: null,
+            profile: null,
+          });
+          return;
+        }
+      } else {
+        setState({
+          isAuthenticated: false,
+          isLoading: false,
+          user: null,
+          profile: null,
+        });
+        return;
+      }
     }
 
     try {

@@ -15,6 +15,7 @@ import {
 } from "@nestjs/common";
 import { ApiOperation, ApiTags } from "@nestjs/swagger";
 import { Response } from "express";
+import { AdminAuthGuard } from "../../admin/guards/admin-auth.guard";
 import { ProcessBrandingSelectionDto } from "../dto/process-branding-selection.dto";
 import { SetBrandingDto } from "../dto/set-branding.dto";
 import { UpdateCompanyDetailsDto } from "../dto/update-company-details.dto";
@@ -40,6 +41,13 @@ export class StockControlAuthController {
     private readonly actionPermissionService: ActionPermissionService,
     private readonly companyRoleService: CompanyRoleService,
   ) {}
+
+  @UseGuards(AdminAuthGuard)
+  @Post("admin-bridge")
+  @ApiOperation({ summary: "Exchange admin token for stock control tokens" })
+  async adminBridge(@Req() req: any) {
+    return this.authService.adminBridge(req.user.email);
+  }
 
   @Post("register")
   @ApiOperation({ summary: "Register a new stock control user" })

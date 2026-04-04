@@ -21,6 +21,7 @@ import type {
 
 declare module "./base" {
   interface StockControlApiClient {
+    adminBridge(adminToken: string): Promise<StockControlLoginResponse>;
     login(dto: StockControlLoginDto): Promise<StockControlLoginResponse>;
     register(dto: {
       email: string;
@@ -125,6 +126,18 @@ declare module "./base" {
 }
 
 const proto = StockControlApiClient.prototype;
+
+proto.adminBridge = async function (adminToken) {
+  const response = await this.request<StockControlLoginResponse>(
+    "/stock-control/auth/admin-bridge",
+    {
+      method: "POST",
+      headers: { Authorization: `Bearer ${adminToken}` },
+    },
+  );
+  this.setTokens(response.accessToken, response.refreshToken);
+  return response;
+};
 
 proto.login = async function (dto) {
   const response = await this.request<StockControlLoginResponse>("/stock-control/auth/login", {
