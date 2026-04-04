@@ -46,6 +46,22 @@ const INTERVENTION_LABELS: Record<InterventionType, string> = {
   V: "Verify",
 };
 
+const BLAST_SPEC_OPTIONS: Array<{ value: string; label: string }> = [
+  { value: "SA3 BLAST ISO 8501-1", label: "SA3 BLAST" },
+  { value: "SA2.5 BLAST ISO 8501-1", label: "SA2.5 BLAST" },
+  { value: "SA2 BLAST ISO 8501-1", label: "SA2 BLAST" },
+  { value: "SA1 BLAST ISO 8501-1", label: "SA1 BLAST" },
+  { value: "BLAST ISO 8501-1", label: "BLAST" },
+  { value: "HAND TOOL PREP ST3", label: "HAND TOOL" },
+  { value: "POWER TOOL PREP ST3", label: "POWER TOOL" },
+  { value: "NO BLASTING", label: "NO BLASTING" },
+];
+
+function isBlastingRow(description: string): boolean {
+  const lower = description.toLowerCase();
+  return lower.includes("blast") || lower === "surface preparation";
+}
+
 const INTERVENTION_TYPES: InterventionType[] = ["H", "I", "W", "R", "S", "V"];
 
 const PARTIES = ["PLS", "MPS", "Client", "3rd Party"] as const;
@@ -141,7 +157,7 @@ function paintTemplate(): QcpActivity[] {
     buildAct(
       6,
       "Blasting",
-      "CLEAN SA.2.5 ISO 8501-1988",
+      "SA2.5 BLAST ISO 8501-1",
       "RECORD READINGS",
       holdSignOff(),
       typedSignOff("S"),
@@ -192,9 +208,9 @@ function rubberTemplate(): QcpActivity[] {
     ),
     buildAct(
       3,
-      "Sand Blast 3 S A",
-      "SANS 1201-2005",
-      "QD_PLS_16",
+      "Blasting",
+      "SA3 BLAST ISO 8501-1",
+      "RECORD READINGS",
       holdSignOff(),
       typedSignOff("S"),
       typedSignOff("S"),
@@ -870,13 +886,43 @@ export function QcpForm({ jobCardId, existingPlan, onSaved, onCancel }: QcpFormP
                   />
                 </td>
                 <td className="px-2 py-1.5">
-                  <input
-                    type="text"
-                    value={activity.specification || ""}
-                    onChange={(e) => updateActivity(idx, "specification", e.target.value || null)}
-                    className="w-full rounded border border-gray-300 px-2 py-1 text-sm"
-                    placeholder="Spec ref"
-                  />
+                  {isBlastingRow(activity.description) ? (
+                    <select
+                      value={activity.specification || ""}
+                      onChange={(e) => {
+                        const val = e.target.value || null;
+                        updateActivity(idx, "specification", val);
+                        if (val === "NO BLASTING") {
+                          updateActivity(idx, "description", "Surface Preparation");
+                          updateActivity(idx, "documentation", "N/A");
+                        } else if (
+                          activity.description === "Surface Preparation" &&
+                          val &&
+                          val !== "NO BLASTING"
+                        ) {
+                          updateActivity(idx, "description", "Blasting");
+                          updateActivity(idx, "documentation", "RECORD READINGS");
+                        }
+                      }}
+                      disabled={approvalStatus === "approved"}
+                      className="w-full rounded border border-gray-300 px-2 py-1 text-sm disabled:bg-gray-100"
+                    >
+                      <option value="">Select...</option>
+                      {BLAST_SPEC_OPTIONS.map((opt) => (
+                        <option key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input
+                      type="text"
+                      value={activity.specification || ""}
+                      onChange={(e) => updateActivity(idx, "specification", e.target.value || null)}
+                      className="w-full rounded border border-gray-300 px-2 py-1 text-sm"
+                      placeholder="Spec ref"
+                    />
+                  )}
                 </td>
                 <td className="px-2 py-1.5">
                   <input
