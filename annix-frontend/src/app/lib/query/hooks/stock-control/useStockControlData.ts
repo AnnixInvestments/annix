@@ -9,7 +9,6 @@ import type {
   CpoFulfillmentReportItem,
   CpoOverdueInvoiceItem,
   CustomerPurchaseOrder,
-  CustomerPurchaseOrderItem,
   DeliveryNote,
   DispatchProgress,
   DispatchScan,
@@ -35,6 +34,12 @@ import type {
   WorkflowStatus,
 } from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
+import {
+  createArrayQueryHook,
+  createInvalidationHook,
+  createMutationHook,
+  createQueryHook,
+} from "../../factories";
 import { stockControlKeys } from "../../keys/stockControlKeys";
 
 export function useJobCards(status?: string) {
@@ -47,430 +52,245 @@ export function useJobCards(status?: string) {
   });
 }
 
-export function useDataBookStatuses(ids: number[]) {
-  return useQuery<Record<number, { exists: boolean; isStale: boolean; certificateCount: number }>>({
-    queryKey: stockControlKeys.jobCards.dataBookStatuses(ids),
-    queryFn: () => stockControlApiClient.dataBookStatusBulk(ids),
-    enabled: ids.length > 0,
-  });
-}
+export const useDataBookStatuses = createQueryHook<
+  Record<number, { exists: boolean; isStale: boolean; certificateCount: number }>,
+  [number[]]
+>(
+  (ids) => stockControlKeys.jobCards.dataBookStatuses(ids),
+  (ids) => stockControlApiClient.dataBookStatusBulk(ids),
+  { enabled: (ids) => ids.length > 0 },
+);
 
-export function useCreateJobCard() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (data: Partial<JobCard>) => stockControlApiClient.createJobCard(data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: stockControlKeys.jobCards.all });
-    },
-  });
-}
+export const useCreateJobCard = createMutationHook(
+  (data: Partial<JobCard>) => stockControlApiClient.createJobCard(data),
+  [stockControlKeys.jobCards.all],
+);
 
-export function useDeleteJobCard() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (id: number) => stockControlApiClient.deleteJobCard(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: stockControlKeys.jobCards.all });
-    },
-  });
-}
+export const useDeleteJobCard = createMutationHook(
+  (id: number) => stockControlApiClient.deleteJobCard(id),
+  [stockControlKeys.jobCards.all],
+);
 
-export function useInventoryItems(params: Record<string, string>) {
-  return useQuery<{ items: StockItem[]; total: number }>({
-    queryKey: stockControlKeys.inventory.list(params),
-    queryFn: () => stockControlApiClient.stockItems(params),
-  });
-}
+export const useInventoryItems = createQueryHook<
+  { items: StockItem[]; total: number },
+  [Record<string, string>]
+>(
+  (params) => stockControlKeys.inventory.list(params),
+  (params) => stockControlApiClient.stockItems(params),
+);
 
-export function useInventoryGrouped(search?: string, locationId?: number) {
-  return useQuery<{
-    groups: { category: string; items: StockItem[] }[];
-    total: number;
-    page: number;
-    limit: number;
-  }>({
-    queryKey: stockControlKeys.inventory.grouped(search, locationId),
-    queryFn: () => stockControlApiClient.stockItemsGrouped(search, locationId),
-  });
-}
+export const useInventoryGrouped = createQueryHook(
+  (search?: string, locationId?: number) => stockControlKeys.inventory.grouped(search, locationId),
+  (search?: string, locationId?: number) =>
+    stockControlApiClient.stockItemsGrouped(search, locationId),
+);
 
-export function useInventoryCategories() {
-  return useQuery<string[]>({
-    queryKey: stockControlKeys.inventory.categories(),
-    queryFn: () => stockControlApiClient.categories(),
-    staleTime: 60_000,
-  });
-}
+export const useInventoryCategories = createArrayQueryHook<string>(
+  () => stockControlKeys.inventory.categories(),
+  () => stockControlApiClient.categories(),
+  { staleTime: 60_000 },
+);
 
-export function useInventoryLocations() {
-  return useQuery<StockControlLocation[]>({
-    queryKey: stockControlKeys.inventory.locations(),
-    queryFn: () => stockControlApiClient.locations(),
-    staleTime: 60_000,
-  });
-}
+export const useInventoryLocations = createArrayQueryHook<StockControlLocation>(
+  () => stockControlKeys.inventory.locations(),
+  () => stockControlApiClient.locations(),
+  { staleTime: 60_000 },
+);
 
-export function useInvoices() {
-  return useQuery<SupplierInvoice[]>({
-    queryKey: stockControlKeys.invoices.list(),
-    queryFn: async () => {
-      const data = await stockControlApiClient.supplierInvoices();
-      return Array.isArray(data) ? data : [];
-    },
-  });
-}
+export const useInvoices = createArrayQueryHook<SupplierInvoice>(
+  () => stockControlKeys.invoices.list(),
+  () => stockControlApiClient.supplierInvoices(),
+);
 
-export function useDeliveryNotes() {
-  return useQuery<DeliveryNote[]>({
-    queryKey: stockControlKeys.deliveries.list(),
-    queryFn: async () => {
-      const data = await stockControlApiClient.deliveryNotes();
-      return Array.isArray(data) ? data : [];
-    },
-  });
-}
+export const useDeliveryNotes = createArrayQueryHook<DeliveryNote>(
+  () => stockControlKeys.deliveries.list(),
+  () => stockControlApiClient.deliveryNotes(),
+);
 
-export function useDeleteInvoice() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (id: number) => stockControlApiClient.deleteInvoice(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: stockControlKeys.invoices.all });
-    },
-  });
-}
+export const useDeleteInvoice = createMutationHook(
+  (id: number) => stockControlApiClient.deleteInvoice(id),
+  [stockControlKeys.invoices.all],
+);
 
-export function useCreateDeliveryNote() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (data: {
-      deliveryNumber: string;
-      supplierName: string;
-      receivedDate?: string;
-      notes?: string;
-      receivedBy?: string;
-      items: { stockItemId: number; quantityReceived: number }[];
-    }) => stockControlApiClient.createDeliveryNote(data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: stockControlKeys.deliveries.all });
-    },
-  });
-}
+export const useCreateDeliveryNote = createMutationHook(
+  (data: {
+    deliveryNumber: string;
+    supplierName: string;
+    receivedDate?: string;
+    notes?: string;
+    receivedBy?: string;
+    items: { stockItemId: number; quantityReceived: number }[];
+  }) => stockControlApiClient.createDeliveryNote(data),
+  [stockControlKeys.deliveries.all],
+);
 
-export function useDeleteDeliveryNote() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (id: number) => stockControlApiClient.deleteDeliveryNote(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: stockControlKeys.deliveries.all });
-    },
-  });
-}
+export const useDeleteDeliveryNote = createMutationHook(
+  (id: number) => stockControlApiClient.deleteDeliveryNote(id),
+  [stockControlKeys.deliveries.all],
+);
 
-export function useLinkDeliveryNoteToStock() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (id: number) => stockControlApiClient.linkDeliveryNoteToStock(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: stockControlKeys.deliveries.all });
-      queryClient.invalidateQueries({ queryKey: stockControlKeys.inventory.all });
-    },
-  });
-}
+export const useLinkDeliveryNoteToStock = createMutationHook(
+  (id: number) => stockControlApiClient.linkDeliveryNoteToStock(id),
+  [stockControlKeys.deliveries.all, stockControlKeys.inventory.all],
+);
 
-export function useSavePendingDeliveryNote() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (params: { file: File; analyzedData: Record<string, unknown> }) =>
-      stockControlApiClient.savePendingDeliveryNote(
-        params.file,
-        params.analyzedData as unknown as Parameters<
-          typeof stockControlApiClient.savePendingDeliveryNote
-        >[1],
-      ),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: stockControlKeys.deliveries.all });
-    },
-  });
-}
+export const useSavePendingDeliveryNote = createMutationHook(
+  (params: { file: File; analyzedData: Record<string, unknown> }) =>
+    stockControlApiClient.savePendingDeliveryNote(
+      params.file,
+      params.analyzedData as unknown as Parameters<
+        typeof stockControlApiClient.savePendingDeliveryNote
+      >[1],
+    ),
+  [stockControlKeys.deliveries.all],
+);
 
-export function useConfirmDeliveryNote() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (params: { id: number; confirmedData: Record<string, unknown> }) =>
-      stockControlApiClient.confirmDeliveryNote(params.id, params.confirmedData),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: stockControlKeys.deliveries.all });
-    },
-  });
-}
+export const useConfirmDeliveryNote = createMutationHook(
+  (params: { id: number; confirmedData: Record<string, unknown> }) =>
+    stockControlApiClient.confirmDeliveryNote(params.id, params.confirmedData),
+  [stockControlKeys.deliveries.all],
+);
 
-export function useInvalidateDeliveries() {
-  const queryClient = useQueryClient();
-  return () => queryClient.invalidateQueries({ queryKey: stockControlKeys.deliveries.all });
-}
+export const useInvalidateDeliveries = createInvalidationHook(stockControlKeys.deliveries.all);
 
-export function useInvalidateInvoices() {
-  const queryClient = useQueryClient();
-  return () => queryClient.invalidateQueries({ queryKey: stockControlKeys.invoices.all });
-}
+export const useInvalidateInvoices = createInvalidationHook(stockControlKeys.invoices.all);
 
-export function useInvalidateJobCards() {
-  const queryClient = useQueryClient();
-  return () => queryClient.invalidateQueries({ queryKey: stockControlKeys.jobCards.all });
-}
+export const useInvalidateJobCards = createInvalidationHook(stockControlKeys.jobCards.all);
 
-export function useInvalidateInventory() {
-  const queryClient = useQueryClient();
-  return () => queryClient.invalidateQueries({ queryKey: stockControlKeys.inventory.all });
-}
+export const useInvalidateInventory = createInvalidationHook(stockControlKeys.inventory.all);
 
-export function useDeliveryNoteDetail(id: number) {
-  return useQuery<DeliveryNote>({
-    queryKey: stockControlKeys.deliveries.detail(id),
-    queryFn: () => stockControlApiClient.deliveryNoteById(id),
-    enabled: !!id,
-  });
-}
+export const useDeliveryNoteDetail = createQueryHook<DeliveryNote, [number]>(
+  (id) => stockControlKeys.deliveries.detail(id),
+  (id) => stockControlApiClient.deliveryNoteById(id),
+  { enabled: (id) => !!id },
+);
 
-export function useUploadDeliveryPhoto() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ id, file }: { id: number; file: File }) =>
-      stockControlApiClient.uploadDeliveryPhoto(id, file),
-    onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({
-        queryKey: stockControlKeys.deliveries.detail(variables.id),
-      });
-    },
-  });
-}
+export const useUploadDeliveryPhoto = createMutationHook(
+  ({ id, file }: { id: number; file: File }) => stockControlApiClient.uploadDeliveryPhoto(id, file),
+  (_data, vars) => [stockControlKeys.deliveries.detail(vars.id)],
+);
 
-export function useInventoryItemDetail(id: number) {
-  return useQuery<StockItem>({
-    queryKey: stockControlKeys.inventory.detail(id),
-    queryFn: () => stockControlApiClient.stockItemById(id),
-    enabled: !!id,
-  });
-}
+export const useInventoryItemDetail = createQueryHook<StockItem, [number]>(
+  (id) => stockControlKeys.inventory.detail(id),
+  (id) => stockControlApiClient.stockItemById(id),
+  { enabled: (id) => !!id },
+);
 
-export function useStockMovements(stockItemId: number) {
-  return useQuery<StockMovement[]>({
-    queryKey: stockControlKeys.inventory.movements(stockItemId),
-    queryFn: async () => {
-      const data = await stockControlApiClient.stockMovements({ stockItemId });
-      return Array.isArray(data) ? data : [];
-    },
-    enabled: !!stockItemId,
-  });
-}
+export const useStockMovements = createArrayQueryHook<StockMovement, [number]>(
+  (stockItemId) => stockControlKeys.inventory.movements(stockItemId),
+  (stockItemId) => stockControlApiClient.stockMovements({ stockItemId }),
+  { enabled: (stockItemId) => !!stockItemId },
+);
 
-export function useUpdateStockItem() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ id, data }: { id: number; data: Partial<StockItem> }) =>
-      stockControlApiClient.updateStockItem(id, data),
-    onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({
-        queryKey: stockControlKeys.inventory.detail(variables.id),
-      });
-      queryClient.invalidateQueries({ queryKey: stockControlKeys.inventory.all });
-    },
-  });
-}
+export const useUpdateStockItem = createMutationHook(
+  ({ id, data }: { id: number; data: Partial<StockItem> }) =>
+    stockControlApiClient.updateStockItem(id, data),
+  (_data, vars) => [stockControlKeys.inventory.detail(vars.id), stockControlKeys.inventory.all],
+);
 
-export function useCreateManualAdjustment() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (data: {
-      stockItemId: number;
-      movementType: string;
-      quantity: number;
-      notes?: string;
-    }) => stockControlApiClient.createManualAdjustment(data),
-    onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({
-        queryKey: stockControlKeys.inventory.detail(variables.stockItemId),
-      });
-      queryClient.invalidateQueries({
-        queryKey: stockControlKeys.inventory.movements(variables.stockItemId),
-      });
-    },
-  });
-}
+export const useCreateManualAdjustment = createMutationHook(
+  (data: { stockItemId: number; movementType: string; quantity: number; notes?: string }) =>
+    stockControlApiClient.createManualAdjustment(data),
+  (_data, vars) => [
+    stockControlKeys.inventory.detail(vars.stockItemId),
+    stockControlKeys.inventory.movements(vars.stockItemId),
+  ],
+);
 
-export function useUploadStockItemPhoto() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ id, file }: { id: number; file: File }) =>
-      stockControlApiClient.uploadStockItemPhoto(id, file),
-    onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({
-        queryKey: stockControlKeys.inventory.detail(variables.id),
-      });
-    },
-  });
-}
+export const useUploadStockItemPhoto = createMutationHook(
+  ({ id, file }: { id: number; file: File }) =>
+    stockControlApiClient.uploadStockItemPhoto(id, file),
+  (_data, vars) => [stockControlKeys.inventory.detail(vars.id)],
+);
 
-export function useCpoDetail(id: number) {
-  return useQuery<CustomerPurchaseOrder>({
-    queryKey: stockControlKeys.cpos.detail(id),
-    queryFn: () => stockControlApiClient.cpoById(id),
-    enabled: !!id,
-  });
-}
+export const useCpoDetail = createQueryHook<CustomerPurchaseOrder, [number]>(
+  (id) => stockControlKeys.cpos.detail(id),
+  (id) => stockControlApiClient.cpoById(id),
+  { enabled: (id) => !!id },
+);
 
-export function useCpoCalloffRecords(cpoId: number) {
-  return useQuery<CpoCalloffRecord[]>({
-    queryKey: stockControlKeys.cpos.calloffRecords(cpoId),
-    queryFn: async () => {
-      const data = await stockControlApiClient.cpoCalloffRecords(cpoId);
-      return Array.isArray(data) ? data : [];
-    },
-    enabled: !!cpoId,
-  });
-}
+export const useCpoCalloffRecords = createArrayQueryHook<CpoCalloffRecord, [number]>(
+  (cpoId) => stockControlKeys.cpos.calloffRecords(cpoId),
+  (cpoId) => stockControlApiClient.cpoCalloffRecords(cpoId),
+  { enabled: (cpoId) => !!cpoId },
+);
 
-export function useCpoDeliveryHistory(cpoId: number) {
-  return useQuery<CpoDeliveryHistory>({
-    queryKey: stockControlKeys.cpos.deliveryHistory(cpoId),
-    queryFn: () => stockControlApiClient.cpoDeliveryHistory(cpoId),
-    enabled: !!cpoId,
-  });
-}
+export const useCpoDeliveryHistory = createQueryHook<CpoDeliveryHistory, [number]>(
+  (cpoId) => stockControlKeys.cpos.deliveryHistory(cpoId),
+  (cpoId) => stockControlApiClient.cpoDeliveryHistory(cpoId),
+  { enabled: (cpoId) => !!cpoId },
+);
 
-export function useUpdateCpoStatus() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ id, status }: { id: number; status: string }) =>
-      stockControlApiClient.updateCpoStatus(id, status),
-    onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({
-        queryKey: stockControlKeys.cpos.detail(variables.id),
-      });
-      queryClient.invalidateQueries({ queryKey: stockControlKeys.cpos.all });
-    },
-  });
-}
+export const useUpdateCpoStatus = createMutationHook(
+  ({ id, status }: { id: number; status: string }) =>
+    stockControlApiClient.updateCpoStatus(id, status),
+  (_data, vars) => [stockControlKeys.cpos.detail(vars.id), stockControlKeys.cpos.all],
+);
 
-export function useDeleteCpoItem() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ cpoId, itemId }: { cpoId: number; itemId: number }) =>
-      stockControlApiClient.deleteCpoItem(cpoId, itemId),
-    onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: stockControlKeys.cpos.detail(variables.cpoId) });
-    },
-  });
-}
+export const useDeleteCpoItem = createMutationHook(
+  ({ cpoId, itemId }: { cpoId: number; itemId: number }) =>
+    stockControlApiClient.deleteCpoItem(cpoId, itemId),
+  (_data, vars) => [stockControlKeys.cpos.detail(vars.cpoId)],
+);
 
-export function useUpdateCalloffRecordStatus() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({
-      recordId,
-      status,
-      cpoId,
-    }: {
-      recordId: number;
-      status: string;
-      cpoId: number;
-    }) => stockControlApiClient.updateCalloffRecordStatus(recordId, status),
-    onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({
-        queryKey: stockControlKeys.cpos.calloffRecords(variables.cpoId),
-      });
-    },
-  });
-}
+export const useUpdateCalloffRecordStatus = createMutationHook(
+  ({ recordId, status }: { recordId: number; status: string; cpoId: number }) =>
+    stockControlApiClient.updateCalloffRecordStatus(recordId, status),
+  (_data, vars) => [stockControlKeys.cpos.calloffRecords(vars.cpoId)],
+);
 
-export function useAddCpoItem() {
-  const queryClient = useQueryClient();
-  return useMutation<CustomerPurchaseOrderItem, Error, { cpoId: number; data: AddCpoItemRequest }>({
-    mutationFn: ({ cpoId, data }) => stockControlApiClient.addCpoItem(cpoId, data),
-    onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({
-        queryKey: stockControlKeys.cpos.detail(variables.cpoId),
-      });
-    },
-  });
-}
+export const useAddCpoItem = createMutationHook(
+  ({ cpoId, data }: { cpoId: number; data: AddCpoItemRequest }) =>
+    stockControlApiClient.addCpoItem(cpoId, data),
+  (_data, vars) => [stockControlKeys.cpos.detail(vars.cpoId)],
+);
 
-export function useUpdateCpoItem() {
-  const queryClient = useQueryClient();
-  return useMutation<
-    CustomerPurchaseOrderItem,
-    Error,
-    { cpoId: number; itemId: number; data: UpdateCpoItemRequest }
-  >({
-    mutationFn: ({ cpoId, itemId, data }) =>
-      stockControlApiClient.updateCpoItem(cpoId, itemId, data),
-    onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({
-        queryKey: stockControlKeys.cpos.detail(variables.cpoId),
-      });
-    },
-  });
-}
+export const useUpdateCpoItem = createMutationHook(
+  ({ cpoId, itemId, data }: { cpoId: number; itemId: number; data: UpdateCpoItemRequest }) =>
+    stockControlApiClient.updateCpoItem(cpoId, itemId, data),
+  (_data, vars) => [stockControlKeys.cpos.detail(vars.cpoId)],
+);
 
-export function useJobCardDetail(id: number) {
-  return useQuery<JobCard>({
-    queryKey: stockControlKeys.jobCards.detail(id),
-    queryFn: () => stockControlApiClient.jobCardById(id),
-    enabled: !!id,
-  });
-}
+export const useJobCardDetail = createQueryHook<JobCard, [number]>(
+  (id) => stockControlKeys.jobCards.detail(id),
+  (id) => stockControlApiClient.jobCardById(id),
+  { enabled: (id) => !!id },
+);
 
-export function useDispatchProgress(jobCardId: number) {
-  return useQuery<DispatchProgress>({
-    queryKey: stockControlKeys.jobCards.dispatchProgress(jobCardId),
-    queryFn: () => stockControlApiClient.dispatchProgress(jobCardId),
-    enabled: !!jobCardId,
-  });
-}
+export const useDispatchProgress = createQueryHook<DispatchProgress, [number]>(
+  (jobCardId) => stockControlKeys.jobCards.dispatchProgress(jobCardId),
+  (jobCardId) => stockControlApiClient.dispatchProgress(jobCardId),
+  { enabled: (jobCardId) => !!jobCardId },
+);
 
-export function useDispatchHistory(jobCardId: number) {
-  return useQuery<DispatchScan[]>({
-    queryKey: stockControlKeys.jobCards.dispatchHistory(jobCardId),
-    queryFn: () => stockControlApiClient.dispatchHistory(jobCardId),
-    enabled: !!jobCardId,
-  });
-}
+export const useDispatchHistory = createQueryHook<DispatchScan[], [number]>(
+  (jobCardId) => stockControlKeys.jobCards.dispatchHistory(jobCardId),
+  (jobCardId) => stockControlApiClient.dispatchHistory(jobCardId),
+  { enabled: (jobCardId) => !!jobCardId },
+);
 
-export function useScanDispatchItem() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({
-      jobCardId,
-      stockItemId,
-      quantity,
-      notes,
-    }: {
-      jobCardId: number;
-      stockItemId: number;
-      quantity: number;
-      notes?: string;
-    }) => stockControlApiClient.scanDispatchItem(jobCardId, stockItemId, quantity, notes),
-    onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({
-        queryKey: stockControlKeys.jobCards.dispatchProgress(variables.jobCardId),
-      });
-      queryClient.invalidateQueries({
-        queryKey: stockControlKeys.jobCards.dispatchHistory(variables.jobCardId),
-      });
-    },
-  });
-}
+export const useScanDispatchItem = createMutationHook(
+  ({
+    jobCardId,
+    stockItemId,
+    quantity,
+    notes,
+  }: {
+    jobCardId: number;
+    stockItemId: number;
+    quantity: number;
+    notes?: string;
+  }) => stockControlApiClient.scanDispatchItem(jobCardId, stockItemId, quantity, notes),
+  (_data, vars) => [
+    stockControlKeys.jobCards.dispatchProgress(vars.jobCardId),
+    stockControlKeys.jobCards.dispatchHistory(vars.jobCardId),
+  ],
+);
 
-export function useCompleteDispatch() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (jobCardId: number) => stockControlApiClient.completeDispatch(jobCardId),
-    onSuccess: (_data, jobCardId) => {
-      queryClient.invalidateQueries({ queryKey: stockControlKeys.jobCards.all });
-    },
-  });
-}
+export const useCompleteDispatch = createMutationHook(
+  (jobCardId: number) => stockControlApiClient.completeDispatch(jobCardId),
+  [stockControlKeys.jobCards.all],
+);
 
 export function useWorkflowNotifications(filter: string) {
   return useQuery<WorkflowNotification[]>({
@@ -485,37 +305,21 @@ export function useWorkflowNotifications(filter: string) {
   });
 }
 
-export function useMarkNotificationAsRead() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (notificationId: number) =>
-      stockControlApiClient.markNotificationAsRead(notificationId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: stockControlKeys.notifications.all });
-    },
-  });
-}
+export const useMarkNotificationAsRead = createMutationHook(
+  (notificationId: number) => stockControlApiClient.markNotificationAsRead(notificationId),
+  [stockControlKeys.notifications.all],
+);
 
-export function useMarkAllNotificationsAsRead() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: () => stockControlApiClient.markAllNotificationsAsRead(),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: stockControlKeys.notifications.all });
-    },
-  });
-}
+export const useMarkAllNotificationsAsRead = createMutationHook<unknown, void>(
+  () => stockControlApiClient.markAllNotificationsAsRead(),
+  [stockControlKeys.notifications.all],
+);
 
-export function useCompleteBackgroundStep() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (params: { jobCardId: number; stepKey: string; notes?: string }) =>
-      stockControlApiClient.completeBackgroundStep(params.jobCardId, params.stepKey, params.notes),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: stockControlKeys.notifications.all });
-    },
-  });
-}
+export const useCompleteBackgroundStep = createMutationHook(
+  (params: { jobCardId: number; stepKey: string; notes?: string }) =>
+    stockControlApiClient.completeBackgroundStep(params.jobCardId, params.stepKey, params.notes),
+  [stockControlKeys.notifications.all],
+);
 
 export function useCpos(status?: string) {
   return useQuery<CustomerPurchaseOrder[]>({
@@ -527,15 +331,10 @@ export function useCpos(status?: string) {
   });
 }
 
-export function useDeleteCpo() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (id: number) => stockControlApiClient.deleteCpo(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: stockControlKeys.cpos.all });
-    },
-  });
-}
+export const useDeleteCpo = createMutationHook(
+  (id: number) => stockControlApiClient.deleteCpo(id),
+  [stockControlKeys.cpos.all],
+);
 
 export function useCustomerDeliveries() {
   return useQuery<DeliveryNote[]>({
@@ -576,62 +375,40 @@ export function useCalibrationCertificates(filterActive: string) {
   });
 }
 
-export function useDeactivateCalibrationCertificate() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (id: number) => stockControlApiClient.deactivateCalibrationCertificate(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: stockControlKeys.calibration.all });
-    },
-  });
-}
+export const useDeactivateCalibrationCertificate = createMutationHook(
+  (id: number) => stockControlApiClient.deactivateCalibrationCertificate(id),
+  [stockControlKeys.calibration.all],
+);
 
-export function useDeleteCalibrationCertificate() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (id: number) => stockControlApiClient.deleteCalibrationCertificate(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: stockControlKeys.calibration.all });
-    },
-  });
-}
+export const useDeleteCalibrationCertificate = createMutationHook(
+  (id: number) => stockControlApiClient.deleteCalibrationCertificate(id),
+  [stockControlKeys.calibration.all],
+);
 
-export function useUploadCalibrationCertificate() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (params: {
-      file: File;
-      data: {
-        equipmentName: string;
-        equipmentIdentifier: string | null;
-        certificateNumber: string | null;
-        description: string | null;
-        expiryDate: string;
-      };
-    }) => stockControlApiClient.uploadCalibrationCertificate(params.file, params.data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: stockControlKeys.calibration.all });
-    },
-  });
-}
+export const useUploadCalibrationCertificate = createMutationHook(
+  (params: {
+    file: File;
+    data: {
+      equipmentName: string;
+      equipmentIdentifier: string | null;
+      certificateNumber: string | null;
+      description: string | null;
+      expiryDate: string;
+    };
+  }) => stockControlApiClient.uploadCalibrationCertificate(params.file, params.data),
+  [stockControlKeys.calibration.all],
+);
 
-export function useRequisitions() {
-  return useQuery<Requisition[]>({
-    queryKey: stockControlKeys.requisitions.list(),
-    queryFn: async () => {
-      const data = await stockControlApiClient.requisitions();
-      return Array.isArray(data) ? data : [];
-    },
-  });
-}
+export const useRequisitions = createArrayQueryHook<Requisition>(
+  () => stockControlKeys.requisitions.list(),
+  () => stockControlApiClient.requisitions(),
+);
 
-export function useRequisitionDetail(id: number) {
-  return useQuery<Requisition>({
-    queryKey: stockControlKeys.requisitions.detail(id),
-    queryFn: () => stockControlApiClient.requisitionById(id),
-    enabled: id > 0,
-  });
-}
+export const useRequisitionDetail = createQueryHook<Requisition, [number]>(
+  (id) => stockControlKeys.requisitions.detail(id),
+  (id) => stockControlApiClient.requisitionById(id),
+  { enabled: (id) => id > 0 },
+);
 
 export function useUpdateRequisitionItem(reqId: number) {
   const queryClient = useQueryClient();
@@ -646,36 +423,21 @@ export function useUpdateRequisitionItem(reqId: number) {
   });
 }
 
-export function useInvalidateNotifications() {
-  const queryClient = useQueryClient();
-  return () => queryClient.invalidateQueries({ queryKey: stockControlKeys.notifications.all });
-}
+export const useInvalidateNotifications = createInvalidationHook(
+  stockControlKeys.notifications.all,
+);
 
-export function useInvalidateCpos() {
-  const queryClient = useQueryClient();
-  return () => queryClient.invalidateQueries({ queryKey: stockControlKeys.cpos.all });
-}
+export const useInvalidateCpos = createInvalidationHook(stockControlKeys.cpos.all);
 
-export function useInvalidateCalibration() {
-  const queryClient = useQueryClient();
-  return () => queryClient.invalidateQueries({ queryKey: stockControlKeys.calibration.all });
-}
+export const useInvalidateCalibration = createInvalidationHook(stockControlKeys.calibration.all);
 
-export function useInvalidateRequisitions() {
-  const queryClient = useQueryClient();
-  return () => queryClient.invalidateQueries({ queryKey: stockControlKeys.requisitions.all });
-}
+export const useInvalidateRequisitions = createInvalidationHook(stockControlKeys.requisitions.all);
 
-export function useJobCardAllocations(id: number) {
-  return useQuery<StockAllocation[]>({
-    queryKey: stockControlKeys.jobCardDetail.allocations(id),
-    queryFn: async () => {
-      const data = await stockControlApiClient.jobCardAllocations(id);
-      return Array.isArray(data) ? data : [];
-    },
-    enabled: id > 0,
-  });
-}
+export const useJobCardAllocations = createArrayQueryHook<StockAllocation, [number]>(
+  (id) => stockControlKeys.jobCardDetail.allocations(id),
+  (id) => stockControlApiClient.jobCardAllocations(id),
+  { enabled: (id) => id > 0 },
+);
 
 export function useJobCardRequisition(jobId: number) {
   return useQuery<Requisition | null>({
@@ -689,16 +451,11 @@ export function useJobCardRequisition(jobId: number) {
   });
 }
 
-export function useDeliveryJobCards(parentJobCardId: number) {
-  return useQuery<JobCard[]>({
-    queryKey: stockControlKeys.jobCardDetail.deliveryJobCards(parentJobCardId),
-    queryFn: async () => {
-      const data = await stockControlApiClient.deliveryJobCards(parentJobCardId);
-      return Array.isArray(data) ? data : [];
-    },
-    enabled: parentJobCardId > 0,
-  });
-}
+export const useDeliveryJobCards = createArrayQueryHook<JobCard, [number]>(
+  (parentJobCardId) => stockControlKeys.jobCardDetail.deliveryJobCards(parentJobCardId),
+  (parentJobCardId) => stockControlApiClient.deliveryJobCards(parentJobCardId),
+  { enabled: (parentJobCardId) => parentJobCardId > 0 },
+);
 
 export function useJobCardWorkflow(jobId: number) {
   return useQuery<WorkflowStatus | null>({
@@ -729,10 +486,9 @@ export function useJobCardApprovals(jobId: number) {
   });
 }
 
-export function useInvalidateJobCardDetail() {
-  const queryClient = useQueryClient();
-  return () => queryClient.invalidateQueries({ queryKey: stockControlKeys.jobCardDetail.all });
-}
+export const useInvalidateJobCardDetail = createInvalidationHook(
+  stockControlKeys.jobCardDetail.all,
+);
 
 export function useAllocateStock() {
   const queryClient = useQueryClient();
@@ -763,180 +519,117 @@ export function useAllocateStock() {
   });
 }
 
-export function useApproveOverAllocation() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (params: { jobId: number; allocationId: number }) =>
-      stockControlApiClient.approveOverAllocation(params.jobId, params.allocationId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: stockControlKeys.jobCardDetail.all });
-    },
-  });
-}
+export const useApproveOverAllocation = createMutationHook(
+  (params: { jobId: number; allocationId: number }) =>
+    stockControlApiClient.approveOverAllocation(params.jobId, params.allocationId),
+  [stockControlKeys.jobCardDetail.all],
+);
 
-export function useRejectOverAllocation() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (params: { jobId: number; allocationId: number; reason: string }) =>
-      stockControlApiClient.rejectOverAllocation(params.jobId, params.allocationId, params.reason),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: stockControlKeys.jobCardDetail.all });
-    },
-  });
-}
+export const useRejectOverAllocation = createMutationHook(
+  (params: { jobId: number; allocationId: number; reason: string }) =>
+    stockControlApiClient.rejectOverAllocation(params.jobId, params.allocationId, params.reason),
+  [stockControlKeys.jobCardDetail.all],
+);
 
-export function useUpdateJobCardStatus() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (params: { jobId: number; status: string }) =>
-      stockControlApiClient.updateJobCard(params.jobId, { status: params.status }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: stockControlKeys.jobCardDetail.all });
-      queryClient.invalidateQueries({ queryKey: stockControlKeys.jobCards.all });
-    },
-  });
-}
+export const useUpdateJobCardStatus = createMutationHook(
+  (params: { jobId: number; status: string }) =>
+    stockControlApiClient.updateJobCard(params.jobId, { status: params.status }),
+  [stockControlKeys.jobCardDetail.all, stockControlKeys.jobCards.all],
+);
 
-export function useReExtractLineItems() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (jobCardId: number) => stockControlApiClient.reExtractJobCardLineItems(jobCardId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: stockControlKeys.jobCardDetail.all });
-    },
-  });
-}
+export const useReExtractLineItems = createMutationHook(
+  (jobCardId: number) => stockControlApiClient.reExtractJobCardLineItems(jobCardId),
+  [stockControlKeys.jobCardDetail.all],
+);
 
-export function useDeleteLineItem() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (params: { jobCardId: number; lineItemId: number }) =>
-      stockControlApiClient.deleteLineItem(params.jobCardId, params.lineItemId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: stockControlKeys.jobCardDetail.all });
-    },
-  });
-}
+export const useDeleteLineItem = createMutationHook(
+  (params: { jobCardId: number; lineItemId: number }) =>
+    stockControlApiClient.deleteLineItem(params.jobCardId, params.lineItemId),
+  [stockControlKeys.jobCardDetail.all],
+);
 
-export function useAddLineItem() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (params: {
-      jobCardId: number;
-      data: {
-        itemCode?: string;
-        itemDescription?: string;
-        itemNo?: string;
-        quantity?: number;
-        jtNo?: string;
-        m2?: number;
-      };
-    }) => stockControlApiClient.addLineItem(params.jobCardId, params.data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: stockControlKeys.jobCardDetail.all });
-    },
-  });
-}
+export const useAddLineItem = createMutationHook(
+  (params: {
+    jobCardId: number;
+    data: {
+      itemCode?: string;
+      itemDescription?: string;
+      itemNo?: string;
+      quantity?: number;
+      jtNo?: string;
+      m2?: number;
+    };
+  }) => stockControlApiClient.addLineItem(params.jobCardId, params.data),
+  [stockControlKeys.jobCardDetail.all],
+);
 
-export function useCompleteAction() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (params: {
-      jobCardId: number;
-      stepKey: string;
-      actionType?: string;
-      metadata?: Record<string, unknown>;
-    }) =>
-      stockControlApiClient.completeAction(
-        params.jobCardId,
-        params.stepKey,
-        params.actionType,
-        params.metadata,
-      ),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: stockControlKeys.jobCardDetail.all });
-    },
-  });
-}
-
-export function useActionCompletions(jobCardId: number) {
-  return useQuery<JobCardActionCompletion[]>({
-    queryKey: [...stockControlKeys.jobCardDetail.all, "actions", jobCardId] as const,
-    queryFn: async () => {
-      const data = await stockControlApiClient.actionCompletions(jobCardId);
-      return Array.isArray(data) ? data : [];
-    },
-    enabled: jobCardId > 0,
-  });
-}
-
-export function useApproveWorkflowStep() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (params: { jobId: number; signatureDataUrl?: string; comments?: string }) =>
-      stockControlApiClient.approveWorkflowStep(params.jobId, {
-        signatureDataUrl: params.signatureDataUrl,
-        comments: params.comments,
-      }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: stockControlKeys.jobCardDetail.all });
-    },
-  });
-}
-
-export function useRejectWorkflowStep() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (params: { jobId: number; reason: string }) =>
-      stockControlApiClient.rejectWorkflowStep(params.jobId, params.reason),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: stockControlKeys.jobCardDetail.all });
-    },
-  });
-}
-
-export function useCostByJobReport() {
-  return useQuery<CostByJob[]>({
-    queryKey: stockControlKeys.reports.costByJob(),
-    queryFn: async () => {
-      const data = await stockControlApiClient.costByJob();
-      return Array.isArray(data) ? data : [];
-    },
-  });
-}
-
-export function useStockValuationReport() {
-  return useQuery<StockValuation | null>({
-    queryKey: stockControlKeys.reports.stockValuation(),
-    queryFn: () => stockControlApiClient.stockValuation(),
-  });
-}
-
-export function useMovementHistoryReport(params?: {
-  startDate?: string;
-  endDate?: string;
-  movementType?: string;
-  stockItemId?: number;
-}) {
-  return useQuery<StockMovement[]>({
-    queryKey: stockControlKeys.reports.movementHistory(
-      params as Record<string, string | number | undefined>,
+export const useCompleteAction = createMutationHook(
+  (params: {
+    jobCardId: number;
+    stepKey: string;
+    actionType?: string;
+    metadata?: Record<string, unknown>;
+  }) =>
+    stockControlApiClient.completeAction(
+      params.jobCardId,
+      params.stepKey,
+      params.actionType,
+      params.metadata,
     ),
-    queryFn: async () => {
-      const data = await stockControlApiClient.movementHistory(params);
-      return Array.isArray(data) ? data : [];
-    },
-  });
-}
+  [stockControlKeys.jobCardDetail.all],
+);
 
-export function useStaffStockReport(filters?: StaffStockFilters) {
-  return useQuery<StaffStockReportResult | null>({
-    queryKey: stockControlKeys.reports.staffStock(
-      filters as Record<string, string | number | undefined>,
-    ),
-    queryFn: () => stockControlApiClient.staffStockReport(filters),
-  });
-}
+export const useActionCompletions = createArrayQueryHook<JobCardActionCompletion, [number]>(
+  (jobCardId) => [...stockControlKeys.jobCardDetail.all, "actions", jobCardId] as const,
+  (jobCardId) => stockControlApiClient.actionCompletions(jobCardId),
+  { enabled: (jobCardId) => jobCardId > 0 },
+);
+
+export const useApproveWorkflowStep = createMutationHook(
+  (params: { jobId: number; signatureDataUrl?: string; comments?: string }) =>
+    stockControlApiClient.approveWorkflowStep(params.jobId, {
+      signatureDataUrl: params.signatureDataUrl,
+      comments: params.comments,
+    }),
+  [stockControlKeys.jobCardDetail.all],
+);
+
+export const useRejectWorkflowStep = createMutationHook(
+  (params: { jobId: number; reason: string }) =>
+    stockControlApiClient.rejectWorkflowStep(params.jobId, params.reason),
+  [stockControlKeys.jobCardDetail.all],
+);
+
+export const useCostByJobReport = createArrayQueryHook<CostByJob>(
+  () => stockControlKeys.reports.costByJob(),
+  () => stockControlApiClient.costByJob(),
+);
+
+export const useStockValuationReport = createQueryHook<StockValuation | null>(
+  () => stockControlKeys.reports.stockValuation(),
+  () => stockControlApiClient.stockValuation(),
+);
+
+export const useMovementHistoryReport = createArrayQueryHook<
+  StockMovement,
+  [
+    | { startDate?: string; endDate?: string; movementType?: string; stockItemId?: number }
+    | undefined,
+  ]
+>(
+  (params) =>
+    stockControlKeys.reports.movementHistory(params as Record<string, string | number | undefined>),
+  (params) => stockControlApiClient.movementHistory(params),
+);
+
+export const useStaffStockReport = createQueryHook<
+  StaffStockReportResult | null,
+  [StaffStockFilters | undefined]
+>(
+  (filters) =>
+    stockControlKeys.reports.staffStock(filters as Record<string, string | number | undefined>),
+  (filters) => stockControlApiClient.staffStockReport(filters),
+);
 
 export function useReportStaffMembers() {
   return useQuery<StaffMember[]>({
@@ -971,26 +664,19 @@ export function useReportStockItems() {
   });
 }
 
-export function useCertificates(filters?: Record<string, string | number>) {
-  return useQuery<SupplierCertificate[]>({
-    queryKey: stockControlKeys.certificates.list(filters),
-    queryFn: async () => {
-      const data = await stockControlApiClient.certificates(filters);
-      return Array.isArray(data) ? data : [];
-    },
-  });
-}
+export const useCertificates = createArrayQueryHook<
+  SupplierCertificate,
+  [Record<string, string | number> | undefined]
+>(
+  (filters) => stockControlKeys.certificates.list(filters),
+  (filters) => stockControlApiClient.certificates(filters),
+);
 
-export function useCertificateSuppliers() {
-  return useQuery<StockControlSupplierDto[]>({
-    queryKey: stockControlKeys.certificates.suppliers(),
-    queryFn: async () => {
-      const data = await stockControlApiClient.suppliers();
-      return Array.isArray(data) ? data : [];
-    },
-    staleTime: 60_000,
-  });
-}
+export const useCertificateSuppliers = createArrayQueryHook<StockControlSupplierDto>(
+  () => stockControlKeys.certificates.suppliers(),
+  () => stockControlApiClient.suppliers(),
+  { staleTime: 60_000 },
+);
 
 export function useCertificateStockItems() {
   return useQuery<StockItem[]>({
@@ -1003,41 +689,27 @@ export function useCertificateStockItems() {
   });
 }
 
-export function useDeleteCertificate() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (id: number) => stockControlApiClient.deleteCertificate(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: stockControlKeys.certificates.all });
-    },
-  });
-}
+export const useDeleteCertificate = createMutationHook(
+  (id: number) => stockControlApiClient.deleteCertificate(id),
+  [stockControlKeys.certificates.all],
+);
 
-export function useInvalidateCertificates() {
-  const queryClient = useQueryClient();
-  return () => queryClient.invalidateQueries({ queryKey: stockControlKeys.certificates.all });
-}
+export const useInvalidateCertificates = createInvalidationHook(stockControlKeys.certificates.all);
 
-export function useCpoFulfillmentReport() {
-  return useQuery<CpoFulfillmentReportItem[]>({
-    queryKey: stockControlKeys.cpoReports.fulfillment(),
-    queryFn: () => stockControlApiClient.cpoFulfillmentReport(),
-  });
-}
+export const useCpoFulfillmentReport = createQueryHook<CpoFulfillmentReportItem[]>(
+  () => stockControlKeys.cpoReports.fulfillment(),
+  () => stockControlApiClient.cpoFulfillmentReport(),
+);
 
-export function useCpoCalloffBreakdown() {
-  return useQuery<CpoCalloffBreakdown | null>({
-    queryKey: stockControlKeys.cpoReports.calloff(),
-    queryFn: () => stockControlApiClient.cpoCalloffBreakdown(),
-  });
-}
+export const useCpoCalloffBreakdown = createQueryHook<CpoCalloffBreakdown | null>(
+  () => stockControlKeys.cpoReports.calloff(),
+  () => stockControlApiClient.cpoCalloffBreakdown(),
+);
 
-export function useCpoOverdueInvoices() {
-  return useQuery<CpoOverdueInvoiceItem[]>({
-    queryKey: stockControlKeys.cpoReports.overdue(),
-    queryFn: () => stockControlApiClient.cpoOverdueInvoices(),
-  });
-}
+export const useCpoOverdueInvoices = createQueryHook<CpoOverdueInvoiceItem[]>(
+  () => stockControlKeys.cpoReports.overdue(),
+  () => stockControlApiClient.cpoOverdueInvoices(),
+);
 
 export function useIssueStockStaffMembers() {
   return useQuery<StaffMember[]>({
@@ -1050,37 +722,23 @@ export function useIssueStockStaffMembers() {
   });
 }
 
-export function useRecentIssuances() {
-  return useQuery<StockIssuance[]>({
-    queryKey: stockControlKeys.issueStock.recentIssuances(),
-    queryFn: async () => {
-      const data = await stockControlApiClient.recentIssuances();
-      return Array.isArray(data) ? data : [];
-    },
-  });
-}
+export const useRecentIssuances = createArrayQueryHook<StockIssuance>(
+  () => stockControlKeys.issueStock.recentIssuances(),
+  () => stockControlApiClient.recentIssuances(),
+);
 
-export function useLinkedStaff(staffId: number | null | undefined) {
-  return useQuery<StaffMember | null>({
-    queryKey: stockControlKeys.issueStock.linkedStaff(staffId ?? 0),
-    queryFn: () => stockControlApiClient.staffMemberById(staffId!),
-    enabled: !!staffId,
-  });
-}
+export const useLinkedStaff = createQueryHook<StaffMember | null, [number | null | undefined]>(
+  (staffId) => stockControlKeys.issueStock.linkedStaff(staffId ?? 0),
+  (staffId) => stockControlApiClient.staffMemberById(staffId!),
+  { enabled: (staffId) => !!staffId },
+);
 
-export function useInvalidateIssueStock() {
-  const queryClient = useQueryClient();
-  return () => queryClient.invalidateQueries({ queryKey: stockControlKeys.issueStock.all });
-}
+export const useInvalidateIssueStock = createInvalidationHook(stockControlKeys.issueStock.all);
 
-export function useScanQrCode() {
-  return useMutation({
-    mutationFn: (qrToken: string) => stockControlApiClient.scanQrCode(qrToken),
-  });
-}
+export const useScanQrCode = createMutationHook((qrToken: string) =>
+  stockControlApiClient.scanQrCode(qrToken),
+);
 
-export function useDownloadStockItemQrPdf() {
-  return useMutation({
-    mutationFn: (id: number) => stockControlApiClient.downloadStockItemQrPdf(id),
-  });
-}
+export const useDownloadStockItemQrPdf = createMutationHook((id: number) =>
+  stockControlApiClient.downloadStockItemQrPdf(id),
+);

@@ -1,5 +1,6 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import * as api from "@/app/comply-sa/lib/api";
+import { createArrayQueryHook, createMutationHook, createQueryHook } from "../../factories";
 import { complySaKeys } from "../../keys";
 
 export type DashboardData = Awaited<ReturnType<typeof api.dashboard>>;
@@ -23,66 +24,44 @@ export type ApiKeyItem = Awaited<ReturnType<typeof api.apiKeysList>>[number];
 export type IntegrationItem = Awaited<ReturnType<typeof api.integrationsList>>[number];
 export type AiChatResponse = Awaited<ReturnType<typeof api.aiChat>>;
 
-export function useComplySaDashboard() {
-  return useQuery({
-    queryKey: complySaKeys.compliance.dashboard(),
-    queryFn: () => api.dashboard(),
-  });
-}
+export const useComplySaDashboard = createQueryHook(complySaKeys.compliance.dashboard, () =>
+  api.dashboard(),
+);
 
-export function useComplySaRequirements() {
-  return useQuery({
-    queryKey: complySaKeys.compliance.requirements(),
-    queryFn: () => api.requirements(),
-  });
-}
+export const useComplySaRequirements = createArrayQueryHook(
+  complySaKeys.compliance.requirements,
+  () => api.requirements(),
+);
 
-export function useAssessCompany() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: () => api.assessCompany(),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: complySaKeys.compliance.all });
-    },
-  });
-}
+export const useAssessCompany = createMutationHook<
+  Awaited<ReturnType<typeof api.assessCompany>>,
+  void
+>(() => api.assessCompany(), [complySaKeys.compliance.all]);
 
-export function useToggleChecklist() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ requirementId, stepIndex }: { requirementId: string; stepIndex: number }) =>
-      api.toggleChecklist(requirementId, stepIndex),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: complySaKeys.compliance.dashboard() });
-    },
-  });
-}
+export const useToggleChecklist = createMutationHook(
+  ({ requirementId, stepIndex }: { requirementId: string; stepIndex: number }) =>
+    api.toggleChecklist(requirementId, stepIndex),
+  [complySaKeys.compliance.dashboard()],
+);
 
-export function useUpdateComplianceStatus() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ statusId, data }: { statusId: string; data: Record<string, unknown> }) =>
-      api.updateStatus(statusId, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: complySaKeys.compliance.all });
-    },
-  });
-}
+export const useUpdateComplianceStatus = createMutationHook(
+  ({ statusId, data }: { statusId: string; data: Record<string, unknown> }) =>
+    api.updateStatus(statusId, data),
+  [complySaKeys.compliance.all],
+);
 
-export function useComplySaDocuments() {
-  return useQuery({
-    queryKey: complySaKeys.documents.list(),
-    queryFn: () => api.documents(),
-  });
-}
+export const useComplySaDocuments = createArrayQueryHook(complySaKeys.documents.list, () =>
+  api.documents(),
+);
 
-export function useDocumentsByRequirement(reqId: string) {
-  return useQuery({
-    queryKey: complySaKeys.documents.byRequirement(reqId),
-    queryFn: () => api.documentsByRequirement(reqId),
-    enabled: reqId.length > 0,
-  });
-}
+export const useDocumentsByRequirement = createArrayQueryHook<
+  Awaited<ReturnType<typeof api.documentsByRequirement>>[number],
+  [string]
+>(
+  (reqId: string) => complySaKeys.documents.byRequirement(reqId),
+  (reqId: string) => api.documentsByRequirement(reqId),
+  { enabled: (reqId: string) => reqId.length > 0 },
+);
 
 export function useUploadDocument() {
   const queryClient = useQueryClient();
@@ -99,317 +78,184 @@ export function useUploadDocument() {
   });
 }
 
-export function useDeleteDocument() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (id: string) => api.deleteDocument(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: complySaKeys.documents.all });
-    },
-  });
-}
+export const useDeleteDocument = createMutationHook(
+  (id: string) => api.deleteDocument(id),
+  [complySaKeys.documents.all],
+);
 
 export type GovernmentDocumentCategory = Awaited<
   ReturnType<typeof api.governmentDocuments>
 >[number];
 
-export function useGovernmentDocuments() {
-  return useQuery({
-    queryKey: complySaKeys.governmentDocuments.list(),
-    queryFn: () => api.governmentDocuments(),
-    staleTime: 1000 * 60 * 30,
-  });
-}
+export const useGovernmentDocuments = createArrayQueryHook(
+  complySaKeys.governmentDocuments.list,
+  () => api.governmentDocuments(),
+  { staleTime: 1000 * 60 * 30 },
+);
 
-export function useSyncGovernmentDocuments() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: () => api.syncGovernmentDocuments(),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: complySaKeys.governmentDocuments.all });
-    },
-  });
-}
+export const useSyncGovernmentDocuments = createMutationHook<
+  Awaited<ReturnType<typeof api.syncGovernmentDocuments>>,
+  void
+>(() => api.syncGovernmentDocuments(), [complySaKeys.governmentDocuments.all]);
 
-export function useComplySaNotifications() {
-  return useQuery({
-    queryKey: complySaKeys.notifications.list(),
-    queryFn: () => api.notifications(),
-  });
-}
+export const useComplySaNotifications = createArrayQueryHook(complySaKeys.notifications.list, () =>
+  api.notifications(),
+);
 
-export function useMarkNotificationRead() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (id: string) => api.markNotificationRead(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: complySaKeys.notifications.list() });
-    },
-  });
-}
+export const useMarkNotificationRead = createMutationHook(
+  (id: string) => api.markNotificationRead(id),
+  [complySaKeys.notifications.list()],
+);
 
-export function useNotificationPreferences() {
-  return useQuery({
-    queryKey: complySaKeys.notifications.preferences(),
-    queryFn: () => api.notificationPreferences(),
-  });
-}
+export const useNotificationPreferences = createQueryHook(
+  complySaKeys.notifications.preferences,
+  () => api.notificationPreferences(),
+);
 
-export function useUpdateNotificationPreferences() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (data: Record<string, unknown>) => api.updateNotificationPreferences(data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: complySaKeys.notifications.preferences() });
-    },
-  });
-}
+export const useUpdateNotificationPreferences = createMutationHook(
+  (data: Record<string, unknown>) => api.updateNotificationPreferences(data),
+  [complySaKeys.notifications.preferences()],
+);
 
-export function useRegulatoryUpdates(limit?: number) {
-  return useQuery({
-    queryKey: complySaKeys.regulatory.updates(limit),
-    queryFn: () => api.regulatoryUpdates(limit),
-  });
-}
+export const useRegulatoryUpdates = createArrayQueryHook<RegulatoryUpdate, [(number | undefined)?]>(
+  (limit?: number) => complySaKeys.regulatory.updates(limit),
+  (limit?: number) => api.regulatoryUpdates(limit),
+);
 
-export function useRegulatoryUpdatesByCategory(category: string) {
-  return useQuery({
-    queryKey: complySaKeys.regulatory.byCategory(category),
-    queryFn: () => api.regulatoryUpdatesByCategory(category),
-    enabled: category.length > 0,
-  });
-}
+export const useRegulatoryUpdatesByCategory = createArrayQueryHook<RegulatoryUpdate, [string]>(
+  (category: string) => complySaKeys.regulatory.byCategory(category),
+  (category: string) => api.regulatoryUpdatesByCategory(category),
+  { enabled: (category: string) => category.length > 0 },
+);
 
-export function useTemplatesList() {
-  return useQuery({
-    queryKey: complySaKeys.templates.list(),
-    queryFn: () => api.templatesList(),
-  });
-}
+export const useTemplatesList = createArrayQueryHook(complySaKeys.templates.list, () =>
+  api.templatesList(),
+);
 
-export function useGenerateTemplate() {
-  return useMutation({
-    mutationFn: ({ templateId, data }: { templateId: string; data: Record<string, string> }) =>
-      api.generateTemplate(templateId, data),
-  });
-}
+export const useGenerateTemplate = createMutationHook(
+  ({ templateId, data }: { templateId: string; data: Record<string, string> }) =>
+    api.generateTemplate(templateId, data),
+);
 
-export function useTenderChecklist() {
-  return useQuery({
-    queryKey: complySaKeys.tender.checklist(),
-    queryFn: () => api.tenderChecklist(),
-  });
-}
+export const useTenderChecklist = createArrayQueryHook(complySaKeys.tender.checklist, () =>
+  api.tenderChecklist(),
+);
 
-export function useTenderScore() {
-  return useQuery({
-    queryKey: complySaKeys.tender.score(),
-    queryFn: () => api.tenderScore(),
-  });
-}
+export const useTenderScore = createQueryHook(complySaKeys.tender.score, () => api.tenderScore());
 
-export function useUploadTenderDocument() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ file, requirementId }: { file: File; requirementId?: string }) =>
-      api.uploadDocument(file, requirementId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: complySaKeys.tender.all });
-    },
-  });
-}
+export const useUploadTenderDocument = createMutationHook(
+  ({ file, requirementId }: { file: File; requirementId?: string }) =>
+    api.uploadDocument(file, requirementId),
+  [complySaKeys.tender.all],
+);
 
-export function useBbeeScorecardElements() {
-  return useQuery({
-    queryKey: complySaKeys.bbee.scorecardElements(),
-    queryFn: () => api.bbeeScorecardElements(),
-  });
-}
+export const useBbeeScorecardElements = createArrayQueryHook(
+  complySaKeys.bbee.scorecardElements,
+  () => api.bbeeScorecardElements(),
+);
 
-export function useBbeeCalculate() {
-  return useMutation({
-    mutationFn: ({
-      turnover,
-      blackOwnershipPercent,
-    }: {
-      turnover: number;
-      blackOwnershipPercent: number;
-    }) => api.bbeeCalculate(turnover, blackOwnershipPercent),
-  });
-}
+export const useBbeeCalculate = createMutationHook(
+  ({ turnover, blackOwnershipPercent }: { turnover: number; blackOwnershipPercent: number }) =>
+    api.bbeeCalculate(turnover, blackOwnershipPercent),
+);
 
-export function useTaxCalendar(financialYearEndMonth: number) {
-  return useQuery({
-    queryKey: complySaKeys.tax.calendar(financialYearEndMonth),
-    queryFn: () => api.taxCalendar(financialYearEndMonth),
-    enabled: financialYearEndMonth > 0,
-  });
-}
+export const useTaxCalendar = createArrayQueryHook<TaxCalendarItem, [number]>(
+  (financialYearEndMonth: number) => complySaKeys.tax.calendar(financialYearEndMonth),
+  (financialYearEndMonth: number) => api.taxCalendar(financialYearEndMonth),
+  { enabled: (financialYearEndMonth: number) => financialYearEndMonth > 0 },
+);
 
-export function useSetaGrantInfo() {
-  return useQuery({
-    queryKey: complySaKeys.tax.setaGrants(),
-    queryFn: () => api.setaGrantInfo(),
-  });
-}
+export const useSetaGrantInfo = createQueryHook(complySaKeys.tax.setaGrants, () =>
+  api.setaGrantInfo(),
+);
 
-export function useMinimumWageCheck() {
-  return useMutation({
-    mutationFn: (hourlyRate: number) => api.minimumWageCheck(hourlyRate),
-  });
-}
+export const useMinimumWageCheck = createMutationHook((hourlyRate: number) =>
+  api.minimumWageCheck(hourlyRate),
+);
 
-export function useVatAssessment() {
-  return useMutation({
-    mutationFn: (annualTurnover: number) => api.vatAssessment(annualTurnover),
-  });
-}
+export const useVatAssessment = createMutationHook((annualTurnover: number) =>
+  api.vatAssessment(annualTurnover),
+);
 
-export function useTurnoverTaxEstimate() {
-  return useMutation({
-    mutationFn: (annualTurnover: number) => api.turnoverTaxEstimate(annualTurnover),
-  });
-}
+export const useTurnoverTaxEstimate = createMutationHook((annualTurnover: number) =>
+  api.turnoverTaxEstimate(annualTurnover),
+);
 
-export function useUifCalculation() {
-  return useMutation({
-    mutationFn: (monthlyRemuneration: number) => api.uifCalculation(monthlyRemuneration),
-  });
-}
+export const useUifCalculation = createMutationHook((monthlyRemuneration: number) =>
+  api.uifCalculation(monthlyRemuneration),
+);
 
-export function useSdlAssessment() {
-  return useMutation({
-    mutationFn: (annualPayroll: number) => api.sdlAssessment(annualPayroll),
-  });
-}
+export const useSdlAssessment = createMutationHook((annualPayroll: number) =>
+  api.sdlAssessment(annualPayroll),
+);
 
-export function useAdvisorDashboard() {
-  return useQuery({
-    queryKey: complySaKeys.advisor.dashboard(),
-    queryFn: () => api.advisorDashboard(),
-  });
-}
+export const useAdvisorDashboard = createQueryHook(complySaKeys.advisor.dashboard, () =>
+  api.advisorDashboard(),
+);
 
-export function useAdvisorClients() {
-  return useQuery({
-    queryKey: complySaKeys.advisor.clients(),
-    queryFn: () => api.advisorClients(),
-  });
-}
+export const useAdvisorClients = createArrayQueryHook(complySaKeys.advisor.clients, () =>
+  api.advisorClients(),
+);
 
-export function useAdvisorCalendar(month: number, year: number) {
-  return useQuery({
-    queryKey: complySaKeys.advisor.calendar(month, year),
-    queryFn: () => api.advisorCalendar(month, year),
-  });
-}
+export const useAdvisorCalendar = createArrayQueryHook<AdvisorCalendarEntry, [number, number]>(
+  (month: number, year: number) => complySaKeys.advisor.calendar(month, year),
+  (month: number, year: number) => api.advisorCalendar(month, year),
+);
 
-export function useAddAdvisorClient() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (companyId: number) => api.addAdvisorClient(companyId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: complySaKeys.advisor.all });
-    },
-  });
-}
+export const useAddAdvisorClient = createMutationHook(
+  (companyId: number) => api.addAdvisorClient(companyId),
+  [complySaKeys.advisor.all],
+);
 
-export function useRemoveAdvisorClient() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (companyId: number) => api.removeAdvisorClient(companyId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: complySaKeys.advisor.all });
-    },
-  });
-}
+export const useRemoveAdvisorClient = createMutationHook(
+  (companyId: number) => api.removeAdvisorClient(companyId),
+  [complySaKeys.advisor.all],
+);
 
-export function useCompanyProfile() {
-  return useQuery({
-    queryKey: complySaKeys.company.profile(),
-    queryFn: () => api.companyProfile(),
-  });
-}
+export const useCompanyProfile = createQueryHook(complySaKeys.company.profile, () =>
+  api.companyProfile(),
+);
 
-export function useUpdateCompanyProfile() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (data: Record<string, unknown>) => api.updateCompanyProfile(data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: complySaKeys.company.profile() });
-    },
-  });
-}
+export const useUpdateCompanyProfile = createMutationHook(
+  (data: Record<string, unknown>) => api.updateCompanyProfile(data),
+  [complySaKeys.company.profile()],
+);
 
-export function useSubscriptionStatus() {
-  return useQuery({
-    queryKey: complySaKeys.subscriptions.status(),
-    queryFn: () => api.subscriptionStatus(),
-  });
-}
+export const useSubscriptionStatus = createQueryHook(complySaKeys.subscriptions.status, () =>
+  api.subscriptionStatus(),
+);
 
-export function useUpgradeSubscription() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (tier: string) => api.upgradeSubscription(tier),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: complySaKeys.subscriptions.status() });
-    },
-  });
-}
+export const useUpgradeSubscription = createMutationHook(
+  (tier: string) => api.upgradeSubscription(tier),
+  [complySaKeys.subscriptions.status()],
+);
 
-export function useCancelSubscription() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: () => api.cancelSubscription(),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: complySaKeys.subscriptions.status() });
-    },
-  });
-}
+export const useCancelSubscription = createMutationHook<
+  Awaited<ReturnType<typeof api.cancelSubscription>>,
+  void
+>(() => api.cancelSubscription(), [complySaKeys.subscriptions.status()]);
 
-export function useApiKeysList() {
-  return useQuery({
-    queryKey: complySaKeys.apiKeys.list(),
-    queryFn: () => api.apiKeysList(),
-  });
-}
+export const useApiKeysList = createArrayQueryHook(complySaKeys.apiKeys.list, () =>
+  api.apiKeysList(),
+);
 
-export function useGenerateApiKey() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (name: string) => api.generateApiKey(name),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: complySaKeys.apiKeys.list() });
-    },
-  });
-}
+export const useGenerateApiKey = createMutationHook(
+  (name: string) => api.generateApiKey(name),
+  [complySaKeys.apiKeys.list()],
+);
 
-export function useRevokeApiKey() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (id: number) => api.revokeApiKey(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: complySaKeys.apiKeys.list() });
-    },
-  });
-}
+export const useRevokeApiKey = createMutationHook(
+  (id: number) => api.revokeApiKey(id),
+  [complySaKeys.apiKeys.list()],
+);
 
-export function useIntegrationsList() {
-  return useQuery({
-    queryKey: complySaKeys.integrations.list(),
-    queryFn: () => api.integrationsList(),
-  });
-}
+export const useIntegrationsList = createArrayQueryHook(complySaKeys.integrations.list, () =>
+  api.integrationsList(),
+);
 
-export function useAiChat() {
-  return useMutation({
-    mutationFn: (question: string) => api.aiChat(question),
-  });
-}
+export const useAiChat = createMutationHook((question: string) => api.aiChat(question));
 
-export function useHealthReport() {
-  return useMutation({
-    mutationFn: () => api.healthReport(),
-  });
-}
+export const useHealthReport = createMutationHook<
+  Awaited<ReturnType<typeof api.healthReport>>,
+  void
+>(() => api.healthReport());

@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import {
   type ActivityHeatmapCell,
   type AnalyticsSummary,
@@ -9,6 +9,7 @@ import {
   type BookingLink,
   type BookSlotDto,
   type BulkDeleteResponse,
+  type BulkTagOperationResponse,
   type BulkUpdateStatusResponse,
   type CreateBookingLinkDto,
   type CreateCustomFieldDto,
@@ -17,6 +18,7 @@ import {
   type CreateProspectDto,
   type CreateRecurringMeetingDto,
   type CreateVisitDto,
+  type CustomFieldDefinition,
   type DeleteRecurringMeetingDto,
   type DuplicateProspects,
   type GoalPeriod,
@@ -43,37 +45,29 @@ import {
   type WinLossRateTrend,
 } from "@/app/lib/api/annixRepApi";
 import { cacheConfig } from "../../cacheConfig";
+import { createArrayQueryHook, createMutationHook, createQueryHook } from "../../factories";
 import { annixRepKeys } from "../../keys/annixRepKeys";
 
-export function useAnnixRepDashboard() {
-  return useQuery<AnnixRepDashboard>({
-    queryKey: annixRepKeys.dashboard.data(),
-    queryFn: () => annixRepApi.dashboard(),
-    ...cacheConfig.dashboard,
-  });
-}
+export const useAnnixRepDashboard = createQueryHook<AnnixRepDashboard>(
+  annixRepKeys.dashboard.data,
+  () => annixRepApi.dashboard(),
+  { ...cacheConfig.dashboard },
+);
 
-export function useProspects() {
-  return useQuery<Prospect[]>({
-    queryKey: annixRepKeys.prospects.list(),
-    queryFn: () => annixRepApi.prospects.list(),
-  });
-}
+export const useProspects = createArrayQueryHook<Prospect>(annixRepKeys.prospects.list, () =>
+  annixRepApi.prospects.list(),
+);
 
-export function useProspectsByStatus(status: ProspectStatus) {
-  return useQuery<Prospect[]>({
-    queryKey: annixRepKeys.prospects.listByStatus(status),
-    queryFn: () => annixRepApi.prospects.listByStatus(status),
-  });
-}
+export const useProspectsByStatus = createArrayQueryHook<Prospect, [ProspectStatus]>(
+  annixRepKeys.prospects.listByStatus,
+  (status) => annixRepApi.prospects.listByStatus(status),
+);
 
-export function useProspect(id: number) {
-  return useQuery<Prospect>({
-    queryKey: annixRepKeys.prospects.detail(id),
-    queryFn: () => annixRepApi.prospects.detail(id),
-    enabled: id > 0,
-  });
-}
+export const useProspect = createQueryHook<Prospect, [number]>(
+  annixRepKeys.prospects.detail,
+  (id) => annixRepApi.prospects.detail(id),
+  { enabled: (id) => id > 0 },
+);
 
 export function useNearbyProspects(lat: number, lng: number, radiusKm?: number, limit?: number) {
   return useQuery<Prospect[]>({
@@ -83,681 +77,408 @@ export function useNearbyProspects(lat: number, lng: number, radiusKm?: number, 
   });
 }
 
-export function useProspectStats() {
-  return useQuery<Record<ProspectStatus, number>>({
-    queryKey: annixRepKeys.prospects.stats(),
-    queryFn: () => annixRepApi.prospects.stats(),
-  });
-}
-
-export function useFollowUpsDue() {
-  return useQuery<Prospect[]>({
-    queryKey: annixRepKeys.prospects.followUps(),
-    queryFn: () => annixRepApi.prospects.followUpsDue(),
-  });
-}
-
-export function useCreateProspect() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (dto: CreateProspectDto) => annixRepApi.prospects.create(dto),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: annixRepKeys.prospects.all });
-      queryClient.invalidateQueries({ queryKey: annixRepKeys.dashboard.all });
-    },
-  });
-}
-
-export function useUpdateProspect() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: ({ id, dto }: { id: number; dto: Partial<CreateProspectDto> }) =>
-      annixRepApi.prospects.update(id, dto),
-    onSuccess: (_, { id }) => {
-      queryClient.invalidateQueries({ queryKey: annixRepKeys.prospects.detail(id) });
-      queryClient.invalidateQueries({ queryKey: annixRepKeys.prospects.list() });
-    },
-  });
-}
-
-export function useUpdateProspectStatus() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: ({ id, status }: { id: number; status: ProspectStatus }) =>
-      annixRepApi.prospects.updateStatus(id, status),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: annixRepKeys.prospects.all });
-      queryClient.invalidateQueries({ queryKey: annixRepKeys.dashboard.all });
-    },
-  });
-}
-
-export function useMarkContacted() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (id: number) => annixRepApi.prospects.markContacted(id),
-    onSuccess: (_, id) => {
-      queryClient.invalidateQueries({ queryKey: annixRepKeys.prospects.detail(id) });
-      queryClient.invalidateQueries({ queryKey: annixRepKeys.prospects.list() });
-    },
-  });
-}
-
-export function useCompleteFollowUp() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (id: number) => annixRepApi.prospects.completeFollowUp(id),
-    onSuccess: (_, id) => {
-      queryClient.invalidateQueries({ queryKey: annixRepKeys.prospects.detail(id) });
-      queryClient.invalidateQueries({ queryKey: annixRepKeys.prospects.list() });
-      queryClient.invalidateQueries({ queryKey: annixRepKeys.prospects.followUps() });
-      queryClient.invalidateQueries({ queryKey: annixRepKeys.dashboard.all });
-    },
-  });
-}
-
-export function useDeleteProspect() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (id: number) => annixRepApi.prospects.delete(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: annixRepKeys.prospects.all });
-      queryClient.invalidateQueries({ queryKey: annixRepKeys.dashboard.all });
-    },
-  });
-}
-
-export function useBulkUpdateProspectStatus() {
-  const queryClient = useQueryClient();
-
-  return useMutation<BulkUpdateStatusResponse, Error, { ids: number[]; status: ProspectStatus }>({
-    mutationFn: ({ ids, status }) => annixRepApi.prospects.bulkUpdateStatus(ids, status),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: annixRepKeys.prospects.all });
-      queryClient.invalidateQueries({ queryKey: annixRepKeys.dashboard.all });
-    },
-  });
-}
-
-export function useBulkDeleteProspects() {
-  const queryClient = useQueryClient();
-
-  return useMutation<BulkDeleteResponse, Error, number[]>({
-    mutationFn: (ids) => annixRepApi.prospects.bulkDelete(ids),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: annixRepKeys.prospects.all });
-      queryClient.invalidateQueries({ queryKey: annixRepKeys.dashboard.all });
-    },
-  });
-}
-
-export function useProspectsCsvExport() {
-  return useMutation<Blob, Error, void>({
-    mutationFn: () => annixRepApi.prospects.exportCsv(),
-  });
-}
-
-export function useProspectDuplicates() {
-  return useQuery<DuplicateProspects[]>({
-    queryKey: annixRepKeys.prospects.duplicates(),
-    queryFn: () => annixRepApi.prospects.duplicates(),
-  });
-}
-
-export function useImportProspects() {
-  const queryClient = useQueryClient();
-
-  return useMutation<
-    ImportProspectsResult,
-    Error,
-    { rows: ImportProspectRow[]; skipInvalid?: boolean }
-  >({
-    mutationFn: ({ rows, skipInvalid }) => annixRepApi.prospects.import(rows, skipInvalid),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: annixRepKeys.prospects.all });
-      queryClient.invalidateQueries({ queryKey: annixRepKeys.dashboard.all });
-    },
-  });
-}
-
-export function useMergeProspects() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (dto: {
-      primaryId: number;
-      mergeIds: number[];
-      fieldOverrides?: Partial<CreateProspectDto>;
-    }) => annixRepApi.prospects.merge(dto),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: annixRepKeys.prospects.all });
-      queryClient.invalidateQueries({ queryKey: annixRepKeys.dashboard.all });
-    },
-  });
-}
-
-export function useBulkTagOperation() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (dto: { ids: number[]; tags: string[]; operation: "add" | "remove" }) =>
-      annixRepApi.prospects.bulkTagOperation(dto),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: annixRepKeys.prospects.all });
-    },
-  });
-}
-
-export function useBulkAssignProspects() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: ({ ids, assignedToId }: { ids: number[]; assignedToId: number | null }) =>
-      annixRepApi.prospects.bulkAssign(ids, assignedToId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: annixRepKeys.prospects.all });
-    },
-  });
-}
-
-export function useRecalculateProspectScores() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: () => annixRepApi.prospects.recalculateScores(),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: annixRepKeys.prospects.all });
-    },
-  });
-}
-
-export function useProspectActivities(id: number, limit?: number) {
-  return useQuery({
-    queryKey: annixRepKeys.prospects.activities(id, limit),
-    queryFn: () => annixRepApi.prospects.activities(id, limit),
-    enabled: id > 0,
-  });
-}
-
-export function useCustomFields(includeInactive = false) {
-  return useQuery({
-    queryKey: annixRepKeys.customFields.list(includeInactive),
-    queryFn: () => annixRepApi.customFields.list(includeInactive),
-    ...cacheConfig.static,
-  });
-}
-
-export function useCustomField(id: number) {
-  return useQuery({
-    queryKey: annixRepKeys.customFields.detail(id),
-    queryFn: () => annixRepApi.customFields.detail(id),
-    enabled: id > 0,
-    ...cacheConfig.static,
-  });
-}
-
-export function useCreateCustomField() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (dto: CreateCustomFieldDto) => annixRepApi.customFields.create(dto),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: annixRepKeys.customFields.all });
-    },
-  });
-}
-
-export function useUpdateCustomField() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: ({ id, dto }: { id: number; dto: UpdateCustomFieldDto }) =>
-      annixRepApi.customFields.update(id, dto),
-    onSuccess: (_, { id }) => {
-      queryClient.invalidateQueries({ queryKey: annixRepKeys.customFields.detail(id) });
-      queryClient.invalidateQueries({ queryKey: annixRepKeys.customFields.list() });
-    },
-  });
-}
-
-export function useDeleteCustomField() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (id: number) => annixRepApi.customFields.delete(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: annixRepKeys.customFields.all });
-    },
-  });
-}
-
-export function useReorderCustomFields() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (orderedIds: number[]) => annixRepApi.customFields.reorder(orderedIds),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: annixRepKeys.customFields.all });
-    },
-  });
-}
-
-export function useMeetings() {
-  return useQuery<Meeting[]>({
-    queryKey: annixRepKeys.meetings.list(),
-    queryFn: () => annixRepApi.meetings.list(),
-  });
-}
-
-export function useTodaysMeetings() {
-  return useQuery<Meeting[]>({
-    queryKey: annixRepKeys.meetings.today(),
-    queryFn: () => annixRepApi.meetings.today(),
-    ...cacheConfig.timeSensitive,
-  });
-}
-
-export function useUpcomingMeetings(days?: number) {
-  return useQuery<Meeting[]>({
-    queryKey: annixRepKeys.meetings.upcoming(days),
-    queryFn: () => annixRepApi.meetings.upcoming(days),
-  });
-}
-
-export function useMeeting(id: number) {
-  return useQuery<Meeting>({
-    queryKey: annixRepKeys.meetings.detail(id),
-    queryFn: () => annixRepApi.meetings.detail(id),
-    enabled: id > 0,
-  });
-}
-
-export function useCreateMeeting() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (dto: CreateMeetingDto) => annixRepApi.meetings.create(dto),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: annixRepKeys.meetings.all });
-      queryClient.invalidateQueries({ queryKey: annixRepKeys.dashboard.all });
-    },
-  });
-}
-
-export function useStartMeeting() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (id: number) => annixRepApi.meetings.start(id),
-    onSuccess: (_, id) => {
-      queryClient.invalidateQueries({ queryKey: annixRepKeys.meetings.detail(id) });
-      queryClient.invalidateQueries({ queryKey: annixRepKeys.meetings.all });
-    },
-  });
-}
-
-export function useEndMeeting() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: ({ id, notes, outcomes }: { id: number; notes?: string; outcomes?: string }) =>
-      annixRepApi.meetings.end(id, notes, outcomes),
-    onSuccess: (_, { id }) => {
-      queryClient.invalidateQueries({ queryKey: annixRepKeys.meetings.detail(id) });
-      queryClient.invalidateQueries({ queryKey: annixRepKeys.meetings.all });
-      queryClient.invalidateQueries({ queryKey: annixRepKeys.dashboard.all });
-    },
-  });
-}
-
-export function useCancelMeeting() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (id: number) => annixRepApi.meetings.cancel(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: annixRepKeys.meetings.all });
-      queryClient.invalidateQueries({ queryKey: annixRepKeys.dashboard.all });
-    },
-  });
-}
-
-export function useRescheduleMeeting() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: ({ id, dto }: { id: number; dto: RescheduleMeetingDto }) =>
-      annixRepApi.meetings.reschedule(id, dto),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: annixRepKeys.meetings.all });
-      queryClient.invalidateQueries({ queryKey: annixRepKeys.dashboard.all });
-    },
-  });
-}
-
-export function useCreateRecurringMeeting() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (dto: CreateRecurringMeetingDto) => annixRepApi.meetings.createRecurring(dto),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: annixRepKeys.meetings.all });
-      queryClient.invalidateQueries({ queryKey: annixRepKeys.dashboard.all });
-    },
-  });
-}
-
-export function useExpandedRecurringMeetings(startDate: string, endDate: string) {
-  return useQuery<Meeting[]>({
-    queryKey: annixRepKeys.meetings.expandedRecurring(startDate, endDate),
-    queryFn: () => annixRepApi.meetings.expandedRecurring(startDate, endDate),
-    enabled: !!startDate && !!endDate,
-  });
-}
-
-export function useSeriesInstances(parentId: number) {
-  return useQuery<Meeting[]>({
-    queryKey: annixRepKeys.meetings.seriesInstances(parentId),
-    queryFn: () => annixRepApi.meetings.seriesInstances(parentId),
-    enabled: parentId > 0,
-  });
-}
-
-export function useUpdateRecurringMeeting() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: ({ id, dto }: { id: number; dto: UpdateRecurringMeetingDto }) =>
-      annixRepApi.meetings.updateRecurring(id, dto),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: annixRepKeys.meetings.all });
-      queryClient.invalidateQueries({ queryKey: annixRepKeys.dashboard.all });
-    },
-  });
-}
-
-export function useDeleteRecurringMeeting() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: ({ id, dto }: { id: number; dto: DeleteRecurringMeetingDto }) =>
-      annixRepApi.meetings.deleteRecurring(id, dto),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: annixRepKeys.meetings.all });
-      queryClient.invalidateQueries({ queryKey: annixRepKeys.dashboard.all });
-    },
-  });
-}
-
-export function useVisits() {
-  return useQuery<Visit[]>({
-    queryKey: annixRepKeys.visits.list(),
-    queryFn: () => annixRepApi.visits.list(),
-  });
-}
-
-export function useTodaysVisits() {
-  return useQuery<Visit[]>({
-    queryKey: annixRepKeys.visits.today(),
-    queryFn: () => annixRepApi.visits.today(),
-    ...cacheConfig.timeSensitive,
-  });
-}
-
-export function useProspectVisits(prospectId: number) {
-  return useQuery<Visit[]>({
-    queryKey: annixRepKeys.visits.byProspect(prospectId),
-    queryFn: () => annixRepApi.visits.byProspect(prospectId),
-    enabled: prospectId > 0,
-  });
-}
-
-export function useCreateVisit() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (dto: CreateVisitDto) => annixRepApi.visits.create(dto),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: annixRepKeys.visits.all });
-      queryClient.invalidateQueries({ queryKey: annixRepKeys.dashboard.all });
-    },
-  });
-}
-
-export function useCheckIn() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: ({
-      id,
-      latitude,
-      longitude,
-    }: {
-      id: number;
-      latitude: number;
-      longitude: number;
-    }) => annixRepApi.visits.checkIn(id, latitude, longitude),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: annixRepKeys.visits.all });
-    },
-  });
-}
-
-export function useCheckOut() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: ({
-      id,
-      latitude,
-      longitude,
-      outcome,
-      notes,
-    }: {
-      id: number;
-      latitude: number;
-      longitude: number;
-      outcome?: VisitOutcome;
-      notes?: string;
-    }) => annixRepApi.visits.checkOut(id, latitude, longitude, outcome, notes),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: annixRepKeys.visits.all });
-    },
-  });
-}
-
-export function useAnalyticsSummary() {
-  return useQuery<AnalyticsSummary>({
-    queryKey: annixRepKeys.analytics.summary(),
-    queryFn: () => annixRepApi.analytics.summary(),
-    ...cacheConfig.analytics,
-  });
-}
-
-export function useMeetingsOverTime(period?: "week" | "month", count?: number) {
-  return useQuery<MeetingsOverTime[]>({
-    queryKey: annixRepKeys.analytics.meetingsOverTime(period, count),
-    queryFn: () => annixRepApi.analytics.meetingsOverTime(period, count),
-    ...cacheConfig.analytics,
-  });
-}
-
-export function useProspectFunnel() {
-  return useQuery<ProspectFunnel[]>({
-    queryKey: annixRepKeys.analytics.prospectFunnel(),
-    queryFn: () => annixRepApi.analytics.prospectFunnel(),
-    ...cacheConfig.analytics,
-  });
-}
-
-export function useWinLossRateTrends(months?: number) {
-  return useQuery<WinLossRateTrend[]>({
-    queryKey: annixRepKeys.analytics.winLossRateTrends(months),
-    queryFn: () => annixRepApi.analytics.winLossRateTrends(months),
-    ...cacheConfig.analytics,
-  });
-}
-
-export function useActivityHeatmap() {
-  return useQuery<ActivityHeatmapCell[]>({
-    queryKey: annixRepKeys.analytics.activityHeatmap(),
-    queryFn: () => annixRepApi.analytics.activityHeatmap(),
-    ...cacheConfig.analytics,
-  });
-}
-
-export function useRevenuePipeline() {
-  return useQuery<RevenuePipeline[]>({
-    queryKey: annixRepKeys.analytics.revenuePipeline(),
-    queryFn: () => annixRepApi.analytics.revenuePipeline(),
-    ...cacheConfig.analytics,
-  });
-}
-
-export function useTopProspects(limit?: number) {
-  return useQuery<TopProspect[]>({
-    queryKey: annixRepKeys.analytics.topProspects(limit),
-    queryFn: () => annixRepApi.analytics.topProspects(limit),
-    ...cacheConfig.analytics,
-  });
-}
-
-export function useSalesGoals() {
-  return useQuery<SalesGoal[]>({
-    queryKey: annixRepKeys.goals.list(),
-    queryFn: () => annixRepApi.goals.list(),
-    ...cacheConfig.goals,
-  });
-}
-
-export function useSalesGoalByPeriod(period: GoalPeriod) {
-  return useQuery<SalesGoal>({
-    queryKey: annixRepKeys.goals.byPeriod(period),
-    queryFn: () => annixRepApi.goals.byPeriod(period),
-    ...cacheConfig.goals,
-  });
-}
-
-export function useGoalProgress(period: GoalPeriod) {
-  return useQuery<GoalProgress>({
-    queryKey: annixRepKeys.goals.progress(period),
-    queryFn: () => annixRepApi.goals.progress(period),
-    ...cacheConfig.goals,
-  });
-}
-
-export function useCreateOrUpdateGoal() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (dto: CreateGoalDto) => annixRepApi.goals.createOrUpdate(dto),
-    onSuccess: (_, dto) => {
-      queryClient.invalidateQueries({ queryKey: annixRepKeys.goals.all });
-      queryClient.invalidateQueries({ queryKey: annixRepKeys.goals.progress(dto.period) });
-    },
-  });
-}
-
-export function useUpdateGoal() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: ({ period, dto }: { period: GoalPeriod; dto: UpdateGoalDto }) =>
-      annixRepApi.goals.update(period, dto),
-    onSuccess: (_, { period }) => {
-      queryClient.invalidateQueries({ queryKey: annixRepKeys.goals.all });
-      queryClient.invalidateQueries({ queryKey: annixRepKeys.goals.byPeriod(period) });
-      queryClient.invalidateQueries({ queryKey: annixRepKeys.goals.progress(period) });
-    },
-  });
-}
-
-export function useDeleteGoal() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (period: GoalPeriod) => annixRepApi.goals.delete(period),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: annixRepKeys.goals.all });
-    },
-  });
-}
-
-export function useBookingLinks() {
-  return useQuery<BookingLink[]>({
-    queryKey: annixRepKeys.bookingLinks.list(),
-    queryFn: () => annixRepApi.bookingLinks.list(),
-  });
-}
-
-export function useBookingLink(id: number) {
-  return useQuery<BookingLink>({
-    queryKey: annixRepKeys.bookingLinks.detail(id),
-    queryFn: () => annixRepApi.bookingLinks.detail(id),
-    enabled: id > 0,
-  });
-}
-
-export function useCreateBookingLink() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (dto: CreateBookingLinkDto) => annixRepApi.bookingLinks.create(dto),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: annixRepKeys.bookingLinks.all });
-    },
-  });
-}
-
-export function useUpdateBookingLink() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: ({ id, dto }: { id: number; dto: UpdateBookingLinkDto }) =>
-      annixRepApi.bookingLinks.update(id, dto),
-    onSuccess: (_, { id }) => {
-      queryClient.invalidateQueries({ queryKey: annixRepKeys.bookingLinks.all });
-      queryClient.invalidateQueries({ queryKey: annixRepKeys.bookingLinks.detail(id) });
-    },
-  });
-}
-
-export function useDeleteBookingLink() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (id: number) => annixRepApi.bookingLinks.delete(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: annixRepKeys.bookingLinks.all });
-    },
-  });
-}
-
-export function usePublicBookingLink(slug: string) {
-  return useQuery<PublicBookingLink>({
-    queryKey: annixRepKeys.publicBooking.linkDetails(slug),
-    queryFn: () => publicBookingApi.linkDetails(slug),
-    enabled: !!slug,
-  });
-}
-
-export function useBookingAvailability(slug: string, date: string) {
-  return useQuery<AvailableSlot[]>({
-    queryKey: annixRepKeys.publicBooking.availability(slug, date),
-    queryFn: () => publicBookingApi.availability(slug, date),
-    enabled: !!slug && !!date,
-    ...cacheConfig.timeSensitive,
-  });
-}
-
-export function useBookSlot() {
-  return useMutation<BookingConfirmation, Error, { slug: string; dto: BookSlotDto }>({
-    mutationFn: ({ slug, dto }) => publicBookingApi.bookSlot(slug, dto),
-  });
-}
+export const useProspectStats = createQueryHook<Record<ProspectStatus, number>>(
+  annixRepKeys.prospects.stats,
+  () => annixRepApi.prospects.stats(),
+);
+
+export const useFollowUpsDue = createArrayQueryHook<Prospect>(
+  annixRepKeys.prospects.followUps,
+  () => annixRepApi.prospects.followUpsDue(),
+);
+
+export const useCreateProspect = createMutationHook<Prospect, CreateProspectDto>(
+  (dto) => annixRepApi.prospects.create(dto),
+  [annixRepKeys.prospects.all, annixRepKeys.dashboard.all],
+);
+
+export const useUpdateProspect = createMutationHook<
+  Prospect,
+  { id: number; dto: Partial<CreateProspectDto> }
+>(
+  ({ id, dto }) => annixRepApi.prospects.update(id, dto),
+  (_data, { id }) => [annixRepKeys.prospects.detail(id), annixRepKeys.prospects.list()],
+);
+
+export const useUpdateProspectStatus = createMutationHook<
+  Prospect,
+  { id: number; status: ProspectStatus }
+>(
+  ({ id, status }) => annixRepApi.prospects.updateStatus(id, status),
+  [annixRepKeys.prospects.all, annixRepKeys.dashboard.all],
+);
+
+export const useMarkContacted = createMutationHook<Prospect, number>(
+  (id) => annixRepApi.prospects.markContacted(id),
+  (_data, id) => [annixRepKeys.prospects.detail(id), annixRepKeys.prospects.list()],
+);
+
+export const useCompleteFollowUp = createMutationHook<Prospect, number>(
+  (id) => annixRepApi.prospects.completeFollowUp(id),
+  (_data, id) => [
+    annixRepKeys.prospects.detail(id),
+    annixRepKeys.prospects.list(),
+    annixRepKeys.prospects.followUps(),
+    annixRepKeys.dashboard.all,
+  ],
+);
+
+export const useDeleteProspect = createMutationHook<void, number>(
+  (id) => annixRepApi.prospects.delete(id),
+  [annixRepKeys.prospects.all, annixRepKeys.dashboard.all],
+);
+
+export const useBulkUpdateProspectStatus = createMutationHook<
+  BulkUpdateStatusResponse,
+  { ids: number[]; status: ProspectStatus }
+>(
+  ({ ids, status }) => annixRepApi.prospects.bulkUpdateStatus(ids, status),
+  [annixRepKeys.prospects.all, annixRepKeys.dashboard.all],
+);
+
+export const useBulkDeleteProspects = createMutationHook<BulkDeleteResponse, number[]>(
+  (ids) => annixRepApi.prospects.bulkDelete(ids),
+  [annixRepKeys.prospects.all, annixRepKeys.dashboard.all],
+);
+
+export const useProspectsCsvExport = createMutationHook<Blob, void>(() =>
+  annixRepApi.prospects.exportCsv(),
+);
+
+export const useProspectDuplicates = createArrayQueryHook<DuplicateProspects>(
+  annixRepKeys.prospects.duplicates,
+  () => annixRepApi.prospects.duplicates(),
+);
+
+export const useImportProspects = createMutationHook<
+  ImportProspectsResult,
+  { rows: ImportProspectRow[]; skipInvalid?: boolean }
+>(
+  ({ rows, skipInvalid }) => annixRepApi.prospects.import(rows, skipInvalid),
+  [annixRepKeys.prospects.all, annixRepKeys.dashboard.all],
+);
+
+export const useMergeProspects = createMutationHook<
+  Prospect,
+  { primaryId: number; mergeIds: number[]; fieldOverrides?: Partial<CreateProspectDto> }
+>(
+  (dto) => annixRepApi.prospects.merge(dto),
+  [annixRepKeys.prospects.all, annixRepKeys.dashboard.all],
+);
+
+export const useBulkTagOperation = createMutationHook<
+  BulkTagOperationResponse,
+  { ids: number[]; tags: string[]; operation: "add" | "remove" }
+>((dto) => annixRepApi.prospects.bulkTagOperation(dto), [annixRepKeys.prospects.all]);
+
+export const useBulkAssignProspects = createMutationHook<
+  { updated: number; updatedIds: number[] },
+  { ids: number[]; assignedToId: number | null }
+>(
+  ({ ids, assignedToId }) => annixRepApi.prospects.bulkAssign(ids, assignedToId),
+  [annixRepKeys.prospects.all],
+);
+
+export const useRecalculateProspectScores = createMutationHook<{ updated: number }, void>(
+  () => annixRepApi.prospects.recalculateScores(),
+  [annixRepKeys.prospects.all],
+);
+
+export const useProspectActivities = createQueryHook(
+  (id: number, limit?: number) => annixRepKeys.prospects.activities(id, limit),
+  (id: number, limit?: number) => annixRepApi.prospects.activities(id, limit),
+  { enabled: (id: number) => id > 0 },
+);
+
+export const useCustomFields = createQueryHook(
+  (includeInactive: boolean) => annixRepKeys.customFields.list(includeInactive),
+  (includeInactive: boolean) => annixRepApi.customFields.list(includeInactive),
+  { ...cacheConfig.static },
+);
+
+export const useCustomField = createQueryHook(
+  (id: number) => annixRepKeys.customFields.detail(id),
+  (id: number) => annixRepApi.customFields.detail(id),
+  { enabled: (id: number) => id > 0, ...cacheConfig.static },
+);
+
+export const useCreateCustomField = createMutationHook<unknown, CreateCustomFieldDto>(
+  (dto) => annixRepApi.customFields.create(dto),
+  [annixRepKeys.customFields.all],
+);
+
+export const useUpdateCustomField = createMutationHook<
+  unknown,
+  { id: number; dto: UpdateCustomFieldDto }
+>(
+  ({ id, dto }) => annixRepApi.customFields.update(id, dto),
+  (_data, { id }) => [annixRepKeys.customFields.detail(id), annixRepKeys.customFields.list()],
+);
+
+export const useDeleteCustomField = createMutationHook<void, number>(
+  (id) => annixRepApi.customFields.delete(id),
+  [annixRepKeys.customFields.all],
+);
+
+export const useReorderCustomFields = createMutationHook<CustomFieldDefinition[], number[]>(
+  (orderedIds) => annixRepApi.customFields.reorder(orderedIds),
+  [annixRepKeys.customFields.all],
+);
+
+export const useMeetings = createArrayQueryHook<Meeting>(annixRepKeys.meetings.list, () =>
+  annixRepApi.meetings.list(),
+);
+
+export const useTodaysMeetings = createArrayQueryHook<Meeting>(
+  annixRepKeys.meetings.today,
+  () => annixRepApi.meetings.today(),
+  { ...cacheConfig.timeSensitive },
+);
+
+export const useUpcomingMeetings = createArrayQueryHook<Meeting, [number | undefined]>(
+  annixRepKeys.meetings.upcoming,
+  (days) => annixRepApi.meetings.upcoming(days),
+);
+
+export const useMeeting = createQueryHook<Meeting, [number]>(
+  annixRepKeys.meetings.detail,
+  (id) => annixRepApi.meetings.detail(id),
+  { enabled: (id) => id > 0 },
+);
+
+export const useCreateMeeting = createMutationHook<Meeting, CreateMeetingDto>(
+  (dto) => annixRepApi.meetings.create(dto),
+  [annixRepKeys.meetings.all, annixRepKeys.dashboard.all],
+);
+
+export const useStartMeeting = createMutationHook<Meeting, number>(
+  (id) => annixRepApi.meetings.start(id),
+  (_data, id) => [annixRepKeys.meetings.detail(id), annixRepKeys.meetings.all],
+);
+
+export const useEndMeeting = createMutationHook<
+  Meeting,
+  { id: number; notes?: string; outcomes?: string }
+>(
+  ({ id, notes, outcomes }) => annixRepApi.meetings.end(id, notes, outcomes),
+  (_data, { id }) => [
+    annixRepKeys.meetings.detail(id),
+    annixRepKeys.meetings.all,
+    annixRepKeys.dashboard.all,
+  ],
+);
+
+export const useCancelMeeting = createMutationHook<Meeting, number>(
+  (id) => annixRepApi.meetings.cancel(id),
+  [annixRepKeys.meetings.all, annixRepKeys.dashboard.all],
+);
+
+export const useRescheduleMeeting = createMutationHook<
+  Meeting,
+  { id: number; dto: RescheduleMeetingDto }
+>(
+  ({ id, dto }) => annixRepApi.meetings.reschedule(id, dto),
+  [annixRepKeys.meetings.all, annixRepKeys.dashboard.all],
+);
+
+export const useCreateRecurringMeeting = createMutationHook<Meeting, CreateRecurringMeetingDto>(
+  (dto) => annixRepApi.meetings.createRecurring(dto),
+  [annixRepKeys.meetings.all, annixRepKeys.dashboard.all],
+);
+
+export const useExpandedRecurringMeetings = createArrayQueryHook<Meeting, [string, string]>(
+  annixRepKeys.meetings.expandedRecurring,
+  (startDate, endDate) => annixRepApi.meetings.expandedRecurring(startDate, endDate),
+  { enabled: (startDate, endDate) => !!startDate && !!endDate },
+);
+
+export const useSeriesInstances = createArrayQueryHook<Meeting, [number]>(
+  annixRepKeys.meetings.seriesInstances,
+  (parentId) => annixRepApi.meetings.seriesInstances(parentId),
+  { enabled: (parentId) => parentId > 0 },
+);
+
+export const useUpdateRecurringMeeting = createMutationHook<
+  Meeting,
+  { id: number; dto: UpdateRecurringMeetingDto }
+>(
+  ({ id, dto }) => annixRepApi.meetings.updateRecurring(id, dto),
+  [annixRepKeys.meetings.all, annixRepKeys.dashboard.all],
+);
+
+export const useDeleteRecurringMeeting = createMutationHook<
+  void,
+  { id: number; dto: DeleteRecurringMeetingDto }
+>(
+  ({ id, dto }) => annixRepApi.meetings.deleteRecurring(id, dto),
+  [annixRepKeys.meetings.all, annixRepKeys.dashboard.all],
+);
+
+export const useVisits = createArrayQueryHook<Visit>(annixRepKeys.visits.list, () =>
+  annixRepApi.visits.list(),
+);
+
+export const useTodaysVisits = createArrayQueryHook<Visit>(
+  annixRepKeys.visits.today,
+  () => annixRepApi.visits.today(),
+  { ...cacheConfig.timeSensitive },
+);
+
+export const useProspectVisits = createArrayQueryHook<Visit, [number]>(
+  annixRepKeys.visits.byProspect,
+  (prospectId) => annixRepApi.visits.byProspect(prospectId),
+  { enabled: (prospectId) => prospectId > 0 },
+);
+
+export const useCreateVisit = createMutationHook<Visit, CreateVisitDto>(
+  (dto) => annixRepApi.visits.create(dto),
+  [annixRepKeys.visits.all, annixRepKeys.dashboard.all],
+);
+
+export const useCheckIn = createMutationHook<
+  Visit,
+  { id: number; latitude: number; longitude: number }
+>(
+  ({ id, latitude, longitude }) => annixRepApi.visits.checkIn(id, latitude, longitude),
+  [annixRepKeys.visits.all],
+);
+
+export const useCheckOut = createMutationHook<
+  Visit,
+  { id: number; latitude: number; longitude: number; outcome?: VisitOutcome; notes?: string }
+>(
+  ({ id, latitude, longitude, outcome, notes }) =>
+    annixRepApi.visits.checkOut(id, latitude, longitude, outcome, notes),
+  [annixRepKeys.visits.all],
+);
+
+export const useAnalyticsSummary = createQueryHook<AnalyticsSummary>(
+  annixRepKeys.analytics.summary,
+  () => annixRepApi.analytics.summary(),
+  { ...cacheConfig.analytics },
+);
+
+export const useMeetingsOverTime = createArrayQueryHook<
+  MeetingsOverTime,
+  ["week" | "month" | undefined, number | undefined]
+>(
+  annixRepKeys.analytics.meetingsOverTime,
+  (period, count) => annixRepApi.analytics.meetingsOverTime(period, count),
+  { ...cacheConfig.analytics },
+);
+
+export const useProspectFunnel = createArrayQueryHook<ProspectFunnel>(
+  annixRepKeys.analytics.prospectFunnel,
+  () => annixRepApi.analytics.prospectFunnel(),
+  { ...cacheConfig.analytics },
+);
+
+export const useWinLossRateTrends = createArrayQueryHook<WinLossRateTrend, [number | undefined]>(
+  annixRepKeys.analytics.winLossRateTrends,
+  (months) => annixRepApi.analytics.winLossRateTrends(months),
+  { ...cacheConfig.analytics },
+);
+
+export const useActivityHeatmap = createArrayQueryHook<ActivityHeatmapCell>(
+  annixRepKeys.analytics.activityHeatmap,
+  () => annixRepApi.analytics.activityHeatmap(),
+  { ...cacheConfig.analytics },
+);
+
+export const useRevenuePipeline = createArrayQueryHook<RevenuePipeline>(
+  annixRepKeys.analytics.revenuePipeline,
+  () => annixRepApi.analytics.revenuePipeline(),
+  { ...cacheConfig.analytics },
+);
+
+export const useTopProspects = createArrayQueryHook<TopProspect, [number | undefined]>(
+  annixRepKeys.analytics.topProspects,
+  (limit) => annixRepApi.analytics.topProspects(limit),
+  { ...cacheConfig.analytics },
+);
+
+export const useSalesGoals = createArrayQueryHook<SalesGoal>(
+  annixRepKeys.goals.list,
+  () => annixRepApi.goals.list(),
+  { ...cacheConfig.goals },
+);
+
+export const useSalesGoalByPeriod = createQueryHook<SalesGoal, [GoalPeriod]>(
+  annixRepKeys.goals.byPeriod,
+  (period) => annixRepApi.goals.byPeriod(period),
+  { ...cacheConfig.goals },
+);
+
+export const useGoalProgress = createQueryHook<GoalProgress, [GoalPeriod]>(
+  annixRepKeys.goals.progress,
+  (period) => annixRepApi.goals.progress(period),
+  { ...cacheConfig.goals },
+);
+
+export const useCreateOrUpdateGoal = createMutationHook<SalesGoal, CreateGoalDto>(
+  (dto) => annixRepApi.goals.createOrUpdate(dto),
+  (_data, dto) => [annixRepKeys.goals.all, annixRepKeys.goals.progress(dto.period)],
+);
+
+export const useUpdateGoal = createMutationHook<
+  SalesGoal,
+  { period: GoalPeriod; dto: UpdateGoalDto }
+>(
+  ({ period, dto }) => annixRepApi.goals.update(period, dto),
+  (_data, { period }) => [
+    annixRepKeys.goals.all,
+    annixRepKeys.goals.byPeriod(period),
+    annixRepKeys.goals.progress(period),
+  ],
+);
+
+export const useDeleteGoal = createMutationHook<void, GoalPeriod>(
+  (period) => annixRepApi.goals.delete(period),
+  [annixRepKeys.goals.all],
+);
+
+export const useBookingLinks = createArrayQueryHook<BookingLink>(
+  annixRepKeys.bookingLinks.list,
+  () => annixRepApi.bookingLinks.list(),
+);
+
+export const useBookingLink = createQueryHook<BookingLink, [number]>(
+  annixRepKeys.bookingLinks.detail,
+  (id) => annixRepApi.bookingLinks.detail(id),
+  { enabled: (id) => id > 0 },
+);
+
+export const useCreateBookingLink = createMutationHook<BookingLink, CreateBookingLinkDto>(
+  (dto) => annixRepApi.bookingLinks.create(dto),
+  [annixRepKeys.bookingLinks.all],
+);
+
+export const useUpdateBookingLink = createMutationHook<
+  BookingLink,
+  { id: number; dto: UpdateBookingLinkDto }
+>(
+  ({ id, dto }) => annixRepApi.bookingLinks.update(id, dto),
+  (_data, { id }) => [annixRepKeys.bookingLinks.all, annixRepKeys.bookingLinks.detail(id)],
+);
+
+export const useDeleteBookingLink = createMutationHook<void, number>(
+  (id) => annixRepApi.bookingLinks.delete(id),
+  [annixRepKeys.bookingLinks.all],
+);
+
+export const usePublicBookingLink = createQueryHook<PublicBookingLink, [string]>(
+  annixRepKeys.publicBooking.linkDetails,
+  (slug) => publicBookingApi.linkDetails(slug),
+  { enabled: (slug) => !!slug },
+);
+
+export const useBookingAvailability = createArrayQueryHook<AvailableSlot, [string, string]>(
+  annixRepKeys.publicBooking.availability,
+  (slug, date) => publicBookingApi.availability(slug, date),
+  { enabled: (slug, date) => !!slug && !!date, ...cacheConfig.timeSensitive },
+);
+
+export const useBookSlot = createMutationHook<
+  BookingConfirmation,
+  { slug: string; dto: BookSlotDto }
+>(({ slug, dto }) => publicBookingApi.bookSlot(slug, dto));
