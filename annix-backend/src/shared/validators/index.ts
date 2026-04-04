@@ -18,3 +18,11 @@ export {
   Psl2RequiresCvn,
   Psl2RequiresCvnConstraint,
 } from "./rfq-compliance.validator";
+export {
+  IsZACompanyRegNumber,
+  IsZACompanyRegNumberConstraint,
+  IsZAIdNumber,
+  IsZAIdNumberConstraint,
+  IsZAVatNumber,
+  IsZAVatNumberConstraint,
+} from "./south-african.validator";
