@@ -2,11 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { useToast } from "@/app/components/Toast";
+import { MonthYearPicker } from "@/app/components/ui/MonthYearPicker";
 import { auRubberApiClient } from "@/app/lib/api/auRubberApi";
 import { DateTime } from "@/app/lib/datetime";
 import { AccountsSummaryTable } from "../../../components/accounting/AccountsSummaryTable";
 import { AccountsTable } from "../../../components/accounting/AccountsTable";
-import { MonthYearPicker } from "../../../components/accounting/MonthYearPicker";
 import { Breadcrumb } from "../../../components/Breadcrumb";
 import { RequirePermission } from "../../../components/RequirePermission";
 import { PAGE_PERMISSIONS } from "../../../config/pagePermissions";
@@ -100,7 +100,12 @@ export default function AccountsReceivablePage() {
             Accounts Receivable
           </h1>
           <div className="flex items-center gap-3">
-            <MonthYearPicker year={year} month={month} onChange={handlePeriodChange} />
+            <MonthYearPicker
+              year={year}
+              month={month}
+              onChange={handlePeriodChange}
+              focusRingClassName="focus:ring-yellow-400"
+            />
             <button
               onClick={handleGeneratePdf}
               disabled={isGenerating || !data || data.companies.length === 0}
