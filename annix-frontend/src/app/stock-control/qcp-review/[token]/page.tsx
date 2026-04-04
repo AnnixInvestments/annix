@@ -356,11 +356,24 @@ export default function QcpReviewPage() {
   if (!plan || !details) return null;
 
   const roleLabelMap: Record<string, string> = {
-    mps: "Polymer Customer",
+    mps: "Customer",
     client: "Client",
     third_party: "3rd Party",
   };
-  const roleLabel = roleLabelMap[details.token.partyRole] || "Client";
+  const roleLabel = roleLabelMap[details.token.partyRole] || "Customer";
+
+  const activeParties = (plan.activeParties as string[] | null) || [
+    "pls",
+    "mps",
+    "client",
+    "thirdParty",
+  ];
+  const partyLabelMap: Record<string, string> = {
+    pls: "PLS",
+    mps: plan.customerName || "MPS",
+    client: "Client",
+    thirdParty: "3rd Party",
+  };
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-6">
@@ -440,18 +453,18 @@ export default function QcpReviewPage() {
                 <th className="w-24 px-2 py-2 text-left text-xs font-medium uppercase text-gray-500">
                   Doc
                 </th>
-                <th className="w-20 px-2 py-2 text-center text-xs font-medium uppercase text-gray-500">
-                  PLS
-                </th>
-                <th className="w-20 px-2 py-2 text-center text-xs font-medium uppercase text-gray-500">
-                  MPS
-                </th>
-                <th
-                  className="w-28 px-2 py-2 text-center text-xs font-medium uppercase"
-                  style={{ color: primaryColor }}
-                >
-                  {roleLabel}
-                </th>
+                {activeParties.map((p) => {
+                  const isReviewerCol = p === partyKey;
+                  return (
+                    <th
+                      key={p}
+                      className={`w-20 px-2 py-2 text-center text-xs font-medium uppercase ${isReviewerCol ? "" : "text-gray-500"}`}
+                      style={isReviewerCol ? { color: primaryColor } : undefined}
+                    >
+                      {partyLabelMap[p] || p}
+                    </th>
+                  );
+                })}
                 <th className="w-40 px-2 py-2 text-left text-xs font-medium uppercase text-gray-500">
                   Remarks
                 </th>
@@ -472,45 +485,58 @@ export default function QcpReviewPage() {
                     <td className="px-2 py-1.5 text-xs text-gray-500">
                       {activity.documentation || "-"}
                     </td>
-                    <td className="px-2 py-1.5 text-center">
-                      <span className="font-medium text-gray-600">
-                        {activity.pls.interventionType || "-"}
-                      </span>
-                    </td>
-                    <td className="px-2 py-1.5 text-center">
-                      <span className="font-medium text-gray-600">
-                        {activity.mps.interventionType || "-"}
-                      </span>
-                    </td>
-                    <td className="px-1 py-1.5">
-                      <div className="flex items-center justify-center gap-1">
-                        <select
-                          value={so?.interventionType || ""}
-                          onChange={(e) =>
-                            updateIntervention(idx, (e.target.value as InterventionType) || null)
-                          }
-                          className="w-11 rounded border border-gray-300 px-0.5 py-1 text-center text-xs"
-                          style={{
-                            borderColor: so?.interventionType ? primaryColor : undefined,
-                          }}
-                        >
-                          <option value="">-</option>
-                          {INTERVENTION_TYPES.map((t) => (
-                            <option key={t} value={t}>
-                              {t} - {INTERVENTION_LABELS[t]}
-                            </option>
-                          ))}
-                        </select>
-                        <input
-                          type="text"
-                          value={so?.initial || ""}
-                          onChange={(e) => updateInitial(idx, e.target.value)}
-                          maxLength={5}
-                          placeholder="init"
-                          className="w-12 rounded border border-gray-300 px-1 py-1 text-center text-xs"
-                        />
-                      </div>
-                    </td>
+                    {activeParties.map((p) => {
+                      const isReviewerCol = p === partyKey;
+                      const partyData = activity[p as keyof QcpActivity] as any;
+                      if (!isReviewerCol) {
+                        return (
+                          <td key={p} className="px-2 py-1.5 text-center">
+                            <span className="font-medium text-gray-600">
+                              {partyData?.interventionType || "-"}
+                            </span>
+                            {partyData?.initial && (
+                              <span className="ml-1 text-xs text-gray-400">
+                                {partyData.initial}
+                              </span>
+                            )}
+                          </td>
+                        );
+                      }
+                      return (
+                        <td key={p} className="px-1 py-1.5">
+                          <div className="flex items-center justify-center gap-1">
+                            <select
+                              value={so?.interventionType || ""}
+                              onChange={(e) =>
+                                updateIntervention(
+                                  idx,
+                                  (e.target.value as InterventionType) || null,
+                                )
+                              }
+                              className="w-11 rounded border border-gray-300 px-0.5 py-1 text-center text-xs"
+                              style={{
+                                borderColor: so?.interventionType ? primaryColor : undefined,
+                              }}
+                            >
+                              <option value="">-</option>
+                              {INTERVENTION_TYPES.map((t) => (
+                                <option key={t} value={t}>
+                                  {t} - {INTERVENTION_LABELS[t]}
+                                </option>
+                              ))}
+                            </select>
+                            <input
+                              type="text"
+                              value={so?.initial || ""}
+                              onChange={(e) => updateInitial(idx, e.target.value)}
+                              maxLength={5}
+                              placeholder="init"
+                              className="w-12 rounded border border-gray-300 px-1 py-1 text-center text-xs"
+                            />
+                          </div>
+                        </td>
+                      );
+                    })}
                     <td className="px-2 py-1.5">
                       <input
                         type="text"

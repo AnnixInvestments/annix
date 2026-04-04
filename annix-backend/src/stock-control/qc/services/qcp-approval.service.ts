@@ -634,7 +634,7 @@ export class QcpApprovalService {
     role: QcpPartyRole,
   ): string {
     const roleLabelLookup: Record<string, string> = {
-      mps: "Polymer Customer",
+      mps: "Customer",
       client: "Client",
       third_party: "3rd Party",
     };
