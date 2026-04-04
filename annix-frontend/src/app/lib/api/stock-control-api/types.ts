@@ -546,6 +546,7 @@ export interface RubberStockOption {
   compoundCode: string | null;
   quantityAvailable: number;
   name: string;
+  rollNumber: string | null;
 }
 
 export interface RubberPlyCombination {

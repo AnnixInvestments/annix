@@ -318,6 +318,7 @@ export interface StockRollInfo {
   color: string | null;
   compoundCode: string | null;
   quantityAvailable: number;
+  rollNumber?: string | null;
 }
 
 export interface StockQuery {

@@ -521,6 +521,7 @@ export class JobCardsController {
       compoundCode: item.compoundCode,
       quantityAvailable: item.quantity,
       name: item.name,
+      rollNumber: item.rollNumber || null,
     }));
 
     const availableThicknesses = [

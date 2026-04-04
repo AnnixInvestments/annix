@@ -262,12 +262,14 @@ function OffcutList({
   thicknessMm,
   color,
   userRole,
+  rollNumber,
 }: {
   offcuts: Offcut[];
   jobCardId?: number;
   thicknessMm?: number;
   color?: string | null;
   userRole?: string | null;
+  rollNumber?: string | null;
 }) {
   const [wastageIdx, setWastageIdx] = useState<number | null>(null);
   const [wastageSG, setWastageSG] = useState<number>(1.5);
@@ -323,6 +325,7 @@ function OffcutList({
           lengthMm: offcut.lengthMm,
           thicknessMm,
           color: color || null,
+          rollNumber: rollNumber || null,
         })),
       });
       setReturnedToStock((prev) => new Set([...prev, ...unmarkedOffcuts.map(({ idx }) => idx)]));
@@ -442,6 +445,7 @@ function CuttingDiagram({
   jobCardId,
   rubberColor,
   userRole,
+  rollNumber,
 }: {
   roll: RollAllocation;
   colorMap: Map<string, string>;
@@ -450,6 +454,7 @@ function CuttingDiagram({
   jobCardId?: number;
   rubberColor?: string | null;
   userRole?: string | null;
+  rollNumber?: string | null;
 }) {
   const rollLengthMm = roll.rollSpec.lengthM * 1000;
   const rollWidthMm = roll.rollSpec.widthMm;
@@ -667,6 +672,7 @@ function CuttingDiagram({
         thicknessMm={thicknessMm}
         color={rubberColor}
         userRole={userRole}
+        rollNumber={rollNumber}
       />
     </div>
   );
@@ -734,6 +740,17 @@ function PipeCuttingView({
       { map: new Map<string, string>(), idx: 0 },
     ).map;
 
+  const rollNumberForAllocation = (roll: RollAllocation): string | null => {
+    if (!stockRolls || stockRolls.length === 0) return null;
+    const thickness = roll.plyThicknessMm || plan.totalThicknessMm || 0;
+    const matching = stockRolls.filter((sr) => sr.thicknessMm === thickness);
+    if (matching.length === 1) return matching[0].rollNumber || null;
+    if (matching.length > 1 && roll.rollIndex < matching.length) {
+      return matching[roll.rollIndex].rollNumber || null;
+    }
+    return null;
+  };
+
   const groupableRolls = plan.rolls.filter(isGroupableRoll);
   const individualRolls = plan.rolls.filter((r) => !isGroupableRoll(r));
 
@@ -781,6 +798,7 @@ function PipeCuttingView({
             jobCardId={jobCardId}
             rubberColor={plan.rubberSpec?.color}
             userRole={userRole}
+            rollNumber={rollNumberForAllocation(group.representativeRoll)}
           />
         ))}
         {individualRolls.map((roll) => (
@@ -792,6 +810,7 @@ function PipeCuttingView({
             jobCardId={jobCardId}
             rubberColor={plan.rubberSpec?.color}
             userRole={userRole}
+            rollNumber={rollNumberForAllocation(roll)}
           />
         ))}
       </div>
@@ -1494,6 +1513,7 @@ function RubberAllocationSection({
             color: s.color,
             compoundCode: s.compoundCode,
             quantityAvailable: s.quantityAvailable,
+            rollNumber: s.rollNumber || null,
           })),
       }
     : null;
