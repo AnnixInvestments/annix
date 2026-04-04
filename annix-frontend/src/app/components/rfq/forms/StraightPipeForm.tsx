@@ -71,6 +71,7 @@ import {
   type FlangeTypeItem,
   type PressureClassItem,
   type SteelSpecItem,
+  SurfaceAreaDisplay,
   useGroupedSteelOptions,
 } from "./shared";
 
@@ -3655,52 +3656,30 @@ function StraightPipeFormComponent({
                       });
                       const numPipes = entry.calculation?.calculatedPipeCount || 0;
                       return (
-                        <div className="flex gap-2">
-                          <div className="flex-1 bg-indigo-50 p-2 rounded text-center border border-indigo-200">
-                            <p className="text-xs text-indigo-700 font-medium">External m²</p>
-                            <p className="text-lg font-bold text-indigo-900">
-                              {surfaceAreaResult.total.totalExternalAreaM2.toFixed(2)}
-                            </p>
-                            <div className="text-xs text-indigo-600 mt-1 text-left">
-                              <p>
-                                Pipe:{" "}
-                                {(surfaceAreaResult.perPipe.externalPipeAreaM2 * numPipes).toFixed(
-                                  3,
-                                )}
-                              </p>
-                              {surfaceAreaResult.perPipe.externalFlangeBackAreaM2 > 0 && (
-                                <p>
-                                  Flanges:{" "}
-                                  {(
-                                    surfaceAreaResult.perPipe.externalFlangeBackAreaM2 * numPipes
-                                  ).toFixed(3)}
-                                </p>
-                              )}
-                            </div>
-                          </div>
-                          <div className="flex-1 bg-cyan-50 p-2 rounded text-center border border-cyan-200">
-                            <p className="text-xs text-cyan-700 font-medium">Internal m²</p>
-                            <p className="text-lg font-bold text-cyan-900">
-                              {surfaceAreaResult.total.totalInternalAreaM2.toFixed(2)}
-                            </p>
-                            <div className="text-xs text-cyan-600 mt-1 text-left">
-                              <p>
-                                Pipe:{" "}
-                                {(surfaceAreaResult.perPipe.internalPipeAreaM2 * numPipes).toFixed(
-                                  3,
-                                )}
-                              </p>
-                              {surfaceAreaResult.perPipe.internalFlangeFaceAreaM2 > 0 && (
-                                <p>
-                                  Flanges:{" "}
-                                  {(
-                                    surfaceAreaResult.perPipe.internalFlangeFaceAreaM2 * numPipes
-                                  ).toFixed(3)}
-                                </p>
-                              )}
-                            </div>
-                          </div>
-                        </div>
+                        <SurfaceAreaDisplay
+                          externalTotal={surfaceAreaResult.total.totalExternalAreaM2}
+                          internalTotal={surfaceAreaResult.total.totalInternalAreaM2}
+                          externalBreakdown={[
+                            {
+                              label: "Pipe",
+                              value: surfaceAreaResult.perPipe.externalPipeAreaM2 * numPipes,
+                            },
+                            {
+                              label: "Flanges",
+                              value: surfaceAreaResult.perPipe.externalFlangeBackAreaM2 * numPipes,
+                            },
+                          ]}
+                          internalBreakdown={[
+                            {
+                              label: "Pipe",
+                              value: surfaceAreaResult.perPipe.internalPipeAreaM2 * numPipes,
+                            },
+                            {
+                              label: "Flanges",
+                              value: surfaceAreaResult.perPipe.internalFlangeFaceAreaM2 * numPipes,
+                            },
+                          ]}
+                        />
                       );
                     })()}
                 </div>

@@ -560,6 +560,8 @@ export default function JobCardDetailPage() {
       (bg) => bg.stepKey === "qa_review" && bg.completedAt === null,
     );
 
+    const isAdminView = userRole === "admin" && !isPreviewActive;
+
     const allActionable = backgroundSteps.filter((bg) => {
       if (bg.completedAt !== null) return false;
 
@@ -568,17 +570,20 @@ export default function JobCardDetailPage() {
       }
 
       const trigger = bg.triggerAfterStep || "__root__";
-      const originFgIdx = resolveOriginFgIdx(trigger);
-      const isColored = isInColoredBranch(bg.stepKey);
-      if (isColored ? originFgIdx > currentFgIdx : originFgIdx >= currentFgIdx) return false;
 
-      if (hasIncompleteColored && !isInColoredBranch(bg.stepKey)) {
-        const originKey = fgKeys[resolveOriginFgIdx(trigger)];
-        const coloredOrigin =
-          coloredSteps.length > 0
-            ? fgKeys[resolveOriginFgIdx(coloredSteps[0].triggerAfterStep || "__root__")]
-            : null;
-        if (originKey === coloredOrigin) return false;
+      if (!isAdminView) {
+        const originFgIdx = resolveOriginFgIdx(trigger);
+        const isColored = isInColoredBranch(bg.stepKey);
+        if (isColored ? originFgIdx > currentFgIdx : originFgIdx >= currentFgIdx) return false;
+
+        if (hasIncompleteColored && !isInColoredBranch(bg.stepKey)) {
+          const originKey = fgKeys[resolveOriginFgIdx(trigger)];
+          const coloredOrigin =
+            coloredSteps.length > 0
+              ? fgKeys[resolveOriginFgIdx(coloredSteps[0].triggerAfterStep || "__root__")]
+              : null;
+          if (originKey === coloredOrigin) return false;
+        }
       }
 
       if (bgKeySet.has(trigger) && !completedKeys.has(trigger)) return false;
@@ -597,7 +602,6 @@ export default function JobCardDetailPage() {
 
       const assigned = assignments[bg.stepKey];
       if (!assigned || assigned.length === 0) return false;
-      const isAdminView = userRole === "admin" && !isPreviewActive;
       if (!isAdminView && !assigned.some((u) => u.name === checkName)) {
         return false;
       }
@@ -605,7 +609,7 @@ export default function JobCardDetailPage() {
       return true;
     });
 
-    if (allActionable.length <= 1) return allActionable;
+    if (isAdminView || allActionable.length <= 1) return allActionable;
 
     const firstOriginIdx = resolveOriginFgIdx(allActionable[0].triggerAfterStep || "__root__");
 

@@ -76,7 +76,9 @@ import {
   type FlangeStandardItem,
   type PressureClassItem,
   type SteelSpecItem,
+  SurfaceAreaDisplay,
   useGroupedSteelOptions,
+  WeldSummaryCard,
 } from "./shared";
 
 type ScheduleItem = {
@@ -4260,31 +4262,20 @@ function FittingFormComponent({
                             </div>
                           )}
 
-                          <div className="bg-fuchsia-100 dark:bg-fuchsia-900/40 p-2 rounded text-center">
-                            <p className="text-xs text-fuchsia-600 dark:text-fuchsia-400 font-medium">
-                              Weld Summary
-                            </p>
-                            <p className="text-lg font-bold text-fuchsia-900 dark:text-fuchsia-100">
-                              {(totalWeldMm / 1000).toFixed(2)}
-                            </p>
-                            <p className="text-xs text-fuchsia-600 dark:text-fuchsia-400">
-                              l/m total
-                            </p>
-                            <div className="mt-1 text-xs text-fuchsia-500 dark:text-fuchsia-400">
-                              <p>Large End: {largeEndWeldMm.toFixed(0)}mm</p>
-                              <p>Small End: {smallEndWeldMm.toFixed(0)}mm</p>
-                              {hasStub && stubJunctionWeldMm > 0 && (
-                                <p className="text-orange-600">
-                                  Stub Junction: {stubJunctionWeldMm.toFixed(0)}mm
-                                </p>
-                              )}
-                              {hasStub && stubFlangeWeldMm > 0 && (
-                                <p className="text-orange-600">
-                                  Stub Flange: {stubFlangeWeldMm.toFixed(0)}mm
-                                </p>
-                              )}
-                            </div>
-                          </div>
+                          <WeldSummaryCard totalLinearMm={totalWeldMm}>
+                            <p>Large End: {largeEndWeldMm.toFixed(0)}mm</p>
+                            <p>Small End: {smallEndWeldMm.toFixed(0)}mm</p>
+                            {hasStub && stubJunctionWeldMm > 0 && (
+                              <p className="text-orange-600">
+                                Stub Junction: {stubJunctionWeldMm.toFixed(0)}mm
+                              </p>
+                            )}
+                            {hasStub && stubFlangeWeldMm > 0 && (
+                              <p className="text-orange-600">
+                                Stub Flange: {stubFlangeWeldMm.toFixed(0)}mm
+                              </p>
+                            )}
+                          </WeldSummaryCard>
                         </div>
                       );
                     }
@@ -5002,59 +4993,50 @@ function FittingFormComponent({
                             : "Tee Junction";
 
                           return (
-                            <div className="bg-fuchsia-100 dark:bg-fuchsia-900/40 p-2 rounded text-center">
-                              <p className="text-xs text-fuchsia-600 dark:text-fuchsia-400 font-medium">
-                                Weld Summary
-                              </p>
-                              {fittingWeldVolume && (
-                                <>
-                                  <p className="text-lg font-bold text-fuchsia-900 dark:text-fuchsia-100">
-                                    {(fittingWeldVolume.totalVolumeCm3 * quantity).toFixed(1)}
-                                  </p>
-                                  <p className="text-xs text-fuchsia-600 dark:text-fuchsia-400">
-                                    cm³ total
-                                  </p>
-                                </>
+                            <WeldSummaryCard
+                              totalVolumeCm3={
+                                fittingWeldVolume
+                                  ? fittingWeldVolume.totalVolumeCm3 * quantity
+                                  : undefined
+                              }
+                            >
+                              {!isGussetTee && teeJunctionWeldMm > 0 && (
+                                <p>
+                                  {junctionWeldLabel}: {teeJunctionWeldMm.toFixed(0)}mm @{" "}
+                                  {branchWeldThickness?.toFixed(1)}mm
+                                </p>
                               )}
-                              <div className="mt-1 text-xs text-fuchsia-500 dark:text-fuchsia-400">
-                                {!isGussetTee && teeJunctionWeldMm > 0 && (
-                                  <p>
-                                    {junctionWeldLabel}: {teeJunctionWeldMm.toFixed(0)}mm @{" "}
-                                    {branchWeldThickness?.toFixed(1)}mm
-                                  </p>
-                                )}
-                                {isGussetTee && gussetWeldLengthMm > 0 && (
-                                  <p>
-                                    2 × Gusset ({effectiveGussetSection.toFixed(0)}mm):{" "}
-                                    {gussetWeldLengthMm.toFixed(0)}mm @{" "}
-                                    {fittingWeldThickness?.toFixed(1)}mm
-                                  </p>
-                                )}
-                                {numFlanges > 0 && (
-                                  <p>
-                                    {numFlanges} × Flange (2×{mainCircMm.toFixed(0)}mm) @{" "}
-                                    {fittingWeldThickness?.toFixed(1)}mm
-                                  </p>
-                                )}
-                                {totalStubToMainWeldMm > 0 && (
-                                  <p className="text-orange-600">
-                                    Stub Junction ({stubsData.length}×):{" "}
-                                    {totalStubToMainWeldMm.toFixed(0)}mm
-                                  </p>
-                                )}
-                                {totalStubFlangeWeldMm > 0 && (
-                                  <p className="text-orange-600">
-                                    Stub Flanges ({stubFlangeCount}×2):{" "}
-                                    {totalStubFlangeWeldMm.toFixed(0)}mm
-                                  </p>
-                                )}
-                                {totalWeldLinearMm > 0 && (
-                                  <p className="font-medium mt-1">
-                                    {(totalWeldLinearMm / 1000).toFixed(2)} l/m total
-                                  </p>
-                                )}
-                              </div>
-                            </div>
+                              {isGussetTee && gussetWeldLengthMm > 0 && (
+                                <p>
+                                  2 × Gusset ({effectiveGussetSection.toFixed(0)}mm):{" "}
+                                  {gussetWeldLengthMm.toFixed(0)}mm @{" "}
+                                  {fittingWeldThickness?.toFixed(1)}mm
+                                </p>
+                              )}
+                              {numFlanges > 0 && (
+                                <p>
+                                  {numFlanges} × Flange (2×{mainCircMm.toFixed(0)}mm) @{" "}
+                                  {fittingWeldThickness?.toFixed(1)}mm
+                                </p>
+                              )}
+                              {totalStubToMainWeldMm > 0 && (
+                                <p className="text-orange-600">
+                                  Stub Junction ({stubsData.length}×):{" "}
+                                  {totalStubToMainWeldMm.toFixed(0)}mm
+                                </p>
+                              )}
+                              {totalStubFlangeWeldMm > 0 && (
+                                <p className="text-orange-600">
+                                  Stub Flanges ({stubFlangeCount}×2):{" "}
+                                  {totalStubFlangeWeldMm.toFixed(0)}mm
+                                </p>
+                              )}
+                              {totalWeldLinearMm > 0 && (
+                                <p className="font-medium mt-1">
+                                  {(totalWeldLinearMm / 1000).toFixed(2)} l/m total
+                                </p>
+                              )}
+                            </WeldSummaryCard>
                           );
                         })()}
 
@@ -5076,46 +5058,30 @@ function FittingFormComponent({
                               pressureClass: pressureClassDesignation,
                             });
                             return (
-                              <div className="flex gap-2">
-                                <div className="flex-1 bg-indigo-50 p-2 rounded text-center border border-indigo-200">
-                                  <p className="text-xs text-indigo-800 font-medium">External m²</p>
-                                  <p className="text-lg font-bold text-indigo-900">
-                                    {(surfaceArea.totalExternalAreaM2 * quantity).toFixed(2)}
-                                  </p>
-                                  <div className="text-xs text-indigo-600 mt-1 text-left">
-                                    <p>
-                                      Pipe: {(surfaceArea.externalPipeAreaM2 * quantity).toFixed(3)}
-                                    </p>
-                                    {surfaceArea.externalFlangeBackAreaM2 > 0 && (
-                                      <p>
-                                        Flanges:{" "}
-                                        {(surfaceArea.externalFlangeBackAreaM2 * quantity).toFixed(
-                                          3,
-                                        )}
-                                      </p>
-                                    )}
-                                  </div>
-                                </div>
-                                <div className="flex-1 bg-cyan-50 p-2 rounded text-center border border-cyan-200">
-                                  <p className="text-xs text-cyan-800 font-medium">Internal m²</p>
-                                  <p className="text-lg font-bold text-cyan-900">
-                                    {(surfaceArea.totalInternalAreaM2 * quantity).toFixed(2)}
-                                  </p>
-                                  <div className="text-xs text-cyan-600 mt-1 text-left">
-                                    <p>
-                                      Pipe: {(surfaceArea.internalPipeAreaM2 * quantity).toFixed(3)}
-                                    </p>
-                                    {surfaceArea.internalFlangeFaceAreaM2 > 0 && (
-                                      <p>
-                                        Flanges:{" "}
-                                        {(surfaceArea.internalFlangeFaceAreaM2 * quantity).toFixed(
-                                          3,
-                                        )}
-                                      </p>
-                                    )}
-                                  </div>
-                                </div>
-                              </div>
+                              <SurfaceAreaDisplay
+                                externalTotal={surfaceArea.totalExternalAreaM2 * quantity}
+                                internalTotal={surfaceArea.totalInternalAreaM2 * quantity}
+                                externalBreakdown={[
+                                  {
+                                    label: "Pipe",
+                                    value: surfaceArea.externalPipeAreaM2 * quantity,
+                                  },
+                                  {
+                                    label: "Flanges",
+                                    value: surfaceArea.externalFlangeBackAreaM2 * quantity,
+                                  },
+                                ]}
+                                internalBreakdown={[
+                                  {
+                                    label: "Pipe",
+                                    value: surfaceArea.internalPipeAreaM2 * quantity,
+                                  },
+                                  {
+                                    label: "Flanges",
+                                    value: surfaceArea.internalFlangeFaceAreaM2 * quantity,
+                                  },
+                                ]}
+                              />
                             );
                           })()}
                       </div>

@@ -74,6 +74,7 @@ import {
   type FlangeTypeItem,
   type PressureClassItem,
   type SteelSpecItem,
+  SurfaceAreaDisplay,
   useGroupedSteelOptions,
 } from "./shared";
 
@@ -5696,60 +5697,26 @@ function BendFormComponent(props: BendFormProps) {
                           const totalIntM2 = pipeIntM2 + totalFlangeIntM2;
 
                           return (
-                            <div className="flex gap-2">
-                              <div className="flex-1 bg-indigo-100 dark:bg-indigo-900/40 p-2 rounded text-center">
-                                <p className="text-xs text-indigo-600 dark:text-indigo-400 font-medium">
-                                  External m²
-                                </p>
-                                <p className="text-lg font-bold text-indigo-900 dark:text-indigo-100">
-                                  {(totalExtM2 * bendQuantity).toFixed(2)}
-                                </p>
-                                <div className="text-xs text-indigo-500 dark:text-indigo-400 mt-1 text-left">
-                                  <p>Bend: {bendExtM2.toFixed(3)}</p>
-                                  {tangentExtM2 > 0 && <p>Tangents: {tangentExtM2.toFixed(3)}</p>}
-                                  {pipeAExtM2 > 0 && <p>Pipe A: {pipeAExtM2.toFixed(3)}</p>}
-                                  {stub1ExtM2 > 0 && (
-                                    <p>
-                                      Stub ({stub1NB}NB): {stub1ExtM2.toFixed(3)}
-                                    </p>
-                                  )}
-                                  {stub2ExtM2 > 0 && (
-                                    <p>
-                                      Stub ({stub2NB}NB): {stub2ExtM2.toFixed(3)}
-                                    </p>
-                                  )}
-                                  {totalFlangeExtM2 > 0 && (
-                                    <p>Flanges: {totalFlangeExtM2.toFixed(3)}</p>
-                                  )}
-                                </div>
-                              </div>
-                              <div className="flex-1 bg-cyan-100 dark:bg-cyan-900/40 p-2 rounded text-center">
-                                <p className="text-xs text-cyan-600 dark:text-cyan-400 font-medium">
-                                  Internal m²
-                                </p>
-                                <p className="text-lg font-bold text-cyan-900 dark:text-cyan-100">
-                                  {(totalIntM2 * bendQuantity).toFixed(2)}
-                                </p>
-                                <div className="text-xs text-cyan-500 dark:text-cyan-400 mt-1 text-left">
-                                  <p>Bend: {bendIntM2.toFixed(3)}</p>
-                                  {tangentIntM2 > 0 && <p>Tangents: {tangentIntM2.toFixed(3)}</p>}
-                                  {pipeAIntM2 > 0 && <p>Pipe A: {pipeAIntM2.toFixed(3)}</p>}
-                                  {stub1IntM2 > 0 && (
-                                    <p>
-                                      Stub ({stub1NB}NB): {stub1IntM2.toFixed(3)}
-                                    </p>
-                                  )}
-                                  {stub2IntM2 > 0 && (
-                                    <p>
-                                      Stub ({stub2NB}NB): {stub2IntM2.toFixed(3)}
-                                    </p>
-                                  )}
-                                  {totalFlangeIntM2 > 0 && (
-                                    <p>Flanges: {totalFlangeIntM2.toFixed(3)}</p>
-                                  )}
-                                </div>
-                              </div>
-                            </div>
+                            <SurfaceAreaDisplay
+                              externalTotal={totalExtM2 * bendQuantity}
+                              internalTotal={totalIntM2 * bendQuantity}
+                              externalBreakdown={[
+                                { label: "Bend", value: bendExtM2 },
+                                { label: "Tangents", value: tangentExtM2 },
+                                { label: "Pipe A", value: pipeAExtM2 },
+                                { label: `Stub (${stub1NB}NB)`, value: stub1ExtM2 },
+                                { label: `Stub (${stub2NB}NB)`, value: stub2ExtM2 },
+                                { label: "Flanges", value: totalFlangeExtM2 },
+                              ]}
+                              internalBreakdown={[
+                                { label: "Bend", value: bendIntM2 },
+                                { label: "Tangents", value: tangentIntM2 },
+                                { label: "Pipe A", value: pipeAIntM2 },
+                                { label: `Stub (${stub1NB}NB)`, value: stub1IntM2 },
+                                { label: `Stub (${stub2NB}NB)`, value: stub2IntM2 },
+                                { label: "Flanges", value: totalFlangeIntM2 },
+                              ]}
+                            />
                           );
                         })()}
                     </div>
