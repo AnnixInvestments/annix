@@ -14,6 +14,7 @@ import type {
 } from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { nowISO } from "@/app/lib/datetime";
+import { InitialsPad } from "@/app/stock-control/components/InitialsPad";
 import { SignaturePad } from "@/app/stock-control/components/SignaturePad";
 
 interface QcpFormProps {
@@ -425,6 +426,10 @@ export function QcpForm({ jobCardId, existingPlan, onSaved, onCancel }: QcpFormP
   const [approvalHistory, setApprovalHistory] = useState<QcpApprovalTokenRecord[]>([]);
   const [isSendingApproval, setIsSendingApproval] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [initialsTarget, setInitialsTarget] = useState<{
+    activityIdx: number;
+    party: PartyKey;
+  } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [signingPartyIndex, setSigningPartyIndex] = useState<number | null>(null);
   const [signingActivityKey, setSigningActivityKey] = useState<{
@@ -961,16 +966,14 @@ export function QcpForm({ jobCardId, existingPlan, onSaved, onCancel }: QcpFormP
                             </option>
                           ))}
                         </select>
-                        <input
-                          type="text"
-                          value={signOff.initial || ""}
-                          onChange={(e) =>
-                            updateActivityInitial(idx, partyKey, e.target.value || null)
-                          }
-                          className="w-12 rounded border border-gray-300 px-1 py-1 text-center text-xs"
-                          placeholder=""
+                        <button
+                          type="button"
+                          onClick={() => setInitialsTarget({ activityIdx: idx, party: partyKey })}
+                          className={`w-12 rounded border px-1 py-1 text-center text-xs ${signOff.initial ? "border-teal-300 bg-teal-50 font-medium text-teal-800" : "border-gray-300 text-gray-400 hover:border-teal-400 hover:bg-teal-50"}`}
                           title="Initial"
-                        />
+                        >
+                          {signOff.initial || "init"}
+                        </button>
                       </div>
                     </td>
                   );
@@ -1176,6 +1179,27 @@ export function QcpForm({ jobCardId, existingPlan, onSaved, onCancel }: QcpFormP
           {isSaving ? "Saving..." : isEditing ? "Update Plan" : "Create Plan"}
         </button>
       </div>
+
+      {initialsTarget &&
+        (() => {
+          const act = activities[initialsTarget.activityIdx];
+          const partyKey = initialsTarget.party;
+          const currentInitial = act?.[partyKey]?.initial || null;
+          return (
+            <InitialsPad
+              currentValue={currentInitial}
+              onSave={(text) => {
+                updateActivityInitial(
+                  initialsTarget.activityIdx,
+                  initialsTarget.party,
+                  text || null,
+                );
+                setInitialsTarget(null);
+              }}
+              onCancel={() => setInitialsTarget(null)}
+            />
+          );
+        })()}
     </div>
   );
 }

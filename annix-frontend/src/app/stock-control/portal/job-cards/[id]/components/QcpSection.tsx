@@ -9,6 +9,7 @@ import type {
   QcpPlanType,
 } from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
+import { InitialsPad } from "@/app/stock-control/components/InitialsPad";
 import { QcpForm } from "./QcpForm";
 
 interface QcpSectionProps {
@@ -151,7 +152,7 @@ function PartyCell(props: {
   party: PartyKey;
   editable: boolean;
   onChangeIntervention: (idx: number, party: PartyKey, value: InterventionType | null) => void;
-  onChangeInitial: (idx: number, party: PartyKey, value: string) => void;
+  onClickInitial: (idx: number, party: PartyKey) => void;
 }) {
   const so = props.activity[props.party];
   if (!props.editable) {
@@ -187,14 +188,13 @@ function PartyCell(props: {
             </option>
           ))}
         </select>
-        <input
-          type="text"
-          value={so.initial || ""}
-          onChange={(e) => props.onChangeInitial(props.activityIndex, props.party, e.target.value)}
-          maxLength={5}
-          placeholder="init"
-          className="w-10 rounded border border-gray-300 px-0.5 py-0.5 text-xs text-center text-gray-500 focus:border-teal-500 focus:ring-1 focus:ring-teal-500"
-        />
+        <button
+          type="button"
+          onClick={() => props.onClickInitial(props.activityIndex, props.party)}
+          className={`w-10 rounded border px-0.5 py-0.5 text-xs text-center ${so.initial ? "border-teal-300 bg-teal-50 font-medium text-teal-800" : "border-gray-300 text-gray-400 hover:border-teal-400 hover:bg-teal-50"}`}
+        >
+          {so.initial || "init"}
+        </button>
       </div>
     </td>
   );
@@ -209,6 +209,11 @@ export function QcpSection({ jobCardId }: QcpSectionProps) {
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [isAutoGenerating, setIsAutoGenerating] = useState(false);
+  const [initialsTarget, setInitialsTarget] = useState<{
+    planId: number;
+    activityIdx: number;
+    party: PartyKey;
+  } | null>(null);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const fetchPlans = useCallback(async () => {
@@ -564,8 +569,12 @@ export function QcpSection({ jobCardId }: QcpSectionProps) {
                                     onChangeIntervention={(idx, party, val) =>
                                       handlePartyInterventionChange(plan.id, idx, party, val)
                                     }
-                                    onChangeInitial={(idx, party, val) =>
-                                      handlePartyInitialChange(plan.id, idx, party, val)
+                                    onClickInitial={(idx, party) =>
+                                      setInitialsTarget({
+                                        planId: plan.id,
+                                        activityIdx: idx,
+                                        party,
+                                      })
                                     }
                                   />
                                 ))}
@@ -594,6 +603,26 @@ export function QcpSection({ jobCardId }: QcpSectionProps) {
             );
           })}
         </div>
+      )}
+
+      {initialsTarget && (
+        <InitialsPad
+          currentValue={
+            plans.find((p) => p.id === initialsTarget.planId)?.activities[
+              initialsTarget.activityIdx
+            ]?.[initialsTarget.party]?.initial || null
+          }
+          onSave={(text) => {
+            handlePartyInitialChange(
+              initialsTarget.planId,
+              initialsTarget.activityIdx,
+              initialsTarget.party,
+              text,
+            );
+            setInitialsTarget(null);
+          }}
+          onCancel={() => setInitialsTarget(null)}
+        />
       )}
     </div>
   );
