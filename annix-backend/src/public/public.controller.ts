@@ -1,5 +1,6 @@
 import { Controller, Get, HttpStatus } from "@nestjs/common";
 import { ApiOperation, ApiResponse, ApiTags } from "@nestjs/swagger";
+import { CURRENCIES, type Currency, DEFAULT_CURRENCY } from "../lib/reference-data/currencies";
 import { PublicStatsDto } from "./dto/public-stats.dto";
 import { PublicService } from "./public.service";
 
@@ -81,5 +82,19 @@ export class PublicController {
   async getSupplierCount(): Promise<{ count: number }> {
     const count = await this.publicService.getSupplierCount();
     return { count };
+  }
+
+  @Get("reference/currencies")
+  @ApiOperation({
+    summary: "List global currencies",
+    description:
+      "Returns the global currency reference list (ISO 4217 codes, names, symbols, countries). Used as a shared source of truth across apps so new clients do not re-duplicate the list.",
+  })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: "Currency list retrieved successfully",
+  })
+  referenceCurrencies(): { currencies: Currency[]; defaultCurrency: string } {
+    return { currencies: CURRENCIES, defaultCurrency: DEFAULT_CURRENCY };
   }
 }
