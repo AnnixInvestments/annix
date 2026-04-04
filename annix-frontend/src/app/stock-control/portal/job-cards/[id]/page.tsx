@@ -463,6 +463,18 @@ export default function JobCardDetailPage() {
     [isAdminView, workflowStatus, user?.name],
   );
 
+  const scrollToElementId = useCallback((elementId: string) => {
+    const tryScroll = (attempts: number) => {
+      const el = document.getElementById(elementId);
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "start" });
+      } else if (attempts > 0) {
+        setTimeout(() => tryScroll(attempts - 1), 150);
+      }
+    };
+    setTimeout(() => tryScroll(20), 100);
+  }, []);
+
   const pipingLossPct = profile?.pipingLossFactorPct || 45;
 
   const validLineItemCount = useMemo(
@@ -1344,7 +1356,10 @@ export default function JobCardDetailPage() {
                     coating.coatingAnalysis.coats.length > 0 &&
                     coating.coatingAnalysis.status !== "accepted" && (
                       <button
-                        onClick={() => handleTabChange("coating")}
+                        onClick={() => {
+                          handleTabChange("coating");
+                          scrollToElementId("coating-spec-review");
+                        }}
                         className="px-3 py-1.5 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-medium text-xs transition-colors"
                       >
                         Check Coating Spec
@@ -1353,7 +1368,10 @@ export default function JobCardDetailPage() {
                   {coating.coatingAnalysis?.hasInternalLining &&
                     coating.coatingAnalysis.status !== "accepted" && (
                       <button
-                        onClick={() => handleTabChange("rubber-analysis")}
+                        onClick={() => {
+                          handleTabChange("rubber-analysis");
+                          scrollToElementId("rubber-spec-review");
+                        }}
                         className="px-3 py-1.5 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-medium text-xs transition-colors"
                       >
                         Check Rubber Spec

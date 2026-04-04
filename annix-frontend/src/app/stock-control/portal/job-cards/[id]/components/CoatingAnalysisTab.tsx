@@ -287,7 +287,7 @@ export function CoatingAnalysisTab(props: CoatingAnalysisTabProps) {
       {coatingAnalysis &&
         (coatingAnalysis.status === "analysed" || coatingAnalysis.status === "accepted") &&
         coatingAnalysis.coats.length > 0 && (
-          <div className="mt-6 pt-4 border-t border-gray-200">
+          <div id="coating-spec-review" className="mt-6 pt-4 border-t border-gray-200">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center space-x-2">
                 <h4 className="text-sm font-medium text-gray-900">

@@ -1380,7 +1380,10 @@ function RubberSOHPanel({
         </div>
       )}
 
-      <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg mb-4">
+      <div
+        id="rubber-spec-review"
+        className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg mb-4"
+      >
         <span className="text-sm font-medium text-gray-700">Auto-generated cutting plan:</span>
         <div className="flex items-center gap-2 ml-auto">
           {planDecision === "accepted" ? (
