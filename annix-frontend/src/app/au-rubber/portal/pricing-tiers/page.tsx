@@ -1,12 +1,16 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import {
+  TableEmptyState,
+  TableIcons,
+  TableLoadingState,
+} from "@/app/components/shared/TableComponents";
 import { useToast } from "@/app/components/Toast";
 import { auRubberApiClient } from "@/app/lib/api/auRubberApi";
 import type { RubberCompanyDto, RubberPricingTierDto } from "@/app/lib/api/rubberPortalApi";
 import { Breadcrumb } from "../../components/Breadcrumb";
 import { ConfirmModal } from "../../components/ConfirmModal";
-import { TableEmptyState, TableIcons, TableLoadingState } from "../../components/TableComponents";
 
 export default function AuRubberPricingTiersPage() {
   const { showToast } = useToast();
@@ -137,13 +141,20 @@ export default function AuRubberPricingTiersPage() {
 
       <div className="bg-white shadow rounded-lg overflow-hidden">
         {isLoading ? (
-          <TableLoadingState message="Loading pricing tiers..." />
+          <TableLoadingState
+            message="Loading pricing tiers..."
+            spinnerClassName="border-b-2 border-yellow-600"
+          />
         ) : tiers.length === 0 ? (
           <TableEmptyState
             icon={<TableIcons.currency />}
             title="No pricing tiers found"
             subtitle="Get started by adding your first pricing tier."
-            action={{ label: "Add Pricing Tier", onClick: openNewModal }}
+            action={{
+              label: "Add Pricing Tier",
+              onClick: openNewModal,
+              className: "text-white bg-yellow-600 hover:bg-yellow-700",
+            }}
           />
         ) : (
           <table className="min-w-full divide-y divide-gray-200">

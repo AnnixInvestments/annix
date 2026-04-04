@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef } from "react";
+import { useDisclosure } from "@/app/lib/hooks/useDisclosure";
 import type { PipeMaterialType } from "@/app/lib/hooks/useRfqForm";
 
 export type ItemType = "pipe" | "bend" | "fitting";
@@ -77,20 +78,20 @@ function MaterialDropdownButton({
   fittingsDisabled?: boolean;
   onAddItem: (itemType: ItemType) => void;
 }) {
-  const [isOpen, setIsOpen] = useState(false);
+  const { isOpen, close, toggle } = useDisclosure();
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
+        close();
       }
     };
     if (isOpen) {
       document.addEventListener("mousedown", handleClickOutside);
     }
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [isOpen]);
+  }, [isOpen, close]);
 
   const itemTypes: { type: ItemType; label: string }[] = [
     { type: "pipe", label: "Pipe" },
@@ -102,7 +103,7 @@ function MaterialDropdownButton({
     <div className="relative" ref={dropdownRef}>
       <button
         type="button"
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={toggle}
         disabled={disabled}
         className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md border transition-colors ${
           disabled
@@ -143,7 +144,7 @@ function MaterialDropdownButton({
                 onClick={() => {
                   if (!isDisabled) {
                     onAddItem(item.type);
-                    setIsOpen(false);
+                    close();
                   }
                 }}
                 disabled={isDisabled}
@@ -340,20 +341,20 @@ function FirstItemMaterialCard({
   fittingsDisabled?: boolean;
   onAddItem: (itemType: ItemType) => void;
 }) {
-  const [isOpen, setIsOpen] = useState(false);
+  const { isOpen, close, toggle } = useDisclosure();
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
+        close();
       }
     };
     if (isOpen) {
       document.addEventListener("mousedown", handleClickOutside);
     }
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [isOpen]);
+  }, [isOpen, close]);
 
   const itemTypes: { type: ItemType; label: string; description: string }[] = [
     { type: "pipe", label: "Straight Pipe", description: "Straight pipe section" },
@@ -377,7 +378,7 @@ function FirstItemMaterialCard({
     <div className="relative" ref={dropdownRef}>
       <button
         type="button"
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={toggle}
         className={`flex flex-col items-center justify-center w-48 h-40 text-white rounded-xl focus:outline-none focus:ring-4 transition-all shadow-lg hover:shadow-xl ${bgColorMap[material.value]} ${ringColorMap[material.value]}`}
       >
         <div className="w-12 h-12 mb-3 flex items-center justify-center">
@@ -418,7 +419,7 @@ function FirstItemMaterialCard({
                 onClick={() => {
                   if (!isDisabled) {
                     onAddItem(item.type);
-                    setIsOpen(false);
+                    close();
                   }
                 }}
                 disabled={isDisabled}

@@ -1,6 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import {
+  Pagination,
+  SortDirection,
+  SortIcon,
+  TableEmptyState,
+  TableIcons,
+  TableLoadingState,
+} from "@/app/components/shared/TableComponents";
 import { useToast } from "@/app/components/Toast";
 import {
   auRubberApiClient,
@@ -13,15 +21,8 @@ import {
 } from "@/app/lib/api/auRubberApi";
 import { Breadcrumb } from "../../components/Breadcrumb";
 import { ConfirmModal } from "../../components/ConfirmModal";
-import {
-  ITEMS_PER_PAGE,
-  Pagination,
-  SortDirection,
-  SortIcon,
-  TableEmptyState,
-  TableIcons,
-  TableLoadingState,
-} from "../../components/TableComponents";
+
+const ITEMS_PER_PAGE = 25;
 
 type SortColumn = "itemCode" | "itemName" | "quantity" | "category" | "reorderPoint" | "location";
 
@@ -422,7 +423,10 @@ export default function OtherItemsPage() {
 
       <div className="bg-white shadow rounded-lg overflow-hidden">
         {isLoading ? (
-          <TableLoadingState message="Loading items..." />
+          <TableLoadingState
+            message="Loading items..."
+            spinnerClassName="border-b-2 border-yellow-600"
+          />
         ) : filteredItems.length === 0 ? (
           <TableEmptyState
             icon={<TableIcons.cube />}

@@ -1,6 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import {
+  Pagination,
+  SortDirection,
+  SortIcon,
+  TableEmptyState,
+  TableIcons,
+  TableLoadingState,
+} from "@/app/components/shared/TableComponents";
 import { useToast } from "@/app/components/Toast";
 import { RubberCompanyDto, rubberPortalApi } from "@/app/lib/api/rubberPortalApi";
 import {
@@ -12,15 +20,8 @@ import {
 } from "@/app/lib/query/hooks";
 import { Breadcrumb } from "../components/Breadcrumb";
 import { ConfirmModal } from "../components/ConfirmModal";
-import {
-  ITEMS_PER_PAGE,
-  Pagination,
-  SortDirection,
-  SortIcon,
-  TableEmptyState,
-  TableIcons,
-  TableLoadingState,
-} from "../components/TableComponents";
+
+const ITEMS_PER_PAGE = 15;
 
 type SortColumn = "name" | "code" | "pricingTier" | "vatNumber" | "isCompoundOwner" | "products";
 
@@ -330,17 +331,28 @@ export default function RubberCompaniesPage() {
 
       <div className="bg-white shadow rounded-lg overflow-hidden">
         {isLoading ? (
-          <TableLoadingState message="Loading companies..." />
+          <TableLoadingState
+            message="Loading companies..."
+            spinnerClassName="border-b-2 border-blue-600"
+          />
         ) : filteredCompanies.length === 0 ? (
           <TableEmptyState
-            icon={TableIcons.building}
+            icon={<TableIcons.building />}
             title="No companies found"
             subtitle={
               searchQuery
                 ? "Try adjusting your search"
                 : "Get started by adding your first company."
             }
-            action={!searchQuery ? { label: "Add Company", onClick: openNewModal } : undefined}
+            action={
+              !searchQuery
+                ? {
+                    label: "Add Company",
+                    onClick: openNewModal,
+                    className: "text-white bg-blue-600 hover:bg-blue-700",
+                  }
+                : undefined
+            }
           />
         ) : (
           <table className="min-w-full divide-y divide-gray-200">

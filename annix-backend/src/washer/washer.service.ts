@@ -1,7 +1,8 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { Bolt } from "../bolt/entities/bolt.entity";
+import { findOneOrFail } from "../lib/entity-helpers";
 import { CreateWasherDto } from "./dto/create-washer.dto";
 import { UpdateWasherDto } from "./dto/update-washer.dto";
 import { Washer } from "./entities/washer.entity";
@@ -14,8 +15,7 @@ export class WasherService {
   ) {}
 
   async create(dto: CreateWasherDto): Promise<Washer> {
-    const bolt = await this.boltRepo.findOne({ where: { id: dto.boltId } });
-    if (!bolt) throw new NotFoundException(`Bolt ${dto.boltId} not found`);
+    const bolt = await findOneOrFail(this.boltRepo, { where: { id: dto.boltId } }, "Bolt");
 
     const washer = this.washerRepo.create({
       bolt,
@@ -55,12 +55,7 @@ export class WasherService {
   }
 
   async findOne(id: number): Promise<Washer> {
-    const washer = await this.washerRepo.findOne({
-      where: { id },
-      relations: ["bolt"],
-    });
-    if (!washer) throw new NotFoundException(`Washer ${id} not found`);
-    return washer;
+    return findOneOrFail(this.washerRepo, { where: { id }, relations: ["bolt"] }, "Washer");
   }
 
   async findByBoltDesignation(designation: string, type?: string): Promise<Washer[]> {
@@ -80,8 +75,7 @@ export class WasherService {
     const washer = await this.findOne(id);
 
     if (dto.boltId) {
-      const bolt = await this.boltRepo.findOne({ where: { id: dto.boltId } });
-      if (!bolt) throw new NotFoundException(`Bolt ${dto.boltId} not found`);
+      const bolt = await findOneOrFail(this.boltRepo, { where: { id: dto.boltId } }, "Bolt");
       washer.bolt = bolt;
     }
 

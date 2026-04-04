@@ -2,19 +2,19 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { useToast } from "@/app/components/Toast";
-import type { RubberDeliveryNoteDto, RubberTaxInvoiceDto } from "@/app/lib/api/auRubberApi";
-import { auRubberApiClient } from "@/app/lib/api/auRubberApi";
-import type { RubberCompanyDto, RubberProductDto } from "@/app/lib/api/rubberPortalApi";
-import { Breadcrumb } from "../../../components/Breadcrumb";
-import { ConfirmModal } from "../../../components/ConfirmModal";
 import {
   SortDirection,
   SortIcon,
   TableEmptyState,
   TableIcons,
   TableLoadingState,
-} from "../../../components/TableComponents";
+} from "@/app/components/shared/TableComponents";
+import { useToast } from "@/app/components/Toast";
+import type { RubberDeliveryNoteDto, RubberTaxInvoiceDto } from "@/app/lib/api/auRubberApi";
+import { auRubberApiClient } from "@/app/lib/api/auRubberApi";
+import type { RubberCompanyDto, RubberProductDto } from "@/app/lib/api/rubberPortalApi";
+import { Breadcrumb } from "../../../components/Breadcrumb";
+import { ConfirmModal } from "../../../components/ConfirmModal";
 
 type SortColumn = "name" | "code" | "contact" | "emailConfig" | "isCompoundOwner" | "products";
 
@@ -713,13 +713,20 @@ export default function SuppliersPage() {
 
       <div className="bg-white shadow rounded-lg overflow-hidden">
         {isLoading ? (
-          <TableLoadingState message="Loading suppliers..." />
+          <TableLoadingState
+            message="Loading suppliers..."
+            spinnerClassName="border-b-2 border-yellow-600"
+          />
         ) : suppliers.length === 0 ? (
           <TableEmptyState
             icon={<TableIcons.building />}
             title="No suppliers yet"
             subtitle="Add your first supplier to get started"
-            action={{ label: "Add Supplier", onClick: openNewForm }}
+            action={{
+              label: "Add Supplier",
+              onClick: openNewForm,
+              className: "text-white bg-yellow-600 hover:bg-yellow-700",
+            }}
           />
         ) : (
           <table className="min-w-full divide-y divide-gray-200">

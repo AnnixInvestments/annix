@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { generateUniqueId } from "@/app/lib/datetime";
+import { useDisclosure } from "@/app/lib/hooks/useDisclosure";
 import { log } from "@/app/lib/logger";
 
 export interface SmartNote {
@@ -76,7 +77,7 @@ interface SmartNotesDropdownProps {
 
 export function SmartNotesDropdown(props: SmartNotesDropdownProps) {
   const { selectedNotes, onNotesChange, placeholder = "Select or add notes..." } = props;
-  const [isOpen, setIsOpen] = useState(false);
+  const { isOpen, close, toggle } = useDisclosure();
   const [customInput, setCustomInput] = useState("");
   const [availableNotes, setAvailableNotes] = useState<SmartNote[]>(DEFAULT_NOTES);
   const [customNotes, setCustomNotes] = useState<SmartNote[]>([]);
@@ -97,12 +98,12 @@ export function SmartNotesDropdown(props: SmartNotesDropdownProps) {
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
+        close();
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+  }, [close]);
 
   const allNotes = [...availableNotes, ...customNotes];
 
@@ -165,7 +166,7 @@ export function SmartNotesDropdown(props: SmartNotesDropdownProps) {
       <div ref={dropdownRef} className="relative">
         <button
           type="button"
-          onClick={() => setIsOpen(!isOpen)}
+          onClick={toggle}
           className="w-full px-3 py-2 text-left bg-white border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-green-500 hover:border-green-400 transition-colors"
         >
           <span className="text-gray-500">{placeholder}</span>

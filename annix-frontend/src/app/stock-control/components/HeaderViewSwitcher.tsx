@@ -1,26 +1,23 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef } from "react";
+import { useDisclosure } from "@/app/lib/hooks/useDisclosure";
 import { useViewAs } from "../context/ViewAsContext";
 
-const ROLE_OPTIONS: { key: string; label: string }[] = [
-  { key: "viewer", label: "Viewer" },
-  { key: "quality", label: "Quality" },
-  { key: "storeman", label: "Storeman" },
-  { key: "accounts", label: "Accounts" },
-  { key: "manager", label: "Manager" },
-];
-
 export function HeaderViewSwitcher() {
-  const { viewAsRole, setViewAsRole, isPreviewActive } = useViewAs();
-  const [isOpen, setIsOpen] = useState(false);
+  const { viewAsRole, setViewAsRole, isPreviewActive, companyRoles, companyRolesLoading } =
+    useViewAs();
+  const { isOpen, close, toggle } = useDisclosure();
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const handleClickOutside = useCallback((event: MouseEvent) => {
-    if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
-      setIsOpen(false);
-    }
-  }, []);
+  const handleClickOutside = useCallback(
+    (event: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        close();
+      }
+    },
+    [close],
+  );
 
   useEffect(() => {
     if (isOpen) {
@@ -30,13 +27,13 @@ export function HeaderViewSwitcher() {
     return undefined;
   }, [isOpen, handleClickOutside]);
 
-  const activeLabel = ROLE_OPTIONS.find((r) => r.key === viewAsRole)?.label || null;
+  const activeLabel = companyRoles.find((r) => r.key === viewAsRole)?.label || null;
 
   return (
     <div className="relative" ref={containerRef}>
       <button
         type="button"
-        onClick={() => setIsOpen((prev) => !prev)}
+        onClick={toggle}
         className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-md transition-colors ${
           isPreviewActive
             ? "text-amber-900 bg-amber-100 hover:bg-amber-200"
@@ -71,7 +68,7 @@ export function HeaderViewSwitcher() {
                   type="button"
                   onClick={() => {
                     setViewAsRole(null);
-                    setIsOpen(false);
+                    close();
                   }}
                   className="w-full flex items-center gap-2 px-4 py-2 text-sm text-teal-700 hover:bg-teal-50 transition-colors font-medium"
                 >
@@ -88,38 +85,42 @@ export function HeaderViewSwitcher() {
                 <div className="border-t border-gray-200 my-1" />
               </>
             )}
-            {ROLE_OPTIONS.map((role) => (
-              <button
-                key={role.key}
-                type="button"
-                onClick={() => {
-                  setViewAsRole(role.key);
-                  setIsOpen(false);
-                }}
-                className={`w-full flex items-center justify-between px-4 py-2 text-sm transition-colors ${
-                  viewAsRole === role.key
-                    ? "bg-amber-50 text-amber-700 font-medium"
-                    : "text-gray-700 hover:bg-gray-50"
-                }`}
-              >
-                <span>{role.label}</span>
-                {viewAsRole === role.key && (
-                  <svg
-                    className="w-4 h-4 text-amber-600"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M5 13l4 4L19 7"
-                    />
-                  </svg>
-                )}
-              </button>
-            ))}
+            {companyRolesLoading ? (
+              <div className="px-4 py-2 text-sm text-gray-400">Loading roles...</div>
+            ) : (
+              companyRoles.map((role) => (
+                <button
+                  key={role.key}
+                  type="button"
+                  onClick={() => {
+                    setViewAsRole(role.key);
+                    close();
+                  }}
+                  className={`w-full flex items-center justify-between px-4 py-2 text-sm transition-colors ${
+                    viewAsRole === role.key
+                      ? "bg-amber-50 text-amber-700 font-medium"
+                      : "text-gray-700 hover:bg-gray-50"
+                  }`}
+                >
+                  <span>{role.label}</span>
+                  {viewAsRole === role.key && (
+                    <svg
+                      className="w-4 h-4 text-amber-600"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M5 13l4 4L19 7"
+                      />
+                    </svg>
+                  )}
+                </button>
+              ))
+            )}
           </div>
         </div>
       )}

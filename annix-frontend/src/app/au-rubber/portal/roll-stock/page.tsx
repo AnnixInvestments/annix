@@ -2,6 +2,14 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import {
+  Pagination,
+  SortDirection,
+  SortIcon,
+  TableEmptyState,
+  TableIcons,
+  TableLoadingState,
+} from "@/app/components/shared/TableComponents";
 import { useToast } from "@/app/components/Toast";
 import {
   auRubberApiClient,
@@ -14,15 +22,8 @@ import {
 } from "@/app/lib/api/auRubberApi";
 import type { RubberCompanyDto, RubberProductCodingDto } from "@/app/lib/api/rubberPortalApi";
 import { Breadcrumb } from "../../components/Breadcrumb";
-import {
-  ITEMS_PER_PAGE,
-  Pagination,
-  SortDirection,
-  SortIcon,
-  TableEmptyState,
-  TableIcons,
-  TableLoadingState,
-} from "../../components/TableComponents";
+
+const ITEMS_PER_PAGE = 25;
 
 type SortColumn =
   | "rollNumber"
@@ -435,7 +436,10 @@ export default function RollStockPage() {
 
       <div className="bg-white shadow rounded-lg overflow-hidden">
         {isLoading ? (
-          <TableLoadingState message="Loading roll stock..." />
+          <TableLoadingState
+            message="Loading roll stock..."
+            spinnerClassName="border-b-2 border-yellow-600"
+          />
         ) : filteredRolls.length === 0 ? (
           <TableEmptyState
             icon={<TableIcons.document />}

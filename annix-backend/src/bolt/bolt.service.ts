@@ -1,6 +1,7 @@
-import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
+import { BadRequestException, Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
+import { findOneOrFail } from "../lib/entity-helpers";
 import { NutMass } from "../nut-mass/entities/nut-mass.entity";
 import { Washer } from "../washer/entities/washer.entity";
 import { CreateBoltDto } from "./dto/create-bolt.dto";
@@ -67,9 +68,7 @@ export class BoltService {
   }
 
   async findOne(id: number): Promise<Bolt> {
-    const bolt = await this.boltRepo.findOne({ where: { id } });
-    if (!bolt) throw new NotFoundException(`Bolt ${id} not found`);
-    return bolt;
+    return findOneOrFail(this.boltRepo, { where: { id } }, "Bolt");
   }
 
   async update(id: number, dto: UpdateBoltDto): Promise<Bolt> {

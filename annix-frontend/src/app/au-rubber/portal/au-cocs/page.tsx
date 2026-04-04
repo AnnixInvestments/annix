@@ -3,6 +3,14 @@
 import { Eye, Loader2, Mail, RefreshCw, Zap } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import {
+  Pagination,
+  SortDirection,
+  SortIcon,
+  TableEmptyState,
+  TableIcons,
+  TableLoadingState,
+} from "@/app/components/shared/TableComponents";
 import { useToast } from "@/app/components/Toast";
 import { useAuRubberAuth } from "@/app/context/AuRubberAuthContext";
 import {
@@ -13,14 +21,6 @@ import {
 import { formatDateZA } from "@/app/lib/datetime";
 import { useAuRubberAuCocs } from "@/app/lib/query/hooks";
 import { Breadcrumb } from "../../components/Breadcrumb";
-import {
-  Pagination,
-  SortDirection,
-  SortIcon,
-  TableEmptyState,
-  TableIcons,
-  TableLoadingState,
-} from "../../components/TableComponents";
 
 type SortColumn =
   | "cocNumber"
@@ -643,7 +643,10 @@ export default function AuCocsPage() {
 
       <div className="bg-white shadow rounded-lg overflow-hidden">
         {isLoading ? (
-          <TableLoadingState message="Loading certificates..." />
+          <TableLoadingState
+            message="Loading certificates..."
+            spinnerClassName="border-b-2 border-yellow-600"
+          />
         ) : filteredCocs.length === 0 ? (
           <TableEmptyState
             icon={<TableIcons.document />}
@@ -658,6 +661,7 @@ export default function AuCocsPage() {
                 ? {
                     label: "New Certificate",
                     onClick: () => (window.location.href = "/au-rubber/portal/au-cocs/new"),
+                    className: "text-white bg-yellow-600 hover:bg-yellow-700",
                   }
                 : undefined
             }

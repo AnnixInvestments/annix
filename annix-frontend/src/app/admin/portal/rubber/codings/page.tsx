@@ -2,6 +2,7 @@
 
 import { CODING_TYPES, CodingType } from "@annix/product-data/rubber/codingTypes";
 import { useState } from "react";
+import { Pagination, TableLoadingState } from "@/app/components/shared/TableComponents";
 import { useToast } from "@/app/components/Toast";
 import { type RubberProductCodingDto } from "@/app/lib/api/rubberPortalApi";
 import {
@@ -11,7 +12,8 @@ import {
 } from "@/app/lib/query/hooks";
 import { Breadcrumb } from "../components/Breadcrumb";
 import { ConfirmModal } from "../components/ConfirmModal";
-import { ITEMS_PER_PAGE, Pagination, TableLoadingState } from "../components/TableComponents";
+
+const ITEMS_PER_PAGE = 15;
 
 export default function RubberCodingsPage() {
   const { showToast } = useToast();
@@ -164,7 +166,10 @@ export default function RubberCodingsPage() {
 
       <div className="bg-white shadow rounded-lg overflow-hidden">
         {codingsQuery.isLoading ? (
-          <TableLoadingState message={`Loading ${currentTypeInfo?.label.toLowerCase()}...`} />
+          <TableLoadingState
+            message={`Loading ${currentTypeInfo?.label.toLowerCase()}...`}
+            spinnerClassName="border-b-2 border-blue-600"
+          />
         ) : codings.length === 0 ? (
           <div className="text-center py-12">
             <svg

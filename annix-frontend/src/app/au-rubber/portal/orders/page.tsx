@@ -8,6 +8,14 @@ import {
 import { FileUp, Loader2, Plus, Upload } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  Pagination,
+  SortDirection,
+  SortIcon,
+  TableEmptyState,
+  TableIcons,
+  TableLoadingState,
+} from "@/app/components/shared/TableComponents";
 import { useToast } from "@/app/components/Toast";
 import { type AnalyzeOrderFilesResult, auRubberApiClient } from "@/app/lib/api/auRubberApi";
 import type {
@@ -24,15 +32,9 @@ import {
 import { Breadcrumb } from "../../components/Breadcrumb";
 import { ConfirmModal } from "../../components/ConfirmModal";
 import { RequirePermission } from "../../components/RequirePermission";
-import {
-  ITEMS_PER_PAGE,
-  Pagination,
-  SortDirection,
-  SortIcon,
-  TableEmptyState,
-  TableIcons,
-  TableLoadingState,
-} from "../../components/TableComponents";
+
+const ITEMS_PER_PAGE = 25;
+
 import { PAGE_PERMISSIONS } from "../../config/pagePermissions";
 import { CreateOrderModal } from "./components/CreateOrderModal";
 import { OrderImportModal } from "./components/OrderImportModal";
@@ -381,7 +383,10 @@ export default function AuRubberOrdersPage() {
 
         <div className="bg-white shadow rounded-lg overflow-hidden">
           {isLoading ? (
-            <TableLoadingState message="Loading orders..." />
+            <TableLoadingState
+              message="Loading orders..."
+              spinnerClassName="border-b-2 border-yellow-600"
+            />
           ) : filteredOrders.length === 0 ? (
             <TableEmptyState
               icon={<TableIcons.document />}
@@ -393,7 +398,11 @@ export default function AuRubberOrdersPage() {
               }
               action={
                 !searchQuery && statusFilter === undefined
-                  ? { label: "New Order", onClick: () => setShowCreateModal(true) }
+                  ? {
+                      label: "New Order",
+                      onClick: () => setShowCreateModal(true),
+                      className: "text-white bg-yellow-600 hover:bg-yellow-700",
+                    }
                   : undefined
               }
             />

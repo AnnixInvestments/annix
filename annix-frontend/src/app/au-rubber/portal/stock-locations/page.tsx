@@ -1,19 +1,20 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useToast } from "@/app/components/Toast";
-import { auRubberApiClient, type StockLocationDto } from "@/app/lib/api/auRubberApi";
-import { Breadcrumb } from "../../components/Breadcrumb";
-import { ConfirmModal } from "../../components/ConfirmModal";
 import {
-  ITEMS_PER_PAGE,
   Pagination,
   SortDirection,
   SortIcon,
   TableEmptyState,
   TableIcons,
   TableLoadingState,
-} from "../../components/TableComponents";
+} from "@/app/components/shared/TableComponents";
+import { useToast } from "@/app/components/Toast";
+import { auRubberApiClient, type StockLocationDto } from "@/app/lib/api/auRubberApi";
+import { Breadcrumb } from "../../components/Breadcrumb";
+import { ConfirmModal } from "../../components/ConfirmModal";
+
+const ITEMS_PER_PAGE = 25;
 
 type SortColumn = "name" | "description" | "displayOrder" | "active";
 
@@ -227,7 +228,10 @@ export default function StockLocationsPage() {
 
       <div className="bg-white shadow rounded-lg overflow-hidden">
         {isLoading ? (
-          <TableLoadingState message="Loading stock locations..." />
+          <TableLoadingState
+            message="Loading stock locations..."
+            spinnerClassName="border-b-2 border-yellow-600"
+          />
         ) : filteredLocations.length === 0 ? (
           <TableEmptyState
             icon={<TableIcons.document />}
@@ -235,7 +239,15 @@ export default function StockLocationsPage() {
             subtitle={
               searchQuery ? "Try adjusting your search" : "Get started by adding a stock location"
             }
-            action={!searchQuery ? { label: "Add Location", onClick: openNewModal } : undefined}
+            action={
+              !searchQuery
+                ? {
+                    label: "Add Location",
+                    onClick: openNewModal,
+                    className: "text-white bg-yellow-600 hover:bg-yellow-700",
+                  }
+                : undefined
+            }
           />
         ) : (
           <table className="min-w-full divide-y divide-gray-200">

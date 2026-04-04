@@ -7,13 +7,13 @@ import { useEffect, useState } from "react";
 import { Breadcrumb } from "@/app/au-rubber/components/Breadcrumb";
 import { CustomerDnAnalysisModal } from "@/app/au-rubber/components/CustomerDnAnalysisModal";
 import { FileDropZone } from "@/app/au-rubber/components/FileDropZone";
+import { useTablePreferences } from "@/app/au-rubber/hooks/useTablePreferences";
 import {
   Pagination,
   SortIcon,
   TableIcons,
   TableLoadingState,
-} from "@/app/au-rubber/components/TableComponents";
-import { useTablePreferences } from "@/app/au-rubber/hooks/useTablePreferences";
+} from "@/app/components/shared/TableComponents";
 import { useToast } from "@/app/components/Toast";
 import { useAuRubberBranding } from "@/app/context/AuRubberBrandingContext";
 import {
@@ -536,7 +536,10 @@ export default function CustomerDeliveryNotesPage() {
 
       <div className="bg-white shadow rounded-lg overflow-hidden">
         {isLoading ? (
-          <TableLoadingState message="Loading customer delivery notes..." />
+          <TableLoadingState
+            message="Loading customer delivery notes..."
+            spinnerClassName="border-b-2 border-yellow-600"
+          />
         ) : filteredNotes.length === 0 ? (
           <div className="p-8">
             <div className="flex flex-col items-center justify-center py-12">

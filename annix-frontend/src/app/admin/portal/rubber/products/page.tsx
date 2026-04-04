@@ -2,6 +2,14 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import {
+  Pagination,
+  SortDirection,
+  SortIcon,
+  TableEmptyState,
+  TableIcons,
+  TableLoadingState,
+} from "@/app/components/shared/TableComponents";
 import { useToast } from "@/app/components/Toast";
 import { RubberProductDto, rubberPortalApi } from "@/app/lib/api/rubberPortalApi";
 import { now } from "@/app/lib/datetime";
@@ -10,15 +18,8 @@ import { Breadcrumb } from "../components/Breadcrumb";
 import { ConfirmModal } from "../components/ConfirmModal";
 import { ProductFormModal } from "../components/ProductFormModal";
 import { ProductImportModal } from "../components/ProductImportModal";
-import {
-  ITEMS_PER_PAGE,
-  Pagination,
-  SortDirection,
-  SortIcon,
-  TableEmptyState,
-  TableIcons,
-  TableLoadingState,
-} from "../components/TableComponents";
+
+const ITEMS_PER_PAGE = 15;
 
 type SortColumn = "title" | "type" | "costPerKg" | "markup" | "pricePerKg" | "specificGravity";
 
@@ -373,10 +374,13 @@ export default function RubberProductsPage() {
 
       <div className="bg-white shadow rounded-lg overflow-hidden">
         {productsQuery.isLoading ? (
-          <TableLoadingState message="Loading products..." />
+          <TableLoadingState
+            message="Loading products..."
+            spinnerClassName="border-b-2 border-blue-600"
+          />
         ) : filteredProducts.length === 0 ? (
           <TableEmptyState
-            icon={TableIcons.cube}
+            icon={<TableIcons.cube />}
             title="No products found"
             subtitle={
               searchQuery || typeFilter || compoundFilter
@@ -385,7 +389,11 @@ export default function RubberProductsPage() {
             }
             action={
               !searchQuery && !typeFilter && !compoundFilter
-                ? { label: "Create Product", onClick: () => setShowCreateModal(true) }
+                ? {
+                    label: "Create Product",
+                    onClick: () => setShowCreateModal(true),
+                    className: "text-white bg-blue-600 hover:bg-blue-700",
+                  }
                 : undefined
             }
           />

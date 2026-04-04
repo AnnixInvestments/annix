@@ -1,7 +1,8 @@
-import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
+import { BadRequestException, Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { FlangeStandard } from "src/flange-standard/entities/flange-standard.entity";
 import { Repository } from "typeorm";
+import { findOneOrFail } from "../lib/entity-helpers";
 import { CreateFlangePressureClassDto } from "./dto/create-flange-pressure-class.dto";
 import { UpdateFlangePressureClassDto } from "./dto/update-flange-pressure-class.dto";
 import { FlangePressureClass } from "./entities/flange-pressure-class.entity";
@@ -16,10 +17,11 @@ export class FlangePressureClassService {
   ) {}
 
   async create(dto: CreateFlangePressureClassDto): Promise<FlangePressureClass> {
-    const standard = await this.standardRepo.findOne({
-      where: { id: dto.standardId },
-    });
-    if (!standard) throw new NotFoundException(`Flange standard ${dto.standardId} not found`);
+    const standard = await findOneOrFail(
+      this.standardRepo,
+      { where: { id: dto.standardId } },
+      "Flange standard",
+    );
 
     const exists = await this.pressureRepo.findOne({
       where: { designation: dto.designation, standard: { id: dto.standardId } },
@@ -38,12 +40,11 @@ export class FlangePressureClassService {
   }
 
   async findOne(id: number): Promise<FlangePressureClass> {
-    const pressure = await this.pressureRepo.findOne({
-      where: { id },
-      relations: ["standard"],
-    });
-    if (!pressure) throw new NotFoundException(`Flange pressure class ${id} not found`);
-    return pressure;
+    return findOneOrFail(
+      this.pressureRepo,
+      { where: { id }, relations: ["standard"] },
+      "Flange pressure class",
+    );
   }
 
   async update(id: number, dto: UpdateFlangePressureClassDto): Promise<FlangePressureClass> {
@@ -58,10 +59,7 @@ export class FlangePressureClassService {
   }
 
   async getAllByStandard(standardId: number): Promise<FlangePressureClass[]> {
-    const standard = await this.standardRepo.findOne({
-      where: { id: standardId },
-    });
-    if (!standard) throw new NotFoundException(`Flange standard ${standardId} not found`);
+    await findOneOrFail(this.standardRepo, { where: { id: standardId } }, "Flange standard");
     const classes = await this.pressureRepo.find({
       where: { standard: { id: standardId } },
     });

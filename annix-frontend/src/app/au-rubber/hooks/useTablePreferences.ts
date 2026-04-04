@@ -1,5 +1,5 @@
 import { useCallback, useState } from "react";
-import type { SortDirection } from "@/app/au-rubber/components/TableComponents";
+import type { SortDirection } from "@/app/components/shared/TableComponents";
 
 interface TablePreferences {
   pageSize: number;

@@ -1,6 +1,7 @@
-import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
+import { BadRequestException, Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
+import { findOneOrFail } from "../lib/entity-helpers";
 import { CreateFlangeStandardDto } from "./dto/create-flange-standard.dto";
 import { UpdateFlangeStandardDto } from "./dto/update-flange-standard.dto";
 import { FlangeStandard } from "./entities/flange-standard.entity";
@@ -27,9 +28,7 @@ export class FlangeStandardService {
   }
 
   async findOne(id: number): Promise<FlangeStandard> {
-    const standard = await this.standardRepo.findOne({ where: { id } });
-    if (!standard) throw new NotFoundException(`Flange standard ${id} not found`);
-    return standard;
+    return findOneOrFail(this.standardRepo, { where: { id } }, "Flange standard");
   }
 
   async update(id: number, dto: UpdateFlangeStandardDto): Promise<FlangeStandard> {

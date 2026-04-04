@@ -2,6 +2,14 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import {
+  Pagination,
+  SortDirection,
+  SortIcon,
+  TableEmptyState,
+  TableIcons,
+  TableLoadingState,
+} from "@/app/components/shared/TableComponents";
 import { useToast } from "@/app/components/Toast";
 import {
   auRubberApiClient,
@@ -14,15 +22,8 @@ import type { RubberCompanyDto } from "@/app/lib/api/rubberPortalApi";
 import { formatDateZA, fromISO } from "@/app/lib/datetime";
 import { Breadcrumb } from "../../components/Breadcrumb";
 import { ConfirmModal } from "../../components/ConfirmModal";
-import {
-  ITEMS_PER_PAGE,
-  Pagination,
-  SortDirection,
-  SortIcon,
-  TableEmptyState,
-  TableIcons,
-  TableLoadingState,
-} from "../../components/TableComponents";
+
+const ITEMS_PER_PAGE = 25;
 
 type SortColumn =
   | "requisitionNumber"
@@ -347,7 +348,10 @@ export default function PurchaseRequisitionsPage() {
 
       <div className="bg-white shadow rounded-lg overflow-hidden">
         {isLoading ? (
-          <TableLoadingState message="Loading requisitions..." />
+          <TableLoadingState
+            message="Loading requisitions..."
+            spinnerClassName="border-b-2 border-yellow-600"
+          />
         ) : filteredRequisitions.length === 0 ? (
           <TableEmptyState
             icon={<TableIcons.document />}
@@ -359,7 +363,11 @@ export default function PurchaseRequisitionsPage() {
             }
             action={
               !searchQuery && !statusFilter && !sourceFilter
-                ? { label: "New Requisition", onClick: () => setShowNewModal(true) }
+                ? {
+                    label: "New Requisition",
+                    onClick: () => setShowNewModal(true),
+                    className: "text-white bg-yellow-600 hover:bg-yellow-700",
+                  }
                 : undefined
             }
           />

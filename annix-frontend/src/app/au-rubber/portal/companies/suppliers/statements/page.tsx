@@ -2,11 +2,11 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { TableLoadingState } from "@/app/components/shared/TableComponents";
 import type { RubberTaxInvoiceDto } from "@/app/lib/api/auRubberApi";
 import { auRubberApiClient } from "@/app/lib/api/auRubberApi";
 import type { RubberCompanyDto } from "@/app/lib/api/rubberPortalApi";
 import { Breadcrumb } from "../../../../components/Breadcrumb";
-import { TableLoadingState } from "../../../../components/TableComponents";
 
 interface CompanyStatement {
   company: RubberCompanyDto;
@@ -107,7 +107,10 @@ export default function SupplierStatementsPage() {
 
       {isLoading ? (
         <div className="bg-white shadow rounded-lg overflow-hidden">
-          <TableLoadingState message="Loading statements..." />
+          <TableLoadingState
+            message="Loading statements..."
+            spinnerClassName="border-b-2 border-yellow-600"
+          />
         </div>
       ) : statements.length === 0 ? (
         <div className="bg-white shadow rounded-lg p-12 text-center">

@@ -6,13 +6,15 @@ import { lazy, Suspense, useEffect, useState } from "react";
 import { Breadcrumb } from "@/app/au-rubber/components/Breadcrumb";
 import { FileDropZone } from "@/app/au-rubber/components/FileDropZone";
 import {
-  ITEMS_PER_PAGE,
   Pagination,
   SortDirection,
   SortIcon,
   TableIcons,
   TableLoadingState,
-} from "@/app/au-rubber/components/TableComponents";
+} from "@/app/components/shared/TableComponents";
+
+const ITEMS_PER_PAGE = 25;
+
 import { useConfirm } from "@/app/au-rubber/hooks/useConfirm";
 import { useToast } from "@/app/components/Toast";
 import {
@@ -466,7 +468,10 @@ export default function CustomerTaxInvoicesPage() {
 
       <div className="bg-white shadow rounded-lg overflow-hidden">
         {isLoading ? (
-          <TableLoadingState message="Loading customer tax invoices..." />
+          <TableLoadingState
+            message="Loading customer tax invoices..."
+            spinnerClassName="border-b-2 border-yellow-600"
+          />
         ) : filteredInvoices.length === 0 ? (
           <div className="p-8">
             <div className="flex flex-col items-center justify-center py-12">

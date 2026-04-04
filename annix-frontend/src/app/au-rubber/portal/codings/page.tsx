@@ -2,13 +2,16 @@
 
 import { CODING_TYPES, CodingType } from "@annix/product-data/rubber/codingTypes";
 import { useEffect, useState } from "react";
+import { Pagination, TableLoadingState } from "@/app/components/shared/TableComponents";
 import { useToast } from "@/app/components/Toast";
 import { auRubberApiClient, type RubberSpecificationDto } from "@/app/lib/api/auRubberApi";
 import type { RubberProductCodingDto } from "@/app/lib/api/rubberPortalApi";
 import { Breadcrumb } from "../../components/Breadcrumb";
 import { ConfirmModal } from "../../components/ConfirmModal";
 import { RequirePermission } from "../../components/RequirePermission";
-import { ITEMS_PER_PAGE, Pagination, TableLoadingState } from "../../components/TableComponents";
+
+const ITEMS_PER_PAGE = 25;
+
 import { PAGE_PERMISSIONS } from "../../config/pagePermissions";
 
 const SANS_1198_TAB = "SANS_1198" as const;
@@ -22,7 +25,12 @@ function SpecificationsTable({
   isLoading: boolean;
 }) {
   if (isLoading) {
-    return <TableLoadingState message="Loading SANS 1198 specifications..." />;
+    return (
+      <TableLoadingState
+        message="Loading SANS 1198 specifications..."
+        spinnerClassName="border-b-2 border-yellow-600"
+      />
+    );
   }
 
   if (specs.length === 0) {
@@ -323,7 +331,10 @@ export default function AuRubberCodingsPage() {
           <>
             <div className="bg-white shadow rounded-lg overflow-hidden">
               {isLoading ? (
-                <TableLoadingState message={`Loading ${currentTypeInfo?.label.toLowerCase()}...`} />
+                <TableLoadingState
+                  message={`Loading ${currentTypeInfo?.label.toLowerCase()}...`}
+                  spinnerClassName="border-b-2 border-yellow-600"
+                />
               ) : codings.length === 0 ? (
                 <div className="text-center py-12">
                   <svg

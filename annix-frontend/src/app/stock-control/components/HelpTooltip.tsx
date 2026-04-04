@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useDisclosure } from "@/app/lib/hooks/useDisclosure";
 import { useGlossary } from "../context/GlossaryContext";
 
 interface HelpTooltipProps {
@@ -12,7 +13,7 @@ export function HelpTooltip(props: HelpTooltipProps) {
   const { term } = props;
   const inline = props.inline ?? true;
   const { termsByAbbreviation, hideTooltips } = useGlossary();
-  const [isOpen, setIsOpen] = useState(false);
+  const { isOpen, open, close, toggle } = useDisclosure();
   const [position, setPosition] = useState<"above" | "below">("below");
   const triggerRef = useRef<HTMLButtonElement>(null);
   const tooltipRef = useRef<HTMLDivElement>(null);
@@ -38,8 +39,8 @@ export function HelpTooltip(props: HelpTooltipProps) {
     if (!isOpen) {
       calculatePosition();
     }
-    setIsOpen((prev) => !prev);
-  }, [isOpen, calculatePosition]);
+    toggle();
+  }, [isOpen, calculatePosition, toggle]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -53,13 +54,13 @@ export function HelpTooltip(props: HelpTooltipProps) {
         tooltipRef.current &&
         !tooltipRef.current.contains(e.target as Node)
       ) {
-        setIsOpen(false);
+        close();
       }
     };
 
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
-        setIsOpen(false);
+        close();
       }
     };
 
@@ -69,7 +70,7 @@ export function HelpTooltip(props: HelpTooltipProps) {
       document.removeEventListener("mousedown", handleClickOutside);
       document.removeEventListener("keydown", handleEscape);
     };
-  }, [isOpen]);
+  }, [isOpen, close]);
 
   if (hideTooltips || !glossaryTerm) {
     return null;
@@ -85,9 +86,9 @@ export function HelpTooltip(props: HelpTooltipProps) {
         onClick={handleToggle}
         onMouseEnter={() => {
           calculatePosition();
-          setIsOpen(true);
+          open();
         }}
-        onMouseLeave={() => setIsOpen(false)}
+        onMouseLeave={close}
         className="ml-1 inline-flex items-center justify-center w-4 h-4 text-[10px] font-bold text-gray-400 hover:text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-full cursor-help transition-colors flex-shrink-0"
         aria-label={`Help: ${glossaryTerm.term}`}
       >

@@ -1,7 +1,8 @@
-import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
+import { BadRequestException, Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Bolt } from "src/bolt/entities/bolt.entity";
 import { Repository } from "typeorm";
+import { findOneOrFail } from "../lib/entity-helpers";
 import { CreateNutMassDto } from "./dto/create-nut-mass.dto";
 import { UpdateNutMassDto } from "./dto/update-nut-mass.dto";
 import { NutMass } from "./entities/nut-mass.entity";
@@ -15,8 +16,7 @@ export class NutMassService {
   ) {}
 
   async create(dto: CreateNutMassDto): Promise<NutMass> {
-    const bolt = await this.boltRepo.findOne({ where: { id: dto.boltId } });
-    if (!bolt) throw new NotFoundException(`Bolt ${dto.boltId} not found`);
+    const bolt = await findOneOrFail(this.boltRepo, { where: { id: dto.boltId } }, "Bolt");
 
     const exists = await this.nutMassRepo.findOne({
       where: { bolt: { id: dto.boltId }, mass_kg: dto.mass_kg },
@@ -32,12 +32,7 @@ export class NutMassService {
   }
 
   async findOne(id: number): Promise<NutMass> {
-    const nut = await this.nutMassRepo.findOne({
-      where: { id },
-      relations: ["bolt"],
-    });
-    if (!nut) throw new NotFoundException(`Nut mass ${id} not found`);
-    return nut;
+    return findOneOrFail(this.nutMassRepo, { where: { id }, relations: ["bolt"] }, "Nut mass");
   }
 
   async update(id: number, dto: UpdateNutMassDto): Promise<NutMass> {

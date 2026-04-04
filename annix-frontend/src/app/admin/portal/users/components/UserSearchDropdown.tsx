@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { RbacSearchUser } from "@/app/lib/api/adminApi";
+import { useDisclosure } from "@/app/lib/hooks/useDisclosure";
 import { useRbacSearchUsers } from "@/app/lib/query/hooks";
 
 interface UserSearchDropdownProps {
@@ -12,7 +13,7 @@ interface UserSearchDropdownProps {
 export function UserSearchDropdown(props: UserSearchDropdownProps) {
   const { onSelectUser, excludeUserIds = [] } = props;
   const [query, setQuery] = useState("");
-  const [isOpen, setIsOpen] = useState(false);
+  const { isOpen, open, close } = useDisclosure();
   const wrapperRef = useRef<HTMLDivElement>(null);
 
   const { data: users = [], isLoading } = useRbacSearchUsers(query);
@@ -22,17 +23,17 @@ export function UserSearchDropdown(props: UserSearchDropdownProps) {
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
+        close();
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+  }, [close]);
 
   const handleSelect = (user: RbacSearchUser) => {
     onSelectUser(user);
     setQuery("");
-    setIsOpen(false);
+    close();
   };
 
   return (
@@ -58,9 +59,9 @@ export function UserSearchDropdown(props: UserSearchDropdownProps) {
           value={query}
           onChange={(e) => {
             setQuery(e.target.value);
-            setIsOpen(true);
+            open();
           }}
-          onFocus={() => setIsOpen(true)}
+          onFocus={open}
           placeholder="Search users by email or name..."
           className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
         />

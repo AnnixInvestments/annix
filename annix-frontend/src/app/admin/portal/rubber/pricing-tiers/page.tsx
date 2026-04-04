@@ -1,6 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import {
+  TableEmptyState,
+  TableIcons,
+  TableLoadingState,
+} from "@/app/components/shared/TableComponents";
 import { useToast } from "@/app/components/Toast";
 import type { RubberPricingTierDto } from "@/app/lib/api/rubberPortalApi";
 import {
@@ -11,7 +16,6 @@ import {
 } from "@/app/lib/query/hooks";
 import { Breadcrumb } from "../components/Breadcrumb";
 import { ConfirmModal } from "../components/ConfirmModal";
-import { TableEmptyState, TableIcons, TableLoadingState } from "../components/TableComponents";
 
 export default function RubberPricingTiersPage() {
   const { showToast } = useToast();
@@ -124,13 +128,20 @@ export default function RubberPricingTiersPage() {
 
       <div className="bg-white shadow rounded-lg overflow-hidden">
         {isLoading ? (
-          <TableLoadingState message="Loading pricing tiers..." />
+          <TableLoadingState
+            message="Loading pricing tiers..."
+            spinnerClassName="border-b-2 border-blue-600"
+          />
         ) : tiers.length === 0 ? (
           <TableEmptyState
-            icon={TableIcons.currency}
+            icon={<TableIcons.currency />}
             title="No pricing tiers found"
             subtitle="Get started by adding your first pricing tier."
-            action={{ label: "Add Pricing Tier", onClick: openNewModal }}
+            action={{
+              label: "Add Pricing Tier",
+              onClick: openNewModal,
+              className: "text-white bg-blue-600 hover:bg-blue-700",
+            }}
           />
         ) : (
           <table className="min-w-full divide-y divide-gray-200">

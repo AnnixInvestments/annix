@@ -2,6 +2,7 @@
 
 import { DollarSign, Edit2, Plus, Save, Trash2, X } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
+import { Pagination, TableLoadingState } from "@/app/components/shared/TableComponents";
 import { useToast } from "@/app/components/Toast";
 import { useAuRubberBranding } from "@/app/context/AuRubberBrandingContext";
 import {
@@ -15,7 +16,8 @@ import {
 import { formatDateZA } from "@/app/lib/datetime";
 import { Breadcrumb } from "../../components/Breadcrumb";
 import { ConfirmModal } from "../../components/ConfirmModal";
-import { ITEMS_PER_PAGE, Pagination, TableLoadingState } from "../../components/TableComponents";
+
+const ITEMS_PER_PAGE = 25;
 
 type ActiveTab = "rates" | "profitability";
 
@@ -309,7 +311,10 @@ export default function CostOfSalePage() {
             </div>
             <div className="p-6">
               {isLoading ? (
-                <TableLoadingState message="Loading rates..." />
+                <TableLoadingState
+                  message="Loading rates..."
+                  spinnerClassName="border-b-2 border-yellow-600"
+                />
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
@@ -412,7 +417,10 @@ export default function CostOfSalePage() {
             </div>
             <div className="overflow-x-auto">
               {isLoading ? (
-                <TableLoadingState message="Loading compound costs..." />
+                <TableLoadingState
+                  message="Loading compound costs..."
+                  spinnerClassName="border-b-2 border-yellow-600"
+                />
               ) : compoundRates.length === 0 ? (
                 <div className="p-8 text-center">
                   <DollarSign className="mx-auto h-12 w-12 text-gray-300" />
@@ -584,7 +592,10 @@ export default function CostOfSalePage() {
             </div>
             <div className="overflow-x-auto">
               {isLoadingRolls ? (
-                <TableLoadingState message="Calculating roll COS..." />
+                <TableLoadingState
+                  message="Calculating roll COS..."
+                  spinnerClassName="border-b-2 border-yellow-600"
+                />
               ) : rollCosData.length === 0 ? (
                 <div className="p-8 text-center text-sm text-gray-500">
                   No roll stock data found

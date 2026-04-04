@@ -5,13 +5,13 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { Breadcrumb } from "@/app/au-rubber/components/Breadcrumb";
 import { FileDropZone } from "@/app/au-rubber/components/FileDropZone";
+import { useTablePreferences } from "@/app/au-rubber/hooks/useTablePreferences";
 import {
   Pagination,
   SortIcon,
   TableIcons,
   TableLoadingState,
-} from "@/app/au-rubber/components/TableComponents";
-import { useTablePreferences } from "@/app/au-rubber/hooks/useTablePreferences";
+} from "@/app/components/shared/TableComponents";
 import { useToast } from "@/app/components/Toast";
 import { useAuRubberBranding } from "@/app/context/AuRubberBrandingContext";
 import {
@@ -480,7 +480,10 @@ export default function SupplierDeliveryNotesPage() {
 
       <div className="bg-white shadow rounded-lg overflow-hidden">
         {isLoading ? (
-          <TableLoadingState message="Loading supplier delivery notes..." />
+          <TableLoadingState
+            message="Loading supplier delivery notes..."
+            spinnerClassName="border-b-2 border-yellow-600"
+          />
         ) : filteredNotes.length === 0 ? (
           <div className="p-8">
             <div className="flex flex-col items-center justify-center py-12">

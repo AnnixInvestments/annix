@@ -3,6 +3,12 @@
 import { CheckCircle, Eye, FileText, LineChart, RefreshCw, Trash2, X } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import {
+  Pagination,
+  SortDirection,
+  SortIcon,
+  TableLoadingState,
+} from "@/app/components/shared/TableComponents";
 import { useToast } from "@/app/components/Toast";
 import { useAuRubberAuth } from "@/app/context/AuRubberAuthContext";
 import { useAuRubberBranding } from "@/app/context/AuRubberBrandingContext";
@@ -16,13 +22,8 @@ import { formatDateZA } from "@/app/lib/datetime";
 import { useAuRubberCompanies, useAuRubberSupplierCocs } from "@/app/lib/query/hooks";
 import { Breadcrumb } from "../../components/Breadcrumb";
 import { FileDropZone } from "../../components/FileDropZone";
-import {
-  ITEMS_PER_PAGE,
-  Pagination,
-  SortDirection,
-  SortIcon,
-  TableLoadingState,
-} from "../../components/TableComponents";
+
+const ITEMS_PER_PAGE = 25;
 
 interface AnalyzedFileResult {
   filename: string;
@@ -605,7 +606,10 @@ export default function SupplierCocsPage() {
 
       {isLoading ? (
         <div className="bg-white shadow rounded-lg overflow-hidden">
-          <TableLoadingState message="Loading supplier CoCs..." />
+          <TableLoadingState
+            message="Loading supplier CoCs..."
+            spinnerClassName="border-b-2 border-yellow-600"
+          />
         </div>
       ) : (
         [

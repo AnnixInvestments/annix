@@ -4,6 +4,11 @@ import React from "react";
 
 export type SortDirection = "asc" | "desc";
 
+export interface SortConfig {
+  key: string;
+  direction: SortDirection;
+}
+
 export interface SortIconProps {
   active: boolean;
   direction: SortDirection;
@@ -42,16 +47,45 @@ export function SortIcon(props: SortIconProps) {
   );
 }
 
+export interface SortHeaderProps {
+  label: string;
+  sortKey: string;
+  currentSort: SortConfig;
+  onSort: (key: string) => void;
+}
+
+export function SortHeader(props: SortHeaderProps) {
+  const { label, sortKey, currentSort, onSort } = props;
+  const isActive = currentSort.key === sortKey;
+
+  const ariaSort = isActive
+    ? currentSort.direction === "asc"
+      ? "ascending"
+      : "descending"
+    : "none";
+
+  return (
+    <th onClick={() => onSort(sortKey)} className={TABLE_HEADER_CLASSES} aria-sort={ariaSort}>
+      <div className="flex items-center">
+        {label}
+        <SortIcon active={isActive} direction={currentSort.direction} />
+      </div>
+    </th>
+  );
+}
+
 export interface TableLoadingStateProps {
   message?: string;
+  spinnerClassName?: string;
 }
 
 export function TableLoadingState(props: TableLoadingStateProps) {
-  const { message = "Loading..." } = props;
+  const message = props.message || "Loading...";
+  const spinnerClassName = props.spinnerClassName || "border-b-2 border-gray-600";
   return (
     <div className="flex items-center justify-center py-12">
       <div className="text-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-yellow-600 mx-auto"></div>
+        <div className={`animate-spin rounded-full h-12 w-12 ${spinnerClassName} mx-auto`}></div>
         <p className="mt-4 text-gray-600">{message}</p>
       </div>
     </div>
@@ -65,11 +99,13 @@ export interface TableEmptyStateProps {
   action?: {
     label: string;
     onClick: () => void;
+    className?: string;
   };
 }
 
 export function TableEmptyState(props: TableEmptyStateProps) {
   const { icon, title, subtitle, action } = props;
+  const buttonClassName = action?.className || "text-white bg-gray-600 hover:bg-gray-700";
   return (
     <div className="text-center py-12">
       <div className="mx-auto h-12 w-12 text-gray-400">{icon}</div>
@@ -78,7 +114,7 @@ export function TableEmptyState(props: TableEmptyStateProps) {
       {action && (
         <button
           onClick={action.onClick}
-          className="mt-4 inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-yellow-600 hover:bg-yellow-700"
+          className={`mt-4 inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium ${buttonClassName}`}
         >
           <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -100,13 +136,19 @@ export interface PaginationProps {
   itemName: string;
   onPageChange: (page: number) => void;
   onPageSizeChange?: (size: number) => void;
+  focusClassName?: string;
 }
 
 export function Pagination(props: PaginationProps) {
   const { currentPage, totalItems, itemsPerPage, itemName, onPageChange, onPageSizeChange } = props;
+  const focusClassName = props.focusClassName || "focus:ring-gray-500 focus:border-gray-500";
   const showAll = itemsPerPage === 0 || itemsPerPage >= totalItems;
   const effectivePerPage = showAll ? totalItems : itemsPerPage;
   const totalPages = showAll ? 1 : Math.ceil(totalItems / effectivePerPage);
+
+  if (totalItems <= itemsPerPage && !showAll) {
+    return null;
+  }
 
   const startItem = showAll ? 1 : currentPage * effectivePerPage + 1;
   const endItem = showAll ? totalItems : Math.min((currentPage + 1) * effectivePerPage, totalItems);
@@ -124,7 +166,7 @@ export function Pagination(props: PaginationProps) {
               onPageSizeChange(Number(e.target.value));
               onPageChange(0);
             }}
-            className="text-sm border border-gray-300 rounded-md px-2 py-1 text-gray-700 focus:ring-yellow-500 focus:border-yellow-500"
+            className={`text-sm border border-gray-300 rounded-md px-2 py-1 text-gray-700 ${focusClassName}`}
           >
             {PAGE_SIZE_OPTIONS.map((size) => (
               <option key={size} value={size}>
@@ -162,7 +204,6 @@ export function Pagination(props: PaginationProps) {
 export const TABLE_HEADER_CLASSES =
   "px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100";
 export const TABLE_CELL_CLASSES = "px-6 py-4 whitespace-nowrap";
-export const ITEMS_PER_PAGE = 25;
 
 interface IconProps {
   className?: string;
@@ -171,7 +212,7 @@ interface IconProps {
 export const TableIcons = {
   document: (props: IconProps) => (
     <svg
-      className={props.className ?? "h-12 w-12"}
+      className={props.className || "h-12 w-12"}
       fill="none"
       stroke="currentColor"
       viewBox="0 0 24 24"
@@ -186,7 +227,7 @@ export const TableIcons = {
   ),
   building: (props: IconProps) => (
     <svg
-      className={props.className ?? "h-12 w-12"}
+      className={props.className || "h-12 w-12"}
       fill="none"
       stroke="currentColor"
       viewBox="0 0 24 24"
@@ -201,7 +242,7 @@ export const TableIcons = {
   ),
   cube: (props: IconProps) => (
     <svg
-      className={props.className ?? "h-12 w-12"}
+      className={props.className || "h-12 w-12"}
       fill="none"
       stroke="currentColor"
       viewBox="0 0 24 24"
@@ -216,7 +257,7 @@ export const TableIcons = {
   ),
   tag: (props: IconProps) => (
     <svg
-      className={props.className ?? "h-12 w-12"}
+      className={props.className || "h-12 w-12"}
       fill="none"
       stroke="currentColor"
       viewBox="0 0 24 24"
@@ -231,7 +272,7 @@ export const TableIcons = {
   ),
   currency: (props: IconProps) => (
     <svg
-      className={props.className ?? "h-12 w-12"}
+      className={props.className || "h-12 w-12"}
       fill="none"
       stroke="currentColor"
       viewBox="0 0 24 24"

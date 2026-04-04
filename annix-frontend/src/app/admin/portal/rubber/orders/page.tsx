@@ -2,6 +2,14 @@
 
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useState } from "react";
+import {
+  Pagination,
+  SortDirection,
+  SortIcon,
+  TableEmptyState,
+  TableIcons,
+  TableLoadingState,
+} from "@/app/components/shared/TableComponents";
 import { useToast } from "@/app/components/Toast";
 import { RubberOrderDto, rubberPortalApi } from "@/app/lib/api/rubberPortalApi";
 import { fromISO, now } from "@/app/lib/datetime";
@@ -15,15 +23,9 @@ import {
 import { rubberKeys } from "@/app/lib/query/keys";
 import { Breadcrumb } from "../components/Breadcrumb";
 import { ConfirmModal } from "../components/ConfirmModal";
-import {
-  ITEMS_PER_PAGE,
-  Pagination,
-  SortDirection,
-  SortIcon,
-  TableEmptyState,
-  TableIcons,
-  TableLoadingState,
-} from "../components/TableComponents";
+
+const ITEMS_PER_PAGE = 15;
+
 import { OrderRow } from "./components/OrderRow";
 
 type SortColumn =
@@ -406,10 +408,13 @@ export default function RubberOrdersPage() {
 
       <div className="bg-white shadow rounded-lg overflow-hidden">
         {ordersQuery.isLoading ? (
-          <TableLoadingState message="Loading orders..." />
+          <TableLoadingState
+            message="Loading orders..."
+            spinnerClassName="border-b-2 border-blue-600"
+          />
         ) : filteredOrders.length === 0 ? (
           <TableEmptyState
-            icon={TableIcons.document}
+            icon={<TableIcons.document />}
             title="No orders found"
             subtitle={
               searchQuery ||
@@ -428,7 +433,11 @@ export default function RubberOrdersPage() {
                 dateFrom ||
                 dateTo
               )
-                ? { label: "New Order", onClick: () => setShowNewOrderModal(true) }
+                ? {
+                    label: "New Order",
+                    onClick: () => setShowNewOrderModal(true),
+                    className: "text-white bg-blue-600 hover:bg-blue-700",
+                  }
                 : undefined
             }
           />

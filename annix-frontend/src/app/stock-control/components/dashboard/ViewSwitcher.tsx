@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef } from "react";
+import { useDisclosure } from "@/app/lib/hooks/useDisclosure";
 
 interface ViewSwitcherProps {
   currentRole: string;
@@ -29,14 +30,17 @@ function formatRole(role: string): string {
 }
 
 export function ViewSwitcher({ currentRole, activeView, onSwitch }: ViewSwitcherProps) {
-  const [isOpen, setIsOpen] = useState(false);
+  const { isOpen, close, toggle } = useDisclosure();
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const handleClickOutside = useCallback((event: MouseEvent) => {
-    if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
-      setIsOpen(false);
-    }
-  }, []);
+  const handleClickOutside = useCallback(
+    (event: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        close();
+      }
+    },
+    [close],
+  );
 
   useEffect(() => {
     if (isOpen) {
@@ -56,7 +60,7 @@ export function ViewSwitcher({ currentRole, activeView, onSwitch }: ViewSwitcher
     <div className="relative" ref={containerRef}>
       <button
         type="button"
-        onClick={() => setIsOpen((prev) => !prev)}
+        onClick={toggle}
         className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-md shadow-sm transition-colors ${
           isViewingOwnDashboard
             ? "text-gray-700 bg-white border border-gray-300 hover:bg-gray-50"
@@ -87,7 +91,7 @@ export function ViewSwitcher({ currentRole, activeView, onSwitch }: ViewSwitcher
                 type="button"
                 onClick={() => {
                   onSwitch(currentRole);
-                  setIsOpen(false);
+                  close();
                 }}
                 className="w-full flex items-center gap-2 px-4 py-2 text-sm text-teal-700 hover:bg-teal-50 transition-colors font-medium"
               >
@@ -109,7 +113,7 @@ export function ViewSwitcher({ currentRole, activeView, onSwitch }: ViewSwitcher
                 type="button"
                 onClick={() => {
                   onSwitch(role.key);
-                  setIsOpen(false);
+                  close();
                 }}
                 className={`w-full flex items-center justify-between px-4 py-2 text-sm transition-colors ${
                   activeView === role.key

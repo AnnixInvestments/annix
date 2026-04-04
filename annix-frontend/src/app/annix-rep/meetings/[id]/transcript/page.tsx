@@ -11,6 +11,7 @@ import type {
   TranscriptSegment,
 } from "@/app/lib/api/annixRepApi";
 import { annixRepApi } from "@/app/lib/api/annixRepApi";
+import { useDisclosure } from "@/app/lib/hooks/useDisclosure";
 import {
   useMeeting,
   useMeetingRecording,
@@ -465,27 +466,27 @@ function ExportDropdown({
   transcript: Transcript;
   meetingTitle: string;
 }) {
-  const [isOpen, setIsOpen] = useState(false);
+  const { isOpen, close, toggle } = useDisclosure();
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const handleExportTxt = () => {
     const content = formatTranscriptAsTxt(transcript, meetingTitle);
     const safeName = meetingTitle.replace(/[^a-zA-Z0-9]/g, "_").substring(0, 50);
     downloadFile(content, `transcript_${safeName}.txt`, "text/plain");
-    setIsOpen(false);
+    close();
   };
 
   const handleExportJson = () => {
     const content = JSON.stringify(transcript, null, 2);
     const safeName = meetingTitle.replace(/[^a-zA-Z0-9]/g, "_").substring(0, 50);
     downloadFile(content, `transcript_${safeName}.json`, "application/json");
-    setIsOpen(false);
+    close();
   };
 
   return (
     <div className="relative" ref={dropdownRef}>
       <button
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={toggle}
         className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 flex items-center gap-1 px-2 py-1 rounded hover:bg-gray-100 dark:hover:bg-slate-700"
       >
         <svg
@@ -515,7 +516,7 @@ function ExportDropdown({
 
       {isOpen && (
         <>
-          <div className="fixed inset-0 z-10" onClick={() => setIsOpen(false)} />
+          <div className="fixed inset-0 z-10" onClick={close} />
           <div className="absolute right-0 mt-1 w-40 bg-white dark:bg-slate-800 rounded-md shadow-lg border border-gray-200 dark:border-slate-700 z-20">
             <button
               onClick={handleExportTxt}

@@ -5,11 +5,12 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { stockControlApiClient, WorkflowNotification } from "@/app/lib/api/stockControlApi";
 import { formatDateTimeZA } from "@/app/lib/datetime";
+import { useDisclosure } from "@/app/lib/hooks/useDisclosure";
 import { useNotificationCount } from "../hooks/useNotificationCount";
 
 export function NotificationBell() {
   const router = useRouter();
-  const [isOpen, setIsOpen] = useState(false);
+  const { isOpen, close, toggle } = useDisclosure();
   const [notifications, setNotifications] = useState<WorkflowNotification[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -34,13 +35,13 @@ export function NotificationBell() {
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
+        close();
       }
     };
 
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+  }, [close]);
 
   const handleMarkAsRead = useCallback(
     async (notificationId: number, e: React.MouseEvent) => {
@@ -77,9 +78,9 @@ export function NotificationBell() {
       } else if (notification.jobCardId) {
         router.push(`/stock-control/portal/job-cards/${notification.jobCardId}`);
       }
-      setIsOpen(false);
+      close();
     },
-    [router],
+    [router, close],
   );
 
   const [completingBgStep, setCompletingBgStep] = useState<number | null>(null);
@@ -150,7 +151,7 @@ export function NotificationBell() {
   return (
     <div className="relative" ref={dropdownRef}>
       <button
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={toggle}
         className="relative p-2 rounded-full hover:bg-white/10 transition-colors"
         aria-label="Notifications"
       >
@@ -287,7 +288,7 @@ export function NotificationBell() {
             <button
               onClick={() => {
                 router.push("/stock-control/portal/notifications");
-                setIsOpen(false);
+                close();
               }}
               className="text-sm text-teal-600 hover:text-teal-700 w-full text-center"
             >

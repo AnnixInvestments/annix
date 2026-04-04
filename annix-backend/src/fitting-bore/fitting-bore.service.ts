@@ -24,11 +24,12 @@
 //     return `This action removes a #${id} fittingBore`;
 //   }
 // }
-import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
+import { BadRequestException, Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { FittingVariant } from "src/fitting-variant/entities/fitting-variant.entity";
 import { NominalOutsideDiameterMm } from "src/nominal-outside-diameter-mm/entities/nominal-outside-diameter-mm.entity";
 import { Repository } from "typeorm";
+import { findOneOrFail } from "../lib/entity-helpers";
 import { CreateFittingBoreDto } from "./dto/create-fitting-bore.dto";
 import { UpdateFittingBoreDto } from "./dto/update-fitting-bore.dto";
 import { FittingBore } from "./entities/fitting-bore.entity";
@@ -45,15 +46,17 @@ export class FittingBoreService {
   ) {}
 
   async create(dto: CreateFittingBoreDto): Promise<FittingBore> {
-    const variant = await this.variantRepo.findOne({
-      where: { id: dto.variantId },
-    });
-    if (!variant) throw new NotFoundException(`FittingVariant ${dto.variantId} not found`);
+    const variant = await findOneOrFail(
+      this.variantRepo,
+      { where: { id: dto.variantId } },
+      "FittingVariant",
+    );
 
-    const nominal = await this.nominalRepo.findOne({
-      where: { id: dto.nominalId },
-    });
-    if (!nominal) throw new NotFoundException(`NominalOutsideDiameter ${dto.nominalId} not found`);
+    const nominal = await findOneOrFail(
+      this.nominalRepo,
+      { where: { id: dto.nominalId } },
+      "NominalOutsideDiameter",
+    );
 
     // Duplicate check: same borePosition in same variant
     const existing = await this.boreRepo.findOne({
@@ -82,12 +85,11 @@ export class FittingBoreService {
   }
 
   async findOne(id: number): Promise<FittingBore> {
-    const bore = await this.boreRepo.findOne({
-      where: { id },
-      relations: ["variant", "nominalOutsideDiameter"],
-    });
-    if (!bore) throw new NotFoundException(`FittingBore ${id} not found`);
-    return bore;
+    return findOneOrFail(
+      this.boreRepo,
+      { where: { id }, relations: ["variant", "nominalOutsideDiameter"] },
+      "FittingBore",
+    );
   }
 
   async update(id: number, dto: UpdateFittingBoreDto): Promise<FittingBore> {

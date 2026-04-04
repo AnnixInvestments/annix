@@ -24,11 +24,12 @@
 //     return `This action removes a #${id} fittingDimension`;
 //   }
 // }
-import { Injectable, NotFoundException } from "@nestjs/common";
+import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { AngleRange } from "src/angle-range/entities/angle-range.entity";
 import { FittingVariant } from "src/fitting-variant/entities/fitting-variant.entity";
 import { Repository } from "typeorm";
+import { findOneOrFail } from "../lib/entity-helpers";
 import { CreateFittingDimensionDto } from "./dto/create-fitting-dimension.dto";
 import { UpdateFittingDimensionDto } from "./dto/update-fitting-dimension.dto";
 import { FittingDimension } from "./entities/fitting-dimension.entity";
@@ -45,17 +46,19 @@ export class FittingDimensionService {
   ) {}
 
   async create(dto: CreateFittingDimensionDto): Promise<FittingDimension> {
-    const variant = await this.variantRepo.findOne({
-      where: { id: dto.variantId },
-    });
-    if (!variant) throw new NotFoundException(`FittingVariant ${dto.variantId} not found`);
+    const variant = await findOneOrFail(
+      this.variantRepo,
+      { where: { id: dto.variantId } },
+      "FittingVariant",
+    );
 
     let angleRange: AngleRange | null = null;
     if (dto.angleRangeId) {
-      angleRange = await this.angleRangeRepo.findOne({
-        where: { id: dto.angleRangeId },
-      });
-      if (!angleRange) throw new NotFoundException(`AngleRange ${dto.angleRangeId} not found`);
+      angleRange = await findOneOrFail(
+        this.angleRangeRepo,
+        { where: { id: dto.angleRangeId } },
+        "AngleRange",
+      );
     }
 
     // const dim = this.dimRepo.create({ variant, angleRange, ...dto });
@@ -74,12 +77,11 @@ export class FittingDimensionService {
   }
 
   async findOne(id: number): Promise<FittingDimension> {
-    const dim = await this.dimRepo.findOne({
-      where: { id },
-      relations: ["variant", "angleRange"],
-    });
-    if (!dim) throw new NotFoundException(`FittingDimension ${id} not found`);
-    return dim;
+    return findOneOrFail(
+      this.dimRepo,
+      { where: { id }, relations: ["variant", "angleRange"] },
+      "FittingDimension",
+    );
   }
 
   async update(id: number, dto: UpdateFittingDimensionDto): Promise<FittingDimension> {

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { TableLoadingState } from "@/app/components/shared/TableComponents";
 import { useToast } from "@/app/components/Toast";
 import {
   auRubberApiClient,
@@ -18,7 +19,6 @@ import {
 } from "@/app/lib/api/auRubberApi";
 import type { RubberProductCodingDto } from "@/app/lib/api/rubberPortalApi";
 import { Breadcrumb } from "../../components/Breadcrumb";
-import { TableLoadingState } from "../../components/TableComponents";
 
 interface CompoundSection {
   stock: RubberCompoundStockDto;
@@ -928,7 +928,10 @@ export default function CompoundStocksPage() {
 
       {isLoading ? (
         <div className="bg-white shadow rounded-lg overflow-hidden">
-          <TableLoadingState message="Loading compound stock data..." />
+          <TableLoadingState
+            message="Loading compound stock data..."
+            spinnerClassName="border-b-2 border-yellow-600"
+          />
         </div>
       ) : (
         <>

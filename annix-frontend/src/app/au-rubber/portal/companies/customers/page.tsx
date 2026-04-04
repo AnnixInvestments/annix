@@ -2,6 +2,13 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import {
+  SortDirection,
+  SortIcon,
+  TableEmptyState,
+  TableIcons,
+  TableLoadingState,
+} from "@/app/components/shared/TableComponents";
 import { useToast } from "@/app/components/Toast";
 import type { RubberTaxInvoiceDto } from "@/app/lib/api/auRubberApi";
 import { auRubberApiClient } from "@/app/lib/api/auRubberApi";
@@ -13,13 +20,6 @@ import type {
 } from "@/app/lib/api/rubberPortalApi";
 import { Breadcrumb } from "../../../components/Breadcrumb";
 import { ConfirmModal } from "../../../components/ConfirmModal";
-import {
-  SortDirection,
-  SortIcon,
-  TableEmptyState,
-  TableIcons,
-  TableLoadingState,
-} from "../../../components/TableComponents";
 
 type SortColumn =
   | "name"
@@ -754,13 +754,20 @@ export default function CustomersPage() {
 
       <div className="bg-white shadow rounded-lg overflow-hidden">
         {isLoading ? (
-          <TableLoadingState message="Loading customers..." />
+          <TableLoadingState
+            message="Loading customers..."
+            spinnerClassName="border-b-2 border-yellow-600"
+          />
         ) : customers.length === 0 ? (
           <TableEmptyState
             icon={<TableIcons.building />}
             title="No customers yet"
             subtitle="Add your first customer to get started"
-            action={{ label: "Add Customer", onClick: openNewForm }}
+            action={{
+              label: "Add Customer",
+              onClick: openNewForm,
+              className: "text-white bg-yellow-600 hover:bg-yellow-700",
+            }}
           />
         ) : (
           <table className="min-w-full divide-y divide-gray-200">

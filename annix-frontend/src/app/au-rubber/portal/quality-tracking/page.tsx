@@ -3,6 +3,12 @@
 import { AlertTriangle, ArrowDown, ArrowRight, ArrowUp, CheckCircle, XCircle } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import {
+  Pagination,
+  SortDirection,
+  SortIcon,
+  TableLoadingState,
+} from "@/app/components/shared/TableComponents";
 import { useToast } from "@/app/components/Toast";
 import {
   auRubberApiClient,
@@ -13,13 +19,8 @@ import {
 import { formatDateZA } from "@/app/lib/datetime";
 import { useAuRubberQualityAlerts, useAuRubberQualityTrackingSummary } from "@/app/lib/query/hooks";
 import { Breadcrumb } from "../../components/Breadcrumb";
-import {
-  ITEMS_PER_PAGE,
-  Pagination,
-  SortDirection,
-  SortIcon,
-  TableLoadingState,
-} from "../../components/TableComponents";
+
+const ITEMS_PER_PAGE = 25;
 
 type SortColumn =
   | "compoundCode"
@@ -254,7 +255,10 @@ export default function QualityTrackingPage() {
 
       <div className="bg-white shadow rounded-lg overflow-hidden">
         {isLoading ? (
-          <TableLoadingState message="Loading quality data..." />
+          <TableLoadingState
+            message="Loading quality data..."
+            spinnerClassName="border-b-2 border-yellow-600"
+          />
         ) : filteredSummaries.length === 0 ? (
           <div className="p-8">
             <div className="flex flex-col items-center justify-center py-12">

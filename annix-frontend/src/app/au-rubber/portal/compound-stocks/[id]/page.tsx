@@ -3,7 +3,7 @@
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Breadcrumb } from "@/app/au-rubber/components/Breadcrumb";
-import { TableLoadingState } from "@/app/au-rubber/components/TableComponents";
+import { TableLoadingState } from "@/app/components/shared/TableComponents";
 import { useToast } from "@/app/components/Toast";
 import {
   auRubberApiClient,
@@ -153,7 +153,12 @@ export default function CompoundStockDetailPage() {
   };
 
   if (isLoading) {
-    return <TableLoadingState message="Loading compound stock..." />;
+    return (
+      <TableLoadingState
+        message="Loading compound stock..."
+        spinnerClassName="border-b-2 border-yellow-600"
+      />
+    );
   }
 
   if (error || !stock) {

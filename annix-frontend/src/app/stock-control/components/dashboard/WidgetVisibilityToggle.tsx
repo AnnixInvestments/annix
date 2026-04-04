@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef } from "react";
+import { useDisclosure } from "@/app/lib/hooks/useDisclosure";
 
 interface WidgetVisibilityToggleProps {
   allWidgets: { key: string; label: string }[];
@@ -13,14 +14,17 @@ export function WidgetVisibilityToggle({
   hiddenWidgets,
   onToggle,
 }: WidgetVisibilityToggleProps) {
-  const [isOpen, setIsOpen] = useState(false);
+  const { isOpen, close, toggle } = useDisclosure();
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const handleClickOutside = useCallback((event: MouseEvent) => {
-    if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
-      setIsOpen(false);
-    }
-  }, []);
+  const handleClickOutside = useCallback(
+    (event: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        close();
+      }
+    },
+    [close],
+  );
 
   useEffect(() => {
     if (isOpen) {
@@ -34,7 +38,7 @@ export function WidgetVisibilityToggle({
     <div className="relative" ref={containerRef}>
       <button
         type="button"
-        onClick={() => setIsOpen((prev) => !prev)}
+        onClick={toggle}
         className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 transition-colors"
       >
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
