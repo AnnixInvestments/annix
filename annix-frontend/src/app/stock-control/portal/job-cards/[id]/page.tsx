@@ -437,17 +437,20 @@ export default function JobCardDetailPage() {
       return assigned.some((u) => u.name === checkName);
     }
 
+    if (userRole === "admin") return true;
+
     return workflowStatus.canApprove;
-  }, [currentStep, workflowStatus, isPreviewActive, effectiveName]);
+  }, [currentStep, workflowStatus, isPreviewActive, effectiveName, userRole]);
 
   const canAcceptDraft = useMemo(() => {
     if (!workflowStatus || workflowStatus.jobCardStatus !== "draft") return false;
+    if (userRole === "admin" && !isPreviewActive) return true;
     const checkName = effectiveName || user?.name;
     if (!checkName) return false;
     const assigned = workflowStatus.stepAssignments?.["document_upload"];
     if (!assigned || assigned.length === 0) return false;
     return assigned.some((u) => u.name === checkName);
-  }, [workflowStatus, user?.name, effectiveName]);
+  }, [workflowStatus, user?.name, effectiveName, userRole, isPreviewActive]);
   const pipingLossPct = profile?.pipingLossFactorPct || 45;
 
   const validLineItemCount = useMemo(
@@ -593,7 +596,9 @@ export default function JobCardDetailPage() {
       }
 
       const assigned = assignments[bg.stepKey];
-      if (!assigned || assigned.length === 0 || !assigned.some((u) => u.name === checkName)) {
+      if (!assigned || assigned.length === 0) return false;
+      const isAdminView = userRole === "admin" && !isPreviewActive;
+      if (!isAdminView && !assigned.some((u) => u.name === checkName)) {
         return false;
       }
 
@@ -608,7 +613,15 @@ export default function JobCardDetailPage() {
       const originIdx = resolveOriginFgIdx(bg.triggerAfterStep || "__root__");
       return originIdx === firstOriginIdx;
     });
-  }, [workflowStatus, backgroundSteps, currentStatus, user?.name, effectiveName]);
+  }, [
+    workflowStatus,
+    backgroundSteps,
+    currentStatus,
+    user?.name,
+    effectiveName,
+    userRole,
+    isPreviewActive,
+  ]);
 
   const activeBgStepKeys = useMemo(
     () => new Set(userPendingBgSteps.map((bg) => bg.stepKey)),
@@ -714,6 +727,7 @@ export default function JobCardDetailPage() {
   const hasBlueLineTasks = currentStepPhaseInfo.isMultiPhase;
 
   const fgActionAssignedToOther = useMemo(() => {
+    if (userRole === "admin" && !isPreviewActive) return false;
     const checkName = effectiveName || user?.name;
     if (!workflowStatus || !currentStep || !checkName) return false;
     if (!currentStepActionLabel) return false;
@@ -728,7 +742,15 @@ export default function JobCardDetailPage() {
       if (!assigned || assigned.length === 0) return true;
       return !assigned.some((u) => u.name === checkName);
     });
-  }, [workflowStatus, currentStep, currentStepActionLabel, user?.name, effectiveName]);
+  }, [
+    workflowStatus,
+    currentStep,
+    currentStepActionLabel,
+    user?.name,
+    effectiveName,
+    userRole,
+    isPreviewActive,
+  ]);
 
   const isReceptionStep = useCallback(
     (bg: BackgroundStepStatus) =>
