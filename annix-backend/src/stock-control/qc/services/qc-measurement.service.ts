@@ -4,6 +4,7 @@ import { Repository } from "typeorm";
 import { JobCardCoatingAnalysis } from "../../entities/coating-analysis.entity";
 import { JobCard } from "../../entities/job-card.entity";
 import { StockControlCompany } from "../../entities/stock-control-company.entity";
+import { INVALID_LINE_ITEM_PATTERNS } from "../../lib/line-item-validation";
 import { QcBlastProfile } from "../entities/qc-blast-profile.entity";
 import {
   InterventionType,
@@ -401,8 +402,11 @@ export class QcMeasurementService {
     const orderNumber = jobCard.poNumber || null;
     const jobName = `${jobCard.jobNumber} - ${jobCard.jobName || ""}`.trim();
     const itemDescriptions = (jobCard.lineItems || [])
-      .map((li: any) => li.itemDescription)
-      .filter(Boolean)
+      .map((li: any) => (li.itemDescription || "").trim())
+      .filter(
+        (desc: string) =>
+          desc.length > 0 && !INVALID_LINE_ITEM_PATTERNS.some((pattern) => pattern.test(desc)),
+      )
       .join("; ");
 
     const emptySignOff = (): PartySignOff => ({
