@@ -60,6 +60,8 @@ export default function QcpReviewPage() {
   const [forwardName, setForwardName] = useState("");
   const [isForwarding, setIsForwarding] = useState(false);
   const [forwardSuccess, setForwardSuccess] = useState(false);
+  const [isFinalizing, setIsFinalizing] = useState(false);
+  const [finalizeSuccess, setFinalizeSuccess] = useState(false);
 
   useEffect(() => {
     const load = async () => {
@@ -244,6 +246,26 @@ export default function QcpReviewPage() {
     }
   }, [tokenStr, forwardEmail, forwardName, details?.token.partyRole]);
 
+  const handleFinalize = useCallback(async () => {
+    setIsFinalizing(true);
+    try {
+      const res = await publicApi(`/${tokenStr}/finalize`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        setErrorMessage(data?.message || "Failed to finalize approval");
+        return;
+      }
+      setFinalizeSuccess(true);
+    } catch {
+      setErrorMessage("Failed to finalize approval. Please try again.");
+    } finally {
+      setIsFinalizing(false);
+    }
+  }, [tokenStr]);
+
   const primaryColor = details?.company.primaryColor || "#0d9488";
 
   if (status === "loading") {
@@ -293,7 +315,8 @@ export default function QcpReviewPage() {
           </p>
 
           {isApproved &&
-            (details?.token.partyRole === "mps" || details?.token.partyRole === "client") && (
+            (details?.token.partyRole === "mps" || details?.token.partyRole === "client") &&
+            !finalizeSuccess && (
               <div className="mt-6 rounded-lg border border-gray-200 p-4 text-left">
                 <h3 className="text-sm font-semibold text-gray-900">
                   {details.token.partyRole === "mps"
@@ -303,7 +326,7 @@ export default function QcpReviewPage() {
                 <p className="mt-1 text-xs text-gray-500">
                   {details.token.partyRole === "mps"
                     ? "If the end client needs to review this QCP, enter their details below."
-                    : "If a third-party inspector needs to review this QCP, enter their details below."}
+                    : "If a third-party inspector needs to review this QCP, enter their details below. Otherwise you can finalize approval now."}
                 </p>
                 {forwardSuccess ? (
                   <p className="mt-3 text-sm text-green-700">
@@ -334,7 +357,7 @@ export default function QcpReviewPage() {
                     <button
                       type="button"
                       onClick={handleForward}
-                      disabled={isForwarding || !forwardEmail.trim()}
+                      disabled={isForwarding || isFinalizing || !forwardEmail.trim()}
                       className="w-full rounded-md bg-teal-600 px-4 py-2 text-sm font-medium text-white hover:bg-teal-700 disabled:opacity-50"
                     >
                       {isForwarding
@@ -343,10 +366,29 @@ export default function QcpReviewPage() {
                           ? "Forward to End Client"
                           : "Forward to 3rd Party"}
                     </button>
+                    {details.token.partyRole === "client" && (
+                      <button
+                        type="button"
+                        onClick={handleFinalize}
+                        disabled={isFinalizing || isForwarding}
+                        className="w-full rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                      >
+                        {isFinalizing ? "Finalizing..." : "No 3rd Party - Finalize Approval"}
+                      </button>
+                    )}
                   </div>
                 )}
               </div>
             )}
+
+          {finalizeSuccess && (
+            <div className="mt-6 rounded-lg border border-green-200 bg-green-50 p-4 text-left">
+              <p className="text-sm font-medium text-green-800">
+                QCP fully approved. {details?.company.name || "The team"} and the customer have been
+                notified.
+              </p>
+            </div>
+          )}
         </div>
       </div>
     );

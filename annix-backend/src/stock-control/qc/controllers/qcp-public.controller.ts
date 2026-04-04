@@ -77,6 +77,12 @@ export class QcpPublicController {
     return this.approvalService.forwardToThirdParty(token, body.email, body.name || null);
   }
 
+  @Post(":token/finalize")
+  @ApiOperation({ summary: "Client finalizes QCP approval without 3rd party review" })
+  async finalize(@Param("token") token: string) {
+    return this.approvalService.finalizeClientApproval(token);
+  }
+
   @Post(":token/forward-to-client")
   @ApiOperation({ summary: "Forward QCP from MPS to end client" })
   async forwardToClient(

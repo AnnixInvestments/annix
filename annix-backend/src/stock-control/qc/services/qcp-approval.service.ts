@@ -42,6 +42,20 @@ export class QcpApprovalService {
     this.storageType = this.configService.get<string>("STORAGE_TYPE") || "local";
   }
 
+  private async priorTokenRecipients(
+    planId: number,
+    partyRoles: QcpPartyRole[],
+  ): Promise<string[]> {
+    const tokens = await this.tokenRepo.find({
+      where: partyRoles.map((role) => ({
+        controlPlanId: planId,
+        partyRole: role,
+        status: QcpApprovalTokenStatus.APPROVED,
+      })),
+    });
+    return tokens.map((t) => t.recipientEmail).filter((e): e is string => !!e);
+  }
+
   private async resolveStorageUrl(path: string | null): Promise<string | null> {
     if (!path) {
       return null;
@@ -260,12 +274,29 @@ export class QcpApprovalService {
 
       const company = await this.companyRepo.findOne({ where: { id: token.companyId } });
       const roleLabel = roleLabelMap[token.partyRole] || token.partyRole;
+      const qamEmail = company?.notificationEmails?.[0] || null;
+
       await this.emailService.sendEmail(token.companyId, {
-        to: company?.notificationEmails?.[0] || token.recipientEmail,
+        to: qamEmail || token.recipientEmail,
         subject: `QCP Approved - ${plan.qcpNumber || `QCP #${plan.id}`} by ${payload.signatureName}`,
         html: `<p><strong>${payload.signatureName}</strong> (${roleLabel}) has approved QCP <strong>${plan.qcpNumber || plan.id}</strong>.</p>`,
         text: `${payload.signatureName} has approved QCP ${plan.qcpNumber || plan.id}.`,
       });
+
+      if (token.partyRole === "third_party" && nextStatus === "approved") {
+        const priorRecipients = await this.priorTokenRecipients(plan.id, ["mps", "client"]);
+        const fullApprovalRecipients = Array.from(new Set(priorRecipients));
+        await Promise.all(
+          fullApprovalRecipients.map((to) =>
+            this.emailService.sendEmail(token.companyId, {
+              to,
+              subject: `QCP Fully Approved - ${plan.qcpNumber || `QCP #${plan.id}`}`,
+              html: `<p>QCP <strong>${plan.qcpNumber || plan.id}</strong> has now been fully approved. 3rd party reviewer <strong>${payload.signatureName}</strong> has signed off and all parties have completed their review.</p>`,
+              text: `QCP ${plan.qcpNumber || plan.id} has been fully approved. 3rd party (${payload.signatureName}) has signed off.`,
+            }),
+          ),
+        );
+      }
     } else {
       await this.tokenRepo.update(token.id, {
         status: QcpApprovalTokenStatus.CHANGES_REQUESTED,
@@ -420,6 +451,58 @@ export class QcpApprovalService {
     );
 
     return saved;
+  }
+
+  async finalizeClientApproval(tokenStr: string): Promise<{ success: boolean }> {
+    const clientToken = await this.tokenRepo.findOne({ where: { token: tokenStr } });
+    if (!clientToken) {
+      throw new NotFoundException("Review link not found");
+    }
+    if (clientToken.partyRole !== "client") {
+      throw new ForbiddenException("Only client tokens can finalize approval");
+    }
+    if (clientToken.status !== QcpApprovalTokenStatus.APPROVED) {
+      throw new BadRequestException("Client must approve before finalizing");
+    }
+
+    const plan = await this.planRepo.findOne({
+      where: { id: clientToken.controlPlanId, companyId: clientToken.companyId },
+    });
+    if (!plan) {
+      throw new NotFoundException("Control plan not found");
+    }
+
+    await this.tokenRepo.update(
+      {
+        controlPlanId: plan.id,
+        partyRole: "third_party",
+        status: QcpApprovalTokenStatus.PENDING,
+      },
+      { status: QcpApprovalTokenStatus.SUPERSEDED },
+    );
+
+    await this.planRepo.update(plan.id, { approvalStatus: "approved" });
+
+    const company = await this.companyRepo.findOne({ where: { id: clientToken.companyId } });
+    const qamEmail = company?.notificationEmails?.[0] || null;
+    const mpsRecipients = await this.priorTokenRecipients(plan.id, ["mps"]);
+    const recipients = Array.from(
+      new Set([qamEmail, ...mpsRecipients].filter((e): e is string => !!e)),
+    );
+
+    await Promise.all(
+      recipients.map((to) =>
+        this.emailService.sendEmail(clientToken.companyId, {
+          to,
+          subject: `QCP Fully Approved - ${plan.qcpNumber || `QCP #${plan.id}`}`,
+          html: `<p>QCP <strong>${plan.qcpNumber || plan.id}</strong> has been fully approved. The client has signed off and elected not to send to a 3rd party reviewer.</p>`,
+          text: `QCP ${plan.qcpNumber || plan.id} has been fully approved (client declined 3rd party review).`,
+        }),
+      ),
+    );
+
+    this.logger.log(`QCP ${plan.id} finalized by client (no 3rd party)`);
+    return { success: true };
   }
 
   async forwardToThirdParty(
