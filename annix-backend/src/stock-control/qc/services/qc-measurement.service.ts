@@ -630,6 +630,11 @@ export class QcMeasurementService {
       const documentRef = planTypeDocRefs[planType] || null;
 
       if (existingPlan) {
+        const needsNewNumber =
+          !existingPlan.qcpNumber || !existingPlan.qcpNumber.startsWith("QCP-");
+        if (needsNewNumber) {
+          existingPlan.qcpNumber = await this.nextQcpNumber(companyId, planType);
+        }
         existingPlan.revision = revision;
         existingPlan.documentRef = documentRef;
         existingPlan.customerName = customerName;
