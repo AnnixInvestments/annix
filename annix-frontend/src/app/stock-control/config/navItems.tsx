@@ -6,6 +6,7 @@ export interface NavItemDef {
   defaultRoles: string[];
   immutable?: boolean;
   group?: string;
+  trailing?: boolean;
   requiresQc?: boolean;
   requiresStaffLeave?: boolean;
 }
@@ -491,7 +492,7 @@ export const ALL_NAV_ITEMS: NavItemDef[] = [
     href: "/stock-control/portal/how-to",
     label: "How To",
     defaultRoles: ["*"],
-    group: "Admin",
+    trailing: true,
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path

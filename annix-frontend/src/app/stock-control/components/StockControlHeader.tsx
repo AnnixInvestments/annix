@@ -159,33 +159,41 @@ export function StockControlHeader() {
                 <div className="fixed inset-0 z-40" onClick={() => setMobileNavOpen(false)} />
                 <div className="absolute top-full left-0 mt-2 w-56 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-50 py-1">
                   {(() => {
-                    const directItems = visibleNavItems
-                      .filter((item) => !item.group || item.group === "hidden")
-                      .filter((item) => item.group !== "hidden");
+                    const directItems = visibleNavItems.filter(
+                      (item) => !item.group || item.group === "hidden",
+                    );
+                    const leadingDirect = directItems.filter(
+                      (item) => item.group !== "hidden" && !item.trailing,
+                    );
+                    const trailingDirect = directItems.filter(
+                      (item) => item.group !== "hidden" && item.trailing === true,
+                    );
                     const groups = NAV_GROUP_ORDER.map((groupName) => ({
                       name: groupName,
                       hubPath: NAV_GROUP_HUB_PATHS[groupName],
                       items: visibleNavItems.filter((item) => item.group === groupName),
                     })).filter((g) => g.items.length > 0);
 
+                    const renderDirectItem = (item: (typeof directItems)[number]) => (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        onClick={() => setMobileNavOpen(false)}
+                        className={`flex items-center gap-2 px-4 py-3 text-sm font-medium ${
+                          isActive(item.href)
+                            ? "bg-teal-50 dark:bg-teal-900/30 text-teal-700 dark:text-teal-300"
+                            : "text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700"
+                        }`}
+                      >
+                        <span className="[&>svg]:w-4 [&>svg]:h-4">{item.icon}</span>
+                        {item.label}
+                      </Link>
+                    );
+
                     return (
                       <>
-                        {directItems.map((item) => (
-                          <Link
-                            key={item.href}
-                            href={item.href}
-                            onClick={() => setMobileNavOpen(false)}
-                            className={`flex items-center gap-2 px-4 py-3 text-sm font-medium ${
-                              isActive(item.href)
-                                ? "bg-teal-50 dark:bg-teal-900/30 text-teal-700 dark:text-teal-300"
-                                : "text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700"
-                            }`}
-                          >
-                            <span className="[&>svg]:w-4 [&>svg]:h-4">{item.icon}</span>
-                            {item.label}
-                          </Link>
-                        ))}
-                        {directItems.length > 0 && groups.length > 0 && (
+                        {leadingDirect.map(renderDirectItem)}
+                        {leadingDirect.length > 0 && groups.length > 0 && (
                           <div className="border-t border-gray-100 dark:border-gray-700 my-1" />
                         )}
                         {groups.map((group) => (
@@ -202,6 +210,10 @@ export function StockControlHeader() {
                             {group.name}
                           </Link>
                         ))}
+                        {trailingDirect.length > 0 && groups.length > 0 && (
+                          <div className="border-t border-gray-100 dark:border-gray-700 my-1" />
+                        )}
+                        {trailingDirect.map(renderDirectItem)}
                       </>
                     );
                   })()}
@@ -211,14 +223,35 @@ export function StockControlHeader() {
           </div>
 
           {(() => {
-            const directItems = visibleNavItems
-              .filter((item) => !item.group || item.group === "hidden")
-              .filter((item) => item.group !== "hidden");
+            const directItems = visibleNavItems.filter(
+              (item) => !item.group || item.group === "hidden",
+            );
+            const leadingDirect = directItems.filter(
+              (item) => item.group !== "hidden" && !item.trailing,
+            );
+            const trailingDirect = directItems.filter(
+              (item) => item.group !== "hidden" && item.trailing === true,
+            );
             const groups = NAV_GROUP_ORDER.map((groupName) => ({
               name: groupName,
               hubPath: NAV_GROUP_HUB_PATHS[groupName],
               items: visibleNavItems.filter((item) => item.group === groupName),
             })).filter((g) => g.items.length > 0);
+
+            const renderDirectItem = (item: (typeof directItems)[number]) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`flex items-center gap-1.5 min-h-[44px] px-3 py-2 text-sm font-medium whitespace-nowrap rounded-md transition-colors ${
+                  isActive(item.href)
+                    ? "bg-black/20 text-white"
+                    : "text-white/70 hover:bg-black/10 hover:text-white"
+                }`}
+              >
+                <span className="[&>svg]:w-4 [&>svg]:h-4">{item.icon}</span>
+                {item.label}
+              </Link>
+            );
 
             return (
               <nav
@@ -226,20 +259,7 @@ export function StockControlHeader() {
                 aria-label="Main navigation"
               >
                 <div className="flex items-center gap-1">
-                  {directItems.map((item) => (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      className={`flex items-center gap-1.5 min-h-[44px] px-3 py-2 text-sm font-medium whitespace-nowrap rounded-md transition-colors ${
-                        isActive(item.href)
-                          ? "bg-black/20 text-white"
-                          : "text-white/70 hover:bg-black/10 hover:text-white"
-                      }`}
-                    >
-                      <span className="[&>svg]:w-4 [&>svg]:h-4">{item.icon}</span>
-                      {item.label}
-                    </Link>
-                  ))}
+                  {leadingDirect.map(renderDirectItem)}
                   {groups.map((group) => (
                     <Link
                       key={group.name}
@@ -253,6 +273,7 @@ export function StockControlHeader() {
                       {group.name}
                     </Link>
                   ))}
+                  {trailingDirect.map(renderDirectItem)}
                 </div>
               </nav>
             );
