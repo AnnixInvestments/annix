@@ -11,14 +11,20 @@ export interface NavItemDef {
   requiresStaffLeave?: boolean;
 }
 
-export const NAV_GROUP_ORDER = ["Inventory", "Supplier", "Customer", "Quality", "Admin"] as const;
+export const NAV_GROUP_ORDER = [
+  "Inventory",
+  "Supplier",
+  "Customer",
+  "Quality",
+  "Resources",
+] as const;
 
 export const NAV_GROUP_HUB_PATHS: Record<string, string> = {
   Inventory: "/stock-control/portal/inventory",
   Supplier: "/stock-control/portal/supplier",
   Customer: "/stock-control/portal/customer",
   Quality: "/stock-control/portal/quality",
-  Admin: "/stock-control/portal/admin",
+  Resources: "/stock-control/portal/admin",
 };
 
 export const ALL_NAV_ITEMS: NavItemDef[] = [
@@ -441,7 +447,7 @@ export const ALL_NAV_ITEMS: NavItemDef[] = [
     href: "/stock-control/portal/admin/inbound-emails",
     label: "Inbound Emails",
     defaultRoles: ["admin"],
-    group: "Admin",
+    group: "Resources",
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path
@@ -458,7 +464,7 @@ export const ALL_NAV_ITEMS: NavItemDef[] = [
     href: "/stock-control/portal/reports",
     label: "Reports",
     defaultRoles: ["manager", "admin"],
-    group: "Admin",
+    group: "Resources",
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path
@@ -475,7 +481,7 @@ export const ALL_NAV_ITEMS: NavItemDef[] = [
     href: "/stock-control/portal/glossary",
     label: "Glossary",
     defaultRoles: ["viewer", "quality", "storeman", "accounts", "manager", "admin"],
-    group: "Admin",
+    group: "Resources",
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path

@@ -10,7 +10,7 @@ const DESCRIPTIONS: Record<string, string> = {
 };
 
 export default function AdminHubPage() {
-  const items = useVisibleNavItems("Admin");
+  const items = useVisibleNavItems("Resources");
 
   const hubItems = items.map((item) => ({
     item,
@@ -19,7 +19,7 @@ export default function AdminHubPage() {
 
   return (
     <HubPage
-      title="Admin"
+      title="Resources"
       description="Access reports and reference information."
       items={hubItems}
     />
