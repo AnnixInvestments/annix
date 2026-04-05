@@ -22,6 +22,7 @@ import { DepartmentsLocationsSection } from "./DepartmentsLocationsSection";
 import { InboundEmailConfigSection } from "./InboundEmailConfigSection";
 import { TeamManagementSection } from "./TeamManagementSection";
 import { WorkflowConfigurationSection } from "./WorkflowConfigurationSection";
+import { WorkflowPreviewSection } from "./WorkflowPreviewSection";
 
 export default function StockControlSettingsPage() {
   const router = useRouter();
@@ -59,8 +60,9 @@ export default function StockControlSettingsPage() {
       <DepartmentsLocationsSection onLocationsLoaded={setLocations} />
 
       {profile?.workflowEnabled === true && (
-        <div className="lg:col-span-2">
+        <div className="lg:col-span-2 space-y-6">
           <WorkflowConfigurationSection teamMembers={teamMembers} />
+          <WorkflowPreviewSection />
         </div>
       )}
       <UserLocationAssignmentsSection locations={locations} teamMembers={teamMembers} />
