@@ -7,6 +7,7 @@ import type { AdminTransferPending } from "@/app/lib/api/stock-control-api/types
 import { CandidateImage, stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { useCompanyRoles } from "@/app/lib/query/hooks";
 import { useConfirm } from "@/app/stock-control/hooks/useConfirm";
+import { usePushNotifications } from "@/app/stock-control/hooks/usePushNotifications";
 import { STOCK_CONTROL_VERSION } from "../../config/version";
 import { syncStatus } from "../../lib/offline/syncManager";
 import { isValidEmail } from "../../lib/validation";
@@ -139,6 +140,13 @@ export default function CompanyProfilePage() {
   const [workflowEnabled, setWorkflowEnabled] = useState(true);
   const [staffLeaveEnabled, setStaffLeaveEnabled] = useState(false);
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+  const {
+    permissionState: pushPermissionState,
+    isSubscribed: pushIsSubscribed,
+    isLoading: pushIsLoading,
+    requestPermissionAndSubscribe: enablePushOnThisDevice,
+  } = usePushNotifications();
+  const [pushEnabling, setPushEnabling] = useState(false);
   const [featuresSaving, setFeaturesSaving] = useState(false);
   const [featuresSuccess, setFeaturesSuccess] = useState(false);
   const [featuresError, setFeaturesError] = useState("");
@@ -874,6 +882,51 @@ export default function CompanyProfilePage() {
               />
             </button>
           </label>
+
+          {notificationsEnabled &&
+            !pushIsLoading &&
+            pushPermissionState !== "unsupported" &&
+            pushPermissionState !== "denied" &&
+            !pushIsSubscribed && (
+              <div className="flex items-center justify-between rounded-md border border-teal-200 bg-teal-50 px-4 py-3">
+                <div>
+                  <p className="text-sm font-medium text-teal-900">
+                    Enable push notifications on this device
+                  </p>
+                  <p className="text-xs text-teal-700 mt-0.5">
+                    Receive approval, dispatch, and alert notifications directly in this browser.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  disabled={pushEnabling}
+                  onClick={async () => {
+                    setPushEnabling(true);
+                    try {
+                      localStorage.removeItem("stock-control-push-dismissed");
+                      await enablePushOnThisDevice();
+                    } finally {
+                      setPushEnabling(false);
+                    }
+                  }}
+                  className="ml-4 px-3 py-1.5 bg-teal-600 text-white text-xs font-medium rounded-md hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  {pushEnabling ? "Enabling..." : "Enable"}
+                </button>
+              </div>
+            )}
+
+          {notificationsEnabled && pushPermissionState === "denied" && (
+            <div className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3">
+              <p className="text-sm font-medium text-amber-900">
+                Push notifications are blocked in this browser
+              </p>
+              <p className="text-xs text-amber-700 mt-0.5">
+                Update your browser's site permissions to allow notifications, then reload this
+                page.
+              </p>
+            </div>
+          )}
         </div>
 
         {featuresError && <p className="mt-4 text-sm text-red-600">{featuresError}</p>}
