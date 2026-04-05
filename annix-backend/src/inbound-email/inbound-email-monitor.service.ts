@@ -142,8 +142,13 @@ export class InboundEmailMonitorService {
       const fromName = Array.isArray(fromValue) ? fromValue[0]?.name || null : null;
       const subject = parsed.subject || "";
 
+      const adapter = this.registry.adapterForApp(config.app);
       const router = this.registry.routerForApp(config.app);
       const supportedMimes = router ? new Set(router.supportedMimeTypes()) : SUPPORTED_MIME_TYPES;
+
+      const resolvedCompanyId = adapter
+        ? await adapter.resolveCompanyId(fromEmail, config.companyId)
+        : config.companyId;
 
       const eligibleAttachments = (parsed.attachments || []).filter(
         (att) =>
@@ -154,7 +159,7 @@ export class InboundEmailMonitorService {
       const email = await this.inboundEmailService.recordEmail({
         configId: config.id,
         app: config.app,
-        companyId: config.companyId,
+        companyId: resolvedCompanyId,
         messageId,
         fromEmail,
         fromName,
@@ -194,7 +199,7 @@ export class InboundEmailMonitorService {
             }
           }
 
-          const storagePrefix = `${config.app}/inbound/${config.companyId ?? "shared"}`;
+          const storagePrefix = `${config.app}/inbound/${resolvedCompanyId ?? "shared"}`;
           const multerFile: Express.Multer.File = {
             fieldname: "file",
             originalname: filename,
@@ -226,7 +231,7 @@ export class InboundEmailMonitorService {
               const routingResult = await router.route(
                 attachment,
                 att.content,
-                config.companyId,
+                resolvedCompanyId,
                 fromEmail,
                 subject,
               );

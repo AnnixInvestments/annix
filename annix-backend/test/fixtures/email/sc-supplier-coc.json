@@ -1,0 +1,17 @@
+{
+  "app": "stock-control",
+  "subject": "Certificate of Conformance - Heat 4523891",
+  "fromEmail": "qa@example.com",
+  "attachments": [
+    {
+      "filename": "coc-heat-4523891.pdf",
+      "mimeType": "application/pdf",
+      "contentText": "CERTIFICATE OF CONFORMANCE\nHeat Number: 4523891\nMaterial: ASTM A106 Gr B\n\nChemical Composition (%):\nC: 0.21  Mn: 0.85  P: 0.018  S: 0.012\n\nMechanical Properties:\nTensile: 485 MPa\nYield: 285 MPa\nElongation: 32%\n\nWe hereby certify the above material conforms to the stated specification."
+    }
+  ],
+  "expected": {
+    "documentType": "supplier_certificate",
+    "minConfidence": 0.6,
+    "source": "subject"
+  }
+}

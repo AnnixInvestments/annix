@@ -1,8 +1,22 @@
 import { Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
+import { InboundEmailService } from "../../inbound-email/inbound-email.service";
 import { UpdateCompanyDto, UpdateImapSettingsDto } from "../dto/settings.dto";
 import { CvAssistantCompany } from "../entities/cv-assistant-company.entity";
+
+const CV_APP_NAME = "cv-assistant";
+
+export interface CvCompanySettingsResponse {
+  id: number;
+  name: string;
+  imapHost: string | null;
+  imapPort: number | null;
+  imapUser: string | null;
+  imapConfigured: boolean;
+  monitoringEnabled: boolean;
+  emailFromAddress: string | null;
+}
 
 @Injectable()
 export class SettingsService {
@@ -11,46 +25,69 @@ export class SettingsService {
   constructor(
     @InjectRepository(CvAssistantCompany)
     private readonly companyRepo: Repository<CvAssistantCompany>,
+    private readonly inboundEmailService: InboundEmailService,
   ) {}
 
-  async companySettings(companyId: number): Promise<CvAssistantCompany> {
+  async companySettings(companyId: number): Promise<CvCompanySettingsResponse> {
     const company = await this.companyRepo.findOne({ where: { id: companyId } });
     if (!company) {
       throw new NotFoundException("Company not found");
     }
-    return company;
+
+    const emailConfig = await this.inboundEmailService.emailConfig(CV_APP_NAME, companyId);
+
+    return {
+      id: company.id,
+      name: company.name,
+      imapHost: emailConfig.emailHost,
+      imapPort: emailConfig.emailPort,
+      imapUser: emailConfig.emailUser,
+      imapConfigured: Boolean(emailConfig.emailHost && emailConfig.emailUser),
+      monitoringEnabled: emailConfig.enabled,
+      emailFromAddress: company.emailFromAddress,
+    };
   }
 
   async updateImapSettings(
     companyId: number,
     dto: UpdateImapSettingsDto,
-  ): Promise<CvAssistantCompany> {
-    const company = await this.companySettings(companyId);
+  ): Promise<{ message: string }> {
+    const existing = await this.inboundEmailService.emailConfig(CV_APP_NAME, companyId);
 
-    if (dto.imapHost != null) company.imapHost = dto.imapHost;
-    if (dto.imapPort != null) company.imapPort = dto.imapPort;
-    if (dto.imapUser != null) company.imapUser = dto.imapUser;
-    if (dto.imapPassword != null) {
-      company.imapPasswordEncrypted = this.encryptPassword(dto.imapPassword);
+    const emailHost = dto.imapHost ?? existing.emailHost;
+    if (!emailHost) {
+      return { message: "IMAP host is required to enable monitoring." };
     }
-    if (dto.monitoringEnabled != null) company.monitoringEnabled = dto.monitoringEnabled;
-    if (dto.emailFromAddress != null) company.emailFromAddress = dto.emailFromAddress;
 
-    return this.companyRepo.save(company);
+    const result = await this.inboundEmailService.updateEmailConfig(CV_APP_NAME, companyId, {
+      emailHost,
+      emailPort: dto.imapPort ?? existing.emailPort ?? 993,
+      emailUser: dto.imapUser ?? existing.emailUser,
+      emailPass: dto.imapPassword ?? null,
+      tlsEnabled: existing.tlsEnabled,
+      tlsServerName: existing.tlsServerName,
+      enabled: dto.monitoringEnabled ?? existing.enabled,
+    });
+
+    if (dto.emailFromAddress != null) {
+      const company = await this.companyRepo.findOne({ where: { id: companyId } });
+      if (company) {
+        company.emailFromAddress = dto.emailFromAddress;
+        await this.companyRepo.save(company);
+      }
+    }
+
+    return result;
   }
 
   async updateCompany(companyId: number, dto: UpdateCompanyDto): Promise<CvAssistantCompany> {
-    const company = await this.companySettings(companyId);
+    const company = await this.companyRepo.findOne({ where: { id: companyId } });
+    if (!company) {
+      throw new NotFoundException("Company not found");
+    }
 
     if (dto.name != null) company.name = dto.name;
 
     return this.companyRepo.save(company);
-  }
-
-  private encryptPassword(password: string): string {
-    this.logger.warn(
-      "IMAP password stored without encryption — implement AES-256-GCM or Fly.io secrets",
-    );
-    return password;
   }
 }

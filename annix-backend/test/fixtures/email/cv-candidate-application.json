@@ -1,0 +1,20 @@
+{
+  "app": "cv-assistant",
+  "subject": "Application for REF-2026-0408 - Senior Mechanical Engineer",
+  "fromEmail": "candidate@example.com",
+  "fromName": "Jane Applicant",
+  "bodyText": "Dear Hiring Team,\n\nPlease find my CV attached for the Senior Mechanical Engineer position (REF-2026-0408).\n\nI have 8 years of experience in piping design and fabrication.\n\nKind regards,\nJane Applicant\n+27 11 000 1234",
+  "attachments": [
+    {
+      "filename": "jane-applicant-cv.pdf",
+      "mimeType": "application/pdf",
+      "contentText": "JANE APPLICANT\nSenior Mechanical Engineer\n\nEmail: candidate@example.com\nPhone: +27 11 000 1234\n\nEXPERIENCE\n2018-present: Example Engineering (Pty) Ltd - Piping Designer\n2016-2018: Example Fabrication - Junior Design Engineer\n\nEDUCATION\nBSc Mechanical Engineering, 2016\n\nSKILLS\nAutoCAD, SolidWorks, ASME B31.3, ASME B16.5"
+    }
+  ],
+  "expected": {
+    "jobReferenceCode": "REF-2026-0408",
+    "candidateEmail": "candidate@example.com",
+    "candidateName": "Jane Applicant",
+    "note": "CV Assistant flow is reference-code matching, not document classification"
+  }
+}

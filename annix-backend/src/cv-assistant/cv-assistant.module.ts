@@ -32,9 +32,9 @@ import { AnalyticsService } from "./services/analytics.service";
 import { CvAssistantAuthService } from "./services/auth.service";
 import { CandidateService } from "./services/candidate.service";
 import { CandidateJobMatchingService } from "./services/candidate-job-matching.service";
+import { CvEmailAdapterService } from "./services/cv-email-adapter.service";
 import { CvExtractionService } from "./services/cv-extraction.service";
 import { CvNotificationService } from "./services/cv-notification.service";
-import { EmailMonitorService } from "./services/email-monitor.service";
 import { EmbeddingService } from "./services/embedding.service";
 import { JobIngestionService } from "./services/job-ingestion.service";
 import { JobMarketSourceService } from "./services/job-market-source.service";
@@ -97,7 +97,7 @@ import { WorkflowAutomationService } from "./services/workflow-automation.servic
     CvExtractionService,
     JobMatchService,
     ReferenceService,
-    EmailMonitorService,
+    CvEmailAdapterService,
     WorkflowAutomationService,
     SettingsService,
     AdzunaService,

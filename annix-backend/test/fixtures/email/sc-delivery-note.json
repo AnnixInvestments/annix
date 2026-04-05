@@ -1,0 +1,17 @@
+{
+  "app": "stock-control",
+  "subject": "Despatch Note DN-88241",
+  "fromEmail": "logistics@example.com",
+  "attachments": [
+    {
+      "filename": "delivery-note-88241.pdf",
+      "mimeType": "application/pdf",
+      "contentText": "DELIVERY NOTE\nDN Number: DN-88241\nDate: 2026-04-03\n\nDeliver To: Example Fabrication (Pty) Ltd\n\nItem                              Qty Delivered\n100NB Sch80 Seamless Pipe         20\n150NB Sch40 ERW Pipe              5\n\nReceived By: _________________"
+    }
+  ],
+  "expected": {
+    "documentType": "delivery_note",
+    "minConfidence": 0.6,
+    "source": "subject"
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "app": "stock-control",
+  "subject": "Tax Invoice INV-00451 - Order SC-2026-0119",
+  "fromEmail": "accounts@example.com",
+  "attachments": [
+    {
+      "filename": "tax-invoice-00451.pdf",
+      "mimeType": "application/pdf",
+      "contentText": "TAX INVOICE\nInvoice No: INV-00451\nDate: 2026-04-02\nVAT No: 4000000000\n\nBill To: Example Fabrication (Pty) Ltd\n\nDescription                Qty   Unit Price   Total\n50NB Sch40 ERW Pipe        10    R 450.00     R 4500.00\n\nSubtotal: R 4500.00\nVAT 15%: R 675.00\nTotal:   R 5175.00"
+    }
+  ],
+  "expected": {
+    "documentType": "supplier_invoice",
+    "minConfidence": 0.6,
+    "source": "subject"
+  }
+}

@@ -1,9 +1,16 @@
 import { Test, TestingModule } from "@nestjs/testing";
+import { getRepositoryToken } from "@nestjs/typeorm";
+import { InboundEmailRegistry } from "../../inbound-email/inbound-email-registry.service";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
-import { ScDocumentType, ScEmailClassifierService } from "./sc-email-classifier.service";
+import { StockControlSupplier } from "../entities/stock-control-supplier.entity";
+import { DeliveryService } from "./delivery.service";
+import { InvoiceService } from "./invoice.service";
+import { InvoiceExtractionService } from "./invoice-extraction.service";
+import { ScDocumentType, ScEmailAdapterService } from "./sc-email-adapter.service";
+import { WorkflowNotificationService } from "./workflow-notification.service";
 
-describe("ScEmailClassifierService", () => {
-  let service: ScEmailClassifierService;
+describe("ScEmailAdapterService (classification)", () => {
+  let service: ScEmailAdapterService;
 
   const mockAiChatService = {
     chat: jest.fn(),
@@ -11,20 +18,37 @@ describe("ScEmailClassifierService", () => {
     isAvailable: jest.fn(),
   };
 
+  const noopRegistry = { registerAdapter: jest.fn() };
+  const noopInvoiceService = {};
+  const noopDeliveryService = {};
+  const noopExtractionService = {};
+  const noopNotificationService = {};
+  const noopSupplierRepo = {};
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
-        ScEmailClassifierService,
+        ScEmailAdapterService,
+        { provide: InboundEmailRegistry, useValue: noopRegistry },
         { provide: AiChatService, useValue: mockAiChatService },
+        { provide: InvoiceService, useValue: noopInvoiceService },
+        { provide: DeliveryService, useValue: noopDeliveryService },
+        { provide: InvoiceExtractionService, useValue: noopExtractionService },
+        { provide: WorkflowNotificationService, useValue: noopNotificationService },
+        { provide: getRepositoryToken(StockControlSupplier), useValue: noopSupplierRepo },
       ],
     }).compile();
 
-    service = module.get<ScEmailClassifierService>(ScEmailClassifierService);
+    service = module.get<ScEmailAdapterService>(ScEmailAdapterService);
     jest.clearAllMocks();
   });
 
   it("should be defined", () => {
     expect(service).toBeDefined();
+  });
+
+  it("exposes correct appName", () => {
+    expect(service.appName()).toBe("stock-control");
   });
 
   describe("classifyFromSubject", () => {
@@ -133,10 +157,7 @@ describe("ScEmailClassifierService", () => {
     it("returns UNKNOWN when AI returns invalid document type", async () => {
       mockAiChatService.isAvailable.mockResolvedValue(true);
       mockAiChatService.chat.mockResolvedValue({
-        content: JSON.stringify({
-          documentType: "invalid_type",
-          confidence: 0.5,
-        }),
+        content: JSON.stringify({ documentType: "invalid_type", confidence: 0.5 }),
       });
 
       const result = await service.classifyFromContent(
@@ -152,9 +173,7 @@ describe("ScEmailClassifierService", () => {
 
     it("returns UNKNOWN when AI returns no JSON", async () => {
       mockAiChatService.isAvailable.mockResolvedValue(true);
-      mockAiChatService.chat.mockResolvedValue({
-        content: "I cannot classify this document",
-      });
+      mockAiChatService.chat.mockResolvedValue({ content: "I cannot classify this document" });
 
       const result = await service.classifyFromContent(
         "content",
@@ -187,10 +206,7 @@ describe("ScEmailClassifierService", () => {
     it("truncates long content to 5000 characters", async () => {
       mockAiChatService.isAvailable.mockResolvedValue(true);
       mockAiChatService.chat.mockResolvedValue({
-        content: JSON.stringify({
-          documentType: "delivery_note",
-          confidence: 0.8,
-        }),
+        content: JSON.stringify({ documentType: "delivery_note", confidence: 0.8 }),
       });
 
       const longContent = "A".repeat(10000);
@@ -211,9 +227,7 @@ describe("ScEmailClassifierService", () => {
     it("defaults confidence to 0.8 when AI omits it", async () => {
       mockAiChatService.isAvailable.mockResolvedValue(true);
       mockAiChatService.chat.mockResolvedValue({
-        content: JSON.stringify({
-          documentType: "purchase_order",
-        }),
+        content: JSON.stringify({ documentType: "purchase_order" }),
       });
 
       const result = await service.classifyFromContent(
@@ -263,10 +277,7 @@ describe("ScEmailClassifierService", () => {
     it("handles PNG images", async () => {
       mockAiChatService.isAvailable.mockResolvedValue(true);
       mockAiChatService.chatWithImage.mockResolvedValue({
-        content: JSON.stringify({
-          documentType: "delivery_note",
-          confidence: 0.85,
-        }),
+        content: JSON.stringify({ documentType: "delivery_note", confidence: 0.85 }),
       });
 
       const result = await service.classifyFromContent(
@@ -283,10 +294,7 @@ describe("ScEmailClassifierService", () => {
     it("handles WebP images", async () => {
       mockAiChatService.isAvailable.mockResolvedValue(true);
       mockAiChatService.chatWithImage.mockResolvedValue({
-        content: JSON.stringify({
-          documentType: "supplier_certificate",
-          confidence: 0.75,
-        }),
+        content: JSON.stringify({ documentType: "supplier_certificate", confidence: 0.75 }),
       });
 
       const result = await service.classifyFromContent(
@@ -303,10 +311,7 @@ describe("ScEmailClassifierService", () => {
     it("treats non-image buffers as text", async () => {
       mockAiChatService.isAvailable.mockResolvedValue(true);
       mockAiChatService.chat.mockResolvedValue({
-        content: JSON.stringify({
-          documentType: "purchase_order",
-          confidence: 0.8,
-        }),
+        content: JSON.stringify({ documentType: "purchase_order", confidence: 0.8 }),
       });
 
       const result = await service.classifyFromContent(

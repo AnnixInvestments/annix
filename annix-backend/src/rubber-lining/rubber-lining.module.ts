@@ -86,9 +86,7 @@ import { RubberStatementReconciliationService } from "./rubber-statement-reconci
 import { RubberStockService } from "./rubber-stock.service";
 import { RubberStockLocationService } from "./rubber-stock-location.service";
 import { RubberTaxInvoiceService } from "./rubber-tax-invoice.service";
-import { ArEmailClassifierService } from "./services/ar-email-classifier.service";
-import { ArEmailRegistrationService } from "./services/ar-email-registration.service";
-import { ArEmailRouterService } from "./services/ar-email-router.service";
+import { ArEmailAdapterService } from "./services/ar-email-adapter.service";
 
 @Module({
   imports: [
@@ -172,9 +170,7 @@ import { ArEmailRouterService } from "./services/ar-email-router.service";
     RubberSageInvoicePostService,
     RubberCostService,
     AuRubberAccessGuard,
-    ArEmailClassifierService,
-    ArEmailRouterService,
-    ArEmailRegistrationService,
+    ArEmailAdapterService,
     RubberCompanyDirectorService,
     RubberAccountingPdfService,
     RubberAccountingService,

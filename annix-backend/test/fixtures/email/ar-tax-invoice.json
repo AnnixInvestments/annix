@@ -1,0 +1,17 @@
+{
+  "app": "au-rubber",
+  "subject": "Invoice 77214 - NR Compound Order",
+  "fromEmail": "sales@example.com",
+  "attachments": [
+    {
+      "filename": "invoice-77214.pdf",
+      "mimeType": "application/pdf",
+      "contentText": "TAX INVOICE\nInvoice No: 77214\nDate: 2026-04-01\n\nCompound: NR60 Black\nBatch: B-2026-0412\nQty: 500 kg\nUnit Price: R 85.00/kg\n\nSubtotal: R 42500.00\nVAT 15%: R 6375.00\nTotal: R 48875.00"
+    }
+  ],
+  "expected": {
+    "documentType": "tax_invoice",
+    "minConfidence": 0.6,
+    "source": "subject"
+  }
+}

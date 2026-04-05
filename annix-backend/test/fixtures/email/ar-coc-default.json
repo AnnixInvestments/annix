@@ -1,0 +1,18 @@
+{
+  "app": "au-rubber",
+  "subject": "Batch test results",
+  "fromEmail": "lab@example.com",
+  "attachments": [
+    {
+      "filename": "batch-report.pdf",
+      "mimeType": "application/pdf",
+      "contentText": "Compound Test Report\nBatch: B-2026-0418\nCompound: NBR70 Black\n\nRheometer (150C):\nS-min: 2.1 dNm\nS-max: 24.6 dNm\nTs2: 1.8 min\nTc90: 6.4 min\n\nShore A: 71\nTensile: 18.5 MPa\nElongation: 420%"
+    }
+  ],
+  "expected": {
+    "documentType": "coc",
+    "minConfidence": 0.4,
+    "source": "subject",
+    "note": "AR classifier defaults unknown subjects to COC (confidence 0.5)"
+  }
+}

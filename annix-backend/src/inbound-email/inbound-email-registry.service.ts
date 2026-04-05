@@ -1,10 +1,12 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { IDocumentClassifier } from "./interfaces/document-classifier.interface";
 import { IDocumentRouter } from "./interfaces/document-router.interface";
+import { EmailAppAdapter } from "./interfaces/email-app-adapter.interface";
 
 interface AppRegistration {
   classifier: IDocumentClassifier;
   router: IDocumentRouter;
+  adapter: EmailAppAdapter | null;
 }
 
 @Injectable()
@@ -13,8 +15,14 @@ export class InboundEmailRegistry {
   private readonly apps = new Map<string, AppRegistration>();
 
   registerApp(appName: string, classifier: IDocumentClassifier, router: IDocumentRouter): void {
-    this.apps.set(appName, { classifier, router });
+    this.apps.set(appName, { classifier, router, adapter: null });
     this.logger.log(`Registered inbound email handler for app: ${appName}`);
+  }
+
+  registerAdapter(adapter: EmailAppAdapter): void {
+    const appName = adapter.appName();
+    this.apps.set(appName, { classifier: adapter, router: adapter, adapter });
+    this.logger.log(`Registered inbound email adapter for app: ${appName}`);
   }
 
   classifierForApp(appName: string): IDocumentClassifier | null {
@@ -23,6 +31,10 @@ export class InboundEmailRegistry {
 
   routerForApp(appName: string): IDocumentRouter | null {
     return this.apps.get(appName)?.router ?? null;
+  }
+
+  adapterForApp(appName: string): EmailAppAdapter | null {
+    return this.apps.get(appName)?.adapter ?? null;
   }
 
   registeredApps(): string[] {

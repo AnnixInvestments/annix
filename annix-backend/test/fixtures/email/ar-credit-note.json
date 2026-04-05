@@ -1,0 +1,17 @@
+{
+  "app": "au-rubber",
+  "subject": "Credit Note CN-0412 - Returned Rolls",
+  "fromEmail": "accounts@example.com",
+  "attachments": [
+    {
+      "filename": "credit-note-0412.pdf",
+      "mimeType": "application/pdf",
+      "contentText": "CREDIT NOTE\nCredit Note No: CN-0412\nDate: 2026-03-30\nOriginal Invoice: 77180\n\nReason: Returned rolls - off-spec Shore A\n\nRolls Returned:\n- Roll R-4451 (25 kg)\n- Roll R-4452 (25 kg)\n\nCredit Amount: R 4250.00"
+    }
+  ],
+  "expected": {
+    "documentType": "credit_note",
+    "minConfidence": 0.6,
+    "source": "subject"
+  }
+}
