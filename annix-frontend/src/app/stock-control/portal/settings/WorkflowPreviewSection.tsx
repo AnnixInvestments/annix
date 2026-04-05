@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import type {
   BackgroundStepStatus,
   JobCardApproval,
@@ -15,6 +15,12 @@ interface PreviewForegroundStep {
   label: string;
   sortOrder: number;
   actionLabel: string | null;
+}
+
+interface WalkItem {
+  type: "fg" | "bg";
+  key: string;
+  label: string;
 }
 
 export function WorkflowPreviewSection() {
@@ -56,40 +62,76 @@ export function WorkflowPreviewSection() {
     [allConfigs],
   );
 
-  const fgIndexByKey = useMemo(
-    () => fgSteps.reduce<Record<string, number>>((acc, s, i) => ({ ...acc, [s.key]: i }), {}),
-    [fgSteps],
-  );
+  const walkOrder: WalkItem[] = useMemo(() => {
+    if (fgSteps.length === 0 && bgStepConfigs.length === 0) return [];
 
-  const resolveBgRootFgIndex = useCallback(
-    (bgKey: string): number => {
-      const walk = (key: string, visited: Set<string>): number => {
-        if (visited.has(key)) return -1;
-        const step = allConfigs.find((c) => c.key === key);
-        if (!step || !step.triggerAfterStep) return -1;
-        const parentKey = step.triggerAfterStep;
-        const fgIdx = fgIndexByKey[parentKey];
-        if (fgIdx !== undefined) return fgIdx;
-        return walk(parentKey, new Set([...visited, key]));
-      };
-      return walk(bgKey, new Set());
-    },
-    [allConfigs, fgIndexByKey],
-  );
+    const bgByTrigger = bgStepConfigs.reduce<Record<string, WorkflowStepConfig[]>>((acc, bg) => {
+      const triggerKey = bg.triggerAfterStep || "__root__";
+      return { ...acc, [triggerKey]: [...(acc[triggerKey] || []), bg] };
+    }, {});
 
-  const maxPosition = fgSteps.length;
+    const sortedBgByTrigger = Object.fromEntries(
+      Object.entries(bgByTrigger).map(([k, arr]) => [
+        k,
+        [...arr].sort((a, b) => a.sortOrder - b.sortOrder),
+      ]),
+    );
+
+    const visited = new Set<string>();
+
+    const collectBgChain = (triggerKey: string): WalkItem[] => {
+      const bgs = sortedBgByTrigger[triggerKey] || [];
+      return bgs.reduce<WalkItem[]>((acc, bg) => {
+        if (visited.has(bg.key)) return acc;
+        visited.add(bg.key);
+        return [...acc, { type: "bg", key: bg.key, label: bg.label }, ...collectBgChain(bg.key)];
+      }, []);
+    };
+
+    const rootBgs = collectBgChain("__root__");
+    const fgWalk = fgSteps.flatMap<WalkItem>((fg) => [
+      { type: "fg", key: fg.key, label: fg.label },
+      ...collectBgChain(fg.key),
+    ]);
+    const orphanedBgs = bgStepConfigs
+      .filter((c) => !visited.has(c.key))
+      .map<WalkItem>((c) => ({ type: "bg", key: c.key, label: c.label }));
+
+    return [...rootBgs, ...fgWalk, ...orphanedBgs];
+  }, [fgSteps, bgStepConfigs]);
+
+  const maxPosition = walkOrder.length + 1;
   const clampedPosition = Math.min(Math.max(0, position), maxPosition);
 
   const simulation = useMemo(() => {
     const pos = clampedPosition;
-    const currentFgStep = pos > 0 && pos <= fgSteps.length ? fgSteps[pos - 1] : null;
-    const currentStatusValue: string = currentFgStep ? currentFgStep.key : "draft";
+    const walkIdx = pos - 1;
+    const totalWalk = walkOrder.length;
 
-    const completedCount = Math.max(0, pos - 1);
-    const approvalsList: JobCardApproval[] = fgSteps.slice(0, completedCount).map((s, i) => ({
+    const focusItem: WalkItem | null = pos > 0 && pos <= totalWalk ? walkOrder[walkIdx] : null;
+
+    const fgKeySet = new Set(fgSteps.map((s) => s.key));
+
+    const currentFgKey: string = (() => {
+      if (pos === 0) return "draft";
+      if (pos > totalWalk) return "file_closed";
+      if (focusItem && focusItem.type === "fg") return focusItem.key;
+      const precedingFgs = walkOrder.slice(0, walkIdx).filter((w) => w.type === "fg");
+      const last = precedingFgs[precedingFgs.length - 1];
+      return last ? last.key : "draft";
+    })();
+
+    const currentFgIdx = fgSteps.findIndex((s) => s.key === currentFgKey);
+
+    const approvedFgKeys: Set<string> =
+      pos > totalWalk
+        ? new Set(fgSteps.map((s) => s.key))
+        : new Set(fgSteps.slice(0, currentFgIdx >= 0 ? currentFgIdx : 0).map((s) => s.key));
+
+    const approvalsList: JobCardApproval[] = Array.from(approvedFgKeys).map((key, i) => ({
       id: i + 1,
       jobCardId: 0,
-      step: s.key,
+      step: key,
       status: "approved",
       approvedByName: "Preview",
       signatureUrl: null,
@@ -99,9 +141,18 @@ export function WorkflowPreviewSection() {
       createdAt: nowISO(),
     }));
 
+    const completedBgKeys = new Set(
+      walkOrder
+        .slice(0, Math.max(0, walkIdx))
+        .filter((w) => w.type === "bg")
+        .map((w) => w.key),
+    );
+    if (pos > totalWalk) {
+      bgStepConfigs.forEach((c) => completedBgKeys.add(c.key));
+    }
+
     const bgList: BackgroundStepStatus[] = bgStepConfigs.map((c) => {
-      const rootFgIdx = resolveBgRootFgIndex(c.key);
-      const isComplete = pos - 1 > rootFgIdx;
+      const isComplete = completedBgKeys.has(c.key);
       return {
         stepKey: c.key,
         label: c.label,
@@ -118,19 +169,22 @@ export function WorkflowPreviewSection() {
     });
 
     return {
-      currentStatus: currentStatusValue,
+      currentStatus: currentFgKey,
       approvals: approvalsList,
       backgroundSteps: bgList,
+      focusItem,
+      fgKeySet,
     };
-  }, [clampedPosition, fgSteps, bgStepConfigs, resolveBgRootFgIndex]);
+  }, [clampedPosition, walkOrder, fgSteps, bgStepConfigs]);
 
-  const currentFgForLabel =
-    clampedPosition > 0 && clampedPosition <= fgSteps.length ? fgSteps[clampedPosition - 1] : null;
-  const positionLabel = currentFgForLabel
-    ? `At: ${currentFgForLabel.label}`
-    : clampedPosition === 0
-      ? "Draft (not started)"
-      : "File Closed";
+  const positionLabel: string = (() => {
+    if (clampedPosition === 0) return "Draft (not started)";
+    if (clampedPosition > walkOrder.length) return "File Closed";
+    const focus = simulation.focusItem;
+    if (!focus) return "";
+    const prefix = focus.type === "fg" ? "FG" : "BG";
+    return `${prefix}: ${focus.label}`;
+  })();
 
   const handlePrev = () => setPosition((p) => Math.max(0, p - 1));
   const handleNext = () => setPosition((p) => Math.min(maxPosition, p + 1));
@@ -179,9 +233,9 @@ export function WorkflowPreviewSection() {
             <div className="text-center py-6 text-xs text-gray-500">
               Loading workflow preview...
             </div>
-          ) : fgSteps.length === 0 ? (
+          ) : walkOrder.length === 0 ? (
             <div className="text-center py-6 text-xs text-gray-500">
-              No foreground steps configured yet. Add steps above to preview them here.
+              No workflow steps configured yet. Add steps above to preview them here.
             </div>
           ) : (
             <>
@@ -240,7 +294,7 @@ export function WorkflowPreviewSection() {
                 <div className="text-xs text-gray-600">
                   <span className="font-semibold text-gray-900">{positionLabel}</span>
                   <span className="ml-2 text-gray-400">
-                    Step {clampedPosition} / {maxPosition}
+                    Step {clampedPosition} / {walkOrder.length}
                   </span>
                 </div>
               </div>
@@ -254,9 +308,9 @@ export function WorkflowPreviewSection() {
                 />
               </div>
               <p className="text-[11px] text-gray-500">
-                Read-only preview of your configured workflow. Click Next to advance a simulated job
-                card through each step and verify the SVG connections, branch routing, and
-                background task placement as you build the workflow above.
+                Read-only preview of your configured workflow. Click Next to walk through every
+                foreground and background task in order, verifying the SVG connections, branch
+                routing, and task placement as you build the workflow above.
               </p>
             </>
           )}
