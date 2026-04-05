@@ -16,6 +16,12 @@ legal_risk_check() {
   fi
 }
 
+duplication_check() {
+  if [ -f "${ROOT_DIR}/scripts/check-inter-app-duplication.sh" ]; then
+    bash "${ROOT_DIR}/scripts/check-inter-app-duplication.sh" pushed
+  fi
+}
+
 how_to_freshness_check() {
   if [ -f "${ROOT_DIR}/scripts/check-how-to-freshness.mjs" ]; then
     node "${ROOT_DIR}/scripts/check-how-to-freshness.mjs"
@@ -75,6 +81,7 @@ generate_evolution_report() {
 cd "$ROOT_DIR"
 timed_step "evolution report" generate_evolution_report
 timed_step "legal risk check" legal_risk_check
+timed_step "duplication check" duplication_check
 timed_step "how-to freshness" how_to_freshness_check
 timed_step "git pull --rebase" pull_rebase
 timed_step "biome check" biome_check

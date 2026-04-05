@@ -1,5 +1,52 @@
 # Claude Code Preferences
 
+## Discovery-first protocol (MANDATORY before writing new shared code)
+
+Annix is a monorepo with several apps (Stock Control, AU Rubber, RFQ, Comply SA, FieldFlow, Annix Rep, CV Assistant) sharing one backend and a `packages/product-data/` workspace. AI-generated code tends to duplicate patterns per-app rather than reuse shared modules. **This has cost the project an estimated 100–200k lines of unnecessary code** (see issue #175). Every Claude session must follow this protocol to stop the drift.
+
+**Before writing any of the following, complete the discovery protocol below — no exceptions, no "I'll check later":**
+
+- A lookup table or constant with 3+ entries
+- A React component that isn't trivially app-specific (tables, modals, forms, dropzones, anything you might reasonably call "Base", "Shared", or "Generic")
+- A NestJS service, utility, or DTO representing a business concept (Address, Contact, Company, Document, Signature, Currency, Attachment, AuditLog, etc.)
+- Email / notification / PDF / file-upload / auth / Sage / RBAC / AI logic
+- A TypeScript interface that represents data crossing app boundaries
+- Any "utility" or "helper" file
+
+### Discovery protocol (run ALL of these before writing code)
+
+1. **Read `docs/shared-registry.md`** — the canonical index of shared modules. One file, one grep, authoritative.
+2. **Grep `packages/product-data/`** for the concept (shared monorepo data)
+3. **Grep `annix-backend/src/lib/`** and any `annix-backend/src/<concept>/` standalone modules
+4. **Grep `annix-frontend/src/app/components/`** for existing components
+5. **Grep `annix-frontend/src/app/lib/`** (datetime, validators, api, auth, query/hooks, query/keys)
+
+If ANY match is found, either **(a)** reuse it as-is, **(b)** extend the existing shared module, or **(c)** explicitly justify in the commit / PR why a parallel implementation is required. "I didn't see it" is not an acceptable justification — the protocol is mandatory.
+
+For complex discovery, invoke the `Explore` subagent with a thorough setting instead of doing the greps manually.
+
+### Canonical homes for new shared code
+
+| Kind | Home | Import path |
+|---|---|---|
+| Reference data (pipe specs, steel grades, chemistry tables, etc.) | `packages/product-data/<domain>/` | `@annix/product-data/<domain>` |
+| Backend utilities (date, encryption, rate limiting) | `annix-backend/src/lib/` | relative |
+| Backend services shared across app modules | `annix-backend/src/<concept>/` (standalone NestJS module) | relative / DI |
+| Frontend shared components | `annix-frontend/src/app/components/` | `@/app/components/...` |
+| Frontend query hooks + keys | `annix-frontend/src/app/lib/query/hooks\|keys/` | `@/app/lib/query/hooks` |
+| Frontend utilities (datetime, api, validators, auth) | `annix-frontend/src/app/lib/` | `@/app/lib/...` |
+
+### Forbidden patterns (ESLint + pre-push hook enforce these)
+
+- **Cross-app relative imports** — `import ... from "../../../<other-app>/..."`. Apps must never reach into each other. Move the shared code to a canonical location instead.
+- **Copying a constant table with minor tweaks** rather than parameterising the shared one
+- **Creating a second utility file** when one already exists at a canonical location
+- **App-specific copies of an already-shared concept** (e.g. a new `annix-frontend/src/app/stock-control/lib/datetime.ts` when `@/app/lib/datetime` already exists)
+
+### When you add new shared code
+
+Update `docs/shared-registry.md` in the same commit. Reviewers / pre-push hook will reject PRs that add shared code without updating the registry.
+
 ## Code Style
 - **No comments in code**: Use self-documenting method names instead of inline comments
 - **Follow project lint/biome**: Obey existing Biome formatting (double quotes per biome.json) and ESLint custom rules
