@@ -6,6 +6,15 @@ import { InboundEmailRegistry } from "../../inbound-email/inbound-email-registry
 import { ClassificationResult } from "../../inbound-email/interfaces/document-classifier.interface";
 import { RoutingResult } from "../../inbound-email/interfaces/document-router.interface";
 import { EmailAppAdapter } from "../../inbound-email/interfaces/email-app-adapter.interface";
+import {
+  buildClassificationPrompt,
+  buildClassificationUserMessage,
+  DOCUMENT_TYPE_METADATA,
+  isClassificationImageMime,
+  parseClassificationResponse,
+  SharedDocumentType,
+  truncateClassificationText,
+} from "../../lib/document-classification";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
 import { DocumentVersionStatus } from "../entities/document-version.types";
 import { RubberCompany } from "../entities/rubber-company.entity";
@@ -20,14 +29,17 @@ import {
   TaxInvoiceType,
 } from "../entities/rubber-tax-invoice.entity";
 
-export enum ArDocumentType {
-  COC = "coc",
-  TAX_INVOICE = "tax_invoice",
-  CREDIT_NOTE = "credit_note",
-  DELIVERY_NOTE = "delivery_note",
-  ORDER = "order",
-  UNKNOWN = "unknown",
-}
+export const ArDocumentType = {
+  COC: SharedDocumentType.COC,
+  TAX_INVOICE: SharedDocumentType.TAX_INVOICE,
+  CREDIT_NOTE: SharedDocumentType.CREDIT_NOTE,
+  DELIVERY_NOTE: SharedDocumentType.DELIVERY_NOTE,
+  ORDER: SharedDocumentType.ORDER,
+  UNKNOWN: SharedDocumentType.UNKNOWN,
+} as const;
+export type ArDocumentType = (typeof ArDocumentType)[keyof typeof ArDocumentType];
+
+const AR_VALID_TYPES: readonly string[] = Object.values(ArDocumentType);
 
 const AR_APP_NAME = "au-rubber";
 
@@ -40,8 +52,6 @@ const SUPPORTED_MIMES = [
   "application/vnd.ms-excel",
 ];
 
-const IMAGE_MIMES = ["image/jpeg", "image/png", "image/webp"];
-
 const SUBJECT_KEYWORDS: [RegExp, ArDocumentType][] = [
   [/\b(?:credit\s*note|debit\s*note)\b/i, ArDocumentType.CREDIT_NOTE],
   [/\b(?:tax\s*inv|invoice)\b/i, ArDocumentType.TAX_INVOICE],
@@ -51,23 +61,35 @@ const SUBJECT_KEYWORDS: [RegExp, ArDocumentType][] = [
   [/\b(?:coc|coa|certificate|conformance)\b/i, ArDocumentType.COC],
 ];
 
-const CLASSIFICATION_PROMPT = `You are an AI document classifier for a rubber lining manufacturing system. Classify the following document into one of these types:
+const AR_RESPONSE_SCHEMA = `{"documentType": "coc"|"tax_invoice"|"credit_note"|"delivery_note"|"order"|"unknown", "supplierName": "string or null", "supplierType": "COMPOUNDER"|"CALENDARER"|"CALENDER_ROLL"|null, "confidence": 0.0-1.0}`;
 
-DOCUMENT TYPES:
-1. coc - Certificate of Conformance from rubber compound suppliers (compounder or calenderer). Contains batch numbers, test results (Shore A, tensile, elongation, rheometer data), compound codes, roll numbers.
-2. tax_invoice - Tax invoices from suppliers or for customers. Contains invoice number, line items, amounts, VAT.
-3. credit_note - Credit notes from suppliers for returned goods. Document title says "CREDIT NOTE". Contains reference to original invoice, roll numbers being returned, credit amounts.
-4. delivery_note - Delivery notes for rubber compounds or rolls. Contains delivery date, quantities, roll/batch details.
-5. order - Purchase orders or compound orders. Contains order number, quantities, compound specifications.
-6. unknown - Cannot confidently classify.
-
-Also identify the supplier type if it's a CoC:
+const AR_SUPPLIER_TYPE_SECTION = `Also identify the supplier type if it's a CoC:
 - COMPOUNDER: Produces rubber compounds (batch data, rheometer specs like S-min, S-max, Ts2, Tc90)
 - CALENDARER: Calendering operations (roll numbers, thickness, width data)
-- CALENDER_ROLL: Per-roll quality certificates with individual Shore A values
+- CALENDER_ROLL: Per-roll quality certificates with individual Shore A values`;
 
-Respond ONLY with JSON:
-{"documentType": "coc"|"tax_invoice"|"credit_note"|"delivery_note"|"order"|"unknown", "supplierName": "string or null", "supplierType": "COMPOUNDER"|"CALENDARER"|"CALENDER_ROLL"|null, "confidence": 0.0-1.0}`;
+const AR_TYPE_ORDER: SharedDocumentType[] = [
+  SharedDocumentType.COC,
+  SharedDocumentType.TAX_INVOICE,
+  SharedDocumentType.CREDIT_NOTE,
+  SharedDocumentType.DELIVERY_NOTE,
+  SharedDocumentType.ORDER,
+  SharedDocumentType.UNKNOWN,
+];
+
+const CLASSIFICATION_PROMPT = buildClassificationPrompt({
+  systemDescription:
+    "You are an AI document classifier for a rubber lining manufacturing system. Classify the following document into one of these types:",
+  documentTypes: AR_TYPE_ORDER.map((key) => ({
+    key,
+    description:
+      key === SharedDocumentType.UNKNOWN
+        ? "Cannot confidently classify."
+        : DOCUMENT_TYPE_METADATA[key].description,
+  })),
+  additionalSections: [AR_SUPPLIER_TYPE_SECTION],
+  responseSchema: AR_RESPONSE_SCHEMA,
+});
 
 @Injectable()
 export class ArEmailAdapterService implements EmailAppAdapter, OnModuleInit {
@@ -140,20 +162,18 @@ export class ArEmailAdapterService implements EmailAppAdapter, OnModuleInit {
     }
 
     try {
-      if (Buffer.isBuffer(content) && IMAGE_MIMES.includes(mimeType)) {
+      if (Buffer.isBuffer(content) && isClassificationImageMime(mimeType)) {
         return this.classifyImage(content, mimeType, filename, fromEmail, subject);
       }
 
-      const truncated = textContent.length > 5000 ? textContent.substring(0, 5000) : textContent;
+      const truncated = truncateClassificationText(textContent);
 
-      const userMessage = `Classify this document.
-
-Filename: ${filename}
-From email: ${fromEmail}
-Subject: ${subject}
-
-Document content:
-${truncated}`;
+      const userMessage = buildClassificationUserMessage({
+        filename,
+        fromEmail,
+        subject,
+        content: truncated,
+      });
 
       const response = await this.aiChatService.chat(
         [{ role: "user", content: userMessage }],
@@ -216,24 +236,10 @@ Respond ONLY with JSON:
   }
 
   private parseAiResponse(responseContent: string): ClassificationResult {
-    const jsonMatch = responseContent.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      return { documentType: ArDocumentType.UNKNOWN, confidence: 0, source: "content_ai" };
-    }
-
-    const parsed = JSON.parse(jsonMatch[0]);
-    const validTypes = Object.values(ArDocumentType);
-
-    if (parsed.documentType && validTypes.includes(parsed.documentType)) {
-      return {
-        documentType: parsed.documentType,
-        confidence: parsed.confidence ?? 0.8,
-        source: "content_ai",
-        supplierName: parsed.supplierName ?? null,
-      };
-    }
-
-    return { documentType: ArDocumentType.UNKNOWN, confidence: 0, source: "content_ai" };
+    return parseClassificationResponse(responseContent, {
+      validTypes: AR_VALID_TYPES,
+      unknownType: ArDocumentType.UNKNOWN,
+    });
   }
 
   async route(

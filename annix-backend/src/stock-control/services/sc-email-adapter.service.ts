@@ -7,6 +7,15 @@ import { ClassificationResult } from "../../inbound-email/interfaces/document-cl
 import { RoutingResult } from "../../inbound-email/interfaces/document-router.interface";
 import { EmailAppAdapter } from "../../inbound-email/interfaces/email-app-adapter.interface";
 import { nowMillis } from "../../lib/datetime";
+import {
+  buildClassificationPrompt,
+  buildClassificationUserMessage,
+  DOCUMENT_TYPE_METADATA,
+  isClassificationImageMime,
+  parseClassificationResponse,
+  SharedDocumentType,
+  truncateClassificationText,
+} from "../../lib/document-classification";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
 import { StockControlSupplier } from "../entities/stock-control-supplier.entity";
 import { DeliveryService } from "./delivery.service";
@@ -14,15 +23,18 @@ import { InvoiceService } from "./invoice.service";
 import { InvoiceExtractionService } from "./invoice-extraction.service";
 import { WorkflowNotificationService } from "./workflow-notification.service";
 
-export enum ScDocumentType {
-  SUPPLIER_INVOICE = "supplier_invoice",
-  DELIVERY_NOTE = "delivery_note",
-  PURCHASE_ORDER = "purchase_order",
-  SUPPLIER_CERTIFICATE = "supplier_certificate",
-  JOB_CARD_DRAWING = "job_card_drawing",
-  SUPPORTING_DOCUMENT = "supporting_document",
-  UNKNOWN = "unknown",
-}
+export const ScDocumentType = {
+  SUPPLIER_INVOICE: SharedDocumentType.SUPPLIER_INVOICE,
+  DELIVERY_NOTE: SharedDocumentType.DELIVERY_NOTE,
+  PURCHASE_ORDER: SharedDocumentType.PURCHASE_ORDER,
+  SUPPLIER_CERTIFICATE: SharedDocumentType.SUPPLIER_CERTIFICATE,
+  JOB_CARD_DRAWING: SharedDocumentType.JOB_CARD_DRAWING,
+  SUPPORTING_DOCUMENT: SharedDocumentType.SUPPORTING_DOCUMENT,
+  UNKNOWN: SharedDocumentType.UNKNOWN,
+} as const;
+export type ScDocumentType = (typeof ScDocumentType)[keyof typeof ScDocumentType];
+
+const SC_VALID_TYPES: readonly string[] = Object.values(ScDocumentType);
 
 const SC_APP_NAME = "stock-control";
 
@@ -46,23 +58,31 @@ const SUBJECT_KEYWORDS: [RegExp, ScDocumentType][] = [
   [/\b(?:amendment)\b/i, ScDocumentType.SUPPORTING_DOCUMENT],
 ];
 
-const CLASSIFICATION_PROMPT = `You are NIX, an AI document classifier for an industrial stock control system. Classify the following document into one of these types:
+const SC_RESPONSE_SCHEMA = `{"documentType": "supplier_invoice"|"delivery_note"|"purchase_order"|"supplier_certificate"|"job_card_drawing"|"supporting_document"|"unknown", "supplierName": "string or null", "confidence": 0.0-1.0}`;
 
-DOCUMENT TYPES:
-1. supplier_invoice - Tax invoices or invoices from suppliers. Contains invoice number, line items, amounts, VAT.
-2. delivery_note - Delivery notes, despatch notes, goods received documentation. Contains delivery date, quantities, item descriptions.
-3. purchase_order - Purchase orders placed to suppliers. Contains PO number, line items, quantities, pricing.
-4. supplier_certificate - COC (Certificate of Conformance), COA (Certificate of Analysis), test certificates, material certificates. Contains batch numbers, test results, compliance statements.
-5. job_card_drawing - Engineering drawings, technical specifications, fabrication details.
-6. supporting_document - Amendments, correspondence, supporting documentation that doesn't fit other categories.
-7. unknown - Cannot confidently classify the document.
+const SC_TYPE_ORDER: SharedDocumentType[] = [
+  SharedDocumentType.SUPPLIER_INVOICE,
+  SharedDocumentType.DELIVERY_NOTE,
+  SharedDocumentType.PURCHASE_ORDER,
+  SharedDocumentType.SUPPLIER_CERTIFICATE,
+  SharedDocumentType.JOB_CARD_DRAWING,
+  SharedDocumentType.SUPPORTING_DOCUMENT,
+  SharedDocumentType.UNKNOWN,
+];
 
-Also try to identify the supplier name from the document.
-
-Respond ONLY with a JSON object:
-{"documentType": "supplier_invoice"|"delivery_note"|"purchase_order"|"supplier_certificate"|"job_card_drawing"|"supporting_document"|"unknown", "supplierName": "string or null", "confidence": 0.0-1.0}`;
-
-const IMAGE_MIMES = ["image/jpeg", "image/png", "image/webp"];
+const CLASSIFICATION_PROMPT = buildClassificationPrompt({
+  systemDescription:
+    "You are NIX, an AI document classifier for an industrial stock control system. Classify the following document into one of these types:",
+  documentTypes: SC_TYPE_ORDER.map((key) => ({
+    key,
+    description:
+      key === SharedDocumentType.UNKNOWN
+        ? "Cannot confidently classify the document."
+        : DOCUMENT_TYPE_METADATA[key].description,
+  })),
+  additionalSections: ["Also try to identify the supplier name from the document."],
+  responseSchema: SC_RESPONSE_SCHEMA,
+});
 
 @Injectable()
 export class ScEmailAdapterService implements EmailAppAdapter, OnModuleInit {
@@ -118,21 +138,19 @@ export class ScEmailAdapterService implements EmailAppAdapter, OnModuleInit {
     }
 
     try {
-      if (Buffer.isBuffer(content) && IMAGE_MIMES.includes(mimeType)) {
+      if (Buffer.isBuffer(content) && isClassificationImageMime(mimeType)) {
         return this.classifyImage(content, mimeType, filename, fromEmail, subject);
       }
 
       const textContent = Buffer.isBuffer(content) ? content.toString("utf8") : content;
-      const truncated = textContent.length > 5000 ? textContent.substring(0, 5000) : textContent;
+      const truncated = truncateClassificationText(textContent);
 
-      const userMessage = `Classify this document.
-
-Filename: ${filename}
-From email: ${fromEmail}
-Subject: ${subject}
-
-Document content:
-${truncated}`;
+      const userMessage = buildClassificationUserMessage({
+        filename,
+        fromEmail,
+        subject,
+        content: truncated,
+      });
 
       const response = await this.aiChatService.chat(
         [{ role: "user", content: userMessage }],
@@ -178,24 +196,10 @@ Respond ONLY with a JSON object:
   }
 
   private parseAiResponse(responseContent: string): ClassificationResult {
-    const jsonMatch = responseContent.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      return { documentType: ScDocumentType.UNKNOWN, confidence: 0, source: "content_ai" };
-    }
-
-    const parsed = JSON.parse(jsonMatch[0]);
-    const validTypes = Object.values(ScDocumentType);
-
-    if (parsed.documentType && validTypes.includes(parsed.documentType)) {
-      return {
-        documentType: parsed.documentType,
-        confidence: parsed.confidence ?? 0.8,
-        source: "content_ai",
-        supplierName: parsed.supplierName ?? null,
-      };
-    }
-
-    return { documentType: ScDocumentType.UNKNOWN, confidence: 0, source: "content_ai" };
+    return parseClassificationResponse(responseContent, {
+      validTypes: SC_VALID_TYPES,
+      unknownType: ScDocumentType.UNKNOWN,
+    });
   }
 
   async route(
