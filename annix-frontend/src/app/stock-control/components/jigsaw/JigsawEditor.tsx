@@ -86,6 +86,16 @@ export function JigsawEditor(props: {
   const [unplacedPanels, setUnplacedPanels] = useState<JigsawPanel[]>(() => allPanels);
 
   useEffect(() => {
+    const specThickness = rubberSpec?.thicknessMm;
+    if (!specThickness) return;
+    setRolls((prev) =>
+      prev.some((r) => r.thicknessMm !== specThickness)
+        ? prev.map((r) => ({ ...r, thicknessMm: specThickness }))
+        : prev,
+    );
+  }, [rubberSpec?.thicknessMm]);
+
+  useEffect(() => {
     const allIds = new Set(allPanels.map((p) => p.panelId));
     const trackedIds = new Set([
       ...placedPanels.map((p) => p.panelId),
@@ -224,64 +234,68 @@ export function JigsawEditor(props: {
       const overRect = over.rect;
       const activatorEvent = event.activatorEvent as PointerEvent | MouseEvent | null;
 
-      const el = effectiveLength(panel);
-      const ew = effectiveWidth(panel);
-
       const otherOnRoll = placedPanels.filter(
         (p) => p.rollIndex === rollIndex && p.panelId !== panelId,
       );
 
-      const candidate: PlacedPanel = {
-        ...panel,
-        rollIndex,
-        xMm: 0,
-        yMm: 0,
-      };
+      const buildCandidate = (rotated: boolean): PlacedPanel | null => {
+        const probe: PlacedPanel = { ...panel, rotated, rollIndex, xMm: 0, yMm: 0 };
+        const el = effectiveLength(probe);
+        const ew = effectiveWidth(probe);
+        if (el > roll.lengthMm || ew > roll.widthMm) return null;
 
-      if (activatorEvent && overRect && overRect.width > 0 && overRect.height > 0) {
-        const pointerClientX = activatorEvent.clientX + event.delta.x;
-        const pointerClientY = activatorEvent.clientY + event.delta.y;
-        const scaleX = overRect.width / roll.lengthMm;
-        const scaleY = overRect.height / roll.widthMm;
-        const rawX = (pointerClientX - overRect.left) / scaleX - el / 2;
-        const rawY = (pointerClientY - overRect.top) / scaleY - ew / 2;
-        const clampedX = Math.max(0, Math.min(rawX, roll.lengthMm - el));
-        const clampedY = Math.max(0, Math.min(rawY, roll.widthMm - ew));
+        if (activatorEvent && overRect && overRect.width > 0 && overRect.height > 0) {
+          const pointerClientX = activatorEvent.clientX + event.delta.x;
+          const pointerClientY = activatorEvent.clientY + event.delta.y;
+          const scaleX = overRect.width / roll.lengthMm;
+          const scaleY = overRect.height / roll.widthMm;
+          const rawX = (pointerClientX - overRect.left) / scaleX - el / 2;
+          const rawY = (pointerClientY - overRect.top) / scaleY - ew / 2;
+          const clampedX = Math.max(0, Math.min(rawX, roll.lengthMm - el));
+          const clampedY = Math.max(0, Math.min(rawY, roll.widthMm - ew));
 
-        const gravityY = otherOnRoll
-          .filter((p) => {
+          const horizontallyOverlapping = otherOnRoll.filter((p) => {
             const pl = effectiveLength(p);
             return p.xMm < clampedX + el && p.xMm + pl > clampedX;
-          })
-          .map((p) => p.yMm + effectiveWidth(p))
-          .filter((y) => y <= clampedY)
-          .reduce((max, y) => Math.max(max, y), 0);
+          });
+          const gravityY = horizontallyOverlapping
+            .map((p) => p.yMm + effectiveWidth(p))
+            .reduce((max, y) => Math.max(max, y), 0);
 
-        const snappedY = Math.max(0, Math.min(snapToGrid(gravityY), roll.widthMm - ew));
+          const snappedY = Math.max(0, Math.min(snapToGrid(gravityY), roll.widthMm - ew));
 
-        const gravityX = otherOnRoll
-          .filter((p) => {
+          const verticallyOverlapping = otherOnRoll.filter((p) => {
             const pw = effectiveWidth(p);
             return p.yMm < snappedY + ew && p.yMm + pw > snappedY;
-          })
-          .map((p) => p.xMm + effectiveLength(p))
-          .filter((x) => x <= clampedX)
-          .reduce((max, x) => Math.max(max, x), 0);
+          });
+          const gravityX = verticallyOverlapping
+            .map((p) => p.xMm + effectiveLength(p))
+            .filter((x) => x <= clampedX + el / 2)
+            .reduce((max, x) => Math.max(max, x), 0);
 
-        const snappedX = Math.max(0, Math.min(snapToGrid(gravityX), roll.lengthMm - el));
+          const snappedX = Math.max(0, Math.min(snapToGrid(gravityX), roll.lengthMm - el));
 
-        candidate.xMm = snappedX;
-        candidate.yMm = snappedY;
-      } else {
-        const packLeftX = otherOnRoll.reduce(
-          (maxX, p) => Math.max(maxX, p.xMm + effectiveLength(p)),
-          0,
-        );
-        candidate.xMm = Math.max(0, Math.min(packLeftX, roll.lengthMm - el));
-        candidate.yMm = 0;
+          probe.xMm = snappedX;
+          probe.yMm = snappedY;
+        } else {
+          const packLeftX = otherOnRoll.reduce(
+            (maxX, p) => Math.max(maxX, p.xMm + effectiveLength(p)),
+            0,
+          );
+          probe.xMm = Math.max(0, Math.min(packLeftX, roll.lengthMm - el));
+          probe.yMm = 0;
+        }
+
+        if (!isWithinBounds(probe, roll)) return null;
+        return probe;
+      };
+
+      const candidate = buildCandidate(panel.rotated) ?? buildCandidate(!panel.rotated);
+      if (!candidate) {
+        setRotateFailedId(panelId);
+        setTimeout(() => setRotateFailedId(null), 1500);
+        return;
       }
-
-      if (!isWithinBounds(candidate, roll)) return;
 
       if (source === "tray") {
         setUnplacedPanels((prev) => prev.filter((p) => p.panelId !== panelId));
