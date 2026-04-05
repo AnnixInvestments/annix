@@ -56,6 +56,15 @@ export function JigsawEditor(props: {
   saving: boolean;
 }) {
   const { parsedItems, rubberSpec, existingManualRolls, onSave, saving } = props;
+
+  const allPanels = useMemo(() => panelsFromParsedItems(parsedItems), [parsedItems]);
+
+  const defaultRollWidthMm = useMemo(() => {
+    const widest = allPanels.reduce((max, p) => Math.max(max, Math.min(p.widthMm, p.lengthMm)), 0);
+    const clamped = Math.max(1200, Math.min(1450, widest));
+    return Math.ceil(clamped / 50) * 50;
+  }, [allPanels]);
+
   const [rolls, setRolls] = useState<JigsawRoll[]>(() => {
     if (existingManualRolls.length > 0) {
       return existingManualRolls.map((r) => ({
@@ -66,14 +75,12 @@ export function JigsawEditor(props: {
     }
     return [
       {
-        widthMm: 1200,
+        widthMm: defaultRollWidthMm,
         lengthMm: 12500,
         thicknessMm: rubberSpec?.thicknessMm || 5,
       },
     ];
   });
-
-  const allPanels = useMemo(() => panelsFromParsedItems(parsedItems), [parsedItems]);
 
   const [placedPanels, setPlacedPanels] = useState<PlacedPanel[]>([]);
   const [unplacedPanels, setUnplacedPanels] = useState<JigsawPanel[]>(() => allPanels);
@@ -89,50 +96,6 @@ export function JigsawEditor(props: {
     if (!sameSet) {
       setPlacedPanels([]);
       setUnplacedPanels(allPanels);
-      return;
-    }
-
-    const allPanelMap = new Map(allPanels.map((p) => [p.panelId, p]));
-    const isSubPanel = (p: JigsawPanel) => p.panelId !== p.itemId;
-    const driftedSubPanel = (p: JigsawPanel): boolean => {
-      if (!isSubPanel(p)) return false;
-      const canonical = allPanelMap.get(p.panelId);
-      if (!canonical) return false;
-      return (
-        p.originalWidthMm !== canonical.widthMm ||
-        p.originalLengthMm !== canonical.lengthMm ||
-        p.widthMm !== canonical.widthMm ||
-        p.lengthMm !== canonical.lengthMm
-      );
-    };
-
-    if (unplacedPanels.some(driftedSubPanel) || placedPanels.some(driftedSubPanel)) {
-      setUnplacedPanels((prev) =>
-        prev.map((p) => {
-          const canonical = allPanelMap.get(p.panelId);
-          if (!canonical || !isSubPanel(p)) return p;
-          return {
-            ...p,
-            widthMm: canonical.widthMm,
-            lengthMm: canonical.lengthMm,
-            originalWidthMm: canonical.widthMm,
-            originalLengthMm: canonical.lengthMm,
-          };
-        }),
-      );
-      setPlacedPanels((prev) =>
-        prev.map((p) => {
-          const canonical = allPanelMap.get(p.panelId);
-          if (!canonical || !isSubPanel(p)) return p;
-          return {
-            ...p,
-            widthMm: canonical.widthMm,
-            lengthMm: canonical.lengthMm,
-            originalWidthMm: canonical.widthMm,
-            originalLengthMm: canonical.lengthMm,
-          };
-        }),
-      );
     }
   }, [allPanels, placedPanels, unplacedPanels]);
 
