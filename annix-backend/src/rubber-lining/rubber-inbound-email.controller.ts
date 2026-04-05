@@ -29,7 +29,6 @@ import { RegionCoordinates } from "./entities/rubber-po-extraction-region.entity
 import { SupplierCocType } from "./entities/rubber-supplier-coc.entity";
 import { TaxInvoiceType } from "./entities/rubber-tax-invoice.entity";
 import { AuRubberAccessGuard } from "./guards/au-rubber-access.guard";
-import { RubberEmailMonitorService } from "./rubber-email-monitor.service";
 import {
   AnalyzeCustomerDnsResult,
   AnalyzeFilesResult,
@@ -53,20 +52,11 @@ export class RubberInboundEmailController {
 
   constructor(
     private readonly inboundEmailService: RubberInboundEmailService,
-    private readonly emailMonitorService: RubberEmailMonitorService,
     private readonly orderImportService: RubberOrderImportService,
     private readonly templateService: RubberPoTemplateService,
     private readonly productImportService: RubberProductImportService,
     private readonly taxInvoiceService: RubberTaxInvoiceService,
   ) {}
-
-  @Post("portal/email-monitor/test")
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
-  @ApiBearerAuth()
-  @ApiOperation({ summary: "Test IMAP email connection" })
-  async testEmailConnection(): Promise<{ success: boolean; error?: string }> {
-    return this.emailMonitorService.testConnection();
-  }
 
   @Post("webhook/inbound-email")
   @ApiOperation({

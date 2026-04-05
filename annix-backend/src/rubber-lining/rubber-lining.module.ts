@@ -65,7 +65,6 @@ import { RubberCompanyDirectorService } from "./rubber-company-director.service"
 import { RubberCostService } from "./rubber-cost.service";
 import { RubberDeliveryNoteService } from "./rubber-delivery-note.service";
 import { RubberDocumentVersioningService } from "./rubber-document-versioning.service";
-import { RubberEmailMonitorService } from "./rubber-email-monitor.service";
 import { RubberInboundEmailController } from "./rubber-inbound-email.controller";
 import { RubberInboundEmailService } from "./rubber-inbound-email.service";
 import { RubberLiningController } from "./rubber-lining.controller";
@@ -155,7 +154,6 @@ import { ArEmailAdapterService } from "./services/ar-email-adapter.service";
     RubberRequisitionService,
     RubberStockLocationService,
     RubberInboundEmailService,
-    RubberEmailMonitorService,
     RubberQualityTrackingService,
     RubberOrderImportService,
     RubberPoTemplateService,
