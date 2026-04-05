@@ -32,6 +32,13 @@ import {
   UserAppPermission,
 } from "./entities";
 
+const STOCK_CONTROL_ROLE_NAMES: Record<string, string> = {
+  storeman: "Storeman",
+  accounts: "Accounts",
+  manager: "Manager",
+  admin: "Administrator",
+};
+
 @Injectable()
 export class RbacService {
   private readonly logger = new Logger(RbacService.name);
@@ -215,13 +222,6 @@ export class RbacService {
       const firstName = nameParts[0] ?? null;
       const lastName = nameParts.slice(1).join(" ") || null;
 
-      const roleNameMap: Record<string, string> = {
-        storeman: "Storeman",
-        accounts: "Accounts",
-        manager: "Manager",
-        admin: "Administrator",
-      };
-
       return {
         id: -scUser.id,
         email: scUser.email,
@@ -236,7 +236,7 @@ export class RbacService {
                 appCode: "stock-control",
                 appName: `Stock Control (${scUser.company?.name ?? "Unknown"})`,
                 roleCode: scUser.role,
-                roleName: roleNameMap[scUser.role] ?? scUser.role,
+                roleName: STOCK_CONTROL_ROLE_NAMES[scUser.role] ?? scUser.role,
                 useCustomPermissions: false,
                 permissionCodes: null,
                 permissionCount: null,
@@ -410,13 +410,6 @@ export class RbacService {
       }
     }
 
-    const roleNameMap: Record<string, string> = {
-      storeman: "Storeman",
-      accounts: "Accounts",
-      manager: "Manager",
-      admin: "Administrator",
-    };
-
     const nameParts = scUser.name.split(" ");
     const firstName = nameParts[0] ?? null;
     const lastName = nameParts.slice(1).join(" ") || null;
@@ -429,7 +422,7 @@ export class RbacService {
       lastName,
       appCode: "stock-control",
       roleCode: scUser.role,
-      roleName: roleNameMap[scUser.role] ?? scUser.role,
+      roleName: STOCK_CONTROL_ROLE_NAMES[scUser.role] ?? scUser.role,
       useCustomPermissions: false,
       permissionCodes: null,
       permissionCount: null,

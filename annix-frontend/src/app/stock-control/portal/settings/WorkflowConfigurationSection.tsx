@@ -1,5 +1,6 @@
 "use client";
 
+import { useQueryClient } from "@tanstack/react-query";
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type {
   EligibleUser,
@@ -10,6 +11,7 @@ import type {
   WorkflowStepConfig,
 } from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
+import { stockControlKeys } from "@/app/lib/query/keys/stockControlKeys";
 import { roleLabel } from "../../lib/roleLabels";
 
 const DEFAULT_STEP_OUTCOMES: Record<string, StepOutcome[]> = {
@@ -34,6 +36,7 @@ interface WorkflowConfigurationSectionProps {
 }
 
 export function WorkflowConfigurationSection({ teamMembers }: WorkflowConfigurationSectionProps) {
+  const queryClient = useQueryClient();
   const [stepConfigs, setStepConfigs] = useState<WorkflowStepConfig[]>([]);
   const [assignments, setAssignments] = useState<WorkflowStepAssignment[]>([]);
   const [recipients, setRecipients] = useState<StepNotificationRecipients[]>([]);
@@ -86,12 +89,13 @@ export function WorkflowConfigurationSection({ teamMembers }: WorkflowConfigurat
       setAssignments(assignmentData);
       setRecipients(recipientData);
       setBackgroundSteps(bgSteps);
+      queryClient.invalidateQueries({ queryKey: stockControlKeys.workflowConfig.all });
     } catch {
       setError("Failed to load workflow configuration");
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [queryClient]);
 
   useEffect(() => {
     loadData();
