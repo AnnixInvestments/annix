@@ -7,7 +7,7 @@ import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
 import { ChatPanel } from "../components/ChatPanel";
 import { HubBreadcrumb } from "../components/HubBreadcrumb";
 import { StockControlHeader } from "../components/StockControlHeader";
-import { ALL_NAV_ITEMS } from "../config/navItems";
+import { ALL_NAV_ITEMS, isNavItemAllowedForRole } from "../config/navItems";
 import { GlossaryProvider } from "../context/GlossaryContext";
 import {
   StockControlBrandingProvider,
@@ -65,8 +65,7 @@ function PageAccessGuard({ children }: { children: React.ReactNode }) {
 
     if (!matchingItem) return;
 
-    const allowedRoles = rbacConfig[matchingItem.key] ?? matchingItem.defaultRoles;
-    const hasAccess = allowedRoles.includes(effectiveRole);
+    const hasAccess = isNavItemAllowedForRole(matchingItem, effectiveRole, rbacConfig);
 
     if (matchingItem.requiresQc && !profile?.qcEnabled && effectiveRole !== "admin") {
       router.replace("/stock-control/portal/dashboard");

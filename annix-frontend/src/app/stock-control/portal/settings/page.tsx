@@ -15,7 +15,7 @@ import {
   useInvalidateCompanyRoles,
   useSettingsTeamMembers,
 } from "@/app/lib/query/hooks";
-import { ALL_NAV_ITEMS, NAV_GROUP_ORDER } from "../../config/navItems";
+import { ALL_NAV_ITEMS, NAV_GROUP_ORDER, resolveNavItemRoles } from "../../config/navItems";
 import { useStockControlRbac } from "../../context/StockControlRbacContext";
 import { roleLabel } from "../../lib/roleLabels";
 import { DepartmentsLocationsSection } from "./DepartmentsLocationsSection";
@@ -122,7 +122,7 @@ function MenuVisibilitySection({
     (groupName: string, role: string) => {
       const groupItems = ALL_NAV_ITEMS.filter((item) => item.group === groupName);
       const allChecked = groupItems.every((item) => {
-        const itemRoles = localConfig[item.key] ?? item.defaultRoles;
+        const itemRoles = resolveNavItemRoles(item, localConfig, roleKeys);
         return itemRoles.includes(role);
       });
 
@@ -130,7 +130,7 @@ function MenuVisibilitySection({
         const next = { ...prev };
         groupItems.forEach((item) => {
           if (item.immutable) return;
-          const current = next[item.key] ?? [...item.defaultRoles];
+          const current = resolveNavItemRoles(item, next, roleKeys);
           if (allChecked) {
             next[item.key] = current.filter((r) => r !== role);
           } else if (!current.includes(role)) {
@@ -142,25 +142,25 @@ function MenuVisibilitySection({
       setDirty(true);
       setSuccess(false);
     },
-    [localConfig],
+    [localConfig, roleKeys],
   );
 
   const isGroupAllChecked = useCallback(
     (groupName: string, role: string): boolean => {
       const groupItems = ALL_NAV_ITEMS.filter((item) => item.group === groupName);
       return groupItems.every((item) => {
-        const itemRoles = localConfig[item.key] ?? item.defaultRoles;
+        const itemRoles = resolveNavItemRoles(item, localConfig, roleKeys);
         return itemRoles.includes(role);
       });
     },
-    [localConfig],
+    [localConfig, roleKeys],
   );
 
   const isGroupPartialChecked = useCallback(
     (groupName: string, role: string): boolean => {
       const groupItems = ALL_NAV_ITEMS.filter((item) => item.group === groupName);
       const checkedCount = groupItems.filter((item) => {
-        const itemRoles = localConfig[item.key] ?? item.defaultRoles;
+        const itemRoles = resolveNavItemRoles(item, localConfig, roleKeys);
         return itemRoles.includes(role);
       }).length;
       return checkedCount > 0 && checkedCount < groupItems.length;
@@ -270,8 +270,8 @@ function MenuVisibilitySection({
   const hiddenItems = ALL_NAV_ITEMS.filter((item) => item.group === "hidden");
 
   const renderCheckbox = (navKey: string, rk: string, immutable: boolean) => {
-    const itemRoles =
-      localConfig[navKey] ?? ALL_NAV_ITEMS.find((i) => i.key === navKey)?.defaultRoles ?? [];
+    const item = ALL_NAV_ITEMS.find((i) => i.key === navKey);
+    const itemRoles = item ? resolveNavItemRoles(item, localConfig, roleKeys) : [];
     const checked = itemRoles.includes(rk);
     const disabled = rk === "admin" || immutable;
     return (

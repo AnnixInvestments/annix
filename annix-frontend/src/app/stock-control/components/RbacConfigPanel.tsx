@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
-import { ALL_NAV_ITEMS, ALL_ROLES } from "../config/navItems";
+import { ALL_NAV_ITEMS, ALL_ROLES, resolveNavItemRoles } from "../config/navItems";
 import { useStockControlRbac } from "../context/StockControlRbacContext";
 
 interface RbacConfigPanelProps {
@@ -92,7 +92,7 @@ export function RbacConfigPanel(props: RbacConfigPanelProps) {
             </thead>
             <tbody>
               {ALL_NAV_ITEMS.map((item) => {
-                const roles = localConfig[item.key] ?? item.defaultRoles;
+                const roles = resolveNavItemRoles(item, localConfig, ALL_ROLES);
                 return (
                   <tr key={item.key} className="border-b border-gray-100">
                     <td className="py-3 pr-2 text-sm text-gray-700">{item.label}</td>

@@ -32,7 +32,7 @@ import { QuickStatsSection } from "../../components/dashboard/QuickStatsSection"
 import { RoleSummarySection } from "../../components/dashboard/RoleSummarySection";
 import { WidgetVisibilityToggle } from "../../components/dashboard/WidgetVisibilityToggle";
 import { WorkflowLanesSection } from "../../components/dashboard/WorkflowLanesSection";
-import { ALL_NAV_ITEMS } from "../../config/navItems";
+import { ALL_NAV_ITEMS, isNavItemAllowedForRole } from "../../config/navItems";
 import { useStockControlBranding } from "../../context/StockControlBrandingContext";
 import { useStockControlRbac } from "../../context/StockControlRbacContext";
 import { useViewAs } from "../../context/ViewAsContext";
@@ -101,8 +101,7 @@ export default function StockControlDashboard() {
     (navKey: string) => {
       const item = ALL_NAV_ITEMS.find((i) => i.key === navKey);
       if (!item) return false;
-      const allowedRoles = rbacConfig[navKey] ?? item.defaultRoles;
-      return allowedRoles.includes(effectiveRole);
+      return isNavItemAllowedForRole(item, effectiveRole, rbacConfig);
     },
     [rbacConfig, effectiveRole],
   );

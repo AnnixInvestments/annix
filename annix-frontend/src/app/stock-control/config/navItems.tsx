@@ -490,7 +490,7 @@ export const ALL_NAV_ITEMS: NavItemDef[] = [
     key: "how-to",
     href: "/stock-control/portal/how-to",
     label: "How To",
-    defaultRoles: ["viewer", "quality", "storeman", "accounts", "manager", "admin"],
+    defaultRoles: ["*"],
     group: "Admin",
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -530,3 +530,26 @@ export const ALL_NAV_ITEMS: NavItemDef[] = [
 ];
 
 export const ALL_ROLES = ["viewer", "quality", "storeman", "accounts", "manager", "admin"] as const;
+
+export const NAV_ROLE_WILDCARD = "*";
+
+export const isNavItemAllowedForRole = (
+  item: NavItemDef,
+  role: string | null,
+  rbacConfig: Record<string, string[]>,
+): boolean => {
+  if (!role) return false;
+  const configured = rbacConfig[item.key] ?? item.defaultRoles;
+  if (configured.includes(NAV_ROLE_WILDCARD)) return true;
+  return configured.includes(role);
+};
+
+export const resolveNavItemRoles = (
+  item: NavItemDef,
+  rbacConfig: Record<string, string[]>,
+  availableRoles: readonly string[],
+): string[] => {
+  const configured = rbacConfig[item.key] ?? item.defaultRoles;
+  if (configured.includes(NAV_ROLE_WILDCARD)) return [...availableRoles];
+  return [...configured];
+};

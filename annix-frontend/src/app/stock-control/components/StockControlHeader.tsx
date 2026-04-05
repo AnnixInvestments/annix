@@ -5,7 +5,12 @@ import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ThemeToggle } from "@/app/components/ThemeToggle";
 import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
-import { ALL_NAV_ITEMS, NAV_GROUP_HUB_PATHS, NAV_GROUP_ORDER } from "../config/navItems";
+import {
+  ALL_NAV_ITEMS,
+  isNavItemAllowedForRole,
+  NAV_GROUP_HUB_PATHS,
+  NAV_GROUP_ORDER,
+} from "../config/navItems";
 import { STOCK_CONTROL_VERSION } from "../config/version";
 import { useStockControlBranding } from "../context/StockControlBrandingContext";
 import { useStockControlRbac } from "../context/StockControlRbacContext";
@@ -60,10 +65,9 @@ export function StockControlHeader() {
 
   const isAdmin = user?.role === "admin";
 
-  const visibleNavItems = ALL_NAV_ITEMS.filter((item) => {
-    const allowedRoles = rbacConfig[item.key] ?? item.defaultRoles;
-    return allowedRoles.includes(effectiveRole);
-  });
+  const visibleNavItems = ALL_NAV_ITEMS.filter((item) =>
+    isNavItemAllowedForRole(item, effectiveRole, rbacConfig),
+  );
 
   const isActive = (href: string) => {
     if (href === "/stock-control/portal/dashboard") {
