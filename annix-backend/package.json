@@ -129,7 +129,8 @@
     "rootDir": "src",
     "moduleNameMapper": {
       "^src/(.*)$": "<rootDir>/$1",
-      "^pdf-merger-js$": "<rootDir>/../test/__mocks__/pdf-merger-js.ts"
+      "^pdf-merger-js$": "<rootDir>/../test/__mocks__/pdf-merger-js.ts",
+      "^@annix/product-data/(.*)$": "<rootDir>/../../packages/product-data/$1/index.ts"
     },
     "testRegex": ".*\\.spec\\.ts$",
     "transform": {
