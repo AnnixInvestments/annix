@@ -1,15 +1,5 @@
-import {
-  Column,
-  CreateDateColumn,
-  Entity,
-  JoinColumn,
-  ManyToOne,
-  OneToMany,
-  OneToOne,
-  PrimaryGeneratedColumn,
-  UpdateDateColumn,
-} from "typeorm";
-import { User } from "../../user/entities/user.entity";
+import { Column, Entity, JoinColumn, ManyToOne, OneToMany, OneToOne } from "typeorm";
+import { BasePortalProfile } from "../../platform/entities/base-portal-profile";
 import { SupplierCapability } from "./supplier-capability.entity";
 import { SupplierCompany } from "./supplier-company.entity";
 import { SupplierDeviceBinding } from "./supplier-device-binding.entity";
@@ -26,19 +16,7 @@ export enum SupplierAccountStatus {
 }
 
 @Entity("supplier_profiles")
-export class SupplierProfile {
-  @PrimaryGeneratedColumn()
-  id: number;
-
-  // Links to existing User entity (one-to-one)
-  @OneToOne(() => User)
-  @JoinColumn({ name: "user_id" })
-  user: User;
-
-  @Column({ name: "user_id" })
-  userId: number;
-
-  // Links to SupplierCompany (many-to-one, nullable for initial registration)
+export class SupplierProfile extends BasePortalProfile {
   @ManyToOne(
     () => SupplierCompany,
     (company) => company.profiles,
@@ -52,23 +30,12 @@ export class SupplierProfile {
   @Column({ name: "company_id", nullable: true })
   companyId: number;
 
-  // Personal details (nullable for initial registration)
   @Column({ name: "first_name", length: 100, nullable: true })
   firstName: string;
 
   @Column({ name: "last_name", length: 100, nullable: true })
   lastName: string;
 
-  @Column({ name: "job_title", length: 100, nullable: true })
-  jobTitle: string;
-
-  @Column({ name: "direct_phone", length: 30, nullable: true })
-  directPhone: string;
-
-  @Column({ name: "mobile_phone", length: 30, nullable: true })
-  mobilePhone: string;
-
-  // Account status
   @Column({
     name: "account_status",
     type: "enum",
@@ -77,82 +44,41 @@ export class SupplierProfile {
   })
   accountStatus: SupplierAccountStatus;
 
-  // Email verification
-  @Column({ name: "email_verified", default: false })
-  emailVerified: boolean;
-
-  @Column({
-    name: "email_verification_token",
-    type: "varchar",
-    length: 500,
-    nullable: true,
-  })
-  emailVerificationToken: string | null;
-
-  @Column({
-    name: "email_verification_expires",
-    type: "timestamp",
-    nullable: true,
-  })
-  emailVerificationExpires: Date | null;
-
-  // Suspension tracking
-  @Column({ name: "suspension_reason", type: "text", nullable: true })
-  suspensionReason?: string | null;
-
-  @Column({ name: "suspended_at", type: "timestamp", nullable: true })
-  suspendedAt?: Date | null;
-
-  @Column({ name: "suspended_by", type: "int", nullable: true })
-  suspendedBy?: number | null;
-
-  // Device bindings
   @OneToMany(
     () => SupplierDeviceBinding,
     (binding) => binding.supplierProfile,
   )
   deviceBindings: SupplierDeviceBinding[];
 
-  // Sessions
   @OneToMany(
     () => SupplierSession,
     (session) => session.supplierProfile,
   )
   sessions: SupplierSession[];
 
-  // Login attempts
   @OneToMany(
     () => SupplierLoginAttempt,
     (attempt) => attempt.supplierProfile,
   )
   loginAttempts: SupplierLoginAttempt[];
 
-  // Onboarding
   @OneToOne(
     () => SupplierOnboarding,
     (onboarding) => onboarding.supplier,
   )
   onboarding: SupplierOnboarding;
 
-  // Documents
   @OneToMany(
     () => SupplierDocument,
     (document) => document.supplier,
   )
   documents: SupplierDocument[];
 
-  // Capabilities (FR-P7: Product/Service Mapping)
   @OneToMany(
     () => SupplierCapability,
     (capability) => capability.supplierProfile,
   )
   capabilities: SupplierCapability[];
-
-  @CreateDateColumn({ name: "created_at" })
-  createdAt: Date;
-
-  @UpdateDateColumn({ name: "updated_at" })
-  updatedAt: Date;
 
   @Column({ name: "terms_accepted_at", type: "timestamp", nullable: true })
   termsAcceptedAt: Date | null;
@@ -163,11 +89,4 @@ export class SupplierProfile {
     nullable: true,
   })
   securityPolicyAcceptedAt: Date | null;
-
-  @Column({
-    name: "document_storage_accepted_at",
-    type: "timestamp",
-    nullable: true,
-  })
-  documentStorageAcceptedAt: Date | null;
 }
