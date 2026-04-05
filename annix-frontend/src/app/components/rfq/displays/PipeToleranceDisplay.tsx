@@ -1,12 +1,12 @@
 "use client";
 
-import { useMemo } from "react";
 import {
   calculateTolerances,
   type ToleranceStandard,
   toleranceForPipe,
   toleranceStandardLabel,
-} from "@/app/lib/config/rfq/pipeTolerances";
+} from "@annix/product-data/pipe";
+import { useMemo } from "react";
 
 export interface PipeToleranceDisplayProps {
   odMm: number;

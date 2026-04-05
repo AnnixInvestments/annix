@@ -1,8 +1,8 @@
 "use client";
 
+import { STEEL_DENSITY_KG_M3 } from "@annix/product-data/steel";
 import { useCallback, useMemo } from "react";
 import SplitPaneLayout from "@/app/components/rfq/shared/SplitPaneLayout";
-import { STEEL_DENSITY_KG_M3 } from "@/app/lib/config/rfq/constants";
 import type { PlateBomItem, TankChuteEntry } from "@/app/lib/hooks/useRfqForm";
 
 export interface TankChuteFormProps {

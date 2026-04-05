@@ -1,5 +1,6 @@
 "use client";
 
+import { FLANGE_OD } from "@annix/product-data/pipe";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import React, { memo, useCallback, useEffect, useRef, useState } from "react";
@@ -11,7 +12,6 @@ import {
   boltSetCountPerPipe as getBoltSetCountPerPipe,
   flangesPerPipe as getFlangesPerPipe,
 } from "@/app/lib/config/rfq";
-import { FLANGE_OD } from "@/app/lib/config/rfq/constants";
 import { log } from "@/app/lib/logger";
 import {
   blankFlangeSurfaceArea,

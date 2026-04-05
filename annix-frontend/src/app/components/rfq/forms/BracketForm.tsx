@@ -1,5 +1,10 @@
 "use client";
 
+import {
+  STEEL_MATERIAL_CATEGORIES,
+  STEEL_MATERIALS,
+  steelMaterialById,
+} from "@annix/product-data/pipe";
 import { useEffect, useMemo, useState } from "react";
 import {
   BRACKET_TYPES,
@@ -7,11 +12,6 @@ import {
   BracketType,
   defaultBracketDimensions,
 } from "@/app/lib/config/rfq/bracketsAndPlates";
-import {
-  STEEL_MATERIAL_CATEGORIES,
-  STEEL_MATERIALS,
-  steelMaterialById,
-} from "@/app/lib/config/rfq/steelMaterials";
 import { generateUniqueId } from "@/app/lib/datetime";
 import {
   calculateBracket,

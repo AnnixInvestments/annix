@@ -1,3 +1,5 @@
+import { RETAINING_RING_CONFIG } from "@annix/product-data/pipe";
+import { STEEL_DENSITY_KG_M3 } from "@annix/product-data/steel";
 import { useQuery } from "@tanstack/react-query";
 import {
   type BnwSetWeightRecord,
@@ -8,7 +10,6 @@ import {
   masterDataApi,
   type RetainingRingWeightRecord,
 } from "@/app/lib/api/client";
-import { RETAINING_RING_CONFIG, STEEL_DENSITY_KG_M3 } from "@/app/lib/config/rfq/constants";
 import { flangeWeightKeys } from "../../keys";
 
 export type { FlangeType, FlangeTypeWeightRecord };

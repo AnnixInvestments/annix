@@ -1,3 +1,4 @@
+import { steelMaterialById } from "@annix/product-data/pipe";
 import {
   BracketDimensions,
   BracketEntry,
@@ -5,7 +6,6 @@ import {
   CompensationPlateDimensions,
   CompensationPlateEntry,
 } from "@/app/lib/config/rfq/bracketsAndPlates";
-import { steelMaterialById } from "@/app/lib/config/rfq/steelMaterials";
 
 export interface BracketCalculationResult {
   volumeM3: number;

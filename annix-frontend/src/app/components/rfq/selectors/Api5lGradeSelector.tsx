@@ -1,12 +1,12 @@
 "use client";
 
-import { useMemo } from "react";
 import {
   API_5L_GRADE_LIST,
   API_5L_GRADES,
   type Api5lGradeSpec,
   type PslLevel,
-} from "@/app/lib/config/rfq/api5lGrades";
+} from "@annix/product-data/pipe";
+import { useMemo } from "react";
 
 export interface Api5lGradeSelectorProps {
   selectedGrade: string | null;

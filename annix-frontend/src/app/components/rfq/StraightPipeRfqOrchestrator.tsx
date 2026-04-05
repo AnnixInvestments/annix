@@ -1,5 +1,6 @@
 "use client";
 
+import { FLANGE_OD } from "@annix/product-data/pipe";
 import { useRouter, useSearchParams } from "next/navigation";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { GuidedHighlight } from "@/app/components/rfq/shared/GuidedHighlight";
@@ -24,7 +25,6 @@ import {
   STEEL_DENSITY_KG_M3,
   scheduleListForSpec,
 } from "@/app/lib/config/rfq";
-import { FLANGE_OD } from "@/app/lib/config/rfq/constants";
 import { fromISO, nowISO } from "@/app/lib/datetime";
 import { FlangeSpecData, fetchFlangeSpecsStatic } from "@/app/lib/hooks/useFlangeSpecs";
 import { formatLastSaved, useRfqDraftStorage } from "@/app/lib/hooks/useRfqDraftStorage";

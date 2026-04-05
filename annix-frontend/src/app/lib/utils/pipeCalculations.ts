@@ -6,7 +6,7 @@
  * and surface area calculations.
  */
 
-import { STEEL_DENSITY_KG_CM3 } from "@/app/lib/config/rfq/constants";
+import { STEEL_DENSITY_KG_CM3 } from "@annix/product-data/steel";
 import { log } from "@/app/lib/logger";
 
 /**

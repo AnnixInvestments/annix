@@ -1,6 +1,5 @@
 "use client";
 
-import { useMemo, useState } from "react";
 import {
   API_5L_GRADE_LIST,
   API_5L_GRADES,
@@ -8,7 +7,8 @@ import {
   calculateCarbonEquivalent,
   type PslLevel,
   validateApi5lGrade,
-} from "@/app/lib/config/rfq/api5lGrades";
+} from "@annix/product-data/pipe";
+import { useMemo, useState } from "react";
 import { SOUR_SERVICE_HARDNESS_LIMITS } from "@/app/lib/config/rfq/weldDefectAcceptance";
 
 export interface MtcFormData {

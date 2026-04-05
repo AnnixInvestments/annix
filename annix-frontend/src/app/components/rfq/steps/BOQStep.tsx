@@ -1,11 +1,11 @@
 "use client";
 
+import { FLANGE_OD } from "@annix/product-data/pipe";
 import React, { useCallback, useState } from "react";
 import * as XLSX from "xlsx";
 import { useOptionalAdminAuth } from "@/app/context/AdminAuthContext";
 import { useOptionalCustomerAuth } from "@/app/context/CustomerAuthContext";
 import { DEFAULT_PIPE_LENGTH_M } from "@/app/lib/config/rfq";
-import { FLANGE_OD } from "@/app/lib/config/rfq/constants";
 import {
   boltSetCountPerBend,
   boltSetCountPerFitting,
