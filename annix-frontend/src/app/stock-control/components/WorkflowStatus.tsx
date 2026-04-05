@@ -308,39 +308,36 @@ const collectBranches = (
     const directChildren = bgByTrigger[step.key] || [];
     if (directChildren.length === 0) return branches;
 
-    const bypassDirect = directChildren.filter((bg) => bg.rejoinAtStep !== null);
     const nonBypass = directChildren.filter((bg) => bg.rejoinAtStep === null);
-    const coloredDirect = nonBypass.filter((bg) => inheritedColor(bg));
-    const regularDirect = nonBypass.filter((bg) => !inheritedColor(bg));
+
+    const allDescendants = nonBypass.reduce<BackgroundStepStatus[]>((chain, bg) => {
+      const rest = bgStepKeySet.has(bg.stepKey) ? resolveBgChain(bg.stepKey) : [];
+      return [...chain, bg, ...rest];
+    }, []);
+
+    const coloredDescendants = allDescendants.filter((bg) => inheritedColor(bg));
+    const regularDescendants = allDescendants.filter((bg) => !inheritedColor(bg));
 
     const result = [...branches];
 
-    if (coloredDirect.length > 0) {
-      const loopChain = coloredDirect.reduce<BackgroundStepStatus[]>((chain, bg) => {
-        const rest = bgStepKeySet.has(bg.stepKey) ? resolveBgChain(bg.stepKey) : [];
-        return [...chain, bg, ...rest];
-      }, []);
+    if (coloredDescendants.length > 0) {
       result.push({
         triggerFgKey: step.key,
         triggerFgIdx: index,
         nextFgIdx: index,
-        bgSteps: loopChain,
-        branchColor: inheritedColor(coloredDirect[0]) || null,
+        bgSteps: coloredDescendants,
+        branchColor: inheritedColor(coloredDescendants[0]) || null,
         isLoop: true,
       });
     }
 
-    if (regularDirect.length > 0) {
-      const regularChain = regularDirect.reduce<BackgroundStepStatus[]>((chain, bg) => {
-        const rest = bgStepKeySet.has(bg.stepKey) ? resolveBgChain(bg.stepKey) : [];
-        return [...chain, bg, ...rest];
-      }, []);
+    if (regularDescendants.length > 0) {
       const nextFgIdx = index + 1 < allSteps.length ? index + 1 : index;
       result.push({
         triggerFgKey: step.key,
         triggerFgIdx: index,
         nextFgIdx,
-        bgSteps: regularChain,
+        bgSteps: regularDescendants,
         branchColor: null,
         isLoop: false,
       });
