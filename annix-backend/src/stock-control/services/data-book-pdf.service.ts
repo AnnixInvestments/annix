@@ -12,6 +12,7 @@ import {
   PDF_FONTS as FONT,
   type PageLayout,
 } from "../../lib/pdf-builder";
+import { renderFooter } from "../../lib/pdf-templates";
 import { type IStorageService, STORAGE_SERVICE } from "../../storage/storage.interface";
 import { JobCard } from "../entities/job-card.entity";
 import { StockControlCompany } from "../entities/stock-control-company.entity";
@@ -1957,42 +1958,13 @@ export class DataBookPdfService {
   }
 
   private renderPageFooters(doc: PDFDoc, ctx: DataBookContext, layoutOverride?: PageLayout): void {
-    const brandColor = ctx.company?.primaryColor ?? "#0d9488";
-    const totalPages = doc.bufferedPageRange().count;
-    const companyName = ctx.company?.name ?? "PLS";
-
-    Array.from({ length: totalPages }).forEach((_, i) => {
-      doc.switchToPage(i);
-      const pageW = (doc.page as any)?.width ?? A4.pageWidth;
-      const pageH = (doc.page as any)?.height ?? A4.pageHeight;
-      const isLandscapePage = pageW > pageH;
-      const pg = layoutOverride || (isLandscapePage ? A4_LANDSCAPE : A4);
-
-      const footerY = pg.pageHeight - 28;
-
-      doc
-        .moveTo(pg.margin, footerY - 4)
-        .lineTo(pg.margin + pg.contentWidth, footerY - 4)
-        .lineWidth(0.5)
-        .stroke("#d1d5db");
-
-      doc.fontSize(6).font(FONT.REGULAR).fillColor("#9ca3af");
-      doc.text(companyName, pg.margin, footerY, { width: pg.contentWidth / 3, align: "left" });
-      doc.text(
-        `Job: ${ctx.jobCard.jobNumber || ctx.jobCard.id}`,
-        pg.margin + pg.contentWidth / 3,
-        footerY,
-        { width: pg.contentWidth / 3, align: "center" },
-      );
-      doc.text(`Page ${i + 1} of ${totalPages}`, pg.margin + (pg.contentWidth * 2) / 3, footerY, {
-        width: pg.contentWidth / 3,
-        align: "right",
-      });
-
-      doc.rect(0, pg.pageHeight - 4, pg.pageWidth, 4).fill(brandColor);
+    renderFooter(doc, {
+      companyName: ctx.company?.name ?? "PLS",
+      brandColor: ctx.company?.primaryColor ?? "#0d9488",
+      extraCenterText: `Job: ${ctx.jobCard.jobNumber || ctx.jobCard.id}`,
+      marginX: layoutOverride?.margin,
+      pageWidth: layoutOverride?.pageWidth,
+      pageHeight: layoutOverride?.pageHeight,
     });
-
-    doc.fillColor("#000000");
-    doc.lineWidth(1);
   }
 }

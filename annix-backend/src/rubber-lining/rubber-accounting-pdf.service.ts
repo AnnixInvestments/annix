@@ -1,5 +1,6 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { createPdfDocument } from "../lib/pdf-builder";
+import { renderSignatureBlock } from "../lib/pdf-templates";
 import type { MonthlyAccountDataDto } from "./rubber-accounting.service";
 
 @Injectable()
@@ -145,11 +146,12 @@ export class RubberAccountingPdfService {
     doc.text(data.grandPayable.toFixed(2), colX.payable, grandY, rightAlign);
 
     doc.moveDown(3);
-    doc.fontSize(9).font("Helvetica").fillColor("#666666").text("Director Sign-Off:", 40, doc.y);
-    doc.moveDown(1.5);
-    doc.text(
-      "Name: _______________________________     Signature: _______________________________     Date: _______________",
-    );
+    renderSignatureBlock(doc, {
+      parties: [{ label: "Director Sign-Off" }],
+      startX: 40,
+      startY: doc.y,
+      width: 400,
+    });
 
     return toBuffer();
   }
