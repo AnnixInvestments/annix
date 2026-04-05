@@ -7,6 +7,10 @@ const DESCRIPTIONS: Record<string, string> = {
   deliveries: "Track and manage incoming supplier deliveries",
   requisitions: "Create and manage stock requisition orders",
   invoices: "View and process supplier invoices",
+  "supplier-purchase-orders": "Issue and track purchase orders sent to suppliers",
+  grns: "Goods received notes and receiving records",
+  "supplier-scorecard": "On-time delivery, quality and price performance by supplier",
+  "supplier-documents": "BEE, tax clearance, ISO and insurance certificates with expiry alerts",
 };
 
 export default function SupplierHubPage() {

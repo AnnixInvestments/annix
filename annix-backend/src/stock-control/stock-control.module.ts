@@ -41,6 +41,7 @@ import { SearchController } from "./controllers/search.controller";
 import { SignatureController } from "./controllers/signature.controller";
 import { StaffController } from "./controllers/staff.controller";
 import { SupplierController } from "./controllers/supplier.controller";
+import { SupplierDocumentController } from "./controllers/supplier-document.controller";
 import { WorkflowController } from "./controllers/workflow.controller";
 import { ChatConversation } from "./entities/chat-conversation.entity";
 import { ChatConversationParticipant } from "./entities/chat-conversation-participant.entity";
@@ -100,6 +101,7 @@ import { StockMovement } from "./entities/stock-movement.entity";
 import { StockPriceHistory } from "./entities/stock-price-history.entity";
 import { StockReturn } from "./entities/stock-return.entity";
 import { SupplierCertificate } from "./entities/supplier-certificate.entity";
+import { SupplierDocument } from "./entities/supplier-document.entity";
 import { SupplierInvoice } from "./entities/supplier-invoice.entity";
 import { SupplierInvoiceItem } from "./entities/supplier-invoice-item.entity";
 import { UserLocationAssignment } from "./entities/user-location-assignment.entity";
@@ -116,6 +118,7 @@ import { StockControlAuthService } from "./services/auth.service";
 import { BackgroundStepService } from "./services/background-step.service";
 import { BrandingScraperService } from "./services/branding-scraper.service";
 import { CertificateService } from "./services/certificate.service";
+import { SupplierDocumentService } from "./services/supplier-document.service";
 import { CertificateAnalysisService } from "./services/certificate-analysis.service";
 import { ChatService } from "./services/chat.service";
 import { CoatingAnalysisService } from "./services/coating-analysis.service";
@@ -224,6 +227,7 @@ import { WorkflowStepConfigService } from "./services/workflow-step-config.servi
       WorkflowNotificationRecipient,
       UserLocationAssignment,
       SupplierCertificate,
+      SupplierDocument,
       IssuanceBatchRecord,
       JobCardDataBook,
       ChatMessage,
@@ -294,6 +298,7 @@ import { WorkflowStepConfigService } from "./services/workflow-step-config.servi
     CpoController,
     GlossaryController,
     CertificateController,
+    SupplierDocumentController,
     ChatController,
     ReconciliationController,
   ],
@@ -348,6 +353,7 @@ import { WorkflowStepConfigService } from "./services/workflow-step-config.servi
     GlossaryService,
     CertificateService,
     CertificateAnalysisService,
+    SupplierDocumentService,
     DataBookPdfService,
     ChatService,
     WorkflowStepConfigService,

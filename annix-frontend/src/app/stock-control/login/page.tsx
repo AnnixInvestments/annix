@@ -104,17 +104,17 @@ function StockControlLoginContent() {
 
   if (!mounted || authLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-teal-900 via-teal-800 to-slate-900 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-teal-300" />
+      <div className="min-h-screen bg-gradient-to-br from-[#252560] via-[#323288] to-slate-900 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#FFA500]" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-teal-900 via-teal-800 to-slate-900 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-gradient-to-br from-[#252560] via-[#323288] to-slate-900 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
         <div className="text-center">
-          <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-teal-500 mb-4">
+          <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-[#FFA500] mb-4">
             <svg
               className="w-10 h-10 text-white"
               fill="none"
@@ -129,8 +129,8 @@ function StockControlLoginContent() {
               />
             </svg>
           </div>
-          <h1 className="text-3xl font-bold text-white">ASCA Stock Control</h1>
-          <p className="mt-2 text-xl text-teal-200">Sign in to manage stock</p>
+          <h1 className="text-3xl font-bold text-white">Annix Stock Control</h1>
+          <p className="mt-2 text-xl text-[#FFB733]">Sign in to manage stock</p>
         </div>
       </div>
 
@@ -149,7 +149,7 @@ function StockControlLoginContent() {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500"
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#323288] focus:ring-[#323288]"
                 placeholder="user@example.com"
               />
             </div>
@@ -167,7 +167,7 @@ function StockControlLoginContent() {
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 pr-10"
+                  className="block w-full rounded-md border-gray-300 shadow-sm focus:border-[#323288] focus:ring-[#323288] pr-10"
                 />
                 <button
                   type="button"
@@ -209,7 +209,7 @@ function StockControlLoginContent() {
                 type="checkbox"
                 checked={rememberMe}
                 onChange={(e) => setRememberMe(e.target.checked)}
-                className="h-4 w-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500"
+                className="h-4 w-4 rounded border-gray-300 text-[#323288] focus:ring-[#323288]"
               />
               <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-700">
                 Remember me
@@ -217,8 +217,8 @@ function StockControlLoginContent() {
             </div>
 
             {adminTransferToken && !transferMessage && (
-              <div className="bg-teal-50 border border-teal-200 rounded-lg p-4">
-                <p className="text-sm text-teal-700">Sign in to accept the admin role transfer.</p>
+              <div className="bg-[#f3f4ff] border border-[#323288]/30 rounded-lg p-4">
+                <p className="text-sm text-[#252560]">Sign in to accept the admin role transfer.</p>
               </div>
             )}
 
@@ -252,7 +252,7 @@ function StockControlLoginContent() {
             <button
               type="submit"
               disabled={isSubmitting}
-              className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-teal-600 hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+              className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-[#323288] hover:bg-[#4a4da3] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#323288] disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
             >
               {isSubmitting ? (
                 <>
@@ -271,7 +271,7 @@ function StockControlLoginContent() {
                 <div className="w-full border-t border-gray-300" />
               </div>
               <div className="relative flex justify-center text-sm">
-                <span className="px-2 bg-white text-gray-500">ASCA Stock Control</span>
+                <span className="px-2 bg-white text-gray-500">Annix Stock Control</span>
               </div>
             </div>
 
@@ -279,7 +279,7 @@ function StockControlLoginContent() {
               <p className="text-sm text-gray-600">
                 <Link
                   href="/stock-control/forgot-password"
-                  className="font-medium text-teal-600 hover:text-teal-500"
+                  className="font-medium text-[#323288] hover:text-[#4a4da3]"
                 >
                   Forgot your password?
                 </Link>
@@ -288,7 +288,7 @@ function StockControlLoginContent() {
                 Don&apos;t have an account?{" "}
                 <Link
                   href="/stock-control/register"
-                  className="font-medium text-teal-600 hover:text-teal-500"
+                  className="font-medium text-[#323288] hover:text-[#4a4da3]"
                 >
                   Register here
                 </Link>
@@ -298,7 +298,7 @@ function StockControlLoginContent() {
         </div>
 
         <div className="mt-6 text-center">
-          <Link href="/" className="text-sm text-teal-200 hover:text-white">
+          <Link href="/" className="text-sm text-[#FFB733] hover:text-white">
             Back to Home
           </Link>
         </div>
@@ -311,8 +311,8 @@ export default function StockControlLoginPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen bg-gradient-to-br from-teal-900 via-teal-800 to-slate-900 flex items-center justify-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-teal-300" />
+        <div className="min-h-screen bg-gradient-to-br from-[#252560] via-[#323288] to-slate-900 flex items-center justify-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#FFA500]" />
         </div>
       }
     >

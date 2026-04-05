@@ -616,6 +616,42 @@ export interface StockControlSupplierDto {
   updatedAt: string;
 }
 
+export type SupplierDocumentType =
+  | "bee_certificate"
+  | "tax_clearance"
+  | "iso_certificate"
+  | "insurance"
+  | "msds"
+  | "bank_confirmation"
+  | "company_registration"
+  | "vat_registration"
+  | "other";
+
+export type SupplierDocumentExpiryStatus = "expired" | "expiring_soon" | "valid" | "no_expiry";
+
+export interface SupplierDocument {
+  id: number;
+  companyId: number;
+  supplierId: number;
+  docType: SupplierDocumentType;
+  docNumber: string | null;
+  issuedAt: string | null;
+  expiresAt: string | null;
+  filePath: string;
+  originalFilename: string;
+  fileSizeBytes: number;
+  mimeType: string;
+  notes: string | null;
+  uploadedById: number | null;
+  uploadedByName: string | null;
+  createdAt: string;
+  updatedAt: string;
+  supplier?: StockControlSupplierDto;
+  downloadUrl?: string;
+  expiryStatus: SupplierDocumentExpiryStatus;
+  daysUntilExpiry: number | null;
+}
+
 export interface SupplierCertificate {
   id: number;
   companyId: number;

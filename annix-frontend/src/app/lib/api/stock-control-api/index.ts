@@ -12,6 +12,7 @@ import "./invoiceMethods";
 import "./issuanceMethods";
 import "./chatMethods";
 import "./certificateMethods";
+import "./supplierDocumentMethods";
 import "./qcMethods";
 import "./positectorMethods";
 import "./miscMethods";
