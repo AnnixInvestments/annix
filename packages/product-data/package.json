@@ -2,26 +2,92 @@
   "name": "@annix/product-data",
   "version": "0.1.0",
   "private": true,
+  "scripts": {
+    "build": "tsc -p tsconfig.json"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.3"
+  },
   "exports": {
-    "./pumps": "./pumps/index.ts",
-    "./pumps/*": "./pumps/*.ts",
-    "./paint": "./paint/index.ts",
-    "./paint/*": "./paint/*.ts",
-    "./rubber": "./rubber/index.ts",
-    "./rubber/*": "./rubber/*.ts",
-    "./ceramic": "./ceramic/index.ts",
-    "./ceramic/*": "./ceramic/*.ts",
-    "./steel": "./steel/index.ts",
-    "./steel/*": "./steel/*.ts",
-    "./valves-instruments": "./valves-instruments/index.ts",
-    "./valves-instruments/*": "./valves-instruments/*.ts",
-    "./pipe": "./pipe/index.ts",
-    "./pipe/*": "./pipe/*.ts",
-    "./pvc": "./pvc/index.ts",
-    "./pvc/*": "./pvc/*.ts",
-    "./hdpe": "./hdpe/index.ts",
-    "./hdpe/*": "./hdpe/*.ts",
-    "./rfq": "./rfq/index.ts",
-    "./rfq/*": "./rfq/*.ts"
+    "./pumps": {
+      "types": "./pumps/index.ts",
+      "default": "./dist/pumps/index.js"
+    },
+    "./pumps/*": {
+      "types": "./pumps/*.ts",
+      "default": "./dist/pumps/*.js"
+    },
+    "./paint": {
+      "types": "./paint/index.ts",
+      "default": "./dist/paint/index.js"
+    },
+    "./paint/*": {
+      "types": "./paint/*.ts",
+      "default": "./dist/paint/*.js"
+    },
+    "./rubber": {
+      "types": "./rubber/index.ts",
+      "default": "./dist/rubber/index.js"
+    },
+    "./rubber/*": {
+      "types": "./rubber/*.ts",
+      "default": "./dist/rubber/*.js"
+    },
+    "./ceramic": {
+      "types": "./ceramic/index.ts",
+      "default": "./dist/ceramic/index.js"
+    },
+    "./ceramic/*": {
+      "types": "./ceramic/*.ts",
+      "default": "./dist/ceramic/*.js"
+    },
+    "./steel": {
+      "types": "./steel/index.ts",
+      "default": "./dist/steel/index.js"
+    },
+    "./steel/*": {
+      "types": "./steel/*.ts",
+      "default": "./dist/steel/*.js"
+    },
+    "./valves-instruments": {
+      "types": "./valves-instruments/index.ts",
+      "default": "./dist/valves-instruments/index.js"
+    },
+    "./valves-instruments/*": {
+      "types": "./valves-instruments/*.ts",
+      "default": "./dist/valves-instruments/*.js"
+    },
+    "./pipe": {
+      "types": "./pipe/index.ts",
+      "default": "./dist/pipe/index.js"
+    },
+    "./pipe/*": {
+      "types": "./pipe/*.ts",
+      "default": "./dist/pipe/*.js"
+    },
+    "./pvc": {
+      "types": "./pvc/index.ts",
+      "default": "./dist/pvc/index.js"
+    },
+    "./pvc/*": {
+      "types": "./pvc/*.ts",
+      "default": "./dist/pvc/*.js"
+    },
+    "./hdpe": {
+      "types": "./hdpe/index.ts",
+      "default": "./dist/hdpe/index.js"
+    },
+    "./hdpe/*": {
+      "types": "./hdpe/*.ts",
+      "default": "./dist/hdpe/*.js"
+    },
+    "./rfq": {
+      "types": "./rfq/index.ts",
+      "default": "./dist/rfq/index.js"
+    },
+    "./rfq/*": {
+      "types": "./rfq/*.ts",
+      "default": "./dist/rfq/*.js"
+    }
   }
 }

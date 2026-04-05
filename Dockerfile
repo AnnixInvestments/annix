@@ -9,20 +9,26 @@ COPY annix-backend/package.json ./annix-backend/
 COPY annix-frontend/package.json ./annix-frontend/
 RUN corepack enable pnpm && pnpm install --frozen-lockfile
 
+# ---------- product-data builder ----------
+FROM deps AS product-data-builder
+COPY packages/product-data/ ./packages/product-data/
+WORKDIR /app/packages/product-data
+RUN pnpm run build
+
 # ---------- frontend builder ----------
 FROM deps AS frontend-builder
 ARG NEXT_PUBLIC_API_URL=__NEXT_PUBLIC_API_URL__
 ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
 ARG NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=__NEXT_PUBLIC_GOOGLE_MAPS_API_KEY__
 ENV NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=${NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}
-COPY packages/product-data/ ./packages/product-data/
+COPY --from=product-data-builder /app/packages/product-data/ ./packages/product-data/
 COPY annix-frontend/ ./annix-frontend/
 WORKDIR /app/annix-frontend
 RUN pnpm run build
 
 # ---------- backend builder ----------
 FROM deps AS backend-builder
-COPY packages/product-data/ ./packages/product-data/
+COPY --from=product-data-builder /app/packages/product-data/ ./packages/product-data/
 COPY annix-backend/ ./annix-backend/
 WORKDIR /app/annix-backend
 RUN pnpm run build
@@ -78,6 +84,9 @@ COPY annix-frontend/package.json ./annix-frontend/
 RUN corepack enable pnpm && pnpm install --frozen-lockfile
 
 ENV NODE_ENV=production
+
+# Shared packages (with compiled dist from product-data-builder)
+COPY --from=product-data-builder /app/packages/product-data/ ./packages/product-data/
 
 # Backend build output
 COPY --from=backend-builder /app/annix-backend/dist ./annix-backend/dist

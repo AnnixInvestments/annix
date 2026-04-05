@@ -59,6 +59,10 @@ export class InboundEmailService {
     return this.configService.get<string>("DOCUMENT_ENCRYPTION_KEY") ?? null;
   }
 
+  async rawEmailConfig(app: string, companyId: number): Promise<InboundEmailConfig | null> {
+    return this.configRepo.findOne({ where: { app, companyId } });
+  }
+
   async emailConfig(app: string, companyId: number): Promise<InboundEmailConfigResponse> {
     const config = await this.configRepo.findOne({ where: { app, companyId } });
 

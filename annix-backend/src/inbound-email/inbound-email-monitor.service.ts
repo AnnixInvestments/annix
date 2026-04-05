@@ -321,9 +321,7 @@ export class InboundEmailMonitorService {
     companyId: number,
   ): Promise<{ success: boolean; error?: string }> {
     try {
-      const config = await this.inboundEmailService
-        .emailConfig(app, companyId)
-        .then(() => this.inboundEmailService["configRepo"].findOne({ where: { app, companyId } }));
+      const config = await this.inboundEmailService.rawEmailConfig(app, companyId);
 
       if (!config) {
         return { success: false, error: "No email configuration found for this app/company." };
