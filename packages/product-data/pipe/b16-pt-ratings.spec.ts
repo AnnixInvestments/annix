@@ -1,3 +1,4 @@
+import { describe, expect, it } from "vitest";
 import { interpolatePTRating, selectRequiredClass } from "./b16-pt-ratings";
 
 describe("interpolatePTRating", () => {
