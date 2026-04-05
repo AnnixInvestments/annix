@@ -32,7 +32,7 @@ import {
   UserAppPermission,
 } from "./entities";
 
-const STOCK_CONTROL_ROLE_NAMES: Record<string, string> = {
+export const STOCK_CONTROL_ROLE_NAMES: Record<string, string> = {
   storeman: "Storeman",
   accounts: "Accounts",
   manager: "Manager",
