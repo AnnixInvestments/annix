@@ -4,6 +4,7 @@ import { FittingSpecsModule } from "./fitting-specs.module";
 import { FlangeSpecsModule } from "./flange-specs.module";
 import { MiscSpecsModule } from "./misc-specs.module";
 import { PipeSpecsModule } from "./pipe-specs.module";
+import { ReferencePipeController } from "./reference-pipe.controller";
 import { WeldSpecsModule } from "./weld-specs.module";
 
 @Module({
@@ -15,6 +16,7 @@ import { WeldSpecsModule } from "./weld-specs.module";
     WeldSpecsModule,
     MiscSpecsModule,
   ],
+  controllers: [ReferencePipeController],
   exports: [
     PipeSpecsModule,
     FlangeSpecsModule,

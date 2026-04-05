@@ -560,6 +560,10 @@ export {
 } from "./nix/useNix";
 export type { PublicStats, UpcomingRfq } from "./public/usePublicStats";
 export { usePublicStats } from "./public/usePublicStats";
+export type { B16RatingResponse } from "./reference/useB16Rating";
+export { useB16Rating } from "./reference/useB16Rating";
+export type { PipeReferenceData } from "./reference/usePipeReferenceData";
+export { usePipeReferenceData } from "./reference/usePipeReferenceData";
 export type { PaginatedReviewResult, ReviewWorkflow } from "./review/useReviews";
 export {
   useReviewAction,

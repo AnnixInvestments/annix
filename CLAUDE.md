@@ -158,6 +158,8 @@ All code changes must avoid introducing content that could create legal exposure
 - Referencing standard names and numbers (e.g. "per ASME B16.5") is acceptable
 - Adding extracted P-T rating tables, chemical composition limits, tolerance values, or test requirements requires a license
 - When in doubt, flag to the user: "This data appears to come from [standard name] — confirm Annix has reproduction rights before adding"
+- **Current licence status**: Annix does NOT currently hold reproduction rights for ASME B36.10M, B36.19M, or B16.5. See `MEMORY.md` → `legal_asme_reproduction_rights.md` and GitHub issue #181 for the purchase tracker.
+- **Standing exception for issue #176 Phase 6E.1 / 6E.2 (recorded 2026-04-05)**: User explicitly authorized proceeding with the steel/pipe constants → backend API refactor and the ASME B16.5 P-T ratings → backend API refactor *despite* the unlicenced state. Authorization is scoped to (a) consolidating ASME-derived data that is already present in either `annix-frontend/src/app/lib/config/rfq/*` or `annix-backend/src/lib/*` and (b) exposing it via `GET /public/reference/pipe-specs` and related endpoints. The authorization does NOT extend to adding data from these standards that isn't already in the codebase today, or to any other standard. Licence purchase remains required and is tracked in issue #181.
 
 #### External URLs to standards bodies
 - Do not hardcode URLs to astm.org, iso.org, asme.org, api.org, awwa.org, nace.org, en-standard.eu, or plasticpipe.org in source files
