@@ -263,6 +263,7 @@ export interface CutPiece {
   lengthMm: number;
   positionMm: number;
   lane: number;
+  laneOffsetMm: number;
   band: number;
   stripsPerPiece: number;
   subPanels: SubPanelSpec[] | null;
@@ -1005,127 +1006,222 @@ export function expandAndRotateItems(parsedItems: ParsedPipeItem[]): ParsedPipeI
     });
 }
 
-interface BandBuild {
-  items: ParsedPipeItem[];
-  lanes: number;
-  laneWidthMm: number;
-  heightMm: number;
-  widthUsedMm: number;
-  rotated: boolean;
+interface SkylineSegment {
+  xMm: number;
+  widthMm: number;
+  yMm: number;
 }
 
-function lanesForWidth(widthMm: number): number {
-  const maxPossible = Math.floor(ROLL_WIDTH_MAX_MM / widthMm) || 1;
-  if (widthMm <= 450) return Math.min(3, maxPossible);
-  if (widthMm <= 700) return Math.min(2, maxPossible);
-  return 1;
+interface Placement {
+  item: ParsedPipeItem;
+  xMm: number;
+  yMm: number;
+  widthMm: number;
+  lengthMm: number;
+  rotatedInPlacement: boolean;
 }
 
-function buildBands(items: ParsedPipeItem[]): BandBuild[] {
-  const widthGroups = new Map<number, ParsedPipeItem[]>();
-  items.forEach((item) => {
-    const group = widthGroups.get(item.rubberWidthMm) || [];
-    widthGroups.set(item.rubberWidthMm, [...group, item]);
-  });
+function widestOrientationWidth(item: ParsedPipeItem): number {
+  return Math.max(item.rubberWidthMm, item.rubberLengthMm);
+}
 
-  return Array.from(widthGroups.entries()).flatMap(([widthMm, groupItems]) => {
-    const lanes = lanesForWidth(widthMm);
-    const sorted = [...groupItems].sort((a, b) => b.rubberLengthMm - a.rubberLengthMm);
+function narrowestOrientationWidth(item: ParsedPipeItem): number {
+  return Math.min(item.rubberWidthMm, item.rubberLengthMm);
+}
 
-    const bands: BandBuild[] = [];
-    for (let i = 0; i < sorted.length; i += lanes) {
-      const batch = sorted.slice(i, i + lanes);
-      const batchLanes = batch.length;
+function skylineMaxY(skyline: SkylineSegment[], startX: number, widthMm: number): number | null {
+  const endX = startX + widthMm;
+  const overlapping = skyline.filter((seg) => seg.xMm < endX && seg.xMm + seg.widthMm > startX);
+  if (overlapping.length === 0) return null;
 
-      const normalHeight = Math.max(...batch.map((it) => it.rubberLengthMm));
-      const normalWidthUsed = batchLanes * widthMm;
+  const coveredLeft = overlapping[0].xMm <= startX;
+  const coveredRight =
+    overlapping[overlapping.length - 1].xMm + overlapping[overlapping.length - 1].widthMm >= endX;
+  if (!coveredLeft || !coveredRight) return null;
 
-      const rotatedLaneWidth = Math.max(...batch.map((it) => it.rubberLengthMm));
-      const rotatedHeight = widthMm;
-      const rotatedWidthUsed = batchLanes * rotatedLaneWidth;
-      const rotatedFitsOnRoll = rotatedWidthUsed <= ROLL_WIDTH_MAX_MM;
+  return overlapping.reduce((max, seg) => Math.max(max, seg.yMm), 0);
+}
 
-      if (rotatedFitsOnRoll && rotatedHeight < normalHeight) {
-        bands.push({
-          items: batch,
-          lanes: batchLanes,
-          laneWidthMm: rotatedLaneWidth,
-          heightMm: rotatedHeight,
-          widthUsedMm: rotatedWidthUsed,
-          rotated: true,
-        });
-      } else {
-        bands.push({
-          items: batch,
-          lanes: batchLanes,
-          laneWidthMm: widthMm,
-          heightMm: normalHeight,
-          widthUsedMm: normalWidthUsed,
-          rotated: false,
-        });
-      }
+function addRectToSkyline(
+  skyline: SkylineSegment[],
+  xMm: number,
+  widthMm: number,
+  newYMm: number,
+): SkylineSegment[] {
+  const endX = xMm + widthMm;
+  const preserved = skyline.flatMap((seg) => {
+    const segEnd = seg.xMm + seg.widthMm;
+    if (segEnd <= xMm || seg.xMm >= endX) return [seg];
+    const parts: SkylineSegment[] = [];
+    if (seg.xMm < xMm) {
+      parts.push({ xMm: seg.xMm, widthMm: xMm - seg.xMm, yMm: seg.yMm });
     }
-    return bands;
+    if (segEnd > endX) {
+      parts.push({ xMm: endX, widthMm: segEnd - endX, yMm: seg.yMm });
+    }
+    return parts;
+  });
+
+  const combined = [...preserved, { xMm, widthMm, yMm: newYMm }].sort((a, b) => a.xMm - b.xMm);
+
+  return combined.reduce<SkylineSegment[]>((acc, seg) => {
+    const last = acc[acc.length - 1];
+    if (last && last.yMm === seg.yMm && last.xMm + last.widthMm === seg.xMm) {
+      return [...acc.slice(0, -1), { ...last, widthMm: last.widthMm + seg.widthMm }];
+    }
+    return [...acc, seg];
+  }, []);
+}
+
+function tryPlaceItem(
+  item: ParsedPipeItem,
+  skyline: SkylineSegment[],
+  rollWidthMm: number,
+  rollLengthMm: number,
+): { xMm: number; yMm: number; widthMm: number; lengthMm: number; rotated: boolean } | null {
+  const orientations: { w: number; l: number; rotated: boolean }[] = [
+    { w: item.rubberWidthMm, l: item.rubberLengthMm, rotated: false },
+  ];
+  if (item.rubberWidthMm !== item.rubberLengthMm) {
+    orientations.push({
+      w: item.rubberLengthMm,
+      l: item.rubberWidthMm,
+      rotated: true,
+    });
+  }
+
+  const candidates = orientations.flatMap((orient) => {
+    if (orient.w > rollWidthMm) return [];
+    return skyline.flatMap((seg) => {
+      const startOptions = [seg.xMm];
+      if (seg.xMm + seg.widthMm - orient.w > seg.xMm) {
+        startOptions.push(seg.xMm + seg.widthMm - orient.w);
+      }
+      return startOptions
+        .filter((x) => x >= 0 && x + orient.w <= rollWidthMm)
+        .map((x) => {
+          const y = skylineMaxY(skyline, x, orient.w);
+          if (y === null || y + orient.l > rollLengthMm) return null;
+          return { xMm: x, yMm: y, widthMm: orient.w, lengthMm: orient.l, rotated: orient.rotated };
+        })
+        .filter((c): c is NonNullable<typeof c> => c !== null);
+    });
+  });
+
+  if (candidates.length === 0) return null;
+
+  return candidates.reduce((best, c) => {
+    if (c.yMm < best.yMm) return c;
+    if (c.yMm === best.yMm && c.xMm < best.xMm) return c;
+    return best;
   });
 }
 
-function finalizeRoll(
+function packRollSkyline(
+  items: ParsedPipeItem[],
+  rollWidthMm: number,
+  rollLengthMm: number,
+): { placements: Placement[]; unplaced: ParsedPipeItem[] } {
+  const sortedItems = [...items].sort((a, b) => {
+    const widthDiff = widestOrientationWidth(b) - widestOrientationWidth(a);
+    if (widthDiff !== 0) return widthDiff;
+    const areaDiff = b.rubberWidthMm * b.rubberLengthMm - a.rubberWidthMm * a.rubberLengthMm;
+    if (areaDiff !== 0) return areaDiff;
+    return narrowestOrientationWidth(b) - narrowestOrientationWidth(a);
+  });
+
+  const result = sortedItems.reduce<{
+    skyline: SkylineSegment[];
+    placements: Placement[];
+    unplaced: ParsedPipeItem[];
+  }>(
+    (state, item) => {
+      const fit = tryPlaceItem(item, state.skyline, rollWidthMm, rollLengthMm);
+      if (!fit) {
+        return { ...state, unplaced: [...state.unplaced, item] };
+      }
+      const newSkyline = addRectToSkyline(
+        state.skyline,
+        fit.xMm,
+        fit.widthMm,
+        fit.yMm + fit.lengthMm,
+      );
+      return {
+        skyline: newSkyline,
+        placements: [
+          ...state.placements,
+          {
+            item,
+            xMm: fit.xMm,
+            yMm: fit.yMm,
+            widthMm: fit.widthMm,
+            lengthMm: fit.lengthMm,
+            rotatedInPlacement: fit.rotated,
+          },
+        ],
+        unplaced: state.unplaced,
+      };
+    },
+    {
+      skyline: [{ xMm: 0, widthMm: rollWidthMm, yMm: 0 }],
+      placements: [],
+      unplaced: [],
+    },
+  );
+
+  return { placements: result.placements, unplaced: result.unplaced };
+}
+
+function finalizeRollFromPlacements(
   rollIndex: number,
-  placedBands: { band: BandBuild; startMm: number }[],
-  totalBandHeight: number,
+  placements: Placement[],
   rollWidthMm: number,
 ): RollAllocation {
   const rollLengthMm = ROLL_LENGTH_MAX_M * 1000;
 
-  const bands: BandSpec[] = [];
-  const cuts: CutPiece[] = [];
+  const rowsByY = placements.reduce<Map<number, Placement[]>>((map, p) => {
+    const list = map.get(p.yMm) || [];
+    return new Map(map).set(p.yMm, [...list, p]);
+  }, new Map());
+
+  const sortedRows = Array.from(rowsByY.entries()).sort((a, b) => a[0] - b[0]);
+
+  const bands: BandSpec[] = sortedRows.map(([yMm, rowPlacements], bandIdx) => ({
+    bandIndex: bandIdx,
+    lanes: rowPlacements.length,
+    laneWidthMm: 0,
+    startMm: yMm,
+    heightMm: Math.max(...rowPlacements.map((p) => p.lengthMm)),
+    widthUsedMm: rowPlacements.reduce((max, p) => Math.max(max, p.xMm + p.widthMm), 0),
+  }));
+
+  const bandIndexByY = new Map(sortedRows.map(([y], idx) => [y, idx]));
+
+  const cuts: CutPiece[] = placements.map((p) => ({
+    itemId: p.item.id,
+    itemNo: p.item.itemNo,
+    description: p.item.description,
+    widthMm: p.widthMm,
+    lengthMm: p.lengthMm,
+    positionMm: p.yMm,
+    lane: 0,
+    laneOffsetMm: p.xMm,
+    band: bandIndexByY.get(p.yMm) || 0,
+    stripsPerPiece: p.item.stripsPerPiece,
+    subPanels: p.item.subPanels,
+  }));
+
+  const totalBandHeight = placements.reduce((max, p) => Math.max(max, p.yMm + p.lengthMm), 0);
+
   const offcuts: Offcut[] = [];
-
-  placedBands.forEach(({ band, startMm }, bandIdx) => {
-    bands.push({
-      bandIndex: bandIdx,
-      lanes: band.lanes,
-      laneWidthMm: band.laneWidthMm,
-      startMm,
-      heightMm: band.heightMm,
-      widthUsedMm: band.widthUsedMm,
-    });
-
-    band.items.forEach((item, laneIdx) => {
-      const cutWidth = band.rotated ? item.rubberLengthMm : item.rubberWidthMm;
-      const cutLength = band.rotated ? item.rubberWidthMm : item.rubberLengthMm;
-
-      cuts.push({
-        itemId: item.id,
-        itemNo: item.itemNo,
-        description: item.description,
-        widthMm: cutWidth,
-        lengthMm: cutLength,
-        positionMm: startMm,
-        lane: laneIdx,
-        band: bandIdx,
-        stripsPerPiece: item.stripsPerPiece,
-        subPanels: item.subPanels,
-      });
-    });
-
+  bands.forEach((band) => {
     const widthWaste = rollWidthMm - band.widthUsedMm;
     if (widthWaste > 0) {
-      const lastOffcut = offcuts[offcuts.length - 1];
-      if (lastOffcut && lastOffcut.widthMm === widthWaste) {
-        const mergedLength = lastOffcut.lengthMm + band.heightMm;
-        offcuts[offcuts.length - 1] = {
-          widthMm: widthWaste,
-          lengthMm: mergedLength,
-          areaSqM: (widthWaste / 1000) * (mergedLength / 1000),
-        };
-      } else {
-        offcuts.push({
-          widthMm: widthWaste,
-          lengthMm: band.heightMm,
-          areaSqM: (widthWaste / 1000) * (band.heightMm / 1000),
-        });
-      }
+      offcuts.push({
+        widthMm: widthWaste,
+        lengthMm: band.heightMm,
+        areaSqM: (widthWaste / 1000) * (band.heightMm / 1000),
+      });
     }
   });
 
@@ -1169,38 +1265,29 @@ function buildRollsForItems(parsedItems: ParsedPipeItem[]): RollAllocation[] {
   const items = expandAndRotateItems(parsedItems);
   if (items.length === 0) return [];
 
-  const allBands = buildBands(items);
-
-  const maxBandWidth = Math.max(...allBands.map((b) => b.widthUsedMm));
+  const widestItemDim = items.reduce(
+    (max, item) => Math.max(max, narrowestOrientationWidth(item)),
+    0,
+  );
   const rollWidthMm = roundUpToNearest(
-    Math.max(ROLL_WIDTH_MIN_MM, Math.min(ROLL_WIDTH_MAX_MM, maxBandWidth)),
+    Math.max(ROLL_WIDTH_MIN_MM, Math.min(ROLL_WIDTH_MAX_MM, widestItemDim)),
     ROLL_WIDTH_INCREMENT_MM,
   );
 
-  const sortedBands = [...allBands].sort((a, b) => b.heightMm - a.heightMm);
-
   const rollLengthMm = ROLL_LENGTH_MAX_M * 1000;
-  const rolls: RollAllocation[] = [];
 
-  let currentBands: { band: BandBuild; startMm: number }[] = [];
-  let currentHeight = 0;
+  const buildNextRoll = (
+    remaining: ParsedPipeItem[],
+    rollsAcc: RollAllocation[],
+  ): RollAllocation[] => {
+    if (remaining.length === 0) return rollsAcc;
+    const { placements, unplaced } = packRollSkyline(remaining, rollWidthMm, rollLengthMm);
+    if (placements.length === 0) return rollsAcc;
+    const roll = finalizeRollFromPlacements(rollsAcc.length + 1, placements, rollWidthMm);
+    return buildNextRoll(unplaced, [...rollsAcc, roll]);
+  };
 
-  sortedBands.forEach((band) => {
-    if (currentHeight + band.heightMm > rollLengthMm && currentBands.length > 0) {
-      rolls.push(finalizeRoll(rolls.length + 1, currentBands, currentHeight, rollWidthMm));
-      currentBands = [];
-      currentHeight = 0;
-    }
-
-    currentBands = [...currentBands, { band, startMm: currentHeight }];
-    currentHeight += band.heightMm;
-  });
-
-  if (currentBands.length > 0) {
-    rolls.push(finalizeRoll(rolls.length + 1, currentBands, currentHeight, rollWidthMm));
-  }
-
-  return rolls;
+  return buildNextRoll(items, []);
 }
 
 function rollStats(rolls: RollAllocation[]): {

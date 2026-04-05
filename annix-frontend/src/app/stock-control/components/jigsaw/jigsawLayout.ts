@@ -19,6 +19,11 @@ const CUT_COLORS = [
   "bg-emerald-500",
 ];
 
+export function colorIndexForBaseId(baseId: string): number {
+  const hash = baseId.split("").reduce((acc, ch) => (acc * 31 + ch.charCodeAt(0)) | 0, 0);
+  return Math.abs(hash) % CUT_COLORS.length;
+}
+
 export function hasOverlap(candidate: PlacedPanel, existing: PlacedPanel[]): boolean {
   const cw = effectiveWidth(candidate);
   const cl = effectiveLength(candidate);
@@ -52,37 +57,49 @@ export function isWithinBounds(panel: PlacedPanel, roll: JigsawRoll): boolean {
 }
 
 export function panelsFromParsedItems(expandedItems: ParsedPipeItem[]): JigsawPanel[] {
-  const baseIdSet = new Map<string, number>();
-  let colorCounter = 0;
-
-  return expandedItems.map((item) => {
+  return expandedItems.flatMap((item) => {
     const baseId = item.id.split("-")[0];
-    if (!baseIdSet.has(baseId)) {
-      baseIdSet.set(baseId, colorCounter);
-      colorCounter += 1;
-    }
-    const colorIndex = baseIdSet.get(baseId) ?? 0;
-
-    return {
-      panelId: item.id,
-      itemId: item.id,
-      itemNo: item.itemNo,
-      description: item.description,
-      widthMm: item.rubberWidthMm,
-      lengthMm: item.rubberLengthMm,
-      originalWidthMm: item.rubberWidthMm,
-      originalLengthMm: item.rubberLengthMm,
-      rotated: false,
-      colorIndex,
-      dimensionContext: {
-        nbMm: item.nbMm,
-        odMm: item.odMm,
-        schedule: item.schedule,
-        lengthMm: item.lengthMm,
-        flangeConfig: item.flangeConfig,
-        itemType: item.itemType,
-      },
+    const colorIndex = colorIndexForBaseId(baseId);
+    const dimensionContext = {
+      nbMm: item.nbMm,
+      odMm: item.odMm,
+      schedule: item.schedule,
+      lengthMm: item.lengthMm,
+      flangeConfig: item.flangeConfig,
+      itemType: item.itemType,
     };
+
+    if (item.subPanels && item.subPanels.length > 1) {
+      return item.subPanels.map((sp) => ({
+        panelId: `${item.id}-${sp.label}`,
+        itemId: item.id,
+        itemNo: item.itemNo ? `${item.itemNo} ${sp.label}` : sp.label,
+        description: `${item.description} (${sp.label})`,
+        widthMm: sp.rubberWidthMm,
+        lengthMm: sp.rubberLengthMm,
+        originalWidthMm: sp.rubberWidthMm,
+        originalLengthMm: sp.rubberLengthMm,
+        rotated: false,
+        colorIndex,
+        dimensionContext,
+      }));
+    }
+
+    return [
+      {
+        panelId: item.id,
+        itemId: item.id,
+        itemNo: item.itemNo,
+        description: item.description,
+        widthMm: item.rubberWidthMm,
+        lengthMm: item.rubberLengthMm,
+        originalWidthMm: item.rubberWidthMm,
+        originalLengthMm: item.rubberLengthMm,
+        rotated: false,
+        colorIndex,
+        dimensionContext,
+      },
+    ];
   });
 }
 

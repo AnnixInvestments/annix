@@ -78,6 +78,64 @@ export function JigsawEditor(props: {
   const [placedPanels, setPlacedPanels] = useState<PlacedPanel[]>([]);
   const [unplacedPanels, setUnplacedPanels] = useState<JigsawPanel[]>(() => allPanels);
 
+  useEffect(() => {
+    const allIds = new Set(allPanels.map((p) => p.panelId));
+    const trackedIds = new Set([
+      ...placedPanels.map((p) => p.panelId),
+      ...unplacedPanels.map((p) => p.panelId),
+    ]);
+    const sameSet =
+      allIds.size === trackedIds.size && [...allIds].every((id) => trackedIds.has(id));
+    if (!sameSet) {
+      setPlacedPanels([]);
+      setUnplacedPanels(allPanels);
+      return;
+    }
+
+    const allPanelMap = new Map(allPanels.map((p) => [p.panelId, p]));
+    const isSubPanel = (p: JigsawPanel) => p.panelId !== p.itemId;
+    const driftedSubPanel = (p: JigsawPanel): boolean => {
+      if (!isSubPanel(p)) return false;
+      const canonical = allPanelMap.get(p.panelId);
+      if (!canonical) return false;
+      return (
+        p.originalWidthMm !== canonical.widthMm ||
+        p.originalLengthMm !== canonical.lengthMm ||
+        p.widthMm !== canonical.widthMm ||
+        p.lengthMm !== canonical.lengthMm
+      );
+    };
+
+    if (unplacedPanels.some(driftedSubPanel) || placedPanels.some(driftedSubPanel)) {
+      setUnplacedPanels((prev) =>
+        prev.map((p) => {
+          const canonical = allPanelMap.get(p.panelId);
+          if (!canonical || !isSubPanel(p)) return p;
+          return {
+            ...p,
+            widthMm: canonical.widthMm,
+            lengthMm: canonical.lengthMm,
+            originalWidthMm: canonical.widthMm,
+            originalLengthMm: canonical.lengthMm,
+          };
+        }),
+      );
+      setPlacedPanels((prev) =>
+        prev.map((p) => {
+          const canonical = allPanelMap.get(p.panelId);
+          if (!canonical || !isSubPanel(p)) return p;
+          return {
+            ...p,
+            widthMm: canonical.widthMm,
+            lengthMm: canonical.lengthMm,
+            originalWidthMm: canonical.widthMm,
+            originalLengthMm: canonical.lengthMm,
+          };
+        }),
+      );
+    }
+  }, [allPanels, placedPanels, unplacedPanels]);
+
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
   const [suggestionsApplied, setSuggestionsApplied] = useState(false);
 
@@ -86,6 +144,7 @@ export function JigsawEditor(props: {
 
     const contexts = new Map<string, JigsawPanel>();
     unplacedPanels.forEach((p) => {
+      if (p.panelId !== p.itemId) return;
       const key = [
         p.dimensionContext.itemType ?? "",
         p.dimensionContext.nbMm ?? 0,
@@ -126,6 +185,7 @@ export function JigsawEditor(props: {
       if (suggestionMap.size > 0) {
         setUnplacedPanels((prev) =>
           prev.map((p) => {
+            if (p.panelId !== p.itemId) return p;
             const key = [
               p.dimensionContext.itemType ?? "",
               p.dimensionContext.nbMm ?? 0,
@@ -198,34 +258,67 @@ export function JigsawEditor(props: {
       const roll = rolls[rollIndex];
       if (!roll) return;
 
+      const overRect = over.rect;
+      const activatorEvent = event.activatorEvent as PointerEvent | MouseEvent | null;
+
+      const el = effectiveLength(panel);
+      const ew = effectiveWidth(panel);
+
       const otherOnRoll = placedPanels.filter(
         (p) => p.rollIndex === rollIndex && p.panelId !== panelId,
-      );
-      const packLeftX = otherOnRoll.reduce(
-        (maxX, p) => Math.max(maxX, p.xMm + effectiveLength(p)),
-        0,
       );
 
       const candidate: PlacedPanel = {
         ...panel,
         rollIndex,
-        xMm: packLeftX,
+        xMm: 0,
         yMm: 0,
       };
 
-      if (!isWithinBounds(candidate, roll)) {
-        const ew = effectiveWidth(candidate);
-        const el = effectiveLength(candidate);
-        candidate.xMm = Math.min(candidate.xMm, roll.lengthMm - el);
-        candidate.yMm = Math.min(candidate.yMm, roll.widthMm - ew);
-        candidate.xMm = Math.max(0, snapToGrid(candidate.xMm));
-        candidate.yMm = Math.max(0, snapToGrid(candidate.yMm));
+      if (activatorEvent && overRect && overRect.width > 0 && overRect.height > 0) {
+        const pointerClientX = activatorEvent.clientX + event.delta.x;
+        const pointerClientY = activatorEvent.clientY + event.delta.y;
+        const scaleX = overRect.width / roll.lengthMm;
+        const scaleY = overRect.height / roll.widthMm;
+        const rawX = (pointerClientX - overRect.left) / scaleX - el / 2;
+        const rawY = (pointerClientY - overRect.top) / scaleY - ew / 2;
+        const clampedX = Math.max(0, Math.min(rawX, roll.lengthMm - el));
+        const clampedY = Math.max(0, Math.min(rawY, roll.widthMm - ew));
+
+        const gravityY = otherOnRoll
+          .filter((p) => {
+            const pl = effectiveLength(p);
+            return p.xMm < clampedX + el && p.xMm + pl > clampedX;
+          })
+          .map((p) => p.yMm + effectiveWidth(p))
+          .filter((y) => y <= clampedY)
+          .reduce((max, y) => Math.max(max, y), 0);
+
+        const snappedY = Math.max(0, Math.min(snapToGrid(gravityY), roll.widthMm - ew));
+
+        const gravityX = otherOnRoll
+          .filter((p) => {
+            const pw = effectiveWidth(p);
+            return p.yMm < snappedY + ew && p.yMm + pw > snappedY;
+          })
+          .map((p) => p.xMm + effectiveLength(p))
+          .filter((x) => x <= clampedX)
+          .reduce((max, x) => Math.max(max, x), 0);
+
+        const snappedX = Math.max(0, Math.min(snapToGrid(gravityX), roll.lengthMm - el));
+
+        candidate.xMm = snappedX;
+        candidate.yMm = snappedY;
+      } else {
+        const packLeftX = otherOnRoll.reduce(
+          (maxX, p) => Math.max(maxX, p.xMm + effectiveLength(p)),
+          0,
+        );
+        candidate.xMm = Math.max(0, Math.min(packLeftX, roll.lengthMm - el));
+        candidate.yMm = 0;
       }
 
       if (!isWithinBounds(candidate, roll)) return;
-
-      const otherPlaced = placedPanels.filter((p) => p.panelId !== panelId);
-      if (hasOverlap(candidate, otherPlaced)) return;
 
       if (source === "tray") {
         setUnplacedPanels((prev) => prev.filter((p) => p.panelId !== panelId));
@@ -241,16 +334,14 @@ export function JigsawEditor(props: {
       const target = unplacedPanels.find((p) => p.panelId === panelId);
       if (!target) return;
 
-      const baseId = panelId.split("-")[0];
-
       setUnplacedPanels((prev) =>
         prev.map((p) => {
-          if (p.panelId.split("-")[0] !== baseId) return p;
+          if (p.panelId !== panelId) return p;
           return { ...p, widthMm: newWidth, lengthMm: newLength };
         }),
       );
 
-      const placedSiblings = placedPanels.filter((p) => p.panelId.split("-")[0] === baseId);
+      const placedSiblings = placedPanels.filter((p) => p.panelId === panelId);
       if (placedSiblings.length > 0) {
         const updated = placedSiblings.map((p) => ({
           ...p,
@@ -270,10 +361,7 @@ export function JigsawEditor(props: {
 
         const ejectedUnplaced: JigsawPanel[] = ejected.map((p) => unplacePanel(p));
 
-        setPlacedPanels((prev) => [
-          ...prev.filter((p) => p.panelId.split("-")[0] !== baseId),
-          ...stillValid,
-        ]);
+        setPlacedPanels((prev) => [...prev.filter((p) => p.panelId !== panelId), ...stillValid]);
         setUnplacedPanels((prev) => [...prev, ...ejectedUnplaced]);
       }
     },

@@ -12,6 +12,10 @@ import type {
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { JigsawEditor } from "@/app/stock-control/components/jigsaw/JigsawEditor";
 import {
+  CUT_COLORS,
+  colorIndexForBaseId,
+} from "@/app/stock-control/components/jigsaw/jigsawLayout";
+import {
   type BandSpec,
   type CutPiece,
   type CuttingPlan,
@@ -93,6 +97,7 @@ function manualRollsToCuttingPlan(manualRolls: RubberPlanManualRoll[]): CuttingP
             lengthMm: cut.lengthMm,
             positionMm: currentBandStart,
             lane: laneIdx,
+            laneOffsetMm: laneIdx * bandWidthMm,
             band: bandIndex,
             stripsPerPiece: 1,
             subPanels: null,
@@ -196,17 +201,6 @@ const ROLL_WIDTH_OPTIONS_MM = [
   800, 850, 900, 950, 1000, 1050, 1100, 1150, 1200, 1250, 1300, 1350, 1400, 1450,
 ];
 const ROLL_LENGTH_OPTIONS_M = [5, 10, 12.5];
-
-const CUT_COLORS = [
-  "bg-blue-500",
-  "bg-teal-500",
-  "bg-purple-500",
-  "bg-orange-500",
-  "bg-pink-500",
-  "bg-indigo-500",
-  "bg-cyan-500",
-  "bg-emerald-500",
-];
 
 interface RubberAllocationProps {
   lineItems: Array<{
@@ -439,7 +433,6 @@ function isGroupableRoll(roll: RollAllocation): boolean {
 
 function CuttingDiagram({
   roll,
-  colorMap,
   groupCount,
   thicknessMm,
   jobCardId,
@@ -448,7 +441,6 @@ function CuttingDiagram({
   rollNumber,
 }: {
   roll: RollAllocation;
-  colorMap: Map<string, string>;
   groupCount?: number;
   thicknessMm?: number;
   jobCardId?: number;
@@ -522,54 +514,114 @@ function CuttingDiagram({
             const rawWidth = (cut.lengthMm / rollLengthMm) * 100;
             const isFullRoll = rawWidth >= 95;
             const width = isFullRoll ? 100 - left : rawWidth;
-            const colorClass =
-              colorMap.get(cut.itemId.split("-")[0]) || CUT_COLORS[idx % CUT_COLORS.length];
+            const colorClass = CUT_COLORS[colorIndexForBaseId(cut.itemId.split("-")[0])];
             const rolls = cut.stripsPerPiece || 1;
             const displayLabel =
               rolls > 1 ? `${rolls} rolls` : cut.itemNo || `${(cut.lengthMm / 1000).toFixed(1)}m`;
 
             const band = bands.find((b) => b.bandIndex === cut.band);
             const laneWidthMm = band ? band.laneWidthMm : rollWidthMm;
-            const topPct = ((cut.lane * laneWidthMm) / rollWidthMm) * 100;
+            const explicitOffset = cut.laneOffsetMm;
+            const offsetMm =
+              explicitOffset !== undefined && explicitOffset !== null
+                ? explicitOffset
+                : cut.lane * laneWidthMm;
+            const topPct = (offsetMm / rollWidthMm) * 100;
             const heightPct = (cut.widthMm / rollWidthMm) * 100;
 
             const hasSubPanels =
               cut.subPanels !== null && cut.subPanels !== undefined && cut.subPanels.length > 1;
 
             if (hasSubPanels) {
-              const totalSubLength = cut.subPanels!.reduce((s, p) => s + p.rubberLengthMm, 0);
+              const subs = cut.subPanels!;
+              const sumL = subs.reduce((s, p) => s + p.rubberLengthMm, 0);
+              const maxL = subs.reduce((m, p) => Math.max(m, p.rubberLengthMm), 0);
+              const sumW = subs.reduce((s, p) => s + p.rubberWidthMm, 0);
+              const maxW = subs.reduce((m, p) => Math.max(m, p.rubberWidthMm), 0);
+
+              const layoutCandidates = [
+                {
+                  stackAlongLength: true,
+                  subRotated: false,
+                  err: Math.abs(sumL - cut.lengthMm) + Math.abs(maxW - cut.widthMm),
+                },
+                {
+                  stackAlongLength: false,
+                  subRotated: false,
+                  err: Math.abs(maxL - cut.lengthMm) + Math.abs(sumW - cut.widthMm),
+                },
+                {
+                  stackAlongLength: true,
+                  subRotated: true,
+                  err: Math.abs(sumW - cut.lengthMm) + Math.abs(maxL - cut.widthMm),
+                },
+                {
+                  stackAlongLength: false,
+                  subRotated: true,
+                  err: Math.abs(maxW - cut.lengthMm) + Math.abs(sumL - cut.widthMm),
+                },
+              ];
+              const best = layoutCandidates.reduce((a, b) => (a.err <= b.err ? a : b));
+              const { stackAlongLength, subRotated } = best;
+
+              const placements = subs.reduce<
+                {
+                  panel: (typeof subs)[number];
+                  leftPct: number;
+                  topPct: number;
+                  widthPctInner: number;
+                  heightPctInner: number;
+                }[]
+              >((acc, panel) => {
+                const effLen = subRotated ? panel.rubberWidthMm : panel.rubberLengthMm;
+                const effWid = subRotated ? panel.rubberLengthMm : panel.rubberWidthMm;
+                const widthPctInner = (effLen / cut.lengthMm) * 100;
+                const heightPctInner = (effWid / cut.widthMm) * 100;
+                const last = acc[acc.length - 1];
+                if (stackAlongLength) {
+                  const prevLeft = last ? last.leftPct + last.widthPctInner : 0;
+                  return [
+                    ...acc,
+                    { panel, leftPct: prevLeft, topPct: 0, widthPctInner, heightPctInner },
+                  ];
+                }
+                const prevTop = last ? last.topPct + last.heightPctInner : 0;
+                return [
+                  ...acc,
+                  { panel, leftPct: 0, topPct: prevTop, widthPctInner, heightPctInner },
+                ];
+              }, []);
+
               return (
                 <div
                   key={cut.itemId}
-                  className="absolute flex"
+                  className="absolute"
                   style={{
                     left: `${left}%`,
                     width: `${width}%`,
                     top: `${topPct}%`,
                     height: `${heightPct}%`,
                   }}
-                  title={`${cut.itemNo ? `[${cut.itemNo}] ` : ""}${cut.description}: ${cut.subPanels!.map((p) => `${p.label} ${(p.rubberLengthMm / 1000).toFixed(2)}m x ${p.rubberWidthMm}mm`).join(" + ")}`}
+                  title={`${cut.itemNo ? `[${cut.itemNo}] ` : ""}${cut.description}: ${subs.map((p) => `${p.label} ${(p.rubberLengthMm / 1000).toFixed(2)}m x ${p.rubberWidthMm}mm`).join(" + ")}`}
                 >
-                  {cut.subPanels!.map((panel, panelIdx) => {
-                    const panelPct = (panel.rubberLengthMm / totalSubLength) * 100;
-                    const isLast = panelIdx === cut.subPanels!.length - 1;
+                  {placements.map((placement) => {
+                    const p = placement.panel;
                     return (
                       <div
-                        key={panel.label}
-                        className={`${colorClass} flex flex-col items-center justify-center h-full overflow-hidden`}
+                        key={p.label}
+                        className={`${colorClass} absolute flex flex-col items-center justify-center overflow-hidden border border-white`}
                         style={{
-                          width: `${panelPct}%`,
-                          borderRight: isLast
-                            ? "1px solid white"
-                            : "2px dashed rgba(255,255,255,0.9)",
-                          borderBottom: "1px solid white",
+                          left: `${placement.leftPct}%`,
+                          top: `${placement.topPct}%`,
+                          width: `${placement.widthPctInner}%`,
+                          height: `${placement.heightPctInner}%`,
                         }}
                       >
                         <span className="text-[10px] text-white font-bold truncate px-0.5 leading-tight">
-                          {cut.itemNo || displayLabel} {panel.label}
+                          {cut.itemNo || displayLabel} {p.label}
                         </span>
                         <span className="text-[9px] text-white/80 truncate px-0.5 leading-tight">
-                          {(panel.rubberLengthMm / 1000).toFixed(2)}m x {panel.rubberWidthMm}mm
+                          {(p.rubberLengthMm / 1000).toFixed(2)}m x {p.rubberWidthMm}mm
                         </span>
                       </div>
                     );
@@ -588,13 +640,13 @@ function CuttingDiagram({
                   top: `${topPct}%`,
                   height: `${heightPct}%`,
                 }}
-                title={`${cut.itemNo ? `[${cut.itemNo}] ` : ""}${cut.description}: ${(cut.lengthMm / 1000).toFixed(2)}m x ${cut.widthMm}mm${rolls > 1 ? ` (${rolls} rolls)` : ""}`}
+                title={`${cut.itemNo ? `[${cut.itemNo}] ` : ""}${cut.description}: ${cut.lengthMm}mm x ${cut.widthMm}mm${rolls > 1 ? ` (${rolls} rolls)` : ""}`}
               >
                 <span className="text-[10px] text-white font-bold truncate px-0.5 leading-tight">
                   {displayLabel}
                 </span>
                 <span className="text-[9px] text-white/80 truncate px-0.5 leading-tight">
-                  {(cut.lengthMm / 1000).toFixed(2)}m x {cut.widthMm}mm
+                  {cut.lengthMm}mm x {cut.widthMm}mm
                 </span>
               </div>
             );
@@ -627,8 +679,7 @@ function CuttingDiagram({
         <div className="text-xs text-gray-500 mb-1">Cuttings:</div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-1">
           {roll.cuts.map((cut, idx) => {
-            const colorClass =
-              colorMap.get(cut.itemId.split("-")[0]) || CUT_COLORS[idx % CUT_COLORS.length];
+            const colorClass = CUT_COLORS[colorIndexForBaseId(cut.itemId.split("-")[0])];
             const band = bands.find((b) => b.bandIndex === cut.band);
             return (
               <div
@@ -644,7 +695,7 @@ function CuttingDiagram({
                 </span>
                 <span className="text-gray-400 flex-shrink-0">|</span>
                 <span className="text-gray-600 flex-shrink-0">
-                  {(cut.lengthMm / 1000).toFixed(2)}m x {cut.widthMm}mm
+                  {cut.lengthMm}mm x {cut.widthMm}mm
                 </span>
                 {band && band.lanes > 1 && (
                   <>
@@ -726,20 +777,6 @@ function PipeCuttingView({
   userRole?: string | null;
   stockRolls?: StockRollInfo[];
 }) {
-  const colorMap = plan.rolls
-    .flatMap((roll) => roll.cuts)
-    .reduce(
-      (acc, cut) => {
-        const baseId = cut.itemId.split("-")[0];
-        if (!acc.map.has(baseId)) {
-          acc.map.set(baseId, CUT_COLORS[acc.idx % CUT_COLORS.length]);
-          return { map: acc.map, idx: acc.idx + 1 };
-        }
-        return acc;
-      },
-      { map: new Map<string, string>(), idx: 0 },
-    ).map;
-
   const rollNumberForAllocation = (roll: RollAllocation): string | null => {
     if (!stockRolls || stockRolls.length === 0) return null;
     const thickness = roll.plyThicknessMm || plan.totalThicknessMm || 0;
@@ -792,7 +829,6 @@ function PipeCuttingView({
           <CuttingDiagram
             key={group.representativeRoll.rollIndex}
             roll={group.representativeRoll}
-            colorMap={colorMap}
             groupCount={group.count}
             thicknessMm={group.representativeRoll.plyThicknessMm || fallbackThickness}
             jobCardId={jobCardId}
@@ -805,7 +841,6 @@ function PipeCuttingView({
           <CuttingDiagram
             key={roll.rollIndex}
             roll={roll}
-            colorMap={colorMap}
             thicknessMm={roll.plyThicknessMm || fallbackThickness}
             jobCardId={jobCardId}
             rubberColor={plan.rubberSpec?.color}
