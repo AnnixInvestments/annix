@@ -572,12 +572,27 @@ export class QcpApprovalService {
     const baseUrl = this.frontendBaseUrl();
     const reviewUrl = `${baseUrl}/stock-control/qcp-review/${newToken}`;
 
-    await this.emailService.sendEmail(clientToken.companyId, {
+    const emailSent = await this.emailService.sendEmail(clientToken.companyId, {
       to: thirdPartyEmail,
       subject: `QCP Review Request (3rd Party) - ${plan.qcpNumber || `QCP #${plan.id}`}`,
       html: this.reviewRequestEmailHtml(companyName, plan, reviewUrl, "third_party"),
       text: `You have been requested to review QCP ${plan.qcpNumber || plan.id} as 3rd party. Review link: ${reviewUrl}`,
     });
+
+    if (!emailSent) {
+      this.logger.error(
+        `QCP 3rd party email FAILED to send to ${thirdPartyEmail} for plan ${plan.id} - rolling back token`,
+      );
+      await this.tokenRepo.delete(saved.id);
+      await this.planRepo.update(plan.id, {
+        approvalStatus: "pending_client",
+        thirdPartyEmail: null,
+        activeParties: plan.activeParties || ["pls", "mps", "client"],
+      });
+      throw new BadRequestException(
+        `Email delivery to ${thirdPartyEmail} failed. Check SMTP configuration under Stock Control Settings, then try again.`,
+      );
+    }
 
     this.logger.log(
       `QCP 3rd party token sent to ${thirdPartyEmail} for plan ${plan.id} (forwarded by client)`,
