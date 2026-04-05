@@ -302,6 +302,9 @@ All apps follow the same **semantic versioning** rules (major.minor.patch):
 | Annix Rep | `annix-frontend/src/app/annix-rep/config/annix-rep-version.ts` | `ANNIX_REP_VERSION` | PortalToolbar |
 | CV Assistant | `annix-frontend/src/app/cv-assistant/config/version.ts` | `CV_ASSISTANT_VERSION` | Portal layout header |
 
+## Stock Control How To Guides
+When you change any user-facing Stock Control feature (new button, renamed field, new workflow, changed flow), check `annix-frontend/src/app/stock-control/how-to/guides/*.md` for guides whose `relatedPaths` include the files you touched. If the guide content is no longer accurate, update it and bump its `lastUpdated` date. The pre-push hook runs `scripts/check-how-to-freshness.mjs` which compares git log against each guide's `lastUpdated` and warns when related paths have moved on without the guide being updated — warnings are non-blocking but should be addressed.
+
 ## Communication
 - Be concise and direct
 - Do not use emojis unless requested
