@@ -3,9 +3,10 @@ import { ConfigService } from "@nestjs/config";
 import { Cron, CronExpression } from "@nestjs/schedule";
 import { InjectRepository } from "@nestjs/typeorm";
 import { In, MoreThan, Repository } from "typeorm";
-import * as webpush from "web-push";
 import { EmailService } from "../../email/email.service";
 import { DateTime } from "../../lib/datetime";
+import { WebPushChannel, WebPushSendResult } from "../../notifications/channels/web-push.channel";
+import { NotificationDispatcherService } from "../../notifications/notification-dispatcher.service";
 import { Candidate } from "../entities/candidate.entity";
 import { CandidateJobMatch } from "../entities/candidate-job-match.entity";
 import { CvAssistantUser } from "../entities/cv-assistant-user.entity";
@@ -23,7 +24,6 @@ interface PushPayload {
 @Injectable()
 export class CvNotificationService {
   private readonly logger = new Logger(CvNotificationService.name);
-  private readonly pushEnabled: boolean;
 
   constructor(
     @InjectRepository(CvAssistantUser)
@@ -40,21 +40,12 @@ export class CvNotificationService {
     private readonly externalJobRepo: Repository<ExternalJob>,
     private readonly emailService: EmailService,
     private readonly configService: ConfigService,
-  ) {
-    const publicKey = this.configService.get<string>("VAPID_PUBLIC_KEY");
-    const privateKey = this.configService.get<string>("VAPID_PRIVATE_KEY");
-    const subject = this.configService.get<string>("VAPID_SUBJECT", "mailto:admin@annix.co.za");
-
-    if (publicKey && privateKey) {
-      webpush.setVapidDetails(subject, publicKey, privateKey);
-      this.pushEnabled = true;
-    } else {
-      this.pushEnabled = false;
-    }
-  }
+    private readonly dispatcher: NotificationDispatcherService,
+    private readonly webPushChannel: WebPushChannel,
+  ) {}
 
   vapidPublicKey(): string | null {
-    return this.configService.get<string>("VAPID_PUBLIC_KEY") ?? null;
+    return this.webPushChannel.vapidPublicKey();
   }
 
   async subscribe(
@@ -97,38 +88,37 @@ export class CvNotificationService {
   }
 
   async sendPushToUser(userId: number, payload: PushPayload): Promise<void> {
-    if (!this.pushEnabled) {
+    if (!this.webPushChannel.isEnabled()) {
       return;
-    } else {
-      const subscriptions = await this.pushSubRepo.find({ where: { userId } });
+    }
 
-      const results = await Promise.all(
-        subscriptions.map(async (sub) => {
-          try {
-            await webpush.sendNotification(
-              {
-                endpoint: sub.endpoint,
-                keys: { p256dh: sub.keyP256dh, auth: sub.keyAuth },
-              },
-              JSON.stringify(payload),
-            );
-            return null;
-          } catch (error: unknown) {
-            const statusCode = (error as { statusCode?: number }).statusCode;
-            if (statusCode === 410 || statusCode === 404) {
-              return sub.id;
-            } else {
-              this.logger.warn(
-                `Push failed for CV subscription ${sub.id}: ${error instanceof Error ? error.message : String(error)}`,
-              );
-              return null;
-            }
-          }
-        }),
-      );
+    const subscriptions = await this.pushSubRepo.find({ where: { userId } });
+    if (subscriptions.length === 0) {
+      return;
+    }
 
-      const staleIds = results.filter((id): id is number => id !== null);
+    const [result] = await this.dispatcher.dispatch({
+      recipient: {
+        userId,
+        pushSubscriptions: subscriptions.map((sub) => ({
+          endpoint: sub.endpoint,
+          keys: { p256dh: sub.keyP256dh, auth: sub.keyAuth },
+        })),
+      },
+      content: {
+        subject: payload.title,
+        body: payload.body,
+        tag: payload.tag ?? null,
+        actionUrl: payload.data?.url ?? null,
+      },
+      channels: ["web_push"],
+    });
 
+    const pushResult = result as WebPushSendResult;
+    if (pushResult.staleEndpoints.length > 0) {
+      const staleIds = subscriptions
+        .filter((sub) => pushResult.staleEndpoints.includes(sub.endpoint))
+        .map((sub) => sub.id);
       if (staleIds.length > 0) {
         await this.pushSubRepo.delete(staleIds);
       }

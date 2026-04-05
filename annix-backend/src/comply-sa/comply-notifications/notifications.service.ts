@@ -1,9 +1,11 @@
 import { Injectable, Logger } from "@nestjs/common";
-import { ConfigService } from "@nestjs/config";
 import { Cron } from "@nestjs/schedule";
 import { InjectRepository } from "@nestjs/typeorm";
 import { In, IsNull, Not, Repository } from "typeorm";
-import { EmailService } from "../../email/email.service";
+import {
+  ChannelKey,
+  NotificationDispatcherService,
+} from "../../notifications/notification-dispatcher.service";
 import { ComplySaUser } from "../companies/entities/user.entity";
 import { ComplySaComplianceStatus } from "../compliance/entities/compliance-status.entity";
 import { ComplySaDocument } from "../comply-documents/entities/document.entity";
@@ -23,10 +25,6 @@ interface DeliveryChannels {
 @Injectable()
 export class ComplySaNotificationsService {
   private readonly logger = new Logger(ComplySaNotificationsService.name);
-  private readonly twilioAccountSid: string | null;
-  private readonly twilioAuthToken: string | null;
-  private readonly twilioPhoneNumber: string | null;
-  private readonly twilioWhatsappNumber: string | null;
 
   constructor(
     @InjectRepository(ComplySaComplianceStatus)
@@ -39,14 +37,8 @@ export class ComplySaNotificationsService {
     private readonly userRepository: Repository<ComplySaUser>,
     @InjectRepository(ComplySaDocument)
     private readonly documentRepository: Repository<ComplySaDocument>,
-    private readonly emailService: EmailService,
-    private readonly configService: ConfigService,
-  ) {
-    this.twilioAccountSid = this.configService.get<string>("TWILIO_ACCOUNT_SID") ?? null;
-    this.twilioAuthToken = this.configService.get<string>("TWILIO_AUTH_TOKEN") ?? null;
-    this.twilioPhoneNumber = this.configService.get<string>("TWILIO_PHONE_NUMBER") ?? null;
-    this.twilioWhatsappNumber = this.configService.get<string>("TWILIO_WHATSAPP_NUMBER") ?? null;
-  }
+    private readonly dispatcher: NotificationDispatcherService,
+  ) {}
 
   @Cron("0 6 * * *", { name: "comply-sa:deadline-notifications", timeZone: "Africa/Johannesburg" })
   async processDeadlineNotifications(): Promise<void> {
@@ -161,20 +153,32 @@ export class ComplySaNotificationsService {
                 await this.notificationRepository.save(notification);
               }
 
+              const channelKeys: ChannelKey[] = [];
               if (channels.email) {
-                await this.sendEmail(
-                  user.email,
-                  this.emailSubject(type, status.requirement?.name ?? "Requirement"),
-                  message,
-                );
+                channelKeys.push("email");
+              }
+              if (isCritical && channels.sms && prefs?.phone) {
+                channelKeys.push("sms");
+              }
+              if (isCritical && channels.whatsapp && prefs?.phone) {
+                channelKeys.push("whatsapp");
               }
 
-              if (isCritical && channels.sms && prefs !== null && prefs.phone !== null) {
-                await this.sendSms(prefs.phone, message);
-              }
-
-              if (isCritical && channels.whatsapp && prefs !== null && prefs.phone !== null) {
-                await this.sendWhatsApp(prefs.phone, message);
+              if (channelKeys.length > 0) {
+                const subject = this.emailSubject(type, status.requirement?.name ?? "Requirement");
+                await this.dispatcher.dispatch({
+                  recipient: {
+                    userId: user.id,
+                    email: user.email,
+                    phone: prefs?.phone ?? null,
+                  },
+                  content: {
+                    subject,
+                    body: message,
+                    html: this.emailHtml(subject, message),
+                  },
+                  channels: channelKeys,
+                });
               }
             }),
           );
@@ -320,7 +324,15 @@ export class ComplySaNotificationsService {
                   daysUntil < 0
                     ? `[EXPIRED] ${doc.name} - Comply SA`
                     : `[Expiring] ${doc.name} expires in ${daysUntil} days - Comply SA`;
-                await this.sendEmail(user.email, subject, message);
+                await this.dispatcher.dispatch({
+                  recipient: { userId: user.id, email: user.email },
+                  content: {
+                    subject,
+                    body: message,
+                    html: this.emailHtml(subject, message),
+                  },
+                  channels: ["email"],
+                });
               }
             }),
           );
@@ -385,23 +397,6 @@ export class ComplySaNotificationsService {
     }
   }
 
-  private async sendEmail(to: string, subject: string, message: string): Promise<void> {
-    try {
-      await this.emailService.sendEmail({
-        to,
-        subject,
-        fromName: "Comply SA",
-        isTransactional: true,
-        html: this.emailHtml(subject, message),
-        text: message,
-      });
-    } catch (error) {
-      this.logger.error(
-        `Failed to send email to ${to}: ${error instanceof Error ? error.message : String(error)}`,
-      );
-    }
-  }
-
   private emailHtml(subject: string, message: string): string {
     return [
       "<!DOCTYPE html><html><head><meta charset='UTF-8'></head>",
@@ -419,93 +414,5 @@ export class ComplySaNotificationsService {
       "<p style='color:#a0aec0;font-size:12px;text-align:center'>Comply SA - SA SME Compliance Dashboard</p>",
       "</div></body></html>",
     ].join("");
-  }
-
-  private async sendSms(phone: string, message: string): Promise<void> {
-    if (
-      this.twilioAccountSid === null ||
-      this.twilioAuthToken === null ||
-      this.twilioPhoneNumber === null
-    ) {
-      this.logger.warn("Twilio SMS not configured - skipping SMS delivery");
-      return;
-    }
-
-    try {
-      const url = `https://api.twilio.com/2010-04-01/Accounts/${this.twilioAccountSid}/Messages.json`;
-      const auth = Buffer.from(`${this.twilioAccountSid}:${this.twilioAuthToken}`).toString(
-        "base64",
-      );
-
-      const body = new URLSearchParams({
-        To: phone,
-        From: this.twilioPhoneNumber,
-        Body: message,
-      });
-
-      const response = await fetch(url, {
-        method: "POST",
-        headers: {
-          Authorization: `Basic ${auth}`,
-          "Content-Type": "application/x-www-form-urlencoded",
-        },
-        body: body.toString(),
-      });
-
-      if (!response.ok) {
-        const errorBody = await response.text();
-        this.logger.error(`Twilio SMS failed (${response.status}): ${errorBody}`);
-      } else {
-        this.logger.log(`SMS sent to ${phone}`);
-      }
-    } catch (error) {
-      this.logger.error(
-        `Failed to send SMS to ${phone}: ${error instanceof Error ? error.message : String(error)}`,
-      );
-    }
-  }
-
-  private async sendWhatsApp(phone: string, message: string): Promise<void> {
-    if (
-      this.twilioAccountSid === null ||
-      this.twilioAuthToken === null ||
-      this.twilioWhatsappNumber === null
-    ) {
-      this.logger.warn("Twilio WhatsApp not configured - skipping WhatsApp delivery");
-      return;
-    }
-
-    try {
-      const url = `https://api.twilio.com/2010-04-01/Accounts/${this.twilioAccountSid}/Messages.json`;
-      const auth = Buffer.from(`${this.twilioAccountSid}:${this.twilioAuthToken}`).toString(
-        "base64",
-      );
-
-      const body = new URLSearchParams({
-        To: `whatsapp:${phone}`,
-        From: `whatsapp:${this.twilioWhatsappNumber}`,
-        Body: message,
-      });
-
-      const response = await fetch(url, {
-        method: "POST",
-        headers: {
-          Authorization: `Basic ${auth}`,
-          "Content-Type": "application/x-www-form-urlencoded",
-        },
-        body: body.toString(),
-      });
-
-      if (!response.ok) {
-        const errorBody = await response.text();
-        this.logger.error(`Twilio WhatsApp failed (${response.status}): ${errorBody}`);
-      } else {
-        this.logger.log(`WhatsApp sent to ${phone}`);
-      }
-    } catch (error) {
-      this.logger.error(
-        `Failed to send WhatsApp to ${phone}: ${error instanceof Error ? error.message : String(error)}`,
-      );
-    }
   }
 }

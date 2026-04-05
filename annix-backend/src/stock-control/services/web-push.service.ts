@@ -1,8 +1,8 @@
 import { Injectable, Logger } from "@nestjs/common";
-import { ConfigService } from "@nestjs/config";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
-import * as webpush from "web-push";
+import { WebPushChannel, WebPushSendResult } from "../../notifications/channels/web-push.channel";
+import { NotificationDispatcherService } from "../../notifications/notification-dispatcher.service";
 import { PushSubscription } from "../entities/push-subscription.entity";
 import { StockControlCompany } from "../entities/stock-control-company.entity";
 import { StockControlUser } from "../entities/stock-control-user.entity";
@@ -25,7 +25,6 @@ interface SubscriptionInput {
 @Injectable()
 export class WebPushService {
   private readonly logger = new Logger(WebPushService.name);
-  private readonly enabled: boolean;
 
   constructor(
     @InjectRepository(PushSubscription)
@@ -34,24 +33,12 @@ export class WebPushService {
     private readonly companyRepo: Repository<StockControlCompany>,
     @InjectRepository(StockControlUser)
     private readonly userRepo: Repository<StockControlUser>,
-    private readonly configService: ConfigService,
-  ) {
-    const publicKey = this.configService.get<string>("VAPID_PUBLIC_KEY");
-    const privateKey = this.configService.get<string>("VAPID_PRIVATE_KEY");
-    const subject = this.configService.get<string>("VAPID_SUBJECT", "mailto:admin@annix.co.za");
-
-    if (publicKey && privateKey) {
-      webpush.setVapidDetails(subject, publicKey, privateKey);
-      this.enabled = true;
-      this.logger.log("Web push notifications enabled");
-    } else {
-      this.enabled = false;
-      this.logger.warn("VAPID keys not configured — web push notifications disabled");
-    }
-  }
+    private readonly dispatcher: NotificationDispatcherService,
+    private readonly webPushChannel: WebPushChannel,
+  ) {}
 
   vapidPublicKey(): string | null {
-    return this.configService.get<string>("VAPID_PUBLIC_KEY") ?? null;
+    return this.webPushChannel.vapidPublicKey();
   }
 
   async subscribe(
@@ -87,7 +74,7 @@ export class WebPushService {
   }
 
   async sendToUser(userId: number, payload: PushPayload): Promise<void> {
-    if (!this.enabled) {
+    if (!this.webPushChannel.isEnabled()) {
       return;
     }
 
@@ -114,31 +101,32 @@ export class WebPushService {
 
     this.logger.log(`Sending push to ${subscriptions.length} subscription(s) for user ${userId}`);
 
-    const staleIds: number[] = [];
+    const [result] = await this.dispatcher.dispatch({
+      recipient: {
+        userId,
+        pushSubscriptions: subscriptions.map((sub) => ({
+          endpoint: sub.endpoint,
+          keys: { p256dh: sub.keyP256dh, auth: sub.keyAuth },
+        })),
+      },
+      content: {
+        subject: payload.title,
+        body: payload.body,
+        tag: payload.tag ?? null,
+        actionUrl: payload.data?.url ?? null,
+      },
+      channels: ["web_push"],
+    });
 
-    await Promise.all(
-      subscriptions.map(async (sub) => {
-        try {
-          await webpush.sendNotification(
-            {
-              endpoint: sub.endpoint,
-              keys: { p256dh: sub.keyP256dh, auth: sub.keyAuth },
-            },
-            JSON.stringify(payload),
-          );
-        } catch (error: any) {
-          if (error.statusCode === 410 || error.statusCode === 404) {
-            staleIds.push(sub.id);
-          } else {
-            this.logger.warn(`Push failed for subscription ${sub.id}: ${error.message}`);
-          }
-        }
-      }),
-    );
-
-    if (staleIds.length > 0) {
-      await this.subscriptionRepo.delete(staleIds);
-      this.logger.log(`Cleaned up ${staleIds.length} stale push subscriptions`);
+    const pushResult = result as WebPushSendResult;
+    if (pushResult.staleEndpoints.length > 0) {
+      const staleIds = subscriptions
+        .filter((sub) => pushResult.staleEndpoints.includes(sub.endpoint))
+        .map((sub) => sub.id);
+      if (staleIds.length > 0) {
+        await this.subscriptionRepo.delete(staleIds);
+        this.logger.log(`Cleaned up ${staleIds.length} stale push subscriptions`);
+      }
     }
   }
 
