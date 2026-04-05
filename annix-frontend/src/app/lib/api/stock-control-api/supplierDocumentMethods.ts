@@ -1,9 +1,5 @@
 import { StockControlApiClient } from "./base";
-import type {
-  SupplierDocument,
-  SupplierDocumentExpiryStatus,
-  SupplierDocumentType,
-} from "./types";
+import type { SupplierDocument, SupplierDocumentExpiryStatus, SupplierDocumentType } from "./types";
 
 declare module "./base" {
   interface StockControlApiClient {

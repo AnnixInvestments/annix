@@ -8,10 +8,7 @@ import {
   StorageArea,
 } from "../../storage/storage.interface";
 import { StockControlSupplier } from "../entities/stock-control-supplier.entity";
-import {
-  SupplierDocument,
-  type SupplierDocumentType,
-} from "../entities/supplier-document.entity";
+import { SupplierDocument, type SupplierDocumentType } from "../entities/supplier-document.entity";
 
 const VALID_DOC_TYPES: SupplierDocumentType[] = [
   "bee_certificate",
@@ -195,9 +192,7 @@ export class SupplierDocumentService {
 
     const patch = {
       ...(updates.docType ? { docType: updates.docType as SupplierDocumentType } : {}),
-      ...(updates.docNumber !== undefined
-        ? { docNumber: updates.docNumber?.trim() || null }
-        : {}),
+      ...(updates.docNumber !== undefined ? { docNumber: updates.docNumber?.trim() || null } : {}),
       ...(updates.issuedAt !== undefined ? { issuedAt: updates.issuedAt || null } : {}),
       ...(updates.expiresAt !== undefined ? { expiresAt: updates.expiresAt || null } : {}),
       ...(updates.notes !== undefined ? { notes: updates.notes?.trim() || null } : {}),

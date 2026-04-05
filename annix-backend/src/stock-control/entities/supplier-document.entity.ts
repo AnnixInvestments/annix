@@ -21,7 +21,7 @@ export type SupplierDocumentType =
   | "vat_registration"
   | "other";
 
-@Entity("supplier_documents")
+@Entity("sc_supplier_documents")
 export class SupplierDocument {
   @PrimaryGeneratedColumn()
   id: number;

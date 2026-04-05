@@ -2,8 +2,16 @@ import { MigrationInterface, QueryRunner } from "typeorm";
 
 export class CreateSupplierDocuments1815300000000 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
+    const hasCompanyTable = await queryRunner.query(`
+      SELECT 1 FROM information_schema.tables
+      WHERE table_schema = 'public' AND table_name = 'stock_control_company'
+    `);
+    if (hasCompanyTable.length === 0) {
+      return;
+    }
+
     await queryRunner.query(`
-      CREATE TABLE IF NOT EXISTS supplier_documents (
+      CREATE TABLE IF NOT EXISTS sc_supplier_documents (
         id SERIAL PRIMARY KEY,
         company_id INTEGER NOT NULL REFERENCES stock_control_company(id) ON DELETE CASCADE,
         supplier_id INTEGER NOT NULL REFERENCES stock_control_supplier(id) ON DELETE CASCADE,
@@ -24,20 +32,20 @@ export class CreateSupplierDocuments1815300000000 implements MigrationInterface 
     `);
 
     await queryRunner.query(`
-      CREATE INDEX IF NOT EXISTS idx_supplier_documents_company_supplier
-        ON supplier_documents(company_id, supplier_id)
+      CREATE INDEX IF NOT EXISTS idx_sc_supplier_documents_company_supplier
+        ON sc_supplier_documents(company_id, supplier_id)
     `);
 
     await queryRunner.query(`
-      CREATE INDEX IF NOT EXISTS idx_supplier_documents_expires_at
-        ON supplier_documents(company_id, expires_at)
+      CREATE INDEX IF NOT EXISTS idx_sc_supplier_documents_expires_at
+        ON sc_supplier_documents(company_id, expires_at)
         WHERE expires_at IS NOT NULL
     `);
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`DROP INDEX IF EXISTS idx_supplier_documents_expires_at`);
-    await queryRunner.query(`DROP INDEX IF EXISTS idx_supplier_documents_company_supplier`);
-    await queryRunner.query(`DROP TABLE IF EXISTS supplier_documents`);
+    await queryRunner.query("DROP INDEX IF EXISTS idx_sc_supplier_documents_expires_at");
+    await queryRunner.query("DROP INDEX IF EXISTS idx_sc_supplier_documents_company_supplier");
+    await queryRunner.query("DROP TABLE IF EXISTS sc_supplier_documents");
   }
 }
