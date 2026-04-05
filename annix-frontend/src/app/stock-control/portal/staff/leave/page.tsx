@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
 import type {
   CreateLeaveRequest,
@@ -111,13 +111,10 @@ export default function StaffLeavePage() {
     });
   }, [currentMonth, records]);
 
-  const handleInitialLoad = useCallback(() => {
+  useEffect(() => {
     fetchRecords(currentMonth);
-  }, [currentMonth, fetchRecords]);
-
-  useState(() => {
-    handleInitialLoad();
-  });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleDayClick = useCallback((day: CalendarDay) => {
     const dateStr = day.date.toISODate() || "";
