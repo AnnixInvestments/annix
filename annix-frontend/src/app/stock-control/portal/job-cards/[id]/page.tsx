@@ -1498,9 +1498,16 @@ export default function JobCardDetailPage() {
                 </button>
               )}
               {userPendingBgSteps.filter((bg) => !isReceptionStep(bg)).length > 0 &&
-                (isAdminView || !canApprove || prevStepBgPending || currentStepBlueBgPending) &&
                 userPendingBgSteps
                   .filter((bg) => !isReceptionStep(bg))
+                  .filter(
+                    (bg) =>
+                      bg.rejoinAtStep !== null ||
+                      isAdminView ||
+                      !canApprove ||
+                      prevStepBgPending ||
+                      currentStepBlueBgPending,
+                  )
                   .map((bg) =>
                     isRequisitionStep(bg) ? (
                       <button
