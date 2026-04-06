@@ -233,14 +233,14 @@ export default function InvoicesPage() {
         </div>
       )}
 
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Supplier Invoices</h1>
           <p className="mt-1 text-sm text-gray-600">
             Upload and process supplier invoices with AI extraction
           </p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex flex-wrap gap-2">
           {invoices.some((inv) => inv.extractionStatus === "failed" && inv.scanUrl) && (
             <button
               onClick={handleReExtractAllFailed}
