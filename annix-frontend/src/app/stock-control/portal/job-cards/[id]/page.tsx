@@ -615,12 +615,13 @@ export default function JobCardDetailPage() {
       const isColored = isInColoredBranch(bg.stepKey);
       const effectiveOrigin = isColored ? originFgIdx + 1 : originFgIdx;
 
-      if (isAdminView) {
-        if (effectiveOrigin >= currentFgIdx) return false;
-      } else {
-        if (effectiveOrigin >= currentFgIdx) return false;
+      const isNonBlocking = bg.rejoinAtStep !== null;
 
-        const isNonBlocking = bg.rejoinAtStep !== null;
+      if (isAdminView) {
+        if (effectiveOrigin >= currentFgIdx && !isNonBlocking) return false;
+      } else {
+        if (effectiveOrigin >= currentFgIdx && !isNonBlocking) return false;
+
         if (hasIncompleteColored && !isInColoredBranch(bg.stepKey) && !isNonBlocking) {
           const originKey = fgKeys[resolveOriginFgIdx(trigger)];
           const coloredOrigin =

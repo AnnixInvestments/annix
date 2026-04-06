@@ -803,6 +803,52 @@ export class QcMeasurementService {
     await this.itemsReleaseRepo.remove(record);
   }
 
+  private async coatingSpecsForJobCard(
+    companyId: number,
+    jobCardId: number,
+  ): Promise<{ rubberSpec: string | null; paintingSpec: string | null }> {
+    const coating = await this.coatingRepo.findOne({ where: { companyId, jobCardId } });
+    if (!coating) {
+      return { rubberSpec: null, paintingSpec: null };
+    }
+
+    const rubberSpec = coating.hasInternalLining ? this.extractRubberSpec(coating) : null;
+
+    const paintingSpec = (coating.coats || []).length > 0 ? this.extractPaintSpec(coating) : null;
+
+    return { rubberSpec, paintingSpec };
+  }
+
+  private extractRubberSpec(coating: JobCardCoatingAnalysis): string {
+    if (coating.rawNotes) {
+      const intParts = coating.rawNotes
+        .split(/(?=\bINT\s*:)/i)
+        .filter((p) => p.trim().toUpperCase().startsWith("INT"))
+        .map((p) => p.trim());
+      if (intParts.length > 0) {
+        return intParts[0];
+      }
+    }
+    return "Internal Rubber Lining";
+  }
+
+  private extractPaintSpec(coating: JobCardCoatingAnalysis): string {
+    const coats = coating.coats || [];
+    if (coats.length === 0) return "Paint Coating";
+    const summary = coats
+      .map((c) => {
+        const dft =
+          c.minDftUm && c.maxDftUm
+            ? `${c.minDftUm}-${c.maxDftUm}μm`
+            : c.minDftUm
+              ? `${c.minDftUm}μm`
+              : "";
+        return dft ? `${c.product} (${dft})` : c.product;
+      })
+      .join(", ");
+    return summary;
+  }
+
   async autoPopulateItemsRelease(
     companyId: number,
     jobCardId: number,
@@ -814,12 +860,14 @@ export class QcMeasurementService {
       throw new NotFoundException(`Work item #${jobCardId} not found or has no line items`);
     }
 
+    const specs = await this.coatingSpecsForJobCard(companyId, jobCardId);
+
     const items: ReleaseLineItem[] = lineItems.map((li) => ({
       itemCode: li.itemCode,
       description: li.description,
       jtNumber: li.jtNumber,
-      rubberSpec: null,
-      paintingSpec: null,
+      rubberSpec: specs.rubberSpec,
+      paintingSpec: specs.paintingSpec,
       quantity: li.quantity,
       result: ItemReleaseResult.PASS,
     }));
@@ -866,6 +914,8 @@ export class QcMeasurementService {
       {} as Record<string, number>,
     );
 
+    const specs = await this.coatingSpecsForJobCard(companyId, jobCardId);
+
     const selectedItems: ReleaseLineItem[] = lineItems
       .filter((_li, idx) => selectedItemIndices.includes(idx))
       .map((li, _mapIdx, _arr) => {
@@ -886,8 +936,8 @@ export class QcMeasurementService {
           itemCode: li.itemCode,
           description: li.description,
           jtNumber: li.jtNumber,
-          rubberSpec: null,
-          paintingSpec: null,
+          rubberSpec: specs.rubberSpec,
+          paintingSpec: specs.paintingSpec,
           quantity: requestedQty,
           result: ItemReleaseResult.PASS,
         };
