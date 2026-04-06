@@ -740,9 +740,8 @@ export default function JobCardDetailPage() {
     : currentStepPhaseInfo.actionLabel;
 
   const qcpsNeedApproval = useMemo(() => {
-    return (
-      controlPlans.length > 0 && controlPlans.some((plan) => plan.approvalStatus !== "approved")
-    );
+    if (controlPlans.length === 0) return true;
+    return controlPlans.some((plan) => plan.approvalStatus !== "approved");
   }, [controlPlans]);
 
   const rubberPlanPending = useMemo(() => {
