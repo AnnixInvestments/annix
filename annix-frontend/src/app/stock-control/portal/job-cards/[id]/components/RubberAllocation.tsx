@@ -1169,6 +1169,39 @@ function RubberSOHPanel({
   const [plyAllocations, setPlyAllocations] = useState<
     Record<number, { widthMm: number; lengthM: number; inStock: boolean }>
   >({});
+  const [learnedSuggestion, setLearnedSuggestion] = useState<any | null>(null);
+
+  useEffect(() => {
+    if (existingOverride?.status === "accepted" || existingOverride?.status === "manual") return;
+    if (!plan.hasPipeItems || plan.rolls.length === 0) return;
+
+    const panels = plan.rolls.flatMap((roll) =>
+      roll.cuts.map((c) => ({ widthMm: c.widthMm, lengthMm: c.lengthMm, quantity: 1 })),
+    );
+    const merged = panels.reduce(
+      (acc, p) => {
+        const key = `${p.widthMm}x${p.lengthMm}`;
+        const existing = acc[key];
+        if (existing) {
+          return { ...acc, [key]: { ...existing, quantity: existing.quantity + 1 } };
+        }
+        return { ...acc, [key]: p };
+      },
+      {} as Record<string, { widthMm: number; lengthMm: number; quantity: number }>,
+    );
+    const mergedPanels = Object.values(merged);
+
+    if (mergedPanels.length === 0) return;
+
+    stockControlApiClient
+      .rubberCuttingSuggestions(mergedPanels)
+      .then((suggestions) => {
+        if (suggestions.length > 0) {
+          setLearnedSuggestion(suggestions[0]);
+        }
+      })
+      .catch(() => null);
+  }, [plan, existingOverride]);
 
   const handleAllocateRoll = async (plyIdx: number) => {
     if (!allocatingWidthMm || !allocatingLengthM) return;
@@ -1241,11 +1274,26 @@ function RubberSOHPanel({
     setSaving(true);
     setSaveError(null);
     try {
+      const autoPlanSnapshot = {
+        rolls: plan.rolls.map((r) => ({
+          rollIndex: r.rollIndex,
+          rollSpec: r.rollSpec,
+          cuts: r.cuts.map((c) => ({
+            widthMm: c.widthMm,
+            lengthMm: c.lengthMm,
+            description: c.description,
+          })),
+          wastePercentage: r.wastePercentage,
+        })),
+        wastePercentage: plan.wastePercentage,
+        totalRollsNeeded: plan.totalRollsNeeded,
+      };
       const override: RubberPlanOverride = {
         status: "manual",
         selectedPlyCombination: null,
         manualRolls: rolls,
         dimensionOverrides: dimensionOverrides?.length ? dimensionOverrides : null,
+        autoPlanSnapshot,
         reviewedBy: null,
         reviewedAt: null,
       };
@@ -1284,6 +1332,42 @@ function RubberSOHPanel({
           </button>
         )}
       </div>
+
+      {learnedSuggestion && planDecision === "pending" && (
+        <div className="mb-4 p-3 bg-indigo-50 border border-indigo-200 rounded-lg text-sm">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="font-medium text-indigo-800">
+              Nix has a learned layout for this panel set
+            </span>
+            <span className="text-xs text-indigo-600">
+              (used {learnedSuggestion.usageCount} time
+              {learnedSuggestion.usageCount === 1 ? "" : "s"})
+            </span>
+          </div>
+          <p className="text-xs text-indigo-700">
+            A previous manual override with {Number(learnedSuggestion.manualWastePct).toFixed(1)}%
+            waste was saved for an identical panel arrangement
+            {learnedSuggestion.autoWastePct
+              ? ` (vs ${Number(learnedSuggestion.autoWastePct).toFixed(1)}% auto)`
+              : ""}
+            .
+          </p>
+          <button
+            type="button"
+            onClick={() => {
+              const learned = learnedSuggestion.manualPlan;
+              const rolls = learned?.rolls || [];
+              if (rolls.length > 0) {
+                setManualRolls(rolls);
+                setPlanDecision("rejected");
+              }
+            }}
+            className="mt-2 px-3 py-1 bg-indigo-600 text-white rounded text-xs font-medium hover:bg-indigo-700"
+          >
+            Apply learned layout
+          </button>
+        </div>
+      )}
 
       {stockOptions.rubberSpec && (
         <div className="mb-4 p-3 bg-gray-50 rounded-lg text-sm">

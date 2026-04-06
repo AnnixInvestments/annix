@@ -458,11 +458,11 @@ export class QcpApprovalService {
     if (!clientToken) {
       throw new NotFoundException("Review link not found");
     }
-    if (clientToken.partyRole !== "client") {
-      throw new ForbiddenException("Only client tokens can finalize approval");
+    if (clientToken.partyRole !== "client" && clientToken.partyRole !== "mps") {
+      throw new ForbiddenException("Only customer or client tokens can finalize approval");
     }
     if (clientToken.status !== QcpApprovalTokenStatus.APPROVED) {
-      throw new BadRequestException("Client must approve before finalizing");
+      throw new BadRequestException("Must approve before finalizing");
     }
 
     const plan = await this.planRepo.findOne({
@@ -472,13 +472,19 @@ export class QcpApprovalService {
       throw new NotFoundException("Control plan not found");
     }
 
-    await this.tokenRepo.update(
-      {
-        controlPlanId: plan.id,
-        partyRole: "third_party",
-        status: QcpApprovalTokenStatus.PENDING,
-      },
-      { status: QcpApprovalTokenStatus.SUPERSEDED },
+    const downstreamRoles =
+      clientToken.partyRole === "mps" ? ["client", "third_party"] : ["third_party"];
+    await Promise.all(
+      downstreamRoles.map((role) =>
+        this.tokenRepo.update(
+          {
+            controlPlanId: plan.id,
+            partyRole: role as "client" | "third_party",
+            status: QcpApprovalTokenStatus.PENDING,
+          },
+          { status: QcpApprovalTokenStatus.SUPERSEDED },
+        ),
+      ),
     );
 
     await this.planRepo.update(plan.id, { approvalStatus: "approved" });
@@ -495,13 +501,13 @@ export class QcpApprovalService {
         this.emailService.sendEmail(clientToken.companyId, {
           to,
           subject: `QCP Fully Approved - ${plan.qcpNumber || `QCP #${plan.id}`}`,
-          html: `<p>QCP <strong>${plan.qcpNumber || plan.id}</strong> has been fully approved. The client has signed off and elected not to send to a 3rd party reviewer.</p>`,
-          text: `QCP ${plan.qcpNumber || plan.id} has been fully approved (client declined 3rd party review).`,
+          html: `<p>QCP <strong>${plan.qcpNumber || plan.id}</strong> has been fully approved. The ${clientToken.partyRole === "mps" ? "customer" : "client"} has signed off and elected not to send for further review.</p>`,
+          text: `QCP ${plan.qcpNumber || plan.id} has been fully approved (${clientToken.partyRole === "mps" ? "customer" : "client"} declined further review).`,
         }),
       ),
     );
 
-    this.logger.log(`QCP ${plan.id} finalized by client (no 3rd party)`);
+    this.logger.log(`QCP ${plan.id} finalized by ${clientToken.partyRole} (no further review)`);
     return { success: true };
   }
 

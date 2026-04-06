@@ -86,6 +86,13 @@ declare module "./base" {
       created: Array<{ stockItemId: number; widthMm: number; lengthMm: number }>;
     }>;
     jobCardOffcutsUsed(jobCardId: number): Promise<StockAllocation[]>;
+    rubberCuttingSuggestions(
+      panels: Array<{
+        widthMm: number;
+        lengthMm: number;
+        quantity: number;
+      }>,
+    ): Promise<any[]>;
     rubberDimensionSuggestions(params: {
       itemType?: string | null;
       nbMm?: number | null;
@@ -341,6 +348,14 @@ proto.rubberDimensionSuggestions = async function (params) {
   return this.request(
     `/stock-control/job-cards/rubber-dimension-suggestions?${searchParams.toString()}`,
   );
+};
+
+proto.rubberCuttingSuggestions = async function (panels) {
+  return this.request("/stock-control/job-cards/rubber-cutting-suggestions", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ panels }),
+  });
 };
 
 proto.uploadAllocationPhoto = async function (jobCardId, allocationId, file) {

@@ -585,6 +585,7 @@ export interface RubberPlanOverride {
   selectedPlyCombination: number[] | null;
   manualRolls: RubberPlanManualRoll[] | null;
   dimensionOverrides?: RubberDimensionOverride[] | null;
+  autoPlanSnapshot?: Record<string, any> | null;
   reviewedBy: string | null;
   reviewedAt: string | null;
 }

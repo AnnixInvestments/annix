@@ -81,6 +81,7 @@ import { ReconciliationEvent } from "./entities/reconciliation-event.entity";
 import { ReconciliationItem } from "./entities/reconciliation-item.entity";
 import { Requisition } from "./entities/requisition.entity";
 import { RequisitionItem } from "./entities/requisition-item.entity";
+import { RubberCuttingTraining } from "./entities/rubber-cutting-training.entity";
 import { RubberDimensionOverride } from "./entities/rubber-dimension-override.entity";
 import { StaffMember } from "./entities/staff-member.entity";
 import { StaffSignature } from "./entities/staff-signature.entity";
@@ -162,6 +163,7 @@ import { ReconciliationDocumentService } from "./services/reconciliation-documen
 import { ReconciliationExtractionService } from "./services/reconciliation-extraction.service";
 import { ReportsService } from "./services/reports.service";
 import { RequisitionService } from "./services/requisition.service";
+import { RubberCuttingTrainingService } from "./services/rubber-cutting-training.service";
 import { SageInvoiceAdapterService } from "./services/sage-invoice-adapter.service";
 import { SageJcDumpService } from "./services/sage-jc-dump.service";
 import { ScEmailAdapterService } from "./services/sc-email-adapter.service";
@@ -218,6 +220,7 @@ import { WorkflowStepConfigService } from "./services/workflow-step-config.servi
       StockControlRbacConfig,
       StockControlSupplier,
       PushSubscription,
+      RubberCuttingTraining,
       RubberDimensionOverride,
       CustomerPurchaseOrder,
       CustomerPurchaseOrderItem,
@@ -365,6 +368,7 @@ import { WorkflowStepConfigService } from "./services/workflow-step-config.servi
     ReconciliationDocumentService,
     ReconciliationExtractionService,
     ReconciliationService,
+    RubberCuttingTrainingService,
     StockAllocationService,
     SageJcDumpService,
   ],

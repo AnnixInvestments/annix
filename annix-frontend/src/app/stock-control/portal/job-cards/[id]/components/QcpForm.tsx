@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type {
   CoatingAnalysis,
   InterventionType,
@@ -427,6 +427,8 @@ export function QcpForm({ jobCardId, existingPlan, onSaved, onCancel }: QcpFormP
   const [approvalHistory, setApprovalHistory] = useState<QcpApprovalTokenRecord[]>([]);
   const [isSendingApproval, setIsSendingApproval] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [line1InitialError, setLine1InitialError] = useState(false);
+  const line1InitialRef = useRef<HTMLButtonElement>(null);
   const [initialsTarget, setInitialsTarget] = useState<{
     activityIdx: number;
     party: PartyKey;
@@ -572,6 +574,9 @@ export function QcpForm({ jobCardId, existingPlan, onSaved, onCancel }: QcpFormP
       setActivities((prev) =>
         prev.map((a, i) => (i === index ? { ...a, [party]: { ...a[party], initial } } : a)),
       );
+      if (index === 0 && party === "pls" && initial) {
+        setLine1InitialError(false);
+      }
     },
     [],
   );
@@ -673,6 +678,16 @@ export function QcpForm({ jobCardId, existingPlan, onSaved, onCancel }: QcpFormP
       return;
     }
     if (!existingPlan) return;
+
+    const firstActivity = activities[0];
+    const plsInitial = firstActivity?.pls?.initial;
+    if (!plsInitial) {
+      setLine1InitialError(true);
+      line1InitialRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      return;
+    }
+    setLine1InitialError(false);
+
     const blastRows = activities.filter((a) => isBlastingRow(a.description));
     const missingBlast = blastRows.some((a) => !a.specification);
     if (missingBlast) {
@@ -1001,12 +1016,18 @@ export function QcpForm({ jobCardId, existingPlan, onSaved, onCancel }: QcpFormP
                         </select>
                         <button
                           type="button"
+                          ref={idx === 0 && partyKey === "pls" ? line1InitialRef : undefined}
                           onClick={() => setInitialsTarget({ activityIdx: idx, party: partyKey })}
-                          className={`w-12 rounded border px-1 py-1 text-center text-xs ${signOff.initial ? "border-teal-300 bg-teal-50 font-medium text-teal-800" : "border-gray-300 text-gray-400 hover:border-teal-400 hover:bg-teal-50"}`}
+                          className={`w-12 rounded border px-1 py-1 text-center text-xs ${line1InitialError && idx === 0 && partyKey === "pls" ? "border-2 border-red-500 bg-red-50 text-red-700 ring-2 ring-red-200" : signOff.initial ? "border-teal-300 bg-teal-50 font-medium text-teal-800" : "border-gray-300 text-gray-400 hover:border-teal-400 hover:bg-teal-50"}`}
                           title="Initial"
                         >
                           {signOff.initial || "init"}
                         </button>
+                        {line1InitialError && idx === 0 && partyKey === "pls" && (
+                          <p className="mt-0.5 text-[10px] leading-tight text-red-600">
+                            Must initial before sending
+                          </p>
+                        )}
                       </div>
                     </td>
                   );

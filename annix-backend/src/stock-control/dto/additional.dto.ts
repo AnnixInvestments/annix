@@ -14,6 +14,10 @@ export class UpdateRubberPlanDto {
   @IsOptional()
   @IsArray()
   dimensionOverrides?: any[];
+
+  @IsOptional()
+  @IsObject()
+  autoPlanSnapshot?: Record<string, any>;
 }
 
 export class MarkOffcutAsWastageDto {

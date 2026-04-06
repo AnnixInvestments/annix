@@ -54,6 +54,7 @@ import { JobCardVersionService } from "../services/job-card-version.service";
 import { JobCardWorkflowService } from "../services/job-card-workflow.service";
 import { JobFileService } from "../services/job-file.service";
 import { RequisitionService } from "../services/requisition.service";
+import { RubberCuttingTrainingService } from "../services/rubber-cutting-training.service";
 import { StockAllocationService } from "../services/stock-allocation.service";
 
 @ApiTags("Stock Control - Job Cards")
@@ -73,6 +74,7 @@ export class JobCardsController {
     private readonly jobCardImportService: JobCardImportService,
     private readonly jobFileService: JobFileService,
     private readonly stockAllocationService: StockAllocationService,
+    private readonly rubberCuttingTrainingService: RubberCuttingTrainingService,
     @InjectRepository(StockItem)
     private readonly stockItemRepo: Repository<StockItem>,
     @InjectRepository(RubberDimensionOverride)
@@ -108,6 +110,18 @@ export class JobCardsController {
       ...jc,
       effectiveWorkflowStatus: effectiveStatuses[jc.id] || jc.workflowStatus,
     }));
+  }
+
+  @Post("rubber-cutting-suggestions")
+  @ApiOperation({ summary: "Query learned cutting plan suggestions for a panel set" })
+  async rubberCuttingSuggestions(
+    @Req() req: any,
+    @Body() body: { panels: Array<{ widthMm: number; lengthMm: number; quantity: number }> },
+  ) {
+    return this.rubberCuttingTrainingService.suggestionsForPanels(
+      req.user.companyId,
+      body.panels || [],
+    );
   }
 
   @Get("rubber-dimension-suggestions")
@@ -569,6 +583,23 @@ export class JobCardsController {
     const overrides: any[] = dto.dimensionOverrides || [];
     if (overrides.length > 0) {
       await this.upsertDimensionOverrides(req.user.companyId, overrides);
+    }
+
+    if (dto.status === "manual" && dto.manualRolls?.length && dto.autoPlanSnapshot) {
+      this.rubberCuttingTrainingService
+        .captureTraining({
+          companyId: req.user.companyId,
+          jobCardId: id,
+          autoPlanSnapshot: dto.autoPlanSnapshot,
+          manualRolls: dto.manualRolls,
+          rollWidthMm: dto.manualRolls[0]?.widthMm || 1200,
+          rollLengthMm: (dto.manualRolls[0]?.lengthM || 12.5) * 1000,
+          reviewedBy: req.user.name || null,
+        })
+        .catch((err) => {
+          const message = err instanceof Error ? err.message : "Unknown error";
+          this.logger.error(`Failed to capture cutting training for JC ${id}: ${message}`);
+        });
     }
 
     return result;

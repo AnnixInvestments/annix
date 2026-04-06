@@ -1,7 +1,7 @@
 "use client";
 
 import { useParams } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type {
   InterventionType,
   QcControlPlanRecord,
@@ -62,6 +62,8 @@ export default function QcpReviewPage() {
   const [forwardSuccess, setForwardSuccess] = useState(false);
   const [isFinalizing, setIsFinalizing] = useState(false);
   const [finalizeSuccess, setFinalizeSuccess] = useState(false);
+  const [line1InitialError, setLine1InitialError] = useState(false);
+  const line1InitialRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const load = async () => {
@@ -114,6 +116,9 @@ export default function QcpReviewPage() {
             : a,
         ),
       );
+      if (activityIndex === 0 && value) {
+        setLine1InitialError(false);
+      }
     },
     [partyKey],
   );
@@ -325,7 +330,7 @@ export default function QcpReviewPage() {
                 </h3>
                 <p className="mt-1 text-xs text-gray-500">
                   {details.token.partyRole === "mps"
-                    ? "If the end client needs to review this QCP, enter their details below."
+                    ? "If the end client needs to review this QCP, enter their details below. Otherwise return it directly to the QAM."
                     : "If a third-party inspector needs to review this QCP, enter their details below. Otherwise you can finalize approval now."}
                 </p>
                 {forwardSuccess ? (
@@ -366,14 +371,19 @@ export default function QcpReviewPage() {
                           ? "Forward to End Client"
                           : "Forward to 3rd Party"}
                     </button>
-                    {details.token.partyRole === "client" && (
+                    {(details.token.partyRole === "mps" ||
+                      details.token.partyRole === "client") && (
                       <button
                         type="button"
                         onClick={handleFinalize}
                         disabled={isFinalizing || isForwarding}
                         className="w-full rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
                       >
-                        {isFinalizing ? "Finalizing..." : "No 3rd Party - Finalize Approval"}
+                        {isFinalizing
+                          ? "Finalizing..."
+                          : details.token.partyRole === "mps"
+                            ? "No Client Review - Return to QAM"
+                            : "No 3rd Party - Finalize Approval"}
                       </button>
                     )}
                   </div>
@@ -546,35 +556,43 @@ export default function QcpReviewPage() {
                       }
                       return (
                         <td key={p} className="px-1 py-1.5">
-                          <div className="flex items-center justify-center gap-1">
-                            <select
-                              value={so?.interventionType || ""}
-                              onChange={(e) =>
-                                updateIntervention(
-                                  idx,
-                                  (e.target.value as InterventionType) || null,
-                                )
-                              }
-                              className="w-11 rounded border border-gray-300 px-0.5 py-1 text-center text-xs"
-                              style={{
-                                borderColor: so?.interventionType ? primaryColor : undefined,
-                              }}
-                            >
-                              <option value="">-</option>
-                              {INTERVENTION_TYPES.map((t) => (
-                                <option key={t} value={t}>
-                                  {t} - {INTERVENTION_LABELS[t]}
-                                </option>
-                              ))}
-                            </select>
-                            <input
-                              type="text"
-                              value={so?.initial || ""}
-                              onChange={(e) => updateInitial(idx, e.target.value)}
-                              maxLength={5}
-                              placeholder="init"
-                              className="w-12 rounded border border-gray-300 px-1 py-1 text-center text-xs"
-                            />
+                          <div className="flex flex-col items-center gap-0.5">
+                            <div className="flex items-center justify-center gap-1">
+                              <select
+                                value={so?.interventionType || ""}
+                                onChange={(e) =>
+                                  updateIntervention(
+                                    idx,
+                                    (e.target.value as InterventionType) || null,
+                                  )
+                                }
+                                className="w-11 rounded border border-gray-300 px-0.5 py-1 text-center text-xs"
+                                style={{
+                                  borderColor: so?.interventionType ? primaryColor : undefined,
+                                }}
+                              >
+                                <option value="">-</option>
+                                {INTERVENTION_TYPES.map((t) => (
+                                  <option key={t} value={t}>
+                                    {t} - {INTERVENTION_LABELS[t]}
+                                  </option>
+                                ))}
+                              </select>
+                              <input
+                                type="text"
+                                ref={idx === 0 ? line1InitialRef : undefined}
+                                value={so?.initial || ""}
+                                onChange={(e) => updateInitial(idx, e.target.value)}
+                                maxLength={5}
+                                placeholder="init"
+                                className={`w-12 rounded border px-1 py-1 text-center text-xs ${line1InitialError && idx === 0 ? "border-2 border-red-500 bg-red-50 ring-2 ring-red-200" : "border-gray-300"}`}
+                              />
+                            </div>
+                            {line1InitialError && idx === 0 && (
+                              <p className="text-[10px] leading-tight text-red-600 whitespace-nowrap">
+                                Must initial before approving
+                              </p>
+                            )}
                           </div>
                         </td>
                       );
@@ -669,7 +687,16 @@ export default function QcpReviewPage() {
             </button>
             <button
               type="button"
-              onClick={() => setShowSignaturePad(true)}
+              onClick={() => {
+                const firstInitial = activities[0]?.[partyKey]?.initial;
+                if (!firstInitial) {
+                  setLine1InitialError(true);
+                  line1InitialRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+                  return;
+                }
+                setLine1InitialError(false);
+                setShowSignaturePad(true);
+              }}
               disabled={isSubmitting}
               className="rounded-md px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
               style={{ backgroundColor: primaryColor }}
