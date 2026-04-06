@@ -107,9 +107,9 @@ declare module "./base" {
       data: Partial<QcItemsReleaseRecord>,
     ): Promise<QcItemsReleaseRecord>;
     deleteItemsRelease(jobCardId: number, id: number): Promise<void>;
-    openReleaseCertificatePdf(jobCardId: number, id: number): Promise<void>;
-    openItemsReleasePdf(jobCardId: number, id: number): Promise<void>;
-    openControlPlanPdf(jobCardId: number, id: number): Promise<void>;
+    openReleaseCertificatePdf(jobCardId: number, id: number): Promise<Blob>;
+    openItemsReleasePdf(jobCardId: number, id: number): Promise<Blob>;
+    openControlPlanPdf(jobCardId: number, id: number): Promise<Blob>;
     sendControlPlanForApproval(
       jobCardId: number,
       planId: number,
@@ -370,27 +370,17 @@ proto.deleteItemsRelease = async function (jobCardId, id) {
 };
 
 proto.openReleaseCertificatePdf = async function (jobCardId, id) {
-  const blob = await this.requestBlob(
+  return this.requestBlob(
     `/stock-control/job-cards/${jobCardId}/qc/release-certificates/${id}/pdf`,
   );
-  const url = URL.createObjectURL(blob);
-  window.open(url, "_blank");
 };
 
 proto.openItemsReleasePdf = async function (jobCardId, id) {
-  const blob = await this.requestBlob(
-    `/stock-control/job-cards/${jobCardId}/qc/items-releases/${id}/pdf`,
-  );
-  const url = URL.createObjectURL(blob);
-  window.open(url, "_blank");
+  return this.requestBlob(`/stock-control/job-cards/${jobCardId}/qc/items-releases/${id}/pdf`);
 };
 
 proto.openControlPlanPdf = async function (jobCardId, id) {
-  const blob = await this.requestBlob(
-    `/stock-control/job-cards/${jobCardId}/qc/control-plans/${id}/pdf`,
-  );
-  const url = URL.createObjectURL(blob);
-  window.open(url, "_blank");
+  return this.requestBlob(`/stock-control/job-cards/${jobCardId}/qc/control-plans/${id}/pdf`);
 };
 
 proto.qcpLog = async function (search) {

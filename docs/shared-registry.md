@@ -71,7 +71,7 @@ Shared workspace package (pnpm workspace). Both `annix-backend` and `annix-front
 
 The canonical frontend components directory. **App-specific components live in `app/<app>/components/` only if they're truly unique to that app** — if there's any chance another app might use it, put it here.
 
-Existing shared components include: `DataTable`, `TableComponents`, `ConfirmModal`, `ImportModal`, `MonthYearPicker`, `FileDropzone`, `SurfaceAreaDisplay`, `WeldSummaryCard`, `CalloffInput`, `SageExportModal`, `PortalToolbar`.
+Existing shared components include: `DataTable`, `TableComponents`, `ConfirmModal`, `ImportModal`, `MonthYearPicker`, `FileDropzone`, `SurfaceAreaDisplay`, `WeldSummaryCard`, `CalloffInput`, `SageExportModal`, `PortalToolbar`, `PdfPreviewModal` (+ `usePdfPreview` hook — mandatory for all generated PDF documents).
 
 ### Frontend utilities (`app/lib/`)
 

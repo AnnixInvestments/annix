@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { PdfPreviewModal, usePdfPreview } from "@/app/components/PdfPreviewModal";
 import type { QcReleaseCertificateRecord } from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { formatDateZA } from "@/app/lib/datetime";
@@ -59,6 +60,7 @@ export function QcReleaseCertificateSection({ jobCardId }: QcReleaseCertificateS
   const [viewMode, setViewMode] = useState<ViewMode>("list");
   const [editingCert, setEditingCert] = useState<QcReleaseCertificateRecord | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  const pdfPreview = usePdfPreview();
 
   const fetchCertificates = useCallback(async () => {
     try {
@@ -187,7 +189,10 @@ export function QcReleaseCertificateSection({ jobCardId }: QcReleaseCertificateS
                 <button
                   type="button"
                   onClick={() =>
-                    stockControlApiClient.openReleaseCertificatePdf(jobCardId, cert.id)
+                    pdfPreview.openWithFetch(
+                      () => stockControlApiClient.openReleaseCertificatePdf(jobCardId, cert.id),
+                      `release-cert-${cert.certificateNumber || cert.id}.pdf`,
+                    )
                   }
                   className="text-sm text-blue-600 hover:text-blue-800"
                 >
@@ -213,6 +218,7 @@ export function QcReleaseCertificateSection({ jobCardId }: QcReleaseCertificateS
           ))}
         </div>
       )}
+      <PdfPreviewModal state={pdfPreview.state} onClose={pdfPreview.close} />
     </div>
   );
 }

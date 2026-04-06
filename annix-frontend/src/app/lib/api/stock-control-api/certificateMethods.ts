@@ -1,4 +1,3 @@
-import { throwIfNotOk } from "@/app/lib/api/apiError";
 import { StockControlApiClient } from "./base";
 import type {
   CalibrationCertificate,
@@ -57,7 +56,7 @@ declare module "./base" {
       jobCardId: number,
       force?: boolean,
     ): Promise<{ id: number; certificateCount: number }>;
-    downloadDataBook(jobCardId: number): Promise<void>;
+    downloadDataBook(jobCardId: number): Promise<Blob>;
     recentBatches(stockItemId: number): Promise<string[]>;
     uploadCalibrationCertificate(
       file: File,
@@ -169,22 +168,7 @@ proto.compileDataBook = async function (jobCardId, force = false) {
 };
 
 proto.downloadDataBook = async function (jobCardId) {
-  const url = `${this.baseURL}/stock-control/certificates/job-card/${jobCardId}/data-book`;
-  const response = await fetch(url, {
-    headers: { Authorization: `Bearer ${this.accessToken}` },
-  });
-
-  await throwIfNotOk(response);
-
-  const blob = await response.blob();
-  const blobUrl = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = blobUrl;
-  a.download = `DataBook-JC${jobCardId}.pdf`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(blobUrl);
+  return this.requestBlob(`/stock-control/certificates/job-card/${jobCardId}/data-book`);
 };
 
 proto.recentBatches = async function (stockItemId) {

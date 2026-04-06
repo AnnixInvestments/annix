@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { PdfPreviewModal, usePdfPreview } from "@/app/components/PdfPreviewModal";
 import type { StaffMember } from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { formatDateZA } from "@/app/lib/datetime";
@@ -21,6 +22,7 @@ export default function StaffPage() {
     departmentId: null as number | null,
   });
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
+  const pdfPreview = usePdfPreview();
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [showLimitWarning, setShowLimitWarning] = useState(false);
 
@@ -104,15 +106,14 @@ export default function StaffPage() {
     }
   };
 
-  const handlePrintIdCard = async (staffId: number) => {
-    try {
-      await stockControlApiClient.downloadStaffIdCardPdf(staffId);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to download ID card");
-    }
+  const handlePrintIdCard = (staffId: number) => {
+    pdfPreview.openWithFetch(
+      () => stockControlApiClient.downloadStaffIdCardPdf(staffId),
+      `staff-id-${staffId}.pdf`,
+    );
   };
 
-  const handlePrintBatchIdCards = async () => {
+  const handlePrintBatchIdCards = () => {
     if (selectedIds.size === 0) {
       setError("Please select at least one staff member to print ID cards");
       return;
@@ -121,14 +122,12 @@ export default function StaffPage() {
       setShowLimitWarning(true);
       return;
     }
-    try {
-      setIsDownloadingPdf(true);
-      await stockControlApiClient.downloadBatchStaffIdCards(Array.from(selectedIds));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to download batch ID cards");
-    } finally {
-      setIsDownloadingPdf(false);
-    }
+    setIsDownloadingPdf(true);
+    pdfPreview.openWithFetch(
+      () => stockControlApiClient.downloadBatchStaffIdCards(Array.from(selectedIds)),
+      "staff-id-cards-batch.pdf",
+    );
+    setIsDownloadingPdf(false);
   };
 
   const toggleSelectAll = () => {
@@ -555,6 +554,7 @@ export default function StaffPage() {
           </div>
         </div>
       )}
+      <PdfPreviewModal state={pdfPreview.state} onClose={pdfPreview.close} />
     </div>
   );
 }

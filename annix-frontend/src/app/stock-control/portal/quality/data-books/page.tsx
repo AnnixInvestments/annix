@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { PdfPreviewModal, usePdfPreview } from "@/app/components/PdfPreviewModal";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { formatDateZA } from "@/app/lib/datetime";
 import { useCompileDataBook, useSearchDataBook } from "@/app/lib/query/hooks";
@@ -9,6 +10,7 @@ export default function DataBooksPage() {
   const [jobCardId, setJobCardId] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const pdfPreview = usePdfPreview();
 
   const searchMutation = useSearchDataBook();
   const compileMutation = useCompileDataBook();
@@ -42,15 +44,14 @@ export default function DataBooksPage() {
     });
   };
 
-  const handleDownload = async () => {
+  const handleDownload = () => {
     const id = parseInt(jobCardId, 10);
     if (!id) return;
 
-    try {
-      await stockControlApiClient.downloadDataBook(id);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to download data book");
-    }
+    pdfPreview.openWithFetch(
+      () => stockControlApiClient.downloadDataBook(id),
+      `DataBook-JC${id}.pdf`,
+    );
   };
 
   const status = searchMutation.data?.status || null;
@@ -224,6 +225,7 @@ export default function DataBooksPage() {
           </div>
         )}
       </div>
+      <PdfPreviewModal state={pdfPreview.state} onClose={pdfPreview.close} />
     </div>
   );
 }

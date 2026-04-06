@@ -1,5 +1,6 @@
 "use client";
 
+import { PdfPreviewModal, usePdfPreview } from "@/app/components/PdfPreviewModal";
 import type { StockItem } from "@/app/lib/api/stockControlApi";
 import { formatDateLongZA, nowISO } from "@/app/lib/datetime";
 import { ConfirmDialog } from "../../components/ConfirmDialog";
@@ -16,7 +17,8 @@ import { formatZAR } from "../../lib/currency";
 import { useInventoryPageState } from "../../lib/useInventoryPageState";
 
 export default function InventoryPage() {
-  const inv = useInventoryPageState();
+  const pdfPreview = usePdfPreview();
+  const inv = useInventoryPageState(pdfPreview);
   const {
     canEditPrices,
     state,
@@ -418,6 +420,7 @@ export default function InventoryPage() {
         }}
         onCancel={() => updateState({ confirmDeleteId: null })}
       />
+      <PdfPreviewModal state={pdfPreview.state} onClose={pdfPreview.close} />
     </div>
   );
 }

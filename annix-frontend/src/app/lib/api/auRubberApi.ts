@@ -1267,6 +1267,35 @@ class AuRubberApiClient {
     return JSON.parse(text) as T;
   }
 
+  async requestBlob(endpoint: string, options: RequestInit = {}): Promise<Blob> {
+    const url = `${this.baseURL}${endpoint}`;
+    const config: RequestInit = {
+      ...options,
+      headers: {
+        ...this.headers(),
+        ...(options.headers as Record<string, string>),
+      },
+    };
+
+    const response = await fetch(url, config);
+
+    if (response.status === 401 && this.refreshToken) {
+      const refreshed = await this.refreshAccessToken();
+      if (refreshed) {
+        config.headers = {
+          ...this.headers(),
+          ...(options.headers as Record<string, string>),
+        };
+        const retryResponse = await fetch(url, config);
+        await throwIfNotOk(retryResponse);
+        return retryResponse.blob();
+      }
+    }
+
+    await throwIfNotOk(response);
+    return response.blob();
+  }
+
   private async requestWithFiles<T>(
     endpoint: string,
     files: File[],
@@ -2593,29 +2622,12 @@ class AuRubberApiClient {
     return `${this.baseURL}/rubber-lining/portal/au-cocs/${id}/pdf`;
   }
 
-  async auCocPdfBlobUrl(id: number): Promise<string> {
-    const response = await fetch(`${this.baseURL}/rubber-lining/portal/au-cocs/${id}/pdf`, {
-      headers: this.authHeaders(),
-    });
-    await throwIfNotOk(response);
-    const blob = await response.blob();
-    return URL.createObjectURL(blob);
+  async auCocPdfBlob(id: number): Promise<Blob> {
+    return this.requestBlob(`/rubber-lining/portal/au-cocs/${id}/pdf`);
   }
 
-  async downloadAuCocPdf(id: number, cocNumber: string): Promise<void> {
-    const response = await fetch(`${this.baseURL}/rubber-lining/portal/au-cocs/${id}/pdf`, {
-      headers: this.authHeaders(),
-    });
-    await throwIfNotOk(response);
-    const blob = await response.blob();
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${cocNumber}.pdf`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+  async downloadAuCocPdf(id: number): Promise<Blob> {
+    return this.requestBlob(`/rubber-lining/portal/au-cocs/${id}/pdf`);
   }
 
   async deleteAuCoc(id: number): Promise<void> {

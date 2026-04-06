@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { PdfPreviewModal, usePdfPreview } from "@/app/components/PdfPreviewModal";
 import type { QcControlPlanRecord } from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { formatDateZA } from "@/app/lib/datetime";
@@ -69,6 +70,7 @@ export default function QcpLogPage() {
   const [loading, setLoading] = useState(true);
   const [sortKey, setSortKey] = useState<SortKey | null>(null);
   const [sortDir, setSortDir] = useState<SortDir>("asc");
+  const pdfPreview = usePdfPreview();
 
   const loadPlans = useCallback(async (searchTerm: string) => {
     setLoading(true);
@@ -104,13 +106,16 @@ export default function QcpLogPage() {
     loadPlans("");
   }, [loadPlans]);
 
-  const handleViewPdf = useCallback(async (plan: QcControlPlanRecord) => {
-    try {
-      await stockControlApiClient.openControlPlanPdf(plan.jobCardId, plan.id);
-    } catch {
-      // PDF not available
-    }
-  }, []);
+  const handleViewPdf = useCallback(
+    (plan: QcControlPlanRecord) => {
+      const qcpNum = plan.qcpNumber || `QCP-${plan.id}`;
+      pdfPreview.openWithFetch(
+        () => stockControlApiClient.openControlPlanPdf(plan.jobCardId, plan.id),
+        `${qcpNum}.pdf`,
+      );
+    },
+    [pdfPreview],
+  );
 
   const handleSort = useCallback(
     (key: SortKey) => {
@@ -155,7 +160,7 @@ export default function QcpLogPage() {
   ];
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+    <div className="px-4 py-6 sm:px-6 lg:px-8">
       <div className="mb-6">
         <h1 className="text-xl font-semibold text-gray-900">QCP Log</h1>
         <p className="mt-1 text-sm text-gray-500">All Quality Control Plans across all job cards</p>
@@ -272,6 +277,7 @@ export default function QcpLogPage() {
           </tbody>
         </table>
       </div>
+      <PdfPreviewModal state={pdfPreview.state} onClose={pdfPreview.close} />
     </div>
   );
 }

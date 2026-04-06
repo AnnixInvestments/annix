@@ -72,7 +72,7 @@ declare module "./base" {
     uploadDispatchLoadPhotos(jobCardId: number, files: File[]): Promise<DispatchLoadPhoto[]>;
     dispatchLoadPhotos(jobCardId: number): Promise<DispatchLoadPhoto[]>;
     deleteDispatchLoadPhoto(jobCardId: number, photoId: number): Promise<{ success: boolean }>;
-    downloadSignedJobCardPdf(jobCardId: number): Promise<void>;
+    downloadSignedJobCardPdf(jobCardId: number): Promise<Blob>;
     workflowStepConfigs(): Promise<WorkflowStepConfig[]>;
     updateWorkflowStepLabel(key: string, label: string): Promise<{ success: boolean }>;
     addWorkflowStep(input: {
@@ -310,24 +310,11 @@ proto.deleteDispatchLoadPhoto = async function (jobCardId, photoId) {
 };
 
 proto.downloadSignedJobCardPdf = async function (jobCardId) {
-  const h = this.headers();
   const cacheBuster = nowMillis();
-  const response = await fetch(
-    `${API_BASE_URL}/stock-control/workflow/job-cards/${jobCardId}/print?_t=${cacheBuster}`,
-    { headers: { Authorization: h.Authorization ?? "" }, cache: "no-store" },
+  return this.requestBlob(
+    `/stock-control/workflow/job-cards/${jobCardId}/print?_t=${cacheBuster}`,
+    { cache: "no-store" },
   );
-
-  await throwIfNotOk(response);
-
-  const blob = await response.blob();
-  const url = window.URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = `job-card-signed-${jobCardId}.pdf`;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  window.URL.revokeObjectURL(url);
 };
 
 proto.workflowStepConfigs = async function () {

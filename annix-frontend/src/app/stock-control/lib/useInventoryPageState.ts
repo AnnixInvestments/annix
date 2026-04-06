@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { usePdfPreview } from "@/app/components/PdfPreviewModal";
 import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
 import type {
   ImportResult,
@@ -175,7 +176,7 @@ const INITIAL_STATE: InventoryPageState = {
   expandedGroups: new Map(),
 };
 
-export function useInventoryPageState() {
+export function useInventoryPageState(pdfPreview?: ReturnType<typeof usePdfPreview>) {
   const { user } = useStockControlAuth();
   const canEditPrices =
     user?.role === "admin" || user?.role === "manager" || user?.role === "accounts";
@@ -504,7 +505,10 @@ export function useInventoryPageState() {
     try {
       updateState({ isPrintingLabels: true });
       const idsArray = [...state.selectedIds];
-      await stockControlApiClient.downloadBatchLabelsPdf({ ids: idsArray });
+      const blob = await stockControlApiClient.downloadBatchLabelsPdf({ ids: idsArray });
+      if (pdfPreview) {
+        pdfPreview.open(blob, "shelf-labels.pdf");
+      }
       const itemsNeedingClear = allItems
         .filter((item) => idsArray.includes(item.id) && item.needsQrPrint)
         .map((item) => item.id);
@@ -519,15 +523,18 @@ export function useInventoryPageState() {
     } finally {
       updateState({ isPrintingLabels: false });
     }
-  }, [state.selectedIds, allItems, updateState, invalidateInventory]);
+  }, [state.selectedIds, allItems, updateState, invalidateInventory, pdfPreview]);
 
   const handlePrintAll = useCallback(async () => {
     try {
       updateState({ isPrintingLabels: true });
-      await stockControlApiClient.downloadBatchLabelsPdf({
+      const blob = await stockControlApiClient.downloadBatchLabelsPdf({
         search: state.search || undefined,
         category: state.categoryFilter || undefined,
       });
+      if (pdfPreview) {
+        pdfPreview.open(blob, "shelf-labels.pdf");
+      }
       const itemsNeedingClear = allItems.filter((item) => item.needsQrPrint).map((item) => item.id);
       if (itemsNeedingClear.length > 0) {
         await stockControlApiClient.clearQrPrintFlag(itemsNeedingClear);
@@ -540,7 +547,7 @@ export function useInventoryPageState() {
     } finally {
       updateState({ isPrintingLabels: false });
     }
-  }, [state.search, state.categoryFilter, allItems, updateState, invalidateInventory]);
+  }, [state.search, state.categoryFilter, allItems, updateState, invalidateInventory, pdfPreview]);
 
   const updatePendingMinLevel = useCallback((itemId: number, value: number) => {
     setState((prev) => {

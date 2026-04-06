@@ -3,6 +3,7 @@
 import { Eye, Loader2, Mail, RefreshCw, Zap } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { PdfPreviewModal, usePdfPreview } from "@/app/components/PdfPreviewModal";
 import {
   Pagination,
   SortDirection,
@@ -63,8 +64,7 @@ export default function AuCocsPage() {
   const [isResending, setIsResending] = useState(false);
   const [showResendModal, setShowResendModal] = useState(false);
   const [resendEmail, setResendEmail] = useState("");
-  const [pdfPreviewUrl, setPdfPreviewUrl] = useState<string | null>(null);
-  const [pdfPreviewCocNumber, setPdfPreviewCocNumber] = useState<string | null>(null);
+  const pdfPreview = usePdfPreview();
   const [progressModal, setProgressModal] = useState<{
     visible: boolean;
     title: string;
@@ -353,9 +353,10 @@ export default function AuCocsPage() {
   const handlePreview = async (coc: RubberAuCocDto) => {
     try {
       setPreviewingId(coc.id);
-      const blobUrl = await auRubberApiClient.auCocPdfBlobUrl(coc.id);
-      setPdfPreviewUrl(blobUrl);
-      setPdfPreviewCocNumber(coc.cocNumber);
+      pdfPreview.openWithFetch(
+        () => auRubberApiClient.auCocPdfBlob(coc.id),
+        `${coc.cocNumber}.pdf`,
+      );
     } catch (err) {
       showToast(err instanceof Error ? err.message : "Failed to preview PDF", "error");
     } finally {
@@ -364,17 +365,16 @@ export default function AuCocsPage() {
   };
 
   const closePdfPreview = () => {
-    if (pdfPreviewUrl) {
-      URL.revokeObjectURL(pdfPreviewUrl);
-    }
-    setPdfPreviewUrl(null);
-    setPdfPreviewCocNumber(null);
+    pdfPreview.close();
   };
 
   const handleDownload = async (coc: RubberAuCocDto) => {
     try {
       setDownloadingId(coc.id);
-      await auRubberApiClient.downloadAuCocPdf(coc.id, coc.cocNumber);
+      pdfPreview.openWithFetch(
+        () => auRubberApiClient.downloadAuCocPdf(coc.id),
+        `${coc.cocNumber}.pdf`,
+      );
     } catch (err) {
       showToast(err instanceof Error ? err.message : "Failed to download PDF", "error");
     } finally {
@@ -986,33 +986,7 @@ export default function AuCocsPage() {
         </div>
       )}
 
-      {pdfPreviewUrl && (
-        <div className="fixed inset-0 z-50 overflow-y-auto">
-          <div className="flex min-h-screen items-center justify-center p-4">
-            <div className="fixed inset-0 bg-black/10 backdrop-blur-md" onClick={closePdfPreview} />
-            <div className="relative bg-white rounded-lg shadow-xl max-w-5xl w-full h-[85vh] flex flex-col">
-              <div className="flex items-center justify-between px-6 py-4 border-b">
-                <h3 className="text-lg font-medium text-gray-900">
-                  {pdfPreviewCocNumber || "PDF Preview"}
-                </h3>
-                <button onClick={closePdfPreview} className="text-gray-400 hover:text-gray-600">
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M6 18L18 6M6 6l12 12"
-                    />
-                  </svg>
-                </button>
-              </div>
-              <div className="flex-1 min-h-0">
-                <iframe src={pdfPreviewUrl} className="w-full h-full rounded-b-lg" />
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <PdfPreviewModal state={pdfPreview.state} onClose={pdfPreview.close} />
 
       {progressModal.visible && (
         <div className="fixed inset-0 z-50 overflow-y-auto">

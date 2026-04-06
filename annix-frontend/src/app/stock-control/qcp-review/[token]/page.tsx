@@ -2,6 +2,7 @@
 
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { PdfPreviewModal, usePdfPreview } from "@/app/components/PdfPreviewModal";
 import type {
   InterventionType,
   QcControlPlanRecord,
@@ -64,6 +65,7 @@ export default function QcpReviewPage() {
   const [finalizeSuccess, setFinalizeSuccess] = useState(false);
   const [line1InitialError, setLine1InitialError] = useState(false);
   const line1InitialRef = useRef<HTMLInputElement>(null);
+  const pdfPreview = usePdfPreview();
 
   useEffect(() => {
     const load = async () => {
@@ -663,13 +665,10 @@ export default function QcpReviewPage() {
             <button
               type="button"
               onClick={() => {
-                publicApi(`/${tokenStr}/pdf`)
-                  .then((res) => res.blob())
-                  .then((b) => {
-                    const url = URL.createObjectURL(b);
-                    window.open(url, "_blank");
-                  })
-                  .catch(() => setErrorMessage("Failed to load PDF"));
+                pdfPreview.openWithFetch(
+                  () => publicApi(`/${tokenStr}/pdf`).then((res) => res.blob()),
+                  `QCP-${plan?.qcpNumber || "preview"}.pdf`,
+                );
               }}
               className="rounded-md border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
             >
@@ -706,6 +705,8 @@ export default function QcpReviewPage() {
           </div>
         </div>
       )}
+
+      <PdfPreviewModal state={pdfPreview.state} onClose={pdfPreview.close} />
     </div>
   );
 }

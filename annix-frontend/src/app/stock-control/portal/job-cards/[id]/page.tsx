@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { PdfPreviewModal, usePdfPreview } from "@/app/components/PdfPreviewModal";
 import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
 import type {
   BackgroundStepStatus,
@@ -248,6 +249,7 @@ export default function JobCardDetailPage() {
   };
 
   const [downloadError, setDownloadError] = useState<string | null>(null);
+  const pdfPreview = usePdfPreview();
 
   const handlePrintQr = async () => {
     try {
@@ -419,13 +421,12 @@ export default function JobCardDetailPage() {
     setShowApprovalModal(true);
   };
 
-  const handlePrintSignedPdf = async () => {
-    try {
-      setDownloadError(null);
-      await stockControlApiClient.downloadSignedJobCardPdf(jobId);
-    } catch (err) {
-      setDownloadError(err instanceof Error ? err.message : "Failed to download signed PDF");
-    }
+  const handlePrintSignedPdf = () => {
+    setDownloadError(null);
+    pdfPreview.openWithFetch(
+      () => stockControlApiClient.downloadSignedJobCardPdf(jobId),
+      `job-card-signed-${jobId}.pdf`,
+    );
   };
 
   const currentStatus = workflowStatus?.currentStatus || null;
@@ -2454,6 +2455,7 @@ export default function JobCardDetailPage() {
           </div>,
           document.body,
         )}
+      <PdfPreviewModal state={pdfPreview.state} onClose={pdfPreview.close} />
     </div>
   );
 }

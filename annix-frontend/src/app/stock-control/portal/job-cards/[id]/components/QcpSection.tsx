@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { PdfPreviewModal, usePdfPreview } from "@/app/components/PdfPreviewModal";
 import type {
   InterventionType,
   QcControlPlanRecord,
@@ -217,6 +218,7 @@ export function QcpSection({ jobCardId }: QcpSectionProps) {
     party: PartyKey;
   } | null>(null);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pdfPreview = usePdfPreview();
 
   const fetchPlans = useCallback(async () => {
     try {
@@ -460,7 +462,11 @@ export function QcpSection({ jobCardId }: QcpSectionProps) {
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation();
-                        stockControlApiClient.openControlPlanPdf(jobCardId, plan.id);
+                        const qcpNum = plan.qcpNumber || `QCP-${plan.id}`;
+                        pdfPreview.openWithFetch(
+                          () => stockControlApiClient.openControlPlanPdf(jobCardId, plan.id),
+                          `${qcpNum}.pdf`,
+                        );
                       }}
                       className="text-sm text-blue-600 hover:text-blue-800"
                     >
@@ -626,6 +632,7 @@ export function QcpSection({ jobCardId }: QcpSectionProps) {
           onCancel={() => setInitialsTarget(null)}
         />
       )}
+      <PdfPreviewModal state={pdfPreview.state} onClose={pdfPreview.close} />
     </div>
   );
 }

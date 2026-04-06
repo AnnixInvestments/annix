@@ -1,5 +1,3 @@
-import { throwIfNotOk } from "@/app/lib/api/apiError";
-import { API_BASE_URL } from "@/lib/api-config";
 import { StockControlApiClient } from "./base";
 import type { StaffMember, StaffSignature } from "./types";
 
@@ -11,8 +9,8 @@ declare module "./base" {
     updateStaffMember(id: number, data: Partial<StaffMember>): Promise<StaffMember>;
     deleteStaffMember(id: number): Promise<StaffMember>;
     uploadStaffPhoto(id: number, file: File): Promise<StaffMember>;
-    downloadStaffIdCardPdf(staffId: number): Promise<void>;
-    downloadBatchStaffIdCards(ids?: number[]): Promise<void>;
+    downloadStaffIdCardPdf(staffId: number): Promise<Blob>;
+    downloadBatchStaffIdCards(ids?: number[]): Promise<Blob>;
     mySignature(): Promise<StaffSignature>;
     uploadSignature(signatureDataUrl: string): Promise<StaffSignature>;
     deleteSignature(): Promise<{ success: boolean }>;
@@ -59,34 +57,15 @@ proto.uploadStaffPhoto = async function (id, file) {
 };
 
 proto.downloadStaffIdCardPdf = async function (staffId) {
-  const h = this.headers();
-  const response = await fetch(`${API_BASE_URL}/stock-control/staff/${staffId}/qr/pdf`, {
-    headers: { Authorization: h.Authorization ?? "" },
-  });
-
-  await throwIfNotOk(response);
-
-  const blob = await response.blob();
-  const url = window.URL.createObjectURL(blob);
-  window.open(url, "_blank");
+  return this.requestBlob(`/stock-control/staff/${staffId}/qr/pdf`);
 };
 
 proto.downloadBatchStaffIdCards = async function (ids) {
-  const h = this.headers();
-  const response = await fetch(`${API_BASE_URL}/stock-control/staff/id-cards/pdf`, {
+  return this.requestBlob("/stock-control/staff/id-cards/pdf", {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: h.Authorization ?? "",
-    },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ ids }),
   });
-
-  await throwIfNotOk(response);
-
-  const blob = await response.blob();
-  const url = window.URL.createObjectURL(blob);
-  window.open(url, "_blank");
 };
 
 proto.mySignature = async function () {

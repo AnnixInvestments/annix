@@ -1,5 +1,3 @@
-import { throwIfNotOk } from "@/app/lib/api/apiError";
-import { API_BASE_URL } from "@/lib/api-config";
 import { StockControlApiClient } from "./base";
 import type {
   ImportMatchRow,
@@ -78,12 +76,12 @@ declare module "./base" {
       stockTakeDate?: string | null,
     ): Promise<ImportResult>;
     clearQrPrintFlag(ids: number[]): Promise<{ cleared: number }>;
-    downloadStockItemQrPdf(id: number): Promise<void>;
+    downloadStockItemQrPdf(id: number): Promise<Blob>;
     downloadBatchLabelsPdf(body: {
       ids?: number[];
       search?: string;
       category?: string;
-    }): Promise<void>;
+    }): Promise<Blob>;
     stockItemPriceHistory(stockItemId: number, limit?: number): Promise<StockPriceHistory[]>;
     matchImportRows(rows: unknown[]): Promise<ImportMatchRow[]>;
     confirmReviewedImport(
@@ -182,31 +180,15 @@ proto.clearQrPrintFlag = async function (ids) {
 };
 
 proto.downloadStockItemQrPdf = async function (id) {
-  return this.downloadBlob(`/stock-control/inventory/${id}/qr/pdf`, `stock-${id}-label.pdf`);
+  return this.requestBlob(`/stock-control/inventory/${id}/qr/pdf`);
 };
 
 proto.downloadBatchLabelsPdf = async function (body) {
-  const h = this.headers();
-  const response = await fetch(`${API_BASE_URL}/stock-control/inventory/labels/pdf`, {
+  return this.requestBlob("/stock-control/inventory/labels/pdf", {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: h.Authorization ?? "",
-    },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
-
-  await throwIfNotOk(response);
-
-  const blob = await response.blob();
-  const url = window.URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = "shelf-labels.pdf";
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  window.URL.revokeObjectURL(url);
 };
 
 proto.stockItemPriceHistory = async function (stockItemId, limit) {

@@ -2,6 +2,7 @@
 
 import { Download } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { PdfPreviewModal, usePdfPreview } from "@/app/components/PdfPreviewModal";
 import type {
   BackgroundStepStatus,
   JobCardLineItem,
@@ -35,6 +36,7 @@ export function ReleaseDocumentGenerator(props: ReleaseDocumentGeneratorProps) {
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const pdfPreview = usePdfPreview();
 
   const qaFinalStep = backgroundSteps.find((bg) => bg.stepKey === "qa_final_check");
   const isVisible = qaFinalStep && qaFinalStep.completedAt === null;
@@ -218,7 +220,12 @@ export function ReleaseDocumentGenerator(props: ReleaseDocumentGeneratorProps) {
                   <button
                     key={release.id}
                     type="button"
-                    onClick={() => stockControlApiClient.openItemsReleasePdf(jobCardId, release.id)}
+                    onClick={() =>
+                      pdfPreview.openWithFetch(
+                        () => stockControlApiClient.openItemsReleasePdf(jobCardId, release.id),
+                        `items-release-${release.id}.pdf`,
+                      )
+                    }
                     className="inline-flex items-center gap-1.5 rounded-md bg-white border border-green-300 px-3 py-1.5 text-xs font-medium text-green-800 hover:bg-green-100 transition-colors"
                   >
                     <Download className="h-3.5 w-3.5" />
@@ -241,7 +248,10 @@ export function ReleaseDocumentGenerator(props: ReleaseDocumentGeneratorProps) {
                       key={release.id}
                       type="button"
                       onClick={() =>
-                        stockControlApiClient.openItemsReleasePdf(jobCardId, release.id)
+                        pdfPreview.openWithFetch(
+                          () => stockControlApiClient.openItemsReleasePdf(jobCardId, release.id),
+                          `items-release-${release.id}.pdf`,
+                        )
                       }
                       className="inline-flex items-center gap-1.5 rounded-md bg-white border border-blue-300 px-3 py-1.5 text-xs font-medium text-blue-800 hover:bg-blue-100 transition-colors"
                     >
@@ -390,6 +400,7 @@ export function ReleaseDocumentGenerator(props: ReleaseDocumentGeneratorProps) {
           </>
         )}
       </div>
+      <PdfPreviewModal state={pdfPreview.state} onClose={pdfPreview.close} />
     </div>
   );
 }

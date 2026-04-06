@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useState } from "react";
+import { PdfPreviewModal, usePdfPreview } from "@/app/components/PdfPreviewModal";
 import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
 import { formatDateZA } from "@/app/lib/datetime";
 import {
@@ -42,6 +43,7 @@ export default function InventoryDetailPage() {
   const createManualAdjustmentMutation = useCreateManualAdjustment();
   const uploadPhotoMutation = useUploadStockItemPhoto();
   const downloadQrMutation = useDownloadStockItemQrPdf();
+  const pdfPreview = usePdfPreview();
 
   const [mutationError, setMutationError] = useState<string | null>(null);
   const [showAdjustModal, setShowAdjustModal] = useState(false);
@@ -115,7 +117,8 @@ export default function InventoryDetailPage() {
   const handlePrintQr = async () => {
     try {
       setMutationError(null);
-      await downloadQrMutation.mutateAsync(itemId);
+      const blob = await downloadQrMutation.mutateAsync(itemId);
+      pdfPreview.open(blob, `stock-${itemId}-label.pdf`);
     } catch (err) {
       setMutationError(err instanceof Error ? err.message : "Failed to download QR label");
     }
@@ -685,6 +688,7 @@ export default function InventoryDetailPage() {
           </div>
         </div>
       )}
+      <PdfPreviewModal state={pdfPreview.state} onClose={pdfPreview.close} />
     </div>
   );
 }

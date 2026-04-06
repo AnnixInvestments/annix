@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
+import { PdfPreviewModal, usePdfPreview } from "@/app/components/PdfPreviewModal";
 import type {
   InterventionType,
   QcControlPlanRecord,
@@ -63,6 +64,7 @@ export function QcpEditorModal(props: QcpEditorModalProps) {
   );
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const pdfPreview = usePdfPreview();
 
   const updateField = useCallback(
     (
@@ -100,8 +102,11 @@ export function QcpEditorModal(props: QcpEditorModalProps) {
         activities: activities.filter((a) => a.description.trim() !== ""),
       });
       onSaved();
-      stockControlApiClient.openControlPlanPdf(jobCardId, plan.id);
-      onClose();
+      const qcpNum = plan.qcpNumber || `QCP-${plan.id}`;
+      pdfPreview.openWithFetch(
+        () => stockControlApiClient.openControlPlanPdf(jobCardId, plan.id),
+        `${qcpNum}.pdf`,
+      );
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save");
     } finally {
@@ -278,6 +283,7 @@ export function QcpEditorModal(props: QcpEditorModalProps) {
           </button>
         </div>
       </div>
+      <PdfPreviewModal state={pdfPreview.state} onClose={pdfPreview.close} />
     </div>
   );
 }

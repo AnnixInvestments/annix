@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Breadcrumb } from "@/app/au-rubber/components/Breadcrumb";
+import { PdfPreviewModal, usePdfPreview } from "@/app/components/PdfPreviewModal";
 import { useToast } from "@/app/components/Toast";
 import {
   type AuCocStatus,
@@ -25,6 +26,7 @@ export default function AuCocDetailPage() {
   const [isSending, setIsSending] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
   const [pdfBlobUrl, setPdfBlobUrl] = useState<string | null>(null);
+  const pdfPreviewModal = usePdfPreview();
 
   const cocId = Number(params.id);
 
@@ -36,7 +38,8 @@ export default function AuCocDetailPage() {
       setError(null);
 
       if (cocData.generatedPdfPath) {
-        const blobUrl = await auRubberApiClient.auCocPdfBlobUrl(cocId);
+        const blob = await auRubberApiClient.auCocPdfBlob(cocId);
+        const blobUrl = URL.createObjectURL(blob);
         if (pdfBlobUrl) {
           URL.revokeObjectURL(pdfBlobUrl);
         }
@@ -92,16 +95,12 @@ export default function AuCocDetailPage() {
     }
   };
 
-  const handleDownload = async () => {
+  const handleDownload = () => {
     if (!coc) return;
-    try {
-      setIsDownloading(true);
-      await auRubberApiClient.downloadAuCocPdf(coc.id, coc.cocNumber);
-    } catch (err) {
-      showToast(err instanceof Error ? err.message : "Failed to download PDF", "error");
-    } finally {
-      setIsDownloading(false);
-    }
+    pdfPreviewModal.openWithFetch(
+      () => auRubberApiClient.downloadAuCocPdf(coc.id),
+      `${coc.cocNumber}.pdf`,
+    );
   };
 
   const statusBadge = (status: AuCocStatus) => {
@@ -608,6 +607,7 @@ export default function AuCocDetailPage() {
           </div>
         </div>
       )}
+      <PdfPreviewModal state={pdfPreviewModal.state} onClose={pdfPreviewModal.close} />
     </div>
   );
 }
