@@ -12,6 +12,7 @@ import {
   JobCardCoatingAnalysis,
   StockAssessmentItem,
 } from "../entities/coating-analysis.entity";
+import { CustomerPurchaseOrder } from "../entities/customer-purchase-order.entity";
 import { JobCard } from "../entities/job-card.entity";
 import { JobCardExtractionCorrection } from "../entities/job-card-extraction-correction.entity";
 import { JobCardLineItem } from "../entities/job-card-line-item.entity";
@@ -101,6 +102,8 @@ export class CoatingAnalysisService {
     private readonly companyRepo: Repository<StockControlCompany>,
     @InjectRepository(JobCardExtractionCorrection)
     private readonly correctionRepo: Repository<JobCardExtractionCorrection>,
+    @InjectRepository(CustomerPurchaseOrder)
+    private readonly cpoRepo: Repository<CustomerPurchaseOrder>,
     private readonly aiChatService: AiChatService,
     private readonly m2CalculationService: M2CalculationService,
     @Inject(STORAGE_SERVICE)
@@ -872,6 +875,31 @@ export class CoatingAnalysisService {
     return this.analysisRepo.save(analysis);
   }
 
+  private async backfillNotesFromCpo(jobCard: JobCard): Promise<void> {
+    const existingNotes = (jobCard.notes || "").trim();
+    if (existingNotes) return;
+
+    const lineItems = await this.lineItemRepo.find({
+      where: { jobCardId: jobCard.id, companyId: jobCard.companyId },
+    });
+    const lineItemNotes = lineItems.map((li) => (li.notes || "").trim()).filter(Boolean);
+    const combined = sanitizeNotes(lineItemNotes.join("\n"));
+
+    if (combined) {
+      jobCard.notes = combined;
+      return;
+    }
+
+    if (jobCard.cpoId) {
+      const cpo = await this.cpoRepo.findOne({
+        where: { id: jobCard.cpoId, companyId: jobCard.companyId },
+      });
+      if (cpo?.coatingSpecs) {
+        jobCard.notes = sanitizeNotes(cpo.coatingSpecs);
+      }
+    }
+  }
+
   async bulkReanalyse(companyId: number): Promise<{ processed: number; failed: number }> {
     const BATCH_SIZE = 5;
 
@@ -885,6 +913,7 @@ export class CoatingAnalysisService {
     const sanitizedCards = await Promise.all(
       draftJobCards.map(async (jc) => {
         jc.notes = sanitizeNotes(jc.notes);
+        await this.backfillNotesFromCpo(jc);
         await this.jobCardRepo.save(jc);
         return jc;
       }),

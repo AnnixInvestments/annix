@@ -538,4 +538,265 @@ describe("M2CalculationService", () => {
       expect(result.totalM2).toBeGreaterThan(0);
     });
   });
+
+  describe("FAE (Flanged All Ends) recognition", () => {
+    it("parses FAE as 3 flanges", async () => {
+      setupStandardMocks(406.4, 9.53);
+      const [result] = await service.calculateM2ForItems(["400x150NB 810x405 RED/TEE FAE 1000/3"]);
+      expect(result.parsedFlangeCount).toBe(3);
+    });
+
+    it("parses FAE flange config as all_ends", async () => {
+      setupStandardMocks(406.4, 9.53);
+      const [result] = await service.calculateM2ForItems(["400x150NB 810x405 RED/TEE FAE 1000/3"]);
+      expect(result.parsedFlangeConfig).toBe("all_ends");
+    });
+
+    it("includes flange area in m2 for FAE items", async () => {
+      setupStandardMocks(406.4, 9.53);
+      mockFlangeDimension.flangeDimensionsForM2.mockResolvedValue({
+        D: 580,
+        d4: 407,
+        b: 30,
+      });
+
+      const [withFae] = await service.calculateM2ForItems(["400NB TEE 810x405 FAE 1000/3"]);
+
+      mockFlangeDimension.flangeDimensionsForM2.mockResolvedValue(null);
+      const [withoutFlange] = await service.calculateM2ForItems(["400NB TEE 810x405 PE"]);
+
+      expect(withFae.externalM2!).toBeGreaterThan(withoutFlange.externalM2!);
+    });
+  });
+
+  describe("RED/TEE (reducing tee) recognition", () => {
+    it("parses RED/TEE as reducing_tee fitting type", async () => {
+      setupStandardMocks(406.4, 9.53);
+      const [result] = await service.calculateM2ForItems(["400x150NB 810x405 RED/TEE FAE 1000/3"]);
+      expect(result.parsedFittingType).toBe("reducing_tee");
+      expect(result.parsedItemType).toBe("tee");
+    });
+
+    it("parses REDUCING TEE with space separator", async () => {
+      setupStandardMocks(406.4, 9.53);
+      const [result] = await service.calculateM2ForItems([
+        "400x150NB 810x405 REDUCING TEE FAE 1000/3",
+      ]);
+      expect(result.parsedFittingType).toBe("reducing_tee");
+    });
+
+    it("parses main and branch diameter from reducing NB pattern", async () => {
+      setupStandardMocks(406.4, 9.53);
+      const [result] = await service.calculateM2ForItems(["400x150NB 810x405 RED/TEE FAE 1000/3"]);
+      expect(result.parsedDiameterMm).toBe(400);
+    });
+
+    it("uses branch OD for reducing tee branch area", async () => {
+      const mainOd = 406.4;
+      const mainWt = 9.53;
+      const branchOd = 168.3;
+      const branchWt = 7.11;
+
+      mockNbOdLookup.nbToOd
+        .mockResolvedValueOnce({ outsideDiameterMm: mainOd })
+        .mockResolvedValueOnce({ outsideDiameterMm: branchOd });
+      mockPipeSchedule.getSchedulesByNbMm
+        .mockResolvedValueOnce([{ schedule: "Std", wallThicknessMm: mainWt }])
+        .mockResolvedValueOnce([{ schedule: "Std", wallThicknessMm: branchWt }]);
+      mockFlangeDimension.flangeDimensionsForM2.mockResolvedValue(null);
+
+      const [result] = await service.calculateM2ForItems(["400x150NB 810x405 RED/TEE PE"]);
+
+      expect(result.externalM2).toBeGreaterThan(0);
+      expect(mockNbOdLookup.nbToOd).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  describe("reducer with branch diameter", () => {
+    it("uses actual branch OD for small end instead of 0.7 estimate", async () => {
+      const mainOd = 406.4;
+      const mainWt = 9.53;
+      const branchOd = 219.1;
+      const branchWt = 8.18;
+
+      mockNbOdLookup.nbToOd
+        .mockResolvedValueOnce({ outsideDiameterMm: mainOd })
+        .mockResolvedValueOnce({ outsideDiameterMm: branchOd });
+      mockPipeSchedule.getSchedulesByNbMm
+        .mockResolvedValueOnce([{ schedule: "Std", wallThicknessMm: mainWt }])
+        .mockResolvedValueOnce([{ schedule: "Std", wallThicknessMm: branchWt }]);
+      mockFlangeDimension.flangeDimensionsForM2.mockResolvedValue(null);
+
+      const [result] = await service.calculateM2ForItems(["400x200NB CONCENTRIC REDUCER C/F 500"]);
+
+      expect(result.parsedItemType).toBe("reducer");
+      expect(result.externalM2).toBeGreaterThan(0);
+
+      const avgOd = (mainOd + branchOd) / 2;
+      const lengthM = 1.0;
+      const expectedExt = Math.PI * (avgOd / 1000) * lengthM;
+      expect(result.externalM2).toBeCloseTo(expectedExt, 2);
+    });
+  });
+
+  describe("blank/blind flange m2", () => {
+    it("calculates m2 for blank flange with dimension data", async () => {
+      setupStandardMocks(323.9, 9.53);
+      mockFlangeDimension.flangeDimensionsForM2.mockResolvedValue({
+        D: 440,
+        d4: 325,
+        b: 24,
+      });
+
+      const [result] = await service.calculateM2ForItems(["300NB BLANK FLANGE SABS 1123 1000/3"]);
+
+      expect(result.parsedItemType).toBe("flange");
+      expect(result.parsedFlangeConfig).toBe("blank_flange");
+      expect(result.parsedFlangeCount).toBe(1);
+      expect(result.externalM2).toBeGreaterThan(0);
+
+      const flangeOd = 440;
+      const boreMm = 0;
+      const thickness = 24;
+      const faceArea = ((Math.PI / 4) * (flangeOd ** 2 - boreMm ** 2)) / 1_000_000;
+      const edgeArea = Math.PI * (flangeOd / 1000) * (thickness / 1000);
+      expect(result.externalM2).toBeCloseTo(faceArea + edgeArea, 3);
+    });
+
+    it("uses zero bore for blank flange (solid disc)", async () => {
+      setupStandardMocks(323.9, 9.53);
+      mockFlangeDimension.flangeDimensionsForM2.mockResolvedValue({
+        D: 440,
+        d4: 325,
+        b: 24,
+      });
+
+      const [blankResult] = await service.calculateM2ForItems(["300NB BLANK FLANGE 1000/3"]);
+
+      mockFlangeDimension.flangeDimensionsForM2.mockResolvedValue({
+        D: 440,
+        d4: 325,
+        b: 24,
+      });
+
+      const [blindResult] = await service.calculateM2ForItems(["300NB BLIND FLANGE 1000/3"]);
+
+      expect(blankResult.externalM2).toBeCloseTo(blindResult.externalM2!, 4);
+      expect(blankResult.externalM2!).toBeGreaterThan(0);
+    });
+
+    it("falls back to pipe OD estimate when no dimension data", async () => {
+      setupStandardMocks(323.9, 9.53);
+      mockFlangeDimension.flangeDimensionsForM2.mockResolvedValue(null);
+
+      const [result] = await service.calculateM2ForItems(["300NB BLANK FLANGE ASME B16.5 150"]);
+
+      expect(result.parsedItemType).toBe("flange");
+      expect(result.externalM2).toBeGreaterThan(0);
+    });
+
+    it("blank flange has larger face area than regular flange (no bore subtracted)", async () => {
+      setupStandardMocks(323.9, 9.53);
+      mockFlangeDimension.flangeDimensionsForM2.mockResolvedValue({
+        D: 440,
+        d4: 325,
+        b: 24,
+      });
+
+      const [blankResult] = await service.calculateM2ForItems(["300NB BLANK FLANGE 1000/3"]);
+
+      mockFlangeDimension.flangeDimensionsForM2.mockResolvedValue({
+        D: 440,
+        d4: 325,
+        b: 24,
+      });
+
+      const flangeOd = 440;
+      const bore = 325;
+      const thickness = 24;
+      const regularFace = ((Math.PI / 4) * (flangeOd ** 2 - bore ** 2)) / 1_000_000;
+      const blankFace = ((Math.PI / 4) * flangeOd ** 2) / 1_000_000;
+      const edgeArea = Math.PI * (flangeOd / 1000) * (thickness / 1000);
+
+      expect(blankResult.externalM2).toBeCloseTo(blankFace + edgeArea, 3);
+      expect(blankResult.externalM2!).toBeGreaterThan(regularFace + edgeArea);
+    });
+  });
+
+  describe("SABS pressure class parsing", () => {
+    it("parses 1000/3 as SABS 1123 pressure class", async () => {
+      setupStandardMocks(406.4, 9.53);
+      const [result] = await service.calculateM2ForItems(["400NB PIPE FBE 1000/3 6000 LG"]);
+      expect(result.parsedFlangeStandard).toBe("SABS 1123");
+      expect(result.parsedPressureClass).toBe("1000");
+    });
+
+    it("parses 1600/3 as SABS 1123 pressure class", async () => {
+      setupStandardMocks(508.0, 9.53);
+      const [result] = await service.calculateM2ForItems(["500NB 90° BEND FBE 1600/3 C/F 1020"]);
+      expect(result.parsedFlangeStandard).toBe("SABS 1123");
+      expect(result.parsedPressureClass).toBe("1600");
+    });
+  });
+
+  describe("JC #86 real-world descriptions", () => {
+    it("item 1: 400x150NB RED/TEE with FAE", async () => {
+      mockNbOdLookup.nbToOd
+        .mockResolvedValueOnce({ outsideDiameterMm: 406.4 })
+        .mockResolvedValueOnce({ outsideDiameterMm: 168.3 });
+      mockPipeSchedule.getSchedulesByNbMm
+        .mockResolvedValueOnce([{ schedule: "Std", wallThicknessMm: 9.53 }])
+        .mockResolvedValueOnce([{ schedule: "Std", wallThicknessMm: 7.11 }]);
+      mockFlangeDimension.flangeDimensionsForM2.mockResolvedValue(null);
+
+      const [result] = await service.calculateM2ForItems(["400x150NB 810x405 RED/TEE FAE 1000/3"]);
+
+      expect(result.parsedDiameterMm).toBe(400);
+      expect(result.parsedItemType).toBe("tee");
+      expect(result.parsedFittingType).toBe("reducing_tee");
+      expect(result.parsedFlangeCount).toBe(3);
+      expect(result.parsedFlangeConfig).toBe("all_ends");
+      expect(result.parsedFlangeStandard).toBe("SABS 1123");
+      expect(result.externalM2).toBeGreaterThan(1.5);
+    });
+
+    it("item 2: 500x50NB RED/TEE with FAE", async () => {
+      mockNbOdLookup.nbToOd
+        .mockResolvedValueOnce({ outsideDiameterMm: 508.0 })
+        .mockResolvedValueOnce({ outsideDiameterMm: 60.3 });
+      mockPipeSchedule.getSchedulesByNbMm
+        .mockResolvedValueOnce([{ schedule: "Std", wallThicknessMm: 9.53 }])
+        .mockResolvedValueOnce([{ schedule: "Std", wallThicknessMm: 3.91 }]);
+      mockFlangeDimension.flangeDimensionsForM2.mockResolvedValue(null);
+
+      const [result] = await service.calculateM2ForItems(["500x50NB 485x394 RED/TEE FAE 1600/3"]);
+
+      expect(result.parsedDiameterMm).toBe(500);
+      expect(result.parsedItemType).toBe("tee");
+      expect(result.parsedFittingType).toBe("reducing_tee");
+      expect(result.parsedFlangeCount).toBe(3);
+      expect(result.externalM2).toBeGreaterThan(1.0);
+    });
+
+    it("item 3: 500NB 90° BEND with FBE and C/F", async () => {
+      mockNbOdLookup.nbToOd.mockResolvedValue({ outsideDiameterMm: 508.0 });
+      mockPipeSchedule.getSchedulesByNbMm.mockResolvedValue([
+        { schedule: "Std", wallThicknessMm: 9.53 },
+      ]);
+      mockFlangeDimension.flangeDimensionsForM2.mockResolvedValue(null);
+
+      const [result] = await service.calculateM2ForItems(["500NB 90° BEND FBE 1600/3 C/F 1020"]);
+
+      expect(result.parsedDiameterMm).toBe(500);
+      expect(result.parsedItemType).toBe("bend");
+      expect(result.parsedBendAngle).toBe(90);
+      expect(result.parsedFlangeCount).toBe(2);
+      expect(result.parsedFlangeConfig).toBe("both_ends");
+
+      const cfTotal = 1020 * 2;
+      const expectedBodyExt = Math.PI * (508.0 / 1000) * (cfTotal / 1000);
+      expect(result.externalM2).toBeGreaterThan(expectedBodyExt * 0.95);
+      expect(result.externalM2).toBeGreaterThan(3.0);
+    });
+  });
 });
