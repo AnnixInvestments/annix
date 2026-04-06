@@ -1,5 +1,6 @@
 "use client";
 
+import { useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useRef, useState } from "react";
@@ -22,6 +23,7 @@ import {
   useUpdateCpoItem,
   useUpdateCpoStatus,
 } from "@/app/lib/query/hooks";
+import { stockControlKeys } from "@/app/lib/query/keys";
 import { AsteriskAllocationModal } from "../../../components/AsteriskAllocationModal";
 
 function statusBadgeColor(status: string): string {
@@ -104,6 +106,7 @@ export default function CpoDetailPage() {
   const router = useRouter();
   const id = Number(params.id);
 
+  const queryClient = useQueryClient();
   const { data: cpo, isLoading: isLoadingCpo, error: cpoError } = useCpoDetail(id);
   const { data: calloffRecords = [] } = useCpoCalloffRecords(id);
   const { data: deliveryHistory } = useCpoDeliveryHistory(id);
@@ -166,6 +169,26 @@ export default function CpoDetailPage() {
     document.addEventListener("mousemove", handleMove);
     document.addEventListener("mouseup", handleUp);
   }, []);
+
+  const [isEditingSpecs, setIsEditingSpecs] = useState(false);
+  const [specsDraft, setSpecsDraft] = useState("");
+  const [isSavingSpecs, setIsSavingSpecs] = useState(false);
+  const [specsError, setSpecsError] = useState<string | null>(null);
+
+  const handleSaveCoatingSpecs = useCallback(async () => {
+    try {
+      setIsSavingSpecs(true);
+      setSpecsError(null);
+      const trimmed = specsDraft.trim() || null;
+      await stockControlApiClient.updateCpoCoatingSpecs(id, trimmed);
+      await queryClient.invalidateQueries({ queryKey: stockControlKeys.cpos.detail(id) });
+      setIsEditingSpecs(false);
+    } catch (err) {
+      setSpecsError(err instanceof Error ? err.message : "Failed to save coating specs");
+    } finally {
+      setIsSavingSpecs(false);
+    }
+  }, [id, specsDraft, queryClient]);
 
   const [sageParseResult, setSageParseResult] = useState<SageJcDumpParseResult | null>(null);
   const [sageImportResult, setSageImportResult] = useState<SageJcDumpImportResult | null>(null);
@@ -608,27 +631,78 @@ export default function CpoDetailPage() {
         </div>
       )}
 
-      {cpo.coatingSpecs && (
-        <div className="bg-amber-50 border border-amber-200 rounded-lg shadow p-6">
-          <h2 className="text-lg font-medium text-amber-900 mb-3">
-            Coating / Lining Specifications
-          </h2>
-          <div className="space-y-1">
-            {cpo.coatingSpecs.split("\n").map((line, idx) => (
-              <div key={idx} className="flex items-start space-x-2">
-                <span className="text-amber-600 font-mono text-xs mt-0.5">
-                  {line.match(/^(EXT|INT)\s*:/i) ? `${line.split(":")[0].trim()}:` : "\u2022"}
-                </span>
-                <span className="text-sm text-gray-900">
-                  {line.match(/^(EXT|INT)\s*:/i)
-                    ? line.substring(line.indexOf(":") + 1).trim()
-                    : line}
-                </span>
-              </div>
-            ))}
-          </div>
+      <div className="bg-amber-50 border border-amber-200 rounded-lg shadow p-6">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-lg font-medium text-amber-900">Coating / Lining Specifications</h2>
+          {!isEditingSpecs && (
+            <button
+              type="button"
+              onClick={() => {
+                setSpecsDraft(cpo.coatingSpecs || "");
+                setIsEditingSpecs(true);
+                setSpecsError(null);
+              }}
+              className="text-sm text-amber-700 hover:text-amber-900 underline"
+            >
+              {cpo.coatingSpecs ? "Edit" : "Add Specs"}
+            </button>
+          )}
         </div>
-      )}
+        {specsError && <p className="text-sm text-red-600 mb-2">{specsError}</p>}
+        {isEditingSpecs ? (
+          <div className="space-y-3">
+            <textarea
+              value={specsDraft}
+              onChange={(e) => setSpecsDraft(e.target.value)}
+              rows={6}
+              className="w-full border border-amber-300 rounded-md p-3 text-sm focus:ring-amber-500 focus:border-amber-500"
+              placeholder={
+                "EXT: 1x Epoxy Primer 75\u00b5m DFT\nEXT: 1x Polyurethane Topcoat 125\u00b5m DFT\nINT: R/L 6mm Nitrile"
+              }
+            />
+            <p className="text-xs text-amber-700">
+              Saving will propagate these specs to all linked job cards.
+            </p>
+            <div className="flex space-x-2">
+              <button
+                type="button"
+                onClick={handleSaveCoatingSpecs}
+                disabled={isSavingSpecs}
+                className="px-4 py-2 text-sm font-medium text-white bg-amber-600 rounded-md hover:bg-amber-700 disabled:opacity-50"
+              >
+                {isSavingSpecs ? "Saving..." : "Save & Propagate to JCs"}
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsEditingSpecs(false)}
+                disabled={isSavingSpecs}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        ) : cpo.coatingSpecs ? (
+          <div className="space-y-1">
+            {cpo.coatingSpecs.split("\n").map((line, idx) => {
+              const isLabelled = /^(EXT|INT)\s*:/i.test(line);
+              const label = isLabelled ? `${line.split(":")[0].trim()}:` : "\u2022";
+              const content = isLabelled ? line.substring(line.indexOf(":") + 1).trim() : line;
+              return (
+                <div key={idx} className="flex items-start space-x-2">
+                  <span className="text-amber-600 font-mono text-xs mt-0.5">{label}</span>
+                  <span className="text-sm text-gray-900">{content}</span>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <p className="text-sm text-amber-700 italic">
+            No coating specs. Click &ldquo;Add Specs&rdquo; to enter specifications that will be
+            propagated to all linked job cards.
+          </p>
+        )}
+      </div>
 
       {overdueRecords.length > 0 && (
         <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-start space-x-3">

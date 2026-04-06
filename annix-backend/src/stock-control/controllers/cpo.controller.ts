@@ -23,6 +23,7 @@ import {
   ConfirmCpoImportDto,
   ConfirmSageJcDumpDto,
   UpdateCalloffStatusDto,
+  UpdateCpoDetailsDto,
   UpdateCpoItemDto,
   UpdateCpoStatusDto,
 } from "../dto/additional.dto";
@@ -189,6 +190,16 @@ export class CpoController {
     @Body() dto: UpdateCpoStatusDto,
   ) {
     return this.cpoService.updateStatus(req.user.companyId, id, dto.status as CpoStatus);
+  }
+
+  @Put(":id/coating-specs")
+  @ApiOperation({ summary: "Update CPO coating specs and propagate to child JCs" })
+  async updateCoatingSpecs(
+    @Req() req: any,
+    @Param("id", ParseIntPipe) id: number,
+    @Body() dto: UpdateCpoDetailsDto,
+  ) {
+    return this.cpoService.updateCoatingSpecs(req.user.companyId, id, dto.coatingSpecs ?? null);
   }
 
   @Get(":id/calloff-records")

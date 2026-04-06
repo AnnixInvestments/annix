@@ -192,6 +192,12 @@ export class UpdateCpoStatusDto {
   status: string;
 }
 
+export class UpdateCpoDetailsDto {
+  @IsOptional()
+  @IsString()
+  coatingSpecs?: string | null;
+}
+
 export class ConfirmSageJcDumpDto {
   @IsNumber()
   cpoId: number;

@@ -234,6 +234,35 @@ export class CpoService {
     return this.cpoRepo.save(cpo);
   }
 
+  async updateCoatingSpecs(
+    companyId: number,
+    id: number,
+    coatingSpecs: string | null,
+  ): Promise<CustomerPurchaseOrder> {
+    const cpo = await this.findById(companyId, id);
+    cpo.coatingSpecs = coatingSpecs;
+    await this.cpoRepo.save(cpo);
+
+    const linkedJobCards = await this.jobCardRepo.find({
+      where: { companyId, cpoId: id },
+    });
+
+    const updatedJcs: JobCard[] = [];
+    linkedJobCards.forEach((jc) => {
+      jc.notes = coatingSpecs;
+      updatedJcs.push(jc);
+    });
+
+    if (updatedJcs.length > 0) {
+      await this.jobCardRepo.save(updatedJcs);
+      this.logger.log(
+        `Propagated coating specs to ${updatedJcs.length} job card(s) for CPO ${cpo.cpoNumber}`,
+      );
+    }
+
+    return cpo;
+  }
+
   async addCpoItem(
     companyId: number,
     cpoId: number,
