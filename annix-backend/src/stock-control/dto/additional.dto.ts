@@ -18,6 +18,14 @@ export class UpdateRubberPlanDto {
   @IsOptional()
   @IsObject()
   autoPlanSnapshot?: Record<string, any>;
+
+  @IsOptional()
+  @IsNumber()
+  suggestionTrainingId?: number | null;
+
+  @IsOptional()
+  @IsString()
+  suggestionOutcome?: "applied" | "applied_modified" | "ignored" | null;
 }
 
 export class MarkOffcutAsWastageDto {

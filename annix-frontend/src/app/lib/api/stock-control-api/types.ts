@@ -586,6 +586,8 @@ export interface RubberPlanOverride {
   manualRolls: RubberPlanManualRoll[] | null;
   dimensionOverrides?: RubberDimensionOverride[] | null;
   autoPlanSnapshot?: Record<string, any> | null;
+  suggestionTrainingId?: number | null;
+  suggestionOutcome?: "applied" | "applied_modified" | "ignored" | null;
   reviewedBy: string | null;
   reviewedAt: string | null;
 }

@@ -53,6 +53,21 @@ export class RubberCuttingTraining {
   @Column({ name: "usage_count", type: "int", default: 1 })
   usageCount: number;
 
+  @Column({ name: "times_suggested", type: "int", default: 0 })
+  timesSuggested: number;
+
+  @Column({ name: "times_applied", type: "int", default: 0 })
+  timesApplied: number;
+
+  @Column({ name: "times_applied_modified", type: "int", default: 0 })
+  timesAppliedModified: number;
+
+  @Column({ name: "times_ignored", type: "int", default: 0 })
+  timesIgnored: number;
+
+  @Column({ name: "feedback_score", type: "numeric", precision: 4, scale: 2, default: 0 })
+  feedbackScore: number;
+
   @Column({ name: "reviewed_by", type: "varchar", length: 255, nullable: true })
   reviewedBy: string | null;
 

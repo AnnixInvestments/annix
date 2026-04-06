@@ -131,6 +131,20 @@ export class JobCardsController {
     );
   }
 
+  @Post("rubber-cutting-feedback")
+  @ApiOperation({ summary: "Record feedback on a cutting plan suggestion" })
+  async rubberCuttingFeedback(
+    @Req() req: any,
+    @Body() body: { trainingId: number; outcome: "applied" | "applied_modified" | "ignored" },
+  ) {
+    await this.rubberCuttingTrainingService.recordFeedback(
+      req.user.companyId,
+      body.trainingId,
+      body.outcome,
+    );
+    return { ok: true };
+  }
+
   @Get("rubber-dimension-suggestions")
   @ApiOperation({ summary: "Query learned rubber dimension overrides" })
   async rubberDimensionSuggestions(@Req() req: any, @Query() query: any) {
@@ -606,6 +620,15 @@ export class JobCardsController {
         .catch((err) => {
           const message = err instanceof Error ? err.message : "Unknown error";
           this.logger.error(`Failed to capture cutting training for JC ${id}: ${message}`);
+        });
+    }
+
+    if (dto.suggestionTrainingId && dto.suggestionOutcome) {
+      this.rubberCuttingTrainingService
+        .recordFeedback(req.user.companyId, dto.suggestionTrainingId, dto.suggestionOutcome)
+        .catch((err) => {
+          const message = err instanceof Error ? err.message : "Unknown error";
+          this.logger.warn(`Failed to record suggestion feedback: ${message}`);
         });
     }
 

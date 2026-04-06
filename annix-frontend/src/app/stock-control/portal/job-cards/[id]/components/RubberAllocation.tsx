@@ -1171,6 +1171,8 @@ function RubberSOHPanel({
   >({});
   const [learnedSuggestion, setLearnedSuggestion] = useState<any | null>(null);
   const [aiSuggestion, setAiSuggestion] = useState<any | null>(null);
+  const [appliedSuggestionId, setAppliedSuggestionId] = useState<number | null>(null);
+  const [suggestionWasApplied, setSuggestionWasApplied] = useState(false);
 
   useEffect(() => {
     if (existingOverride?.status === "accepted" || existingOverride?.status === "manual") return;
@@ -1248,10 +1250,13 @@ function RubberSOHPanel({
     setSaving(true);
     setSaveError(null);
     try {
+      const sugId = learnedSuggestion?.id || null;
       const override: RubberPlanOverride = {
         status: "accepted",
         selectedPlyCombination: selectedPly,
         manualRolls: null,
+        suggestionTrainingId: sugId,
+        suggestionOutcome: sugId ? "ignored" : null,
         reviewedBy: null,
         reviewedAt: null,
       };
@@ -1268,6 +1273,8 @@ function RubberSOHPanel({
 
   const handleRejectPlan = () => {
     setPlanDecision("rejected");
+    setSuggestionWasApplied(false);
+    setAppliedSuggestionId(null);
     if (manualRolls.length === 0) {
       setManualRolls([{ widthMm: 1200, lengthM: 12.5, thicknessMm: 5, cuts: [] }]);
     }
@@ -1295,12 +1302,24 @@ function RubberSOHPanel({
         wastePercentage: plan.wastePercentage,
         totalRollsNeeded: plan.totalRollsNeeded,
       };
+      let suggestionOutcome: "applied" | "applied_modified" | "ignored" | null = null;
+      if (appliedSuggestionId) {
+        suggestionOutcome = suggestionWasApplied ? "applied" : "applied_modified";
+      } else if (learnedSuggestion || aiSuggestion) {
+        const sugId = learnedSuggestion?.id || null;
+        if (sugId) {
+          suggestionOutcome = "ignored";
+        }
+      }
+
       const override: RubberPlanOverride = {
         status: "manual",
         selectedPlyCombination: null,
         manualRolls: rolls,
         dimensionOverrides: dimensionOverrides?.length ? dimensionOverrides : null,
         autoPlanSnapshot,
+        suggestionTrainingId: appliedSuggestionId || learnedSuggestion?.id || null,
+        suggestionOutcome,
         reviewedBy: null,
         reviewedAt: null,
       };
@@ -1367,6 +1386,8 @@ function RubberSOHPanel({
               if (rolls.length > 0) {
                 setManualRolls(rolls);
                 setPlanDecision("rejected");
+                setAppliedSuggestionId(learnedSuggestion.id);
+                setSuggestionWasApplied(true);
               }
             }}
             className="mt-2 px-3 py-1 bg-indigo-600 text-white rounded text-xs font-medium hover:bg-indigo-700"

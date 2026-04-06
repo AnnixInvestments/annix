@@ -189,13 +189,19 @@ export class RubberCuttingTrainingService {
 
     const fingerprint = this.panelFingerprint(panels);
 
-    const exactMatches = await this.trainingRepo.find({
-      where: { companyId, panelFingerprint: fingerprint },
-      order: { usageCount: "DESC" },
-      take: 3,
-    });
+    const exactMatches = await this.trainingRepo
+      .createQueryBuilder("t")
+      .where("t.company_id = :companyId", { companyId })
+      .andWhere("t.panel_fingerprint = :fingerprint", { fingerprint })
+      .orderBy("t.feedback_score", "DESC")
+      .addOrderBy("t.usage_count", "DESC")
+      .limit(3)
+      .getMany();
 
-    if (exactMatches.length > 0) return { exact: exactMatches, aiSuggestion: null };
+    if (exactMatches.length > 0) {
+      await this.incrementSuggested(exactMatches.map((m) => m.id));
+      return { exact: exactMatches, aiSuggestion: null };
+    }
 
     const panelCount = panels.reduce((sum, p) => sum + p.quantity, 0);
     const minCount = Math.max(1, panelCount - 2);
@@ -205,7 +211,8 @@ export class RubberCuttingTrainingService {
       .createQueryBuilder("t")
       .where("t.company_id = :companyId", { companyId })
       .andWhere("t.panel_count BETWEEN :minCount AND :maxCount", { minCount, maxCount })
-      .orderBy("t.usage_count", "DESC")
+      .orderBy("t.feedback_score", "DESC")
+      .addOrderBy("t.usage_count", "DESC")
       .limit(5)
       .getMany();
 
@@ -302,5 +309,55 @@ export class RubberCuttingTrainingService {
       this.logger.warn(`AI layout suggestion failed: ${message}`);
       return null;
     }
+  }
+
+  private async incrementSuggested(ids: number[]): Promise<void> {
+    if (ids.length === 0) return;
+    await this.trainingRepo
+      .createQueryBuilder()
+      .update()
+      .set({ timesSuggested: () => "times_suggested + 1" })
+      .whereInIds(ids)
+      .execute()
+      .catch((err) => {
+        const message = err instanceof Error ? err.message : "Unknown error";
+        this.logger.warn(`Failed to increment times_suggested: ${message}`);
+      });
+  }
+
+  async recordFeedback(
+    companyId: number,
+    trainingId: number,
+    outcome: "applied" | "applied_modified" | "ignored",
+  ): Promise<void> {
+    const training = await this.trainingRepo.findOne({
+      where: { id: trainingId, companyId },
+    });
+    if (!training) return;
+
+    const updates: Partial<RubberCuttingTraining> = {};
+
+    if (outcome === "applied") {
+      updates.timesApplied = training.timesApplied + 1;
+    } else if (outcome === "applied_modified") {
+      updates.timesAppliedModified = training.timesAppliedModified + 1;
+    } else {
+      updates.timesIgnored = training.timesIgnored + 1;
+    }
+
+    const applied = updates.timesApplied || training.timesApplied || 0;
+    const modified = updates.timesAppliedModified || training.timesAppliedModified || 0;
+    const ignored = updates.timesIgnored || training.timesIgnored || 0;
+    const total = applied + modified + ignored;
+
+    if (total > 0) {
+      const score = ((applied * 1.0 + modified * 0.5) / total) * 100;
+      updates.feedbackScore = Math.round(score * 100) / 100;
+    }
+
+    await this.trainingRepo.update(training.id, updates);
+    this.logger.log(
+      `Recorded feedback "${outcome}" for training #${trainingId} (score=${updates.feedbackScore})`,
+    );
   }
 }
