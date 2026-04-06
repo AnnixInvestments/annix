@@ -9,6 +9,7 @@ import type {
   BackgroundStepStatus,
   JobCard,
   JobCardApproval,
+  QcControlPlanRecord,
   Requisition,
   StaffMember,
   StockAllocation,
@@ -84,6 +85,7 @@ export default function JobCardDetailPage() {
   const [capturedFile, setCapturedFile] = useState<File | null>(null);
   const [backgroundSteps, setBackgroundSteps] = useState<BackgroundStepStatus[]>([]);
   const [completingStepKey, setCompletingStepKey] = useState<string | null>(null);
+  const [controlPlans, setControlPlans] = useState<QcControlPlanRecord[]>([]);
   const [deliveryJobCards, setDeliveryJobCards] = useState<JobCard[]>([]);
   const [adjacentIds, setAdjacentIds] = useState<{
     previousId: number | null;
@@ -133,6 +135,11 @@ export default function JobCardDetailPage() {
         .jobCardAdjacentIds(jobId)
         .then((data) => setAdjacentIds(data))
         .catch(() => setAdjacentIds({ previousId: null, nextId: null }));
+
+      stockControlApiClient
+        .controlPlansForJobCard(jobId)
+        .then((data) => setControlPlans(data))
+        .catch(() => setControlPlans([]));
     } catch (err) {
       setError(err instanceof Error ? err : new Error("Failed to load job card"));
     } finally {
@@ -443,6 +450,17 @@ export default function JobCardDetailPage() {
     return workflowStatus.canApprove;
   }, [currentStep, workflowStatus, isPreviewActive, effectiveName, userRole]);
 
+  const isQualityUser = useMemo(() => {
+    if (!workflowStatus) return false;
+    if (workflowStatus.jobCardStatus !== "active") return false;
+    const checkName = isPreviewActive ? effectiveName : user?.name;
+    if (!checkName) return false;
+    const assignments = workflowStatus.stepAssignments || {};
+    const qualityAssigned = assignments["quality_check"] || assignments["custom_quality_check"];
+    if (!qualityAssigned || qualityAssigned.length === 0) return false;
+    return qualityAssigned.some((u) => u.name === checkName);
+  }, [workflowStatus, user?.name, effectiveName, isPreviewActive]);
+
   const canAcceptDraft = useMemo(() => {
     if (!workflowStatus || workflowStatus.jobCardStatus !== "draft") return false;
     if (userRole === "admin" && !isPreviewActive) return true;
@@ -594,11 +612,12 @@ export default function JobCardDetailPage() {
       const trigger = bg.triggerAfterStep || "__root__";
       const originFgIdx = resolveOriginFgIdx(trigger);
       const isColored = isInColoredBranch(bg.stepKey);
+      const effectiveOrigin = isColored ? originFgIdx + 1 : originFgIdx;
 
       if (isAdminView) {
-        if (originFgIdx >= currentFgIdx) return false;
+        if (effectiveOrigin >= currentFgIdx) return false;
       } else {
-        if (isColored ? originFgIdx > currentFgIdx : originFgIdx >= currentFgIdx) return false;
+        if (effectiveOrigin >= currentFgIdx) return false;
 
         if (hasIncompleteColored && !isInColoredBranch(bg.stepKey)) {
           const originKey = fgKeys[resolveOriginFgIdx(trigger)];
@@ -717,13 +736,26 @@ export default function JobCardDetailPage() {
     ? currentStepPhaseInfo.phase1ActionLabel
     : currentStepPhaseInfo.actionLabel;
 
+  const qcpsNeedApproval = useMemo(() => {
+    return (
+      controlPlans.length > 0 && controlPlans.some((plan) => plan.approvalStatus !== "approved")
+    );
+  }, [controlPlans]);
+
+  const rubberPlanPending = useMemo(() => {
+    const ca = coating.coatingAnalysis;
+    if (!ca?.hasInternalLining) return false;
+    const override = jobCard?.rubberPlanOverride;
+    const status = override ? override.status : null;
+    return status !== "accepted" && status !== "manual";
+  }, [coating.coatingAnalysis, jobCard?.rubberPlanOverride]);
+
   const specsNeedReview = useMemo(() => {
     if (!currentStep || currentStep !== "manager_approval") return false;
     const ca = coating.coatingAnalysis;
     const coatingPending = ca && ca.coats.length > 0 && ca.status !== "accepted";
-    const rubberPending = ca?.hasInternalLining && ca.status !== "accepted";
-    return coatingPending || rubberPending || false;
-  }, [currentStep, coating.coatingAnalysis]);
+    return coatingPending || rubberPlanPending || false;
+  }, [currentStep, coating.coatingAnalysis, rubberPlanPending]);
 
   const prevStepBgPending = useMemo(() => {
     if (!workflowStatus || !currentStep) return false;
@@ -1365,18 +1397,17 @@ export default function JobCardDetailPage() {
                         Check Coating Spec
                       </button>
                     )}
-                  {coating.coatingAnalysis?.hasInternalLining &&
-                    coating.coatingAnalysis.status !== "accepted" && (
-                      <button
-                        onClick={() => {
-                          handleTabChange("rubber-analysis");
-                          scrollToElementId("rubber-spec-review");
-                        }}
-                        className="px-3 py-1.5 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-medium text-xs transition-colors"
-                      >
-                        Check Rubber Spec
-                      </button>
-                    )}
+                  {rubberPlanPending && (
+                    <button
+                      onClick={() => {
+                        handleTabChange("rubber-analysis");
+                        scrollToElementId("rubber-spec-review");
+                      }}
+                      className="px-3 py-1.5 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-medium text-xs transition-colors"
+                    >
+                      Accept Rubber Plan
+                    </button>
+                  )}
                 </>
               )}
               {canApprove &&
@@ -1406,6 +1437,20 @@ export default function JobCardDetailPage() {
                     className="px-3 py-1.5 bg-green-600 text-white rounded-md hover:bg-green-700 font-medium text-xs disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
                   >
                     {currentStepPhaseInfo.phase2ActionLabel || "Release"}
+                  </button>
+                )}
+              {(isQualityUser || isAdminView) &&
+                qcpsNeedApproval &&
+                currentStep &&
+                currentStep !== "admin_approval" && (
+                  <button
+                    onClick={() => {
+                      handleTabChange("quality");
+                      scrollToElementId("quality-tab-content");
+                    }}
+                    className="px-3 py-1.5 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-medium text-xs transition-colors"
+                  >
+                    Approve QCP
                   </button>
                 )}
               {canAcceptDraft && (
