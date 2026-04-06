@@ -620,7 +620,8 @@ export default function JobCardDetailPage() {
       } else {
         if (effectiveOrigin >= currentFgIdx) return false;
 
-        if (hasIncompleteColored && !isInColoredBranch(bg.stepKey)) {
+        const isNonBlocking = bg.rejoinAtStep !== null;
+        if (hasIncompleteColored && !isInColoredBranch(bg.stepKey) && !isNonBlocking) {
           const originKey = fgKeys[resolveOriginFgIdx(trigger)];
           const coloredOrigin =
             coloredSteps.length > 0
@@ -661,6 +662,7 @@ export default function JobCardDetailPage() {
     const firstOriginIdx = resolveOriginFgIdx(allActionable[0].triggerAfterStep || "__root__");
 
     return allActionable.filter((bg) => {
+      if (bg.rejoinAtStep !== null) return true;
       const originIdx = resolveOriginFgIdx(bg.triggerAfterStep || "__root__");
       return originIdx === firstOriginIdx;
     });
