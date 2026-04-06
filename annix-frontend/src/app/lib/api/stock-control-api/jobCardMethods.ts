@@ -92,7 +92,9 @@ declare module "./base" {
         lengthMm: number;
         quantity: number;
       }>,
-    ): Promise<any[]>;
+      rollWidthMm?: number,
+      rollLengthMm?: number,
+    ): Promise<any>;
     rubberDimensionSuggestions(params: {
       itemType?: string | null;
       nbMm?: number | null;
@@ -350,11 +352,11 @@ proto.rubberDimensionSuggestions = async function (params) {
   );
 };
 
-proto.rubberCuttingSuggestions = async function (panels) {
+proto.rubberCuttingSuggestions = async function (panels, rollWidthMm, rollLengthMm) {
   return this.request("/stock-control/job-cards/rubber-cutting-suggestions", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ panels }),
+    body: JSON.stringify({ panels, rollWidthMm, rollLengthMm }),
   });
 };
 

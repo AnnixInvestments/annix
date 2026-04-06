@@ -116,11 +116,18 @@ export class JobCardsController {
   @ApiOperation({ summary: "Query learned cutting plan suggestions for a panel set" })
   async rubberCuttingSuggestions(
     @Req() req: any,
-    @Body() body: { panels: Array<{ widthMm: number; lengthMm: number; quantity: number }> },
+    @Body()
+    body: {
+      panels: Array<{ widthMm: number; lengthMm: number; quantity: number }>;
+      rollWidthMm?: number;
+      rollLengthMm?: number;
+    },
   ) {
     return this.rubberCuttingTrainingService.suggestionsForPanels(
       req.user.companyId,
       body.panels || [],
+      body.rollWidthMm,
+      body.rollLengthMm,
     );
   }
 

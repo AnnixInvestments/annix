@@ -1170,6 +1170,7 @@ function RubberSOHPanel({
     Record<number, { widthMm: number; lengthM: number; inStock: boolean }>
   >({});
   const [learnedSuggestion, setLearnedSuggestion] = useState<any | null>(null);
+  const [aiSuggestion, setAiSuggestion] = useState<any | null>(null);
 
   useEffect(() => {
     if (existingOverride?.status === "accepted" || existingOverride?.status === "manual") return;
@@ -1193,11 +1194,17 @@ function RubberSOHPanel({
 
     if (mergedPanels.length === 0) return;
 
+    const firstRoll = plan.rolls[0];
+    const rollWidthMm = firstRoll ? firstRoll.rollSpec.widthMm : 1200;
+    const rollLengthMm = firstRoll ? firstRoll.rollSpec.lengthM * 1000 : 12500;
+
     stockControlApiClient
-      .rubberCuttingSuggestions(mergedPanels)
-      .then((suggestions) => {
-        if (suggestions.length > 0) {
-          setLearnedSuggestion(suggestions[0]);
+      .rubberCuttingSuggestions(mergedPanels, rollWidthMm, rollLengthMm)
+      .then((result: any) => {
+        if (result.exact && result.exact.length > 0) {
+          setLearnedSuggestion(result.exact[0]);
+        } else if (result.aiSuggestion) {
+          setAiSuggestion(result.aiSuggestion);
         }
       })
       .catch(() => null);
@@ -1365,6 +1372,41 @@ function RubberSOHPanel({
             className="mt-2 px-3 py-1 bg-indigo-600 text-white rounded text-xs font-medium hover:bg-indigo-700"
           >
             Apply learned layout
+          </button>
+        </div>
+      )}
+
+      {!learnedSuggestion && aiSuggestion && planDecision === "pending" && (
+        <div className="mb-4 p-3 bg-purple-50 border border-purple-200 rounded-lg text-sm">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="font-medium text-purple-800">
+              Nix suggests a layout based on similar past jobs
+            </span>
+            <span className="text-xs text-purple-600">
+              (based on {aiSuggestion.basedOnExamples} similar example
+              {aiSuggestion.basedOnExamples === 1 ? "" : "s"})
+            </span>
+          </div>
+          {aiSuggestion.reasoning && (
+            <p className="text-xs text-purple-700 mb-1">{aiSuggestion.reasoning}</p>
+          )}
+          {aiSuggestion.estimatedWastePct !== null && (
+            <p className="text-xs text-purple-600">
+              Estimated waste: {Number(aiSuggestion.estimatedWastePct).toFixed(1)}%
+            </p>
+          )}
+          <button
+            type="button"
+            onClick={() => {
+              const rolls = aiSuggestion.rolls || [];
+              if (rolls.length > 0) {
+                setManualRolls(rolls);
+                setPlanDecision("rejected");
+              }
+            }}
+            className="mt-2 px-3 py-1 bg-purple-600 text-white rounded text-xs font-medium hover:bg-purple-700"
+          >
+            Apply AI suggestion
           </button>
         </div>
       )}

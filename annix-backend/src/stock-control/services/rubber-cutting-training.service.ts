@@ -3,6 +3,7 @@ import { Injectable, Logger } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { now } from "../../lib/datetime";
+import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
 import { RubberCuttingTraining } from "../entities/rubber-cutting-training.entity";
 
 interface PanelDimension {
@@ -28,6 +29,7 @@ export class RubberCuttingTrainingService {
   constructor(
     @InjectRepository(RubberCuttingTraining)
     private readonly trainingRepo: Repository<RubberCuttingTraining>,
+    private readonly aiChatService: AiChatService,
   ) {}
 
   panelFingerprint(panels: PanelDimension[]): string {
@@ -180,8 +182,10 @@ export class RubberCuttingTrainingService {
   async suggestionsForPanels(
     companyId: number,
     panels: PanelDimension[],
-  ): Promise<RubberCuttingTraining[]> {
-    if (panels.length === 0) return [];
+    rollWidthMm?: number,
+    rollLengthMm?: number,
+  ): Promise<{ exact: RubberCuttingTraining[]; aiSuggestion: any | null }> {
+    if (panels.length === 0) return { exact: [], aiSuggestion: null };
 
     const fingerprint = this.panelFingerprint(panels);
 
@@ -191,7 +195,7 @@ export class RubberCuttingTrainingService {
       take: 3,
     });
 
-    if (exactMatches.length > 0) return exactMatches;
+    if (exactMatches.length > 0) return { exact: exactMatches, aiSuggestion: null };
 
     const panelCount = panels.reduce((sum, p) => sum + p.quantity, 0);
     const minCount = Math.max(1, panelCount - 2);
@@ -205,6 +209,98 @@ export class RubberCuttingTrainingService {
       .limit(5)
       .getMany();
 
-    return similar;
+    if (similar.length === 0) return { exact: [], aiSuggestion: null };
+
+    const aiSuggestion = await this.aiSuggestLayout(
+      panels,
+      similar,
+      rollWidthMm || 1200,
+      rollLengthMm || 12500,
+    );
+
+    return { exact: [], aiSuggestion };
+  }
+
+  private async aiSuggestLayout(
+    panels: PanelDimension[],
+    trainingExamples: RubberCuttingTraining[],
+    rollWidthMm: number,
+    rollLengthMm: number,
+  ): Promise<any | null> {
+    try {
+      const available = await this.aiChatService.isAvailable();
+      if (!available) return null;
+
+      const exampleSummaries = trainingExamples.slice(0, 3).map((ex) => ({
+        panels: ex.panelSummary,
+        manualLayout: ex.manualPlan,
+        wastePct: Number(ex.manualWastePct),
+        usageCount: ex.usageCount,
+      }));
+
+      const prompt = [
+        "You are a rubber cutting plan optimiser for industrial pipe lining.",
+        `Roll dimensions: ${rollWidthMm}mm wide x ${rollLengthMm}mm long.`,
+        "",
+        "Panels to cut:",
+        ...panels.map(
+          (p) => `  - ${p.quantity}x panel: ${p.widthMm}mm wide x ${p.lengthMm}mm long`,
+        ),
+        "",
+        "Here are similar past layouts that a human expert approved:",
+        JSON.stringify(exampleSummaries, null, 2),
+        "",
+        "Based on these examples, suggest an optimal arrangement of these panels on rolls.",
+        "Minimise waste by grouping panels of similar width into horizontal bands.",
+        "Multiple panels can sit side-by-side across the roll width if they fit.",
+        "",
+        "Return ONLY valid JSON (no markdown fences) in this exact format:",
+        JSON.stringify(
+          {
+            rolls: [
+              {
+                widthMm: rollWidthMm,
+                lengthM: rollLengthMm / 1000,
+                thicknessMm: 5,
+                cuts: [{ description: "panel description", widthMm: 0, lengthMm: 0, quantity: 1 }],
+              },
+            ],
+            reasoning: "Brief explanation of arrangement strategy",
+            estimatedWastePct: 0,
+          },
+          null,
+          2,
+        ),
+      ].join("\n");
+
+      const { content } = await this.aiChatService.chat(
+        [{ role: "user", content: prompt }],
+        "You are a cutting plan optimiser. Return only valid JSON. No markdown code fences.",
+      );
+
+      const cleaned = content
+        .replace(/```json\s*/g, "")
+        .replace(/```\s*/g, "")
+        .trim();
+      const parsed = JSON.parse(cleaned);
+
+      if (!parsed.rolls || !Array.isArray(parsed.rolls)) return null;
+
+      this.logger.log(
+        `AI suggested layout for ${panels.length} panel types: ${parsed.reasoning || "no reasoning"}`,
+      );
+
+      return {
+        source: "ai",
+        rolls: parsed.rolls,
+        reasoning: parsed.reasoning || null,
+        estimatedWastePct: parsed.estimatedWastePct || null,
+        basedOnExamples: trainingExamples.length,
+      };
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Unknown error";
+      this.logger.warn(`AI layout suggestion failed: ${message}`);
+      return null;
+    }
   }
 }
