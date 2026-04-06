@@ -267,7 +267,7 @@ export function QualityTab(props: QualityTabProps) {
               <div className="flex flex-wrap gap-2">
                 <button
                   onClick={() => setActiveForm("blast-profile")}
-                  className="rounded-md bg-teal-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-teal-700"
+                  className="rounded-md bg-sky-700 px-3 py-1.5 text-xs font-medium text-white hover:bg-sky-800"
                 >
                   + Blast Profile
                 </button>
@@ -280,7 +280,7 @@ export function QualityTab(props: QualityTabProps) {
                         setPaintProfileCoatLabel(label);
                         setActiveForm("paint-profile");
                       }}
-                      className="rounded-md bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-indigo-700"
+                      className="rounded-md bg-sky-700 px-3 py-1.5 text-xs font-medium text-white hover:bg-sky-800"
                     >
                       + Paint Profile ({label})
                     </button>
@@ -288,15 +288,9 @@ export function QualityTab(props: QualityTabProps) {
                 })}
                 <button
                   onClick={() => setActiveForm("shore-hardness")}
-                  className="rounded-md bg-teal-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-teal-700"
+                  className="rounded-md bg-sky-700 px-3 py-1.5 text-xs font-medium text-white hover:bg-sky-800"
                 >
                   + Shore Hardness
-                </button>
-                <button
-                  onClick={() => setActiveForm("dft")}
-                  className="rounded-md bg-teal-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-teal-700"
-                >
-                  + DFT
                 </button>
               </div>
             </div>
@@ -701,6 +695,7 @@ export function QualityTab(props: QualityTabProps) {
         existing={editingShoreHardness}
         onSaved={handleFormSaved}
         batchRecords={batchRecords}
+        coatingAnalysis={coatingAnalysis}
       />
       <DftReadingForm
         isOpen={activeForm === "dft"}

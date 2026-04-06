@@ -118,6 +118,7 @@ export type {
   QcDftReadingRecord,
   QcDustDebrisRecord,
   QcDustDebrisTestEntry,
+  QcEnvironmentalRecordResponse,
   QcFinalInspection,
   QcItemsReleaseRecord,
   QcLiningCheck,

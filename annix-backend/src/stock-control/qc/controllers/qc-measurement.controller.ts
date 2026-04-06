@@ -8,6 +8,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   Req,
   Res,
   UseGuards,
@@ -556,6 +557,75 @@ export class QcMeasurementController {
       req.user.companyId,
       decodeURIComponent(customerName),
     );
+  }
+
+  // ── Environmental Records ────────────────────────────────────────
+
+  @Get("environmental-records")
+  @ApiOperation({ summary: "Environmental records for a job card" })
+  async environmentalRecordsList(@Req() req: any, @Param("jobCardId") jobCardId: number) {
+    return this.qcService.environmentalRecordsForJobCard(req.user.companyId, jobCardId);
+  }
+
+  @Get("environmental-records/by-date")
+  @ApiOperation({ summary: "Environmental record for a specific date" })
+  async environmentalRecordByDate(
+    @Req() req: any,
+    @Param("jobCardId") jobCardId: number,
+    @Query("date") date: string,
+  ) {
+    const record = await this.qcService.environmentalRecordByDate(
+      req.user.companyId,
+      jobCardId,
+      date,
+    );
+    return record || null;
+  }
+
+  @Post("environmental-records")
+  @StockControlRoles("quality", "manager", "admin")
+  @PermissionKey("qc.measurements")
+  @ApiOperation({ summary: "Create environmental record" })
+  async createEnvironmentalRecord(
+    @Req() req: any,
+    @Param("jobCardId") jobCardId: number,
+    @Body() body: any,
+  ) {
+    return this.qcService.createEnvironmentalRecord(req.user.companyId, jobCardId, body, req.user);
+  }
+
+  @Post("environmental-records/bulk")
+  @StockControlRoles("quality", "manager", "admin")
+  @PermissionKey("qc.measurements")
+  @ApiOperation({ summary: "Bulk create/upsert environmental records (CSV upload)" })
+  async bulkCreateEnvironmentalRecords(
+    @Req() req: any,
+    @Param("jobCardId") jobCardId: number,
+    @Body() body: { records: any[] },
+  ) {
+    return this.qcService.bulkCreateEnvironmentalRecords(
+      req.user.companyId,
+      jobCardId,
+      body.records,
+      req.user,
+    );
+  }
+
+  @Patch("environmental-records/:id")
+  @StockControlRoles("quality", "manager", "admin")
+  @PermissionKey("qc.measurements")
+  @ApiOperation({ summary: "Update environmental record" })
+  async updateEnvironmentalRecord(@Req() req: any, @Param("id") id: number, @Body() body: any) {
+    return this.qcService.updateEnvironmentalRecord(req.user.companyId, id, body);
+  }
+
+  @Delete("environmental-records/:id")
+  @StockControlRoles("quality", "manager", "admin")
+  @PermissionKey("qc.measurements")
+  @ApiOperation({ summary: "Delete environmental record" })
+  async deleteEnvironmentalRecord(@Req() req: any, @Param("id") id: number) {
+    await this.qcService.deleteEnvironmentalRecord(req.user.companyId, id);
+    return { deleted: true };
   }
 
   // ── Defelsko Batches ──────────────────────────────────────────────

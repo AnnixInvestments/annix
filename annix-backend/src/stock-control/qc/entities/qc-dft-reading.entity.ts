@@ -56,6 +56,12 @@ export class QcDftReading {
   @Column({ name: "average_microns", type: "numeric", precision: 8, scale: 2, nullable: true })
   averageMicrons: number | null;
 
+  @Column({ name: "temperature", type: "numeric", precision: 5, scale: 1, nullable: true })
+  temperature: number | null;
+
+  @Column({ name: "humidity", type: "numeric", precision: 5, scale: 1, nullable: true })
+  humidity: number | null;
+
   @Column({ name: "reading_date", type: "date" })
   readingDate: string;
 

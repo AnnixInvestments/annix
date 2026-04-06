@@ -762,6 +762,8 @@ export interface QcDftReadingRecord {
   specMaxMicrons: number;
   readings: QcDftReadingEntry[];
   averageMicrons: number | null;
+  temperature: number | null;
+  humidity: number | null;
   readingDate: string;
   capturedByName: string;
   capturedById: number | null;
@@ -1098,6 +1100,21 @@ export interface QcItemsReleaseRecord {
 export interface QcReleaseDocumentsResult {
   itemsRelease: QcItemsReleaseRecord;
   releaseCertificate: QcReleaseCertificateRecord;
+}
+
+export interface QcEnvironmentalRecordResponse {
+  id: number;
+  companyId: number;
+  jobCardId: number;
+  recordDate: string;
+  humidity: number;
+  temperatureC: number;
+  dewPointC: number | null;
+  notes: string | null;
+  recordedByName: string;
+  recordedById: number | null;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface CalibrationCertificate {

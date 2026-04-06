@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type {
   CoatingAnalysis,
   IssuanceBatchRecord,
@@ -140,11 +140,29 @@ export default function DftReadingForm(props: DftReadingFormProps) {
   const [readingDate, setReadingDate] = useState(
     existing?.readingDate ? existing.readingDate.slice(0, 10) : todayDateString(),
   );
+  const [temperature, setTemperature] = useState(
+    existing?.temperature != null ? String(existing.temperature) : "",
+  );
+  const [humidity, setHumidity] = useState(
+    existing?.humidity != null ? String(existing.humidity) : "",
+  );
   const [readings, setReadings] = useState<Record<number, string>>(
     initialReadings(existing ?? null),
   );
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!readingDate || existing) return;
+    stockControlApiClient
+      .environmentalRecordByDate(jobCardId, readingDate)
+      .then((envRec) => {
+        if (!envRec) return;
+        setTemperature((prev) => (prev === "" ? String(envRec.temperatureC) : prev));
+        setHumidity((prev) => (prev === "" ? String(envRec.humidity) : prev));
+      })
+      .catch(() => {});
+  }, [readingDate, jobCardId, existing]);
 
   const parsedMin = Number(specMinMicrons);
   const parsedMax = Number(specMaxMicrons);
@@ -210,6 +228,8 @@ export default function DftReadingForm(props: DftReadingFormProps) {
       specMaxMicrons: parsedMax,
       readings: entries,
       averageMicrons: average,
+      temperature: temperature ? Number(temperature) : null,
+      humidity: humidity ? Number(humidity) : null,
       readingDate,
     };
 
@@ -317,6 +337,28 @@ export default function DftReadingForm(props: DftReadingFormProps) {
             value={specMaxMicrons}
             onChange={(e) => setSpecMaxMicrons(e.target.value)}
             placeholder="250"
+            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Temperature (°C)</label>
+          <input
+            type="number"
+            step="0.1"
+            value={temperature}
+            onChange={(e) => setTemperature(e.target.value)}
+            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Humidity (%)</label>
+          <input
+            type="number"
+            step="0.1"
+            value={humidity}
+            onChange={(e) => setHumidity(e.target.value)}
             className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
           />
         </div>

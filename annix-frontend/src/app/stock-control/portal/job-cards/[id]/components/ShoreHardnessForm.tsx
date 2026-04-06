@@ -1,7 +1,11 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
-import type { IssuanceBatchRecord, QcShoreHardnessRecord } from "@/app/lib/api/stockControlApi";
+import type {
+  CoatingAnalysis,
+  IssuanceBatchRecord,
+  QcShoreHardnessRecord,
+} from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { now } from "@/app/lib/datetime";
 import { QcFormModal } from "./QcFormModal";
@@ -13,6 +17,7 @@ interface ShoreHardnessFormProps {
   existing?: QcShoreHardnessRecord | null;
   onSaved: () => void;
   batchRecords?: IssuanceBatchRecord[];
+  coatingAnalysis?: CoatingAnalysis | null;
 }
 
 type ColumnKey = "column1" | "column2" | "column3" | "column4";
@@ -49,6 +54,25 @@ const columnAverage = (values: (number | null)[]): number | null => {
 
 const todayString = (): string => now().toFormat("yyyy-MM-dd");
 
+const SHORE_PATTERN = /(\d+)\s*shore/i;
+
+const coatingAnalysisDefaults = (
+  analysis: CoatingAnalysis | null | undefined,
+): { rubberSpec: string; requiredShore: number | null } => {
+  if (!analysis?.rawNotes) return { rubberSpec: "", requiredShore: null };
+
+  const intParts = analysis.rawNotes
+    .split(/(?=\bINT\s*:)/i)
+    .filter((p) => p.trim().toUpperCase().startsWith("INT"))
+    .map((p) => p.trim());
+
+  const intSpec = intParts[0] || analysis.rawNotes;
+  const shoreMatch = intSpec.match(SHORE_PATTERN);
+  const requiredShore = shoreMatch ? parseInt(shoreMatch[1], 10) : null;
+
+  return { rubberSpec: intSpec, requiredShore };
+};
+
 const rubberBatchDefaults = (
   records: IssuanceBatchRecord[],
 ): { spec: string; batchNumber: string } => {
@@ -68,14 +92,18 @@ export function ShoreHardnessForm(props: ShoreHardnessFormProps) {
   const { isOpen, onClose, jobCardId, onSaved } = props;
   const existing = props.existing ?? null;
   const batchRecords = props.batchRecords ?? [];
+  const coatingAnalysis = props.coatingAnalysis ?? null;
 
-  const defaults = existing ? null : rubberBatchDefaults(batchRecords);
-  const [rubberSpec, setRubberSpec] = useState(existing?.rubberSpec || defaults?.spec || "");
+  const batchDefaults = existing ? null : rubberBatchDefaults(batchRecords);
+  const coatingDefaults = existing ? null : coatingAnalysisDefaults(coatingAnalysis);
+  const [rubberSpec, setRubberSpec] = useState(
+    existing?.rubberSpec || coatingDefaults?.rubberSpec || batchDefaults?.spec || "",
+  );
   const [rubberBatchNumber, setRubberBatchNumber] = useState(
-    existing?.rubberBatchNumber || defaults?.batchNumber || "",
+    existing?.rubberBatchNumber || batchDefaults?.batchNumber || "",
   );
   const [requiredShore, setRequiredShore] = useState<number | null>(
-    existing?.requiredShore || null,
+    existing?.requiredShore || coatingDefaults?.requiredShore || null,
   );
   const [readingDate, setReadingDate] = useState(
     existing?.readingDate ? existing.readingDate.slice(0, 10) : todayString(),

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { CoatingAnalysis, IssuanceBatchRecord } from "@/app/lib/api/stockControlApi";
 import {
   type QcBlastProfileEntry,
@@ -26,7 +26,12 @@ const READING_ROWS = Array.from({ length: 20 }, (_, i) => i + 1);
 
 const BLAST_PROFILE_DEFAULTS: Record<string, number> = {
   sa3_blast: 75,
+  sa2_5_blast: 50,
+  sa2_blast: 40,
+  sa1_blast: 25,
   blast: 75,
+  hand_tool: 25,
+  power_tool: 25,
 };
 
 const blastSpecDefault = (coatingAnalysis: CoatingAnalysis | null | undefined): string => {
@@ -84,6 +89,18 @@ export default function BlastProfileForm(props: BlastProfileFormProps) {
   );
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!readingDate || existing) return;
+    stockControlApiClient
+      .environmentalRecordByDate(jobCardId, readingDate)
+      .then((envRec) => {
+        if (!envRec) return;
+        setTemperature((prev) => (prev === "" ? String(envRec.temperatureC) : prev));
+        setHumidity((prev) => (prev === "" ? String(envRec.humidity) : prev));
+      })
+      .catch(() => {});
+  }, [readingDate, jobCardId, existing]);
 
   const specValue = parseFloat(specMicrons) || 0;
 

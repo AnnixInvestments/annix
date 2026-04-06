@@ -5,6 +5,7 @@ import type {
   QcDefelskoBatchRecord,
   QcDftReadingRecord,
   QcDustDebrisRecord,
+  QcEnvironmentalRecordResponse,
   QcItemsReleaseRecord,
   QcMeasurementsAggregate,
   QcPullTestRecord,
@@ -127,6 +128,25 @@ declare module "./base" {
     ): Promise<QcpApprovalTokenRecord[]>;
     customerQcpPreferences(customerName: string): Promise<QcpCustomerPreferenceRecord>;
     qcpLog(search?: string): Promise<QcControlPlanRecord[]>;
+    environmentalRecordsForJobCard(jobCardId: number): Promise<QcEnvironmentalRecordResponse[]>;
+    environmentalRecordByDate(
+      jobCardId: number,
+      date: string,
+    ): Promise<QcEnvironmentalRecordResponse | null>;
+    createEnvironmentalRecord(
+      jobCardId: number,
+      data: Partial<QcEnvironmentalRecordResponse>,
+    ): Promise<QcEnvironmentalRecordResponse>;
+    bulkCreateEnvironmentalRecords(
+      jobCardId: number,
+      records: Array<Partial<QcEnvironmentalRecordResponse>>,
+    ): Promise<QcEnvironmentalRecordResponse[]>;
+    updateEnvironmentalRecord(
+      jobCardId: number,
+      id: number,
+      data: Partial<QcEnvironmentalRecordResponse>,
+    ): Promise<QcEnvironmentalRecordResponse>;
+    deleteEnvironmentalRecord(jobCardId: number, id: number): Promise<void>;
     defelskoBatchesForJobCard(jobCardId: number): Promise<QcDefelskoBatchRecord[]>;
     saveDefelskoBatches(
       jobCardId: number,
@@ -386,6 +406,46 @@ proto.openControlPlanPdf = async function (jobCardId, id) {
 proto.qcpLog = async function (search) {
   const params = search ? `?search=${encodeURIComponent(search)}` : "";
   return this.request(`/stock-control/qcp-log${params}`);
+};
+
+proto.environmentalRecordsForJobCard = async function (jobCardId) {
+  return this.request(`/stock-control/job-cards/${jobCardId}/qc/environmental-records`);
+};
+
+proto.environmentalRecordByDate = async function (jobCardId, date) {
+  return this.request(
+    `/stock-control/job-cards/${jobCardId}/qc/environmental-records/by-date?date=${encodeURIComponent(date)}`,
+  );
+};
+
+proto.createEnvironmentalRecord = async function (jobCardId, data) {
+  return this.request(`/stock-control/job-cards/${jobCardId}/qc/environmental-records`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+};
+
+proto.bulkCreateEnvironmentalRecords = async function (jobCardId, records) {
+  return this.request(`/stock-control/job-cards/${jobCardId}/qc/environmental-records/bulk`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ records }),
+  });
+};
+
+proto.updateEnvironmentalRecord = async function (jobCardId, id, data) {
+  return this.request(`/stock-control/job-cards/${jobCardId}/qc/environmental-records/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+};
+
+proto.deleteEnvironmentalRecord = async function (jobCardId, id) {
+  return this.request(`/stock-control/job-cards/${jobCardId}/qc/environmental-records/${id}`, {
+    method: "DELETE",
+  });
 };
 
 proto.defelskoBatchesForJobCard = async function (jobCardId) {

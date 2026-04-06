@@ -9,6 +9,7 @@ import { QcControlPlan } from "../entities/qc-control-plan.entity";
 import { QcDefelskoBatch } from "../entities/qc-defelsko-batch.entity";
 import { QcDftReading } from "../entities/qc-dft-reading.entity";
 import { QcDustDebrisTest } from "../entities/qc-dust-debris-test.entity";
+import { QcEnvironmentalRecord } from "../entities/qc-environmental-record.entity";
 import { ItemReleaseResult, QcItemsRelease } from "../entities/qc-items-release.entity";
 import { QcPullTest } from "../entities/qc-pull-test.entity";
 import { QcReleaseCertificate } from "../entities/qc-release-certificate.entity";
@@ -60,6 +61,7 @@ describe("QcMeasurementService", () => {
   const releaseCertRepo = mockRepo();
   const itemsReleaseRepo = mockRepo();
   const defelskoBatchRepo = mockRepo();
+  const environmentalRecordRepo = mockRepo();
   const jobCardRepo = mockRepo();
   const coatingRepo = mockRepo();
   const companyRepo = mockRepo();
@@ -80,6 +82,7 @@ describe("QcMeasurementService", () => {
         { provide: getRepositoryToken(QcReleaseCertificate), useValue: releaseCertRepo },
         { provide: getRepositoryToken(QcItemsRelease), useValue: itemsReleaseRepo },
         { provide: getRepositoryToken(QcDefelskoBatch), useValue: defelskoBatchRepo },
+        { provide: getRepositoryToken(QcEnvironmentalRecord), useValue: environmentalRecordRepo },
         { provide: getRepositoryToken(JobCard), useValue: jobCardRepo },
         { provide: getRepositoryToken(JobCardCoatingAnalysis), useValue: coatingRepo },
         { provide: getRepositoryToken(StockControlCompany), useValue: companyRepo },

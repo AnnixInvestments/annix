@@ -17,6 +17,7 @@ import {
 import { QcDefelskoBatch } from "../entities/qc-defelsko-batch.entity";
 import { QcDftReading } from "../entities/qc-dft-reading.entity";
 import { QcDustDebrisTest } from "../entities/qc-dust-debris-test.entity";
+import { QcEnvironmentalRecord } from "../entities/qc-environmental-record.entity";
 import {
   ItemReleaseResult,
   QcItemsRelease,
@@ -41,7 +42,8 @@ type QcEntity =
   | QcPullTest
   | QcControlPlan
   | QcReleaseCertificate
-  | QcItemsRelease;
+  | QcItemsRelease
+  | QcEnvironmentalRecord;
 
 interface UserContext {
   id: number;
@@ -72,6 +74,8 @@ export class QcMeasurementService {
     private readonly itemsReleaseRepo: Repository<QcItemsRelease>,
     @InjectRepository(QcDefelskoBatch)
     private readonly defelskoBatchRepo: Repository<QcDefelskoBatch>,
+    @InjectRepository(QcEnvironmentalRecord)
+    private readonly envRecordRepo: Repository<QcEnvironmentalRecord>,
     @InjectRepository(JobCard)
     private readonly jobCardRepo: Repository<JobCard>,
     @InjectRepository(JobCardCoatingAnalysis)
@@ -1119,6 +1123,93 @@ export class QcMeasurementService {
       }),
     );
 
+    return results;
+  }
+
+  // ── Environmental Records ─────────────────────────────────────────
+
+  async environmentalRecordsForJobCard(
+    companyId: number,
+    jobCardId: number,
+  ): Promise<QcEnvironmentalRecord[]> {
+    return this.envRecordRepo.find({
+      where: { companyId, jobCardId },
+      order: { recordDate: "DESC", createdAt: "DESC" },
+    });
+  }
+
+  async environmentalRecordByDate(
+    companyId: number,
+    jobCardId: number,
+    date: string,
+  ): Promise<QcEnvironmentalRecord | null> {
+    return this.envRecordRepo.findOne({
+      where: { companyId, jobCardId, recordDate: date },
+    });
+  }
+
+  async createEnvironmentalRecord(
+    companyId: number,
+    jobCardId: number,
+    data: Partial<QcEnvironmentalRecord>,
+    user: UserContext,
+  ): Promise<QcEnvironmentalRecord> {
+    const record = this.envRecordRepo.create({
+      ...data,
+      companyId,
+      jobCardId,
+      recordedByName: user.name,
+      recordedById: user.id,
+    });
+    return this.envRecordRepo.save(record);
+  }
+
+  async updateEnvironmentalRecord(
+    companyId: number,
+    id: number,
+    data: Partial<QcEnvironmentalRecord>,
+  ): Promise<QcEnvironmentalRecord> {
+    const record = await this.findOrFail(this.envRecordRepo, companyId, id, "Environmental record");
+    Object.assign(record, data);
+    return this.envRecordRepo.save(record);
+  }
+
+  async deleteEnvironmentalRecord(companyId: number, id: number): Promise<void> {
+    const record = await this.findOrFail(this.envRecordRepo, companyId, id, "Environmental record");
+    await this.envRecordRepo.remove(record);
+  }
+
+  async bulkCreateEnvironmentalRecords(
+    companyId: number,
+    jobCardId: number,
+    records: Array<Partial<QcEnvironmentalRecord>>,
+    user: UserContext,
+  ): Promise<QcEnvironmentalRecord[]> {
+    const results: QcEnvironmentalRecord[] = [];
+    for (const data of records) {
+      const existing = await this.envRecordRepo.findOne({
+        where: { companyId, jobCardId, recordDate: data.recordDate },
+      });
+
+      if (existing) {
+        Object.assign(existing, {
+          humidity: data.humidity,
+          temperatureC: data.temperatureC,
+          dewPointC: data.dewPointC ?? existing.dewPointC,
+          notes: data.notes ?? existing.notes,
+        });
+        results.push(await this.envRecordRepo.save(existing));
+      } else {
+        const record = this.envRecordRepo.create({
+          ...data,
+          companyId,
+          jobCardId,
+          recordedByName: user.name,
+          recordedById: user.id,
+        });
+        results.push(await this.envRecordRepo.save(record));
+      }
+    }
     return results;
   }
 
