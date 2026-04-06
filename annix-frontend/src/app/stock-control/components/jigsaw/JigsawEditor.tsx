@@ -258,9 +258,13 @@ export function JigsawEditor(props: {
             const pl = effectiveLength(p);
             return p.xMm < clampedX + el && p.xMm + pl > clampedX;
           });
-          const gravityY = horizontallyOverlapping
-            .map((p) => p.yMm + effectiveWidth(p))
-            .reduce((max, y) => Math.max(max, y), 0);
+          const sortedByY = [...horizontallyOverlapping].sort((a, b) => a.yMm - b.yMm);
+          let gravityY = 0;
+          for (const p of sortedByY) {
+            if (gravityY + ew <= p.yMm) break;
+            const pBottom = p.yMm + effectiveWidth(p);
+            if (pBottom > gravityY) gravityY = pBottom;
+          }
 
           const snappedY = Math.max(0, Math.min(snapToGrid(gravityY), roll.widthMm - ew));
 
