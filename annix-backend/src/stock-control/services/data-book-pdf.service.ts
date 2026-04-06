@@ -310,6 +310,9 @@ export class DataBookPdfService {
       const pg = isLandscape ? A4_LANDSCAPE : isLandscapePage ? A4_LANDSCAPE : A4;
       const footerY = pg.pageHeight - 28;
 
+      const savedBottom = doc.page.margins.bottom;
+      doc.page.margins.bottom = 0;
+
       doc
         .moveTo(pg.margin, footerY - 4)
         .lineTo(pg.margin + pg.contentWidth, footerY - 4)
@@ -336,12 +339,15 @@ export class DataBookPdfService {
         lineBreak: false,
       });
       doc.rect(0, pg.pageHeight - 4, pg.pageWidth, 4).fill(brandColor);
+
+      doc.page.margins.bottom = savedBottom;
     });
 
     doc.fillColor("#000000");
     doc.lineWidth(1);
 
-    const extraPages = totalBuffered - pagesToKeep;
+    const totalAfterFooters = doc.bufferedPageRange().count;
+    const extraPages = totalAfterFooters - pagesToKeep;
     if (extraPages > 0) {
       Array.from({ length: extraPages }).forEach(() => {
         const pageBuffer = (doc as any)._pageBuffer;
