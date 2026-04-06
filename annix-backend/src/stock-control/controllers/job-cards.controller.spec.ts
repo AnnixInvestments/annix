@@ -16,6 +16,7 @@ import { JobCardVersionService } from "../services/job-card-version.service";
 import { JobCardWorkflowService } from "../services/job-card-workflow.service";
 import { JobFileService } from "../services/job-file.service";
 import { RequisitionService } from "../services/requisition.service";
+import { RubberCuttingTrainingService } from "../services/rubber-cutting-training.service";
 import { StockAllocationService } from "../services/stock-allocation.service";
 import { JobCardsController } from "./job-cards.controller";
 
@@ -138,6 +139,7 @@ describe("JobCardsController", () => {
             allocationsByJobCard: jest.fn(),
           },
         },
+        { provide: RubberCuttingTrainingService, useValue: {} },
         { provide: getRepositoryToken(StockItem), useValue: stockItemRepo },
         { provide: getRepositoryToken(RubberDimensionOverride), useValue: dimensionOverrideRepo },
         { provide: getRepositoryToken(StockMovement), useValue: stockMovementRepo },

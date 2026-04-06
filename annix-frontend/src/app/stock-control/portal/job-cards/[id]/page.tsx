@@ -1633,11 +1633,7 @@ export default function JobCardDetailPage() {
                       >
                         View QA Repairs
                       </button>
-                    ) : bg.branchColor &&
-                      !batchesSaved &&
-                      !isQaChainStep(bg) &&
-                      !isInspectionBookingStep(bg) &&
-                      !isDataBookStep(bg) ? (
+                    ) : bg.stepKey === "qc_batch_certs" && !batchesSaved ? (
                       <button
                         key={bg.stepKey}
                         onClick={() => {
@@ -1648,11 +1644,7 @@ export default function JobCardDetailPage() {
                       >
                         Input Batches
                       </button>
-                    ) : bg.branchColor &&
-                      batchesSaved &&
-                      !isQaChainStep(bg) &&
-                      !isInspectionBookingStep(bg) &&
-                      !isDataBookStep(bg) ? (
+                    ) : bg.stepKey === "qc_batch_certs" && batchesSaved ? (
                       <button
                         key={bg.stepKey}
                         onClick={() => handleCompleteBackgroundStep(bg.stepKey)}
