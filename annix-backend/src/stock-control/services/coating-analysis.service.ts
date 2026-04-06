@@ -648,9 +648,12 @@ export class CoatingAnalysisService {
         const ext = (result.externalM2 || 0) * qty;
         const int = (result.internalM2 || 0) * qty;
 
-        if (result.externalM2 && result.externalM2 > 0 && (li.m2 === null || li.m2 === 0)) {
-          li.m2 = Math.round(result.externalM2 * 10000) / 10000;
-          itemsToUpdate.push(li);
+        if (result.externalM2 && result.externalM2 > 0) {
+          const calculated = Math.round(result.externalM2 * 10000) / 10000;
+          if (li.m2 !== calculated) {
+            li.m2 = calculated;
+            itemsToUpdate.push(li);
+          }
         }
 
         return { extM2: acc.extM2 + ext, intM2: acc.intM2 + int };

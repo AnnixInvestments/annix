@@ -868,8 +868,7 @@ export class DrawingExtractionService {
       const matchedDim = this.findMatchingDimension(description, result.dimensions);
 
       if (matchedDim?.externalSurfaceM2) {
-        const totalM2 = matchedDim.externalSurfaceM2 * (lineItem.quantity || 1);
-        lineItem.m2 = Math.round(totalM2 * 100) / 100;
+        lineItem.m2 = Math.round(matchedDim.externalSurfaceM2 * 10000) / 10000;
         updatedItems.push(lineItem);
       }
     });

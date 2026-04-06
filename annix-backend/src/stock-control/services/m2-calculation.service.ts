@@ -41,9 +41,10 @@ interface RegexParseResult {
   fittingDimensionsA: number | null;
   fittingDimensionsB: number | null;
   cfDimensionMm: number | null;
+  branchDiameterMm: number | null;
 }
 
-const REDUCING_NB_PATTERN = /(\d+)\s*x\s*\d+\s*NB/i;
+const REDUCING_NB_PATTERN = /(\d+)\s*x\s*(\d+)\s*NB/i;
 const NB_PATTERN = /(\d+)\s*NB/i;
 const NB_PREFIX_PATTERN = /\bNB\s*(\d+)/i;
 const BARE_REDUCING_PATTERN = /^(\d{2,4})\s*x\s*\d{2,4}\b/;
@@ -81,6 +82,7 @@ const FLANGE_COUNT_PATTERNS: { pattern: RegExp; count: number }[] = [
   { pattern: /\bF2E\b/i, count: 2 },
   { pattern: /\bFFE\b/i, count: 2 },
   { pattern: /\bF(?:OE|1E)\b/i, count: 1 },
+  { pattern: /\bFAE\b/i, count: 3 },
   { pattern: /\bPE\b/, count: 0 },
 ];
 
@@ -91,6 +93,7 @@ const FLANGE_CONFIG_PATTERNS: { pattern: RegExp; config: string }[] = [
   { pattern: /\bF(?:OE|1E)\b/i, config: "one_end" },
   { pattern: /\bFFE\b/i, config: "both_ends" },
   { pattern: /\bF2E\b/i, config: "both_ends" },
+  { pattern: /\bFAE\b/i, config: "all_ends" },
   { pattern: /\bL\/FLG\b/i, config: "loose_flange" },
   { pattern: /\bFLG[SD]?\s*(?:B(?:OTH)?|2)\s*(?:END|E)\b/i, config: "both_ends" },
   { pattern: /\bFLG[SD]?\s*(?:1|ONE)\s*(?:END|E)\b/i, config: "one_end" },
@@ -115,7 +118,7 @@ const ITEM_TYPE_PATTERNS: { pattern: RegExp; type: string }[] = [
 const FITTING_TYPE_PATTERNS: { pattern: RegExp; fittingType: string }[] = [
   { pattern: /\bEQUAL\s+TEE\b/i, fittingType: "equal_tee" },
   { pattern: /\bUNEQUAL\s+TEE\b/i, fittingType: "unequal_tee" },
-  { pattern: /\bREDUCING\s+TEE\b/i, fittingType: "reducing_tee" },
+  { pattern: /\bRED(?:UCING)?[\s/]+TEE\b/i, fittingType: "reducing_tee" },
   { pattern: /\bCONCENTRIC\s+REDUCER\b/i, fittingType: "concentric_reducer" },
   { pattern: /\bECCENTRIC\s+REDUCER\b/i, fittingType: "eccentric_reducer" },
   { pattern: /\bREDUCER\b/i, fittingType: "reducer" },
@@ -157,6 +160,8 @@ export class M2CalculationService {
           : bareReducingMatch
             ? parseInt(bareReducingMatch[1], 10)
             : null;
+
+    const branchDiameterMm = reducingMatch ? parseInt(reducingMatch[2], 10) : null;
 
     const itemType = ITEM_TYPE_PATTERNS.find((it) => it.pattern.test(description))?.type ?? null;
 
@@ -233,6 +238,7 @@ export class M2CalculationService {
       fittingDimensionsA,
       fittingDimensionsB,
       cfDimensionMm,
+      branchDiameterMm,
     };
   }
 
@@ -419,6 +425,8 @@ export class M2CalculationService {
     fittingType: string | null,
     dimA: number | null,
     dimB: number | null,
+    branchOdMm: number | null,
+    branchIdMm: number | null,
   ): { external: number; internal: number } {
     const armA = dimA ? dimA / 1000 : odMm / 1000;
     const armB = dimB ? dimB / 1000 : odMm / 1000;
@@ -426,13 +434,22 @@ export class M2CalculationService {
     const mainRunExternal = Math.PI * (odMm / 1000) * (armA + armB);
     const mainRunInternal = Math.PI * (idMm / 1000) * (armA + armB);
 
-    const branchFactor =
-      fittingType === "unequal_tee" || fittingType === "reducing_tee"
-        ? 2.0
-        : STEINMETZ_FACTOR_EQUAL_TEE;
+    const isReducing = fittingType === "unequal_tee" || fittingType === "reducing_tee";
+    const effectiveBranchOd = isReducing && branchOdMm ? branchOdMm : odMm;
+    const effectiveBranchId = isReducing && branchIdMm ? branchIdMm : idMm;
 
-    const branchExternal = (branchFactor * (odMm / 1000) * (odMm / 1000)) / 4;
-    const branchInternal = (branchFactor * (idMm / 1000) * (idMm / 1000)) / 4;
+    const branchLengthM = dimB ? dimB / 1000 : effectiveBranchOd / 1000;
+    let branchExternal: number;
+    let branchInternal: number;
+
+    if (isReducing && branchOdMm) {
+      branchExternal = Math.PI * (effectiveBranchOd / 1000) * branchLengthM;
+      branchInternal = Math.PI * (effectiveBranchId / 1000) * branchLengthM;
+    } else {
+      const branchFactor = isReducing ? 2.0 : STEINMETZ_FACTOR_EQUAL_TEE;
+      branchExternal = (branchFactor * (odMm / 1000) * (odMm / 1000)) / 4;
+      branchInternal = (branchFactor * (idMm / 1000) * (idMm / 1000)) / 4;
+    }
 
     return {
       external: mainRunExternal + branchExternal,
@@ -444,9 +461,11 @@ export class M2CalculationService {
     odMm: number,
     idMm: number,
     lengthM: number,
+    smallEndOdMm: number | null,
+    smallEndIdMm: number | null,
   ): { external: number; internal: number } {
-    const smallEndOd = odMm * 0.7;
-    const smallEndId = idMm * 0.7;
+    const smallEndOd = smallEndOdMm || odMm * 0.7;
+    const smallEndId = smallEndIdMm || idMm * 0.7;
     const avgOd = (odMm + smallEndOd) / 2;
     const avgId = (idMm + smallEndId) / 2;
 
@@ -509,10 +528,13 @@ export class M2CalculationService {
     flangeCount: number,
     flangeStandard: string | null,
     pressureClass: string | null,
+    flangeConfig: string | null,
   ): Promise<{ external: number; internal: number } | null> {
     if (flangeCount === 0) {
       return null;
     }
+
+    const isBlind = flangeConfig === "blank_flange" || flangeConfig === "blind_flange";
 
     const dims = await this.flangeDimension.flangeDimensionsForM2(
       nbMm,
@@ -520,13 +542,25 @@ export class M2CalculationService {
       pressureClass,
     );
 
-    if (!dims) {
-      return null;
-    }
+    let flangeOdMm: number;
+    let flangeBoreMm: number;
+    let flangeThicknessMm: number;
 
-    const flangeOdMm = dims.D;
-    const flangeBoreMm = dims.d4;
-    const flangeThicknessMm = dims.b;
+    if (dims) {
+      flangeOdMm = dims.D;
+      flangeBoreMm = isBlind ? 0 : dims.d4;
+      flangeThicknessMm = dims.b;
+    } else {
+      const odResult = await this.nbOdLookup.nbToOd(nbMm);
+      const pipeOdMm = odResult.outsideDiameterMm;
+      flangeOdMm = pipeOdMm + (nbMm <= 150 ? 80 : 120);
+      flangeBoreMm = isBlind ? 0 : pipeOdMm;
+      flangeThicknessMm = nbMm <= 150 ? 18 : 25;
+
+      this.logger.warn(
+        `No flange dimensions for NB ${nbMm}mm, estimating from pipe OD ${pipeOdMm}mm`,
+      );
+    }
 
     const faceArea = ((Math.PI / 4) * (flangeOdMm ** 2 - flangeBoreMm ** 2)) / 1_000_000;
     const edgeArea = Math.PI * (flangeOdMm / 1000) * (flangeThicknessMm / 1000);
@@ -700,11 +734,43 @@ export class M2CalculationService {
           !BEND_CF_BARE_PATTERN.test(description);
         const dimA = regex.fittingDimensionsA || (isSingleCfTee ? regex.cfDimensionMm! * 2 : null);
         const dimB = regex.fittingDimensionsB || (isSingleCfTee ? regex.cfDimensionMm! : null);
-        const teeResult = this.calculateTeeM2(odMm, idMm, regex.fittingType, dimA, dimB);
+
+        let branchOdMm: number | null = null;
+        let branchIdMm: number | null = null;
+        if (regex.branchDiameterMm) {
+          const branchOdResult = await this.nbOdLookup.nbToOd(regex.branchDiameterMm);
+          branchOdMm = branchOdResult.outsideDiameterMm;
+          const branchWt = await this.resolveWallThickness(null, schedule, regex.branchDiameterMm);
+          branchIdMm = branchWt > 0 ? branchOdMm - 2 * branchWt : branchOdMm * 0.9;
+        }
+
+        const teeResult = this.calculateTeeM2(
+          odMm,
+          idMm,
+          regex.fittingType,
+          dimA,
+          dimB,
+          branchOdMm,
+          branchIdMm,
+        );
         externalM2 = teeResult.external;
         internalM2 = teeResult.internal;
       } else if (itemType === "reducer") {
-        const reducerResult = this.calculateReducerM2(odMm, idMm, lengthM || 0);
+        let smallEndOdMm: number | null = null;
+        let smallEndIdMm: number | null = null;
+        if (regex.branchDiameterMm) {
+          const branchOdResult = await this.nbOdLookup.nbToOd(regex.branchDiameterMm);
+          smallEndOdMm = branchOdResult.outsideDiameterMm;
+          const branchWt = await this.resolveWallThickness(null, schedule, regex.branchDiameterMm);
+          smallEndIdMm = branchWt > 0 ? smallEndOdMm - 2 * branchWt : smallEndOdMm * 0.9;
+        }
+        const reducerResult = this.calculateReducerM2(
+          odMm,
+          idMm,
+          lengthM || 0,
+          smallEndOdMm,
+          smallEndIdMm,
+        );
         externalM2 = reducerResult.external;
         internalM2 = reducerResult.internal;
       } else if (itemType === "flange" && regex.flangeCount > 0) {
@@ -713,6 +779,7 @@ export class M2CalculationService {
           regex.flangeCount,
           regex.flangeStandard,
           regex.pressureClass,
+          regex.flangeConfig,
         );
         if (standaloneResult) {
           externalM2 = standaloneResult.external;
