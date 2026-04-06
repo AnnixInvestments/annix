@@ -1,3 +1,4 @@
+import { createPortal } from "react-dom";
 import type { StockControlLocation, StockItem } from "@/app/lib/api/stockControlApi";
 import type { InventoryPageState, ModalForm } from "../../lib/useInventoryPageState";
 
@@ -24,8 +25,8 @@ export function InventoryItemModal({
 }: InventoryItemModalProps) {
   if (!showModal) return null;
 
-  return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] overflow-y-auto">
       <div className="flex items-center justify-center min-h-screen px-4">
         <div
           className="fixed inset-0 bg-black/10 backdrop-blur-md transition-opacity"
@@ -191,7 +192,8 @@ export function InventoryItemModal({
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 

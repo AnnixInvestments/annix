@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { createPortal } from "react-dom";
 
 interface MaterialWarningLimits {
   minTempC: number;
@@ -69,8 +70,8 @@ export function MaterialWarningModal(props: MaterialWarningModalProps) {
   const { warning, onClose, onProceed } = props;
   if (!warning.show) return null;
 
-  return (
-    <div className="fixed inset-0 bg-black/10 backdrop-blur-md flex items-center justify-center z-50">
+  return createPortal(
+    <div className="fixed inset-0 bg-black/10 backdrop-blur-md flex items-center justify-center z-[9999]">
       <div className="bg-white rounded-lg shadow-xl max-w-lg w-full mx-4 overflow-hidden">
         <div className="bg-red-600 px-6 py-4">
           <div className="flex items-center">
@@ -146,7 +147,8 @@ export function MaterialWarningModal(props: MaterialWarningModalProps) {
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 
@@ -160,8 +162,8 @@ export function ConfirmationWarningModal(props: ConfirmationWarningModalProps) {
   const { warning, onClose, onProceed } = props;
   if (!warning.show) return null;
 
-  return (
-    <div className="fixed inset-0 bg-black/10 backdrop-blur-md flex items-center justify-center z-50">
+  return createPortal(
+    <div className="fixed inset-0 bg-black/10 backdrop-blur-md flex items-center justify-center z-[9999]">
       <div className="bg-white rounded-lg shadow-xl max-w-lg w-full mx-4 overflow-hidden">
         <div className="bg-amber-500 px-6 py-4">
           <div className="flex items-center">
@@ -216,7 +218,8 @@ export function ConfirmationWarningModal(props: ConfirmationWarningModalProps) {
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 

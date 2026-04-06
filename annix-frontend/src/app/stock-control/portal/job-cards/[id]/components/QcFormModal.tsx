@@ -1,6 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { createPortal } from "react-dom";
 
 interface QcFormModalProps {
   isOpen: boolean;
@@ -23,8 +24,8 @@ export function QcFormModal(props: QcFormModalProps) {
     return null;
   }
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/10 backdrop-blur-md p-4">
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/10 backdrop-blur-md p-4">
       <div
         className={`w-full ${maxWidth} rounded-lg bg-white p-6 shadow-xl max-h-[90vh] overflow-y-auto`}
       >
@@ -58,6 +59,7 @@ export function QcFormModal(props: QcFormModalProps) {
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

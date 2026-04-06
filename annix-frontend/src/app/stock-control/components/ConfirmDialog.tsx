@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 
 interface ConfirmDialogProps {
   open: boolean;
@@ -51,9 +52,9 @@ export function ConfirmDialog(props: ConfirmDialogProps) {
 
   if (!open) return null;
 
-  return (
+  return createPortal(
     <div
-      className="fixed inset-0 z-50 overflow-y-auto"
+      className="fixed inset-0 z-[9999] overflow-y-auto"
       role="dialog"
       aria-modal="true"
       aria-labelledby="confirm-dialog-title"
@@ -90,6 +91,7 @@ export function ConfirmDialog(props: ConfirmDialogProps) {
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

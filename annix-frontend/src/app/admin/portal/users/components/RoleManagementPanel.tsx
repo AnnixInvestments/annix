@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { useToast } from "@/app/components/Toast";
 import type { RbacAppDetail, RbacAppRole } from "@/app/lib/api/adminApi";
 import { PRODUCTS_AND_SERVICES } from "@/app/lib/config/productsServices";
@@ -162,9 +163,9 @@ export function RoleManagementPanel(props: RoleManagementPanelProps) {
   const isRfqPlatform = appDetails.code === "rfq-platform";
   const productFlags = Object.entries(RFQ_PRODUCT_FLAG_MAP) as [string, ProductFlagMeta][];
 
-  return (
-    <div className="fixed inset-0 z-50 overflow-hidden">
-      <div className="absolute inset-0 bg-black/10 backdrop-blur-md" onClick={onClose} />
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] overflow-hidden">
+      <div className="fixed inset-0 bg-black/10 backdrop-blur-md" onClick={onClose} />
 
       <div className="absolute inset-y-0 right-0 flex max-w-full">
         <div className="relative w-screen max-w-2xl">
@@ -425,6 +426,7 @@ export function RoleManagementPanel(props: RoleManagementPanelProps) {
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

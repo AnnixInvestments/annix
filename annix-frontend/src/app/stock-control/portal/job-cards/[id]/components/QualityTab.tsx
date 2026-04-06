@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type {
   BackgroundStepStatus,
   CalibrationCertificate,
@@ -29,7 +29,7 @@ import { QcReleaseCertificateSection } from "./QcReleaseCertificateSection";
 import { ReleaseDocumentGenerator } from "./ReleaseDocumentGenerator";
 import { ShoreHardnessForm } from "./ShoreHardnessForm";
 
-type QcFormType = "shore-hardness" | "dft" | "blast-profile" | null;
+type QcFormType = "shore-hardness" | "dft" | "blast-profile" | "paint-profile" | null;
 
 interface QualityTabProps {
   jobCardId: number;
@@ -73,6 +73,7 @@ export function QualityTab(props: QualityTabProps) {
   );
   const [editingDft, setEditingDft] = useState<QcDftReadingRecord | null>(null);
   const [editingBlast, setEditingBlast] = useState<QcBlastProfileRecord | null>(null);
+  const [paintProfileCoatLabel, setPaintProfileCoatLabel] = useState<string | null>(null);
 
   const fetchCoatingAnalysis = useCallback(async () => {
     try {
@@ -156,6 +157,7 @@ export function QualityTab(props: QualityTabProps) {
     setEditingShoreHardness(null);
     setEditingDft(null);
     setEditingBlast(null);
+    setPaintProfileCoatLabel(null);
   }, []);
 
   const handleFormSaved = useCallback(() => {
@@ -180,9 +182,22 @@ export function QualityTab(props: QualityTabProps) {
     }
   };
 
-  const totalQcRecords = (qcData?.shoreHardness.length || 0) + (qcData?.dftReadings.length || 0);
+  const blastProfiles = useMemo(
+    () => (qcData?.blastProfiles || []).filter((r) => r.profileType !== "paint"),
+    [qcData],
+  );
+  const paintProfiles = useMemo(
+    () => (qcData?.blastProfiles || []).filter((r) => r.profileType === "paint"),
+    [qcData],
+  );
 
-  const blastProfileCount = qcData?.blastProfiles.length || 0;
+  const paintCoats = coatingAnalysis?.coats || [];
+
+  const totalQcRecords =
+    (qcData?.shoreHardness.length || 0) +
+    (qcData?.dftReadings.length || 0) +
+    blastProfiles.length +
+    paintProfiles.length;
 
   return (
     <div className="space-y-6">
@@ -248,21 +263,51 @@ export function QualityTab(props: QualityTabProps) {
         <>
           <div className="rounded-lg border border-gray-200 bg-white shadow-sm">
             <div className="flex items-center justify-between border-b border-gray-200 px-5 py-3">
-              <h3 className="text-sm font-semibold text-gray-900">Blast Profile Reports</h3>
-              <button
-                onClick={() => setActiveForm("blast-profile")}
-                className="rounded-md bg-teal-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-teal-700"
-              >
-                + Blast Profile
-              </button>
+              <h3 className="text-sm font-semibold text-gray-900">QC Measurements</h3>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  onClick={() => setActiveForm("blast-profile")}
+                  className="rounded-md bg-teal-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-teal-700"
+                >
+                  + Blast Profile
+                </button>
+                {paintCoats.map((coat, idx) => {
+                  const label = coat.product || `Coat ${idx + 1}`;
+                  return (
+                    <button
+                      key={`paint-btn-${idx}`}
+                      onClick={() => {
+                        setPaintProfileCoatLabel(label);
+                        setActiveForm("paint-profile");
+                      }}
+                      className="rounded-md bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-indigo-700"
+                    >
+                      + Paint Profile ({label})
+                    </button>
+                  );
+                })}
+                <button
+                  onClick={() => setActiveForm("shore-hardness")}
+                  className="rounded-md bg-teal-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-teal-700"
+                >
+                  + Shore Hardness
+                </button>
+                <button
+                  onClick={() => setActiveForm("dft")}
+                  className="rounded-md bg-teal-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-teal-700"
+                >
+                  + DFT
+                </button>
+              </div>
             </div>
-            {blastProfileCount === 0 ? (
+
+            {totalQcRecords === 0 ? (
               <div className="py-8 text-center text-sm text-gray-500">
-                No blast profile records yet. Use the button above to add records.
+                No QC measurements recorded yet. Use the buttons above to add records.
               </div>
             ) : (
               <div className="divide-y divide-gray-200">
-                {(qcData?.blastProfiles || []).map((rec) => (
+                {blastProfiles.map((rec) => (
                   <div
                     key={`bp-${rec.id}`}
                     className="flex items-center justify-between px-5 py-3 hover:bg-gray-50"
@@ -306,35 +351,58 @@ export function QualityTab(props: QualityTabProps) {
                     </div>
                   </div>
                 ))}
-              </div>
-            )}
-          </div>
 
-          <div className="rounded-lg border border-gray-200 bg-white shadow-sm">
-            <div className="flex items-center justify-between border-b border-gray-200 px-5 py-3">
-              <h3 className="text-sm font-semibold text-gray-900">QC Measurements</h3>
-              <div className="flex flex-wrap gap-2">
-                <button
-                  onClick={() => setActiveForm("shore-hardness")}
-                  className="rounded-md bg-teal-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-teal-700"
-                >
-                  + Shore Hardness
-                </button>
-                <button
-                  onClick={() => setActiveForm("dft")}
-                  className="rounded-md bg-teal-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-teal-700"
-                >
-                  + DFT
-                </button>
-              </div>
-            </div>
+                {paintProfiles.map((rec) => {
+                  const label = rec.coatLabel || "Paint";
+                  return (
+                    <div
+                      key={`pp-${rec.id}`}
+                      className="flex items-center justify-between px-5 py-3 hover:bg-gray-50"
+                    >
+                      <div className="flex items-center gap-3">
+                        <span className="inline-flex items-center rounded-full bg-indigo-100 px-2.5 py-0.5 text-xs font-medium text-indigo-800">
+                          Paint
+                        </span>
+                        <span className="text-sm font-medium text-gray-900">{label}</span>
+                        <span className="text-sm text-gray-500">
+                          Avg: {rec.averageMicrons?.toFixed(1) || "-"} μm / Spec: {rec.specMicrons}{" "}
+                          μm
+                        </span>
+                        {rec.abrasiveBatchNumber && (
+                          <span className="text-xs text-gray-500">
+                            Batch: {rec.abrasiveBatchNumber}
+                          </span>
+                        )}
+                        {rec.temperature !== null && (
+                          <span className="text-xs text-gray-400">{rec.temperature}°C</span>
+                        )}
+                        {rec.humidity !== null && (
+                          <span className="text-xs text-gray-400">{rec.humidity}% RH</span>
+                        )}
+                        <span className="text-xs text-gray-400">{rec.readingDate}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => {
+                            setEditingBlast(rec);
+                            setPaintProfileCoatLabel(rec.coatLabel || "Paint");
+                            setActiveForm("paint-profile");
+                          }}
+                          className="text-xs text-teal-600 hover:text-teal-800"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => handleDeleteQc("blast-profile", rec.id)}
+                          className="text-xs text-red-600 hover:text-red-800"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
 
-            {totalQcRecords === 0 ? (
-              <div className="py-8 text-center text-sm text-gray-500">
-                No QC measurements recorded yet. Use the buttons above to add records.
-              </div>
-            ) : (
-              <div className="divide-y divide-gray-200">
                 {(qcData?.shoreHardness || []).map((rec) => (
                   <div
                     key={`sh-${rec.id}`}
@@ -436,13 +504,13 @@ export function QualityTab(props: QualityTabProps) {
             )}
           </div>
 
-          <ItemsReleaseSection jobCardId={jobCardId} />
-
           <ReleaseDocumentGenerator
             jobCardId={jobCardId}
             backgroundSteps={backgroundSteps}
             onGenerated={fetchQualityData}
           />
+
+          <ItemsReleaseSection jobCardId={jobCardId} />
 
           <QcReleaseCertificateSection jobCardId={jobCardId} />
 
@@ -615,8 +683,7 @@ export function QualityTab(props: QualityTabProps) {
           {certificates.length === 0 &&
             batchRecords.length === 0 &&
             calibrationCerts.length === 0 &&
-            totalQcRecords === 0 &&
-            blastProfileCount === 0 && (
+            totalQcRecords === 0 && (
               <div className="rounded-lg border-2 border-dashed border-gray-300 py-12 text-center">
                 <p className="text-gray-500">No quality records for this job card yet</p>
                 <p className="mt-1 text-sm text-gray-400">
@@ -652,6 +719,17 @@ export function QualityTab(props: QualityTabProps) {
         onSaved={handleFormSaved}
         coatingAnalysis={coatingAnalysis}
         batchRecords={batchRecords}
+      />
+      <BlastProfileForm
+        isOpen={activeForm === "paint-profile"}
+        onClose={handleFormClose}
+        jobCardId={jobCardId}
+        existing={editingBlast}
+        onSaved={handleFormSaved}
+        coatingAnalysis={coatingAnalysis}
+        batchRecords={batchRecords}
+        profileType="paint"
+        coatLabel={paintProfileCoatLabel}
       />
     </div>
   );

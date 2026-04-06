@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import type {
   AnalyzedDeliveryNoteData,
   AnalyzedDeliveryNoteLineItem,
@@ -133,8 +134,8 @@ export function DeliveryNoteConfirmationModal(props: DeliveryNoteConfirmationMod
   const showRubberSection = hasRubberItems(analyzedData.lineItems) || rubberItems.length > 0;
   const showGeneralSection = hasGeneralItems(analyzedData.lineItems) || generalItems.length > 0;
 
-  return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] overflow-y-auto">
       <div className="flex min-h-screen items-center justify-center p-4">
         <div className="fixed inset-0 bg-black/10 backdrop-blur-md" onClick={onClose} />
         <div className="relative bg-white rounded-lg shadow-xl max-w-5xl w-full max-h-[90vh] flex flex-col">
@@ -651,6 +652,7 @@ export function DeliveryNoteConfirmationModal(props: DeliveryNoteConfirmationMod
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

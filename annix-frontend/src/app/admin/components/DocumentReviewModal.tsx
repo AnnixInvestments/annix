@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   DocumentPreviewImages,
   DocumentReviewData,
@@ -532,8 +533,8 @@ export function DocumentReviewModal(props: DocumentReviewModalProps) {
     );
   };
 
-  return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] overflow-y-auto">
       <div className="flex items-center justify-center min-h-screen px-4">
         <div className="fixed inset-0 bg-black/10 backdrop-blur-md" onClick={onClose} />
 
@@ -856,6 +857,7 @@ export function DocumentReviewModal(props: DocumentReviewModalProps) {
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

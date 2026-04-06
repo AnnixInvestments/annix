@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import type { StockItem } from "@/app/lib/api/stockControlApi";
 import { useModalAccessibility } from "../lib/useModalAccessibility";
 import { isNonNegativeNumber } from "../lib/validation";
@@ -98,9 +99,9 @@ export function StockItemModal(props: StockItemModalProps) {
 
   if (!isOpen) return null;
 
-  return (
+  return createPortal(
     <div
-      className="fixed inset-0 z-50 overflow-y-auto"
+      className="fixed inset-0 z-[9999] overflow-y-auto"
       role="dialog"
       aria-modal="true"
       aria-labelledby="stock-item-modal-title"
@@ -283,6 +284,7 @@ export function StockItemModal(props: StockItemModalProps) {
           </form>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

@@ -778,6 +778,8 @@ export interface QcBlastProfileRecord {
   id: number;
   companyId: number;
   jobCardId: number;
+  profileType: string;
+  coatLabel: string | null;
   specMicrons: number;
   abrasiveBatchNumber: string | null;
   readings: QcBlastProfileEntry[];

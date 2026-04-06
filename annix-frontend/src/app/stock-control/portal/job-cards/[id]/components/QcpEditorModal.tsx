@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
+import { createPortal } from "react-dom";
 import { PdfPreviewModal, usePdfPreview } from "@/app/components/PdfPreviewModal";
 import type {
   InterventionType,
@@ -130,8 +131,8 @@ export function QcpEditorModal(props: QcpEditorModalProps) {
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/50 p-4">
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] flex items-start justify-center overflow-y-auto bg-black/50 p-4">
       <div className="my-4 w-full max-w-[95vw] rounded-lg bg-white shadow-xl">
         <div className="flex items-center justify-between border-b border-gray-200 px-5 py-3">
           <div>
@@ -284,6 +285,7 @@ export function QcpEditorModal(props: QcpEditorModalProps) {
         </div>
       </div>
       <PdfPreviewModal state={pdfPreview.state} onClose={pdfPreview.close} />
-    </div>
+    </div>,
+    document.body,
   );
 }

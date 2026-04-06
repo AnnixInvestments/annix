@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import AmixLogo from "./AmixLogo";
 
 // Simple event emitter for session expiry
@@ -62,11 +63,10 @@ export default function SessionExpiredModal(props: SessionExpiredModalProps) {
 
   if (!isVisible) return null;
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-[9999] flex items-center justify-center">
-      {/* Backdrop with blur */}
       <div
-        className="absolute inset-0 bg-black/10 backdrop-blur-md"
+        className="fixed inset-0 bg-black/10 backdrop-blur-md"
         onClick={(e) => e.stopPropagation()}
       />
 
@@ -118,9 +118,9 @@ export default function SessionExpiredModal(props: SessionExpiredModalProps) {
           <p className="mt-4 text-xs text-gray-400">Your unsaved changes may have been lost</p>
         </div>
 
-        {/* Bottom accent bar */}
         <div className="h-1.5" style={{ backgroundColor: "#FFA500" }} />
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

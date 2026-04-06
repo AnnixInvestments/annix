@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { now } from "@/app/lib/datetime";
 
 interface ExportParams {
@@ -125,8 +126,8 @@ export default function SageExportModal(props: SageExportModalProps) {
   const previewColumns = preview ? formatPreview(preview) : [];
   const previewCount = preview ? extractCount(preview) : 0;
 
-  return (
-    <div className="fixed inset-0 bg-black/10 backdrop-blur-md flex items-center justify-center z-50">
+  return createPortal(
+    <div className="fixed inset-0 bg-black/10 backdrop-blur-md flex items-center justify-center z-[9999]">
       <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
         <div className="px-6 py-4 border-b border-gray-200">
           <h3 className="text-lg font-medium text-gray-900">{title}</h3>
@@ -287,6 +288,7 @@ export default function SageExportModal(props: SageExportModalProps) {
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

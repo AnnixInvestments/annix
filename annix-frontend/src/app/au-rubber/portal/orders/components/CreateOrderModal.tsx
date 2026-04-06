@@ -7,6 +7,7 @@ import {
 } from "@annix/product-data/rubber/dimensions";
 import { Loader2, Minus, Plus, ShoppingCart, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import type { RubberCompanyDto, RubberProductDto } from "@/app/lib/api/rubberPortalApi";
 
 type ProductType = "all" | "rubber" | "parts";
@@ -132,8 +133,8 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
   const hasRubberProducts = customerProducts.some(isRubberProduct);
   const hasPartProducts = customerProducts.some((p) => !isRubberProduct(p));
 
-  return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] overflow-y-auto">
       <div className="flex min-h-screen items-center justify-center px-4">
         <div className="fixed inset-0 bg-black/10 backdrop-blur-md" onClick={onClose} />
         <div className="relative bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
@@ -434,6 +435,7 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

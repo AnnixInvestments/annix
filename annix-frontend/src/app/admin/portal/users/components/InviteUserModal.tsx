@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import type { InviteUserDto, RbacAppDetail } from "@/app/lib/api/adminApi";
 
 interface InviteUserModalProps {
@@ -70,8 +71,8 @@ export function InviteUserModal(props: InviteUserModalProps) {
   const isValid =
     email && (!useCustomPermissions ? selectedRoleCode : selectedPermissions.length > 0);
 
-  return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] overflow-y-auto">
       <div className="flex min-h-screen items-center justify-center p-4">
         <div className="fixed inset-0 bg-black/10 backdrop-blur-md" onClick={onClose} />
 
@@ -237,6 +238,7 @@ export function InviteUserModal(props: InviteUserModalProps) {
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

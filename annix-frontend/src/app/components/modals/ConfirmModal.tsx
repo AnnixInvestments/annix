@@ -1,5 +1,7 @@
 "use client";
 
+import { createPortal } from "react-dom";
+
 interface ConfirmModalProps {
   isOpen: boolean;
   title: string;
@@ -39,9 +41,9 @@ export function ConfirmModal(props: ConfirmModalProps) {
 
   const styles = VARIANT_STYLES[variant];
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/10 backdrop-blur-md" onClick={props.onCancel} />
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center">
+      <div className="fixed inset-0 bg-black/10 backdrop-blur-md" onClick={props.onCancel} />
       <div className="relative bg-white rounded-lg shadow-xl max-w-md w-full mx-4 overflow-hidden">
         <div className="p-6">
           <div className="flex items-start space-x-4">
@@ -117,6 +119,7 @@ export function ConfirmModal(props: ConfirmModalProps) {
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import { type RemoteAccessRequestResponse, remoteAccessApi } from "@/app/lib/api/remoteAccessApi";
 import { formatDateTime } from "@/app/lib/datetime";
 
@@ -37,9 +38,9 @@ export default function RemoteAccessApprovalModal(props: RemoteAccessApprovalMod
 
   if (!isOpen) return null;
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-[9999] flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/10 backdrop-blur-md" onClick={onClose} />
+      <div className="fixed inset-0 bg-black/10 backdrop-blur-md" onClick={onClose} />
 
       <div className="relative bg-white rounded-2xl shadow-2xl max-w-md w-full mx-4 overflow-hidden animate-in fade-in zoom-in duration-300">
         <div
@@ -149,6 +150,7 @@ export default function RemoteAccessApprovalModal(props: RemoteAccessApprovalMod
 
         <div className="h-1.5" style={{ backgroundColor: "#FFA500" }} />
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

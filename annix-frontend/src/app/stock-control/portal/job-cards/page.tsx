@@ -4,6 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { formatDateZA } from "@/app/lib/datetime";
@@ -416,60 +417,62 @@ export default function JobCardsPage() {
         </div>
       </div>
 
-      {bulkProgress && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4"
-          role="dialog"
-          aria-modal="true"
-        >
-          <div className="fixed inset-0 bg-black/10 backdrop-blur-md" aria-hidden="true" />
-          <div className="relative w-full max-w-sm rounded-lg bg-white p-6 shadow-xl">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-purple-100">
-                <span className="text-lg font-bold text-purple-700">N</span>
+      {bulkProgress &&
+        createPortal(
+          <div
+            className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
+            role="dialog"
+            aria-modal="true"
+          >
+            <div className="fixed inset-0 bg-black/10 backdrop-blur-md" aria-hidden="true" />
+            <div className="relative w-full max-w-sm rounded-lg bg-white p-6 shadow-xl">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-purple-100">
+                  <span className="text-lg font-bold text-purple-700">N</span>
+                </div>
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-900">Nix Coating Analysis</h3>
+                  <p className="text-xs text-gray-500">
+                    {isBulkReanalysing
+                      ? `Analysing ${bulkProgress.current} of ${bulkProgress.total}`
+                      : `Complete — ${bulkProgress.processed} processed${bulkProgress.failed > 0 ? `, ${bulkProgress.failed} failed` : ""}`}
+                  </p>
+                </div>
               </div>
-              <div>
-                <h3 className="text-sm font-semibold text-gray-900">Nix Coating Analysis</h3>
-                <p className="text-xs text-gray-500">
-                  {isBulkReanalysing
-                    ? `Analysing ${bulkProgress.current} of ${bulkProgress.total}`
-                    : `Complete — ${bulkProgress.processed} processed${bulkProgress.failed > 0 ? `, ${bulkProgress.failed} failed` : ""}`}
+              {isBulkReanalysing && (
+                <p className="text-sm text-gray-700 mb-3 truncate">
+                  Checking{" "}
+                  <span className="font-medium text-purple-700">{bulkProgress.currentJc}</span>
                 </p>
+              )}
+              <div className="w-full bg-gray-200 rounded-full h-2 mb-2">
+                <div
+                  className="bg-purple-600 h-2 rounded-full transition-all duration-300"
+                  style={{
+                    width: `${bulkProgress.total > 0 ? (bulkProgress.current / bulkProgress.total) * 100 : 0}%`,
+                  }}
+                />
               </div>
-            </div>
-            {isBulkReanalysing && (
-              <p className="text-sm text-gray-700 mb-3 truncate">
-                Checking{" "}
-                <span className="font-medium text-purple-700">{bulkProgress.currentJc}</span>
-              </p>
-            )}
-            <div className="w-full bg-gray-200 rounded-full h-2 mb-2">
-              <div
-                className="bg-purple-600 h-2 rounded-full transition-all duration-300"
-                style={{
-                  width: `${bulkProgress.total > 0 ? (bulkProgress.current / bulkProgress.total) * 100 : 0}%`,
-                }}
-              />
-            </div>
-            <div className="flex items-center justify-between text-xs text-gray-500">
-              <span>
-                {bulkProgress.current}/{bulkProgress.total} job cards
-              </span>
-              {bulkProgress.failed > 0 && (
-                <span className="text-red-600">{bulkProgress.failed} failed</span>
+              <div className="flex items-center justify-between text-xs text-gray-500">
+                <span>
+                  {bulkProgress.current}/{bulkProgress.total} job cards
+                </span>
+                {bulkProgress.failed > 0 && (
+                  <span className="text-red-600">{bulkProgress.failed} failed</span>
+                )}
+              </div>
+              {!isBulkReanalysing && (
+                <button
+                  onClick={() => setBulkProgress(null)}
+                  className="mt-4 w-full rounded-md bg-purple-600 px-4 py-2 text-sm font-medium text-white hover:bg-purple-700"
+                >
+                  Done
+                </button>
               )}
             </div>
-            {!isBulkReanalysing && (
-              <button
-                onClick={() => setBulkProgress(null)}
-                className="mt-4 w-full rounded-md bg-purple-600 px-4 py-2 text-sm font-medium text-white hover:bg-purple-700"
-              >
-                Done
-              </button>
-            )}
-          </div>
-        </div>
-      )}
+          </div>,
+          document.body,
+        )}
 
       {dedupResult && dedupResult.merged > 0 && (
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 flex items-center justify-between">

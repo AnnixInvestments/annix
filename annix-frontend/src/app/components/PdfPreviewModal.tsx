@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 
 interface PdfPreviewState {
   isOpen: boolean;
@@ -88,8 +89,8 @@ export function PdfPreviewModal(props: PdfPreviewModalProps) {
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-50">
+  return createPortal(
+    <div className="fixed inset-0 z-[9999]">
       <div className="fixed inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
       <div className="fixed inset-4 sm:inset-8 flex flex-col bg-white rounded-lg shadow-2xl overflow-hidden">
         <div className="flex items-center justify-between px-4 py-2.5 bg-gray-800 text-white">
@@ -170,6 +171,7 @@ export function PdfPreviewModal(props: PdfPreviewModalProps) {
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

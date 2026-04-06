@@ -2,6 +2,7 @@
 
 import { X } from "lucide-react";
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import type { StockAllocation } from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 
@@ -62,8 +63,8 @@ export function ReturnLeftoverModal(props: ReturnLeftoverModalProps) {
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-50 overflow-y-auto" role="dialog" aria-modal="true">
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] overflow-y-auto" role="dialog" aria-modal="true">
       <div className="flex min-h-screen items-center justify-center p-4">
         <div className="fixed inset-0 bg-black/10 backdrop-blur-md" />
 
@@ -151,6 +152,7 @@ export function ReturnLeftoverModal(props: ReturnLeftoverModalProps) {
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

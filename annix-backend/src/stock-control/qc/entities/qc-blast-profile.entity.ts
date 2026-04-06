@@ -29,6 +29,12 @@ export class QcBlastProfile {
   @Column({ name: "job_card_id" })
   jobCardId: number;
 
+  @Column({ name: "profile_type", type: "varchar", length: 50, default: "'blast'" })
+  profileType: string;
+
+  @Column({ name: "coat_label", type: "varchar", length: 255, nullable: true })
+  coatLabel: string | null;
+
   @Column({ name: "spec_microns", type: "numeric", precision: 8, scale: 2 })
   specMicrons: number;
 

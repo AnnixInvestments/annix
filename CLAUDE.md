@@ -96,6 +96,26 @@ Update `docs/shared-registry.md` in the same commit. Reviewers / pre-push hook w
     - ❌ `function Foo({ size = "md" }: FooProps) {}`
 - **Rule of thumb when authoring**: if you're about to type `??` and the thing to the left is not a bare identifier, stop and write `||` instead (or hoist to a const first). This rule has been broken repeatedly — treat `??` on member access as forbidden by default.
 
+### Modal / Popup / Dialog Rendering (Frontend Only)
+- **All modals MUST use `createPortal` to render at `document.body`**: Never render modal overlays inline in the component tree. The app layouts use `overflow-y-auto` scroll containers that break `fixed` positioning for inline modals, causing them to appear off-screen.
+- **Import**: `import { createPortal } from "react-dom";`
+- **Pattern**:
+    ```tsx
+    if (!isOpen) return null;
+    return createPortal(
+      <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4" role="dialog" aria-modal="true">
+        <div className="fixed inset-0 bg-black/10 backdrop-blur-md" onClick={onClose} aria-hidden="true" />
+        <div className="relative bg-white rounded-lg shadow-xl ...">
+          {/* Modal content */}
+        </div>
+      </div>,
+      document.body,
+    );
+    ```
+- **z-index**: Always use `z-[9999]` for modals to ensure they appear above all other content
+- **Backdrop**: Use `fixed inset-0` (never `absolute inset-0`) for the backdrop overlay
+- **Early returns**: Keep `if (!isOpen) return null;` outside the portal — only wrap the actual modal JSX
+
 ### Date/Time Handling
 - **Always use Luxon via the datetime module**: Never use native `Date`, `Date.now()`, or `Date.parse()`
 - **Frontend**: Import from `@/app/lib/datetime`

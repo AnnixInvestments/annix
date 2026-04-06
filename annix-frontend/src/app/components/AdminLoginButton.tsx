@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { AdminUserProfile, adminApiClient } from "@/app/lib/api/adminApi";
 
 interface AdminLoginModalProps {
@@ -37,9 +38,9 @@ function AdminLoginModal({ isOpen, onClose, onSuccess }: AdminLoginModalProps) {
 
   if (!isOpen) return null;
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/10 backdrop-blur-md" onClick={onClose} />
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center">
+      <div className="fixed inset-0 bg-black/10 backdrop-blur-md" onClick={onClose} />
       <div className="relative bg-white dark:bg-slate-800 rounded-xl shadow-2xl p-6 w-full max-w-md mx-4 border border-gray-200 dark:border-slate-700">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-xl font-bold text-gray-900 dark:text-white">Admin Login</h2>
@@ -166,7 +167,8 @@ function AdminLoginModal({ isOpen, onClose, onSuccess }: AdminLoginModalProps) {
           </button>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 

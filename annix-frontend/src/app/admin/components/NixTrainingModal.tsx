@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   adminApiClient,
   FieldComparisonResult,
@@ -639,8 +640,8 @@ export function NixTrainingModal(props: NixTrainingModalProps) {
   const trainedCount = trainedRegions.filter((r) => r.saved).length;
   const totalFields = fieldsToTrain.length;
 
-  return (
-    <div className="fixed inset-0 z-50 overflow-hidden">
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] overflow-hidden">
       <div className="flex items-center justify-center min-h-screen">
         <div className="fixed inset-0 bg-black/10 backdrop-blur-md" onClick={onClose} />
 
@@ -1286,6 +1287,7 @@ export function NixTrainingModal(props: NixTrainingModalProps) {
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

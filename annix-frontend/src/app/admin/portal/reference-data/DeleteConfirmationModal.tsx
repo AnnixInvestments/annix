@@ -1,5 +1,7 @@
 "use client";
 
+import { createPortal } from "react-dom";
+
 interface DeleteConfirmationModalProps {
   entityName: string;
   recordId: number;
@@ -13,8 +15,8 @@ interface DeleteConfirmationModalProps {
 export function DeleteConfirmationModal(props: DeleteConfirmationModalProps) {
   const { entityName, recordId, recordSummary, isDeleting, deleteError, onConfirm, onCancel } =
     props;
-  return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] overflow-y-auto">
       <div className="flex min-h-screen items-center justify-center p-4">
         <div className="fixed inset-0 bg-black/10 backdrop-blur-md" onClick={onCancel} />
         <div className="relative bg-white rounded-lg shadow-xl max-w-md w-full p-6">
@@ -75,6 +77,7 @@ export function DeleteConfirmationModal(props: DeleteConfirmationModalProps) {
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

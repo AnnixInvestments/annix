@@ -2,6 +2,7 @@
 
 import { X } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import type { StepOutcome } from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { useModalAccessibility } from "../lib/useModalAccessibility";
@@ -109,9 +110,9 @@ export function ApprovalModal(props: ApprovalModalProps) {
 
   const selectedOutcomeLabel = stepOutcomes?.find((o) => o.key === selectedOutcome)?.label || "";
 
-  return (
+  return createPortal(
     <div
-      className="fixed inset-0 z-50 overflow-y-auto"
+      className="fixed inset-0 z-[9999] overflow-y-auto"
       role="dialog"
       aria-modal="true"
       aria-labelledby="approval-modal-title"
@@ -281,6 +282,7 @@ export function ApprovalModal(props: ApprovalModalProps) {
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

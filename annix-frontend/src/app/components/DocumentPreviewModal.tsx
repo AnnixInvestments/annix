@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { createPortal } from "react-dom";
 import { ImageViewerToolbar, imageViewerTransform, useImageViewer } from "./ImageViewerToolbar";
 
 export interface PreviewModalState {
@@ -58,8 +59,8 @@ export function DocumentPreviewModal(props: DocumentPreviewModalProps) {
 
   if (!state.isOpen) return null;
 
-  return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] overflow-y-auto">
       <div className="flex items-center justify-center min-h-screen px-4">
         <div className="fixed inset-0 bg-black/10 backdrop-blur-md" onClick={onClose} />
 
@@ -142,6 +143,7 @@ export function DocumentPreviewModal(props: DocumentPreviewModalProps) {
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

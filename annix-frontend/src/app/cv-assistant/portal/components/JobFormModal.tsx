@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import type { JobPosting } from "@/app/lib/api/cvAssistantApi";
 import { useCvCreateJobPosting, useCvUpdateJobPosting } from "@/app/lib/query/hooks";
 
@@ -46,8 +47,8 @@ export function JobFormModal({ job, onClose }: { job: JobPosting | null; onClose
     }
   };
 
-  return (
-    <div className="fixed inset-0 bg-black/10 backdrop-blur-md flex items-center justify-center z-50 p-4">
+  return createPortal(
+    <div className="fixed inset-0 bg-black/10 backdrop-blur-md flex items-center justify-center z-[9999] p-4">
       <div className="bg-white rounded-2xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
         <div className="px-6 py-4 border-b border-gray-200">
           <h2 className="text-xl font-bold text-gray-900">
@@ -180,6 +181,7 @@ export function JobFormModal({ job, onClose }: { job: JobPosting | null; onClose
           </div>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

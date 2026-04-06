@@ -18,6 +18,8 @@ interface BlastProfileFormProps {
   onSaved: () => void;
   coatingAnalysis?: CoatingAnalysis | null;
   batchRecords?: IssuanceBatchRecord[];
+  profileType?: "blast" | "paint";
+  coatLabel?: string | null;
 }
 
 const READING_ROWS = Array.from({ length: 20 }, (_, i) => i + 1);
@@ -52,13 +54,17 @@ export default function BlastProfileForm(props: BlastProfileFormProps) {
   const existing = props.existing ?? null;
   const coatingAnalysis = props.coatingAnalysis ?? null;
   const batchRecords = props.batchRecords ?? [];
+  const profileType = props.profileType || "blast";
+  const coatLabel = props.coatLabel || null;
+  const isPaint = profileType === "paint";
   const defaultDate = now().toISODate() || "";
 
   const [specMicrons, setSpecMicrons] = useState<string>(
-    existing?.specMicrons?.toString() || blastSpecDefault(coatingAnalysis),
+    existing?.specMicrons?.toString() || (isPaint ? "" : blastSpecDefault(coatingAnalysis)),
   );
   const [abrasiveBatchNumber, setAbrasiveBatchNumber] = useState<string>(
-    existing?.abrasiveBatchNumber || (existing ? "" : abrasiveBatchDefault(batchRecords)),
+    existing?.abrasiveBatchNumber ||
+      (existing || isPaint ? "" : abrasiveBatchDefault(batchRecords)),
   );
   const [temperature, setTemperature] = useState<string>(existing?.temperature?.toString() || "");
   const [humidity, setHumidity] = useState<string>(existing?.humidity?.toString() || "");
@@ -123,6 +129,8 @@ export default function BlastProfileForm(props: BlastProfileFormProps) {
         : null;
 
     const payload: Partial<QcBlastProfileRecord> = {
+      profileType,
+      coatLabel: isPaint ? coatLabel : null,
       specMicrons: parseFloat(specMicrons),
       abrasiveBatchNumber: abrasiveBatchNumber.trim() || null,
       temperature: temperature ? parseFloat(temperature) : null,
@@ -151,7 +159,15 @@ export default function BlastProfileForm(props: BlastProfileFormProps) {
     <QcFormModal
       isOpen={isOpen}
       onClose={onClose}
-      title={existing ? "Edit Blast Profile" : "New Blast Profile"}
+      title={
+        isPaint
+          ? existing
+            ? `Edit Paint Profile — ${coatLabel || "Paint"}`
+            : `New Paint Profile — ${coatLabel || "Paint"}`
+          : existing
+            ? "Edit Blast Profile"
+            : "New Blast Profile"
+      }
       error={error}
       saving={saving}
       onSave={handleSave}
@@ -159,7 +175,9 @@ export default function BlastProfileForm(props: BlastProfileFormProps) {
     >
       <div className="grid grid-cols-2 gap-4 mb-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Spec Target (μm) *</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            {isPaint ? "DFT Spec Target (μm) *" : "Spec Target (μm) *"}
+          </label>
           <input
             type="number"
             value={specMicrons}
@@ -170,7 +188,7 @@ export default function BlastProfileForm(props: BlastProfileFormProps) {
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
-            Abrasive Batch Number
+            {isPaint ? "Paint Batch Number" : "Abrasive Batch Number"}
           </label>
           <input
             type="text"

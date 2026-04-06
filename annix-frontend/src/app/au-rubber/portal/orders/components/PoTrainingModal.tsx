@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   auRubberApiClient,
   type PdfPageImage,
@@ -486,8 +487,8 @@ export function PoTrainingModal(props: PoTrainingModalProps) {
   const currentPageData = pages[currentPage - 1];
   const trainedCount = trainedRegions.filter((r) => r.saved).length;
 
-  return (
-    <div className="fixed inset-0 z-50 overflow-hidden">
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] overflow-hidden">
       <div className="flex items-center justify-center min-h-screen">
         <div className="fixed inset-0 bg-black/10 backdrop-blur-md" onClick={onClose} />
 
@@ -976,6 +977,7 @@ export function PoTrainingModal(props: PoTrainingModalProps) {
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

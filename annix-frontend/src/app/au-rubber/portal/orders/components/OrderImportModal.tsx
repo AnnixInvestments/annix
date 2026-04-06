@@ -2,6 +2,7 @@
 
 import { Loader2, Sparkles, Upload, X } from "lucide-react";
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   type AnalyzedOrderData,
   type AnalyzeOrderFilesResult,
@@ -197,8 +198,8 @@ export function OrderImportModal(props: OrderImportModalProps) {
 
   const currentAnalysis = editedAnalyses[selectedFileIndex];
 
-  return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] overflow-y-auto">
       <div className="flex min-h-screen items-center justify-center p-4">
         <div className="fixed inset-0 bg-black/10 backdrop-blur-md" onClick={handleClose} />
         <div className="relative bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
@@ -412,6 +413,7 @@ export function OrderImportModal(props: OrderImportModalProps) {
             onTrainingComplete={handleTrainingComplete}
           />
         )}
-    </div>
+    </div>,
+    document.body,
   );
 }

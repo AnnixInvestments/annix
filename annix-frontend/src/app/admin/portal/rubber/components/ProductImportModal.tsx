@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   type ImportProductRowDto,
   type ImportProductsResultDto,
@@ -230,8 +231,8 @@ export function ProductImportModal(props: ProductImportModalProps) {
 
   if (!isOpen) return null;
 
-  return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] overflow-y-auto">
       <div className="flex min-h-screen items-center justify-center p-4">
         <div className="fixed inset-0 bg-black/10 backdrop-blur-md" onClick={handleClose} />
 
@@ -441,6 +442,7 @@ export function ProductImportModal(props: ProductImportModalProps) {
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

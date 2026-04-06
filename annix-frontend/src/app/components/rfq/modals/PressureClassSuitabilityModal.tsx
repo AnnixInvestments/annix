@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { createPortal } from "react-dom";
 
 interface PressureClassSuitabilityModalProps {
   isOpen: boolean;
@@ -53,8 +54,8 @@ export function PressureClassSuitabilityModal(props: PressureClassSuitabilityMod
     onClose();
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center">
       <div className="fixed inset-0 bg-black/10 backdrop-blur-md" onClick={handleClose} />
       <div className="relative bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full mx-4 p-6">
         <div className="flex items-start gap-3 mb-4">
@@ -179,6 +180,7 @@ export function PressureClassSuitabilityModal(props: PressureClassSuitabilityMod
           </div>
         )}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

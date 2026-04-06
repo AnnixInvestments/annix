@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import type { RecurrenceUpdateScope } from "@/app/lib/api/annixRepApi";
 
 interface RecurrenceModalProps {
@@ -32,8 +33,8 @@ export function RecurrenceModal(props: RecurrenceModalProps) {
     onClose();
   };
 
-  return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] overflow-y-auto">
       <div className="flex min-h-full items-center justify-center p-4">
         <div
           className="fixed inset-0 bg-black/10 backdrop-blur-md transition-opacity"
@@ -121,6 +122,7 @@ export function RecurrenceModal(props: RecurrenceModalProps) {
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

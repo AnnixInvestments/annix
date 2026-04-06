@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   type GlobalSearchResponse,
   type GlobalSearchResultItem,
@@ -295,9 +296,9 @@ export function GlobalSearchModal({ isOpen, onClose }: GlobalSearchModalProps) {
   const showRecents = query.trim().length < 2 && !searchPerformed;
   let flatIndex = -1;
 
-  return (
+  return createPortal(
     <div
-      className="fixed inset-0 z-[60] overflow-y-auto"
+      className="fixed inset-0 z-[9999] overflow-y-auto"
       role="dialog"
       aria-modal="true"
       aria-labelledby="global-search-modal-title"
@@ -527,6 +528,7 @@ export function GlobalSearchModal({ isOpen, onClose }: GlobalSearchModalProps) {
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

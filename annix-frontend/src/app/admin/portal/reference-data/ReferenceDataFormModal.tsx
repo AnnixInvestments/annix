@@ -1,5 +1,6 @@
 "use client";
 
+import { createPortal } from "react-dom";
 import { useForm } from "react-hook-form";
 import type { ColumnSchemaInfo, RelationSchemaInfo } from "@/app/lib/api/adminApi";
 import {
@@ -83,8 +84,8 @@ export function ReferenceDataFormModal(props: ReferenceDataFormModalProps) {
       .replace(/^./, (c) => c.toUpperCase());
   };
 
-  return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] overflow-y-auto">
       <div className="flex min-h-screen items-center justify-center p-4">
         <div className="fixed inset-0 bg-black/10 backdrop-blur-md" onClick={onCancel} />
         <div className="relative bg-white rounded-lg shadow-xl max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto">
@@ -166,6 +167,7 @@ export function ReferenceDataFormModal(props: ReferenceDataFormModalProps) {
           </form>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

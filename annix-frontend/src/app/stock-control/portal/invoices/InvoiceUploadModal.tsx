@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useToast } from "@/app/components/Toast";
 import type { AnalyzedDeliveryNoteResult, DeliveryNote } from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
@@ -183,8 +184,8 @@ export default function InvoiceUploadModal(props: InvoiceUploadModalProps) {
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] overflow-y-auto">
       <div className="flex items-center justify-center min-h-screen px-4">
         <div
           className="fixed inset-0 bg-black/10 backdrop-blur-md transition-opacity"
@@ -489,6 +490,7 @@ export default function InvoiceUploadModal(props: InvoiceUploadModalProps) {
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

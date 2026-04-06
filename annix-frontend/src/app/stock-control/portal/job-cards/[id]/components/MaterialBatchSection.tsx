@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import type {
   CoatingAnalysis,
   IssuanceBatchRecord,
+  QcControlPlanRecord,
   QcDefelskoBatchRecord,
 } from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
@@ -51,12 +52,27 @@ interface ManualEntry {
   value: string;
 }
 
-function rubberManualFields(rollCount: number): { fieldKey: string; label: string }[] {
+const SOLUTION_ACTIVITY_PATTERN =
+  /hero bond|ty bond|chemosil|chemlok|adhesive|bonding agent|primer bond/i;
+
+function rubberManualFields(
+  rollCount: number,
+  solutionDescriptions: string[],
+): { fieldKey: string; label: string }[] {
   const rollFields = Array.from({ length: rollCount }, (_, i) => ({
     fieldKey: `rubber_roll_batch_${i}`,
     label: rollCount === 1 ? "Roll/Batch Number" : `Roll/Batch Number ${i + 1}`,
   }));
-  return [...rollFields, { fieldKey: "solution_batch_number", label: "Solution Batch Number" }];
+
+  const solutionFields =
+    solutionDescriptions.length > 0
+      ? solutionDescriptions.map((desc, i) => ({
+          fieldKey: `solution_batch_${i}`,
+          label: `${desc} Batch Number`,
+        }))
+      : [{ fieldKey: "solution_batch_number", label: "Solution Batch Number" }];
+
+  return [...rollFields, ...solutionFields];
 }
 
 function paintProductRows(coats: CoatingAnalysis["coats"] | null): PaintProductRow[] {
@@ -181,7 +197,27 @@ export function MaterialBatchSection(props: MaterialBatchSectionProps) {
     [productRows],
   );
 
-  const rubberRollCount = useMemo(() => {
+  const [solutionDescriptions, setSolutionDescriptions] = useState<string[]>([]);
+  const [extraRolls, setExtraRolls] = useState(0);
+
+  useEffect(() => {
+    if (!hasRubber) return;
+    stockControlApiClient
+      .controlPlansForJobCard(jobCardId)
+      .then((plans: QcControlPlanRecord[]) => {
+        const rubberPlan = plans.find((p) => p.planType === "rubber");
+        if (!rubberPlan) return;
+        const solutions = rubberPlan.activities
+          .filter((a) => SOLUTION_ACTIVITY_PATTERN.test(a.description))
+          .map((a) => a.description);
+        if (solutions.length > 0) {
+          setSolutionDescriptions(solutions);
+        }
+      })
+      .catch(() => {});
+  }, [jobCardId, hasRubber]);
+
+  const baseRollCount = useMemo(() => {
     if (rubberPlanOverride?.manualRolls && rubberPlanOverride.manualRolls.length > 0) {
       return rubberPlanOverride.manualRolls.length;
     }
@@ -196,7 +232,12 @@ export function MaterialBatchSection(props: MaterialBatchSectionProps) {
     return 1;
   }, [rubberPlanOverride, batchRecords]);
 
-  const rubberFields = useMemo(() => rubberManualFields(rubberRollCount), [rubberRollCount]);
+  const rubberRollCount = baseRollCount + extraRolls;
+
+  const rubberFields = useMemo(
+    () => rubberManualFields(rubberRollCount, solutionDescriptions),
+    [rubberRollCount, solutionDescriptions],
+  );
 
   const [rubberManual, setRubberManual] = useState<ManualEntry[]>(
     rubberFields.map((f) => ({ ...f, value: "" })),
@@ -223,7 +264,12 @@ export function MaterialBatchSection(props: MaterialBatchSectionProps) {
   }, [allPaintFieldKeys]);
 
   useEffect(() => {
-    setRubberManual(rubberFields.map((f) => ({ ...f, value: "" })));
+    setRubberManual((prev) => {
+      return rubberFields.map((f) => {
+        const existing = prev.find((p) => p.fieldKey === f.fieldKey);
+        return existing ? { ...f, value: existing.value } : { ...f, value: "" };
+      });
+    });
   }, [rubberFields]);
 
   const loadSavedBatches = useCallback(async () => {
@@ -261,6 +307,18 @@ export function MaterialBatchSection(props: MaterialBatchSectionProps) {
                 entry.fieldKey === "rubber_roll_batch_0" ? { ...entry, value: mergedVal } : entry,
               );
             }
+          }
+
+          const oldSolutionVal = materialEntries.find(
+            (s: QcDefelskoBatchRecord) => s.fieldKey === "solution_batch_number",
+          )?.batchNumber;
+          const hasNewSolutionKeys = materialEntries.some(
+            (s: QcDefelskoBatchRecord) => s.fieldKey === "solution_batch_0",
+          );
+          if (oldSolutionVal && !hasNewSolutionKeys) {
+            return migratedPrev.map((entry) =>
+              entry.fieldKey === "solution_batch_0" ? { ...entry, value: oldSolutionVal } : entry,
+            );
           }
 
           return migratedPrev;
@@ -448,8 +506,17 @@ export function MaterialBatchSection(props: MaterialBatchSectionProps) {
 
               {loaded && (
                 <div className="space-y-2">
-                  <div className="text-[10px] font-medium text-gray-400 uppercase tracking-wider">
-                    Manual Entry
+                  <div className="flex items-center justify-between">
+                    <div className="text-[10px] font-medium text-gray-400 uppercase tracking-wider">
+                      Manual Entry
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setExtraRolls((prev) => prev + 1)}
+                      className="rounded bg-gray-100 px-2 py-0.5 text-[10px] font-medium text-gray-600 hover:bg-gray-200"
+                    >
+                      + Add Roll
+                    </button>
                   </div>
                   {rubberManual.map((entry) => (
                     <div key={entry.fieldKey} className="flex items-center gap-2">
