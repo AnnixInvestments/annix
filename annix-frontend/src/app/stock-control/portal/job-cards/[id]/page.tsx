@@ -457,9 +457,13 @@ export default function JobCardDetailPage() {
     const checkName = isPreviewActive ? effectiveName : user?.name;
     if (!checkName) return false;
     const assignments = workflowStatus.stepAssignments || {};
-    const qualityAssigned = assignments["quality_check"] || assignments["custom_quality_check"];
-    if (!qualityAssigned || qualityAssigned.length === 0) return false;
-    return qualityAssigned.some((u) => u.name === checkName);
+    const qualityKeys = Object.keys(assignments).filter(
+      (k) => k.includes("quality") || k === "qa_review" || k === "qa_final_check",
+    );
+    return qualityKeys.some((k) => {
+      const assigned = assignments[k];
+      return assigned?.some((u) => u.name === checkName);
+    });
   }, [workflowStatus, user?.name, effectiveName, isPreviewActive]);
 
   const canAcceptDraft = useMemo(() => {
