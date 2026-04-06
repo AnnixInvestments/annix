@@ -66,6 +66,9 @@ export class QcItemsRelease {
   @Column({ name: "client_sign_off", type: "jsonb", default: "{}" })
   clientSignOff: ReleasePartySignOff;
 
+  @Column({ name: "third_party_sign_off", type: "jsonb", default: "{}" })
+  thirdPartySignOff: ReleasePartySignOff;
+
   @Column({ name: "comments", type: "text", nullable: true })
   comments: string | null;
 

@@ -20,7 +20,7 @@ import { QcBlastProfile } from "../qc/entities/qc-blast-profile.entity";
 import { QcControlPlan } from "../qc/entities/qc-control-plan.entity";
 import { DftCoatType, QcDftReading } from "../qc/entities/qc-dft-reading.entity";
 import { QcDustDebrisTest } from "../qc/entities/qc-dust-debris-test.entity";
-import { QcItemsRelease } from "../qc/entities/qc-items-release.entity";
+import { QcItemsRelease, type ReleasePartySignOff } from "../qc/entities/qc-items-release.entity";
 import { QcPullTest } from "../qc/entities/qc-pull-test.entity";
 import { QcReleaseCertificate } from "../qc/entities/qc-release-certificate.entity";
 import { QcShoreHardness } from "../qc/entities/qc-shore-hardness.entity";
@@ -205,33 +205,40 @@ export class DataBookPdfService {
     jobCardId: number,
     releaseId: number,
   ): Promise<Buffer | null> {
-    const [jobCard, company, release] = await Promise.all([
+    const [jobCard, company, release, controlPlans] = await Promise.all([
       this.jobCardRepo.findOne({ where: { id: jobCardId, companyId }, relations: ["lineItems"] }),
       this.companyRepo.findOne({ where: { id: companyId } }),
       this.itemsReleaseRepo.findOne({ where: { id: releaseId, companyId, jobCardId } }),
+      this.controlPlanRepo.find({ where: { companyId, jobCardId } }),
     ]);
 
     if (!jobCard || !release) {
       return null;
     }
 
+    const logoBuffer = await this.fetchCompanyLogo(company);
+
     const ctx: DataBookContext = {
       jobCard,
       company,
-      logoBuffer: null,
+      logoBuffer,
       shoreHardness: [],
       dftByRole: [],
       blastProfiles: [],
       dustDebrisTests: [],
       pullTests: [],
-      controlPlans: [],
+      controlPlans,
       releaseCertificates: [],
       itemsReleases: [release],
     };
 
-    return this.renderStandaloneDocument(ctx, (doc, tocEntries) => {
-      this.renderItemsRelease(doc, ctx, release, tocEntries);
-    });
+    return this.renderStandaloneDocument(
+      ctx,
+      (doc, tocEntries) => {
+        this.renderItemsRelease(doc, ctx, release, tocEntries);
+      },
+      { layout: "landscape" },
+    );
   }
 
   async generateControlPlanPdf(
@@ -601,11 +608,12 @@ export class DataBookPdfService {
       width: number;
       align?: "left" | "right" | "center";
     }>,
+    pg: PageLayout = A4,
   ): number {
     const y = doc.y;
     doc.fontSize(7).font(FONT.BOLD);
 
-    doc.rect(A4.margin, y - 2, A4.contentWidth, 14).fill("#f3f4f6");
+    doc.rect(pg.margin, y - 2, pg.contentWidth, 14).fill("#f3f4f6");
     doc.fillColor("#000000");
 
     columns.forEach((col) => {
@@ -1172,83 +1180,384 @@ export class DataBookPdfService {
     release: QcItemsRelease,
     tocEntries: TocEntry[],
   ): void {
-    this.sectionHeader(doc, ctx, "Items Release", DOC_NUMBERS.items_release, tocEntries);
+    const pg = A4_LANDSCAPE;
+    const hasRubber = release.items.some((item) => item.rubberSpec && item.rubberSpec !== "-");
+    const hasPaint = release.items.some((item) => item.paintingSpec && item.paintingSpec !== "-");
 
-    const cols = [
-      { label: "#", x: A4.margin, width: 25, align: "center" as const },
-      { label: "Item Code", x: A4.margin + 25, width: 65, align: "left" as const },
-      { label: "Description", x: A4.margin + 90, width: 150, align: "left" as const },
-      { label: "JT No", x: A4.margin + 240, width: 50, align: "left" as const },
-      { label: "Rubber Spec", x: A4.margin + 290, width: 65, align: "left" as const },
-      { label: "Paint Spec", x: A4.margin + 355, width: 65, align: "left" as const },
-      { label: "Qty", x: A4.margin + 420, width: 35, align: "right" as const },
-      { label: "Result", x: A4.margin + 455, width: 60, align: "center" as const },
+    const coatingLabel =
+      hasRubber && hasPaint
+        ? "Rubber Lining & Paint Coating"
+        : hasRubber
+          ? "Rubber Lining"
+          : hasPaint
+            ? "Paint Coating"
+            : "";
+
+    const subtitle = coatingLabel
+      ? `Item Release Document — ${coatingLabel}`
+      : "Item Release Document";
+    this.itemsReleaseHeader(doc, ctx, subtitle, DOC_NUMBERS.items_release, tocEntries);
+
+    let y = doc.y;
+
+    const leftColX = pg.margin;
+    const rightColX = pg.margin + pg.contentWidth * 0.45;
+    const labelW = 85;
+
+    doc.fontSize(8).font(FONT.BOLD).fillColor("#000000");
+    doc.text("Company Details", leftColX, y);
+    y += 12;
+
+    doc.fontSize(7).font(FONT.REGULAR);
+    const companyName = ctx.company?.name ?? "";
+    const companyAddress = ctx.company?.streetAddress ?? "";
+    const companyPhone = ctx.company?.phone ?? "";
+    const companyEmail = ctx.company?.email ?? "";
+    const companyWebsite = ctx.company?.websiteUrl ?? "";
+
+    doc.text(companyName, leftColX, y, { width: pg.contentWidth * 0.4 });
+    y += 10;
+    if (companyAddress) {
+      doc.text(companyAddress, leftColX, y, { width: pg.contentWidth * 0.4 });
+      y += 10;
+    }
+    if (companyPhone) {
+      doc.text(companyPhone, leftColX, y, { width: pg.contentWidth * 0.4 });
+      y += 10;
+    }
+    if (companyEmail) {
+      doc.text(companyEmail, leftColX, y, { width: pg.contentWidth * 0.4 });
+      y += 10;
+    }
+    if (companyWebsite) {
+      doc.text(companyWebsite, leftColX, y, { width: pg.contentWidth * 0.4 });
+      y += 10;
+    }
+
+    const infoY = doc.y - (y - (doc.y - 12));
+    const rightStartY = infoY + 12;
+    doc.fontSize(7).font(FONT.REGULAR);
+
+    const rightFields: Array<[string, string]> = [
+      ["CLIENT:", ctx.jobCard.customerName ?? "-"],
+      ["ORDER NO:", ctx.jobCard.poNumber ?? "-"],
+      ["RELEASE NO:", `${release.id}`],
+      ["JOB CARD:", ctx.jobCard.jobNumber || String(ctx.jobCard.id)],
     ];
 
-    let y = this.tableHeader(doc, cols);
+    rightFields.forEach(([label, value], idx) => {
+      const ry = rightStartY + idx * 12;
+      doc.font(FONT.BOLD).text(label, rightColX, ry, { width: labelW, continued: false });
+      doc.font(FONT.REGULAR).text(value, rightColX + labelW, ry, {
+        width: pg.contentWidth * 0.4,
+      });
+    });
+
+    y = Math.max(y, rightStartY + rightFields.length * 12) + 8;
+
+    doc
+      .moveTo(pg.margin, y)
+      .lineTo(pg.margin + pg.contentWidth, y)
+      .lineWidth(0.5)
+      .stroke("#d1d5db");
+    doc.lineWidth(1);
+    y += 6;
+
+    const checkedByW = 80;
+    const dateW = 60;
+    const fixedColsWidth = 25 + 75 + 55 + 40 + 45 + checkedByW + dateW;
+    const specColsCount = (hasRubber ? 1 : 0) + (hasPaint ? 1 : 0);
+    const specColWidth =
+      specColsCount > 0 ? Math.floor((pg.contentWidth - fixedColsWidth) / (specColsCount + 1)) : 0;
+    const descWidth = pg.contentWidth - fixedColsWidth - specColWidth * specColsCount;
+
+    let xOffset = pg.margin;
+    const cols: Array<{
+      label: string;
+      x: number;
+      width: number;
+      align: "left" | "right" | "center";
+    }> = [];
+
+    cols.push({ label: "#", x: xOffset, width: 25, align: "center" });
+    xOffset += 25;
+    cols.push({ label: "Item Code", x: xOffset, width: 75, align: "left" });
+    xOffset += 75;
+    cols.push({ label: "Item Description", x: xOffset, width: descWidth, align: "left" });
+    xOffset += descWidth;
+
+    const rubberColIdx = hasRubber ? cols.length : -1;
+    if (hasRubber) {
+      cols.push({ label: "Rubber Spec", x: xOffset, width: specColWidth, align: "left" });
+      xOffset += specColWidth;
+    }
+    const paintColIdx = hasPaint ? cols.length : -1;
+    if (hasPaint) {
+      cols.push({ label: "Painting Spec", x: xOffset, width: specColWidth, align: "left" });
+      xOffset += specColWidth;
+    }
+
+    cols.push({ label: "Qty", x: xOffset, width: 40, align: "right" });
+    xOffset += 40;
+    cols.push({ label: "JT No", x: xOffset, width: 55, align: "left" });
+    xOffset += 55;
+    cols.push({ label: "P/F", x: xOffset, width: 45, align: "center" });
+    xOffset += 45;
+    cols.push({ label: "Checked By", x: xOffset, width: checkedByW, align: "left" });
+    xOffset += checkedByW;
+    cols.push({ label: "Date", x: xOffset, width: dateW, align: "left" });
+
+    const maxY = pg.pageHeight - pg.margin - 30;
+
+    doc.y = y;
+    y = this.tableHeader(doc, cols, pg);
 
     release.items.forEach((item, idx) => {
-      if (y > 750) {
-        doc.addPage();
-        y = A4.margin + 20;
-        y = this.tableHeader(doc, cols);
+      if (y > maxY) {
+        doc.addPage({ size: "A4", layout: "landscape" });
+        doc.y = pg.margin + 20;
+        y = this.tableHeader(doc, cols, pg);
       }
 
       const resultColor = item.result === "pass" ? "#166534" : "#991b1b";
-      y = this.tableRow(doc, y, [
-        { text: String(idx + 1), x: A4.margin, width: 25, align: "center" },
-        { text: item.itemCode, x: A4.margin + 25, width: 65 },
-        { text: item.description, x: A4.margin + 90, width: 150 },
-        { text: item.jtNumber ?? "-", x: A4.margin + 240, width: 50 },
-        { text: item.rubberSpec ?? "-", x: A4.margin + 290, width: 65 },
-        { text: item.paintingSpec ?? "-", x: A4.margin + 355, width: 65 },
-        { text: String(item.quantity), x: A4.margin + 420, width: 35, align: "right" },
+      const rowCells: Array<{
+        text: string;
+        x: number;
+        width: number;
+        align?: "left" | "right" | "center";
+        bold?: boolean;
+        color?: string;
+      }> = [
+        { text: String(idx + 1), x: cols[0].x, width: cols[0].width, align: "center" },
+        { text: item.itemCode, x: cols[1].x, width: cols[1].width },
+        { text: item.description, x: cols[2].x, width: cols[2].width },
+      ];
+
+      if (rubberColIdx >= 0) {
+        rowCells.push({
+          text: item.rubberSpec ?? "-",
+          x: cols[rubberColIdx].x,
+          width: cols[rubberColIdx].width,
+        });
+      }
+      if (paintColIdx >= 0) {
+        rowCells.push({
+          text: item.paintingSpec ?? "-",
+          x: cols[paintColIdx].x,
+          width: cols[paintColIdx].width,
+        });
+      }
+
+      const qtyColIdx =
+        paintColIdx >= 0 ? paintColIdx + 1 : rubberColIdx >= 0 ? rubberColIdx + 1 : 3;
+      const jtColIdx = qtyColIdx + 1;
+      const pfColIdx = jtColIdx + 1;
+      const checkedColIdx = pfColIdx + 1;
+      const dateColIdx = checkedColIdx + 1;
+
+      rowCells.push(
+        {
+          text: String(item.quantity),
+          x: cols[qtyColIdx].x,
+          width: cols[qtyColIdx].width,
+          align: "right",
+        },
+        { text: item.jtNumber ?? "-", x: cols[jtColIdx].x, width: cols[jtColIdx].width },
         {
           text: this.passFailBadge(item.result),
-          x: A4.margin + 455,
-          width: 60,
+          x: cols[pfColIdx].x,
+          width: cols[pfColIdx].width,
           align: "center",
           bold: true,
           color: resultColor,
         },
-      ]);
+        {
+          text: release.checkedByName ?? "",
+          x: cols[checkedColIdx].x,
+          width: cols[checkedColIdx].width,
+        },
+        {
+          text: release.checkedByDate ?? "",
+          x: cols[dateColIdx].x,
+          width: cols[dateColIdx].width,
+        },
+      );
+
+      y = this.tableRow(doc, y, rowCells);
     });
 
-    y += 5;
-    doc.fontSize(8).font(FONT.BOLD);
-    doc.text(`Total Quantity: ${release.totalQuantity}`, A4.margin, y);
-    y += 15;
+    y += 6;
+    doc
+      .moveTo(pg.margin, y)
+      .lineTo(pg.margin + pg.contentWidth, y)
+      .lineWidth(0.5)
+      .stroke("#d1d5db");
+    doc.lineWidth(1);
+    y += 8;
 
-    if (release.checkedByName) {
-      doc
-        .font(FONT.REGULAR)
-        .text(
-          `Checked by: ${release.checkedByName}  |  Date: ${release.checkedByDate ?? "-"}`,
-          A4.margin,
-          y,
-        );
-      y += 15;
+    doc.fontSize(8).font(FONT.BOLD).fillColor("#000000");
+    doc.text(`TOTAL QTY: ${release.totalQuantity}`, pg.margin + pg.contentWidth * 0.5, y, {
+      align: "center",
+      width: pg.contentWidth * 0.5,
+    });
+    y += 20;
+
+    const hasClient = this.itemsReleaseHasParty(ctx, "client");
+    const hasThirdParty = this.itemsReleaseHasParty(ctx, "thirdParty");
+
+    const companyShort = ctx.company?.name?.toUpperCase() ?? "POLYMER LINERS";
+    const clientName = ctx.jobCard.customerName?.toUpperCase() ?? "CLIENT";
+
+    const signOffParties: Array<{ label: string; signOff: ReleasePartySignOff }> = [
+      { label: companyShort, signOff: release.plsSignOff },
+      { label: "MPS", signOff: release.mpsSignOff },
+    ];
+    if (hasClient) {
+      signOffParties.push({ label: clientName, signOff: release.clientSignOff });
+    }
+    if (hasThirdParty) {
+      signOffParties.push({ label: "3RD PARTY", signOff: release.thirdPartySignOff });
     }
 
-    y += 5;
-    doc.fontSize(9).font(FONT.BOLD).text("Sign-Off", A4.margin, y);
-    y += 14;
+    if (y > maxY - 80) {
+      doc.addPage({ size: "A4", layout: "landscape" });
+      y = pg.margin + 20;
+    }
 
-    const parties = [
-      { label: "PLS", signOff: release.plsSignOff },
-      { label: "MPS", signOff: release.mpsSignOff },
-      { label: "Client", signOff: release.clientSignOff },
-    ];
+    const boxW = Math.floor(pg.contentWidth / signOffParties.length);
+    const boxH = 60;
+    const lineGap = 14;
 
-    doc.fontSize(8).font(FONT.REGULAR);
-    parties.forEach((p) => {
-      doc.text(
-        `${p.label}: ${p.signOff.name ?? "-"}  |  Date: ${p.signOff.date ?? "-"}`,
-        A4.margin,
-        y,
-      );
-      y += 12;
+    signOffParties.forEach((p, idx) => {
+      const bx = pg.margin + idx * boxW;
+      const innerW = boxW - 8;
+
+      doc
+        .rect(bx, y, boxW - 4, boxH)
+        .lineWidth(0.5)
+        .stroke("#d1d5db");
+
+      doc
+        .fontSize(8)
+        .font(FONT.BOLD)
+        .fillColor("#000000")
+        .text(p.label, bx + 4, y + 4, { width: innerW, lineBreak: false });
+
+      doc.fontSize(7).font(FONT.REGULAR);
+      doc.text(`NAME: ${p.signOff?.name ?? ""}`, bx + 4, y + 4 + lineGap, {
+        width: innerW,
+        lineBreak: false,
+      });
+      doc.text(`DATE: ${p.signOff?.date ?? ""}`, bx + 4, y + 4 + lineGap * 2, {
+        width: innerW,
+        lineBreak: false,
+      });
+      doc.text("SIGNATURE: ________________", bx + 4, y + 4 + lineGap * 3, {
+        width: innerW,
+        lineBreak: false,
+      });
     });
+  }
+
+  private itemsReleaseHeader(
+    doc: PDFDoc,
+    ctx: DataBookContext,
+    title: string,
+    docEntry: DocNumberEntry | null,
+    tocEntries: TocEntry[],
+  ): void {
+    const pg = A4_LANDSCAPE;
+    doc.addPage({ size: "A4", layout: "landscape" });
+    const y = pg.margin;
+
+    const pageIndex = doc.bufferedPageRange().count - 1;
+    if (docEntry) {
+      tocEntries.push({
+        title,
+        docNumber: docEntry.docNumber,
+        pageIndex,
+        revision: docEntry.revision,
+        edition: docEntry.edition,
+      });
+    }
+
+    const logoH = 24;
+    const logoAreaW = 40;
+    let nameX = pg.margin;
+    if (ctx.logoBuffer) {
+      try {
+        doc.image(ctx.logoBuffer, pg.margin, y, { height: logoH, fit: [logoAreaW, logoH] });
+        nameX = pg.margin + logoAreaW + 6;
+      } catch {
+        // logo failed to render
+      }
+    }
+
+    if (ctx.company?.name) {
+      doc
+        .fontSize(12)
+        .font(FONT.BOLD)
+        .fillColor("#000000")
+        .text(ctx.company.name, nameX, y + 4, { width: pg.contentWidth / 2 });
+    }
+
+    const rightInfo = [
+      docEntry ? `Doc: ${docEntry.docNumber}` : null,
+      docEntry ? `Ed: ${docEntry.edition} Rev: ${docEntry.revision}` : null,
+    ]
+      .filter(Boolean)
+      .join("  |  ");
+
+    if (rightInfo) {
+      doc
+        .fontSize(8)
+        .font(FONT.REGULAR)
+        .fillColor("#6b7280")
+        .text(rightInfo, pg.margin, y + 2, { align: "right", width: pg.contentWidth });
+    }
+
+    const brandColor = ctx.company?.primaryColor ?? "#0d9488";
+    doc.rect(pg.margin, y + 18, pg.contentWidth, 2).fill(brandColor);
+
+    doc
+      .fontSize(16)
+      .font(FONT.BOLD)
+      .fillColor("#111827")
+      .text(title, pg.margin, y + 26, { align: "center", width: pg.contentWidth });
+
+    const jobInfo = [
+      `Job Card: ${ctx.jobCard.jobNumber || ctx.jobCard.id}`,
+      ctx.jobCard.customerName ? `Customer: ${ctx.jobCard.customerName}` : null,
+      ctx.jobCard.poNumber ? `PO: ${ctx.jobCard.poNumber}` : null,
+    ]
+      .filter(Boolean)
+      .join("  |  ");
+
+    doc
+      .fontSize(8)
+      .font(FONT.REGULAR)
+      .fillColor("#6b7280")
+      .text(jobInfo, pg.margin, y + 48, { align: "center", width: pg.contentWidth });
+    doc.fillColor("#000000");
+
+    doc
+      .moveTo(pg.margin, y + 62)
+      .lineTo(pg.margin + pg.contentWidth, y + 62)
+      .lineWidth(0.5)
+      .stroke("#d1d5db");
+    doc.lineWidth(1);
+
+    doc.y = y + pg.headerHeight + 20;
+  }
+
+  private itemsReleaseHasParty(ctx: DataBookContext, party: "client" | "thirdParty"): boolean {
+    return ctx.controlPlans.some((plan) =>
+      plan.activities.some((a) => {
+        const signOff = (a as any)[party];
+        const it = signOff?.interventionType;
+        return it !== null && it !== undefined && it !== "";
+      }),
+    );
   }
 
   private renderReleaseCertificate(

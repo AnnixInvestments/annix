@@ -1087,6 +1087,7 @@ export interface QcItemsReleaseRecord {
   plsSignOff: ReleasePartySignOff;
   mpsSignOff: ReleasePartySignOff;
   clientSignOff: ReleasePartySignOff;
+  thirdPartySignOff: ReleasePartySignOff;
   comments: string | null;
   createdByName: string;
   createdById: number | null;
