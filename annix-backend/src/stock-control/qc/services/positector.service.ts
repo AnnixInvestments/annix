@@ -423,6 +423,7 @@ export class PositectorService {
     });
 
     const readingPattern = /^(\d{1,4})\s+(\d+(?:[.,]\d+)?)\s+/;
+    const noSpacePattern = /^(\d+?)(\d{2}:\d{2}:\d{2})$/;
 
     const { readings } = lines.reduce(
       (acc: { readings: PositectorReading[]; currentDate: string | null }, line: string) => {
@@ -450,6 +451,31 @@ export class PositectorService {
                 {
                   index: acc.readings.length + 1,
                   value,
+                  units: null,
+                  timestamp,
+                  raw: {},
+                },
+              ],
+              currentDate: acc.currentDate,
+            };
+          }
+        }
+
+        const noSpaceMatch = line.match(noSpacePattern);
+        if (noSpaceMatch) {
+          const digits = noSpaceMatch[1];
+          const parsedReading = this.splitIndexValue(digits, acc.readings.length + 1);
+          if (parsedReading) {
+            const timestamp = acc.currentDate
+              ? `${acc.currentDate} ${noSpaceMatch[2]}`
+              : noSpaceMatch[2];
+
+            return {
+              readings: [
+                ...acc.readings,
+                {
+                  index: acc.readings.length + 1,
+                  value: parsedReading.value,
                   units: null,
                   timestamp,
                   raw: {},
@@ -546,6 +572,31 @@ export class PositectorService {
       readings: allReadings,
       statistics: null,
     };
+  }
+
+  private splitIndexValue(
+    digits: string,
+    expectedIdx: number,
+  ): { index: number; value: number } | null {
+    const idxStr = String(expectedIdx);
+    if (digits.startsWith(idxStr) && digits.length > idxStr.length) {
+      const value = parseFloat(digits.slice(idxStr.length));
+      if (!Number.isNaN(value) && value > 0) {
+        return { index: expectedIdx, value };
+      }
+    }
+
+    for (let idxLen = 1; idxLen <= Math.min(4, digits.length - 1); idxLen++) {
+      const candidateIdx = parseInt(digits.slice(0, idxLen), 10);
+      if (candidateIdx <= 0 || candidateIdx > 9999) continue;
+      if (candidateIdx === expectedIdx) continue;
+      const value = parseFloat(digits.slice(idxLen));
+      if (!Number.isNaN(value) && value > 0 && value < 10000) {
+        return { index: candidateIdx, value };
+      }
+    }
+
+    return null;
   }
 
   private isPosiSoftDesktopCsv(lines: string[]): boolean {
