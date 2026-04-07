@@ -296,69 +296,114 @@ export function FeedbackWidget(props: FeedbackWidgetProps) {
       const scrollContainer = contentRoot.querySelector(
         "main[class*='overflow']",
       ) as HTMLElement | null;
-      const savedScrollTop = scrollContainer ? scrollContainer.scrollTop : 0;
-      const savedOverflow = scrollContainer ? scrollContainer.style.overflow : "";
-      const firstChild = scrollContainer
-        ? (scrollContainer.firstElementChild as HTMLElement | null)
-        : null;
+      const scrollTop = scrollContainer ? scrollContainer.scrollTop : 0;
+      const containerRect = scrollContainer ? scrollContainer.getBoundingClientRect() : null;
+      const headerHeight = containerRect ? Math.round(containerRect.top) : 0;
 
-      if (scrollContainer && savedScrollTop > 0 && firstChild) {
-        scrollContainer.style.overflow = "hidden";
-        firstChild.style.marginTop = `-${savedScrollTop}px`;
-      }
-
-      try {
-        const capturePromise = toBlob(contentRoot, {
-          filter: (node) => {
-            try {
-              if (node instanceof HTMLElement) {
-                if (node.closest("[data-feedback-widget]") !== null) {
-                  return false;
-                }
-                const tag = node.tagName.toLowerCase();
-                if (tag === "iframe" || tag === "video" || tag === "script" || tag === "noscript") {
-                  return false;
-                }
-              }
-              return true;
-            } catch {
-              return true;
+      const filterNode = (node: HTMLElement) => {
+        try {
+          if (node instanceof HTMLElement) {
+            if (node.closest("[data-feedback-widget]") !== null) {
+              return false;
             }
-          },
-          width: viewportWidth,
-          height: viewportHeight,
-          canvasWidth: viewportWidth,
-          canvasHeight: viewportHeight,
+            const tag = node.tagName.toLowerCase();
+            if (tag === "iframe" || tag === "video" || tag === "script" || tag === "noscript") {
+              return false;
+            }
+          }
+          return true;
+        } catch {
+          return true;
+        }
+      };
+
+      const commonOptions = {
+        filter: filterNode,
+        quality: 0.7,
+        pixelRatio: 1,
+        skipAutoScale: true,
+        skipFonts: true,
+        cacheBust: false,
+        fetchRequestInit: { credentials: "include" as RequestCredentials },
+        imagePlaceholder: TRANSPARENT_PIXEL,
+      };
+
+      const fullPageBlob = await Promise.race([
+        toBlob(contentRoot, {
+          ...commonOptions,
           style: {
-            transform: `translate(-${window.scrollX}px, -${window.scrollY}px)`,
-            transformOrigin: "top left",
             overflow: "hidden",
             maxWidth: `${viewportWidth}px`,
           },
-          quality: 0.7,
-          pixelRatio: 1,
-          skipAutoScale: true,
-          skipFonts: true,
-          cacheBust: false,
-          fetchRequestInit: { credentials: "include" },
-          imagePlaceholder: TRANSPARENT_PIXEL,
-        });
+        }),
+        new Promise<null>((resolve) => setTimeout(() => resolve(null), 8000)),
+      ]);
 
-        const timeoutPromise = new Promise<null>((resolve) =>
-          setTimeout(() => resolve(null), 8000),
-        );
-        const blob = await Promise.race([capturePromise, timeoutPromise]);
-
-        if (blob && blob.size > 5000) {
-          return new File([blob], "auto-screenshot.png", { type: "image/png" });
-        }
+      if (!fullPageBlob || fullPageBlob.size <= 5000) {
         return null;
-      } finally {
-        if (scrollContainer && savedScrollTop > 0 && firstChild) {
-          firstChild.style.marginTop = "";
-          scrollContainer.style.overflow = savedOverflow;
-        }
       }
+
+      if (!scrollContainer || scrollTop <= 0) {
+        return new File([fullPageBlob], "auto-screenshot.png", { type: "image/png" });
+      }
+
+      const fullImage = await createImageBitmap(fullPageBlob);
+      const capturedHeight = fullImage.height;
+      const capturedWidth = fullImage.width;
+
+      const scaleY = capturedHeight > 0 ? capturedHeight / contentRoot.scrollHeight : 1;
+      const scaleX = capturedWidth > 0 ? capturedWidth / contentRoot.scrollWidth : 1;
+
+      const scaledHeaderHeight = Math.round(headerHeight * scaleY);
+      const scaledScrollTop = Math.round(scrollTop * scaleY);
+      const scaledContainerHeight = Math.round(
+        (containerRect ? containerRect.height : viewportHeight - headerHeight) * scaleY,
+      );
+
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.round(viewportWidth * scaleX);
+      canvas.height = Math.round(viewportHeight * scaleY);
+      const ctx = canvas.getContext("2d");
+      if (!ctx) {
+        fullImage.close();
+        return new File([fullPageBlob], "auto-screenshot.png", { type: "image/png" });
+      }
+
+      ctx.drawImage(
+        fullImage,
+        0,
+        0,
+        capturedWidth,
+        scaledHeaderHeight,
+        0,
+        0,
+        capturedWidth,
+        scaledHeaderHeight,
+      );
+
+      ctx.drawImage(
+        fullImage,
+        0,
+        scaledHeaderHeight + scaledScrollTop,
+        capturedWidth,
+        scaledContainerHeight,
+        0,
+        scaledHeaderHeight,
+        capturedWidth,
+        scaledContainerHeight,
+      );
+
+      fullImage.close();
+
+      const croppedBlob = await new Promise<Blob | null>((resolve) =>
+        canvas.toBlob((b) => resolve(b), "image/png"),
+      );
+
+      if (croppedBlob && croppedBlob.size > 5000) {
+        return new File([croppedBlob], "auto-screenshot.png", { type: "image/png" });
+      }
+
+      return new File([fullPageBlob], "auto-screenshot.png", { type: "image/png" });
     } catch (err) {
       console.warn("Client screenshot capture failed:", err);
       return null;
