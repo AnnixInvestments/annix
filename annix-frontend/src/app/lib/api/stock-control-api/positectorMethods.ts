@@ -7,6 +7,8 @@ import type {
   PositectorImportResult,
   PositectorStreamingSaveResult,
   PositectorStreamingSession,
+  PositectorUploadRecord,
+  PositectorUploadResponse,
 } from "./types";
 
 declare module "./base" {
@@ -54,12 +56,24 @@ declare module "./base" {
         requiredShore?: number;
       },
     ): Promise<PositectorImportResult>;
-    uploadPositectorFile(file: File): Promise<
-      PositectorBatchDetail & {
-        detectedFormat: string;
-        filename: string;
-      }
-    >;
+    uploadPositectorFile(file: File): Promise<PositectorUploadResponse>;
+    positectorUploads(filters?: { unlinked?: boolean }): Promise<PositectorUploadRecord[]>;
+    positectorUploadById(uploadId: number): Promise<PositectorUploadRecord>;
+    positectorUploadDownloadUrl(uploadId: number): Promise<{ url: string }>;
+    linkPositectorUpload(
+      uploadId: number,
+      data: {
+        jobCardId: number;
+        coatType?: string;
+        paintProduct?: string;
+        specMinMicrons?: number;
+        specMaxMicrons?: number;
+        specMicrons?: number;
+        rubberSpec?: string;
+        rubberBatchNumber?: string | null;
+        requiredShore?: number;
+      },
+    ): Promise<PositectorImportResult & { uploadId: number }>;
     uploadAndImportPositectorFile(
       file: File,
       data: {
@@ -162,6 +176,29 @@ proto.importPositectorBatch = async function (deviceId, buid, data) {
 
 proto.uploadPositectorFile = async function (file) {
   return this.uploadFile("/stock-control/positector-devices/upload", file);
+};
+
+proto.positectorUploads = async function (filters) {
+  const params = new URLSearchParams();
+  if (filters?.unlinked) params.set("unlinked", "true");
+  const query = params.toString();
+  return this.request(`/stock-control/positector-devices/uploads${query ? `?${query}` : ""}`);
+};
+
+proto.positectorUploadById = async function (uploadId) {
+  return this.request(`/stock-control/positector-devices/uploads/${uploadId}`);
+};
+
+proto.positectorUploadDownloadUrl = async function (uploadId) {
+  return this.request(`/stock-control/positector-devices/uploads/${uploadId}/download-url`);
+};
+
+proto.linkPositectorUpload = async function (uploadId, data) {
+  return this.request(`/stock-control/positector-devices/uploads/${uploadId}/link`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
 };
 
 proto.uploadAndImportPositectorFile = async function (file, data) {

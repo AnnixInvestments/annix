@@ -1075,6 +1075,76 @@ export class QcMeasurementService {
     };
   }
 
+  // ── Batch Name Auto-Match ────────────────────────────────────────
+
+  async matchBatchName(
+    companyId: number,
+    batchName: string | null,
+  ): Promise<{
+    jobCardId: number;
+    jobNumber: string | null;
+    jcNumber: string | null;
+    fieldKey: string;
+    category: string;
+    coatDetail: {
+      product: string;
+      minDftUm: number;
+      maxDftUm: number;
+      coatRole: string | null;
+    } | null;
+  } | null> {
+    if (!batchName) return null;
+
+    const match = await this.defelskoBatchRepo
+      .createQueryBuilder("db")
+      .leftJoin(JobCard, "jc", "jc.id = db.jobCardId")
+      .addSelect("jc.jobNumber", "jobNumber")
+      .addSelect("jc.jcNumber", "jcNumber")
+      .where("db.companyId = :companyId", { companyId })
+      .andWhere("LOWER(db.batchNumber) = LOWER(:batchName)", { batchName: batchName.trim() })
+      .andWhere("db.notApplicable = false")
+      .getRawAndEntities();
+
+    if (match.entities.length === 0) return null;
+
+    const entity = match.entities[0];
+    const raw = match.raw[0];
+
+    let coatDetail: {
+      product: string;
+      minDftUm: number;
+      maxDftUm: number;
+      coatRole: string | null;
+    } | null = null;
+
+    if (entity.fieldKey.startsWith("paint_dft_")) {
+      const coatIndex = Number.parseInt(entity.fieldKey.replace("paint_dft_", ""), 10);
+      const analysis = await this.coatingRepo.findOne({
+        where: { companyId, jobCardId: entity.jobCardId },
+        order: { createdAt: "DESC" },
+      });
+
+      if (analysis?.coats?.[coatIndex]) {
+        const coat = analysis.coats[coatIndex];
+        coatDetail = {
+          product: coat.product,
+          minDftUm: coat.minDftUm,
+          maxDftUm: coat.maxDftUm,
+          coatRole: coat.coatRole || null,
+        };
+      }
+    }
+
+    return {
+      jobCardId: entity.jobCardId,
+      jobNumber: raw?.jc_job_number || null,
+      jcNumber: raw?.jc_jc_number || null,
+      fieldKey: entity.fieldKey,
+      category: entity.category,
+      coatDetail,
+    };
+  }
+
   // ── Defelsko Batches ───────────────────────────────────────────────
 
   async defelskoBatchesForJobCard(

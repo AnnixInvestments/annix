@@ -36,6 +36,7 @@ import { QcpLogController } from "./controllers/qcp-log.controller";
 import { QcpPublicController } from "./controllers/qcp-public.controller";
 import { CalibrationCertificate } from "./entities/calibration-certificate.entity";
 import { PositectorDevice } from "./entities/positector-device.entity";
+import { PositectorUpload } from "./entities/positector-upload.entity";
 import { QcBlastProfile } from "./entities/qc-blast-profile.entity";
 import { QcControlPlan } from "./entities/qc-control-plan.entity";
 import { QcDefelskoBatch } from "./entities/qc-defelsko-batch.entity";
@@ -53,6 +54,7 @@ import { CalibrationCertificateService } from "./services/calibration-certificat
 import { PositectorService } from "./services/positector.service";
 import { PositectorImportService } from "./services/positector-import.service";
 import { PositectorStreamingService } from "./services/positector-streaming.service";
+import { PositectorUploadService } from "./services/positector-upload.service";
 import { QcMeasurementService } from "./services/qc-measurement.service";
 import { QcpApprovalService } from "./services/qcp-approval.service";
 import { WORK_ITEM_PROVIDER } from "./work-item-provider.interface";
@@ -68,6 +70,7 @@ import { WORK_ITEM_PROVIDER } from "./work-item-provider.interface";
       JobCardCoatingAnalysis,
       JobCardDataBook,
       PositectorDevice,
+      PositectorUpload,
       PushSubscription,
       QcBlastProfile,
       QcControlPlan,
@@ -124,6 +127,7 @@ import { WORK_ITEM_PROVIDER } from "./work-item-provider.interface";
     PositectorService,
     PositectorImportService,
     PositectorStreamingService,
+    PositectorUploadService,
     WebPushService,
     { provide: WORK_ITEM_PROVIDER, useClass: JobCardWorkItemProvider },
   ],

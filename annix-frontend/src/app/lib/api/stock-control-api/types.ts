@@ -1217,6 +1217,20 @@ export interface PositectorReading {
   raw: Record<string, string>;
 }
 
+export interface PositectorBatchAutoMatch {
+  jobCardId: number;
+  jobNumber: string | null;
+  jcNumber: string | null;
+  fieldKey: string;
+  category: string;
+  coatDetail: {
+    product: string;
+    minDftUm: number;
+    maxDftUm: number;
+    coatRole: string | null;
+  } | null;
+}
+
 export interface PositectorBatchDetail {
   buid: string;
   header: {
@@ -1231,6 +1245,59 @@ export interface PositectorBatchDetail {
   statistics: Record<string, string> | null;
   suggestedEntityType: string;
   suggestedCoatType?: string | null;
+  autoMatch?: PositectorBatchAutoMatch | null;
+}
+
+export interface PositectorUploadRecord {
+  id: number;
+  companyId: number;
+  originalFilename: string;
+  s3FilePath: string;
+  batchName: string | null;
+  probeType: string | null;
+  entityType: string;
+  detectedFormat: string | null;
+  headerData: Record<string, string>;
+  readingsData: Array<{
+    index: number;
+    value: number;
+    units: string | null;
+    raw: Record<string, string>;
+  }>;
+  statisticsData: Record<string, string> | null;
+  readingCount: number;
+  linkedJobCardId: number | null;
+  importRecordId: number | null;
+  importedAt: string | null;
+  uploadedByName: string;
+  uploadedById: number | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PositectorUploadResponse {
+  upload: PositectorUploadRecord;
+  detectedFormat: string;
+  suggestedEntityType: string;
+  suggestedCoatType: string | null;
+  filename: string;
+  autoMatch: PositectorBatchAutoMatch | null;
+  autoImportResult: (PositectorImportResult & { uploadId: number }) | null;
+}
+
+export interface PositectorAutoImportResult {
+  autoImported: boolean;
+  reason?: string;
+  message?: string;
+  jobCardId?: number;
+  jobNumber?: string | null;
+  jcNumber?: string | null;
+  fieldKey?: string;
+  entityType?: string;
+  recordId?: number;
+  readingsImported?: number;
+  average?: number | null;
+  duplicateWarning?: boolean;
 }
 
 export interface PositectorImportResult {

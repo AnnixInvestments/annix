@@ -24,6 +24,7 @@ import {
 import { CertificateService } from "../../services/certificate.service";
 import { DataBookPdfService } from "../../services/data-book-pdf.service";
 import { QcEnabledGuard } from "../guards/qc-enabled.guard";
+import { PositectorUploadService } from "../services/positector-upload.service";
 import { QcMeasurementService } from "../services/qc-measurement.service";
 import { QcpApprovalService } from "../services/qcp-approval.service";
 
@@ -38,6 +39,7 @@ export class QcMeasurementController {
     private readonly dataBookPdfService: DataBookPdfService,
     private readonly certificateService: CertificateService,
     private readonly approvalService: QcpApprovalService,
+    private readonly positectorUploadService: PositectorUploadService,
   ) {}
 
   // ── Aggregate ──────────────────────────────────────────────────────
@@ -666,6 +668,32 @@ export class QcMeasurementController {
         )
         .catch((err: Error) =>
           this.logger.warn(`Auto-link cert for field ${entry.fieldKey} failed: ${err.message}`),
+        );
+    });
+
+    const batchesWithNumbers = (body.batches || []).filter(
+      (b: { batchNumber: string | null }) => b.batchNumber,
+    );
+    batchesWithNumbers.forEach((entry: { fieldKey: string; batchNumber: string }) => {
+      this.positectorUploadService
+        .retroactiveMatch(
+          req.user.companyId,
+          jobCardId,
+          entry.batchNumber,
+          entry.fieldKey,
+          req.user,
+        )
+        .then((results) => {
+          if (results.length > 0) {
+            this.logger.log(
+              `Retroactively imported ${results.length} PosiTector upload(s) for JC ${jobCardId}, batch "${entry.batchNumber}"`,
+            );
+          }
+        })
+        .catch((err: Error) =>
+          this.logger.warn(
+            `Retroactive PosiTector match for batch "${entry.batchNumber}" failed: ${err.message}`,
+          ),
         );
     });
 

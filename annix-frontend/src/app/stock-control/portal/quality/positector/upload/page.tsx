@@ -1,7 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { PositectorBatchDetail, PositectorImportResult } from "@/app/lib/api/stockControlApi";
+import type {
+  PositectorImportResult,
+  PositectorUploadResponse,
+} from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 
 const FORMAT_LABELS: Record<string, string> = {
@@ -26,12 +29,9 @@ export default function PositectorUploadPage() {
   const [isDragOver, setIsDragOver] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [parsedBatch, setParsedBatch] = useState<
-    (PositectorBatchDetail & { detectedFormat: string; filename: string }) | null
-  >(null);
+  const [uploadResponse, setUploadResponse] = useState<PositectorUploadResponse | null>(null);
   const [showImportForm, setShowImportForm] = useState(false);
   const [importResult, setImportResult] = useState<PositectorImportResult | null>(null);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const validExtensions = [".json", ".csv", ".txt", ".pdf"];
@@ -86,12 +86,11 @@ export default function PositectorUploadPage() {
     try {
       setIsUploading(true);
       setError(null);
-      setParsedBatch(null);
+      setUploadResponse(null);
       setImportResult(null);
-      setSelectedFile(file);
 
       const result = await stockControlApiClient.uploadPositectorFile(file);
-      setParsedBatch(result);
+      setUploadResponse(result);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to parse pasted data");
     } finally {
@@ -108,12 +107,11 @@ export default function PositectorUploadPage() {
     try {
       setIsUploading(true);
       setError(null);
-      setParsedBatch(null);
+      setUploadResponse(null);
       setImportResult(null);
-      setSelectedFile(file);
 
       const result = await stockControlApiClient.uploadPositectorFile(file);
-      setParsedBatch(result);
+      setUploadResponse(result);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to parse file");
     } finally {
@@ -181,8 +179,7 @@ export default function PositectorUploadPage() {
   };
 
   const handleClear = () => {
-    setParsedBatch(null);
-    setSelectedFile(null);
+    setUploadResponse(null);
     setImportResult(null);
     setShowImportForm(false);
     setError(null);
@@ -190,7 +187,7 @@ export default function PositectorUploadPage() {
 
   useEffect(() => {
     const handlePaste = (e: ClipboardEvent) => {
-      if (parsedBatch || showImportForm) return;
+      if (uploadResponse || showImportForm) return;
 
       const files = e.clipboardData?.files;
       if (files && files.length > 0) {
@@ -206,14 +203,16 @@ export default function PositectorUploadPage() {
 
     document.addEventListener("paste", handlePaste);
     return () => document.removeEventListener("paste", handlePaste);
-  }, [parsedBatch, showImportForm, processFile, processTextData]);
+  }, [uploadResponse, showImportForm, processFile, processTextData]);
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">File Upload</h1>
+        <h1 className="text-2xl font-bold text-gray-900">PosiTector Data Dump</h1>
         <p className="mt-1 text-sm text-gray-500">
-          Upload PosiTector batch files from USB or PosiSoft Desktop exports
+          Upload PosiTector files — data is permanently stored in S3 and the database. If a matching
+          batch number exists on a job card, readings are auto-imported. Otherwise, they will be
+          imported automatically when the batch number is later entered on a job card.
         </p>
       </div>
 
@@ -239,7 +238,7 @@ export default function PositectorUploadPage() {
             <div>
               <p className="text-sm font-medium text-green-800">
                 Imported {importResult.readingsImported} readings as{" "}
-                {ENTITY_TYPE_LABELS[importResult.entityType] ?? importResult.entityType}
+                {ENTITY_TYPE_LABELS[importResult.entityType] || importResult.entityType}
                 {importResult.average !== null && ` (avg: ${importResult.average.toFixed(1)})`}
               </p>
               {importResult.duplicateWarning && (
@@ -258,7 +257,7 @@ export default function PositectorUploadPage() {
         </div>
       )}
 
-      {!parsedBatch && (
+      {!uploadResponse && (
         <div
           onClick={() => fileInputRef.current?.click()}
           onDragOver={handleDragOver}
@@ -279,7 +278,7 @@ export default function PositectorUploadPage() {
           />
 
           {isUploading ? (
-            <p className="text-sm text-gray-500">Parsing file...</p>
+            <p className="text-sm text-gray-500">Uploading and storing data...</p>
           ) : (
             <>
               <svg
@@ -299,11 +298,11 @@ export default function PositectorUploadPage() {
                 Drop a PosiTector file here, or click to browse
               </p>
               <p className="mt-2 text-xs text-gray-500">
-                Supports: PosiTector JSON batch files, PosiTector CSV (readings.txt), PosiSoft
-                Desktop CSV exports, PosiSoft PDF reports
+                All data is permanently stored — original file in S3, parsed readings in the
+                database
               </p>
               <p className="mt-1 text-xs text-gray-400">
-                Accepted formats: .json, .csv, .txt, .pdf
+                Supports: JSON, CSV (readings.txt), PosiSoft Desktop CSV, PosiSoft PDF reports
               </p>
               <p className="mt-3 text-xs text-gray-400">
                 You can also drag data directly from PosiSoft Desktop or paste from clipboard
@@ -314,65 +313,166 @@ export default function PositectorUploadPage() {
         </div>
       )}
 
-      {parsedBatch &&
+      {uploadResponse &&
         (() => {
-          const batchHeader = parsedBatch["header"];
-          const batchReadings = parsedBatch["readings"];
-          const batchFilename = parsedBatch["filename"];
-          const batchFormat = parsedBatch["detectedFormat"];
-          const batchEntityType = parsedBatch["suggestedEntityType"];
-          const headerBatchName = batchHeader["batchName"];
-          const headerProbeType = batchHeader["probeType"];
-          const headerSerialNumber = batchHeader["serialNumber"];
-          const headerUnits = batchHeader["units"];
+          const upload = uploadResponse.upload;
+          const uploadBatchName = upload.batchName;
+          const uploadProbeType = upload.probeType;
+          const uploadEntityType = upload.entityType;
+          const uploadFilename = upload.originalFilename;
+          const uploadReadingCount = upload.readingCount;
+          const detectedFormat = uploadResponse.detectedFormat;
+          const autoMatch = uploadResponse.autoMatch;
+          const autoResult = uploadResponse.autoImportResult;
+          const isLinked = upload.linkedJobCardId !== null;
 
           return (
             <div className="space-y-4">
+              <div className="rounded-md bg-green-50 p-4">
+                <div className="flex items-start gap-3">
+                  <svg
+                    className="mt-0.5 h-5 w-5 text-green-600"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    strokeWidth={2}
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
+                  </svg>
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-green-800">Data permanently stored</p>
+                    <p className="mt-1 text-xs text-green-700">
+                      Original file saved to S3, {uploadReadingCount} readings saved to database
+                      (Upload #{upload.id})
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {autoResult && (
+                <div
+                  className={`rounded-md p-4 ${autoResult.duplicateWarning ? "bg-amber-50" : "bg-teal-50"}`}
+                >
+                  <div className="flex items-start gap-3">
+                    <svg
+                      className="mt-0.5 h-5 w-5 text-teal-600"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      strokeWidth={2}
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m9.86-1.06a4.5 4.5 0 00-1.242-7.244l-4.5-4.5a4.5 4.5 0 00-6.364 6.364L4.34 8.374"
+                      />
+                    </svg>
+                    <div>
+                      <p className="text-sm font-medium text-teal-800">Auto-imported to job card</p>
+                      <p className="mt-1 text-xs text-teal-700">
+                        Batch name matched — {autoResult.readingsImported} readings imported as{" "}
+                        {ENTITY_TYPE_LABELS[autoResult.entityType] || autoResult.entityType}
+                        {autoResult.average != null && ` (avg: ${autoResult.average.toFixed(1)})`}
+                        {autoMatch &&
+                          (() => {
+                            const jcLabel = [autoMatch.jobNumber, autoMatch.jcNumber]
+                              .filter(Boolean)
+                              .join(" / ");
+                            return jcLabel ? ` to ${jcLabel}` : "";
+                          })()}
+                      </p>
+                      {autoResult.duplicateWarning && (
+                        <p className="mt-1 text-xs text-amber-700">
+                          Warning: Readings for this type and date already exist on this job card
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {!isLinked && !autoResult && (
+                <div className="rounded-md bg-blue-50 p-4">
+                  <div className="flex items-start gap-3">
+                    <svg
+                      className="mt-0.5 h-5 w-5 text-blue-600"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      strokeWidth={2}
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z"
+                      />
+                    </svg>
+                    <div>
+                      <p className="text-sm font-medium text-blue-800">
+                        Not yet linked to a job card
+                      </p>
+                      <p className="mt-1 text-xs text-blue-700">
+                        {uploadBatchName
+                          ? `Batch "${uploadBatchName}" was not found on any job card. When this batch number is entered on a job card, the data will be automatically imported.`
+                          : "No batch name detected. You can manually link this upload to a job card using the button below."}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <div className="rounded-lg border border-gray-200 bg-white p-6">
                 <div className="flex items-center justify-between">
                   <div>
                     <h2 className="text-lg font-semibold text-gray-900">
-                      {headerBatchName ?? batchFilename}
+                      {uploadBatchName || uploadFilename}
                     </h2>
                     <div className="mt-1 flex flex-wrap items-center gap-3 text-sm text-gray-500">
                       <span className="inline-flex rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-800">
-                        {FORMAT_LABELS[batchFormat] ?? batchFormat}
+                        {FORMAT_LABELS[detectedFormat] || detectedFormat}
                       </span>
-                      {headerProbeType && <span>Probe: {headerProbeType}</span>}
-                      {headerSerialNumber && <span>S/N: {headerSerialNumber}</span>}
-                      <span>Units: {headerUnits ?? "-"}</span>
-                      <span>Readings: {batchReadings.length}</span>
+                      {uploadProbeType && <span>Probe: {uploadProbeType}</span>}
+                      <span>Readings: {uploadReadingCount}</span>
                       <span
                         className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
-                          batchEntityType !== "unknown"
+                          uploadEntityType !== "unknown"
                             ? "bg-green-100 text-green-800"
                             : "bg-gray-100 text-gray-800"
                         }`}
                       >
-                        Maps to: {ENTITY_TYPE_LABELS[batchEntityType] ?? "Unknown"}
+                        Maps to: {ENTITY_TYPE_LABELS[uploadEntityType] || "Unknown"}
                       </span>
+                      {isLinked && (
+                        <span className="inline-flex rounded-full bg-teal-100 px-2 py-0.5 text-xs font-medium text-teal-800">
+                          Linked to JC #{upload.linkedJobCardId}
+                        </span>
+                      )}
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
-                    {batchReadings.length > 0 && (
+                    {!isLinked && uploadReadingCount > 0 && (
                       <button
                         onClick={() => setShowImportForm(true)}
                         className="rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700"
                       >
-                        Import to Job Card
+                        Link to Job Card
                       </button>
                     )}
                     <button
                       onClick={handleClear}
-                      className="text-sm text-gray-500 hover:text-gray-700"
+                      className="rounded-md border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
                     >
-                      Clear
+                      Upload Another
                     </button>
                   </div>
                 </div>
               </div>
 
-              {batchReadings.length > 0 && (
+              {upload.readingsData.length > 0 && (
                 <div className="overflow-hidden rounded-lg border border-gray-200">
                   <div className="max-h-96 overflow-y-auto">
                     <table className="min-w-full divide-y divide-gray-200">
@@ -387,26 +487,25 @@ export default function PositectorUploadPage() {
                           <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">
                             Units
                           </th>
-                          <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">
-                            Timestamp
-                          </th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-200 bg-white">
-                        {batchReadings.map((reading) => (
-                          <tr key={reading.index} className="hover:bg-gray-50">
-                            <td className="px-4 py-2 text-sm text-gray-500">{reading.index}</td>
-                            <td className="px-4 py-2 text-sm font-medium text-gray-900">
-                              {reading.value}
-                            </td>
-                            <td className="px-4 py-2 text-sm text-gray-500">
-                              {reading.units ?? headerUnits ?? "-"}
-                            </td>
-                            <td className="px-4 py-2 text-sm text-gray-500">
-                              {reading.timestamp ?? "-"}
-                            </td>
-                          </tr>
-                        ))}
+                        {upload.readingsData.map((reading) => {
+                          const readingIndex = reading.index;
+                          const readingValue = reading.value;
+                          const readingUnits = reading.units;
+                          return (
+                            <tr key={readingIndex} className="hover:bg-gray-50">
+                              <td className="px-4 py-2 text-sm text-gray-500">{readingIndex}</td>
+                              <td className="px-4 py-2 text-sm font-medium text-gray-900">
+                                {readingValue}
+                              </td>
+                              <td className="px-4 py-2 text-sm text-gray-500">
+                                {readingUnits || "-"}
+                              </td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>
@@ -416,16 +515,27 @@ export default function PositectorUploadPage() {
           );
         })()}
 
-      {showImportForm && parsedBatch && selectedFile && (
-        <UploadImportForm
-          file={selectedFile}
-          batch={parsedBatch}
+      {showImportForm && uploadResponse && (
+        <LinkUploadForm
+          upload={uploadResponse.upload}
+          suggestedEntityType={uploadResponse.suggestedEntityType}
+          suggestedCoatType={uploadResponse.suggestedCoatType}
           onClose={() => setShowImportForm(false)}
-          onImported={(result) => {
+          onLinked={(result) => {
             setShowImportForm(false);
             setImportResult(result);
-            setParsedBatch(null);
-            setSelectedFile(null);
+            setUploadResponse((prev) => {
+              if (!prev) return null;
+              return {
+                ...prev,
+                upload: {
+                  ...prev.upload,
+                  linkedJobCardId: result.recordId,
+                  importRecordId: result.recordId,
+                  importedAt: new Date().toISOString(),
+                },
+              };
+            });
           }}
         />
       )}
@@ -433,34 +543,38 @@ export default function PositectorUploadPage() {
   );
 }
 
-function UploadImportForm({
-  file,
-  batch,
-  onClose,
-  onImported,
-}: {
-  file: File;
-  batch: PositectorBatchDetail;
+function LinkUploadForm(props: {
+  upload: {
+    id: number;
+    readingCount: number;
+    batchName: string | null;
+    entityType: string;
+    originalFilename: string;
+  };
+  suggestedEntityType: string;
+  suggestedCoatType: string | null;
   onClose: () => void;
-  onImported: (result: PositectorImportResult) => void;
+  onLinked: (result: PositectorImportResult & { uploadId: number }) => void;
 }) {
+  const upload = props.upload;
+  const onClose = props.onClose;
+  const onLinked = props.onLinked;
+
   const [jobCardId, setJobCardId] = useState("");
-  const [entityType, setEntityType] = useState(batch.suggestedEntityType);
-  const [coatType, setCoatType] = useState(batch.suggestedCoatType ?? "primer");
+  const [coatType, setCoatType] = useState(props.suggestedCoatType || "primer");
   const [paintProduct, setPaintProduct] = useState("");
-  const [batchNumber, setBatchNumber] = useState("");
   const [specMin, setSpecMin] = useState("");
   const [specMax, setSpecMax] = useState("");
   const [specMicrons, setSpecMicrons] = useState("");
-  const [temperature, setTemperature] = useState("");
-  const [humidity, setHumidity] = useState("");
   const [rubberSpec, setRubberSpec] = useState("");
   const [rubberBatchNumber, setRubberBatchNumber] = useState("");
   const [requiredShore, setRequiredShore] = useState("");
   const [isImporting, setIsImporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const handleImport = async (e: React.FormEvent) => {
+  const entityType = upload.entityType;
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!jobCardId.trim()) {
@@ -472,17 +586,13 @@ function UploadImportForm({
       setIsImporting(true);
       setError(null);
 
-      const result = await stockControlApiClient.uploadAndImportPositectorFile(file, {
+      const result = await stockControlApiClient.linkPositectorUpload(upload.id, {
         jobCardId: parseInt(jobCardId, 10),
-        entityType,
         coatType: entityType === "dft" ? coatType : undefined,
         paintProduct: entityType === "dft" ? paintProduct || "Unknown" : undefined,
-        batchNumber: entityType === "dft" && batchNumber ? batchNumber : null,
         specMinMicrons: entityType === "dft" ? parseFloat(specMin) || 0 : undefined,
         specMaxMicrons: entityType === "dft" ? parseFloat(specMax) || 0 : undefined,
         specMicrons: entityType === "blast_profile" ? parseFloat(specMicrons) || 0 : undefined,
-        temperature: entityType === "blast_profile" && temperature ? parseFloat(temperature) : null,
-        humidity: entityType === "blast_profile" && humidity ? parseFloat(humidity) : null,
         rubberSpec: entityType === "shore_hardness" ? rubberSpec || "Unknown" : undefined,
         rubberBatchNumber:
           entityType === "shore_hardness" && rubberBatchNumber ? rubberBatchNumber : null,
@@ -490,9 +600,9 @@ function UploadImportForm({
           entityType === "shore_hardness" ? parseInt(requiredShore, 10) || 0 : undefined,
       });
 
-      onImported(result);
+      onLinked(result);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Import failed");
+      setError(err instanceof Error ? err.message : "Link and import failed");
     } finally {
       setIsImporting(false);
     }
@@ -501,38 +611,23 @@ function UploadImportForm({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/10 backdrop-blur-md">
       <div className="w-full max-w-lg rounded-lg bg-white p-6 shadow-xl">
-        <h2 className="mb-1 text-lg font-semibold text-gray-900">Import Uploaded File</h2>
+        <h2 className="mb-1 text-lg font-semibold text-gray-900">Link Upload to Job Card</h2>
         <p className="mb-4 text-sm text-gray-500">
-          {batch.readings.length} readings from {batch.header.batchName ?? file.name}
+          {upload.readingCount} readings from {upload.batchName || upload.originalFilename}
         </p>
 
         {error && <div className="mb-4 rounded-md bg-red-50 p-3 text-sm text-red-700">{error}</div>}
 
-        <form onSubmit={handleImport} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Job Card ID</label>
-              <input
-                type="number"
-                value={jobCardId}
-                onChange={(e) => setJobCardId(e.target.value)}
-                placeholder="Enter job card ID"
-                className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Measurement Type</label>
-              <select
-                value={entityType}
-                onChange={(e) => setEntityType(e.target.value)}
-                className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-              >
-                <option value="dft">DFT Reading</option>
-                <option value="blast_profile">Blast Profile</option>
-                <option value="shore_hardness">Shore Hardness</option>
-                <option value="environmental">Environmental</option>
-              </select>
-            </div>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Job Card ID</label>
+            <input
+              type="number"
+              value={jobCardId}
+              onChange={(e) => setJobCardId(e.target.value)}
+              placeholder="Enter job card ID"
+              className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            />
           </div>
 
           {entityType === "dft" && (
@@ -561,16 +656,7 @@ function UploadImportForm({
                   />
                 </div>
               </div>
-              <div className="grid grid-cols-3 gap-3">
-                <div>
-                  <label className="block text-xs font-medium text-gray-600">Batch No</label>
-                  <input
-                    type="text"
-                    value={batchNumber}
-                    onChange={(e) => setBatchNumber(e.target.value)}
-                    className="mt-1 block w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm"
-                  />
-                </div>
+              <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-medium text-gray-600">Spec Min (um)</label>
                   <input
@@ -596,36 +682,16 @@ function UploadImportForm({
           )}
 
           {entityType === "blast_profile" && (
-            <div className="space-y-3 rounded-md bg-gray-50 p-3">
-              <div className="grid grid-cols-3 gap-3">
-                <div>
-                  <label className="block text-xs font-medium text-gray-600">Spec (um)</label>
-                  <input
-                    type="number"
-                    value={specMicrons}
-                    onChange={(e) => setSpecMicrons(e.target.value)}
-                    placeholder="e.g. 75"
-                    className="mt-1 block w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-600">Temp (C)</label>
-                  <input
-                    type="number"
-                    value={temperature}
-                    onChange={(e) => setTemperature(e.target.value)}
-                    className="mt-1 block w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-600">Humidity (%)</label>
-                  <input
-                    type="number"
-                    value={humidity}
-                    onChange={(e) => setHumidity(e.target.value)}
-                    className="mt-1 block w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm"
-                  />
-                </div>
+            <div className="rounded-md bg-gray-50 p-3">
+              <div>
+                <label className="block text-xs font-medium text-gray-600">Spec (um)</label>
+                <input
+                  type="number"
+                  value={specMicrons}
+                  onChange={(e) => setSpecMicrons(e.target.value)}
+                  placeholder="e.g. 75"
+                  className="mt-1 block w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm"
+                />
               </div>
             </div>
           )}
@@ -633,8 +699,8 @@ function UploadImportForm({
           {entityType === "environmental" && (
             <div className="rounded-md bg-gray-50 p-3">
               <p className="text-sm text-gray-600">
-                Temperature, humidity, and dew point will be extracted from the DPM batch header and
-                saved as an environmental record for the selected job card.
+                Temperature, humidity, and dew point will be extracted from the stored batch data
+                and saved as an environmental record for the selected job card.
               </p>
             </div>
           )}
@@ -688,7 +754,7 @@ function UploadImportForm({
               disabled={isImporting}
               className="rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-50"
             >
-              {isImporting ? "Importing..." : `Import ${batch.readings.length} Readings`}
+              {isImporting ? "Importing..." : `Link & Import ${upload.readingCount} Readings`}
             </button>
           </div>
         </form>
