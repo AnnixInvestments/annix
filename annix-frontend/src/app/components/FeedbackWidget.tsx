@@ -280,55 +280,77 @@ export function FeedbackWidget(props: FeedbackWidgetProps) {
       const TRANSPARENT_PIXEL =
         "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==";
 
-      const scrollX = window.scrollX;
-      const scrollY = window.scrollY;
       const viewportWidth = window.innerWidth;
       const viewportHeight = window.innerHeight;
 
       const contentRoot = document.getElementById("__next") || document.body;
 
-      const capturePromise = toBlob(contentRoot, {
-        filter: (node) => {
-          try {
-            if (node instanceof HTMLElement) {
-              if (node.closest("[data-feedback-widget]") !== null) {
-                return false;
-              }
-              const tag = node.tagName.toLowerCase();
-              if (tag === "iframe" || tag === "video" || tag === "script" || tag === "noscript") {
-                return false;
-              }
-            }
-            return true;
-          } catch {
-            return true;
-          }
-        },
-        width: viewportWidth,
-        height: viewportHeight,
-        canvasWidth: viewportWidth,
-        canvasHeight: viewportHeight,
-        style: {
-          transform: `translate(-${scrollX}px, -${scrollY}px)`,
-          transformOrigin: "top left",
-          overflow: "hidden",
-        },
-        quality: 0.7,
-        pixelRatio: 1,
-        skipAutoScale: true,
-        skipFonts: true,
-        cacheBust: false,
-        fetchRequestInit: { credentials: "include" },
-        imagePlaceholder: TRANSPARENT_PIXEL,
-      });
+      const scrollContainer = contentRoot.querySelector(
+        "main[class*='overflow']",
+      ) as HTMLElement | null;
+      const savedScrollTop = scrollContainer ? scrollContainer.scrollTop : 0;
+      const savedOverflow = scrollContainer ? scrollContainer.style.overflow : "";
+      const firstChild = scrollContainer
+        ? (scrollContainer.firstElementChild as HTMLElement | null)
+        : null;
 
-      const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), 8000));
-      const blob = await Promise.race([capturePromise, timeoutPromise]);
-
-      if (blob && blob.size > 5000) {
-        return new File([blob], "auto-screenshot.png", { type: "image/png" });
+      if (scrollContainer && savedScrollTop > 0 && firstChild) {
+        scrollContainer.style.overflow = "hidden";
+        firstChild.style.marginTop = `-${savedScrollTop}px`;
       }
-      return null;
+
+      try {
+        const capturePromise = toBlob(contentRoot, {
+          filter: (node) => {
+            try {
+              if (node instanceof HTMLElement) {
+                if (node.closest("[data-feedback-widget]") !== null) {
+                  return false;
+                }
+                const tag = node.tagName.toLowerCase();
+                if (tag === "iframe" || tag === "video" || tag === "script" || tag === "noscript") {
+                  return false;
+                }
+              }
+              return true;
+            } catch {
+              return true;
+            }
+          },
+          width: viewportWidth,
+          height: viewportHeight,
+          canvasWidth: viewportWidth,
+          canvasHeight: viewportHeight,
+          style: {
+            transform: `translate(-${window.scrollX}px, -${window.scrollY}px)`,
+            transformOrigin: "top left",
+            overflow: "hidden",
+            maxWidth: `${viewportWidth}px`,
+          },
+          quality: 0.7,
+          pixelRatio: 1,
+          skipAutoScale: true,
+          skipFonts: true,
+          cacheBust: false,
+          fetchRequestInit: { credentials: "include" },
+          imagePlaceholder: TRANSPARENT_PIXEL,
+        });
+
+        const timeoutPromise = new Promise<null>((resolve) =>
+          setTimeout(() => resolve(null), 8000),
+        );
+        const blob = await Promise.race([capturePromise, timeoutPromise]);
+
+        if (blob && blob.size > 5000) {
+          return new File([blob], "auto-screenshot.png", { type: "image/png" });
+        }
+        return null;
+      } finally {
+        if (scrollContainer && savedScrollTop > 0 && firstChild) {
+          firstChild.style.marginTop = "";
+          scrollContainer.style.overflow = savedOverflow;
+        }
+      }
     } catch (err) {
       console.warn("Client screenshot capture failed:", err);
       return null;
@@ -361,15 +383,12 @@ export function FeedbackWidget(props: FeedbackWidgetProps) {
     setIsSubmitting(true);
 
     try {
-      const hasAutoScreenshot = attachments.some((a) => a.isAutoScreenshot);
-      let screenshotFile: File | null = null;
-      if (!hasAutoScreenshot) {
-        screenshotFile = await captureScreenshot();
-      }
+      const freshScreenshot = await captureScreenshot();
 
+      const userAttachments = attachments.filter((a) => !a.isAutoScreenshot);
       const userFiles = [
-        ...attachments.map((a) => a.file),
-        ...(screenshotFile ? [screenshotFile] : []),
+        ...(freshScreenshot ? [freshScreenshot] : []),
+        ...userAttachments.map((a) => a.file),
       ];
 
       await submitFeedbackWithAttachments(
@@ -607,7 +626,7 @@ export function FeedbackWidget(props: FeedbackWidgetProps) {
             </svg>
             <p className="text-green-700 font-medium">Thank you for your feedback!</p>
             <p className="text-sm text-gray-500 mt-1">
-              A screenshot of this page will be captured automatically.
+              A screenshot of the page was included with your feedback.
             </p>
           </div>
         ) : (
