@@ -132,9 +132,13 @@ function isRealJtNumber(value: string): boolean {
   return true;
 }
 
+function isFooterLabel(value: string): boolean {
+  return FOOTER_LABELS.some((label) => value.startsWith(label));
+}
+
 function isFooterRow(row: any[]): boolean {
   const first = String(row[0] || "").trim();
-  return FOOTER_LABELS.some((label) => first.startsWith(label));
+  return isFooterLabel(first);
 }
 
 function matchCpoItem(
@@ -197,11 +201,57 @@ export class SageJcDumpService {
 
     const allSpecNotes = [
       ...new Set(pages.reduce<string[]>((acc, page) => [...acc, ...page.specNotes], [])),
-    ];
+    ].filter((line) => !isFooterLabel(line.trim()));
     const specNotesText = allSpecNotes.length > 0 ? allSpecNotes.join("\n") : null;
+
+    const existingSpecs = cpo.coatingSpecs || null;
+    const existingIsFooterOnly = existingSpecs
+      ?.split("\n")
+      .map((l) => l.trim())
+      .filter(Boolean)
+      .every((l) => isFooterLabel(l));
+
+    let cpoNeedsSave = false;
 
     if (specNotesText && specNotesText !== cpo.coatingSpecs) {
       cpo.coatingSpecs = specNotesText;
+      cpoNeedsSave = true;
+    } else if (!specNotesText && existingIsFooterOnly) {
+      cpo.coatingSpecs = null;
+      cpoNeedsSave = true;
+    }
+
+    if (cpo.reference && SPEC_ROW_PATTERN.test(cpo.reference)) {
+      const cleanedRef = FOOTER_LABELS.reduce(
+        (text, label) =>
+          text.replace(
+            new RegExp(`\\s*${label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s*`, "gi"),
+            " ",
+          ),
+        cpo.reference,
+      ).trim();
+
+      if (!cpo.coatingSpecs) {
+        cpo.coatingSpecs = cleanedRef;
+      } else if (!cpo.coatingSpecs.includes(cleanedRef)) {
+        cpo.coatingSpecs = [cpo.coatingSpecs, cleanedRef].join("\n");
+      }
+      cpo.reference = null;
+      cpoNeedsSave = true;
+    }
+
+    if (
+      cpo.notes
+        ?.split("\n")
+        .map((l) => l.trim())
+        .filter(Boolean)
+        .every((l) => isFooterLabel(l))
+    ) {
+      cpo.notes = null;
+      cpoNeedsSave = true;
+    }
+
+    if (cpoNeedsSave) {
       await this.cpoRepo.save(cpo);
     }
 
@@ -610,29 +660,39 @@ export class SageJcDumpService {
         const itemDesc = String(row[1] || "").trim();
 
         if (isFooterRow(row)) return;
-        if (rawItemCode && FOOTER_LABELS.some((label) => rawItemCode.startsWith(label))) return;
+        if (rawItemCode && isFooterLabel(rawItemCode)) return;
 
         const itemNo = String(row[4] || "").trim();
         const rawQty = row[5];
-        const quantity = typeof rawQty === "number" ? rawQty : parseFloat(String(rawQty || "0"));
+        const rawQtyStr = String(rawQty || "").trim();
+        const quantity = typeof rawQty === "number" ? rawQty : parseFloat(rawQtyStr || "0");
         const rawJtNo = String(row[6] || "").trim();
+
+        const itemNoIsFooter = itemNo && isFooterLabel(itemNo);
+        const rawQtyIsFooter = rawQtyStr && isFooterLabel(rawQtyStr);
+        const rawJtNoIsFooter = rawJtNo && isFooterLabel(rawJtNo);
+
+        const effectiveItemNo = itemNoIsFooter ? "" : itemNo;
+        const effectiveQty = rawQtyIsFooter ? NaN : quantity;
+        const effectiveJtNo = rawJtNoIsFooter ? "" : rawJtNo;
+
         const hasNoData =
           !rawItemCode &&
           !itemDesc &&
-          !itemNo &&
-          !rawJtNo &&
-          (Number.isNaN(quantity) || quantity <= 0);
+          !effectiveItemNo &&
+          !effectiveJtNo &&
+          (Number.isNaN(effectiveQty) || effectiveQty <= 0);
 
         if (hasNoData) return;
 
+        const specCandidate = rawItemCode || itemDesc;
         if (
-          !itemDesc &&
-          !itemNo &&
-          !rawJtNo &&
-          (Number.isNaN(quantity) || quantity <= 0) &&
-          SPEC_ROW_PATTERN.test(rawItemCode)
+          SPEC_ROW_PATTERN.test(specCandidate) &&
+          (!effectiveItemNo || effectiveItemNo === rawItemCode) &&
+          !effectiveJtNo &&
+          (Number.isNaN(effectiveQty) || effectiveQty <= 0)
         ) {
-          const specText = rawItemCode.replace(/\s+PRODUCTION\s*$/i, "").trim();
+          const specText = specCandidate.replace(/\s+PRODUCTION\s*$/i, "").trim();
           if (specText) {
             pendingSpecLines.push(specText);
             collectingSpecs = true;
@@ -640,19 +700,19 @@ export class SageJcDumpService {
           return;
         }
 
-        if (Number.isNaN(quantity) || quantity <= 0) return;
+        if (Number.isNaN(effectiveQty) || effectiveQty <= 0) return;
 
         const itemCode = rawItemCode || lastItemCode;
         if (rawItemCode) {
           lastItemCode = rawItemCode;
         }
-        if (rawJtNo) {
-          lastJtNo = rawJtNo;
+        if (effectiveJtNo) {
+          lastJtNo = effectiveJtNo;
         }
 
-        const jtNo = rawJtNo || lastJtNo;
-        if (rawJtNo) {
-          lastJtNo = rawJtNo;
+        const jtNo = effectiveJtNo || lastJtNo;
+        if (effectiveJtNo) {
+          lastJtNo = effectiveJtNo;
         }
 
         if (collectingSpecs) {
@@ -662,7 +722,7 @@ export class SageJcDumpService {
         pendingItems.push({
           itemCode,
           itemDescription: itemDesc,
-          itemNo,
+          itemNo: effectiveItemNo,
           quantity,
           jtNo,
         });
