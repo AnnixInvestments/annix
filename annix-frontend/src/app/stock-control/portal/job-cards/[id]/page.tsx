@@ -29,7 +29,6 @@ import { CoatingAnalysisTab } from "./components/CoatingAnalysisTab";
 import { DetailsTab } from "./components/DetailsTab";
 import DispatchTab from "./components/DispatchTab";
 import { DocumentUploadGate } from "./components/DocumentUploadGate";
-import { EnvironmentalTab } from "./components/EnvironmentalTab";
 import { InspectionBookingModal } from "./components/InspectionBookingModal";
 import {
   JobCardTabs,
@@ -543,7 +542,6 @@ export default function JobCardDetailPage() {
             : null,
       },
       { id: "quality", label: "Quality", hidden: !profile?.qcEnabled },
-      { id: "environmental", label: "Environmental", hidden: !profile?.qcEnabled },
       {
         id: "dispatch",
         label: "Dispatch",
@@ -2294,14 +2292,6 @@ export default function JobCardDetailPage() {
                 }}
               />
             </div>
-          </TabPanel>
-
-          <TabPanel
-            tabId="environmental"
-            activeTab={activeTab}
-            visited={visitedTabs.has("environmental")}
-          >
-            <EnvironmentalTab jobCardId={jobId} />
           </TabPanel>
 
           <TabPanel

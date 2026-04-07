@@ -12,6 +12,7 @@ const DESCRIPTIONS: Record<string, string> = {
   "positector-ble": "Connect to PosiTector gauges via Bluetooth",
   "data-books": "Compile and download job card data books",
   "batch-lookup": "Trace material by batch number across certificates and issuances",
+  environmental: "Temperature, humidity, and dew point readings across all job cards",
 };
 
 export default function QualityHubPage() {

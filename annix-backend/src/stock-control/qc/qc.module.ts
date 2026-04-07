@@ -27,6 +27,7 @@ import { JobCardWorkItemProvider } from "../services/job-card-work-item-provider
 import { WebPushService } from "../services/web-push.service";
 import { CalibrationCertificateController } from "./controllers/calibration-certificate.controller";
 import { CpoQcController } from "./controllers/cpo-qc.controller";
+import { EnvironmentalController } from "./controllers/environmental.controller";
 import { PositectorController } from "./controllers/positector.controller";
 import { PositectorStreamingController } from "./controllers/positector-streaming.controller";
 import { QcMeasurementController } from "./controllers/qc-measurement.controller";
@@ -100,6 +101,7 @@ import { WORK_ITEM_PROVIDER } from "./work-item-provider.interface";
   controllers: [
     CalibrationCertificateController,
     CpoQcController,
+    EnvironmentalController,
     QcMeasurementController,
     QcpLogController,
     QcpPublicController,

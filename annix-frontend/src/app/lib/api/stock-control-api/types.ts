@@ -1135,6 +1135,11 @@ export interface QcEnvironmentalRecordResponse {
   updatedAt: string;
 }
 
+export interface EnvironmentalRecordWithJobCard extends QcEnvironmentalRecordResponse {
+  jobNumber: string | null;
+  jcNumber: string | null;
+}
+
 export interface CalibrationCertificate {
   id: number;
   companyId: number;

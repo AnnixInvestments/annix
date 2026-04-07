@@ -1136,6 +1136,26 @@ export class QcMeasurementService {
 
   // ── Environmental Records ─────────────────────────────────────────
 
+  async allEnvironmentalRecords(
+    companyId: number,
+  ): Promise<(QcEnvironmentalRecord & { jobNumber: string | null; jcNumber: string | null })[]> {
+    const records = await this.envRecordRepo
+      .createQueryBuilder("env")
+      .leftJoin(JobCard, "jc", "jc.id = env.jobCardId")
+      .addSelect("jc.jobNumber", "jobNumber")
+      .addSelect("jc.jcNumber", "jcNumber")
+      .where("env.companyId = :companyId", { companyId })
+      .orderBy("env.recordDate", "DESC")
+      .addOrderBy("env.createdAt", "DESC")
+      .getRawAndEntities();
+
+    return records.entities.map((entity, idx) => ({
+      ...entity,
+      jobNumber: records.raw[idx]?.jc_job_number || null,
+      jcNumber: records.raw[idx]?.jc_jc_number || null,
+    }));
+  }
+
   async environmentalRecordsForJobCard(
     companyId: number,
     jobCardId: number,

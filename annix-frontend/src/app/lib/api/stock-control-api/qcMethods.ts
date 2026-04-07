@@ -2,6 +2,7 @@ import { StockControlApiClient } from "./base";
 import type {
   CpoReleasableItem,
   CpoReleaseDocumentsResult,
+  EnvironmentalRecordWithJobCard,
   QcBlastProfileRecord,
   QcControlPlanRecord,
   QcDefelskoBatchRecord,
@@ -151,6 +152,7 @@ declare module "./base" {
       }[],
     ): Promise<CpoReleaseDocumentsResult>;
     openItemsReleasePdfForCpo(cpoId: number, id: number): Promise<Blob>;
+    allEnvironmentalRecords(): Promise<EnvironmentalRecordWithJobCard[]>;
     environmentalRecordsForJobCard(jobCardId: number): Promise<QcEnvironmentalRecordResponse[]>;
     environmentalRecordByDate(
       jobCardId: number,
@@ -170,6 +172,7 @@ declare module "./base" {
       data: Partial<QcEnvironmentalRecordResponse>,
     ): Promise<QcEnvironmentalRecordResponse>;
     deleteEnvironmentalRecord(jobCardId: number, id: number): Promise<void>;
+    deleteEnvironmentalRecordById(id: number): Promise<void>;
     defelskoBatchesForJobCard(jobCardId: number): Promise<QcDefelskoBatchRecord[]>;
     saveDefelskoBatches(
       jobCardId: number,
@@ -431,6 +434,10 @@ proto.qcpLog = async function (search) {
   return this.request(`/stock-control/qcp-log${params}`);
 };
 
+proto.allEnvironmentalRecords = async function () {
+  return this.request("/stock-control/environmental-records");
+};
+
 proto.environmentalRecordsForJobCard = async function (jobCardId) {
   return this.request(`/stock-control/job-cards/${jobCardId}/qc/environmental-records`);
 };
@@ -467,6 +474,12 @@ proto.updateEnvironmentalRecord = async function (jobCardId, id, data) {
 
 proto.deleteEnvironmentalRecord = async function (jobCardId, id) {
   return this.request(`/stock-control/job-cards/${jobCardId}/qc/environmental-records/${id}`, {
+    method: "DELETE",
+  });
+};
+
+proto.deleteEnvironmentalRecordById = async function (id) {
+  return this.request(`/stock-control/environmental-records/${id}`, {
     method: "DELETE",
   });
 };

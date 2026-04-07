@@ -249,14 +249,13 @@ export default function PurchaseOrdersPage() {
                 {cpos.map((cpo) => {
                   const pct = fulfillmentPercent(cpo);
                   return (
-                    <tr key={cpo.id} className="hover:bg-gray-50">
+                    <tr
+                      key={cpo.id}
+                      className="hover:bg-gray-50 cursor-pointer"
+                      onClick={() => router.push(`/stock-control/portal/purchase-orders/${cpo.id}`)}
+                    >
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <Link
-                          href={`/stock-control/portal/purchase-orders/${cpo.id}`}
-                          className="text-teal-600 font-medium hover:text-teal-800 hover:underline"
-                        >
-                          {cpo.cpoNumber}
-                        </Link>
+                        <span className="text-teal-600 font-medium">{cpo.cpoNumber}</span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm font-medium text-gray-900">
@@ -288,7 +287,10 @@ export default function PurchaseOrdersPage() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                         <button
-                          onClick={() => setConfirmDelete({ id: cpo.id, cpoNumber: cpo.cpoNumber })}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setConfirmDelete({ id: cpo.id, cpoNumber: cpo.cpoNumber });
+                          }}
                           disabled={deleteCpo.isPending && deleteCpo.variables === cpo.id}
                           className="text-red-600 hover:text-red-900 disabled:opacity-50"
                         >

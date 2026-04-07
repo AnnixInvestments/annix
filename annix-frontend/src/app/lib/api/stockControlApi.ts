@@ -55,6 +55,7 @@ export type {
   DispatchProgress,
   DispatchScan,
   EligibleUser,
+  EnvironmentalRecordWithJobCard,
   ExtractedLineItem,
   ExtractionStatus,
   FieldMapping,
