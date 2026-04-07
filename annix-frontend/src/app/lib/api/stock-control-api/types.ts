@@ -1082,6 +1082,7 @@ export interface QcItemsReleaseRecord {
   id: number;
   companyId: number;
   jobCardId: number;
+  version: number;
   items: ReleaseLineItem[];
   totalQuantity: number;
   checkedByName: string | null;

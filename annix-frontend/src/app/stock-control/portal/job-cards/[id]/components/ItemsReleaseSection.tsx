@@ -155,6 +155,9 @@ export function ItemsReleaseSection({ jobCardId }: ItemsReleaseSectionProps) {
                 className="flex items-center justify-between px-5 py-3 hover:bg-gray-50"
               >
                 <div className="flex items-center gap-3">
+                  <span className="inline-flex items-center rounded-full bg-gray-200 px-2 py-0.5 text-xs font-semibold text-gray-700">
+                    v{release.version || 1}
+                  </span>
                   {failCount > 0 ? (
                     <span className="inline-flex items-center rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-800">
                       {failCount} Fail
@@ -313,7 +316,9 @@ function ItemsReleaseForm({ jobCardId, existing, onSaved, onCancel }: ItemsRelea
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h3 className="text-base font-semibold text-gray-900">
-          {existing?.id ? "Edit Items Release" : "New Items Release"}
+          {existing?.id
+            ? `Edit Items Release (v${existing.version || 1} → v${(existing.version || 1) + 1})`
+            : "New Items Release"}
         </h3>
         <div className="flex items-center gap-2">
           <span className="text-sm text-gray-500">

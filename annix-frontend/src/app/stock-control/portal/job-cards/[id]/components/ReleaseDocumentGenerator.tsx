@@ -101,6 +101,27 @@ export function ReleaseDocumentGenerator(props: ReleaseDocumentGeneratorProps) {
       return info ? info.remaining <= 0 : false;
     });
 
+  const availableIndices = useMemo(
+    () =>
+      lineItems.reduce((acc, _li, idx) => {
+        const info = remainingByIndex[idx];
+        if (info && info.remaining > 0) return [...acc, idx];
+        return acc;
+      }, [] as number[]),
+    [lineItems, remainingByIndex],
+  );
+
+  const allAvailableSelected =
+    availableIndices.length > 0 && availableIndices.every((idx) => selectedIndices.has(idx));
+
+  const handleToggleAll = () => {
+    if (allAvailableSelected) {
+      setSelectedIndices(new Set());
+    } else {
+      setSelectedIndices(new Set(availableIndices));
+    }
+  };
+
   const handleToggle = (idx: number) => {
     const info = remainingByIndex[idx];
     if (info && info.remaining <= 0) return;
@@ -151,7 +172,7 @@ export function ReleaseDocumentGenerator(props: ReleaseDocumentGeneratorProps) {
       setIsGenerating(true);
       setError(null);
       setSuccess(null);
-      await stockControlApiClient.autoGenerateReleaseDocuments(
+      const result = await stockControlApiClient.autoGenerateReleaseDocuments(
         jobCardId,
         Array.from(selectedIndices),
         quantityOverrides,
@@ -161,6 +182,12 @@ export function ReleaseDocumentGenerator(props: ReleaseDocumentGeneratorProps) {
       onGenerated();
       const releases = await stockControlApiClient.itemsReleasesForJobCard(jobCardId);
       setExistingReleases(Array.isArray(releases) ? releases : []);
+      if (result.itemsRelease?.id) {
+        pdfPreview.openWithFetch(
+          () => stockControlApiClient.openItemsReleasePdf(jobCardId, result.itemsRelease.id),
+          `items-release-${result.itemsRelease.id}.pdf`,
+        );
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to generate release documents");
     } finally {
@@ -229,7 +256,8 @@ export function ReleaseDocumentGenerator(props: ReleaseDocumentGeneratorProps) {
                     className="inline-flex items-center gap-1.5 rounded-md bg-white border border-green-300 px-3 py-1.5 text-xs font-medium text-green-800 hover:bg-green-100 transition-colors"
                   >
                     <Download className="h-3.5 w-3.5" />
-                    Release {existingReleases.length > 1 ? `#${idx + 1}` : ""} PDF
+                    Release {existingReleases.length > 1 ? `#${idx + 1}` : ""} (v
+                    {release.version || 1}) PDF
                   </button>
                 ))}
               </div>
@@ -266,7 +294,14 @@ export function ReleaseDocumentGenerator(props: ReleaseDocumentGeneratorProps) {
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="w-10 px-3 py-2" />
+                    <th className="w-10 px-3 py-2">
+                      <input
+                        type="checkbox"
+                        checked={allAvailableSelected}
+                        onChange={handleToggleAll}
+                        className="h-4 w-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500"
+                      />
+                    </th>
                     <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">
                       Item Code
                     </th>

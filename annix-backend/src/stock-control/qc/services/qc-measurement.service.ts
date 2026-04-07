@@ -798,7 +798,12 @@ export class QcMeasurementService {
     data: Partial<QcItemsRelease>,
   ): Promise<QcItemsRelease> {
     const record = await this.findOrFail(this.itemsReleaseRepo, companyId, id, "Items release");
+    const itemsChanged =
+      data.items !== undefined && JSON.stringify(data.items) !== JSON.stringify(record.items);
     Object.assign(record, data);
+    if (itemsChanged) {
+      record.version = (record.version || 1) + 1;
+    }
     return this.itemsReleaseRepo.save(record);
   }
 

@@ -45,6 +45,9 @@ export class QcItemsRelease {
   @Column({ name: "job_card_id" })
   jobCardId: number;
 
+  @Column({ name: "version", type: "integer", default: 1 })
+  version: number;
+
   @Column({ name: "items", type: "jsonb" })
   items: ReleaseLineItem[];
 
