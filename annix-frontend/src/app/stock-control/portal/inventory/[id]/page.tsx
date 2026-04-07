@@ -2,10 +2,20 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import {
+  Area,
+  AreaChart,
+  CartesianGrid,
+  ReferenceLine,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 import { PdfPreviewModal, usePdfPreview } from "@/app/components/PdfPreviewModal";
 import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
-import { formatDateTimeZA, formatDateZA } from "@/app/lib/datetime";
+import { formatDateTimeZA, formatDateZA, fromJSDate } from "@/app/lib/datetime";
 import {
   useCreateManualAdjustment,
   useDownloadStockItemQrPdf,
@@ -19,6 +29,17 @@ import { PhotoCapture } from "@/app/stock-control/components/PhotoCapture";
 import { useViewAs } from "@/app/stock-control/context/ViewAsContext";
 import { formatZAR } from "@/app/stock-control/lib/currency";
 
+interface StockLevelPoint {
+  date: string;
+  soh: number;
+}
+
+interface RecipientSummary {
+  name: string;
+  totalQty: number;
+  count: number;
+}
+
 function movementTypeBadge(type: string): string {
   const colors: Record<string, string> = {
     in: "bg-green-100 text-green-800",
@@ -29,6 +50,14 @@ function movementTypeBadge(type: string): string {
     return: "bg-purple-100 text-purple-800",
   };
   return colors[type.toLowerCase()] || "bg-gray-100 text-gray-800";
+}
+
+function recipientFromNotes(notes: string): string | null {
+  const match = notes.match(/^Issued to\s+(.+?)\s+by\s+.+$/i);
+  if (match) return match[1];
+  const match2 = notes.match(/^(.+?)(?:\s+—\s+job\s+.+)?$/i);
+  const isIssuance = !notes.includes("Stock take") && !notes.includes("counted");
+  return isIssuance ? (match2 ? match2[1] : null) : null;
 }
 
 export default function InventoryDetailPage() {
@@ -66,6 +95,66 @@ export default function InventoryDetailPage() {
     minStockLevel: 0,
     locationId: null as number | null,
   });
+
+  const stockLevelHistory = useMemo((): StockLevelPoint[] => {
+    if (!item || movements.length === 0) return [];
+    const sorted = [...movements].sort((a, b) => {
+      const dateA = new Date(a.createdAt).getTime();
+      const dateB = new Date(b.createdAt).getTime();
+      return dateA - dateB;
+    });
+    const soh = item.quantity;
+    const reverseDelta = sorted.reduceRight((acc: number[], m) => {
+      const qty = Number(m.quantity);
+      const delta = m.movementType === "out" ? qty : -qty;
+      acc.unshift(delta);
+      return acc;
+    }, []);
+    const startSoh = reverseDelta.reduce((s, d) => s - d, soh);
+    let running = startSoh;
+    return sorted.map((m, i) => {
+      running = running + reverseDelta[i];
+      const dt = fromJSDate(new Date(m.createdAt));
+      return { date: dt.toFormat("dd MMM HH:mm"), soh: running };
+    });
+  }, [item, movements]);
+
+  const topRecipients = useMemo((): RecipientSummary[] => {
+    if (movements.length === 0) return [];
+    const map = new Map<string, { totalQty: number; count: number }>();
+    movements
+      .filter((m) => m.movementType === "out" && m.notes)
+      .forEach((m) => {
+        const name = recipientFromNotes(m.notes || "");
+        if (!name || name === "-") return;
+        const existing = map.get(name) || { totalQty: 0, count: 0 };
+        map.set(name, {
+          totalQty: existing.totalQty + Number(m.quantity),
+          count: existing.count + 1,
+        });
+      });
+    return Array.from(map.entries())
+      .map(([name, stats]) => ({ name, ...stats }))
+      .sort((a, b) => b.totalQty - a.totalQty)
+      .slice(0, 5);
+  }, [movements]);
+
+  const usageInsights = useMemo(() => {
+    const outMovements = movements.filter((m) => m.movementType === "out");
+    const totalOut = outMovements.reduce((sum, m) => sum + Number(m.quantity), 0);
+    const dates = outMovements.map((m) => new Date(m.createdAt).getTime());
+    const firstOut = dates.length > 0 ? Math.min(...dates) : null;
+    const lastOut = dates.length > 0 ? Math.max(...dates) : null;
+    const daySpan =
+      firstOut && lastOut ? Math.max(1, (lastOut - firstOut) / (1000 * 60 * 60 * 24)) : 0;
+    const avgDailyUsage = daySpan > 0 ? totalOut / daySpan : 0;
+    const daysUntilStockout =
+      avgDailyUsage > 0 && item ? Math.floor(item.quantity / avgDailyUsage) : null;
+    const lastRestock = movements
+      .filter((m) => m.movementType === "in")
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
+    return { totalOut, avgDailyUsage, daysUntilStockout, lastRestock };
+  }, [movements, item]);
 
   const error = itemError
     ? itemError instanceof Error
@@ -313,6 +402,51 @@ export default function InventoryDetailPage() {
             </div>
           </div>
 
+          {stockLevelHistory.length > 1 && (
+            <div className="bg-white shadow rounded-lg mt-6">
+              <div className="px-4 py-5 sm:px-6 border-b border-gray-200">
+                <h3 className="text-lg leading-6 font-medium text-gray-900">Stock Level</h3>
+              </div>
+              <div className="px-2 py-4" style={{ height: 220 }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart
+                    data={stockLevelHistory}
+                    margin={{ top: 5, right: 20, left: 0, bottom: 5 }}
+                  >
+                    <defs>
+                      <linearGradient id="sohGradient" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#0d9488" stopOpacity={0.3} />
+                        <stop offset="95%" stopColor="#0d9488" stopOpacity={0.02} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                    <XAxis dataKey="date" tick={{ fontSize: 11 }} />
+                    <YAxis tick={{ fontSize: 11 }} />
+                    <Tooltip
+                      formatter={(value: number) => [value.toFixed(1), "SOH"]}
+                      contentStyle={{ fontSize: 12 }}
+                    />
+                    {item && (
+                      <ReferenceLine
+                        y={item.minStockLevel}
+                        stroke="#ef4444"
+                        strokeDasharray="4 4"
+                        label={{ value: "Min", position: "right", fontSize: 10, fill: "#ef4444" }}
+                      />
+                    )}
+                    <Area
+                      type="monotone"
+                      dataKey="soh"
+                      stroke="#0d9488"
+                      strokeWidth={2}
+                      fill="url(#sohGradient)"
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          )}
+
           <div className="bg-white shadow rounded-lg overflow-x-auto mt-6">
             <div className="px-4 py-5 sm:px-6 border-b border-gray-200">
               <h3 className="text-lg leading-6 font-medium text-gray-900">Movement History</h3>
@@ -444,7 +578,7 @@ export default function InventoryDetailPage() {
 
           <div className="bg-white shadow rounded-lg overflow-x-auto">
             <div className="px-4 py-5 sm:px-6 border-b border-gray-200">
-              <h3 className="text-lg leading-6 font-medium text-gray-900">Quick Stats</h3>
+              <h3 className="text-lg leading-6 font-medium text-gray-900">Usage Insights</h3>
             </div>
             <div className="px-4 py-5 sm:px-6 space-y-4">
               <div className="flex justify-between">
@@ -467,8 +601,79 @@ export default function InventoryDetailPage() {
                       : "OK"}
                 </span>
               </div>
+              <div className="border-t border-gray-100 pt-4">
+                <div className="flex justify-between">
+                  <span className="text-sm text-gray-500">Total Issued</span>
+                  <span className="text-sm text-gray-900">
+                    {usageInsights.totalOut} {item.unitOfMeasure}
+                  </span>
+                </div>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-sm text-gray-500">Avg Daily Usage</span>
+                <span className="text-sm text-gray-900">
+                  {usageInsights.avgDailyUsage > 0
+                    ? `${usageInsights.avgDailyUsage.toFixed(1)} / day`
+                    : "-"}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-sm text-gray-500">Days Until Stockout</span>
+                <span
+                  className={`text-sm font-medium ${
+                    usageInsights.daysUntilStockout !== null && usageInsights.daysUntilStockout <= 7
+                      ? "text-red-600"
+                      : usageInsights.daysUntilStockout !== null &&
+                          usageInsights.daysUntilStockout <= 14
+                        ? "text-amber-600"
+                        : "text-gray-900"
+                  }`}
+                >
+                  {usageInsights.daysUntilStockout !== null
+                    ? `${usageInsights.daysUntilStockout} days`
+                    : "-"}
+                </span>
+              </div>
+              {usageInsights.lastRestock && (
+                <div className="flex justify-between">
+                  <span className="text-sm text-gray-500">Last Restock</span>
+                  <span className="text-sm text-gray-900">
+                    {formatDateZA(usageInsights.lastRestock.createdAt)}
+                  </span>
+                </div>
+              )}
             </div>
           </div>
+
+          {topRecipients.length > 0 && (
+            <div className="bg-white shadow rounded-lg overflow-x-auto mt-6">
+              <div className="px-4 py-5 sm:px-6 border-b border-gray-200">
+                <h3 className="text-lg leading-6 font-medium text-gray-900">Top Recipients</h3>
+              </div>
+              <div className="px-4 py-4 sm:px-6 space-y-3">
+                {topRecipients.map((r) => {
+                  const maxQty = topRecipients[0].totalQty;
+                  const widthPct = maxQty > 0 ? (r.totalQty / maxQty) * 100 : 0;
+                  return (
+                    <div key={r.name}>
+                      <div className="flex justify-between text-sm mb-1">
+                        <span className="text-gray-700 truncate">{r.name}</span>
+                        <span className="text-gray-500 flex-shrink-0 ml-2">
+                          {r.totalQty} ({r.count}x)
+                        </span>
+                      </div>
+                      <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-teal-500 rounded-full transition-all duration-300"
+                          style={{ width: `${widthPct}%` }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
