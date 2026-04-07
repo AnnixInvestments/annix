@@ -87,6 +87,14 @@ export class StockControlApiClient {
     this.clearCompanyCookie();
   }
 
+  private safeParseJson<T>(text: string): T {
+    try {
+      return JSON.parse(text) as T;
+    } catch {
+      throw new Error("The server returned an unexpected response. Please try again.");
+    }
+  }
+
   isAuthenticated(): boolean {
     if (!this.accessToken && typeof window !== "undefined") {
       this.accessToken =
@@ -121,7 +129,11 @@ export class StockControlApiClient {
         };
         const retryResponse = await fetch(url, config);
         await throwIfNotOk(retryResponse);
-        return retryResponse.json();
+        const retryText = await retryResponse.text();
+        if (!retryText || retryText.trim() === "") {
+          return {} as T;
+        }
+        return this.safeParseJson<T>(retryText);
       }
     }
 
@@ -132,7 +144,7 @@ export class StockControlApiClient {
       return {} as T;
     }
 
-    return JSON.parse(text) as T;
+    return this.safeParseJson<T>(text);
   }
 
   async requestBlob(endpoint: string, options: RequestInit = {}): Promise<Blob> {
@@ -197,13 +209,21 @@ export class StockControlApiClient {
           body: formData,
         });
         await throwIfNotOk(retryResponse);
-        return retryResponse.json();
+        const retryText = await retryResponse.text();
+        if (!retryText || retryText.trim() === "") {
+          return {} as T;
+        }
+        return this.safeParseJson<T>(retryText);
       }
     }
 
     await throwIfNotOk(response);
 
-    return response.json();
+    const uploadText = await response.text();
+    if (!uploadText || uploadText.trim() === "") {
+      return {} as T;
+    }
+    return this.safeParseJson<T>(uploadText);
   }
 
   async refreshAccessToken(): Promise<boolean> {
