@@ -200,8 +200,17 @@ export class SageJcDumpService {
     ];
     const specNotesText = allSpecNotes.length > 0 ? allSpecNotes.join("\n") : null;
 
+    const coatingSpecsIsFooterOnly = cpo.coatingSpecs
+      ?.split("\n")
+      .map((l) => l.trim())
+      .filter(Boolean)
+      .every((line) => FOOTER_LABELS.some((label) => line.startsWith(label)));
+
     if (specNotesText && specNotesText !== cpo.coatingSpecs) {
       cpo.coatingSpecs = specNotesText;
+      await this.cpoRepo.save(cpo);
+    } else if (coatingSpecsIsFooterOnly) {
+      cpo.coatingSpecs = null;
       await this.cpoRepo.save(cpo);
     }
 

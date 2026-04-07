@@ -265,6 +265,16 @@ export class CpoService {
     return cpo;
   }
 
+  async updateReference(
+    companyId: number,
+    id: number,
+    reference: string | null,
+  ): Promise<CustomerPurchaseOrder> {
+    const cpo = await this.findById(companyId, id);
+    cpo.reference = reference;
+    return this.cpoRepo.save(cpo);
+  }
+
   async addCpoItem(
     companyId: number,
     cpoId: number,

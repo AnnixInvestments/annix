@@ -51,6 +51,7 @@ declare module "./base" {
     confirmCpoImport(rows: JobCardImportRow[]): Promise<CpoImportResult>;
     updateCpoStatus(id: number, status: string): Promise<CustomerPurchaseOrder>;
     updateCpoCoatingSpecs(id: number, coatingSpecs: string | null): Promise<CustomerPurchaseOrder>;
+    updateCpoReference(id: number, reference: string | null): Promise<CustomerPurchaseOrder>;
     deleteCpo(id: number): Promise<void>;
     addCpoItem(
       cpoId: number,
@@ -175,6 +176,13 @@ proto.updateCpoCoatingSpecs = async function (id, coatingSpecs) {
   return this.request(`/stock-control/cpos/${id}/coating-specs`, {
     method: "PUT",
     body: JSON.stringify({ coatingSpecs }),
+  });
+};
+
+proto.updateCpoReference = async function (id, reference) {
+  return this.request(`/stock-control/cpos/${id}/reference`, {
+    method: "PUT",
+    body: JSON.stringify({ reference }),
   });
 };
 

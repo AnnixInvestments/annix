@@ -178,6 +178,11 @@ export default function CpoDetailPage() {
   const [isSavingSpecs, setIsSavingSpecs] = useState(false);
   const [specsError, setSpecsError] = useState<string | null>(null);
 
+  const [isEditingReference, setIsEditingReference] = useState(false);
+  const [referenceDraft, setReferenceDraft] = useState("");
+  const [isSavingReference, setIsSavingReference] = useState(false);
+  const [referenceError, setReferenceError] = useState<string | null>(null);
+
   const handleSaveCoatingSpecs = useCallback(async () => {
     try {
       setIsSavingSpecs(true);
@@ -192,6 +197,21 @@ export default function CpoDetailPage() {
       setIsSavingSpecs(false);
     }
   }, [id, specsDraft, queryClient]);
+
+  const handleSaveReference = useCallback(async () => {
+    try {
+      setIsSavingReference(true);
+      setReferenceError(null);
+      const trimmed = referenceDraft.trim() || null;
+      await stockControlApiClient.updateCpoReference(id, trimmed);
+      await queryClient.invalidateQueries({ queryKey: stockControlKeys.cpos.detail(id) });
+      setIsEditingReference(false);
+    } catch (err) {
+      setReferenceError(err instanceof Error ? err.message : "Failed to save reference");
+    } finally {
+      setIsSavingReference(false);
+    }
+  }, [id, referenceDraft, queryClient]);
 
   const [sageParseResult, setSageParseResult] = useState<SageJcDumpParseResult | null>(null);
   const [sageImportResult, setSageImportResult] = useState<SageJcDumpImportResult | null>(null);
@@ -653,10 +673,56 @@ export default function CpoDetailPage() {
                   <dd className="text-sm text-gray-900">{cpo.dueDate}</dd>
                 </div>
               )}
-              {cpo.reference && (
+              {(cpo.reference || isEditingReference) && (
                 <div>
-                  <dt className="text-sm font-medium text-gray-500">Reference</dt>
-                  <dd className="text-sm text-gray-900">{cpo.reference}</dd>
+                  <dt className="text-sm font-medium text-gray-500 flex items-center gap-2">
+                    Reference
+                    {!isEditingReference && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setReferenceDraft(cpo.reference || "");
+                          setIsEditingReference(true);
+                          setReferenceError(null);
+                        }}
+                        className="text-xs text-gray-400 hover:text-gray-600 underline font-normal"
+                      >
+                        Edit
+                      </button>
+                    )}
+                  </dt>
+                  {isEditingReference ? (
+                    <div className="mt-1 space-y-2">
+                      <input
+                        type="text"
+                        value={referenceDraft}
+                        onChange={(e) => setReferenceDraft(e.target.value)}
+                        className="block w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-teal-500 focus:ring-teal-500"
+                        placeholder="Reference number"
+                      />
+                      {referenceError && <p className="text-xs text-red-600">{referenceError}</p>}
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={handleSaveReference}
+                          disabled={isSavingReference}
+                          className="px-3 py-1 text-xs font-medium text-white bg-teal-600 rounded hover:bg-teal-700 disabled:opacity-50"
+                        >
+                          {isSavingReference ? "Saving..." : "Save"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setIsEditingReference(false)}
+                          disabled={isSavingReference}
+                          className="px-3 py-1 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded hover:bg-gray-50"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <dd className="text-sm text-gray-900">{cpo.reference}</dd>
+                  )}
                 </div>
               )}
               {cpo.notes && (

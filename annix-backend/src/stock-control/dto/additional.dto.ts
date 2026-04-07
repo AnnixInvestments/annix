@@ -206,6 +206,12 @@ export class UpdateCpoDetailsDto {
   coatingSpecs?: string | null;
 }
 
+export class UpdateCpoReferenceDto {
+  @IsOptional()
+  @IsString()
+  reference?: string | null;
+}
+
 export class ConfirmSageJcDumpDto {
   @IsNumber()
   cpoId: number;

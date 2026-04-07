@@ -25,6 +25,7 @@ import {
   UpdateCalloffStatusDto,
   UpdateCpoDetailsDto,
   UpdateCpoItemDto,
+  UpdateCpoReferenceDto,
   UpdateCpoStatusDto,
 } from "../dto/additional.dto";
 import { CalloffStatus } from "../entities/cpo-calloff-record.entity";
@@ -200,6 +201,16 @@ export class CpoController {
     @Body() dto: UpdateCpoDetailsDto,
   ) {
     return this.cpoService.updateCoatingSpecs(req.user.companyId, id, dto.coatingSpecs ?? null);
+  }
+
+  @Put(":id/reference")
+  @ApiOperation({ summary: "Update CPO reference field" })
+  async updateReference(
+    @Req() req: any,
+    @Param("id", ParseIntPipe) id: number,
+    @Body() dto: UpdateCpoReferenceDto,
+  ) {
+    return this.cpoService.updateReference(req.user.companyId, id, dto.reference ?? null);
   }
 
   @Get(":id/calloff-records")
