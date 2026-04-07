@@ -15,7 +15,7 @@ import {
 } from "recharts";
 import { PdfPreviewModal, usePdfPreview } from "@/app/components/PdfPreviewModal";
 import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
-import { formatDateTimeZA, formatDateZA, fromJSDate } from "@/app/lib/datetime";
+import { formatDateTimeZA, formatDateZA, fromISO, fromJSDate } from "@/app/lib/datetime";
 import {
   useCreateManualAdjustment,
   useDownloadStockItemQrPdf,
@@ -50,6 +50,11 @@ function movementTypeBadge(type: string): string {
     return: "bg-purple-100 text-purple-800",
   };
   return colors[type.toLowerCase()] || "bg-gray-100 text-gray-800";
+}
+
+function stockTakeDateFromNotes(notes: string): string | null {
+  const match = notes.match(/Stock take \((\d{4}-\d{2}-\d{2})\)/);
+  return match ? match[1] : null;
 }
 
 function recipientFromNotes(notes: string): string | null {
@@ -98,25 +103,33 @@ export default function InventoryDetailPage() {
 
   const stockLevelHistory = useMemo((): StockLevelPoint[] => {
     if (!item || movements.length === 0) return [];
-    const sorted = [...movements].sort((a, b) => {
-      const dateA = new Date(a.createdAt).getTime();
-      const dateB = new Date(b.createdAt).getTime();
-      return dateA - dateB;
-    });
+    const effectiveDate = (m: (typeof movements)[0]): number => {
+      const ref = m.referenceType || "";
+      const stDate = ref === "stock_take" ? stockTakeDateFromNotes(m.notes || "") : null;
+      return stDate ? fromISO(stDate).toMillis() : new Date(m.createdAt).getTime();
+    };
+    const sorted = [...movements].sort((a, b) => effectiveDate(a) - effectiveDate(b));
     const soh = item.quantity;
-    const reverseDelta = sorted.reduceRight((acc: number[], m) => {
+    const deltas = sorted.map((m) => {
       const qty = Number(m.quantity);
-      const delta = m.movementType === "out" ? qty : -qty;
-      acc.unshift(delta);
-      return acc;
-    }, []);
-    const startSoh = reverseDelta.reduce((s, d) => s - d, soh);
-    let running = startSoh;
-    return sorted.map((m, i) => {
-      running = running + reverseDelta[i];
-      const dt = fromJSDate(new Date(m.createdAt));
-      return { date: dt.toFormat("dd MMM HH:mm"), soh: running };
+      return m.movementType === "out" ? -qty : qty;
     });
+    const startSoh = soh - deltas.reduce((s, d) => s + d, 0);
+    let running = startSoh;
+    const createdDt = fromJSDate(new Date(item.createdAt));
+    const startDate = createdDt.toFormat("dd MMM yyyy");
+    const perMovement = sorted.map((m, i) => {
+      running = running + deltas[i];
+      const refType = m.referenceType || "";
+      const notes = m.notes || "";
+      const stDate = refType === "stock_take" ? stockTakeDateFromNotes(notes) : null;
+      const dt = stDate ? fromISO(stDate) : fromJSDate(new Date(m.createdAt));
+      return { date: dt.toFormat("dd MMM yyyy"), soh: running };
+    });
+    const dailyMap = new Map<string, number>();
+    dailyMap.set(startDate, startSoh);
+    perMovement.forEach((p) => dailyMap.set(p.date, p.soh));
+    return Array.from(dailyMap.entries()).map(([date, endSoh]) => ({ date, soh: endSoh }));
   }, [item, movements]);
 
   const topRecipients = useMemo((): RecipientSummary[] => {
@@ -151,7 +164,7 @@ export default function InventoryDetailPage() {
     const daysUntilStockout =
       avgDailyUsage > 0 && item ? Math.floor(item.quantity / avgDailyUsage) : null;
     const lastRestock = movements
-      .filter((m) => m.movementType === "in")
+      .filter((m) => m.movementType === "in" && m.referenceType !== "stock_take")
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
     return { totalOut, avgDailyUsage, daysUntilStockout, lastRestock };
   }, [movements, item]);
@@ -402,158 +415,111 @@ export default function InventoryDetailPage() {
             </div>
           </div>
 
-          {stockLevelHistory.length > 1 && (
-            <div className="bg-white shadow rounded-lg mt-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mt-6">
+            <div className="bg-white shadow rounded-lg overflow-x-auto">
               <div className="px-4 py-5 sm:px-6 border-b border-gray-200">
-                <h3 className="text-lg leading-6 font-medium text-gray-900">Stock Level</h3>
+                <h3 className="text-lg leading-6 font-medium text-gray-900">Usage Insights</h3>
               </div>
-              <div className="px-2 py-4" style={{ height: 220 }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart
-                    data={stockLevelHistory}
-                    margin={{ top: 5, right: 20, left: 0, bottom: 5 }}
+              <div className="px-4 py-5 sm:px-6 space-y-4">
+                <div className="flex justify-between">
+                  <span className="text-sm text-gray-500">Created</span>
+                  <span className="text-sm text-gray-900">{formatDateZA(item.createdAt)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm text-gray-500">Total Movements</span>
+                  <span className="text-sm text-gray-900">{movements.length}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm text-gray-500">Stock Status</span>
+                  <span
+                    className={`text-sm font-medium ${item.quantity <= item.minStockLevel ? "text-red-600" : item.quantity <= item.minStockLevel * 1.5 ? "text-amber-600" : "text-green-600"}`}
                   >
-                    <defs>
-                      <linearGradient id="sohGradient" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#0d9488" stopOpacity={0.3} />
-                        <stop offset="95%" stopColor="#0d9488" stopOpacity={0.02} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                    <XAxis dataKey="date" tick={{ fontSize: 11 }} />
-                    <YAxis tick={{ fontSize: 11 }} />
-                    <Tooltip
-                      formatter={(value: number) => [value.toFixed(1), "SOH"]}
-                      contentStyle={{ fontSize: 12 }}
-                    />
-                    {item && (
-                      <ReferenceLine
-                        y={item.minStockLevel}
-                        stroke="#ef4444"
-                        strokeDasharray="4 4"
-                        label={{ value: "Min", position: "right", fontSize: 10, fill: "#ef4444" }}
-                      />
-                    )}
-                    <Area
-                      type="monotone"
-                      dataKey="soh"
-                      stroke="#0d9488"
-                      strokeWidth={2}
-                      fill="url(#sohGradient)"
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
+                    {item.quantity <= item.minStockLevel
+                      ? "Low"
+                      : item.quantity <= item.minStockLevel * 1.5
+                        ? "Warning"
+                        : "OK"}
+                  </span>
+                </div>
+                <div className="border-t border-gray-100 pt-4">
+                  <div className="flex justify-between">
+                    <span className="text-sm text-gray-500">Total Issued</span>
+                    <span className="text-sm text-gray-900">
+                      {usageInsights.totalOut} {item.unitOfMeasure}
+                    </span>
+                  </div>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm text-gray-500">Avg Daily Usage</span>
+                  <span className="text-sm text-gray-900">
+                    {usageInsights.avgDailyUsage > 0
+                      ? `${usageInsights.avgDailyUsage.toFixed(1)} / day`
+                      : "-"}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm text-gray-500">Days Until Stockout</span>
+                  <span
+                    className={`text-sm font-medium ${
+                      usageInsights.daysUntilStockout !== null &&
+                      usageInsights.daysUntilStockout <= 7
+                        ? "text-red-600"
+                        : usageInsights.daysUntilStockout !== null &&
+                            usageInsights.daysUntilStockout <= 14
+                          ? "text-amber-600"
+                          : "text-gray-900"
+                    }`}
+                  >
+                    {usageInsights.daysUntilStockout !== null
+                      ? `${usageInsights.daysUntilStockout} days`
+                      : "-"}
+                  </span>
+                </div>
+                {usageInsights.lastRestock && (
+                  <div className="flex justify-between">
+                    <span className="text-sm text-gray-500">Last Restock</span>
+                    <span className="text-sm text-gray-900">
+                      {formatDateZA(usageInsights.lastRestock.createdAt)}
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
-          )}
 
-          <div className="bg-white shadow rounded-lg overflow-x-auto mt-6">
-            <div className="px-4 py-5 sm:px-6 border-b border-gray-200">
-              <h3 className="text-lg leading-6 font-medium text-gray-900">Movement History</h3>
-            </div>
-            {movements.length === 0 ? (
-              <div className="text-center py-12">
-                <svg
-                  className="mx-auto h-12 w-12 text-gray-400"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
-                  />
-                </svg>
-                <h3 className="mt-2 text-sm font-medium text-gray-900">No movements</h3>
-                <p className="mt-1 text-sm text-gray-500">
-                  No stock movements recorded for this item.
-                </p>
+            {topRecipients.length > 0 && (
+              <div className="bg-white shadow rounded-lg overflow-x-auto">
+                <div className="px-4 py-5 sm:px-6 border-b border-gray-200">
+                  <h3 className="text-lg leading-6 font-medium text-gray-900">Top Recipients</h3>
+                </div>
+                <div className="px-4 py-4 sm:px-6 space-y-3">
+                  {topRecipients.map((r) => {
+                    const maxQty = topRecipients[0].totalQty;
+                    const widthPct = maxQty > 0 ? (r.totalQty / maxQty) * 100 : 0;
+                    return (
+                      <div key={r.name}>
+                        <div className="flex justify-between text-sm mb-1">
+                          <span className="text-gray-700 truncate">{r.name}</span>
+                          <span className="text-gray-500 flex-shrink-0 ml-2">
+                            {r.totalQty} ({r.count}x)
+                          </span>
+                        </div>
+                        <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-teal-500 rounded-full transition-all duration-300"
+                            style={{ width: `${widthPct}%` }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
-            ) : (
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th
-                      scope="col"
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                    >
-                      Date
-                    </th>
-                    <th
-                      scope="col"
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                    >
-                      Type
-                    </th>
-                    <th
-                      scope="col"
-                      className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
-                    >
-                      Quantity
-                    </th>
-                    <th
-                      scope="col"
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                    >
-                      Reference
-                    </th>
-                    <th
-                      scope="col"
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                    >
-                      Issued To
-                    </th>
-                    <th
-                      scope="col"
-                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                    >
-                      Issued By
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {movements.map((movement) => (
-                    <tr key={movement.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {formatDateTimeZA(movement.createdAt)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span
-                          className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${movementTypeBadge(movement.movementType)}`}
-                        >
-                          {movement.movementType}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-medium text-gray-900">
-                        {movement.quantity}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {movement.referenceType
-                          ? `${movement.referenceType} #${movement.referenceId}`
-                          : "-"}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-500 max-w-xs truncate">
-                        {(() => {
-                          const raw = movement.notes || "-";
-                          const match = raw.match(/^Issued to\s+(.+?)\s+by\s+.+$/i);
-                          return match ? match[1] : raw;
-                        })()}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {movement.createdBy || "System"}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
             )}
           </div>
         </div>
 
         <div>
-          <div className="bg-white shadow rounded-lg overflow-x-auto mb-6">
+          <div className="bg-white shadow rounded-lg overflow-x-auto">
             <div className="px-4 py-5 sm:px-6 border-b border-gray-200">
               <h3 className="text-lg leading-6 font-medium text-gray-900">Photo</h3>
             </div>
@@ -575,106 +541,154 @@ export default function InventoryDetailPage() {
               )}
             </div>
           </div>
-
-          <div className="bg-white shadow rounded-lg overflow-x-auto">
-            <div className="px-4 py-5 sm:px-6 border-b border-gray-200">
-              <h3 className="text-lg leading-6 font-medium text-gray-900">Usage Insights</h3>
-            </div>
-            <div className="px-4 py-5 sm:px-6 space-y-4">
-              <div className="flex justify-between">
-                <span className="text-sm text-gray-500">Created</span>
-                <span className="text-sm text-gray-900">{formatDateZA(item.createdAt)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-sm text-gray-500">Total Movements</span>
-                <span className="text-sm text-gray-900">{movements.length}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-sm text-gray-500">Stock Status</span>
-                <span
-                  className={`text-sm font-medium ${item.quantity <= item.minStockLevel ? "text-red-600" : item.quantity <= item.minStockLevel * 1.5 ? "text-amber-600" : "text-green-600"}`}
-                >
-                  {item.quantity <= item.minStockLevel
-                    ? "Low"
-                    : item.quantity <= item.minStockLevel * 1.5
-                      ? "Warning"
-                      : "OK"}
-                </span>
-              </div>
-              <div className="border-t border-gray-100 pt-4">
-                <div className="flex justify-between">
-                  <span className="text-sm text-gray-500">Total Issued</span>
-                  <span className="text-sm text-gray-900">
-                    {usageInsights.totalOut} {item.unitOfMeasure}
-                  </span>
-                </div>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-sm text-gray-500">Avg Daily Usage</span>
-                <span className="text-sm text-gray-900">
-                  {usageInsights.avgDailyUsage > 0
-                    ? `${usageInsights.avgDailyUsage.toFixed(1)} / day`
-                    : "-"}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-sm text-gray-500">Days Until Stockout</span>
-                <span
-                  className={`text-sm font-medium ${
-                    usageInsights.daysUntilStockout !== null && usageInsights.daysUntilStockout <= 7
-                      ? "text-red-600"
-                      : usageInsights.daysUntilStockout !== null &&
-                          usageInsights.daysUntilStockout <= 14
-                        ? "text-amber-600"
-                        : "text-gray-900"
-                  }`}
-                >
-                  {usageInsights.daysUntilStockout !== null
-                    ? `${usageInsights.daysUntilStockout} days`
-                    : "-"}
-                </span>
-              </div>
-              {usageInsights.lastRestock && (
-                <div className="flex justify-between">
-                  <span className="text-sm text-gray-500">Last Restock</span>
-                  <span className="text-sm text-gray-900">
-                    {formatDateZA(usageInsights.lastRestock.createdAt)}
-                  </span>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {topRecipients.length > 0 && (
-            <div className="bg-white shadow rounded-lg overflow-x-auto mt-6">
-              <div className="px-4 py-5 sm:px-6 border-b border-gray-200">
-                <h3 className="text-lg leading-6 font-medium text-gray-900">Top Recipients</h3>
-              </div>
-              <div className="px-4 py-4 sm:px-6 space-y-3">
-                {topRecipients.map((r) => {
-                  const maxQty = topRecipients[0].totalQty;
-                  const widthPct = maxQty > 0 ? (r.totalQty / maxQty) * 100 : 0;
-                  return (
-                    <div key={r.name}>
-                      <div className="flex justify-between text-sm mb-1">
-                        <span className="text-gray-700 truncate">{r.name}</span>
-                        <span className="text-gray-500 flex-shrink-0 ml-2">
-                          {r.totalQty} ({r.count}x)
-                        </span>
-                      </div>
-                      <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-teal-500 rounded-full transition-all duration-300"
-                          style={{ width: `${widthPct}%` }}
-                        />
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
         </div>
+      </div>
+
+      {stockLevelHistory.length >= 1 && (
+        <div className="bg-white shadow rounded-lg">
+          <div className="px-4 py-5 sm:px-6 border-b border-gray-200">
+            <h3 className="text-lg leading-6 font-medium text-gray-900">Stock Level</h3>
+          </div>
+          <div className="px-2 py-4" style={{ height: 250 }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart
+                data={stockLevelHistory}
+                margin={{ top: 5, right: 20, left: 0, bottom: 5 }}
+              >
+                <defs>
+                  <linearGradient id="sohGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#0d9488" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="#0d9488" stopOpacity={0.02} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                <XAxis dataKey="date" tick={{ fontSize: 11 }} />
+                <YAxis tick={{ fontSize: 11 }} />
+                <Tooltip
+                  formatter={(value: number) => [value.toFixed(1), "SOH"]}
+                  contentStyle={{ fontSize: 12 }}
+                />
+                {item && (
+                  <ReferenceLine
+                    y={item.minStockLevel}
+                    stroke="#ef4444"
+                    strokeDasharray="4 4"
+                    label={{ value: "Min", position: "right", fontSize: 10, fill: "#ef4444" }}
+                  />
+                )}
+                <Area
+                  type="monotone"
+                  dataKey="soh"
+                  stroke="#0d9488"
+                  strokeWidth={2}
+                  fill="url(#sohGradient)"
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      )}
+
+      <div className="bg-white shadow rounded-lg overflow-x-auto">
+        <div className="px-4 py-5 sm:px-6 border-b border-gray-200">
+          <h3 className="text-lg leading-6 font-medium text-gray-900">Movement History</h3>
+        </div>
+        {movements.length === 0 ? (
+          <div className="text-center py-12">
+            <svg
+              className="mx-auto h-12 w-12 text-gray-400"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
+              />
+            </svg>
+            <h3 className="mt-2 text-sm font-medium text-gray-900">No movements</h3>
+            <p className="mt-1 text-sm text-gray-500">No stock movements recorded for this item.</p>
+          </div>
+        ) : (
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th
+                  scope="col"
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
+                  Date
+                </th>
+                <th
+                  scope="col"
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
+                  Type
+                </th>
+                <th
+                  scope="col"
+                  className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
+                  Quantity
+                </th>
+                <th
+                  scope="col"
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
+                  Reference
+                </th>
+                <th
+                  scope="col"
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
+                  Issued To
+                </th>
+                <th
+                  scope="col"
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
+                  Issued By
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {movements.map((movement) => (
+                <tr key={movement.id} className="hover:bg-gray-50">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {formatDateTimeZA(movement.createdAt)}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span
+                      className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${movementTypeBadge(movement.movementType)}`}
+                    >
+                      {movement.movementType}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-medium text-gray-900">
+                    {movement.quantity}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {movement.referenceType
+                      ? `${movement.referenceType} #${movement.referenceId}`
+                      : "-"}
+                  </td>
+                  <td className="px-6 py-4 text-sm text-gray-500 max-w-xs truncate">
+                    {(() => {
+                      const raw = movement.notes || "-";
+                      const match = raw.match(/^Issued to\s+(.+?)\s+by\s+.+$/i);
+                      return match ? match[1] : raw;
+                    })()}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {movement.createdBy || "System"}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </div>
 
       {showAdjustModal && (
