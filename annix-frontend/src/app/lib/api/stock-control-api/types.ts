@@ -1140,6 +1140,21 @@ export interface EnvironmentalRecordWithJobCard extends QcEnvironmentalRecordRes
   jcNumber: string | null;
 }
 
+export interface DftReadingWithJobCard extends QcDftReadingRecord {
+  jobNumber: string | null;
+  jcNumber: string | null;
+}
+
+export interface BlastProfileWithJobCard extends QcBlastProfileRecord {
+  jobNumber: string | null;
+  jcNumber: string | null;
+}
+
+export interface ShoreHardnessWithJobCard extends QcShoreHardnessRecord {
+  jobNumber: string | null;
+  jcNumber: string | null;
+}
+
 export interface CalibrationCertificate {
   id: number;
   companyId: number;

@@ -1,7 +1,9 @@
 import { StockControlApiClient } from "./base";
 import type {
+  BlastProfileWithJobCard,
   CpoReleasableItem,
   CpoReleaseDocumentsResult,
+  DftReadingWithJobCard,
   EnvironmentalRecordWithJobCard,
   QcBlastProfileRecord,
   QcControlPlanRecord,
@@ -17,6 +19,7 @@ import type {
   QcReleaseCertificateRecord,
   QcReleaseDocumentsResult,
   QcShoreHardnessRecord,
+  ShoreHardnessWithJobCard,
 } from "./types";
 
 declare module "./base" {
@@ -152,6 +155,12 @@ declare module "./base" {
       }[],
     ): Promise<CpoReleaseDocumentsResult>;
     openItemsReleasePdfForCpo(cpoId: number, id: number): Promise<Blob>;
+    allDftReadings(): Promise<DftReadingWithJobCard[]>;
+    allBlastProfiles(): Promise<BlastProfileWithJobCard[]>;
+    allShoreHardnessRecords(): Promise<ShoreHardnessWithJobCard[]>;
+    deleteDftReadingById(id: number): Promise<void>;
+    deleteBlastProfileById(id: number): Promise<void>;
+    deleteShoreHardnessById(id: number): Promise<void>;
     allEnvironmentalRecords(): Promise<EnvironmentalRecordWithJobCard[]>;
     environmentalRecordsForJobCard(jobCardId: number): Promise<QcEnvironmentalRecordResponse[]>;
     environmentalRecordByDate(
@@ -432,6 +441,30 @@ proto.openControlPlanPdf = async function (jobCardId, id) {
 proto.qcpLog = async function (search) {
   const params = search ? `?search=${encodeURIComponent(search)}` : "";
   return this.request(`/stock-control/qcp-log${params}`);
+};
+
+proto.allDftReadings = async function () {
+  return this.request("/stock-control/qc-records/dft-readings");
+};
+
+proto.allBlastProfiles = async function () {
+  return this.request("/stock-control/qc-records/blast-profiles");
+};
+
+proto.allShoreHardnessRecords = async function () {
+  return this.request("/stock-control/qc-records/shore-hardness");
+};
+
+proto.deleteDftReadingById = async function (id) {
+  return this.request(`/stock-control/qc-records/dft-readings/${id}`, { method: "DELETE" });
+};
+
+proto.deleteBlastProfileById = async function (id) {
+  return this.request(`/stock-control/qc-records/blast-profiles/${id}`, { method: "DELETE" });
+};
+
+proto.deleteShoreHardnessById = async function (id) {
+  return this.request(`/stock-control/qc-records/shore-hardness/${id}`, { method: "DELETE" });
 };
 
 proto.allEnvironmentalRecords = async function () {

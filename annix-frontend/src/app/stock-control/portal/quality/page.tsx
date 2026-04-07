@@ -12,6 +12,9 @@ const DESCRIPTIONS: Record<string, string> = {
   "positector-ble": "Connect to PosiTector gauges via Bluetooth",
   "data-books": "Compile and download job card data books",
   "batch-lookup": "Trace material by batch number across certificates and issuances",
+  "paint-dfts": "Dry film thickness readings across all job cards",
+  "blast-profile": "Surface blast profile measurements across all job cards",
+  "shore-hardness": "Rubber shore hardness measurements across all job cards",
   environmental: "Temperature, humidity, and dew point readings across all job cards",
 };
 

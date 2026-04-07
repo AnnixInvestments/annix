@@ -31,6 +31,7 @@ import { EnvironmentalController } from "./controllers/environmental.controller"
 import { PositectorController } from "./controllers/positector.controller";
 import { PositectorStreamingController } from "./controllers/positector-streaming.controller";
 import { QcMeasurementController } from "./controllers/qc-measurement.controller";
+import { QcRecordsController } from "./controllers/qc-records.controller";
 import { QcpLogController } from "./controllers/qcp-log.controller";
 import { QcpPublicController } from "./controllers/qcp-public.controller";
 import { CalibrationCertificate } from "./entities/calibration-certificate.entity";
@@ -107,6 +108,7 @@ import { WORK_ITEM_PROVIDER } from "./work-item-provider.interface";
     QcpPublicController,
     PositectorController,
     PositectorStreamingController,
+    QcRecordsController,
   ],
   providers: [
     ActionPermissionService,

@@ -1134,6 +1134,68 @@ export class QcMeasurementService {
     return results;
   }
 
+  // ── Cross-Job-Card Queries ───────────────────────────────────────
+
+  async allDftReadings(
+    companyId: number,
+  ): Promise<(QcDftReading & { jobNumber: string | null; jcNumber: string | null })[]> {
+    const records = await this.dftReadingRepo
+      .createQueryBuilder("dft")
+      .leftJoin(JobCard, "jc", "jc.id = dft.jobCardId")
+      .addSelect("jc.jobNumber", "jobNumber")
+      .addSelect("jc.jcNumber", "jcNumber")
+      .where("dft.companyId = :companyId", { companyId })
+      .orderBy("dft.readingDate", "DESC")
+      .addOrderBy("dft.createdAt", "DESC")
+      .getRawAndEntities();
+
+    return records.entities.map((entity, idx) => ({
+      ...entity,
+      jobNumber: records.raw[idx]?.jc_job_number || null,
+      jcNumber: records.raw[idx]?.jc_jc_number || null,
+    }));
+  }
+
+  async allBlastProfiles(
+    companyId: number,
+  ): Promise<(QcBlastProfile & { jobNumber: string | null; jcNumber: string | null })[]> {
+    const records = await this.blastProfileRepo
+      .createQueryBuilder("bp")
+      .leftJoin(JobCard, "jc", "jc.id = bp.jobCardId")
+      .addSelect("jc.jobNumber", "jobNumber")
+      .addSelect("jc.jcNumber", "jcNumber")
+      .where("bp.companyId = :companyId", { companyId })
+      .orderBy("bp.readingDate", "DESC")
+      .addOrderBy("bp.createdAt", "DESC")
+      .getRawAndEntities();
+
+    return records.entities.map((entity, idx) => ({
+      ...entity,
+      jobNumber: records.raw[idx]?.jc_job_number || null,
+      jcNumber: records.raw[idx]?.jc_jc_number || null,
+    }));
+  }
+
+  async allShoreHardnessRecords(
+    companyId: number,
+  ): Promise<(QcShoreHardness & { jobNumber: string | null; jcNumber: string | null })[]> {
+    const records = await this.shoreHardnessRepo
+      .createQueryBuilder("sh")
+      .leftJoin(JobCard, "jc", "jc.id = sh.jobCardId")
+      .addSelect("jc.jobNumber", "jobNumber")
+      .addSelect("jc.jcNumber", "jcNumber")
+      .where("sh.companyId = :companyId", { companyId })
+      .orderBy("sh.readingDate", "DESC")
+      .addOrderBy("sh.createdAt", "DESC")
+      .getRawAndEntities();
+
+    return records.entities.map((entity, idx) => ({
+      ...entity,
+      jobNumber: records.raw[idx]?.jc_job_number || null,
+      jcNumber: records.raw[idx]?.jc_jc_number || null,
+    }));
+  }
+
   // ── Environmental Records ─────────────────────────────────────────
 
   async allEnvironmentalRecords(
