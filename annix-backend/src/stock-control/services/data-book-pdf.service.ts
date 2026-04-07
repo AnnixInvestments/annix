@@ -912,11 +912,11 @@ export class DataBookPdfService {
     const partyCols = hasThirdParty ? 4 : 3;
 
     const opW = 24;
-    const descW = hasThirdParty ? 155 : 170;
-    const specW = hasThirdParty ? 110 : 120;
-    const docColW = hasThirdParty ? 80 : 90;
-    const partyIntW = 22;
-    const partySignW = 26;
+    const descW = hasThirdParty ? 145 : 155;
+    const specW = hasThirdParty ? 105 : 115;
+    const docColW = hasThirdParty ? 75 : 85;
+    const partyIntW = 28;
+    const partySignW = 32;
     const partyW = partyIntW + partySignW;
     const remarkW = pg.contentWidth - opW - descW - specW - docColW - partyW * partyCols;
 
@@ -1008,7 +1008,7 @@ export class DataBookPdfService {
         addNewPage();
       }
 
-      const rowH = 14;
+      const rowH = 18;
       doc
         .moveTo(pg.margin, y + rowH - 1)
         .lineTo(pg.margin + pg.contentWidth, y + rowH - 1)
@@ -1016,92 +1016,92 @@ export class DataBookPdfService {
         .stroke("#e5e7eb");
       doc.lineWidth(1);
 
-      doc.fontSize(6).font(FONT.REGULAR).fillColor("#000000");
-      doc.text(String(activity.operationNumber), opX + 1, y + 3, {
+      doc.fontSize(7).font(FONT.REGULAR).fillColor("#000000");
+      doc.text(String(activity.operationNumber), opX + 1, y + 4, {
         width: opW - 2,
-        height: rowH - 4,
+        height: rowH - 6,
         align: "center",
       });
-      doc.text(activity.description, descX + 2, y + 3, {
+      doc.text(activity.description, descX + 2, y + 4, {
         width: descW - 4,
-        height: rowH - 4,
+        height: rowH - 6,
         ellipsis: true,
       });
-      doc.text(activity.specification ?? "-", specX + 2, y + 3, {
+      doc.text(activity.specification ?? "-", specX + 2, y + 4, {
         width: specW - 4,
-        height: rowH - 4,
+        height: rowH - 6,
         ellipsis: true,
       });
       doc.text(
         (activity as any).documentation ?? activity.procedureRequired ?? "-",
         docColX + 2,
-        y + 3,
-        { width: docColW - 4, height: rowH - 4, ellipsis: true },
+        y + 4,
+        { width: docColW - 4, height: rowH - 6, ellipsis: true },
       );
 
-      doc.font(FONT.BOLD);
+      doc.font(FONT.BOLD).fontSize(7);
       const plsType = activity.pls?.interventionType ?? "-";
       const mpsType = activity.mps?.interventionType ?? "-";
       const clientType = activity.client?.interventionType ?? "-";
       const thirdType = (activity as any).thirdParty?.interventionType ?? "-";
 
-      doc.text(plsType, plsX + 1, y + 3, {
+      doc.text(plsType, plsX + 1, y + 4, {
         width: partyIntW - 2,
         align: "center",
         lineBreak: false,
       });
-      doc.fontSize(5.5).font(FONT.REGULAR);
-      doc.text(activity.pls?.initial ?? "", plsX + partyIntW + 1, y + 3, {
+      doc.fontSize(6.5).font(FONT.REGULAR);
+      doc.text(activity.pls?.initial ?? "", plsX + partyIntW + 1, y + 4, {
         width: partySignW - 2,
         align: "center",
         lineBreak: false,
       });
 
-      doc.fontSize(6).font(FONT.BOLD);
-      doc.text(mpsType, mpsX + 1, y + 3, {
+      doc.fontSize(7).font(FONT.BOLD);
+      doc.text(mpsType, mpsX + 1, y + 4, {
         width: partyIntW - 2,
         align: "center",
         lineBreak: false,
       });
-      doc.fontSize(5.5).font(FONT.REGULAR);
-      doc.text(activity.mps?.initial ?? "", mpsX + partyIntW + 1, y + 3, {
+      doc.fontSize(6.5).font(FONT.REGULAR);
+      doc.text(activity.mps?.initial ?? "", mpsX + partyIntW + 1, y + 4, {
         width: partySignW - 2,
         align: "center",
         lineBreak: false,
       });
 
-      doc.fontSize(6).font(FONT.BOLD);
-      doc.text(clientType, clientX + 1, y + 3, {
+      doc.fontSize(7).font(FONT.BOLD);
+      doc.text(clientType, clientX + 1, y + 4, {
         width: partyIntW - 2,
         align: "center",
         lineBreak: false,
       });
-      doc.fontSize(5.5).font(FONT.REGULAR);
-      doc.text(activity.client?.initial ?? "", clientX + partyIntW + 1, y + 3, {
+      doc.fontSize(6.5).font(FONT.REGULAR);
+      doc.text(activity.client?.initial ?? "", clientX + partyIntW + 1, y + 4, {
         width: partySignW - 2,
         align: "center",
         lineBreak: false,
       });
 
       if (hasThirdParty) {
-        doc.fontSize(6).font(FONT.BOLD);
-        doc.text(thirdType, thirdX + 1, y + 3, {
+        doc.fontSize(7).font(FONT.BOLD);
+        doc.text(thirdType, thirdX + 1, y + 4, {
           width: partyIntW - 2,
           align: "center",
           lineBreak: false,
         });
-        doc.fontSize(5.5).font(FONT.REGULAR);
-        doc.text((activity as any).thirdParty?.initial ?? "", thirdX + partyIntW + 1, y + 3, {
+        doc.fontSize(6.5).font(FONT.REGULAR);
+        doc.text((activity as any).thirdParty?.initial ?? "", thirdX + partyIntW + 1, y + 4, {
           width: partySignW - 2,
           align: "center",
           lineBreak: false,
         });
       }
 
-      doc.font(FONT.REGULAR).fontSize(6);
-      doc.text(activity.remarks ?? "", remarkX + 2, y + 3, {
+      doc.font(FONT.REGULAR).fontSize(7);
+      doc.text(activity.remarks ?? "", remarkX + 2, y + 4, {
         width: remarkW - 4,
-        height: rowH - 4,
+        height: rowH - 6,
         ellipsis: true,
       });
 
