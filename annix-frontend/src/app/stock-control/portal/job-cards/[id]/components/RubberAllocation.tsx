@@ -1250,7 +1250,7 @@ function RubberSOHPanel({
     setSaving(true);
     setSaveError(null);
     try {
-      const sugId = learnedSuggestion?.id || null;
+      const sugId = learnedSuggestion ? learnedSuggestion.id : null;
       const override: RubberPlanOverride = {
         status: "accepted",
         selectedPlyCombination: selectedPly,
@@ -1306,19 +1306,20 @@ function RubberSOHPanel({
       if (appliedSuggestionId) {
         suggestionOutcome = suggestionWasApplied ? "applied" : "applied_modified";
       } else if (learnedSuggestion || aiSuggestion) {
-        const sugId = learnedSuggestion?.id || null;
+        const sugId = learnedSuggestion ? learnedSuggestion.id : null;
         if (sugId) {
           suggestionOutcome = "ignored";
         }
       }
 
+      const learnedSuggestionId = learnedSuggestion ? learnedSuggestion.id : null;
       const override: RubberPlanOverride = {
         status: "manual",
         selectedPlyCombination: null,
         manualRolls: rolls,
         dimensionOverrides: dimensionOverrides?.length ? dimensionOverrides : null,
         autoPlanSnapshot,
-        suggestionTrainingId: appliedSuggestionId || learnedSuggestion?.id || null,
+        suggestionTrainingId: appliedSuggestionId || learnedSuggestionId || null,
         suggestionOutcome,
         reviewedBy: null,
         reviewedAt: null,
