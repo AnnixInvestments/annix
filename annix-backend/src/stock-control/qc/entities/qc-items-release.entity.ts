@@ -42,10 +42,10 @@ export class QcItemsRelease {
   @Column({ name: "company_id" })
   companyId: number;
 
-  @Column({ name: "job_card_id", nullable: true })
+  @Column({ name: "job_card_id", type: "integer", nullable: true })
   jobCardId: number | null;
 
-  @Column({ name: "cpo_id", nullable: true })
+  @Column({ name: "cpo_id", type: "integer", nullable: true })
   cpoId: number | null;
 
   @Column({ name: "version", type: "integer", default: 1 })
