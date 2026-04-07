@@ -442,6 +442,37 @@ export class IssuanceService {
       throw new BadRequestException("At least one item is required");
     }
 
+    const duplicateWindow = now().minus({ seconds: 5 }).toJSDate();
+    const recentDuplicate = await this.issuanceRepo.findOne({
+      where: {
+        companyId,
+        issuerStaffId: dto.issuerStaffId,
+        recipientStaffId: dto.recipientStaffId,
+        stockItemId: dto.items[0].stockItemId,
+        quantity: dto.items[0].quantity,
+        issuedAt: MoreThanOrEqual(duplicateWindow),
+        undone: false,
+      },
+      order: { issuedAt: "DESC" },
+    });
+
+    if (recentDuplicate) {
+      this.logger.warn(
+        `Duplicate batch issuance blocked: same issuer/recipient/item within 5s (existing #${recentDuplicate.id})`,
+      );
+      const existingIssuances = await this.issuanceRepo.find({
+        where: {
+          companyId,
+          issuerStaffId: dto.issuerStaffId,
+          recipientStaffId: dto.recipientStaffId,
+          issuedAt: MoreThanOrEqual(duplicateWindow),
+          undone: false,
+        },
+        relations: ["stockItem", "issuerStaff", "recipientStaff", "jobCard"],
+      });
+      return { created: existingIssuances.length, issuances: existingIssuances, errors: [] };
+    }
+
     const [issuer, recipient, jobCard] = await Promise.all([
       this.staffRepo.findOne({ where: { id: dto.issuerStaffId, companyId } }),
       this.staffRepo.findOne({ where: { id: dto.recipientStaffId, companyId } }),

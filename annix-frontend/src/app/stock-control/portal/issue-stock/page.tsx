@@ -146,6 +146,7 @@ export default function IssueStockPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const submittingRef = useRef(false);
 
   const [issuer, setIssuer] = useState<StaffMember | null>(null);
   const [recipient, setRecipient] = useState<StaffMember | null>(null);
@@ -635,6 +636,8 @@ export default function IssueStockPage() {
   }, [batchMode, quickIssueMode, linkedStaff, issuer, recipient]);
 
   const handleConfirm = async () => {
+    if (submittingRef.current) return;
+
     if (!issuer) {
       setError("No issuer selected. Please go back and select an issuer.");
       return;
@@ -657,6 +660,7 @@ export default function IssueStockPage() {
     }
 
     try {
+      submittingRef.current = true;
       setIsSubmitting(true);
       setError(null);
 
@@ -736,6 +740,7 @@ export default function IssueStockPage() {
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create issuance");
     } finally {
+      submittingRef.current = false;
       setIsSubmitting(false);
     }
   };

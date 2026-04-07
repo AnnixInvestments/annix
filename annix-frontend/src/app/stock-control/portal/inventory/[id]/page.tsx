@@ -5,7 +5,7 @@ import { useParams } from "next/navigation";
 import { useState } from "react";
 import { PdfPreviewModal, usePdfPreview } from "@/app/components/PdfPreviewModal";
 import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
-import { formatDateZA } from "@/app/lib/datetime";
+import { formatDateTimeZA, formatDateZA } from "@/app/lib/datetime";
 import {
   useCreateManualAdjustment,
   useDownloadStockItemQrPdf,
@@ -21,9 +21,11 @@ import { formatZAR } from "@/app/stock-control/lib/currency";
 
 function movementTypeBadge(type: string): string {
   const colors: Record<string, string> = {
+    in: "bg-green-100 text-green-800",
+    out: "bg-red-100 text-red-800",
+    adjustment: "bg-amber-100 text-amber-800",
     delivery: "bg-green-100 text-green-800",
     allocation: "bg-blue-100 text-blue-800",
-    adjustment: "bg-amber-100 text-amber-800",
     return: "bg-purple-100 text-purple-800",
   };
   return colors[type.toLowerCase()] || "bg-gray-100 text-gray-800";
@@ -434,7 +436,7 @@ export default function InventoryDetailPage() {
               {movements.map((movement) => (
                 <tr key={movement.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {formatDateZA(movement.createdAt)}
+                    {formatDateTimeZA(movement.createdAt)}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span
