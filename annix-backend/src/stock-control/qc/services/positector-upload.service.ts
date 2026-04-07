@@ -86,9 +86,16 @@ export class PositectorUploadService {
     return this.uploadRepo.findOne({ where: { companyId, id } });
   }
 
-  async unlinkedUploads(companyId: number): Promise<PositectorUpload[]> {
+  async unlinkedUploads(companyId: number, entityType?: string): Promise<PositectorUpload[]> {
+    const where: Record<string, unknown> = {
+      companyId,
+      linkedJobCardId: null as unknown as number,
+    };
+    if (entityType) {
+      where.entityType = entityType;
+    }
     return this.uploadRepo.find({
-      where: { companyId, linkedJobCardId: null as unknown as number },
+      where,
       order: { createdAt: "DESC" },
     });
   }

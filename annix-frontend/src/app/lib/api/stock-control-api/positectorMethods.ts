@@ -57,7 +57,10 @@ declare module "./base" {
       },
     ): Promise<PositectorImportResult>;
     uploadPositectorFile(file: File): Promise<PositectorUploadResponse>;
-    positectorUploads(filters?: { unlinked?: boolean }): Promise<PositectorUploadRecord[]>;
+    positectorUploads(filters?: {
+      unlinked?: boolean;
+      entityType?: string;
+    }): Promise<PositectorUploadRecord[]>;
     positectorUploadById(uploadId: number): Promise<PositectorUploadRecord>;
     positectorUploadDownloadUrl(uploadId: number): Promise<{ url: string }>;
     linkPositectorUpload(
@@ -181,6 +184,7 @@ proto.uploadPositectorFile = async function (file) {
 proto.positectorUploads = async function (filters) {
   const params = new URLSearchParams();
   if (filters?.unlinked) params.set("unlinked", "true");
+  if (filters?.entityType) params.set("entityType", filters.entityType);
   const query = params.toString();
   return this.request(`/stock-control/positector-devices/uploads${query ? `?${query}` : ""}`);
 };

@@ -196,9 +196,13 @@ export class PositectorController {
 
   @Get("uploads")
   @ApiOperation({ summary: "List all stored PosiTector uploads" })
-  async listUploads(@Req() req: any, @Query("unlinked") unlinked?: string) {
+  async listUploads(
+    @Req() req: any,
+    @Query("unlinked") unlinked?: string,
+    @Query("entityType") entityType?: string,
+  ) {
     if (unlinked === "true") {
-      return this.uploadService.unlinkedUploads(req.user.companyId);
+      return this.uploadService.unlinkedUploads(req.user.companyId, entityType);
     }
     return this.uploadService.allUploads(req.user.companyId);
   }

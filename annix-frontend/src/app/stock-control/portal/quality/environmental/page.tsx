@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import type { EnvironmentalRecordWithJobCard } from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { formatDateZA } from "@/app/lib/datetime";
+import { UnlinkedUploadsSection } from "@/app/stock-control/components/UnlinkedUploadsSection";
 
 export default function EnvironmentalPage() {
   const [records, setRecords] = useState<EnvironmentalRecordWithJobCard[]>([]);
@@ -55,6 +56,8 @@ export default function EnvironmentalPage() {
           </button>
         </div>
       )}
+
+      <UnlinkedUploadsSection entityType="environmental" entityLabel="environmental" />
 
       <div className="bg-white shadow rounded-lg overflow-x-auto">
         {isLoading ? (

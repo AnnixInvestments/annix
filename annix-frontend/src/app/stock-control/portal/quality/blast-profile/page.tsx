@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import type { BlastProfileWithJobCard } from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { formatDateZA } from "@/app/lib/datetime";
+import { UnlinkedUploadsSection } from "@/app/stock-control/components/UnlinkedUploadsSection";
 
 export default function BlastProfilePage() {
   const [records, setRecords] = useState<BlastProfileWithJobCard[]>([]);
@@ -55,6 +56,8 @@ export default function BlastProfilePage() {
           </button>
         </div>
       )}
+
+      <UnlinkedUploadsSection entityType="blast_profile" entityLabel="blast profile" />
 
       <div className="bg-white shadow rounded-lg overflow-x-auto">
         {isLoading ? (
