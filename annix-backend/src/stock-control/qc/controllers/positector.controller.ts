@@ -176,6 +176,15 @@ export class PositectorController {
       );
     }
 
+    if (body.entityType === "environmental") {
+      return this.importService.importEnvironmental(
+        req.user.companyId,
+        batch,
+        { jobCardId: body.jobCardId },
+        req.user,
+      );
+    }
+
     return { error: `Unsupported entity type: ${body.entityType}` };
   }
 
@@ -275,6 +284,15 @@ export class PositectorController {
           rubberBatchNumber: body.rubberBatchNumber ?? null,
           requiredShore: parseInt(body.requiredShore, 10) || 0,
         },
+        req.user,
+      );
+    }
+
+    if (entityType === "environmental") {
+      return this.importService.importEnvironmental(
+        req.user.companyId,
+        batch,
+        { jobCardId: parseInt(body.jobCardId, 10) },
         req.user,
       );
     }

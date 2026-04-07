@@ -6,6 +6,7 @@ import type { BlastProfileReadingEntry } from "../entities/qc-blast-profile.enti
 import { QcBlastProfile } from "../entities/qc-blast-profile.entity";
 import type { DftReadingEntry } from "../entities/qc-dft-reading.entity";
 import { DftCoatType, QcDftReading } from "../entities/qc-dft-reading.entity";
+import { QcEnvironmentalRecord } from "../entities/qc-environmental-record.entity";
 import type {
   ShoreHardnessAverages,
   ShoreHardnessReadings,
@@ -27,6 +28,10 @@ export interface ImportBlastProfileOptions {
   specMicrons: number;
   temperature: number | null;
   humidity: number | null;
+}
+
+export interface ImportEnvironmentalOptions {
+  jobCardId: number;
 }
 
 export interface ImportShoreHardnessOptions {
@@ -55,6 +60,8 @@ export class PositectorImportService {
     private readonly blastRepo: Repository<QcBlastProfile>,
     @InjectRepository(QcShoreHardness)
     private readonly shoreRepo: Repository<QcShoreHardness>,
+    @InjectRepository(QcEnvironmentalRecord)
+    private readonly envRepo: Repository<QcEnvironmentalRecord>,
   ) {}
 
   async importDftReadings(
@@ -200,6 +207,51 @@ export class PositectorImportService {
     };
   }
 
+  async importEnvironmental(
+    companyId: number,
+    batch: PositectorBatch,
+    options: ImportEnvironmentalOptions,
+    user: { id?: number; name: string },
+  ): Promise<ImportResult> {
+    const env = this.extractEnvironmentalData(batch);
+
+    const temperature = env.temperature;
+    const humidity = env.humidity;
+
+    if (temperature === null && humidity === null) {
+      throw new BadRequestException(
+        "Batch contains no environmental data (temperature or humidity) to import",
+      );
+    }
+
+    const dewPoint = this.extractDewPoint(batch);
+    const today = nowISO().split("T")[0];
+
+    const duplicateWarning = await this.checkEnvDuplicates(companyId, options.jobCardId, today);
+
+    const record = this.envRepo.create({
+      companyId,
+      jobCardId: options.jobCardId,
+      recordDate: today,
+      temperatureC: temperature ?? 0,
+      humidity: humidity ?? 0,
+      dewPointC: dewPoint,
+      notes: `Imported from PosiTector DPM batch "${batch.header.batchName || "unnamed"}"`,
+      recordedByName: user.name,
+      recordedById: user.id ?? null,
+    });
+
+    const saved = await this.envRepo.save(record);
+
+    return {
+      entityType: "environmental",
+      recordId: saved.id,
+      readingsImported: 1,
+      average: temperature,
+      duplicateWarning,
+    };
+  }
+
   detectCoatTypeFromBatchName(batchName: string | null): DftCoatType | null {
     if (!batchName) return null;
     const lower = batchName.toLowerCase();
@@ -333,5 +385,50 @@ export class PositectorImportService {
       .getCount();
 
     return existing > 0;
+  }
+
+  private async checkEnvDuplicates(
+    companyId: number,
+    jobCardId: number,
+    recordDate: string,
+  ): Promise<boolean> {
+    const existing = await this.envRepo
+      .createQueryBuilder("e")
+      .where("e.companyId = :companyId", { companyId })
+      .andWhere("e.jobCardId = :jobCardId", { jobCardId })
+      .andWhere("e.recordDate = :recordDate", { recordDate })
+      .getCount();
+
+    return existing > 0;
+  }
+
+  private extractDewPoint(batch: PositectorBatch): number | null {
+    const headerRaw = batch.header.raw;
+
+    const dewKey = Object.keys(headerRaw).find(
+      (k) => k.toLowerCase().includes("dew") || k.toLowerCase().includes("td"),
+    );
+
+    if (dewKey) {
+      const parsed = parseFloat(headerRaw[dewKey]);
+      if (!Number.isNaN(parsed)) return parsed;
+    }
+
+    const readingWithDew = batch.readings.find((r) => {
+      const rawKeys = Object.keys(r.raw);
+      return rawKeys.some((k) => k.toLowerCase().includes("dew") || k.toLowerCase().includes("td"));
+    });
+
+    if (readingWithDew) {
+      const dewReadingKey = Object.keys(readingWithDew.raw).find(
+        (k) => k.toLowerCase().includes("dew") || k.toLowerCase().includes("td"),
+      );
+      if (dewReadingKey) {
+        const parsed = parseFloat(readingWithDew.raw[dewReadingKey]);
+        if (!Number.isNaN(parsed)) return parsed;
+      }
+    }
+
+    return null;
   }
 }

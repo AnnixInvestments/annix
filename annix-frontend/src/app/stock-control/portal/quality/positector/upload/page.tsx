@@ -530,6 +530,7 @@ function UploadImportForm({
                 <option value="dft">DFT Reading</option>
                 <option value="blast_profile">Blast Profile</option>
                 <option value="shore_hardness">Shore Hardness</option>
+                <option value="environmental">Environmental</option>
               </select>
             </div>
           </div>
@@ -626,6 +627,15 @@ function UploadImportForm({
                   />
                 </div>
               </div>
+            </div>
+          )}
+
+          {entityType === "environmental" && (
+            <div className="rounded-md bg-gray-50 p-3">
+              <p className="text-sm text-gray-600">
+                Temperature, humidity, and dew point will be extracted from the DPM batch header and
+                saved as an environmental record for the selected job card.
+              </p>
             </div>
           )}
 
