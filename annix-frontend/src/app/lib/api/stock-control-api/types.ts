@@ -997,7 +997,8 @@ export type QcpApprovalStatus =
 export interface QcControlPlanRecord {
   id: number;
   companyId: number;
-  jobCardId: number;
+  jobCardId: number | null;
+  cpoId: number | null;
   planType: QcpPlanType;
   qcpNumber: string | null;
   documentRef: string | null;
@@ -1081,7 +1082,8 @@ export interface ReleasePartySignOff {
 export interface QcItemsReleaseRecord {
   id: number;
   companyId: number;
-  jobCardId: number;
+  jobCardId: number | null;
+  cpoId: number | null;
   version: number;
   items: ReleaseLineItem[];
   totalQuantity: number;
@@ -1101,6 +1103,20 @@ export interface QcItemsReleaseRecord {
 export interface QcReleaseDocumentsResult {
   itemsRelease: QcItemsReleaseRecord;
   releaseCertificate: QcReleaseCertificateRecord;
+}
+
+export interface CpoReleasableItem {
+  itemCode: string | null;
+  description: string | null;
+  orderedQty: number;
+  arrivedQty: number;
+  remainingToRelease: number;
+  deliveries: { jobCardId: number; jtNumber: string | null; quantity: number }[];
+}
+
+export interface CpoReleaseDocumentsResult {
+  cpoRelease: QcItemsReleaseRecord;
+  childReleases: QcItemsReleaseRecord[];
 }
 
 export interface QcEnvironmentalRecordResponse {

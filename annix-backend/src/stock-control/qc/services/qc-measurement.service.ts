@@ -2,6 +2,7 @@ import { BadRequestException, Inject, Injectable, Logger, NotFoundException } fr
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { JobCardCoatingAnalysis } from "../../entities/coating-analysis.entity";
+import { CustomerPurchaseOrder } from "../../entities/customer-purchase-order.entity";
 import { JobCard } from "../../entities/job-card.entity";
 import { StockControlCompany } from "../../entities/stock-control-company.entity";
 import { INVALID_LINE_ITEM_PATTERNS, stripJunkSuffixes } from "../../lib/line-item-validation";
@@ -82,6 +83,8 @@ export class QcMeasurementService {
     private readonly coatingRepo: Repository<JobCardCoatingAnalysis>,
     @InjectRepository(StockControlCompany)
     private readonly companyRepo: Repository<StockControlCompany>,
+    @InjectRepository(CustomerPurchaseOrder)
+    private readonly cpoRepo: Repository<CustomerPurchaseOrder>,
     @Inject(WORK_ITEM_PROVIDER)
     private readonly workItemProvider: IWorkItemProvider,
   ) {}
@@ -1216,6 +1219,561 @@ export class QcMeasurementService {
       }
     }
     return results;
+  }
+
+  // ── CPO-Level Control Plans ──────────────────────────────────────
+
+  async controlPlansForCpo(companyId: number, cpoId: number): Promise<QcControlPlan[]> {
+    return this.controlPlanRepo.find({
+      where: { companyId, cpoId },
+      order: { createdAt: "DESC" },
+    });
+  }
+
+  async autoGenerateControlPlansForCpo(
+    companyId: number,
+    cpoId: number,
+    user: UserContext,
+  ): Promise<QcControlPlan[]> {
+    const cpo = await this.cpoRepo.findOne({
+      where: { id: cpoId, companyId },
+      relations: ["items"],
+    });
+
+    if (!cpo) {
+      throw new NotFoundException(`CPO ${cpoId} not found`);
+    }
+
+    const childJobCards = await this.jobCardRepo.find({
+      where: { cpoId, companyId },
+      relations: ["lineItems"],
+      order: { createdAt: "ASC" },
+    });
+
+    const firstJcId = childJobCards[0]?.id || null;
+    const coating = firstJcId
+      ? await this.coatingRepo.findOne({ where: { jobCardId: firstJcId, companyId } })
+      : null;
+
+    const existing = await this.controlPlanRepo.find({
+      where: { companyId, cpoId },
+    });
+
+    const coats = Array.isArray(coating?.coats) ? coating.coats : [];
+    const hasRubber = coating?.hasInternalLining === true;
+    const hasPaint = coats.length > 0;
+    const hasExternalPaint = coats.some((c: any) => c.area === "external");
+    const hasInternalPaint = coats.some((c: any) => c.area === "internal");
+
+    const planTypes: QcpPlanType[] = [];
+    if (hasExternalPaint) planTypes.push(QcpPlanType.PAINT_EXTERNAL);
+    if (hasInternalPaint) planTypes.push(QcpPlanType.PAINT_INTERNAL);
+    if (hasRubber) planTypes.push(QcpPlanType.RUBBER);
+    if (!hasPaint && !hasRubber) planTypes.push(QcpPlanType.PAINT_EXTERNAL);
+
+    const existingByType = existing.reduce(
+      (acc, plan) => ({ ...acc, [plan.planType]: plan }),
+      {} as Record<string, QcControlPlan>,
+    );
+
+    const customerName = cpo.customerName || null;
+    const orderNumber = cpo.poNumber || null;
+    const jobNumber = cpo.jobNumber || null;
+    const jobName = (cpo.jobName || "").trim() || null;
+
+    const allDescriptions = childJobCards.flatMap((jc) =>
+      (jc.lineItems || [])
+        .map((li: any) => stripJunkSuffixes((li.itemDescription || "").trim()))
+        .filter(
+          (desc: string) =>
+            desc.length > 0 && !INVALID_LINE_ITEM_PATTERNS.some((pattern) => pattern.test(desc)),
+        ),
+    );
+    const itemDescriptions = [...new Set(allDescriptions)].join("; ");
+
+    const emptySignOff = (): PartySignOff => ({
+      interventionType: null,
+      initial: null,
+      name: null,
+      signatureUrl: null,
+      date: null,
+    });
+
+    const holdSignOff = (): PartySignOff => ({
+      interventionType: InterventionType.HOLD,
+      initial: null,
+      name: null,
+      signatureUrl: null,
+      date: null,
+    });
+
+    const defaultApprovals = (): QcpApprovalSignature[] => [
+      { party: "PLS", name: null, signatureUrl: null, date: null },
+      { party: "MPS", name: null, signatureUrl: null, date: null },
+      { party: "Client", name: null, signatureUrl: null, date: null },
+      { party: "3rd Party", name: null, signatureUrl: null, date: null },
+    ];
+
+    const buildActivity = (
+      opNum: number,
+      description: string,
+      spec: string | null,
+      doc: string | null,
+    ): QcpActivity => ({
+      operationNumber: opNum,
+      description,
+      specification: spec,
+      procedureRequired: null,
+      documentation: doc,
+      pls: holdSignOff(),
+      mps: emptySignOff(),
+      client: emptySignOff(),
+      thirdParty: emptySignOff(),
+      remarks: null,
+    });
+
+    const extractSpecByArea = (notes: string | null | undefined, area: "INT" | "EXT"): string => {
+      if (!notes) return "TBC";
+      const parts = notes
+        .split(/(?=\bINT\s*:|EXT\s*:)/i)
+        .filter((p) => p.trim().toUpperCase().startsWith(`${area}`))
+        .map((p) => stripJunkSuffixes(p.trim()));
+      return parts.length > 0 ? [...new Set(parts)].join(" ") : "TBC";
+    };
+
+    const blastSpecLabel = (surfPrep: string | null): string => {
+      const labels: Record<string, string> = {
+        sa3_blast: "SA3 BLAST ISO 8501-1",
+        sa2_5_blast: "SA2.5 BLAST ISO 8501-1",
+        sa2_blast: "SA2 BLAST ISO 8501-1",
+        sa1_blast: "SA1 BLAST ISO 8501-1",
+        blast: "BLAST ISO 8501-1",
+        hand_tool: "HAND TOOL PREP ST3",
+        power_tool: "POWER TOOL PREP ST3",
+      };
+      return (surfPrep && labels[surfPrep]) || surfPrep || "SA2.5 BLAST ISO 8501-1";
+    };
+
+    const rubberActivities = (): QcpActivity[] => {
+      const rubberSpec = extractSpecByArea(coating?.rawNotes, "INT");
+      const intSurfPrep = coating?.intSurfacePrep || coating?.surfacePrep || "sa3_blast";
+      return [
+        buildActivity(1, "Obtain Approval of QCP", null, "QC Document"),
+        buildActivity(2, "Check Cleanliness", "SANS 1201-2005", "QD_PLS_16"),
+        buildActivity(3, "Blasting", blastSpecLabel(intSurfPrep), "RECORD READINGS"),
+        buildActivity(4, "Hero Bond 080", "CERTIFICATE OF ANALYSIS", "QD_PLS_16"),
+        buildActivity(5, "Hero Bond 082", "CERTIFICATE OF ANALYSIS", "QD_PLS_16"),
+        buildActivity(6, "TY Bond 086", "CERTIFICATE OF ANALYSIS", "QD_PLS_16"),
+        buildActivity(7, "Rubber Lining Application", rubberSpec, "QD_PLS_16"),
+        buildActivity(8, "Pre cure Inspection", "SANS 1201-2005", "QD_PLS_16"),
+        buildActivity(9, "Cure", "SANS 1201-2005", "QD_PLS_16"),
+        buildActivity(10, "Buff", "SANS 1201-2005", "QD_PLS_16"),
+        buildActivity(11, "Spark Test", "SANS 1201-2005", "QD_PLS_16"),
+        buildActivity(12, "Hardness", "SANS 1201-2005", "Data Records"),
+        buildActivity(13, "Test plate Results", "SANS 1201-2005", "QD_PLS_16"),
+        buildActivity(14, "Final Inspection", "SANS 1201-2005", "QD_PLS_16"),
+        buildActivity(15, "Humidity Documents", "SANS 1201-2005", "Data Records"),
+        buildActivity(16, "Databook sign off", null, "Data Book"),
+      ];
+    };
+
+    const paintActivities = (paintCoats: any[], surfPrep: string | null): QcpActivity[] => {
+      const activities: QcpActivity[] = [
+        buildActivity(1, "Approval of QCP", null, "QD_PLS_11"),
+        buildActivity(2, "Weather Conditions", "HUMIDITY: less than 85%", "QD_PLS_10"),
+        buildActivity(
+          3,
+          "Calibration Certificates",
+          "CALIBRATION CERTIFICATES",
+          "CALIBRATION CERTIFICATES",
+        ),
+        buildActivity(4, "Verification of Paints Used", "BATCH CERTIFICATES", "BATCH CERTIFICATES"),
+        buildActivity(5, "Visual Inspection on Items", "QD_PLS_16", "QD_PLS_16"),
+        buildActivity(
+          6,
+          surfPrep === "no_blasting" ? "Surface Preparation" : "Blasting",
+          surfPrep === "no_blasting" ? "NO BLASTING" : blastSpecLabel(surfPrep),
+          surfPrep === "no_blasting" ? "N/A" : "RECORD READINGS",
+        ),
+      ];
+
+      let opNum = 7;
+      let totalMinDft = 0;
+      let totalMaxDft = 0;
+
+      const hasBothAreas =
+        paintCoats.some((c: any) => c.area === "external") &&
+        paintCoats.some((c: any) => c.area === "internal");
+
+      paintCoats.forEach((coat: any) => {
+        const dftSpec =
+          coat.minDftUm && coat.maxDftUm
+            ? Number(coat.minDftUm) === Number(coat.maxDftUm)
+              ? `${coat.minDftUm}µm`
+              : `${coat.minDftUm}-${coat.maxDftUm}µm`
+            : coat.minDftUm
+              ? `${coat.minDftUm}µm`
+              : coat.maxDftUm
+                ? `${coat.maxDftUm}µm`
+                : null;
+        if (coat.minDftUm) totalMinDft += Number(coat.minDftUm);
+        if (coat.maxDftUm) totalMaxDft += Number(coat.maxDftUm);
+        const areaPrefix = hasBothAreas ? (coat.area === "internal" ? "INT: " : "EXT: ") : "";
+        const coatName = `${areaPrefix}${coat.product || "TBC"}`;
+        activities.push(buildActivity(opNum++, coatName, dftSpec, "RECORD READINGS"));
+      });
+
+      if (paintCoats.length === 0) {
+        activities.push(buildActivity(opNum++, "Primer Coat", null, "RECORD READINGS"));
+        activities.push(buildActivity(opNum++, "Topcoat", null, "RECORD READINGS"));
+      }
+
+      const totalDftSpec =
+        totalMinDft > 0 || totalMaxDft > 0
+          ? totalMinDft === totalMaxDft
+            ? `${totalMinDft}µm`
+            : `${totalMinDft}-${totalMaxDft}µm`
+          : null;
+
+      activities.push(buildActivity(opNum++, "Total DFTs", totalDftSpec, "RECORD READINGS"));
+      activities.push(
+        buildActivity(opNum++, "Final Release", "CLIENT INSPECTION", "CLIENT RELEASE"),
+      );
+      activities.push(buildActivity(opNum++, "Data Book Inspection", "REVIEW DATA", "REVIEW DATA"));
+
+      return activities;
+    };
+
+    const activitiesForType = (planType: QcpPlanType): QcpActivity[] => {
+      if (planType === QcpPlanType.PAINT_EXTERNAL || planType === QcpPlanType.PAINT_INTERNAL) {
+        return paintActivities(coats, coating?.extSurfacePrep || coating?.surfacePrep || null);
+      }
+      if (planType === QcpPlanType.RUBBER) {
+        return rubberActivities();
+      }
+      return paintActivities([], coating?.surfacePrep || null);
+    };
+
+    const specificationForType = (planType: QcpPlanType): string | null => {
+      if (planType === QcpPlanType.RUBBER) {
+        return extractSpecByArea(coating?.rawNotes, "INT") || coating?.rawNotes || null;
+      }
+      if (planType === QcpPlanType.PAINT_EXTERNAL || planType === QcpPlanType.PAINT_INTERNAL) {
+        return extractSpecByArea(coating?.rawNotes, "EXT") || coating?.rawNotes || null;
+      }
+      return coating?.rawNotes || null;
+    };
+
+    const nextRevision = (current: string | null): string => {
+      const num = parseInt(current || "0", 10);
+      return String(num + 1).padStart(2, "0");
+    };
+
+    const planTypeDocRefs: Record<string, string> = {
+      [QcpPlanType.PAINT_EXTERNAL]: "QD_PLS_11",
+      [QcpPlanType.PAINT_INTERNAL]: "QD_PLS_11",
+      [QcpPlanType.RUBBER]: "QD_PLS_07",
+      [QcpPlanType.HDPE]: "QD_PLS_07",
+    };
+
+    const created: QcControlPlan[] = [];
+    for (const planType of planTypes) {
+      const existingPlan = existingByType[planType] || null;
+      const revision = existingPlan ? nextRevision(existingPlan.revision) : "01";
+      const documentRef = planTypeDocRefs[planType] || null;
+
+      if (existingPlan) {
+        const keepExistingNumber = existingPlan.qcpNumber?.startsWith("QCP-");
+        existingPlan.qcpNumber = keepExistingNumber
+          ? existingPlan.qcpNumber
+          : await this.nextQcpNumber(companyId, planType);
+        existingPlan.revision = revision;
+        existingPlan.documentRef = documentRef;
+        existingPlan.customerName = customerName;
+        existingPlan.orderNumber = orderNumber;
+        existingPlan.jobNumber = jobNumber;
+        existingPlan.jobName = jobName;
+        existingPlan.specification = specificationForType(planType);
+        existingPlan.itemDescription = itemDescriptions || null;
+        existingPlan.activities = activitiesForType(planType);
+        existingPlan.approvalSignatures = defaultApprovals();
+        created.push(await this.controlPlanRepo.save(existingPlan));
+      } else {
+        const qcpNumber = await this.nextQcpNumber(companyId, planType);
+        const record = this.controlPlanRepo.create({
+          companyId,
+          cpoId,
+          jobCardId: null,
+          planType,
+          qcpNumber,
+          documentRef,
+          revision,
+          customerName,
+          orderNumber,
+          jobNumber,
+          jobName,
+          specification: specificationForType(planType),
+          itemDescription: itemDescriptions || null,
+          activities: activitiesForType(planType),
+          approvalSignatures: defaultApprovals(),
+          createdByName: user.name,
+          createdById: user.id,
+        });
+        created.push(await this.controlPlanRepo.save(record));
+      }
+    }
+
+    this.logger.log(
+      `Auto-generated ${created.length} CPO-level QCP(s) for CPO ${cpoId}: ${planTypes.join(", ")}`,
+    );
+
+    return created;
+  }
+
+  // ── CPO-Level Items Release ─────────────────────────────────────
+
+  async itemsReleasesForCpo(companyId: number, cpoId: number): Promise<QcItemsRelease[]> {
+    return this.itemsReleaseRepo.find({
+      where: { companyId, cpoId },
+      order: { createdAt: "DESC" },
+    });
+  }
+
+  async releasableItemsForCpo(
+    companyId: number,
+    cpoId: number,
+  ): Promise<{
+    items: {
+      itemCode: string | null;
+      description: string | null;
+      orderedQty: number;
+      arrivedQty: number;
+      remainingToRelease: number;
+      deliveries: { jobCardId: number; jtNumber: string | null; quantity: number }[];
+    }[];
+  }> {
+    const cpo = await this.cpoRepo.findOne({
+      where: { id: cpoId, companyId },
+      relations: ["items"],
+    });
+
+    if (!cpo) {
+      throw new NotFoundException(`CPO ${cpoId} not found`);
+    }
+
+    const childJobCards = await this.jobCardRepo.find({
+      where: { cpoId, companyId },
+      relations: ["lineItems"],
+      order: { createdAt: "ASC" },
+    });
+
+    const matchesCpoItem = (
+      liCode: string,
+      liDesc: string,
+      ciCode: string,
+      ciDesc: string,
+    ): boolean => {
+      const hasCode = ciCode.length > 0 && liCode.length > 0;
+      const hasDesc = ciDesc.length > 0 && liDesc.length > 0;
+      if (hasCode && hasDesc) return ciCode === liCode && ciDesc === liDesc;
+      if (hasCode) return ciCode === liCode;
+      if (hasDesc) return ciDesc === liDesc;
+      return false;
+    };
+
+    const existingCpoReleases = await this.itemsReleaseRepo.find({
+      where: { companyId, cpoId },
+    });
+
+    const alreadyReleasedByKey = existingCpoReleases.reduce(
+      (acc, release) =>
+        release.items.reduce((inner, ri) => {
+          const key = `${(ri.itemCode || "").toLowerCase()}||${(ri.description || "").toLowerCase()}`;
+          const current = inner[key] || 0;
+          return { ...inner, [key]: current + (ri.quantity || 0) };
+        }, acc),
+      {} as Record<string, number>,
+    );
+
+    const consolidatedItems = cpo.items
+      .filter((ci) => Number(ci.quantityOrdered) > 0)
+      .reduce<
+        {
+          itemCode: string | null;
+          itemDescription: string | null;
+          totalOrdered: number;
+          key: string;
+        }[]
+      >((acc, ci) => {
+        const ciCode = (ci.itemCode || "").trim().toLowerCase();
+        const ciDesc = (ci.itemDescription || "").trim().toLowerCase();
+        const key = `${ciCode}||${ciDesc}`;
+        const existing = acc.find((a) => a.key === key);
+        if (existing) {
+          existing.totalOrdered += Number(ci.quantityOrdered) || 0;
+          return acc;
+        }
+        return [
+          ...acc,
+          {
+            itemCode: ci.itemCode,
+            itemDescription: ci.itemDescription,
+            totalOrdered: Number(ci.quantityOrdered) || 0,
+            key,
+          },
+        ];
+      }, []);
+
+    const items = consolidatedItems.map((ci) => {
+      const ciCode = (ci.itemCode || "").trim().toLowerCase();
+      const ciDesc = (ci.itemDescription || "").trim().toLowerCase();
+
+      const deliveries = childJobCards
+        .map((jc) => {
+          const matchedQty = (jc.lineItems || [])
+            .filter((li) => {
+              const code = (li.itemCode || "").trim().toLowerCase();
+              const desc = (li.itemDescription || "").trim().toLowerCase();
+              return matchesCpoItem(code, desc, ciCode, ciDesc);
+            })
+            .reduce((sum, li) => sum + (Number(li.quantity) || 0), 0);
+
+          if (matchedQty === 0) return null;
+
+          return {
+            jobCardId: jc.id,
+            jtNumber: jc.jtDnNumber,
+            quantity: matchedQty,
+          };
+        })
+        .filter((d): d is NonNullable<typeof d> => d !== null);
+
+      const arrivedQty = deliveries.reduce((sum, d) => sum + d.quantity, 0);
+      const releaseKey = `${ciCode}||${ciDesc}`;
+      const alreadyReleased = alreadyReleasedByKey[releaseKey] || 0;
+      const remainingToRelease = Math.max(0, arrivedQty - alreadyReleased);
+
+      return {
+        itemCode: ci.itemCode,
+        description: ci.itemDescription,
+        orderedQty: ci.totalOrdered,
+        arrivedQty,
+        remainingToRelease,
+        deliveries,
+      };
+    });
+
+    return { items };
+  }
+
+  async autoGenerateReleaseDocumentsForCpo(
+    companyId: number,
+    cpoId: number,
+    selectedItems: {
+      itemCode: string;
+      description: string;
+      quantity: number;
+      jobCardId: number;
+    }[],
+    user: UserContext,
+  ): Promise<{ cpoRelease: QcItemsRelease; childReleases: QcItemsRelease[] }> {
+    if (selectedItems.length === 0) {
+      throw new BadRequestException("No items selected for release");
+    }
+
+    const firstChildJcId = selectedItems[0].jobCardId;
+    const specs = await this.coatingSpecsForJobCard(companyId, firstChildJcId);
+
+    const cpoReleaseItems: ReleaseLineItem[] = selectedItems.map((si) => ({
+      itemCode: si.itemCode,
+      description: si.description,
+      jtNumber: null,
+      rubberSpec: specs.rubberSpec,
+      paintingSpec: specs.paintingSpec,
+      quantity: si.quantity,
+      result: ItemReleaseResult.PASS,
+    }));
+
+    const totalQuantity = cpoReleaseItems.reduce((sum, item) => sum + item.quantity, 0);
+
+    const cpoRelease = await this.itemsReleaseRepo.save(
+      this.itemsReleaseRepo.create({
+        companyId,
+        cpoId,
+        jobCardId: null,
+        items: cpoReleaseItems,
+        totalQuantity,
+        createdByName: user.name,
+        createdById: user.id,
+        plsSignOff: { name: null, date: null, signatureUrl: null },
+        mpsSignOff: { name: null, date: null, signatureUrl: null },
+        clientSignOff: { name: null, date: null, signatureUrl: null },
+        thirdPartySignOff: { name: null, date: null, signatureUrl: null },
+      }),
+    );
+
+    const itemsByJobCard = selectedItems.reduce(
+      (acc, si) => {
+        const existing = acc[si.jobCardId] || [];
+        return { ...acc, [si.jobCardId]: [...existing, si] };
+      },
+      {} as Record<number, typeof selectedItems>,
+    );
+
+    const childReleases: QcItemsRelease[] = [];
+
+    for (const [jcIdStr, jcItems] of Object.entries(itemsByJobCard)) {
+      const jcId = Number(jcIdStr);
+      const jcSpecs = await this.coatingSpecsForJobCard(companyId, jcId);
+
+      const jcReleaseItems: ReleaseLineItem[] = jcItems.map((si) => ({
+        itemCode: si.itemCode,
+        description: si.description,
+        jtNumber: null,
+        rubberSpec: jcSpecs.rubberSpec,
+        paintingSpec: jcSpecs.paintingSpec,
+        quantity: si.quantity,
+        result: ItemReleaseResult.PASS,
+      }));
+
+      const jcTotal = jcReleaseItems.reduce((sum, item) => sum + item.quantity, 0);
+
+      const childRelease = await this.itemsReleaseRepo.save(
+        this.itemsReleaseRepo.create({
+          companyId,
+          jobCardId: jcId,
+          cpoId: null,
+          items: jcReleaseItems,
+          totalQuantity: jcTotal,
+          createdByName: user.name,
+          createdById: user.id,
+          plsSignOff: { name: null, date: null, signatureUrl: null },
+          mpsSignOff: { name: null, date: null, signatureUrl: null },
+          clientSignOff: { name: null, date: null, signatureUrl: null },
+          thirdPartySignOff: { name: null, date: null, signatureUrl: null },
+        }),
+      );
+
+      childReleases.push(childRelease);
+    }
+
+    this.logger.log(
+      `Generated CPO release for CPO ${cpoId} with ${selectedItems.length} items, cascaded to ${childReleases.length} child JC(s)`,
+    );
+
+    return { cpoRelease, childReleases };
+  }
+
+  // ── CPO-Level Release Certificates ──────────────────────────────
+
+  async releaseCertificatesForCpo(
+    companyId: number,
+    cpoId: number,
+  ): Promise<QcReleaseCertificate[]> {
+    return this.releaseCertRepo.find({
+      where: { companyId, cpoId },
+      order: { createdAt: "DESC" },
+    });
   }
 
   // ── Helpers ────────────────────────────────────────────────────────

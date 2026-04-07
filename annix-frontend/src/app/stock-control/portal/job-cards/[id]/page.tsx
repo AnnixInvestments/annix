@@ -2259,6 +2259,7 @@ export default function JobCardDetailPage() {
             <div id="quality-tab-content">
               <QualityTab
                 jobCardId={jobId}
+                cpoId={jobCard?.cpoId || null}
                 backgroundSteps={backgroundSteps}
                 activeBgStepKeys={activeBgStepKeys}
                 stepAssignments={workflowStatus?.stepAssignments || {}}

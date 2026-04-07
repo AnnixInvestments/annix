@@ -23,9 +23,10 @@ export class QcpPublicController {
   async reviewPdf(@Param("token") token: string, @Res() res: Response) {
     const { plan } = await this.approvalService.tokenDetails(token);
 
+    const jobCardId = plan.jobCardId || 0;
     const buffer = await this.dataBookPdfService.generateControlPlanPdf(
       plan.companyId,
-      plan.jobCardId,
+      jobCardId,
       plan.id,
     );
 

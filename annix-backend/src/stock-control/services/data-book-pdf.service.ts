@@ -208,7 +208,7 @@ export class DataBookPdfService {
     const [jobCard, company, release, controlPlans] = await Promise.all([
       this.jobCardRepo.findOne({ where: { id: jobCardId, companyId }, relations: ["lineItems"] }),
       this.companyRepo.findOne({ where: { id: companyId } }),
-      this.itemsReleaseRepo.findOne({ where: { id: releaseId, companyId, jobCardId } }),
+      this.itemsReleaseRepo.findOne({ where: { id: releaseId, companyId } }),
       this.controlPlanRepo.find({ where: { companyId, jobCardId } }),
     ]);
 
@@ -249,7 +249,7 @@ export class DataBookPdfService {
     const [jobCard, company, plan] = await Promise.all([
       this.jobCardRepo.findOne({ where: { id: jobCardId, companyId }, relations: ["lineItems"] }),
       this.companyRepo.findOne({ where: { id: companyId } }),
-      this.controlPlanRepo.findOne({ where: { id: planId, companyId, jobCardId } }),
+      this.controlPlanRepo.findOne({ where: { id: planId, companyId } }),
     ]);
 
     if (!jobCard || !plan) {

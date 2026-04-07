@@ -4,6 +4,8 @@ import { JwtModule } from "@nestjs/jwt";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { StorageModule } from "../../storage/storage.module";
 import { JobCardCoatingAnalysis } from "../entities/coating-analysis.entity";
+import { CustomerPurchaseOrder } from "../entities/customer-purchase-order.entity";
+import { CustomerPurchaseOrderItem } from "../entities/customer-purchase-order-item.entity";
 import { IssuanceBatchRecord } from "../entities/issuance-batch-record.entity";
 import { JobCard } from "../entities/job-card.entity";
 import { JobCardDataBook } from "../entities/job-card-data-book.entity";
@@ -24,6 +26,7 @@ import { DataBookPdfService } from "../services/data-book-pdf.service";
 import { JobCardWorkItemProvider } from "../services/job-card-work-item-provider";
 import { WebPushService } from "../services/web-push.service";
 import { CalibrationCertificateController } from "./controllers/calibration-certificate.controller";
+import { CpoQcController } from "./controllers/cpo-qc.controller";
 import { PositectorController } from "./controllers/positector.controller";
 import { PositectorStreamingController } from "./controllers/positector-streaming.controller";
 import { QcMeasurementController } from "./controllers/qc-measurement.controller";
@@ -56,6 +59,8 @@ import { WORK_ITEM_PROVIDER } from "./work-item-provider.interface";
   imports: [
     TypeOrmModule.forFeature([
       CalibrationCertificate,
+      CustomerPurchaseOrder,
+      CustomerPurchaseOrderItem,
       IssuanceBatchRecord,
       JobCard,
       JobCardCoatingAnalysis,
@@ -94,6 +99,7 @@ import { WORK_ITEM_PROVIDER } from "./work-item-provider.interface";
   ],
   controllers: [
     CalibrationCertificateController,
+    CpoQcController,
     QcMeasurementController,
     QcpLogController,
     QcpPublicController,

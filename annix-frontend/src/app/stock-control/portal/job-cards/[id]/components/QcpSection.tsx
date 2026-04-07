@@ -14,7 +14,9 @@ import { InitialsPad } from "@/app/stock-control/components/InitialsPad";
 import { QcpForm } from "./QcpForm";
 
 interface QcpSectionProps {
-  jobCardId: number;
+  jobCardId?: number | null;
+  cpoId?: number | null;
+  readOnly?: boolean;
 }
 
 type ViewMode = "list" | "create" | "edit";
@@ -203,7 +205,12 @@ function PartyCell(props: {
   );
 }
 
-export function QcpSection({ jobCardId }: QcpSectionProps) {
+export function QcpSection(props: QcpSectionProps) {
+  const jobCardId = props.jobCardId || null;
+  const cpoId = props.cpoId || null;
+  const readOnly = props.readOnly || false;
+  const isCpoMode = cpoId !== null && jobCardId === null;
+
   const [plans, setPlans] = useState<QcControlPlanRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -224,14 +231,16 @@ export function QcpSection({ jobCardId }: QcpSectionProps) {
     try {
       setIsLoading(true);
       setError(null);
-      const result = await stockControlApiClient.controlPlansForJobCard(jobCardId);
+      const result = isCpoMode
+        ? await stockControlApiClient.controlPlansForCpo(cpoId)
+        : await stockControlApiClient.controlPlansForJobCard(jobCardId!);
       setPlans(Array.isArray(result) ? result : []);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load control plans");
     } finally {
       setIsLoading(false);
     }
-  }, [jobCardId]);
+  }, [jobCardId, cpoId, isCpoMode]);
 
   useEffect(() => {
     fetchPlans();
@@ -239,18 +248,23 @@ export function QcpSection({ jobCardId }: QcpSectionProps) {
 
   const debouncedSave = useCallback(
     (planId: number, activities: QcpActivity[]) => {
+      if (readOnly) return;
       if (saveTimerRef.current) {
         clearTimeout(saveTimerRef.current);
       }
       saveTimerRef.current = setTimeout(async () => {
         try {
-          await stockControlApiClient.updateControlPlan(jobCardId, planId, { activities });
+          if (isCpoMode) {
+            await stockControlApiClient.updateControlPlanForCpo(cpoId, planId, { activities });
+          } else {
+            await stockControlApiClient.updateControlPlan(jobCardId!, planId, { activities });
+          }
         } catch (err) {
           setError(err instanceof Error ? err.message : "Failed to save changes");
         }
       }, 600);
     },
-    [jobCardId],
+    [jobCardId, cpoId, isCpoMode, readOnly],
   );
 
   const handlePartyInterventionChange = useCallback(
@@ -296,7 +310,11 @@ export function QcpSection({ jobCardId }: QcpSectionProps) {
   const handleDelete = async (id: number) => {
     try {
       setDeletingId(id);
-      await stockControlApiClient.deleteControlPlan(jobCardId, id);
+      if (isCpoMode) {
+        await stockControlApiClient.deleteControlPlanForCpo(cpoId, id);
+      } else {
+        await stockControlApiClient.deleteControlPlan(jobCardId!, id);
+      }
       fetchPlans();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to delete control plan");
@@ -320,7 +338,11 @@ export function QcpSection({ jobCardId }: QcpSectionProps) {
     try {
       setIsAutoGenerating(true);
       setError(null);
-      await stockControlApiClient.autoGenerateControlPlans(jobCardId);
+      if (isCpoMode) {
+        await stockControlApiClient.autoGenerateControlPlansForCpo(cpoId);
+      } else {
+        await stockControlApiClient.autoGenerateControlPlans(jobCardId!);
+      }
       fetchPlans();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to auto-generate QCPs");
@@ -329,7 +351,7 @@ export function QcpSection({ jobCardId }: QcpSectionProps) {
     }
   };
 
-  if (viewMode === "create" || viewMode === "edit") {
+  if (!readOnly && (viewMode === "create" || viewMode === "edit") && jobCardId) {
     return (
       <div className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
         <QcpForm
@@ -354,30 +376,34 @@ export function QcpSection({ jobCardId }: QcpSectionProps) {
             <span className="ml-2 text-xs font-normal text-gray-500">({plans.length})</span>
           )}
         </h3>
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={handleAutoGenerate}
-            disabled={isAutoGenerating}
-            className="rounded-md bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
-          >
-            {isAutoGenerating
-              ? "Generating..."
-              : plans.length > 0
-                ? "Re-Generate"
-                : "Auto-Generate"}
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setEditingPlan(null);
-              setViewMode("create");
-            }}
-            className="rounded-md bg-teal-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-teal-700"
-          >
-            + New QCP
-          </button>
-        </div>
+        {!readOnly && (
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleAutoGenerate}
+              disabled={isAutoGenerating}
+              className="rounded-md bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+            >
+              {isAutoGenerating
+                ? "Generating..."
+                : plans.length > 0
+                  ? "Re-Generate"
+                  : "Auto-Generate"}
+            </button>
+            {!isCpoMode && (
+              <button
+                type="button"
+                onClick={() => {
+                  setEditingPlan(null);
+                  setViewMode("create");
+                }}
+                className="rounded-md bg-teal-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-teal-700"
+              >
+                + New QCP
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       {error && (
@@ -464,7 +490,10 @@ export function QcpSection({ jobCardId }: QcpSectionProps) {
                         e.stopPropagation();
                         const qcpNum = plan.qcpNumber || `QCP-${plan.id}`;
                         pdfPreview.openWithFetch(
-                          () => stockControlApiClient.openControlPlanPdf(jobCardId, plan.id),
+                          () =>
+                            isCpoMode
+                              ? stockControlApiClient.openControlPlanPdfForCpo(cpoId, plan.id)
+                              : stockControlApiClient.openControlPlanPdf(jobCardId!, plan.id),
                           `${qcpNum}.pdf`,
                         );
                       }}
@@ -472,27 +501,31 @@ export function QcpSection({ jobCardId }: QcpSectionProps) {
                     >
                       PDF
                     </button>
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleEdit(plan);
-                      }}
-                      className="text-sm text-teal-600 hover:text-teal-800"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDelete(plan.id);
-                      }}
-                      disabled={deletingId === plan.id}
-                      className="text-sm text-red-500 hover:text-red-700 disabled:opacity-50"
-                    >
-                      {deletingId === plan.id ? "..." : "Delete"}
-                    </button>
+                    {!readOnly && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleEdit(plan);
+                          }}
+                          className="text-sm text-teal-600 hover:text-teal-800"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDelete(plan.id);
+                          }}
+                          disabled={deletingId === plan.id}
+                          className="text-sm text-red-500 hover:text-red-700 disabled:opacity-50"
+                        >
+                          {deletingId === plan.id ? "..." : "Delete"}
+                        </button>
+                      </>
+                    )}
                     <span className="text-xs text-gray-400">{isExpanded ? "▲" : "▼"}</span>
                   </div>
                 </div>
@@ -573,7 +606,7 @@ export function QcpSection({ jobCardId }: QcpSectionProps) {
                                     activity={a}
                                     activityIndex={i}
                                     party={p.key}
-                                    editable={p.key === "pls" || p.key === "mps"}
+                                    editable={!readOnly && (p.key === "pls" || p.key === "mps")}
                                     onChangeIntervention={(idx, party, val) =>
                                       handlePartyInterventionChange(plan.id, idx, party, val)
                                     }

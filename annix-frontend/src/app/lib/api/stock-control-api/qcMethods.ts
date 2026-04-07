@@ -1,5 +1,7 @@
 import { StockControlApiClient } from "./base";
 import type {
+  CpoReleasableItem,
+  CpoReleaseDocumentsResult,
   QcBlastProfileRecord,
   QcControlPlanRecord,
   QcDefelskoBatchRecord,
@@ -128,6 +130,27 @@ declare module "./base" {
     ): Promise<QcpApprovalTokenRecord[]>;
     customerQcpPreferences(customerName: string): Promise<QcpCustomerPreferenceRecord>;
     qcpLog(search?: string): Promise<QcControlPlanRecord[]>;
+    controlPlansForCpo(cpoId: number): Promise<QcControlPlanRecord[]>;
+    autoGenerateControlPlansForCpo(cpoId: number): Promise<QcControlPlanRecord[]>;
+    updateControlPlanForCpo(
+      cpoId: number,
+      id: number,
+      data: Partial<QcControlPlanRecord>,
+    ): Promise<QcControlPlanRecord>;
+    deleteControlPlanForCpo(cpoId: number, id: number): Promise<void>;
+    openControlPlanPdfForCpo(cpoId: number, id: number): Promise<Blob>;
+    itemsReleasesForCpo(cpoId: number): Promise<QcItemsReleaseRecord[]>;
+    releasableItemsForCpo(cpoId: number): Promise<{ items: CpoReleasableItem[] }>;
+    autoGenerateReleaseDocumentsForCpo(
+      cpoId: number,
+      selectedItems: {
+        itemCode: string;
+        description: string;
+        quantity: number;
+        jobCardId: number;
+      }[],
+    ): Promise<CpoReleaseDocumentsResult>;
+    openItemsReleasePdfForCpo(cpoId: number, id: number): Promise<Blob>;
     environmentalRecordsForJobCard(jobCardId: number): Promise<QcEnvironmentalRecordResponse[]>;
     environmentalRecordByDate(
       jobCardId: number,
@@ -499,4 +522,52 @@ proto.customerQcpPreferences = async function (customerName) {
   return this.request(
     `/stock-control/job-cards/0/qc/customer-qcp-preferences/${encodeURIComponent(customerName)}`,
   );
+};
+
+proto.controlPlansForCpo = async function (cpoId) {
+  return this.request(`/stock-control/cpos/${cpoId}/qc/control-plans`);
+};
+
+proto.autoGenerateControlPlansForCpo = async function (cpoId) {
+  return this.request(`/stock-control/cpos/${cpoId}/qc/control-plans/auto-generate`, {
+    method: "POST",
+  });
+};
+
+proto.updateControlPlanForCpo = async function (cpoId, id, data) {
+  return this.request(`/stock-control/cpos/${cpoId}/qc/control-plans/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+};
+
+proto.deleteControlPlanForCpo = async function (cpoId, id) {
+  return this.request(`/stock-control/cpos/${cpoId}/qc/control-plans/${id}`, {
+    method: "DELETE",
+  });
+};
+
+proto.openControlPlanPdfForCpo = async function (cpoId, id) {
+  return this.requestBlob(`/stock-control/cpos/${cpoId}/qc/control-plans/${id}/pdf`);
+};
+
+proto.itemsReleasesForCpo = async function (cpoId) {
+  return this.request(`/stock-control/cpos/${cpoId}/qc/items-releases`);
+};
+
+proto.releasableItemsForCpo = async function (cpoId) {
+  return this.request(`/stock-control/cpos/${cpoId}/qc/releasable-items`);
+};
+
+proto.autoGenerateReleaseDocumentsForCpo = async function (cpoId, selectedItems) {
+  return this.request(`/stock-control/cpos/${cpoId}/qc/release-documents/auto-generate`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ selectedItems }),
+  });
+};
+
+proto.openItemsReleasePdfForCpo = async function (cpoId, id) {
+  return this.requestBlob(`/stock-control/cpos/${cpoId}/qc/items-releases/${id}/pdf`);
 };

@@ -65,8 +65,11 @@ export class QcControlPlan {
   @Column({ name: "company_id" })
   companyId: number;
 
-  @Column({ name: "job_card_id" })
-  jobCardId: number;
+  @Column({ name: "job_card_id", nullable: true })
+  jobCardId: number | null;
+
+  @Column({ name: "cpo_id", nullable: true })
+  cpoId: number | null;
 
   @Column({ name: "plan_type", type: "varchar", length: 30 })
   planType: QcpPlanType;

@@ -33,6 +33,7 @@ type QcFormType = "shore-hardness" | "dft" | "blast-profile" | "paint-profile" |
 
 interface QualityTabProps {
   jobCardId: number;
+  cpoId?: number | null;
   backgroundSteps: BackgroundStepStatus[];
   activeBgStepKeys: Set<string>;
   onBatchComplete: (() => void) | null;
@@ -219,6 +220,19 @@ export function QualityTab(props: QualityTabProps) {
         </div>
       )}
 
+      {props.cpoId && (
+        <div className="mb-4">
+          <div className="mb-2 flex items-center gap-2">
+            <span className="inline-flex items-center rounded-full bg-purple-100 px-2.5 py-0.5 text-xs font-medium text-purple-800">
+              CPO
+            </span>
+            <span className="text-xs font-semibold text-gray-700">
+              Inherited Quality Control Plans
+            </span>
+          </div>
+          <QcpSection cpoId={props.cpoId} readOnly />
+        </div>
+      )}
       <QcpSection jobCardId={jobCardId} />
 
       {coatingLoaded && (

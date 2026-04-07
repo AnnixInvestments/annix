@@ -345,6 +345,14 @@ const url = await this.storageService.presignedUrl(filePath, 3600);
 - **Pre-push hook**: `.githooks/pre-push` automatically builds both apps and runs migrations before push
 - **Hook failures**: When a pre-push hook fails (e.g. lint error), fix the issue and amend the existing commit — do not create a new commit
 
+### Scheduled Jobs & Neon Compute Budget
+- **Neon free tier limit**: 100 CU-hrs/month. Every cron job wake-up costs ~8 min of compute (cold start + query + 5 min auto-suspend)
+- **Default frequency for new cron jobs**: Any new `@Cron` job that touches Neon (reads/writes database) must default to **every 6 hours** (`0 */6 * * *`) unless there is a clear business justification for higher frequency
+- **Never default to 10-min or 30-min polling**: These intervals prevent Neon from suspending and blow through the compute budget
+- **Register in JOB_METADATA**: Every new `@Cron` job must be added to `JOB_METADATA` in `admin-scheduled-jobs.service.ts` with a `defaultCron` matching the decorator
+- **Frequency is adjustable at runtime**: The Admin > Scheduled Jobs page allows frequency changes without code deploys — start conservative and increase only if needed
+- **Cluster daily jobs**: If the job only needs to run once a day, schedule it at `0 8 * * *` (morning cluster) or `0 2 * * *` (nightly cluster) to share wake-ups with existing jobs
+
 ### Database Schema Changes
 - **Never use `synchronize: true`**: All schema changes must go through TypeORM migrations
 - **Never modify the database directly**: No manual DDL (CREATE TABLE, ALTER TABLE, etc.) outside of migration files

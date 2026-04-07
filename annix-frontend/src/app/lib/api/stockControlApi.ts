@@ -33,6 +33,8 @@ export type {
   CpoFulfillmentReportItem,
   CpoImportResult,
   CpoOverdueInvoiceItem,
+  CpoReleasableItem,
+  CpoReleaseDocumentsResult,
   CpoRunningTotal,
   CpoSummary,
   CreateInvoiceDto,

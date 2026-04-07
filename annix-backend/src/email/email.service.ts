@@ -3,6 +3,7 @@ import { ConfigService } from "@nestjs/config";
 import * as nodemailer from "nodemailer";
 import { Transporter } from "nodemailer";
 import { formatDateZA, nowMillis } from "../lib/datetime";
+import { emailLayout } from "./templates/layout";
 
 export interface EmailAttachment {
   filename: string;
@@ -122,34 +123,21 @@ export class EmailService {
     const frontendUrl = this.configService.get<string>("FRONTEND_URL") || "http://localhost:3000";
     const verificationLink = `${frontendUrl}/supplier/verify-email?token=${verificationToken}`;
 
-    const html = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="utf-8">
-        <title>Verify Your Email - Annix Supplier Portal</title>
-      </head>
-      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
-        <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-          <h1 style="color: #2563eb;">Welcome to Annix Supplier Portal</h1>
-          <p>Thank you for registering as a supplier. Please verify your email address to continue with the onboarding process.</p>
-          <p style="margin: 30px 0;">
-            <a href="${verificationLink}"
-               style="background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
-              Verify Email Address
-            </a>
-          </p>
-          <p>Or copy and paste this link into your browser:</p>
-          <p style="word-break: break-all; color: #666;">${verificationLink}</p>
-          <p style="color: #666; font-size: 14px;">This link will expire in 24 hours.</p>
-          <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
-          <p style="color: #999; font-size: 12px;">
-            If you did not register for an Annix Supplier account, please ignore this email.
-          </p>
-        </div>
-      </body>
-      </html>
-    `;
+    const html = emailLayout({
+      title: "Verify Your Email - Annix Supplier Portal",
+      heading: "Welcome to Annix Supplier Portal",
+      headingColor: "#2563eb",
+      bodyHtml: `
+          <p>Thank you for registering as a supplier. Please verify your email address to continue with the onboarding process.</p>`,
+      cta: {
+        href: verificationLink,
+        label: "Verify Email Address",
+        color: "#2563eb",
+        expiryNote: "This link will expire in 24 hours.",
+      },
+      footerText:
+        "If you did not register for an Annix Supplier account, please ignore this email.",
+    });
 
     const text = `
       Welcome to Annix Supplier Portal
@@ -175,37 +163,26 @@ export class EmailService {
     const frontendUrl = this.configService.get<string>("FRONTEND_URL") || "http://localhost:3000";
     const portalLink = `${frontendUrl}/supplier/portal/dashboard`;
 
-    const html = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="utf-8">
-        <title>Onboarding Approved - Annix Supplier Portal</title>
-      </head>
-      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
-        <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-          <h1 style="color: #16a34a;">Congratulations!</h1>
+    const html = emailLayout({
+      title: "Onboarding Approved - Annix Supplier Portal",
+      heading: "Congratulations!",
+      headingColor: "#16a34a",
+      bodyHtml: `
           <p>Your supplier onboarding for <strong>${companyName}</strong> has been approved.</p>
           <p>You can now access all supplier portal features, including:</p>
           <ul>
             <li>View and respond to RFQs</li>
             <li>Submit quotations</li>
             <li>Manage your company profile</li>
-          </ul>
-          <p style="margin: 30px 0;">
-            <a href="${portalLink}"
-               style="background-color: #16a34a; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
-              Go to Supplier Portal
-            </a>
-          </p>
-          <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
-          <p style="color: #999; font-size: 12px;">
-            Thank you for partnering with Annix.
-          </p>
-        </div>
-      </body>
-      </html>
-    `;
+          </ul>`,
+      cta: {
+        href: portalLink,
+        label: "Go to Supplier Portal",
+        color: "#16a34a",
+        showLinkFallback: false,
+      },
+      footerText: "Thank you for partnering with Annix.",
+    });
 
     return this.sendEmail({
       to: email,
@@ -223,16 +200,11 @@ export class EmailService {
     const frontendUrl = this.configService.get<string>("FRONTEND_URL") || "http://localhost:3000";
     const onboardingLink = `${frontendUrl}/supplier/portal/onboarding`;
 
-    const html = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="utf-8">
-        <title>Onboarding Update Required - Annix Supplier Portal</title>
-      </head>
-      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
-        <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-          <h1 style="color: #dc2626;">Action Required</h1>
+    const html = emailLayout({
+      title: "Onboarding Update Required - Annix Supplier Portal",
+      heading: "Action Required",
+      headingColor: "#dc2626",
+      bodyHtml: `
           <p>Your supplier onboarding for <strong>${companyName}</strong> requires updates before approval.</p>
 
           <div style="background-color: #fef2f2; border-left: 4px solid #dc2626; padding: 15px; margin: 20px 0;">
@@ -243,22 +215,15 @@ export class EmailService {
           <div style="background-color: #f0f9ff; border-left: 4px solid #2563eb; padding: 15px; margin: 20px 0;">
             <strong>Steps to Resolve:</strong>
             <p style="margin: 5px 0 0 0; white-space: pre-line;">${remediationSteps}</p>
-          </div>
-
-          <p style="margin: 30px 0;">
-            <a href="${onboardingLink}"
-               style="background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
-              Update Onboarding
-            </a>
-          </p>
-          <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
-          <p style="color: #999; font-size: 12px;">
-            If you have questions, please contact our support team.
-          </p>
-        </div>
-      </body>
-      </html>
-    `;
+          </div>`,
+      cta: {
+        href: onboardingLink,
+        label: "Update Onboarding",
+        color: "#2563eb",
+        showLinkFallback: false,
+      },
+      footerText: "If you have questions, please contact our support team.",
+    });
 
     return this.sendEmail({
       to: email,
@@ -274,34 +239,21 @@ export class EmailService {
     const frontendUrl = this.configService.get<string>("FRONTEND_URL") || "http://localhost:3000";
     const verificationLink = `${frontendUrl}/stock-control/verify-email?token=${verificationToken}`;
 
-    const html = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="utf-8">
-        <title>Verify Your Email - ASCA Stock Control</title>
-      </head>
-      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
-        <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-          <h1 style="color: #0d9488;">Welcome to ASCA Stock Control</h1>
-          <p>Thank you for registering. Please verify your email address to complete your registration and access the stock control system.</p>
-          <p style="margin: 30px 0;">
-            <a href="${verificationLink}"
-               style="background-color: #0d9488; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
-              Verify Email Address
-            </a>
-          </p>
-          <p>Or copy and paste this link into your browser:</p>
-          <p style="word-break: break-all; color: #666;">${verificationLink}</p>
-          <p style="color: #666; font-size: 14px;">This link will expire in 24 hours.</p>
-          <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
-          <p style="color: #999; font-size: 12px;">
-            If you did not register for an ASCA Stock Control account, please ignore this email.
-          </p>
-        </div>
-      </body>
-      </html>
-    `;
+    const html = emailLayout({
+      title: "Verify Your Email - ASCA Stock Control",
+      heading: "Welcome to ASCA Stock Control",
+      headingColor: "#0d9488",
+      bodyHtml: `
+          <p>Thank you for registering. Please verify your email address to complete your registration and access the stock control system.</p>`,
+      cta: {
+        href: verificationLink,
+        label: "Verify Email Address",
+        color: "#0d9488",
+        expiryNote: "This link will expire in 24 hours.",
+      },
+      footerText:
+        "If you did not register for an ASCA Stock Control account, please ignore this email.",
+    });
 
     const text = `
       Welcome to ASCA Stock Control
@@ -327,34 +279,21 @@ export class EmailService {
     const frontendUrl = this.configService.get<string>("FRONTEND_URL") || "http://localhost:3000";
     const resetLink = `${frontendUrl}/stock-control/reset-password?token=${resetToken}`;
 
-    const html = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="utf-8">
-        <title>Reset Your Password - ASCA Stock Control</title>
-      </head>
-      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
-        <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-          <h1 style="color: #0d9488;">Reset Your Password</h1>
-          <p>We received a request to reset your password for ASCA Stock Control. Click the button below to set a new password.</p>
-          <p style="margin: 30px 0;">
-            <a href="${resetLink}"
-               style="background-color: #0d9488; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
-              Reset Password
-            </a>
-          </p>
-          <p>Or copy and paste this link into your browser:</p>
-          <p style="word-break: break-all; color: #666;">${resetLink}</p>
-          <p style="color: #666; font-size: 14px;">This link will expire in 1 hour.</p>
-          <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
-          <p style="color: #999; font-size: 12px;">
-            If you did not request a password reset, please ignore this email. Your password will remain unchanged.
-          </p>
-        </div>
-      </body>
-      </html>
-    `;
+    const html = emailLayout({
+      title: "Reset Your Password - ASCA Stock Control",
+      heading: "Reset Your Password",
+      headingColor: "#0d9488",
+      bodyHtml: `
+          <p>We received a request to reset your password for ASCA Stock Control. Click the button below to set a new password.</p>`,
+      cta: {
+        href: resetLink,
+        label: "Reset Password",
+        color: "#0d9488",
+        expiryNote: "This link will expire in 1 hour.",
+      },
+      footerText:
+        "If you did not request a password reset, please ignore this email. Your password will remain unchanged.",
+    });
 
     const text = `
       Reset Your Password - ASCA Stock Control
@@ -386,40 +325,26 @@ export class EmailService {
     const frontendUrl = this.configService.get<string>("FRONTEND_URL") || "http://localhost:3000";
     const registerLink = `${frontendUrl}/stock-control/register?invitation=${token}`;
 
-    const html = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="utf-8">
-        <title>Team Invitation - ASCA Stock Control</title>
-      </head>
-      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
-        <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-          <h1 style="color: #0d9488;">You've Been Invited!</h1>
+    const html = emailLayout({
+      title: "Team Invitation - ASCA Stock Control",
+      heading: "You've Been Invited!",
+      headingColor: "#0d9488",
+      bodyHtml: `
           <p><strong>${inviterName}</strong> has invited you to join <strong>${companyName}</strong> on ASCA Stock Control as a <strong>${role}</strong>.</p>
           <p>As a team member, you'll be able to:</p>
           <ul>
             <li>Access the stock control system</li>
             <li>Manage inventory and job cards</li>
             <li>Track deliveries and stock movements</li>
-          </ul>
-          <p style="margin: 30px 0;">
-            <a href="${registerLink}"
-               style="background-color: #0d9488; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
-              Accept Invitation
-            </a>
-          </p>
-          <p>Or copy and paste this link into your browser:</p>
-          <p style="word-break: break-all; color: #666;">${registerLink}</p>
-          <p style="color: #666; font-size: 14px;">This invitation will expire in 7 days.</p>
-          <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
-          <p style="color: #999; font-size: 12px;">
-            If you did not expect this invitation, please ignore this email.
-          </p>
-        </div>
-      </body>
-      </html>
-    `;
+          </ul>`,
+      cta: {
+        href: registerLink,
+        label: "Accept Invitation",
+        color: "#0d9488",
+        expiryNote: "This invitation will expire in 7 days.",
+      },
+      footerText: "If you did not expect this invitation, please ignore this email.",
+    });
 
     const text = `
       You've Been Invited to ASCA Stock Control
@@ -449,37 +374,22 @@ export class EmailService {
     const frontendUrl = this.configService.get<string>("FRONTEND_URL") || "http://localhost:3000";
     const appLink = `${frontendUrl}/stock-control/login`;
 
-    const html = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="utf-8">
-        <title>Your App Link - ASCA Stock Control</title>
-      </head>
-      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
-        <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-          <h1 style="color: #0d9488;">ASCA Stock Control</h1>
+    const html = emailLayout({
+      title: "Your App Link - ASCA Stock Control",
+      heading: "ASCA Stock Control",
+      headingColor: "#0d9488",
+      bodyHtml: `
           <p>Hi ${userName},</p>
-          <p>Here's your link to access the <strong>${companyName}</strong> Stock Control app.</p>
-          <p style="margin: 30px 0;">
-            <a href="${appLink}"
-               style="background-color: #0d9488; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
-              Open App
-            </a>
-          </p>
-          <p>Or copy and paste this link into your browser:</p>
-          <p style="word-break: break-all; color: #666;">${appLink}</p>
-          <p style="color: #666; font-size: 14px; margin-top: 30px;">
-            <strong>Tip:</strong> You can install the app on your phone by opening the link in your browser and tapping "Add to Home Screen".
-          </p>
-          <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
-          <p style="color: #999; font-size: 12px;">
-            This email was sent by ASCA Stock Control on behalf of ${companyName}.
-          </p>
-        </div>
-      </body>
-      </html>
-    `;
+          <p>Here's your link to access the <strong>${companyName}</strong> Stock Control app.</p>`,
+      cta: {
+        href: appLink,
+        label: "Open App",
+        color: "#0d9488",
+        expiryNote:
+          '<strong>Tip:</strong> You can install the app on your phone by opening the link in your browser and tapping "Add to Home Screen".',
+      },
+      footerText: `This email was sent by ASCA Stock Control on behalf of ${companyName}.`,
+    });
 
     const text = `
       ASCA Stock Control
@@ -511,35 +421,21 @@ export class EmailService {
     const appListHtml = appNames.map((name) => `<li>${name}</li>`).join("\n");
     const appListText = appNames.map((name) => `- ${name}`).join("\n");
 
-    const html = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="utf-8">
-        <title>Your Access Link - Annix Platform</title>
-      </head>
-      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
-        <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-          <h1 style="color: #2563eb;">Annix Platform</h1>
+    const html = emailLayout({
+      title: "Your Access Link - Annix Platform",
+      heading: "Annix Platform",
+      headingColor: "#2563eb",
+      bodyHtml: `
           <p>Hi ${userName},</p>
           <p>You have access to the following apps:</p>
-          <ul>${appListHtml}</ul>
-          <p style="margin: 30px 0;">
-            <a href="${frontendUrl}"
-               style="background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
-              Open Platform
-            </a>
-          </p>
-          <p>Or copy and paste this link into your browser:</p>
-          <p style="word-break: break-all; color: #666;">${frontendUrl}</p>
-          <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
-          <p style="color: #999; font-size: 12px;">
-            This email was sent by the Annix Platform.
-          </p>
-        </div>
-      </body>
-      </html>
-    `;
+          <ul>${appListHtml}</ul>`,
+      cta: {
+        href: frontendUrl,
+        label: "Open Platform",
+        color: "#2563eb",
+      },
+      footerText: "This email was sent by the Annix Platform.",
+    });
 
     const text = `
       Annix Platform
@@ -571,35 +467,22 @@ export class EmailService {
     const frontendUrl = this.configService.get<string>("FRONTEND_URL") || "http://localhost:3000";
     const transferLink = `${frontendUrl}/stock-control/login?admin-transfer=${token}`;
 
-    const html = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="utf-8">
-        <title>Admin Transfer - ASCA Stock Control</title>
-      </head>
-      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
-        <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-          <h1 style="color: #0d9488;">Admin Role Transfer</h1>
+    const html = emailLayout({
+      title: "Admin Transfer - ASCA Stock Control",
+      heading: "Admin Role Transfer",
+      headingColor: "#0d9488",
+      bodyHtml: `
           <p><strong>${initiatorName}</strong> has initiated an admin role transfer for <strong>${companyName}</strong> on ASCA Stock Control.</p>
-          <p>You have been selected as the new administrator. To accept this transfer, please log in using the link below:</p>
-          <p style="margin: 30px 0;">
-            <a href="${transferLink}"
-               style="background-color: #0d9488; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
-              Accept Admin Transfer
-            </a>
-          </p>
-          <p>Or copy and paste this link into your browser:</p>
-          <p style="word-break: break-all; color: #666;">${transferLink}</p>
-          <p style="color: #666; font-size: 14px;">This transfer link will expire in 7 days. The transfer will only be completed once you log in.</p>
-          <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
-          <p style="color: #999; font-size: 12px;">
-            If you did not expect this transfer, please ignore this email or contact ${initiatorName}.
-          </p>
-        </div>
-      </body>
-      </html>
-    `;
+          <p>You have been selected as the new administrator. To accept this transfer, please log in using the link below:</p>`,
+      cta: {
+        href: transferLink,
+        label: "Accept Admin Transfer",
+        color: "#0d9488",
+        expiryNote:
+          "This transfer link will expire in 7 days. The transfer will only be completed once you log in.",
+      },
+      footerText: `If you did not expect this transfer, please ignore this email or contact ${initiatorName}.`,
+    });
 
     const text = `
       Admin Role Transfer - ASCA Stock Control
@@ -627,34 +510,21 @@ export class EmailService {
     const frontendUrl = this.configService.get<string>("FRONTEND_URL") || "http://localhost:3000";
     const verificationLink = `${frontendUrl}/customer/verify-email?token=${verificationToken}`;
 
-    const html = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="utf-8">
-        <title>Verify Your Email - Annix Customer Portal</title>
-      </head>
-      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
-        <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-          <h1 style="color: #2563eb;">Welcome to Annix Customer Portal</h1>
-          <p>Thank you for registering. Please verify your email address to complete your registration.</p>
-          <p style="margin: 30px 0;">
-            <a href="${verificationLink}"
-               style="background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
-              Verify Email Address
-            </a>
-          </p>
-          <p>Or copy and paste this link into your browser:</p>
-          <p style="word-break: break-all; color: #666;">${verificationLink}</p>
-          <p style="color: #666; font-size: 14px;">This link will expire in 24 hours.</p>
-          <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
-          <p style="color: #999; font-size: 12px;">
-            If you did not register for an Annix Customer account, please ignore this email.
-          </p>
-        </div>
-      </body>
-      </html>
-    `;
+    const html = emailLayout({
+      title: "Verify Your Email - Annix Customer Portal",
+      heading: "Welcome to Annix Customer Portal",
+      headingColor: "#2563eb",
+      bodyHtml: `
+          <p>Thank you for registering. Please verify your email address to complete your registration.</p>`,
+      cta: {
+        href: verificationLink,
+        label: "Verify Email Address",
+        color: "#2563eb",
+        expiryNote: "This link will expire in 24 hours.",
+      },
+      footerText:
+        "If you did not register for an Annix Customer account, please ignore this email.",
+    });
 
     const text = `
       Welcome to Annix Customer Portal
@@ -680,37 +550,26 @@ export class EmailService {
     const frontendUrl = this.configService.get<string>("FRONTEND_URL") || "http://localhost:3000";
     const portalLink = `${frontendUrl}/customer/portal/dashboard`;
 
-    const html = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="utf-8">
-        <title>Onboarding Approved - Annix Customer Portal</title>
-      </head>
-      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
-        <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-          <h1 style="color: #16a34a;">Congratulations!</h1>
+    const html = emailLayout({
+      title: "Onboarding Approved - Annix Customer Portal",
+      heading: "Congratulations!",
+      headingColor: "#16a34a",
+      bodyHtml: `
           <p>Your customer onboarding for <strong>${companyName}</strong> has been approved.</p>
           <p>You can now access all customer portal features, including:</p>
           <ul>
             <li>Create and manage RFQs</li>
             <li>View quotations from suppliers</li>
             <li>Manage your preferential suppliers</li>
-          </ul>
-          <p style="margin: 30px 0;">
-            <a href="${portalLink}"
-               style="background-color: #16a34a; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
-              Go to Customer Portal
-            </a>
-          </p>
-          <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
-          <p style="color: #999; font-size: 12px;">
-            Thank you for choosing Annix.
-          </p>
-        </div>
-      </body>
-      </html>
-    `;
+          </ul>`,
+      cta: {
+        href: portalLink,
+        label: "Go to Customer Portal",
+        color: "#16a34a",
+        showLinkFallback: false,
+      },
+      footerText: "Thank you for choosing Annix.",
+    });
 
     return this.sendEmail({
       to: email,
@@ -728,16 +587,11 @@ export class EmailService {
     const frontendUrl = this.configService.get<string>("FRONTEND_URL") || "http://localhost:3000";
     const onboardingLink = `${frontendUrl}/customer/portal/onboarding`;
 
-    const html = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="utf-8">
-        <title>Onboarding Update Required - Annix Customer Portal</title>
-      </head>
-      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
-        <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-          <h1 style="color: #dc2626;">Action Required</h1>
+    const html = emailLayout({
+      title: "Onboarding Update Required - Annix Customer Portal",
+      heading: "Action Required",
+      headingColor: "#dc2626",
+      bodyHtml: `
           <p>Your customer onboarding for <strong>${companyName}</strong> requires updates before approval.</p>
 
           <div style="background-color: #fef2f2; border-left: 4px solid #dc2626; padding: 15px; margin: 20px 0;">
@@ -748,22 +602,15 @@ export class EmailService {
           <div style="background-color: #f0f9ff; border-left: 4px solid #2563eb; padding: 15px; margin: 20px 0;">
             <strong>Steps to Resolve:</strong>
             <p style="margin: 5px 0 0 0; white-space: pre-line;">${remediationSteps}</p>
-          </div>
-
-          <p style="margin: 30px 0;">
-            <a href="${onboardingLink}"
-               style="background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
-              Update Onboarding
-            </a>
-          </p>
-          <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
-          <p style="color: #999; font-size: 12px;">
-            If you have questions, please contact our support team.
-          </p>
-        </div>
-      </body>
-      </html>
-    `;
+          </div>`,
+      cta: {
+        href: onboardingLink,
+        label: "Update Onboarding",
+        color: "#2563eb",
+        showLinkFallback: false,
+      },
+      footerText: "If you have questions, please contact our support team.",
+    });
 
     return this.sendEmail({
       to: email,
@@ -781,50 +628,34 @@ export class EmailService {
     const frontendUrl = this.configService.get<string>("FRONTEND_URL") || "http://localhost:3000";
     const registerLink = `${frontendUrl}/supplier/register?invitation=${invitationToken}`;
 
-    const html = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="utf-8">
-        <title>Supplier Invitation - Annix</title>
-      </head>
-      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
-        <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-          <h1 style="color: #2563eb;">You've Been Invited!</h1>
-          <p><strong>${customerCompanyName}</strong> has invited you to register as a supplier on the Annix platform.</p>
-          ${
-            message
-              ? `
+    const messageBlock = message
+      ? `
           <div style="background-color: #f0f9ff; border-left: 4px solid #2563eb; padding: 15px; margin: 20px 0;">
             <strong>Message from ${customerCompanyName}:</strong>
             <p style="margin: 5px 0 0 0;">${message}</p>
-          </div>
-          `
-              : ""
-          }
+          </div>`
+      : "";
+
+    const html = emailLayout({
+      title: "Supplier Invitation - Annix",
+      heading: "You've Been Invited!",
+      headingColor: "#2563eb",
+      bodyHtml: `
+          <p><strong>${customerCompanyName}</strong> has invited you to register as a supplier on the Annix platform.</p>${messageBlock}
           <p>As a registered supplier, you'll be able to:</p>
           <ul>
             <li>Receive RFQ notifications</li>
             <li>Submit competitive quotations</li>
             <li>Build your business relationship with ${customerCompanyName}</li>
-          </ul>
-          <p style="margin: 30px 0;">
-            <a href="${registerLink}"
-               style="background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
-              Register as Supplier
-            </a>
-          </p>
-          <p>Or copy and paste this link into your browser:</p>
-          <p style="word-break: break-all; color: #666;">${registerLink}</p>
-          <p style="color: #666; font-size: 14px;">This invitation will expire in 7 days.</p>
-          <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
-          <p style="color: #999; font-size: 12px;">
-            If you did not expect this invitation, please ignore this email.
-          </p>
-        </div>
-      </body>
-      </html>
-    `;
+          </ul>`,
+      cta: {
+        href: registerLink,
+        label: "Register as Supplier",
+        color: "#2563eb",
+        expiryNote: "This invitation will expire in 7 days.",
+      },
+      footerText: "If you did not expect this invitation, please ignore this email.",
+    });
 
     return this.sendEmail({
       to: email,
@@ -844,16 +675,11 @@ export class EmailService {
     const adminLink = `${frontendUrl}/admin/customers/${customerId}`;
     const supportEmail = this.configService.get<string>("SUPPORT_EMAIL") || "info@annix.co.za";
 
-    const html = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="utf-8">
-        <title>Manual Review Required - Annix</title>
-      </head>
-      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
-        <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-          <h1 style="color: #dc2626;">Manual Document Review Required</h1>
+    const html = emailLayout({
+      title: "Manual Review Required - Annix",
+      heading: "Manual Document Review Required",
+      headingColor: "#dc2626",
+      bodyHtml: `
           <p>A customer registration requires manual document verification.</p>
 
           <div style="background-color: #f3f4f6; border-left: 4px solid #2563eb; padding: 15px; margin: 20px 0;">
@@ -871,23 +697,14 @@ export class EmailService {
               <strong>Document Type:</strong> ${documentType}<br/>
               <strong>Reason:</strong> ${reason}
             </p>
-          </div>
-
-          <p style="margin: 30px 0;">
-            <a href="${adminLink}"
-               style="background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
-              Review Customer Documents
-            </a>
-          </p>
-
-          <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
-          <p style="color: #999; font-size: 12px;">
-            This is an automated notification from the Annix platform.
-          </p>
-        </div>
-      </body>
-      </html>
-    `;
+          </div>`,
+      cta: {
+        href: adminLink,
+        label: "Review Customer Documents",
+        color: "#2563eb",
+        showLinkFallback: false,
+      },
+    });
 
     return this.sendEmail({
       to: supportEmail,
@@ -907,16 +724,11 @@ export class EmailService {
     const adminLink = `${frontendUrl}/admin/suppliers/${supplierId}`;
     const supportEmail = this.configService.get<string>("SUPPORT_EMAIL") || "info@annix.co.za";
 
-    const html = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="utf-8">
-        <title>Manual Review Required - Annix</title>
-      </head>
-      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
-        <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-          <h1 style="color: #dc2626;">Manual Document Review Required</h1>
+    const html = emailLayout({
+      title: "Manual Review Required - Annix",
+      heading: "Manual Document Review Required",
+      headingColor: "#dc2626",
+      bodyHtml: `
           <p>A supplier registration requires manual document verification.</p>
 
           <div style="background-color: #f3f4f6; border-left: 4px solid #2563eb; padding: 15px; margin: 20px 0;">
@@ -934,23 +746,14 @@ export class EmailService {
               <strong>Document Type:</strong> ${documentType}<br/>
               <strong>Reason:</strong> ${reason}
             </p>
-          </div>
-
-          <p style="margin: 30px 0;">
-            <a href="${adminLink}"
-               style="background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
-              Review Supplier Documents
-            </a>
-          </p>
-
-          <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
-          <p style="color: #999; font-size: 12px;">
-            This is an automated notification from the Annix platform.
-          </p>
-        </div>
-      </body>
-      </html>
-    `;
+          </div>`,
+      cta: {
+        href: adminLink,
+        label: "Review Supplier Documents",
+        color: "#2563eb",
+        showLinkFallback: false,
+      },
+    });
 
     return this.sendEmail({
       to: supportEmail,
@@ -969,49 +772,33 @@ export class EmailService {
     const frontendUrl = this.configService.get<string>("FRONTEND_URL") || "http://localhost:3000";
     const registerLink = `${frontendUrl}/customer/register?email=${encodeURIComponent(email)}`;
 
-    const html = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="utf-8">
-        <title>Customer Invitation - Annix</title>
-      </head>
-      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
-        <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-          <h1 style="color: #2563eb;">You're Invited to Annix</h1>
-          <p>${inviterName} has invited you to register as a customer on the Annix platform.</p>
-          ${
-            message
-              ? `
+    const messageBlock = message
+      ? `
           <div style="background-color: #f0f9ff; border-left: 4px solid #2563eb; padding: 15px; margin: 20px 0;">
             <strong>Message:</strong>
             <p style="margin: 5px 0 0 0;">${message}</p>
-          </div>
-          `
-              : ""
-          }
+          </div>`
+      : "";
+
+    const html = emailLayout({
+      title: "Customer Invitation - Annix",
+      heading: "You're Invited to Annix",
+      headingColor: "#2563eb",
+      bodyHtml: `
+          <p>${inviterName} has invited you to register as a customer on the Annix platform.</p>${messageBlock}
           <p>As a registered customer, you'll be able to:</p>
           <ul>
             <li>Create and manage Requests for Quotation (RFQs)</li>
             <li>Connect with verified suppliers</li>
             <li>Track your orders and quotes</li>
-          </ul>
-          <p style="margin: 30px 0;">
-            <a href="${registerLink}"
-               style="background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
-              Register Now
-            </a>
-          </p>
-          <p>Or copy and paste this link into your browser:</p>
-          <p style="word-break: break-all; color: #666;">${registerLink}</p>
-          <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
-          <p style="color: #999; font-size: 12px;">
-            If you did not expect this invitation, please ignore this email.
-          </p>
-        </div>
-      </body>
-      </html>
-    `;
+          </ul>`,
+      cta: {
+        href: registerLink,
+        label: "Register Now",
+        color: "#2563eb",
+      },
+      footerText: "If you did not expect this invitation, please ignore this email.",
+    });
 
     return this.sendEmail({
       to: email,
@@ -1028,49 +815,33 @@ export class EmailService {
     const frontendUrl = this.configService.get<string>("FRONTEND_URL") || "http://localhost:3000";
     const registerLink = `${frontendUrl}/supplier/register?email=${encodeURIComponent(email)}`;
 
-    const html = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="utf-8">
-        <title>Supplier Invitation - Annix</title>
-      </head>
-      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
-        <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-          <h1 style="color: #2563eb;">You're Invited to Annix</h1>
-          <p>${inviterName} has invited you to register as a supplier on the Annix platform.</p>
-          ${
-            message
-              ? `
+    const messageBlock = message
+      ? `
           <div style="background-color: #f0f9ff; border-left: 4px solid #2563eb; padding: 15px; margin: 20px 0;">
             <strong>Message:</strong>
             <p style="margin: 5px 0 0 0;">${message}</p>
-          </div>
-          `
-              : ""
-          }
+          </div>`
+      : "";
+
+    const html = emailLayout({
+      title: "Supplier Invitation - Annix",
+      heading: "You're Invited to Annix",
+      headingColor: "#2563eb",
+      bodyHtml: `
+          <p>${inviterName} has invited you to register as a supplier on the Annix platform.</p>${messageBlock}
           <p>As a registered supplier, you'll be able to:</p>
           <ul>
             <li>Receive RFQ notifications</li>
             <li>Submit competitive quotations</li>
             <li>Grow your business with new customers</li>
-          </ul>
-          <p style="margin: 30px 0;">
-            <a href="${registerLink}"
-               style="background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
-              Register Now
-            </a>
-          </p>
-          <p>Or copy and paste this link into your browser:</p>
-          <p style="word-break: break-all; color: #666;">${registerLink}</p>
-          <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
-          <p style="color: #999; font-size: 12px;">
-            If you did not expect this invitation, please ignore this email.
-          </p>
-        </div>
-      </body>
-      </html>
-    `;
+          </ul>`,
+      cta: {
+        href: registerLink,
+        label: "Register Now",
+        color: "#2563eb",
+      },
+      footerText: "If you did not expect this invitation, please ignore this email.",
+    });
 
     return this.sendEmail({
       to: email,
@@ -1101,28 +872,22 @@ export class EmailService {
 
     const customerSection = customerDetails
       ? `
-        <div style="background-color: #f0f9ff; border-left: 4px solid #2563eb; padding: 15px; margin: 20px 0;">
-          <strong>Customer Details:</strong>
-          <p style="margin: 5px 0 0 0;">
-            ${customerDetails.company ? `<strong>Company:</strong> ${customerDetails.company}<br/>` : ""}
-            <strong>Contact:</strong> ${customerDetails.name}<br/>
-            <strong>Email:</strong> ${customerDetails.email}
-            ${customerDetails.phone ? `<br/><strong>Phone:</strong> ${customerDetails.phone}` : ""}
-          </p>
-        </div>
-      `
+          <div style="background-color: #f0f9ff; border-left: 4px solid #2563eb; padding: 15px; margin: 20px 0;">
+            <strong>Customer Details:</strong>
+            <p style="margin: 5px 0 0 0;">
+              ${customerDetails.company ? `<strong>Company:</strong> ${customerDetails.company}<br/>` : ""}
+              <strong>Contact:</strong> ${customerDetails.name}<br/>
+              <strong>Email:</strong> ${customerDetails.email}
+              ${customerDetails.phone ? `<br/><strong>Phone:</strong> ${customerDetails.phone}` : ""}
+            </p>
+          </div>`
       : "";
 
-    const html = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="utf-8">
-        <title>New BOQ Request - Annix</title>
-      </head>
-      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
-        <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-          <h1 style="color: #2563eb;">New BOQ Request</h1>
+    const html = emailLayout({
+      title: "New BOQ Request - Annix",
+      heading: "New BOQ Request",
+      headingColor: "#2563eb",
+      bodyHtml: `
           <p>Hello ${supplierName},</p>
           <p>You have been invited to quote on a new Bill of Quantities (BOQ).</p>
 
@@ -1137,25 +902,14 @@ export class EmailService {
           <p><strong>Sections you can quote on:</strong></p>
           <ul>
             ${sectionsList}
-          </ul>
-
-          ${customerSection}
-
-          <p style="margin: 30px 0;">
-            <a href="${boqLink}"
-               style="background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
-              View BOQ Details
-            </a>
-          </p>
-
-          <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
-          <p style="color: #999; font-size: 12px;">
-            This is an automated notification from the Annix platform.
-          </p>
-        </div>
-      </body>
-      </html>
-    `;
+          </ul>${customerSection}`,
+      cta: {
+        href: boqLink,
+        label: "View BOQ Details",
+        color: "#2563eb",
+        showLinkFallback: false,
+      },
+    });
 
     const text = `
       New BOQ Request
@@ -1195,16 +949,11 @@ export class EmailService {
 
     const sectionsList = sections.map((s) => `<li>${s}</li>`).join("");
 
-    const html = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="utf-8">
-        <title>BOQ Updated - Annix</title>
-      </head>
-      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
-        <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-          <h1 style="color: #f59e0b;">BOQ Updated</h1>
+    const html = emailLayout({
+      title: "BOQ Updated - Annix",
+      heading: "BOQ Updated",
+      headingColor: "#f59e0b",
+      bodyHtml: `
           <p>Hello ${supplierName},</p>
           <p>A Bill of Quantities (BOQ) you were invited to quote on has been updated by the customer.</p>
 
@@ -1219,23 +968,15 @@ export class EmailService {
           <p><strong>Sections available to you:</strong></p>
           <ul>
             ${sectionsList}
-          </ul>
-
-          <p style="margin: 30px 0;">
-            <a href="${boqLink}"
-               style="background-color: #f59e0b; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
-              View Updated BOQ
-            </a>
-          </p>
-
-          <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
-          <p style="color: #999; font-size: 12px;">
-            Please review the updated requirements and adjust your quotation if needed.
-          </p>
-        </div>
-      </body>
-      </html>
-    `;
+          </ul>`,
+      cta: {
+        href: boqLink,
+        label: "View Updated BOQ",
+        color: "#f59e0b",
+        showLinkFallback: false,
+      },
+      footerText: "Please review the updated requirements and adjust your quotation if needed.",
+    });
 
     return this.sendEmail({
       to: email,
@@ -1252,16 +993,11 @@ export class EmailService {
     const frontendUrl = this.configService.get<string>("FRONTEND_URL") || "http://localhost:3000";
     const adminLoginLink = `${frontendUrl}/admin/login`;
 
-    const html = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="utf-8">
-        <title>Welcome to Annix Admin Portal</title>
-      </head>
-      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
-        <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-          <h1 style="color: #2563eb;">Welcome to Annix Admin Portal</h1>
+    const html = emailLayout({
+      title: "Welcome to Annix Admin Portal",
+      heading: "Welcome to Annix Admin Portal",
+      headingColor: "#2563eb",
+      bodyHtml: `
           <p>Hello ${name},</p>
           <p>Your administrator account has been created for the Annix Admin Portal.</p>
 
@@ -1279,26 +1015,15 @@ export class EmailService {
               You will be required to change this temporary password upon your first login.
               Please keep this password secure and do not share it with anyone.
             </p>
-          </div>
-
-          <p style="margin: 30px 0;">
-            <a href="${adminLoginLink}"
-               style="background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
-              Login to Admin Portal
-            </a>
-          </p>
-
-          <p>Or copy and paste this link into your browser:</p>
-          <p style="word-break: break-all; color: #666;">${adminLoginLink}</p>
-
-          <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
-          <p style="color: #999; font-size: 12px;">
-            If you did not expect this email or believe you received it in error, please contact your system administrator immediately.
-          </p>
-        </div>
-      </body>
-      </html>
-    `;
+          </div>`,
+      cta: {
+        href: adminLoginLink,
+        label: "Login to Admin Portal",
+        color: "#2563eb",
+      },
+      footerText:
+        "If you did not expect this email or believe you received it in error, please contact your system administrator immediately.",
+    });
 
     const text = `
       Welcome to Annix Admin Portal
@@ -1335,16 +1060,11 @@ export class EmailService {
     const frontendUrl = this.configService.get<string>("FRONTEND_URL") || "http://localhost:3000";
     const rfqLink = `${frontendUrl}/supplier/portal/boqs`;
 
-    const html = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="utf-8">
-        <title>RFQ Updated - Annix</title>
-      </head>
-      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
-        <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-          <h1 style="color: #f59e0b;">RFQ Updated</h1>
+    const html = emailLayout({
+      title: "RFQ Updated - Annix",
+      heading: "RFQ Updated",
+      headingColor: "#f59e0b",
+      bodyHtml: `
           <p>Hello ${supplierName},</p>
           <p>A Request for Quotation (RFQ) you were invited to quote on has been updated by the customer.</p>
 
@@ -1356,23 +1076,16 @@ export class EmailService {
             </p>
           </div>
 
-          <p>Please review the updated requirements and adjust your quotation if needed.</p>
-
-          <p style="margin: 30px 0;">
-            <a href="${rfqLink}"
-               style="background-color: #f59e0b; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
-              View Updated RFQ
-            </a>
-          </p>
-
-          <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
-          <p style="color: #999; font-size: 12px;">
-            If you have already submitted a quote, please review the changes and submit an updated quote if necessary.
-          </p>
-        </div>
-      </body>
-      </html>
-    `;
+          <p>Please review the updated requirements and adjust your quotation if needed.</p>`,
+      cta: {
+        href: rfqLink,
+        label: "View Updated RFQ",
+        color: "#f59e0b",
+        showLinkFallback: false,
+      },
+      footerText:
+        "If you have already submitted a quote, please review the changes and submit an updated quote if necessary.",
+    });
 
     return this.sendEmail({
       to: email,
@@ -1824,16 +1537,11 @@ This is an automated daily reminder from Annix Rep.
     const frontendUrl = this.configService.get<string>("FRONTEND_URL") || "http://localhost:3000";
     const messageBoardLink = `${frontendUrl}/admin/messages/broadcasts`;
 
-    const html = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="utf-8">
-        <title>Customer Feedback Received - Annix</title>
-      </head>
-      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
-        <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-          <h1 style="color: #2563eb;">Customer Feedback Received</h1>
+    const html = emailLayout({
+      title: "Customer Feedback Received - Annix",
+      heading: "Customer Feedback Received",
+      headingColor: "#2563eb",
+      bodyHtml: `
           <p>A customer has submitted feedback on the test site.</p>
 
           <div style="background-color: #f3f4f6; border-left: 4px solid #2563eb; padding: 15px; margin: 20px 0;">
@@ -1856,23 +1564,15 @@ This is an automated daily reminder from Annix Rep.
               <strong>Source:</strong> ${source === "voice" ? "Voice recording" : "Text input"}<br/>
               <strong>Page:</strong> ${pageUrl || "Unknown page"}
             </p>
-          </div>
-
-          <p style="margin: 30px 0;">
-            <a href="${messageBoardLink}"
-               style="background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
-              View in Admin Message Board
-            </a>
-          </p>
-
-          <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
-          <p style="color: #999; font-size: 12px;">
-            This is an automated notification from the Annix test site.
-          </p>
-        </div>
-      </body>
-      </html>
-    `;
+          </div>`,
+      cta: {
+        href: messageBoardLink,
+        label: "View in Admin Message Board",
+        color: "#2563eb",
+        showLinkFallback: false,
+      },
+      footerText: "This is an automated notification from the Annix test site.",
+    });
 
     const text = `
 Customer Feedback Received
@@ -1911,34 +1611,20 @@ This is an automated notification from the Annix test site.
     const frontendUrl = this.configService.get<string>("FRONTEND_URL") || "http://localhost:3000";
     const verificationLink = `${frontendUrl}/cv-assistant/verify-email?token=${verificationToken}`;
 
-    const html = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="utf-8">
-        <title>Verify Your Email - CV Assistant</title>
-      </head>
-      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
-        <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-          <h1 style="color: #8B5CF6;">Welcome to CV Assistant</h1>
-          <p>Thank you for registering. Please verify your email address to complete your registration and start screening candidates.</p>
-          <p style="margin: 30px 0;">
-            <a href="${verificationLink}"
-               style="background-color: #8B5CF6; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
-              Verify Email Address
-            </a>
-          </p>
-          <p>Or copy and paste this link into your browser:</p>
-          <p style="word-break: break-all; color: #666;">${verificationLink}</p>
-          <p style="color: #666; font-size: 14px;">This link will expire in 24 hours.</p>
-          <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
-          <p style="color: #999; font-size: 12px;">
-            If you did not register for a CV Assistant account, please ignore this email.
-          </p>
-        </div>
-      </body>
-      </html>
-    `;
+    const html = emailLayout({
+      title: "Verify Your Email - CV Assistant",
+      heading: "Welcome to CV Assistant",
+      headingColor: "#8B5CF6",
+      bodyHtml: `
+          <p>Thank you for registering. Please verify your email address to complete your registration and start screening candidates.</p>`,
+      cta: {
+        href: verificationLink,
+        label: "Verify Email Address",
+        color: "#8B5CF6",
+        expiryNote: "This link will expire in 24 hours.",
+      },
+      footerText: "If you did not register for a CV Assistant account, please ignore this email.",
+    });
 
     const text = `
       Welcome to CV Assistant
@@ -1964,34 +1650,20 @@ This is an automated notification from the Annix test site.
     const frontendUrl = this.configService.get<string>("FRONTEND_URL") || "http://localhost:3000";
     const resetLink = `${frontendUrl}/cv-assistant/reset-password?token=${resetToken}`;
 
-    const html = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="utf-8">
-        <title>Reset Your Password - CV Assistant</title>
-      </head>
-      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
-        <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-          <h1 style="color: #8B5CF6;">Reset Your Password</h1>
-          <p>We received a request to reset your password for CV Assistant. Click the button below to set a new password.</p>
-          <p style="margin: 30px 0;">
-            <a href="${resetLink}"
-               style="background-color: #8B5CF6; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
-              Reset Password
-            </a>
-          </p>
-          <p>Or copy and paste this link into your browser:</p>
-          <p style="word-break: break-all; color: #666;">${resetLink}</p>
-          <p style="color: #666; font-size: 14px;">This link will expire in 1 hour.</p>
-          <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
-          <p style="color: #999; font-size: 12px;">
-            If you did not request a password reset, please ignore this email.
-          </p>
-        </div>
-      </body>
-      </html>
-    `;
+    const html = emailLayout({
+      title: "Reset Your Password - CV Assistant",
+      heading: "Reset Your Password",
+      headingColor: "#8B5CF6",
+      bodyHtml: `
+          <p>We received a request to reset your password for CV Assistant. Click the button below to set a new password.</p>`,
+      cta: {
+        href: resetLink,
+        label: "Reset Password",
+        color: "#8B5CF6",
+        expiryNote: "This link will expire in 1 hour.",
+      },
+      footerText: "If you did not request a password reset, please ignore this email.",
+    });
 
     const text = `
       Reset Your Password - CV Assistant
@@ -2018,28 +1690,17 @@ This is an automated notification from the Annix test site.
     candidateName: string,
     jobTitle: string,
   ): Promise<boolean> {
-    const html = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="utf-8">
-        <title>Application Update - CV Assistant</title>
-      </head>
-      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
-        <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-          <h1 style="color: #333;">Application Update</h1>
+    const html = emailLayout({
+      title: "Application Update - CV Assistant",
+      heading: "Application Update",
+      headingColor: "#333",
+      bodyHtml: `
           <p>Dear ${candidateName},</p>
           <p>Thank you for your interest in the <strong>${jobTitle}</strong> position and for taking the time to apply.</p>
           <p>After careful consideration of your application, we regret to inform you that we will not be moving forward with your candidacy at this time.</p>
-          <p>We appreciate your interest in our company and wish you the best in your job search.</p>
-          <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
-          <p style="color: #999; font-size: 12px;">
-            This is an automated message. Please do not reply to this email.
-          </p>
-        </div>
-      </body>
-      </html>
-    `;
+          <p>We appreciate your interest in our company and wish you the best in your job search.</p>`,
+      footerText: "This is an automated message. Please do not reply to this email.",
+    });
 
     return this.sendEmail({
       to: email,
@@ -2053,28 +1714,17 @@ This is an automated notification from the Annix test site.
     candidateName: string,
     jobTitle: string,
   ): Promise<boolean> {
-    const html = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="utf-8">
-        <title>Great News About Your Application - CV Assistant</title>
-      </head>
-      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
-        <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-          <h1 style="color: #16a34a;">Great News!</h1>
+    const html = emailLayout({
+      title: "Great News About Your Application - CV Assistant",
+      heading: "Great News!",
+      headingColor: "#16a34a",
+      bodyHtml: `
           <p>Dear ${candidateName},</p>
           <p>We are pleased to inform you that your application for the <strong>${jobTitle}</strong> position has been shortlisted!</p>
           <p>Your qualifications and experience have impressed our team, and we would like to learn more about you.</p>
-          <p>A member of our team will be in touch shortly to discuss the next steps in the recruitment process.</p>
-          <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
-          <p style="color: #999; font-size: 12px;">
-            This is an automated message. Please do not reply to this email.
-          </p>
-        </div>
-      </body>
-      </html>
-    `;
+          <p>A member of our team will be in touch shortly to discuss the next steps in the recruitment process.</p>`,
+      footerText: "This is an automated message. Please do not reply to this email.",
+    });
 
     return this.sendEmail({
       to: email,
@@ -2088,28 +1738,17 @@ This is an automated notification from the Annix test site.
     candidateName: string,
     jobTitle: string,
   ): Promise<boolean> {
-    const html = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="utf-8">
-        <title>Congratulations - CV Assistant</title>
-      </head>
-      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
-        <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-          <h1 style="color: #16a34a;">Congratulations!</h1>
+    const html = emailLayout({
+      title: "Congratulations - CV Assistant",
+      heading: "Congratulations!",
+      headingColor: "#16a34a",
+      bodyHtml: `
           <p>Dear ${candidateName},</p>
           <p>We are thrilled to inform you that you have been selected for the <strong>${jobTitle}</strong> position!</p>
           <p>Our team was impressed by your qualifications and we believe you will be a great addition to our organization.</p>
-          <p>A member of our team will contact you shortly with details about the next steps and offer letter.</p>
-          <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
-          <p style="color: #999; font-size: 12px;">
-            This is an automated message. Please do not reply to this email.
-          </p>
-        </div>
-      </body>
-      </html>
-    `;
+          <p>A member of our team will contact you shortly with details about the next steps and offer letter.</p>`,
+      footerText: "This is an automated message. Please do not reply to this email.",
+    });
 
     return this.sendEmail({
       to: email,
@@ -2128,36 +1767,23 @@ This is an automated notification from the Annix test site.
     const frontendUrl = this.configService.get<string>("FRONTEND_URL") || "http://localhost:3000";
     const feedbackLink = `${frontendUrl}/cv-assistant/reference-feedback/${feedbackToken}`;
 
-    const html = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="utf-8">
-        <title>Reference Request - CV Assistant</title>
-      </head>
-      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
-        <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-          <h1 style="color: #8B5CF6;">Reference Request</h1>
+    const html = emailLayout({
+      title: "Reference Request - CV Assistant",
+      heading: "Reference Request",
+      headingColor: "#8B5CF6",
+      bodyHtml: `
           <p>Dear ${referenceName},</p>
           <p><strong>${candidateName}</strong> has applied for the position of <strong>${jobTitle}</strong> and has listed you as a reference.</p>
-          <p>We would greatly appreciate if you could take a few minutes to provide feedback about your experience working with ${candidateName}.</p>
-          <p style="margin: 30px 0;">
-            <a href="${feedbackLink}"
-               style="background-color: #8B5CF6; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
-              Provide Feedback
-            </a>
-          </p>
-          <p>Or copy and paste this link into your browser:</p>
-          <p style="word-break: break-all; color: #666;">${feedbackLink}</p>
-          <p style="color: #666; font-size: 14px;">This link will expire in 7 days.</p>
-          <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
-          <p style="color: #999; font-size: 12px;">
-            Your feedback is confidential and will only be used for employment evaluation purposes.
-          </p>
-        </div>
-      </body>
-      </html>
-    `;
+          <p>We would greatly appreciate if you could take a few minutes to provide feedback about your experience working with ${candidateName}.</p>`,
+      cta: {
+        href: feedbackLink,
+        label: "Provide Feedback",
+        color: "#8B5CF6",
+        expiryNote: "This link will expire in 7 days.",
+      },
+      footerText:
+        "Your feedback is confidential and will only be used for employment evaluation purposes.",
+    });
 
     return this.sendEmail({
       to: email,
@@ -2176,34 +1802,24 @@ This is an automated notification from the Annix test site.
     const frontendUrl = this.configService.get<string>("FRONTEND_URL") || "http://localhost:3000";
     const feedbackLink = `${frontendUrl}/cv-assistant/reference-feedback/${feedbackToken}`;
 
-    const html = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="utf-8">
-        <title>Reference Request Reminder - CV Assistant</title>
-      </head>
-      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
-        <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-          <h1 style="color: #f59e0b;">Friendly Reminder</h1>
+    const html = emailLayout({
+      title: "Reference Request Reminder - CV Assistant",
+      heading: "Friendly Reminder",
+      headingColor: "#f59e0b",
+      bodyHtml: `
           <p>Dear ${referenceName},</p>
           <p>This is a friendly reminder that <strong>${candidateName}</strong> has listed you as a reference for the <strong>${jobTitle}</strong> position.</p>
-          <p>We would greatly appreciate if you could take a few minutes to provide your feedback.</p>
-          <p style="margin: 30px 0;">
-            <a href="${feedbackLink}"
-               style="background-color: #8B5CF6; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
-              Provide Feedback
-            </a>
-          </p>
-          <p style="color: #666; font-size: 14px;">This link will expire soon.</p>
-          <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
-          <p style="color: #999; font-size: 12px;">
-            Your feedback is confidential and will only be used for employment evaluation purposes.
-          </p>
-        </div>
-      </body>
-      </html>
-    `;
+          <p>We would greatly appreciate if you could take a few minutes to provide your feedback.</p>`,
+      cta: {
+        href: feedbackLink,
+        label: "Provide Feedback",
+        color: "#8B5CF6",
+        showLinkFallback: false,
+        expiryNote: "This link will expire soon.",
+      },
+      footerText:
+        "Your feedback is confidential and will only be used for employment evaluation purposes.",
+    });
 
     return this.sendEmail({
       to: email,
@@ -2221,37 +1837,26 @@ This is an automated notification from the Annix test site.
   ): Promise<boolean> {
     const frontendUrl = this.configService.get<string>("FRONTEND_URL") || "http://localhost:3000";
 
-    const html = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="utf-8">
-        <title>High-Scoring Match Alert - CV Assistant</title>
-      </head>
-      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
-        <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-          <h1 style="color: #8B5CF6;">Match Alert</h1>
+    const html = emailLayout({
+      title: "High-Scoring Match Alert - CV Assistant",
+      heading: "Match Alert",
+      headingColor: "#8B5CF6",
+      bodyHtml: `
           <p>Hi ${recruiterName},</p>
           <p>A high-scoring candidate match has been found:</p>
           <div style="background-color: #f5f3ff; border-left: 4px solid #8B5CF6; padding: 15px; margin: 20px 0;">
             <p style="margin: 0;"><strong>Candidate:</strong> ${candidateName}</p>
             <p style="margin: 5px 0 0 0;"><strong>Job:</strong> ${jobTitle}</p>
             <p style="margin: 5px 0 0 0;"><strong>Match Score:</strong> ${scorePct}%</p>
-          </div>
-          <p style="margin: 30px 0;">
-            <a href="${frontendUrl}/cv-assistant/portal/dashboard"
-               style="background-color: #8B5CF6; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
-              View Dashboard
-            </a>
-          </p>
-          <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
-          <p style="color: #999; font-size: 12px;">
-            You can adjust your alert threshold in Settings.
-          </p>
-        </div>
-      </body>
-      </html>
-    `;
+          </div>`,
+      cta: {
+        href: `${frontendUrl}/cv-assistant/portal/dashboard`,
+        label: "View Dashboard",
+        color: "#8B5CF6",
+        showLinkFallback: false,
+      },
+      footerText: "You can adjust your alert threshold in Settings.",
+    });
 
     return this.sendEmail({
       to: email,
@@ -2362,33 +1967,23 @@ This is an automated notification from the Annix test site.
       )
       .join("");
 
-    const html = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="utf-8">
-        <title>New Job Matches - CV Assistant</title>
-      </head>
-      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
-        <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-          <h1 style="color: #8B5CF6;">New Job Matches</h1>
+    const html = emailLayout({
+      title: "New Job Matches - CV Assistant",
+      heading: "New Job Matches",
+      headingColor: "#8B5CF6",
+      bodyHtml: `
           <p>Hi ${candidateName},</p>
           <p>We found ${jobs.length} new job${jobs.length === 1 ? "" : "s"} matching your profile:</p>
-          ${jobCards}
-          <p style="margin: 30px 0;">
-            <a href="${frontendUrl}/cv-assistant/portal/dashboard"
-               style="background-color: #8B5CF6; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
-              View All Matches
-            </a>
-          </p>
-          <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
-          <p style="color: #999; font-size: 12px;">
-            You are receiving this because you opted in to job alerts. To unsubscribe, update your preferences in your candidate profile.
-          </p>
-        </div>
-      </body>
-      </html>
-    `;
+          ${jobCards}`,
+      cta: {
+        href: `${frontendUrl}/cv-assistant/portal/dashboard`,
+        label: "View All Matches",
+        color: "#8B5CF6",
+        showLinkFallback: false,
+      },
+      footerText:
+        "You are receiving this because you opted in to job alerts. To unsubscribe, update your preferences in your candidate profile.",
+    });
 
     return this.sendEmail({
       to: email,

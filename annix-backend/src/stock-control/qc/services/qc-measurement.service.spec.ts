@@ -2,6 +2,7 @@ import { NotFoundException } from "@nestjs/common";
 import { Test, TestingModule } from "@nestjs/testing";
 import { getRepositoryToken } from "@nestjs/typeorm";
 import { JobCardCoatingAnalysis } from "../../entities/coating-analysis.entity";
+import { CustomerPurchaseOrder } from "../../entities/customer-purchase-order.entity";
 import { JobCard } from "../../entities/job-card.entity";
 import { StockControlCompany } from "../../entities/stock-control-company.entity";
 import { QcBlastProfile } from "../entities/qc-blast-profile.entity";
@@ -86,6 +87,7 @@ describe("QcMeasurementService", () => {
         { provide: getRepositoryToken(JobCard), useValue: jobCardRepo },
         { provide: getRepositoryToken(JobCardCoatingAnalysis), useValue: coatingRepo },
         { provide: getRepositoryToken(StockControlCompany), useValue: companyRepo },
+        { provide: getRepositoryToken(CustomerPurchaseOrder), useValue: mockRepo() },
         { provide: WORK_ITEM_PROVIDER, useValue: mockWorkItemProvider },
       ],
     }).compile();

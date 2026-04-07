@@ -6,6 +6,14 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useFeatureGate } from "@/app/hooks/useFeatureGate";
 import { useVoiceDictation } from "@/app/hooks/useVoiceDictation";
 import { type FeedbackAuthContext, submitFeedbackWithAttachments } from "@/app/lib/api/feedbackApi";
+import {
+  displayContent as computeDisplayContent,
+  contentValidationMessage,
+  FEEDBACK_MAX_LENGTH,
+  isFileAllowed,
+  isSubmitDisabled,
+  MAX_ATTACHMENTS,
+} from "./feedbackWidgetLogic";
 
 type FeedbackSource = "text" | "voice";
 type ResizeEdge = "n" | "e" | "w" | "s" | "nw" | "ne" | "sw" | "se" | null;
@@ -375,7 +383,7 @@ export function FeedbackWidget(props: FeedbackWidgetProps) {
   }, [isExpanded, showSuccess, captureScreenshot]);
 
   const handleSubmit = async () => {
-    if (!content.trim() || content.length < 10) {
+    if (isSubmitDisabled(content, isSubmitting, isListening)) {
       return;
     }
 
@@ -442,18 +450,9 @@ export function FeedbackWidget(props: FeedbackWidgetProps) {
       return;
     }
 
-    const ALLOWED_TYPES = [
-      "image/",
-      "application/pdf",
-      "application/msword",
-      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-      "application/vnd.ms-excel",
-      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    ];
-
     const newAttachments = Array.from(selectedFiles)
-      .filter((f) => ALLOWED_TYPES.some((t) => f.type.startsWith(t)))
-      .slice(0, 5 - attachments.length)
+      .filter((f) => isFileAllowed(f.type))
+      .slice(0, MAX_ATTACHMENTS - attachments.length)
       .map((file) => ({
         file,
         preview: file.type.startsWith("image/") ? URL.createObjectURL(file) : "",
@@ -489,7 +488,8 @@ export function FeedbackWidget(props: FeedbackWidgetProps) {
     }
   };
 
-  const displayContent = isListening ? content + interimTranscript : content;
+  const displayedContent = computeDisplayContent(content, interimTranscript, isListening);
+  const submitDisabled = isSubmitDisabled(content, isSubmitting, isListening);
 
   if (flagsLoading || !isFeatureEnabled("FEEDBACK_WIDGET")) {
     return null;
@@ -529,45 +529,45 @@ export function FeedbackWidget(props: FeedbackWidgetProps) {
         userSelect: isInteracting ? "none" : undefined,
       }}
     >
-      {/* Resize edges */}
+      {/* Resize edges — outside the panel bounds so they don't block interior clicks */}
       <div
-        className="absolute -top-1 left-3 right-3 h-2 cursor-n-resize z-10"
+        className="absolute -top-2 left-3 right-3 h-2 cursor-n-resize"
         onMouseDown={handleResizeStart("n")}
         onTouchStart={handleTouchResizeStart("n")}
       />
       <div
-        className="absolute -bottom-1 left-3 right-3 h-2 cursor-s-resize z-10"
+        className="absolute -bottom-2 left-3 right-3 h-2 cursor-s-resize"
         onMouseDown={handleResizeStart("s")}
         onTouchStart={handleTouchResizeStart("s")}
       />
       <div
-        className="absolute -left-1 top-3 bottom-3 w-2 cursor-w-resize z-10"
+        className="absolute -left-2 top-3 bottom-3 w-2 cursor-w-resize"
         onMouseDown={handleResizeStart("w")}
         onTouchStart={handleTouchResizeStart("w")}
       />
       <div
-        className="absolute -right-1 top-3 bottom-3 w-2 cursor-e-resize z-10"
+        className="absolute -right-2 top-3 bottom-3 w-2 cursor-e-resize"
         onMouseDown={handleResizeStart("e")}
         onTouchStart={handleTouchResizeStart("e")}
       />
-      {/* Resize corners */}
+      {/* Resize corners — outside the panel bounds */}
       <div
-        className="absolute -top-1 -left-1 w-3 h-3 cursor-nw-resize z-20"
+        className="absolute -top-2 -left-2 w-3 h-3 cursor-nw-resize"
         onMouseDown={handleResizeStart("nw")}
         onTouchStart={handleTouchResizeStart("nw")}
       />
       <div
-        className="absolute -top-1 -right-1 w-3 h-3 cursor-ne-resize z-20"
+        className="absolute -top-2 -right-2 w-3 h-3 cursor-ne-resize"
         onMouseDown={handleResizeStart("ne")}
         onTouchStart={handleTouchResizeStart("ne")}
       />
       <div
-        className="absolute -bottom-1 -left-1 w-3 h-3 cursor-sw-resize z-20"
+        className="absolute -bottom-2 -left-2 w-3 h-3 cursor-sw-resize"
         onMouseDown={handleResizeStart("sw")}
         onTouchStart={handleTouchResizeStart("sw")}
       />
       <div
-        className="absolute -bottom-1 -right-1 w-3 h-3 cursor-se-resize z-20"
+        className="absolute -bottom-2 -right-2 w-3 h-3 cursor-se-resize"
         onMouseDown={handleResizeStart("se")}
         onTouchStart={handleTouchResizeStart("se")}
       />
@@ -637,7 +637,7 @@ export function FeedbackWidget(props: FeedbackWidgetProps) {
 
             <div className="relative">
               <textarea
-                value={displayContent}
+                value={displayedContent}
                 onChange={handleTextChange}
                 placeholder="Type your feedback here..."
                 className={`w-full h-24 p-3 border rounded-lg resize-none text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
@@ -757,7 +757,7 @@ export function FeedbackWidget(props: FeedbackWidgetProps) {
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
-                  disabled={attachments.length >= 5}
+                  disabled={attachments.length >= MAX_ATTACHMENTS}
                   className="p-2 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                   title="Attach file"
                 >
@@ -781,17 +781,18 @@ export function FeedbackWidget(props: FeedbackWidgetProps) {
                 />
 
                 <span className="text-xs text-gray-400">
-                  {content.length}/5000
-                  {content.length < 10 && content.length > 0 && (
-                    <span className="text-yellow-600 ml-1">(min 10)</span>
-                  )}
+                  {content.length}/{FEEDBACK_MAX_LENGTH}
+                  {(() => {
+                    const msg = contentValidationMessage(content);
+                    return msg ? <span className="text-yellow-600 ml-1">({msg})</span> : null;
+                  })()}
                 </span>
               </div>
 
               <button
                 type="button"
                 onClick={handleSubmit}
-                disabled={!content.trim() || content.length < 10 || isSubmitting || isListening}
+                disabled={submitDisabled}
                 className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
               >
                 {isSubmitting ? (

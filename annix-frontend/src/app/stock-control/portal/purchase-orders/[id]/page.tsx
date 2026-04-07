@@ -24,7 +24,9 @@ import {
   useUpdateCpoStatus,
 } from "@/app/lib/query/hooks";
 import { stockControlKeys } from "@/app/lib/query/keys";
+import { QcpSection } from "@/app/stock-control/portal/job-cards/[id]/components/QcpSection";
 import { AsteriskAllocationModal } from "../../../components/AsteriskAllocationModal";
+import { CpoReleaseDocumentGenerator } from "./components/CpoReleaseDocumentGenerator";
 
 function statusBadgeColor(status: string): string {
   const colors: Record<string, string> = {
@@ -137,6 +139,7 @@ export default function CpoDetailPage() {
     m2: "",
   });
 
+  const [activeTab, setActiveTab] = useState<"details" | "quality">("details");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const deliveryScrollRef = useRef<HTMLDivElement>(null);
   const deliveryDragState = useRef({ isDragging: false, startX: 0, scrollLeft: 0 });
@@ -553,598 +556,720 @@ export default function CpoDetailPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white rounded-lg shadow p-4">
-          <dt className="text-xs font-medium text-gray-500 uppercase">Job Number</dt>
-          <dd className="mt-1 text-lg font-semibold text-gray-900">{cpo.jobNumber}</dd>
-        </div>
-        <div className="bg-white rounded-lg shadow p-4">
-          <dt className="text-xs font-medium text-gray-500 uppercase">Customer</dt>
-          <dd className="mt-1 text-lg font-semibold text-gray-900">{cpo.customerName || "-"}</dd>
-        </div>
-        <div className="bg-white rounded-lg shadow p-4">
-          <dt className="text-xs font-medium text-gray-500 uppercase">PO Number</dt>
-          <dd className="mt-1 text-lg font-semibold text-gray-900">{cpo.poNumber || "-"}</dd>
-        </div>
-        <div className="bg-white rounded-lg shadow p-4">
-          <dt className="text-xs font-medium text-gray-500 uppercase">Overall Fulfilment</dt>
-          <dd className="mt-1">
-            <div className="flex items-center space-x-2">
-              <div className="flex-1 h-3 bg-gray-200 rounded-full overflow-hidden">
-                <div
-                  className={`h-full rounded-full ${overallPct >= 100 ? "bg-blue-500" : "bg-teal-500"}`}
-                  style={{ width: `${overallPct}%` }}
-                />
-              </div>
-              <span className="text-sm font-semibold text-gray-700">{overallPct}%</span>
-            </div>
-          </dd>
-        </div>
+      <div className="border-b border-gray-200">
+        <nav className="flex space-x-1 px-0" aria-label="CPO sections">
+          <button
+            type="button"
+            onClick={() => setActiveTab("details")}
+            className={`whitespace-nowrap py-3 px-4 text-sm font-medium border-b-2 transition-colors ${
+              activeTab === "details"
+                ? "border-teal-500 text-teal-600"
+                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+            }`}
+          >
+            Details
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab("quality")}
+            className={`whitespace-nowrap py-3 px-4 text-sm font-medium border-b-2 transition-colors ${
+              activeTab === "quality"
+                ? "border-teal-500 text-teal-600"
+                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+            }`}
+          >
+            Quality
+          </button>
+        </nav>
       </div>
 
-      {(cpo.jobName ||
-        cpo.siteLocation ||
-        cpo.contactPerson ||
-        cpo.dueDate ||
-        cpo.notes ||
-        cpo.reference) && (
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-lg font-medium text-gray-900 mb-4">Details</h2>
-          <dl className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3">
-            {cpo.jobName && (
-              <div>
-                <dt className="text-sm font-medium text-gray-500">Job Name</dt>
-                <dd className="text-sm text-gray-900">{cpo.jobName}</dd>
-              </div>
-            )}
-            {cpo.siteLocation && (
-              <div>
-                <dt className="text-sm font-medium text-gray-500">Site Location</dt>
-                <dd className="text-sm text-gray-900">{cpo.siteLocation}</dd>
-              </div>
-            )}
-            {cpo.contactPerson && (
-              <div>
-                <dt className="text-sm font-medium text-gray-500">Contact Person</dt>
-                <dd className="text-sm text-gray-900">{cpo.contactPerson}</dd>
-              </div>
-            )}
-            {cpo.dueDate && (
-              <div>
-                <dt className="text-sm font-medium text-gray-500">Due Date</dt>
-                <dd className="text-sm text-gray-900">{cpo.dueDate}</dd>
-              </div>
-            )}
-            {cpo.reference && (
-              <div>
-                <dt className="text-sm font-medium text-gray-500">Reference</dt>
-                <dd className="text-sm text-gray-900">{cpo.reference}</dd>
-              </div>
-            )}
-            {cpo.notes && (
-              <div className="md:col-span-2">
-                <dt className="text-sm font-medium text-gray-500">Notes</dt>
-                <dd className="text-sm text-gray-900 whitespace-pre-wrap">{cpo.notes}</dd>
-              </div>
-            )}
-          </dl>
+      {activeTab === "quality" && (
+        <div className="space-y-6">
+          <QcpSection cpoId={id} />
+          <CpoReleaseDocumentGenerator cpoId={id} />
         </div>
       )}
 
-      <div className="bg-amber-50 border border-amber-200 rounded-lg shadow p-6">
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-lg font-medium text-amber-900">Coating / Lining Specifications</h2>
-          {!isEditingSpecs && (
-            <button
-              type="button"
-              onClick={() => {
-                setSpecsDraft(cpo.coatingSpecs || "");
-                setIsEditingSpecs(true);
-                setSpecsError(null);
-              }}
-              className="text-sm text-amber-700 hover:text-amber-900 underline"
-            >
-              {cpo.coatingSpecs ? "Edit" : "Add Specs"}
-            </button>
+      <div className={activeTab !== "details" ? "hidden" : ""}>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="bg-white rounded-lg shadow p-4">
+            <dt className="text-xs font-medium text-gray-500 uppercase">Job Number</dt>
+            <dd className="mt-1 text-lg font-semibold text-gray-900">{cpo.jobNumber}</dd>
+          </div>
+          <div className="bg-white rounded-lg shadow p-4">
+            <dt className="text-xs font-medium text-gray-500 uppercase">Customer</dt>
+            <dd className="mt-1 text-lg font-semibold text-gray-900">{cpo.customerName || "-"}</dd>
+          </div>
+          <div className="bg-white rounded-lg shadow p-4">
+            <dt className="text-xs font-medium text-gray-500 uppercase">PO Number</dt>
+            <dd className="mt-1 text-lg font-semibold text-gray-900">{cpo.poNumber || "-"}</dd>
+          </div>
+          <div className="bg-white rounded-lg shadow p-4">
+            <dt className="text-xs font-medium text-gray-500 uppercase">Overall Fulfilment</dt>
+            <dd className="mt-1">
+              <div className="flex items-center space-x-2">
+                <div className="flex-1 h-3 bg-gray-200 rounded-full overflow-hidden">
+                  <div
+                    className={`h-full rounded-full ${overallPct >= 100 ? "bg-blue-500" : "bg-teal-500"}`}
+                    style={{ width: `${overallPct}%` }}
+                  />
+                </div>
+                <span className="text-sm font-semibold text-gray-700">{overallPct}%</span>
+              </div>
+            </dd>
+          </div>
+        </div>
+
+        {(cpo.jobName ||
+          cpo.siteLocation ||
+          cpo.contactPerson ||
+          cpo.dueDate ||
+          cpo.notes ||
+          cpo.reference) && (
+          <div className="bg-white rounded-lg shadow p-6">
+            <h2 className="text-lg font-medium text-gray-900 mb-4">Details</h2>
+            <dl className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3">
+              {cpo.jobName && (
+                <div>
+                  <dt className="text-sm font-medium text-gray-500">Job Name</dt>
+                  <dd className="text-sm text-gray-900">{cpo.jobName}</dd>
+                </div>
+              )}
+              {cpo.siteLocation && (
+                <div>
+                  <dt className="text-sm font-medium text-gray-500">Site Location</dt>
+                  <dd className="text-sm text-gray-900">{cpo.siteLocation}</dd>
+                </div>
+              )}
+              {cpo.contactPerson && (
+                <div>
+                  <dt className="text-sm font-medium text-gray-500">Contact Person</dt>
+                  <dd className="text-sm text-gray-900">{cpo.contactPerson}</dd>
+                </div>
+              )}
+              {cpo.dueDate && (
+                <div>
+                  <dt className="text-sm font-medium text-gray-500">Due Date</dt>
+                  <dd className="text-sm text-gray-900">{cpo.dueDate}</dd>
+                </div>
+              )}
+              {cpo.reference && (
+                <div>
+                  <dt className="text-sm font-medium text-gray-500">Reference</dt>
+                  <dd className="text-sm text-gray-900">{cpo.reference}</dd>
+                </div>
+              )}
+              {cpo.notes && (
+                <div className="md:col-span-2">
+                  <dt className="text-sm font-medium text-gray-500">Notes</dt>
+                  <dd className="text-sm text-gray-900 whitespace-pre-wrap">{cpo.notes}</dd>
+                </div>
+              )}
+            </dl>
+          </div>
+        )}
+
+        <div className="bg-amber-50 border border-amber-200 rounded-lg shadow p-6">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-lg font-medium text-amber-900">Coating / Lining Specifications</h2>
+            {!isEditingSpecs && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSpecsDraft(cpo.coatingSpecs || "");
+                  setIsEditingSpecs(true);
+                  setSpecsError(null);
+                }}
+                className="text-sm text-amber-700 hover:text-amber-900 underline"
+              >
+                {cpo.coatingSpecs ? "Edit" : "Add Specs"}
+              </button>
+            )}
+          </div>
+          {specsError && <p className="text-sm text-red-600 mb-2">{specsError}</p>}
+          {isEditingSpecs ? (
+            <div className="space-y-3">
+              <textarea
+                value={specsDraft}
+                onChange={(e) => setSpecsDraft(e.target.value)}
+                rows={6}
+                className="w-full border border-amber-300 rounded-md p-3 text-sm focus:ring-amber-500 focus:border-amber-500"
+                placeholder={
+                  "EXT: 1x Epoxy Primer 75\u00b5m DFT\nEXT: 1x Polyurethane Topcoat 125\u00b5m DFT\nINT: R/L 6mm Nitrile"
+                }
+              />
+              <p className="text-xs text-amber-700">
+                Saving will propagate these specs to all linked job cards.
+              </p>
+              <div className="flex space-x-2">
+                <button
+                  type="button"
+                  onClick={handleSaveCoatingSpecs}
+                  disabled={isSavingSpecs}
+                  className="px-4 py-2 text-sm font-medium text-white bg-amber-600 rounded-md hover:bg-amber-700 disabled:opacity-50"
+                >
+                  {isSavingSpecs ? "Saving..." : "Save & Propagate to JCs"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsEditingSpecs(false)}
+                  disabled={isSavingSpecs}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          ) : cpo.coatingSpecs ? (
+            <div className="space-y-1">
+              {cpo.coatingSpecs.split("\n").map((line, idx) => {
+                const isLabelled = /^(EXT|INT)\s*:/i.test(line);
+                const label = isLabelled ? `${line.split(":")[0].trim()}:` : "\u2022";
+                const content = isLabelled ? line.substring(line.indexOf(":") + 1).trim() : line;
+                return (
+                  <div key={idx} className="flex items-start space-x-2">
+                    <span className="text-amber-600 font-mono text-xs mt-0.5">{label}</span>
+                    <span className="text-sm text-gray-900">{content}</span>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="text-sm text-amber-700 italic">
+              No coating specs. Click &ldquo;Add Specs&rdquo; to enter specifications that will be
+              propagated to all linked job cards.
+            </p>
           )}
         </div>
-        {specsError && <p className="text-sm text-red-600 mb-2">{specsError}</p>}
-        {isEditingSpecs ? (
-          <div className="space-y-3">
-            <textarea
-              value={specsDraft}
-              onChange={(e) => setSpecsDraft(e.target.value)}
-              rows={6}
-              className="w-full border border-amber-300 rounded-md p-3 text-sm focus:ring-amber-500 focus:border-amber-500"
-              placeholder={
-                "EXT: 1x Epoxy Primer 75\u00b5m DFT\nEXT: 1x Polyurethane Topcoat 125\u00b5m DFT\nINT: R/L 6mm Nitrile"
-              }
-            />
-            <p className="text-xs text-amber-700">
-              Saving will propagate these specs to all linked job cards.
-            </p>
-            <div className="flex space-x-2">
-              <button
-                type="button"
-                onClick={handleSaveCoatingSpecs}
-                disabled={isSavingSpecs}
-                className="px-4 py-2 text-sm font-medium text-white bg-amber-600 rounded-md hover:bg-amber-700 disabled:opacity-50"
-              >
-                {isSavingSpecs ? "Saving..." : "Save & Propagate to JCs"}
-              </button>
-              <button
-                type="button"
-                onClick={() => setIsEditingSpecs(false)}
-                disabled={isSavingSpecs}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
-              >
-                Cancel
-              </button>
+
+        {overdueRecords.length > 0 && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-start space-x-3">
+            <svg
+              className="h-5 w-5 text-red-500 mt-0.5 flex-shrink-0"
+              fill="currentColor"
+              viewBox="0 0 20 20"
+            >
+              <path
+                fillRule="evenodd"
+                d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                clipRule="evenodd"
+              />
+            </svg>
+            <div>
+              <h3 className="text-sm font-semibold text-red-800">
+                Overdue Invoice{overdueRecords.length > 1 ? "s" : ""}
+              </h3>
+              <p className="text-sm text-red-700 mt-0.5">
+                {overdueRecords.length} call-off{overdueRecords.length > 1 ? "s have" : " has"} been
+                delivered for more than 21 days without an invoice.
+              </p>
             </div>
           </div>
-        ) : cpo.coatingSpecs ? (
-          <div className="space-y-1">
-            {cpo.coatingSpecs.split("\n").map((line, idx) => {
-              const isLabelled = /^(EXT|INT)\s*:/i.test(line);
-              const label = isLabelled ? `${line.split(":")[0].trim()}:` : "\u2022";
-              const content = isLabelled ? line.substring(line.indexOf(":") + 1).trim() : line;
-              return (
-                <div key={idx} className="flex items-start space-x-2">
-                  <span className="text-amber-600 font-mono text-xs mt-0.5">{label}</span>
-                  <span className="text-sm text-gray-900">{content}</span>
-                </div>
-              );
-            })}
-          </div>
-        ) : (
-          <p className="text-sm text-amber-700 italic">
-            No coating specs. Click &ldquo;Add Specs&rdquo; to enter specifications that will be
-            propagated to all linked job cards.
-          </p>
         )}
-      </div>
 
-      {overdueRecords.length > 0 && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-start space-x-3">
-          <svg
-            className="h-5 w-5 text-red-500 mt-0.5 flex-shrink-0"
-            fill="currentColor"
-            viewBox="0 0 20 20"
-          >
-            <path
-              fillRule="evenodd"
-              d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
-              clipRule="evenodd"
-            />
-          </svg>
-          <div>
-            <h3 className="text-sm font-semibold text-red-800">
-              Overdue Invoice{overdueRecords.length > 1 ? "s" : ""}
-            </h3>
-            <p className="text-sm text-red-700 mt-0.5">
-              {overdueRecords.length} call-off{overdueRecords.length > 1 ? "s have" : " has"} been
-              delivered for more than 21 days without an invoice.
-            </p>
-          </div>
-        </div>
-      )}
+        {calloffRecords.length > 0 && (
+          <div className="bg-white rounded-lg shadow overflow-hidden">
+            <div className="px-6 py-4 border-b border-gray-200">
+              <h2 className="text-lg font-medium text-gray-900">Call-Off Tracking</h2>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200 text-sm">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      JC Number
+                    </th>
+                    <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      JT Number
+                    </th>
+                    <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Job Name
+                    </th>
+                    {hasRubberColumn && (
+                      <th className="px-4 py-2.5 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Rubber
+                      </th>
+                    )}
+                    {hasPaintColumn && (
+                      <th className="px-4 py-2.5 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Paint
+                      </th>
+                    )}
+                    {hasSolutionColumn && (
+                      <th className="px-4 py-2.5 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Solution
+                      </th>
+                    )}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {calloffRows.map((row) => {
+                    const renderCell = (record: CpoCalloffRecord | null) => {
+                      if (!record) {
+                        return <span className="text-gray-300">—</span>;
+                      }
+                      const next = nextCalloffStatus(record.status);
+                      const overdue = isCalloffOverdue(record);
+                      const timestamp = [
+                        record.calledOffAt
+                          ? `Called off: ${formatDateZA(record.calledOffAt)}`
+                          : null,
+                        record.deliveredAt
+                          ? `Delivered: ${formatDateZA(record.deliveredAt)}`
+                          : null,
+                        record.invoicedAt ? `Invoiced: ${formatDateZA(record.invoicedAt)}` : null,
+                      ]
+                        .filter(Boolean)
+                        .join("\n");
 
-      {calloffRecords.length > 0 && (
-        <div className="bg-white rounded-lg shadow overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <h2 className="text-lg font-medium text-gray-900">Call-Off Tracking</h2>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200 text-sm">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    JC Number
-                  </th>
-                  <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    JT Number
-                  </th>
-                  <th className="px-4 py-2.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Job Name
-                  </th>
-                  {hasRubberColumn && (
-                    <th className="px-4 py-2.5 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Rubber
-                    </th>
-                  )}
-                  {hasPaintColumn && (
-                    <th className="px-4 py-2.5 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Paint
-                    </th>
-                  )}
-                  {hasSolutionColumn && (
-                    <th className="px-4 py-2.5 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Solution
-                    </th>
-                  )}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {calloffRows.map((row) => {
-                  const renderCell = (record: CpoCalloffRecord | null) => {
-                    if (!record) {
-                      return <span className="text-gray-300">—</span>;
-                    }
-                    const next = nextCalloffStatus(record.status);
-                    const overdue = isCalloffOverdue(record);
-                    const timestamp = [
-                      record.calledOffAt ? `Called off: ${formatDateZA(record.calledOffAt)}` : null,
-                      record.deliveredAt ? `Delivered: ${formatDateZA(record.deliveredAt)}` : null,
-                      record.invoicedAt ? `Invoiced: ${formatDateZA(record.invoicedAt)}` : null,
-                    ]
-                      .filter(Boolean)
-                      .join("\n");
+                      if (!next) {
+                        return (
+                          <div className="flex items-center justify-center gap-1.5">
+                            {overdue && (
+                              <span className="w-2 h-2 rounded-full bg-red-500 flex-shrink-0" />
+                            )}
+                            <span
+                              className={`inline-flex items-center px-2 py-0.5 text-xs font-medium rounded border ${calloffStatusColor(record.status)}`}
+                              title={timestamp}
+                            >
+                              {calloffStatusLabel(record.status)}
+                            </span>
+                          </div>
+                        );
+                      }
 
-                    if (!next) {
                       return (
                         <div className="flex items-center justify-center gap-1.5">
                           {overdue && (
                             <span className="w-2 h-2 rounded-full bg-red-500 flex-shrink-0" />
                           )}
-                          <span
-                            className={`inline-flex items-center px-2 py-0.5 text-xs font-medium rounded border ${calloffStatusColor(record.status)}`}
-                            title={timestamp}
+                          <button
+                            onClick={() => handleCalloffAdvance(record)}
+                            disabled={updatingRecordId === record.id}
+                            className={`inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded border cursor-pointer hover:shadow-sm disabled:opacity-50 transition-shadow ${calloffStatusColor(record.status)}`}
+                            title={`${timestamp ? `${timestamp}\n` : ""}Click to advance to: ${calloffStatusLabel(next)}`}
                           >
-                            {calloffStatusLabel(record.status)}
-                          </span>
-                        </div>
-                      );
-                    }
-
-                    return (
-                      <div className="flex items-center justify-center gap-1.5">
-                        {overdue && (
-                          <span className="w-2 h-2 rounded-full bg-red-500 flex-shrink-0" />
-                        )}
-                        <button
-                          onClick={() => handleCalloffAdvance(record)}
-                          disabled={updatingRecordId === record.id}
-                          className={`inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded border cursor-pointer hover:shadow-sm disabled:opacity-50 transition-shadow ${calloffStatusColor(record.status)}`}
-                          title={`${timestamp ? `${timestamp}\n` : ""}Click to advance to: ${calloffStatusLabel(next)}`}
-                        >
-                          {updatingRecordId === record.id ? (
-                            <svg className="animate-spin h-3 w-3" viewBox="0 0 24 24">
-                              <circle
-                                className="opacity-25"
-                                cx="12"
-                                cy="12"
-                                r="10"
-                                stroke="currentColor"
-                                strokeWidth="4"
-                                fill="none"
-                              />
-                              <path
-                                className="opacity-75"
-                                fill="currentColor"
-                                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
-                              />
-                            </svg>
-                          ) : (
-                            <>
-                              {calloffStatusLabel(record.status)}
-                              <svg
-                                className="w-3 h-3 opacity-60"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                              >
+                            {updatingRecordId === record.id ? (
+                              <svg className="animate-spin h-3 w-3" viewBox="0 0 24 24">
+                                <circle
+                                  className="opacity-25"
+                                  cx="12"
+                                  cy="12"
+                                  r="10"
+                                  stroke="currentColor"
+                                  strokeWidth="4"
+                                  fill="none"
+                                />
                                 <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={2}
-                                  d="M9 5l7 7-7 7"
+                                  className="opacity-75"
+                                  fill="currentColor"
+                                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
                                 />
                               </svg>
-                            </>
-                          )}
-                        </button>
-                      </div>
-                    );
-                  };
-
-                  return (
-                    <tr key={row.key} className={row.hasOverdue ? "bg-red-50" : "hover:bg-gray-50"}>
-                      <td className="px-4 py-2 whitespace-nowrap">
-                        {row.jobCard ? (
-                          <Link
-                            href={`/stock-control/portal/job-cards/${row.jobCard.id}`}
-                            className="font-medium text-teal-700 hover:text-teal-900"
-                          >
-                            {row.jobCard.jobNumber}
-                          </Link>
-                        ) : (
-                          <span className="text-gray-400">Unlinked</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-2 whitespace-nowrap text-gray-600">
-                        {row.jobCard?.jtDnNumber || "—"}
-                      </td>
-                      <td className="px-4 py-2 text-gray-600 max-w-[220px] truncate">
-                        {row.jobCard?.jobName || "—"}
-                      </td>
-                      {hasRubberColumn && (
-                        <td className="px-4 py-2 text-center">{renderCell(row.rubber)}</td>
-                      )}
-                      {hasPaintColumn && (
-                        <td className="px-4 py-2 text-center">{renderCell(row.paint)}</td>
-                      )}
-                      {hasSolutionColumn && (
-                        <td className="px-4 py-2 text-center">{renderCell(row.solution)}</td>
-                      )}
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {deliveryHistory &&
-        deliveryHistory.runningTotals.length > 0 &&
-        deliveryHistory.deliveries.length > 0 && (
-          <div className="bg-white rounded-lg shadow overflow-hidden">
-            <div className="px-6 py-4 border-b border-gray-200">
-              <h2 className="text-lg font-medium text-gray-900">
-                Delivery History ({deliveryHistory.deliveries.length} JT
-                {deliveryHistory.deliveries.length !== 1 ? "s" : ""})
-              </h2>
-            </div>
-            <div
-              ref={deliveryScrollRef}
-              onMouseDown={handleDeliveryDragStart}
-              className="overflow-x-auto scrollbar-hide cursor-grab active:cursor-grabbing"
-            >
-              <table className="min-w-full divide-y divide-gray-200 select-none">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Item
-                    </th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Ordered
-                    </th>
-                    {deliveryHistory.deliveries.map((d) => (
-                      <th
-                        key={d.jobCardId}
-                        className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
-                      >
-                        <Link
-                          href={`/stock-control/portal/job-cards/${d.jobCardId}`}
-                          className="text-teal-600 hover:text-teal-800"
-                        >
-                          {d.jtDnNumber || d.jobNumber}
-                        </Link>
-                        <div className="text-[10px] text-gray-400 font-normal normal-case">
-                          {formatDateZA(d.importedAt)}
-                        </div>
-                      </th>
-                    ))}
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Total Fulfilled
-                    </th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Outstanding
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {deliveryHistory.runningTotals.map((rt, idx) => (
-                    <tr key={idx} className="hover:bg-gray-50">
-                      <td className="px-6 py-3 text-sm text-gray-900">
-                        <span className="font-mono font-medium">{rt.itemCode || "-"}</span>
-                        {rt.description && (
-                          <span className="ml-2 text-gray-500 text-xs truncate max-w-[200px] inline-block align-bottom">
-                            {rt.description}
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-6 py-3 text-sm text-gray-900 text-right font-medium">
-                        {rt.ordered}
-                      </td>
-                      {deliveryHistory.deliveries.map((d) => {
-                        const delivery = rt.deliveries.find((rd) => rd.jobCardId === d.jobCardId);
-                        return (
-                          <td key={d.jobCardId} className="px-4 py-3 text-sm text-right">
-                            {delivery ? (
-                              <span className="font-medium text-teal-700">{delivery.quantity}</span>
                             ) : (
-                              <span className="text-gray-300">-</span>
+                              <>
+                                {calloffStatusLabel(record.status)}
+                                <svg
+                                  className="w-3 h-3 opacity-60"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M9 5l7 7-7 7"
+                                  />
+                                </svg>
+                              </>
                             )}
-                          </td>
-                        );
-                      })}
-                      <td className="px-6 py-3 text-sm text-right font-semibold text-gray-900">
-                        {rt.fulfilled}
-                      </td>
-                      <td className="px-6 py-3 text-sm text-right font-semibold">
-                        <span className={rt.remaining > 0 ? "text-amber-600" : "text-green-600"}>
-                          {rt.remaining}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-                <tfoot className="bg-gray-50">
-                  <tr>
-                    <td className="px-6 py-3 text-sm font-semibold text-gray-900">Total</td>
-                    <td className="px-6 py-3 text-sm text-right font-semibold text-gray-900">
-                      {deliveryHistory.runningTotals.reduce((sum, rt) => sum + rt.ordered, 0)}
-                    </td>
-                    {deliveryHistory.deliveries.map((d) => (
-                      <td
-                        key={d.jobCardId}
-                        className="px-4 py-3 text-sm text-right font-semibold text-teal-700"
+                          </button>
+                        </div>
+                      );
+                    };
+
+                    return (
+                      <tr
+                        key={row.key}
+                        className={row.hasOverdue ? "bg-red-50" : "hover:bg-gray-50"}
                       >
-                        {d.totalQuantity || "-"}
-                      </td>
-                    ))}
-                    <td className="px-6 py-3 text-sm text-right font-semibold text-gray-900">
-                      {deliveryHistory.runningTotals.reduce((sum, rt) => sum + rt.fulfilled, 0)}
-                    </td>
-                    <td className="px-6 py-3 text-sm text-right font-semibold">
-                      {(() => {
-                        const totalRemaining = deliveryHistory.runningTotals.reduce(
-                          (sum, rt) => sum + rt.remaining,
-                          0,
-                        );
-                        return (
-                          <span
-                            className={totalRemaining > 0 ? "text-amber-600" : "text-green-600"}
-                          >
-                            {totalRemaining}
-                          </span>
-                        );
-                      })()}
-                    </td>
-                  </tr>
-                </tfoot>
+                        <td className="px-4 py-2 whitespace-nowrap">
+                          {row.jobCard ? (
+                            <Link
+                              href={`/stock-control/portal/job-cards/${row.jobCard.id}`}
+                              className="font-medium text-teal-700 hover:text-teal-900"
+                            >
+                              {row.jobCard.jobNumber}
+                            </Link>
+                          ) : (
+                            <span className="text-gray-400">Unlinked</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-2 whitespace-nowrap text-gray-600">
+                          {row.jobCard?.jtDnNumber || "—"}
+                        </td>
+                        <td className="px-4 py-2 text-gray-600 max-w-[220px] truncate">
+                          {row.jobCard?.jobName || "—"}
+                        </td>
+                        {hasRubberColumn && (
+                          <td className="px-4 py-2 text-center">{renderCell(row.rubber)}</td>
+                        )}
+                        {hasPaintColumn && (
+                          <td className="px-4 py-2 text-center">{renderCell(row.paint)}</td>
+                        )}
+                        {hasSolutionColumn && (
+                          <td className="px-4 py-2 text-center">{renderCell(row.solution)}</td>
+                        )}
+                      </tr>
+                    );
+                  })}
+                </tbody>
               </table>
             </div>
           </div>
         )}
 
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
-          <h2 className="text-lg font-medium text-gray-900">Line Items ({sortedItems.length})</h2>
-          {cpo.status === "active" && !addingItem && editingItemId === null && (
-            <button
-              onClick={() => {
-                setAddDraft(blankDraft());
-                setAddingItem(true);
-                setItemError(null);
-              }}
-              className="px-3 py-1.5 text-sm font-medium text-white bg-teal-600 rounded-md hover:bg-teal-700"
-            >
-              + Add Line Item
-            </button>
+        {deliveryHistory &&
+          deliveryHistory.runningTotals.length > 0 &&
+          deliveryHistory.deliveries.length > 0 && (
+            <div className="bg-white rounded-lg shadow overflow-hidden">
+              <div className="px-6 py-4 border-b border-gray-200">
+                <h2 className="text-lg font-medium text-gray-900">
+                  Delivery History ({deliveryHistory.deliveries.length} JT
+                  {deliveryHistory.deliveries.length !== 1 ? "s" : ""})
+                </h2>
+              </div>
+              <div
+                ref={deliveryScrollRef}
+                onMouseDown={handleDeliveryDragStart}
+                className="overflow-x-auto scrollbar-hide cursor-grab active:cursor-grabbing"
+              >
+                <table className="min-w-full divide-y divide-gray-200 select-none">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Item
+                      </th>
+                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Ordered
+                      </th>
+                      {deliveryHistory.deliveries.map((d) => (
+                        <th
+                          key={d.jobCardId}
+                          className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
+                        >
+                          <Link
+                            href={`/stock-control/portal/job-cards/${d.jobCardId}`}
+                            className="text-teal-600 hover:text-teal-800"
+                          >
+                            {d.jtDnNumber || d.jobNumber}
+                          </Link>
+                          <div className="text-[10px] text-gray-400 font-normal normal-case">
+                            {formatDateZA(d.importedAt)}
+                          </div>
+                        </th>
+                      ))}
+                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Total Fulfilled
+                      </th>
+                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Outstanding
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {deliveryHistory.runningTotals.map((rt, idx) => (
+                      <tr key={idx} className="hover:bg-gray-50">
+                        <td className="px-6 py-3 text-sm text-gray-900">
+                          <span className="font-mono font-medium">{rt.itemCode || "-"}</span>
+                          {rt.description && (
+                            <span className="ml-2 text-gray-500 text-xs truncate max-w-[200px] inline-block align-bottom">
+                              {rt.description}
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-6 py-3 text-sm text-gray-900 text-right font-medium">
+                          {rt.ordered}
+                        </td>
+                        {deliveryHistory.deliveries.map((d) => {
+                          const delivery = rt.deliveries.find((rd) => rd.jobCardId === d.jobCardId);
+                          return (
+                            <td key={d.jobCardId} className="px-4 py-3 text-sm text-right">
+                              {delivery ? (
+                                <span className="font-medium text-teal-700">
+                                  {delivery.quantity}
+                                </span>
+                              ) : (
+                                <span className="text-gray-300">-</span>
+                              )}
+                            </td>
+                          );
+                        })}
+                        <td className="px-6 py-3 text-sm text-right font-semibold text-gray-900">
+                          {rt.fulfilled}
+                        </td>
+                        <td className="px-6 py-3 text-sm text-right font-semibold">
+                          <span className={rt.remaining > 0 ? "text-amber-600" : "text-green-600"}>
+                            {rt.remaining}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot className="bg-gray-50">
+                    <tr>
+                      <td className="px-6 py-3 text-sm font-semibold text-gray-900">Total</td>
+                      <td className="px-6 py-3 text-sm text-right font-semibold text-gray-900">
+                        {deliveryHistory.runningTotals.reduce((sum, rt) => sum + rt.ordered, 0)}
+                      </td>
+                      {deliveryHistory.deliveries.map((d) => (
+                        <td
+                          key={d.jobCardId}
+                          className="px-4 py-3 text-sm text-right font-semibold text-teal-700"
+                        >
+                          {d.totalQuantity || "-"}
+                        </td>
+                      ))}
+                      <td className="px-6 py-3 text-sm text-right font-semibold text-gray-900">
+                        {deliveryHistory.runningTotals.reduce((sum, rt) => sum + rt.fulfilled, 0)}
+                      </td>
+                      <td className="px-6 py-3 text-sm text-right font-semibold">
+                        {(() => {
+                          const totalRemaining = deliveryHistory.runningTotals.reduce(
+                            (sum, rt) => sum + rt.remaining,
+                            0,
+                          );
+                          return (
+                            <span
+                              className={totalRemaining > 0 ? "text-amber-600" : "text-green-600"}
+                            >
+                              {totalRemaining}
+                            </span>
+                          );
+                        })()}
+                      </td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            </div>
           )}
-        </div>
-        {itemError && (
-          <div className="mx-6 mt-4 p-3 bg-red-50 border border-red-200 rounded text-sm text-red-700">
-            {itemError}
-          </div>
-        )}
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  #
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Item Code
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Description
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  JT No
-                </th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Ordered
-                </th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Fulfilled
-                </th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Remaining
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Progress
-                </th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  m2
-                </th>
-                {cpo.status === "active" && (
-                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Actions
-                  </th>
-                )}
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {sortedItems.length === 0 && !addingItem && (
-                <tr>
-                  <td
-                    colSpan={cpo.status === "active" ? 10 : 9}
-                    className="px-6 py-6 text-center text-sm text-gray-500"
-                  >
-                    No line items
-                  </td>
-                </tr>
-              )}
-              {sortedItems.map((item, idx) => {
-                const ordered = Number(item.quantityOrdered) || 0;
-                const fulfilled = Number(item.quantityFulfilled) || 0;
-                const remaining = Math.max(0, ordered - fulfilled);
-                const pct = itemFulfillmentPercent(ordered, fulfilled);
-                const isEditing = editingItemId === item.id;
 
-                if (isEditing) {
+        <div className="bg-white rounded-lg shadow overflow-hidden">
+          <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+            <h2 className="text-lg font-medium text-gray-900">Line Items ({sortedItems.length})</h2>
+            {cpo.status === "active" && !addingItem && editingItemId === null && (
+              <button
+                onClick={() => {
+                  setAddDraft(blankDraft());
+                  setAddingItem(true);
+                  setItemError(null);
+                }}
+                className="px-3 py-1.5 text-sm font-medium text-white bg-teal-600 rounded-md hover:bg-teal-700"
+              >
+                + Add Line Item
+              </button>
+            )}
+          </div>
+          {itemError && (
+            <div className="mx-6 mt-4 p-3 bg-red-50 border border-red-200 rounded text-sm text-red-700">
+              {itemError}
+            </div>
+          )}
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    #
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Item Code
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Description
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    JT No
+                  </th>
+                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Ordered
+                  </th>
+                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Fulfilled
+                  </th>
+                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Remaining
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Progress
+                  </th>
+                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    m2
+                  </th>
+                  {cpo.status === "active" && (
+                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Actions
+                    </th>
+                  )}
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {sortedItems.length === 0 && !addingItem && (
+                  <tr>
+                    <td
+                      colSpan={cpo.status === "active" ? 10 : 9}
+                      className="px-6 py-6 text-center text-sm text-gray-500"
+                    >
+                      No line items
+                    </td>
+                  </tr>
+                )}
+                {sortedItems.map((item, idx) => {
+                  const ordered = Number(item.quantityOrdered) || 0;
+                  const fulfilled = Number(item.quantityFulfilled) || 0;
+                  const remaining = Math.max(0, ordered - fulfilled);
+                  const pct = itemFulfillmentPercent(ordered, fulfilled);
+                  const isEditing = editingItemId === item.id;
+
+                  if (isEditing) {
+                    return (
+                      <tr key={item.id} className="bg-teal-50">
+                        <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-400">
+                          {idx + 1}
+                        </td>
+                        <td className="px-4 py-2">
+                          <input
+                            type="text"
+                            value={editDraft.itemCode}
+                            onChange={(e) =>
+                              setEditDraft((d) => ({ ...d, itemCode: e.target.value }))
+                            }
+                            placeholder="Item code"
+                            className="w-full text-sm border border-gray-300 rounded px-2 py-1 font-mono"
+                          />
+                        </td>
+                        <td className="px-4 py-2">
+                          <input
+                            type="text"
+                            value={editDraft.itemDescription}
+                            onChange={(e) =>
+                              setEditDraft((d) => ({ ...d, itemDescription: e.target.value }))
+                            }
+                            placeholder="Description"
+                            className="w-full text-sm border border-gray-300 rounded px-2 py-1"
+                          />
+                        </td>
+                        <td className="px-4 py-2">
+                          <input
+                            type="text"
+                            value={editDraft.jtNo}
+                            onChange={(e) => setEditDraft((d) => ({ ...d, jtNo: e.target.value }))}
+                            placeholder="JT No"
+                            className="w-28 text-sm border border-gray-300 rounded px-2 py-1"
+                          />
+                        </td>
+                        <td className="px-4 py-2">
+                          <input
+                            type="number"
+                            value={editDraft.quantityOrdered}
+                            onChange={(e) =>
+                              setEditDraft((d) => ({ ...d, quantityOrdered: e.target.value }))
+                            }
+                            placeholder="0"
+                            min="0"
+                            step="any"
+                            className="w-20 text-sm border border-gray-300 rounded px-2 py-1 text-right"
+                          />
+                        </td>
+                        <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900 text-right">
+                          {fulfilled}
+                        </td>
+                        <td className="px-4 py-2 whitespace-nowrap text-sm text-right">
+                          <span className={remaining > 0 ? "text-amber-600" : "text-green-600"}>
+                            {remaining}
+                          </span>
+                        </td>
+                        <td className="px-4 py-2 whitespace-nowrap">
+                          <div className="flex items-center space-x-2">
+                            <div className="w-16 h-2 bg-gray-200 rounded-full overflow-hidden">
+                              <div
+                                className={`h-full rounded-full ${pct >= 100 ? "bg-blue-500" : "bg-teal-500"}`}
+                                style={{ width: `${pct}%` }}
+                              />
+                            </div>
+                            <span className="text-xs text-gray-500">{pct}%</span>
+                          </div>
+                        </td>
+                        <td className="px-4 py-2">
+                          <input
+                            type="number"
+                            value={editDraft.m2}
+                            onChange={(e) => setEditDraft((d) => ({ ...d, m2: e.target.value }))}
+                            placeholder="m2"
+                            min="0"
+                            step="any"
+                            className="w-20 text-sm border border-gray-300 rounded px-2 py-1 text-right"
+                          />
+                        </td>
+                        <td className="px-4 py-2 whitespace-nowrap text-right">
+                          <div className="flex items-center justify-end gap-2">
+                            <button
+                              onClick={handleSaveEdit}
+                              disabled={updateCpoItemMutation.isPending}
+                              className="px-2 py-1 text-xs font-medium text-white bg-teal-600 rounded hover:bg-teal-700 disabled:opacity-50"
+                            >
+                              Save
+                            </button>
+                            <button
+                              onClick={handleCancelEdit}
+                              className="px-2 py-1 text-xs font-medium text-gray-600 bg-gray-100 rounded hover:bg-gray-200"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </td>
+                        {cpo.status === "active" && (
+                          <td className="px-6 py-3 whitespace-nowrap text-right">
+                            <button
+                              onClick={() => openEditItemModal(item)}
+                              className="text-xs text-teal-600 hover:text-teal-800 font-medium"
+                            >
+                              Edit
+                            </button>
+                          </td>
+                        )}
+                      </tr>
+                    );
+                  }
+
                   return (
-                    <tr key={item.id} className="bg-teal-50">
-                      <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-400">
+                    <tr key={item.id} className="hover:bg-gray-50">
+                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-400">
                         {idx + 1}
                       </td>
-                      <td className="px-4 py-2">
-                        <input
-                          type="text"
-                          value={editDraft.itemCode}
-                          onChange={(e) =>
-                            setEditDraft((d) => ({ ...d, itemCode: e.target.value }))
-                          }
-                          placeholder="Item code"
-                          className="w-full text-sm border border-gray-300 rounded px-2 py-1 font-mono"
-                        />
+                      <td className="px-4 py-3 whitespace-nowrap text-sm font-mono text-gray-900">
+                        {item.itemCode || "-"}
                       </td>
-                      <td className="px-4 py-2">
-                        <input
-                          type="text"
-                          value={editDraft.itemDescription}
-                          onChange={(e) =>
-                            setEditDraft((d) => ({ ...d, itemDescription: e.target.value }))
-                          }
-                          placeholder="Description"
-                          className="w-full text-sm border border-gray-300 rounded px-2 py-1"
-                        />
+                      <td className="px-4 py-3 text-sm text-gray-900 max-w-xs truncate">
+                        {item.itemDescription || "-"}
                       </td>
-                      <td className="px-4 py-2">
-                        <input
-                          type="text"
-                          value={editDraft.jtNo}
-                          onChange={(e) => setEditDraft((d) => ({ ...d, jtNo: e.target.value }))}
-                          placeholder="JT No"
-                          className="w-28 text-sm border border-gray-300 rounded px-2 py-1"
-                        />
+                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
+                        {item.jtNo || "-"}
                       </td>
-                      <td className="px-4 py-2">
-                        <input
-                          type="number"
-                          value={editDraft.quantityOrdered}
-                          onChange={(e) =>
-                            setEditDraft((d) => ({ ...d, quantityOrdered: e.target.value }))
-                          }
-                          placeholder="0"
-                          min="0"
-                          step="any"
-                          className="w-20 text-sm border border-gray-300 rounded px-2 py-1 text-right"
-                        />
+                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 text-right">
+                        {ordered}
                       </td>
-                      <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900 text-right">
+                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 text-right">
                         {fulfilled}
                       </td>
-                      <td className="px-4 py-2 whitespace-nowrap text-sm text-right">
+                      <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-right">
                         <span className={remaining > 0 ? "text-amber-600" : "text-green-600"}>
                           {remaining}
                         </span>
                       </td>
-                      <td className="px-4 py-2 whitespace-nowrap">
+                      <td className="px-4 py-3 whitespace-nowrap">
                         <div className="flex items-center space-x-2">
                           <div className="w-16 h-2 bg-gray-200 rounded-full overflow-hidden">
                             <div
@@ -1155,512 +1280,441 @@ export default function CpoDetailPage() {
                           <span className="text-xs text-gray-500">{pct}%</span>
                         </div>
                       </td>
-                      <td className="px-4 py-2">
-                        <input
-                          type="number"
-                          value={editDraft.m2}
-                          onChange={(e) => setEditDraft((d) => ({ ...d, m2: e.target.value }))}
-                          placeholder="m2"
-                          min="0"
-                          step="any"
-                          className="w-20 text-sm border border-gray-300 rounded px-2 py-1 text-right"
-                        />
-                      </td>
-                      <td className="px-4 py-2 whitespace-nowrap text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          <button
-                            onClick={handleSaveEdit}
-                            disabled={updateCpoItemMutation.isPending}
-                            className="px-2 py-1 text-xs font-medium text-white bg-teal-600 rounded hover:bg-teal-700 disabled:opacity-50"
-                          >
-                            Save
-                          </button>
-                          <button
-                            onClick={handleCancelEdit}
-                            className="px-2 py-1 text-xs font-medium text-gray-600 bg-gray-100 rounded hover:bg-gray-200"
-                          >
-                            Cancel
-                          </button>
-                        </div>
+                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500 text-right">
+                        {item.m2 != null ? Number(item.m2).toFixed(2) : "-"}
                       </td>
                       {cpo.status === "active" && (
-                        <td className="px-6 py-3 whitespace-nowrap text-right">
-                          <button
-                            onClick={() => openEditItemModal(item)}
-                            className="text-xs text-teal-600 hover:text-teal-800 font-medium"
-                          >
-                            Edit
-                          </button>
+                        <td className="px-4 py-3 whitespace-nowrap text-right">
+                          <div className="flex items-center justify-end gap-1">
+                            <button
+                              onClick={() => handleEditItem(item)}
+                              disabled={editingItemId !== null || addingItem}
+                              className="px-2 py-1 text-xs font-medium text-teal-700 bg-teal-50 rounded hover:bg-teal-100 disabled:opacity-40"
+                            >
+                              Edit
+                            </button>
+                            <button
+                              onClick={() => handleDeleteItem(item.id)}
+                              disabled={
+                                deleteCpoItemMutation.isPending ||
+                                editingItemId !== null ||
+                                addingItem
+                              }
+                              className="px-2 py-1 text-xs font-medium text-red-700 bg-red-50 rounded hover:bg-red-100 disabled:opacity-40"
+                            >
+                              Delete
+                            </button>
+                          </div>
                         </td>
                       )}
                     </tr>
                   );
-                }
-
-                return (
-                  <tr key={item.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-400">{idx + 1}</td>
-                    <td className="px-4 py-3 whitespace-nowrap text-sm font-mono text-gray-900">
-                      {item.itemCode || "-"}
+                })}
+                {addingItem && (
+                  <tr className="bg-teal-50">
+                    <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-400">
+                      {sortedItems.length + 1}
                     </td>
-                    <td className="px-4 py-3 text-sm text-gray-900 max-w-xs truncate">
-                      {item.itemDescription || "-"}
+                    <td className="px-4 py-2">
+                      <input
+                        type="text"
+                        value={addDraft.itemCode}
+                        onChange={(e) => setAddDraft((d) => ({ ...d, itemCode: e.target.value }))}
+                        placeholder="Item code"
+                        className="w-full text-sm border border-gray-300 rounded px-2 py-1 font-mono"
+                      />
                     </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
-                      {item.jtNo || "-"}
+                    <td className="px-4 py-2">
+                      <input
+                        type="text"
+                        value={addDraft.itemDescription}
+                        onChange={(e) =>
+                          setAddDraft((d) => ({ ...d, itemDescription: e.target.value }))
+                        }
+                        placeholder="Description"
+                        className="w-full text-sm border border-gray-300 rounded px-2 py-1"
+                      />
                     </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 text-right">
-                      {ordered}
+                    <td className="px-4 py-2">
+                      <input
+                        type="text"
+                        value={addDraft.jtNo}
+                        onChange={(e) => setAddDraft((d) => ({ ...d, jtNo: e.target.value }))}
+                        placeholder="JT No"
+                        className="w-28 text-sm border border-gray-300 rounded px-2 py-1"
+                      />
                     </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 text-right">
-                      {fulfilled}
+                    <td className="px-4 py-2">
+                      <input
+                        type="number"
+                        value={addDraft.quantityOrdered}
+                        onChange={(e) =>
+                          setAddDraft((d) => ({ ...d, quantityOrdered: e.target.value }))
+                        }
+                        placeholder="0"
+                        min="0"
+                        step="any"
+                        className="w-20 text-sm border border-gray-300 rounded px-2 py-1 text-right"
+                      />
                     </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-right">
-                      <span className={remaining > 0 ? "text-amber-600" : "text-green-600"}>
-                        {remaining}
-                      </span>
+                    <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-400 text-right">
+                      0
                     </td>
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      <div className="flex items-center space-x-2">
-                        <div className="w-16 h-2 bg-gray-200 rounded-full overflow-hidden">
-                          <div
-                            className={`h-full rounded-full ${pct >= 100 ? "bg-blue-500" : "bg-teal-500"}`}
-                            style={{ width: `${pct}%` }}
-                          />
-                        </div>
-                        <span className="text-xs text-gray-500">{pct}%</span>
+                    <td className="px-4 py-2 whitespace-nowrap text-sm text-right text-amber-600">
+                      {addDraft.quantityOrdered ? parseFloat(addDraft.quantityOrdered) || 0 : 0}
+                    </td>
+                    <td className="px-4 py-2 whitespace-nowrap">
+                      <span className="text-xs text-gray-400">0%</span>
+                    </td>
+                    <td className="px-4 py-2">
+                      <input
+                        type="number"
+                        value={addDraft.m2}
+                        onChange={(e) => setAddDraft((d) => ({ ...d, m2: e.target.value }))}
+                        placeholder="m2"
+                        min="0"
+                        step="any"
+                        className="w-20 text-sm border border-gray-300 rounded px-2 py-1 text-right"
+                      />
+                    </td>
+                    <td className="px-4 py-2 whitespace-nowrap text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        <button
+                          onClick={handleAddItem}
+                          disabled={addCpoItemMutation.isPending}
+                          className="px-2 py-1 text-xs font-medium text-white bg-teal-600 rounded hover:bg-teal-700 disabled:opacity-50"
+                        >
+                          Add
+                        </button>
+                        <button
+                          onClick={() => {
+                            setAddingItem(false);
+                            setAddDraft(blankDraft());
+                            setItemError(null);
+                          }}
+                          className="px-2 py-1 text-xs font-medium text-gray-600 bg-gray-100 rounded hover:bg-gray-200"
+                        >
+                          Cancel
+                        </button>
                       </div>
                     </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500 text-right">
-                      {item.m2 != null ? Number(item.m2).toFixed(2) : "-"}
-                    </td>
-                    {cpo.status === "active" && (
-                      <td className="px-4 py-3 whitespace-nowrap text-right">
-                        <div className="flex items-center justify-end gap-1">
-                          <button
-                            onClick={() => handleEditItem(item)}
-                            disabled={editingItemId !== null || addingItem}
-                            className="px-2 py-1 text-xs font-medium text-teal-700 bg-teal-50 rounded hover:bg-teal-100 disabled:opacity-40"
-                          >
-                            Edit
-                          </button>
-                          <button
-                            onClick={() => handleDeleteItem(item.id)}
-                            disabled={
-                              deleteCpoItemMutation.isPending ||
-                              editingItemId !== null ||
-                              addingItem
-                            }
-                            className="px-2 py-1 text-xs font-medium text-red-700 bg-red-50 rounded hover:bg-red-100 disabled:opacity-40"
-                          >
-                            Delete
-                          </button>
-                        </div>
-                      </td>
-                    )}
                   </tr>
-                );
-              })}
-              {addingItem && (
-                <tr className="bg-teal-50">
-                  <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-400">
-                    {sortedItems.length + 1}
-                  </td>
-                  <td className="px-4 py-2">
-                    <input
-                      type="text"
-                      value={addDraft.itemCode}
-                      onChange={(e) => setAddDraft((d) => ({ ...d, itemCode: e.target.value }))}
-                      placeholder="Item code"
-                      className="w-full text-sm border border-gray-300 rounded px-2 py-1 font-mono"
-                    />
-                  </td>
-                  <td className="px-4 py-2">
-                    <input
-                      type="text"
-                      value={addDraft.itemDescription}
-                      onChange={(e) =>
-                        setAddDraft((d) => ({ ...d, itemDescription: e.target.value }))
-                      }
-                      placeholder="Description"
-                      className="w-full text-sm border border-gray-300 rounded px-2 py-1"
-                    />
-                  </td>
-                  <td className="px-4 py-2">
-                    <input
-                      type="text"
-                      value={addDraft.jtNo}
-                      onChange={(e) => setAddDraft((d) => ({ ...d, jtNo: e.target.value }))}
-                      placeholder="JT No"
-                      className="w-28 text-sm border border-gray-300 rounded px-2 py-1"
-                    />
-                  </td>
-                  <td className="px-4 py-2">
-                    <input
-                      type="number"
-                      value={addDraft.quantityOrdered}
-                      onChange={(e) =>
-                        setAddDraft((d) => ({ ...d, quantityOrdered: e.target.value }))
-                      }
-                      placeholder="0"
-                      min="0"
-                      step="any"
-                      className="w-20 text-sm border border-gray-300 rounded px-2 py-1 text-right"
-                    />
-                  </td>
-                  <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-400 text-right">
-                    0
-                  </td>
-                  <td className="px-4 py-2 whitespace-nowrap text-sm text-right text-amber-600">
-                    {addDraft.quantityOrdered ? parseFloat(addDraft.quantityOrdered) || 0 : 0}
-                  </td>
-                  <td className="px-4 py-2 whitespace-nowrap">
-                    <span className="text-xs text-gray-400">0%</span>
-                  </td>
-                  <td className="px-4 py-2">
-                    <input
-                      type="number"
-                      value={addDraft.m2}
-                      onChange={(e) => setAddDraft((d) => ({ ...d, m2: e.target.value }))}
-                      placeholder="m2"
-                      min="0"
-                      step="any"
-                      className="w-20 text-sm border border-gray-300 rounded px-2 py-1 text-right"
-                    />
-                  </td>
-                  <td className="px-4 py-2 whitespace-nowrap text-right">
-                    <div className="flex items-center justify-end gap-2">
-                      <button
-                        onClick={handleAddItem}
-                        disabled={addCpoItemMutation.isPending}
-                        className="px-2 py-1 text-xs font-medium text-white bg-teal-600 rounded hover:bg-teal-700 disabled:opacity-50"
-                      >
-                        Add
-                      </button>
-                      <button
-                        onClick={() => {
-                          setAddingItem(false);
-                          setAddDraft(blankDraft());
-                          setItemError(null);
-                        }}
-                        className="px-2 py-1 text-xs font-medium text-gray-600 bg-gray-100 rounded hover:bg-gray-200"
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
-      </div>
 
-      {itemModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4 p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">
-              {editingItem ? "Edit Line Item" : "Add Line Item"}
-            </h3>
-            <div className="space-y-3">
-              <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Item Code</label>
-                <input
-                  type="text"
-                  value={itemForm.itemCode}
-                  onChange={(e) => setItemForm((f) => ({ ...f, itemCode: e.target.value }))}
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Description</label>
-                <input
-                  type="text"
-                  value={itemForm.itemDescription}
-                  onChange={(e) => setItemForm((f) => ({ ...f, itemDescription: e.target.value }))}
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
+        {itemModalOpen && (
+          <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4 p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                {editingItem ? "Edit Line Item" : "Add Line Item"}
+              </h3>
+              <div className="space-y-3">
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Item No</label>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Item Code</label>
                   <input
                     type="text"
-                    value={itemForm.itemNo}
-                    onChange={(e) => setItemForm((f) => ({ ...f, itemNo: e.target.value }))}
+                    value={itemForm.itemCode}
+                    onChange={(e) => setItemForm((f) => ({ ...f, itemCode: e.target.value }))}
                     className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
                   />
                 </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">JT No</label>
-                  <input
-                    type="text"
-                    value={itemForm.jtNo}
-                    onChange={(e) => setItemForm((f) => ({ ...f, jtNo: e.target.value }))}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-1">
-                    Quantity Ordered <span className="text-red-500">*</span>
+                    Description
                   </label>
                   <input
-                    type="number"
-                    min="0"
-                    step="any"
-                    value={itemForm.quantityOrdered}
+                    type="text"
+                    value={itemForm.itemDescription}
                     onChange={(e) =>
-                      setItemForm((f) => ({ ...f, quantityOrdered: e.target.value }))
+                      setItemForm((f) => ({ ...f, itemDescription: e.target.value }))
                     }
                     className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
                   />
                 </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">m2</label>
-                  <input
-                    type="number"
-                    min="0"
-                    step="any"
-                    value={itemForm.m2}
-                    onChange={(e) => setItemForm((f) => ({ ...f, m2: e.target.value }))}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
-                  />
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Item No</label>
+                    <input
+                      type="text"
+                      value={itemForm.itemNo}
+                      onChange={(e) => setItemForm((f) => ({ ...f, itemNo: e.target.value }))}
+                      className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">JT No</label>
+                    <input
+                      type="text"
+                      value={itemForm.jtNo}
+                      onChange={(e) => setItemForm((f) => ({ ...f, jtNo: e.target.value }))}
+                      className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+                    />
+                  </div>
                 </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                      Quantity Ordered <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="any"
+                      value={itemForm.quantityOrdered}
+                      onChange={(e) =>
+                        setItemForm((f) => ({ ...f, quantityOrdered: e.target.value }))
+                      }
+                      className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">m2</label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="any"
+                      value={itemForm.m2}
+                      onChange={(e) => setItemForm((f) => ({ ...f, m2: e.target.value }))}
+                      className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+                    />
+                  </div>
+                </div>
+                {itemFormError && <p className="text-sm text-red-600">{itemFormError}</p>}
               </div>
-              {itemFormError && <p className="text-sm text-red-600">{itemFormError}</p>}
-            </div>
-            <div className="mt-5 flex justify-end gap-3">
-              <button
-                onClick={() => setItemModalOpen(false)}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleItemFormSubmit}
-                disabled={addCpoItemMutation.isPending || updateCpoItemMutation.isPending}
-                className="px-4 py-2 text-sm font-medium text-white bg-teal-600 rounded-md hover:bg-teal-700 disabled:opacity-50"
-              >
-                {addCpoItemMutation.isPending || updateCpoItemMutation.isPending
-                  ? "Saving..."
-                  : editingItem
-                    ? "Save Changes"
-                    : "Add Item"}
-              </button>
+              <div className="mt-5 flex justify-end gap-3">
+                <button
+                  onClick={() => setItemModalOpen(false)}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleItemFormSubmit}
+                  disabled={addCpoItemMutation.isPending || updateCpoItemMutation.isPending}
+                  className="px-4 py-2 text-sm font-medium text-white bg-teal-600 rounded-md hover:bg-teal-700 disabled:opacity-50"
+                >
+                  {addCpoItemMutation.isPending || updateCpoItemMutation.isPending
+                    ? "Saving..."
+                    : editingItem
+                      ? "Save Changes"
+                      : "Add Item"}
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {cpo.previousVersions && cpo.previousVersions.length > 0 && (
-        <div className="bg-white rounded-lg shadow overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <h2 className="text-lg font-medium text-gray-900">
-              Previous Versions ({cpo.previousVersions.length})
-            </h2>
-          </div>
-          <div className="divide-y divide-gray-200">
-            {[...cpo.previousVersions].reverse().map((version, idx) => (
-              <div key={idx} className="px-6 py-4">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-semibold text-gray-900">
-                    Version {version.versionNumber}
-                  </span>
-                  <span className="text-xs text-gray-500">
-                    Archived {formatDateZA(version.archivedAt)}
-                  </span>
-                </div>
-                <div className="text-xs text-gray-500 mb-2">
-                  {version.totalItems} item{version.totalItems !== 1 ? "s" : ""}, total qty:{" "}
-                  {version.totalQuantity}
-                  {version.customerName ? ` | ${version.customerName}` : ""}
-                  {version.poNumber ? ` | PO: ${version.poNumber}` : ""}
-                </div>
-                {version.items.length > 0 && (
-                  <table className="w-full text-xs">
-                    <thead>
-                      <tr className="text-gray-500">
-                        <th className="text-left py-1 font-medium">Item Code</th>
-                        <th className="text-left py-1 font-medium">Description</th>
-                        <th className="text-right py-1 font-medium">Ordered</th>
-                        <th className="text-right py-1 font-medium">Fulfilled</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {version.items.map((item, itemIdx) => (
-                        <tr key={itemIdx} className="text-gray-600">
-                          <td className="py-0.5 font-mono">{item.itemCode || "-"}</td>
-                          <td className="py-0.5 max-w-xs truncate">
-                            {item.itemDescription || "-"}
-                          </td>
-                          <td className="py-0.5 text-right">{item.quantityOrdered}</td>
-                          <td className="py-0.5 text-right">{item.quantityFulfilled}</td>
+        {cpo.previousVersions && cpo.previousVersions.length > 0 && (
+          <div className="bg-white rounded-lg shadow overflow-hidden">
+            <div className="px-6 py-4 border-b border-gray-200">
+              <h2 className="text-lg font-medium text-gray-900">
+                Previous Versions ({cpo.previousVersions.length})
+              </h2>
+            </div>
+            <div className="divide-y divide-gray-200">
+              {[...cpo.previousVersions].reverse().map((version, idx) => (
+                <div key={idx} className="px-6 py-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-semibold text-gray-900">
+                      Version {version.versionNumber}
+                    </span>
+                    <span className="text-xs text-gray-500">
+                      Archived {formatDateZA(version.archivedAt)}
+                    </span>
+                  </div>
+                  <div className="text-xs text-gray-500 mb-2">
+                    {version.totalItems} item{version.totalItems !== 1 ? "s" : ""}, total qty:{" "}
+                    {version.totalQuantity}
+                    {version.customerName ? ` | ${version.customerName}` : ""}
+                    {version.poNumber ? ` | PO: ${version.poNumber}` : ""}
+                  </div>
+                  {version.items.length > 0 && (
+                    <table className="w-full text-xs">
+                      <thead>
+                        <tr className="text-gray-500">
+                          <th className="text-left py-1 font-medium">Item Code</th>
+                          <th className="text-left py-1 font-medium">Description</th>
+                          <th className="text-right py-1 font-medium">Ordered</th>
+                          <th className="text-right py-1 font-medium">Fulfilled</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {sageError && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-          <div className="flex items-start gap-3">
-            <svg
-              className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-              />
-            </svg>
-            <div>
-              <h3 className="text-sm font-medium text-red-800">Import Error</h3>
-              <p className="text-sm text-red-700 mt-1">{sageError}</p>
-            </div>
-            <button
-              onClick={() => setSageError(null)}
-              className="ml-auto text-red-400 hover:text-red-600"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M6 18L18 6M6 6l12 12"
-                />
-              </svg>
-            </button>
-          </div>
-        </div>
-      )}
-
-      {sageImportResult && (
-        <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-          <div className="flex items-start gap-3">
-            <svg
-              className="w-5 h-5 text-green-400 flex-shrink-0 mt-0.5"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-              />
-            </svg>
-            <div className="flex-1">
-              <h3 className="text-sm font-medium text-green-800">
-                Sage JC Dump Imported Successfully
-              </h3>
-              {sageImportResult.totalCreated > 0 && (
-                <div className="mt-2 space-y-1">
-                  <p className="text-sm text-green-700">
-                    Created {sageImportResult.totalCreated} job card
-                    {sageImportResult.totalCreated === 1 ? "" : "s"}:
-                  </p>
-                  <ul className="text-sm text-green-700 ml-4 list-disc">
-                    {sageImportResult.createdJobCards.map((jc) => (
-                      <li key={jc.id}>
-                        <Link
-                          href={`/stock-control/portal/job-cards/${jc.id}`}
-                          className="text-green-800 underline hover:text-green-900"
-                        >
-                          {jc.jtNumber}
-                        </Link>{" "}
-                        ({jc.itemCount} item{jc.itemCount === 1 ? "" : "s"})
-                      </li>
-                    ))}
-                  </ul>
+                      </thead>
+                      <tbody>
+                        {version.items.map((item, itemIdx) => (
+                          <tr key={itemIdx} className="text-gray-600">
+                            <td className="py-0.5 font-mono">{item.itemCode || "-"}</td>
+                            <td className="py-0.5 max-w-xs truncate">
+                              {item.itemDescription || "-"}
+                            </td>
+                            <td className="py-0.5 text-right">{item.quantityOrdered}</td>
+                            <td className="py-0.5 text-right">{item.quantityFulfilled}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
                 </div>
-              )}
-              {sageImportResult.skippedJtNumbers.length > 0 && (
-                <p className="text-sm text-green-600 mt-2">
-                  Skipped {sageImportResult.skippedJtNumbers.length} already-imported JT
-                  {sageImportResult.skippedJtNumbers.length === 1 ? "" : "s"}:{" "}
-                  {sageImportResult.skippedJtNumbers.join(", ")}
-                </p>
-              )}
-              {sageImportResult.totalCreated === 0 &&
-                sageImportResult.skippedJtNumbers.length === 0 && (
-                  <p className="text-sm text-green-700 mt-1">
-                    No new job cards to create from this dump.
-                  </p>
-                )}
+              ))}
             </div>
-            <button
-              onClick={() => setSageImportResult(null)}
-              className="ml-auto text-green-400 hover:text-green-600"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          </div>
+        )}
+
+        {sageError && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+            <div className="flex items-start gap-3">
+              <svg
+                className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
                   strokeWidth={2}
-                  d="M6 18L18 6M6 6l12 12"
+                  d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
                 />
               </svg>
-            </button>
-          </div>
-        </div>
-      )}
-
-      {sageParseResult && !showAllocationModal && !sageImportResult && (
-        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-          <h3 className="text-sm font-medium text-amber-800 mb-2">Sage JC Dump Parsed</h3>
-          <div className="text-sm text-amber-700 space-y-1">
-            <p>
-              New JT groups: {Object.keys(sageParseResult.jtGroups).length} (
-              {Object.keys(sageParseResult.jtGroups).join(", ") || "none"})
-            </p>
-            {sageParseResult.skippedJtNumbers.length > 0 && (
-              <p>Skipped (already imported): {sageParseResult.skippedJtNumbers.join(", ")}</p>
-            )}
-            <p>Undelivered items: {sageParseResult.undeliveredItems.length}</p>
-            {sageParseResult.asteriskItems.length > 0 && (
-              <p>Items needing allocation: {sageParseResult.asteriskItems.length}</p>
-            )}
-          </div>
-          {sageConfirming && (
-            <div className="mt-3 flex items-center gap-2 text-sm text-amber-800">
-              <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
-                <circle
-                  className="opacity-25"
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  stroke="currentColor"
-                  strokeWidth="4"
-                  fill="none"
-                />
-                <path
-                  className="opacity-75"
-                  fill="currentColor"
-                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
-                />
-              </svg>
-              Creating job cards...
+              <div>
+                <h3 className="text-sm font-medium text-red-800">Import Error</h3>
+                <p className="text-sm text-red-700 mt-1">{sageError}</p>
+              </div>
+              <button
+                onClick={() => setSageError(null)}
+                className="ml-auto text-red-400 hover:text-red-600"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </button>
             </div>
-          )}
-        </div>
-      )}
+          </div>
+        )}
 
-      <div className="text-xs text-gray-400">
-        Created {formatDateZA(cpo.createdAt)}
-        {cpo.createdBy && ` by ${cpo.createdBy}`}
-        {cpo.sourceFileName && ` from ${cpo.sourceFileName}`}
+        {sageImportResult && (
+          <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+            <div className="flex items-start gap-3">
+              <svg
+                className="w-5 h-5 text-green-400 flex-shrink-0 mt-0.5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
+              </svg>
+              <div className="flex-1">
+                <h3 className="text-sm font-medium text-green-800">
+                  Sage JC Dump Imported Successfully
+                </h3>
+                {sageImportResult.totalCreated > 0 && (
+                  <div className="mt-2 space-y-1">
+                    <p className="text-sm text-green-700">
+                      Created {sageImportResult.totalCreated} job card
+                      {sageImportResult.totalCreated === 1 ? "" : "s"}:
+                    </p>
+                    <ul className="text-sm text-green-700 ml-4 list-disc">
+                      {sageImportResult.createdJobCards.map((jc) => (
+                        <li key={jc.id}>
+                          <Link
+                            href={`/stock-control/portal/job-cards/${jc.id}`}
+                            className="text-green-800 underline hover:text-green-900"
+                          >
+                            {jc.jtNumber}
+                          </Link>{" "}
+                          ({jc.itemCount} item{jc.itemCount === 1 ? "" : "s"})
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                {sageImportResult.skippedJtNumbers.length > 0 && (
+                  <p className="text-sm text-green-600 mt-2">
+                    Skipped {sageImportResult.skippedJtNumbers.length} already-imported JT
+                    {sageImportResult.skippedJtNumbers.length === 1 ? "" : "s"}:{" "}
+                    {sageImportResult.skippedJtNumbers.join(", ")}
+                  </p>
+                )}
+                {sageImportResult.totalCreated === 0 &&
+                  sageImportResult.skippedJtNumbers.length === 0 && (
+                    <p className="text-sm text-green-700 mt-1">
+                      No new job cards to create from this dump.
+                    </p>
+                  )}
+              </div>
+              <button
+                onClick={() => setSageImportResult(null)}
+                className="ml-auto text-green-400 hover:text-green-600"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </button>
+            </div>
+          </div>
+        )}
+
+        {sageParseResult && !showAllocationModal && !sageImportResult && (
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+            <h3 className="text-sm font-medium text-amber-800 mb-2">Sage JC Dump Parsed</h3>
+            <div className="text-sm text-amber-700 space-y-1">
+              <p>
+                New JT groups: {Object.keys(sageParseResult.jtGroups).length} (
+                {Object.keys(sageParseResult.jtGroups).join(", ") || "none"})
+              </p>
+              {sageParseResult.skippedJtNumbers.length > 0 && (
+                <p>Skipped (already imported): {sageParseResult.skippedJtNumbers.join(", ")}</p>
+              )}
+              <p>Undelivered items: {sageParseResult.undeliveredItems.length}</p>
+              {sageParseResult.asteriskItems.length > 0 && (
+                <p>Items needing allocation: {sageParseResult.asteriskItems.length}</p>
+              )}
+            </div>
+            {sageConfirming && (
+              <div className="mt-3 flex items-center gap-2 text-sm text-amber-800">
+                <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                    fill="none"
+                  />
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                  />
+                </svg>
+                Creating job cards...
+              </div>
+            )}
+          </div>
+        )}
+
+        <div className="text-xs text-gray-400">
+          Created {formatDateZA(cpo.createdAt)}
+          {cpo.createdBy && ` by ${cpo.createdBy}`}
+          {cpo.sourceFileName && ` from ${cpo.sourceFileName}`}
+        </div>
       </div>
 
       {sageParseResult && (
