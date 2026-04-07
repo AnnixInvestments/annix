@@ -358,7 +358,7 @@ export class IssuanceService {
         quantity: dto.quantity,
         referenceType: ReferenceType.ISSUANCE,
         referenceId: savedIssuance.id,
-        notes: `Issued to ${recipient.name} by ${issuer.name}${jobCard ? ` for job ${jobCard.jobNumber}` : ""}`,
+        notes: `${recipient.name}${jobCard ? ` — job ${jobCard.jobNumber}` : ""}`,
         createdBy: user.name,
       });
 
@@ -604,7 +604,7 @@ export class IssuanceService {
           quantity: item.quantity,
           referenceType: ReferenceType.ISSUANCE,
           referenceId: savedIssuance.id,
-          notes: `Issued to ${recipient.name} by ${issuer.name}${jobCard ? ` for job ${jobCard.jobNumber}` : ""}`,
+          notes: `${recipient.name}${jobCard ? ` — job ${jobCard.jobNumber}` : ""}`,
           createdBy: user.name,
         });
 
