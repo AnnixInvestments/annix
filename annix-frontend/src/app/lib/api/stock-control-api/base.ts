@@ -132,7 +132,15 @@ export class StockControlApiClient {
       return {} as T;
     }
 
-    return JSON.parse(text) as T;
+    try {
+      return JSON.parse(text) as T;
+    } catch {
+      const contentType = response.headers.get("content-type") || "";
+      if (!contentType.includes("application/json")) {
+        throw new Error("Server returned an unexpected response. Please try again.");
+      }
+      throw new Error("Failed to parse server response. Please try again.");
+    }
   }
 
   async requestBlob(endpoint: string, options: RequestInit = {}): Promise<Blob> {
