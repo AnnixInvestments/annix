@@ -170,6 +170,13 @@ export class InventoryController {
     );
   }
 
+  @StockControlRoles("manager", "admin")
+  @Post("auto-categorize")
+  @ApiOperation({ summary: "Auto-categorize uncategorized stock items using AI" })
+  async autoCategorize(@Req() req: any) {
+    return this.inventoryService.autoCategorize(req.user.companyId);
+  }
+
   @StockControlRoles("admin")
   @Post("backfill-rubber")
   @ApiOperation({ summary: "Backfill stock items with rubber roll data from AU Rubber" })

@@ -125,7 +125,7 @@ export class GasketWeightService {
 
     const flangeDimension = await query.getOne();
 
-    if (!flangeDimension || !flangeDimension.bolt) {
+    if (!flangeDimension?.bolt) {
       return null;
     }
 

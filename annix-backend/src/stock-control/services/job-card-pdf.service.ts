@@ -400,7 +400,7 @@ export class JobCardPdfService {
     coatingSpecs: string | null,
     startY: number,
   ): number {
-    if (!coatingSpecs || !coatingSpecs.trim()) return startY;
+    if (!coatingSpecs?.trim()) return startY;
 
     const lines = coatingSpecs.split("\n").filter((line) => line.trim());
     if (lines.length === 0) return startY;
@@ -438,7 +438,7 @@ export class JobCardPdfService {
     company: StockControlCompany | null = null,
     totalPipeQty: number = 0,
   ): number {
-    if (!coatingAnalysis || !coatingAnalysis.coats || coatingAnalysis.coats.length === 0) {
+    if (!coatingAnalysis?.coats || coatingAnalysis.coats.length === 0) {
       return startY;
     }
 

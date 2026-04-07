@@ -1342,7 +1342,7 @@ export class JobCardImportService {
       where: { id: deliveryJobCardId, companyId },
     });
 
-    if (!deliveryJc || !deliveryJc.cpoId) {
+    if (!deliveryJc?.cpoId) {
       return;
     }
 

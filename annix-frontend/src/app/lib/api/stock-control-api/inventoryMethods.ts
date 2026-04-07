@@ -89,6 +89,11 @@ declare module "./base" {
       isStockTake?: boolean,
       stockTakeDate?: string | null,
     ): Promise<ReviewedImportResult>;
+    autoCategorize(): Promise<{
+      categorized: number;
+      total: number;
+      categories: Record<string, number>;
+    }>;
   }
 }
 
@@ -207,5 +212,11 @@ proto.confirmReviewedImport = async function (rows, isStockTake = false, stockTa
   return this.request("/stock-control/import/confirm-reviewed", {
     method: "POST",
     body: JSON.stringify({ rows, isStockTake, stockTakeDate }),
+  });
+};
+
+proto.autoCategorize = async function () {
+  return this.request("/stock-control/inventory/auto-categorize", {
+    method: "POST",
   });
 };

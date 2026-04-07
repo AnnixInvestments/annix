@@ -1,6 +1,7 @@
 import { forwardRef, Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { DataSource, In, Repository } from "typeorm";
+import { DataSource, In, IsNull, Repository } from "typeorm";
+import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
 import { IStorageService, STORAGE_SERVICE } from "../../storage/storage.interface";
 import { StockItem } from "../entities/stock-item.entity";
 import { RequisitionService } from "./requisition.service";
@@ -17,6 +18,7 @@ export class InventoryService {
     @Inject(forwardRef(() => RequisitionService))
     private readonly requisitionService: RequisitionService,
     private readonly dataSource: DataSource,
+    private readonly aiChatService: AiChatService,
   ) {}
 
   async create(companyId: number, data: Partial<StockItem>): Promise<StockItem> {
@@ -457,5 +459,102 @@ export class InventoryService {
       updated,
       details,
     };
+  }
+
+  async autoCategorize(companyId: number): Promise<{
+    categorized: number;
+    total: number;
+    categories: Record<string, number>;
+  }> {
+    const available = await this.aiChatService.isAvailable();
+    if (!available) {
+      throw new Error("AI service is not available for categorization");
+    }
+
+    const uncategorized = await this.stockItemRepo.find({
+      where: { companyId, category: IsNull() },
+      select: ["id", "name", "sku"],
+      order: { name: "ASC" },
+    });
+
+    if (uncategorized.length === 0) {
+      return { categorized: 0, total: 0, categories: {} };
+    }
+
+    const existingCategories = await this.categories(companyId);
+
+    const BATCH_SIZE = 50;
+    const categoryCounts: Record<string, number> = {};
+    let categorized = 0;
+
+    for (let i = 0; i < uncategorized.length; i += BATCH_SIZE) {
+      const batch = uncategorized.slice(i, i + BATCH_SIZE);
+      const itemNames = batch.map((item) => `${item.id}:${item.name}`);
+
+      const systemPrompt = [
+        "You are a stock inventory categorization assistant for an industrial rubber lining and coating company.",
+        "Analyze item names and assign each to a category.",
+        existingCategories.length > 0
+          ? `Prefer using existing categories: ${existingCategories.join(", ")}.`
+          : "Create sensible general categories (e.g., Rollers, Grinding Discs, Brushes, Rubber Sheets, Adhesives, Solvents, PPE, Tools, Paint, Hardware, Consumables).",
+        "For items that don't fit existing categories, suggest a new appropriate category name.",
+        "Keep category names short (1-2 words), capitalised, and consistent.",
+        "Return a JSON object mapping each item ID (the number before the colon) to its category.",
+        "Respond with JSON only, no markdown fences.",
+      ].join(" ");
+
+      const userMessage = `Categorize these inventory items (format is id:name): ${JSON.stringify(itemNames)}`;
+
+      try {
+        const { content } = await this.aiChatService.chat(
+          [{ role: "user", content: userMessage }],
+          systemPrompt,
+        );
+
+        const cleaned = content
+          .replace(/```json\s*/g, "")
+          .replace(/```\s*/g, "")
+          .trim();
+        const parsed = JSON.parse(cleaned) as Record<string, string>;
+
+        const updates = Object.entries(parsed)
+          .filter(([, category]) => typeof category === "string" && category.trim().length > 0)
+          .map(([idStr, category]) => ({
+            id: Number(idStr),
+            category: category.trim(),
+          }))
+          .filter((u) => !Number.isNaN(u.id));
+
+        for (const update of updates) {
+          await this.stockItemRepo.update(
+            { id: update.id, companyId },
+            { category: update.category },
+          );
+          const count = categoryCounts[update.category] || 0;
+          categoryCounts[update.category] = count + 1;
+          categorized++;
+        }
+
+        if (i + BATCH_SIZE < uncategorized.length) {
+          existingCategories.push(
+            ...Object.values(parsed).filter(
+              (c) =>
+                typeof c === "string" &&
+                c.trim().length > 0 &&
+                !existingCategories.includes(c.trim()),
+            ),
+          );
+        }
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "Unknown error";
+        this.logger.error(`AI category inference failed for batch starting at ${i}: ${message}`);
+      }
+    }
+
+    this.logger.log(
+      `Auto-categorize complete: ${categorized}/${uncategorized.length} items categorized`,
+    );
+
+    return { categorized, total: uncategorized.length, categories: categoryCounts };
   }
 }

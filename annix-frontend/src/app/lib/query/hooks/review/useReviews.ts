@@ -122,4 +122,4 @@ export function useReviewAction() {
   });
 }
 
-export type { ReviewWorkflow, PaginatedReviewResult };
+export type { PaginatedReviewResult, ReviewWorkflow };

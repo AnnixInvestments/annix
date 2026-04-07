@@ -72,6 +72,8 @@ export default function InventoryPage() {
     handleDrop,
     handleConfirmImport,
     dismissImport,
+    handleAutoCategorize,
+    toggleListGroupByCategory,
   } = inv;
 
   if (isLoading && items.length === 0 && groupedData.length === 0) {
@@ -155,6 +157,8 @@ export default function InventoryPage() {
         cardSortField={state.cardSortField}
         cardSortDirection={state.cardSortDirection}
         lowStockOnly={state.lowStockOnly}
+        listGroupByCategory={state.listGroupByCategory}
+        isAutoCategorizing={state.isAutoCategorizing}
         onSearch={handleSearch}
         onCategoryChange={handleCategoryChange}
         onChangeViewMode={changeViewMode}
@@ -164,6 +168,8 @@ export default function InventoryPage() {
           updateState({ cardSortField: field, cardSortDirection: direction })
         }
         onToggleLowStockOnly={() => updateState({ lowStockOnly: !state.lowStockOnly })}
+        onToggleListGroupByCategory={toggleListGroupByCategory}
+        onAutoCategorize={handleAutoCategorize}
       />
 
       <InventoryPendingChanges
@@ -237,6 +243,7 @@ export default function InventoryPage() {
           pendingMinLevels={state.pendingMinLevels}
           pendingPrices={state.pendingPrices}
           pendingLocations={state.pendingLocations}
+          groupByCategory={state.listGroupByCategory}
           onToggleSelectAll={toggleSelectAll}
           onToggleSelectItem={toggleSelectItem}
           onEditItem={openEditModal}

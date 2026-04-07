@@ -18,7 +18,7 @@ export class IsFutureDateConstraint implements ValidatorConstraintInterface {
           ? DateTime.fromJSDate(value)
           : null;
 
-    if (!date || !date.isValid) return false;
+    if (!date?.isValid) return false;
 
     return date > DateTime.now().startOf("day");
   }
@@ -52,7 +52,7 @@ export class IsFutureOrTodayDateConstraint implements ValidatorConstraintInterfa
           ? DateTime.fromJSDate(value)
           : null;
 
-    if (!date || !date.isValid) return false;
+    if (!date?.isValid) return false;
 
     return date >= DateTime.now().startOf("day");
   }
@@ -86,7 +86,7 @@ export class IsPastDateConstraint implements ValidatorConstraintInterface {
           ? DateTime.fromJSDate(value)
           : null;
 
-    if (!date || !date.isValid) return false;
+    if (!date?.isValid) return false;
 
     return date < DateTime.now().startOf("day");
   }

@@ -775,4 +775,4 @@ export async function fetchEnvironmentalData(
 }
 
 // Re-export marine types for consumers
-export type { AirSaltContentResult, TimeOfWetnessResult, FloodRiskLevel, MarineEnvironmentalData };
+export type { AirSaltContentResult, FloodRiskLevel, MarineEnvironmentalData, TimeOfWetnessResult };

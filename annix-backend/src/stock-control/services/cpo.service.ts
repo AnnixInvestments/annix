@@ -585,7 +585,7 @@ export class CpoService {
       where: { id: jobCardId, companyId },
     });
 
-    if (!jobCard || !jobCard.cpoId) {
+    if (!jobCard?.cpoId) {
       return [];
     }
 

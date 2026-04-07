@@ -106,7 +106,7 @@ function SetupGate({ children }: { children: React.ReactNode }) {
   const isExcludedPage = isAuthPage || isSettingsPage || isOAuthCallback;
 
   const isLoading = authLoading || (isAuthenticated && profileLoading);
-  const needsSetup = isSuccess && (!profileStatus || !profileStatus.setupCompleted);
+  const needsSetup = isSuccess && !profileStatus?.setupCompleted;
 
   useEffect(() => {
     if (authLoading) {

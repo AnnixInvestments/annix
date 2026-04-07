@@ -346,7 +346,7 @@ export class QcpApprovalService {
     const plan = await this.planRepo.findOne({
       where: { id: token.controlPlanId, companyId: token.companyId },
     });
-    if (!plan || !plan.customerName) {
+    if (!plan?.customerName) {
       throw new BadRequestException("Cannot save preferences without a customer name");
     }
 

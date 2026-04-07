@@ -36,7 +36,7 @@ const APPLE_CONFIG = {
 
 function oauthAuthUrl(configKey: string, state: string): string | null {
   const config = OAUTH_CONFIGS[configKey];
-  if (!config || !config.clientId) {
+  if (!config?.clientId) {
     return null;
   }
 

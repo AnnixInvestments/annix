@@ -461,5 +461,5 @@ export const InventoryCardView = memo(function InventoryCardView(props: Inventor
   );
 });
 
-export { stockLevelStatus, stockLevelColor, stockLevelLabel, AMBER_THRESHOLD_PCT };
-export type { SortField, SortDirection, GroupByOption, StockLevelStatus, ThumbnailSize };
+export type { GroupByOption, SortDirection, SortField, StockLevelStatus, ThumbnailSize };
+export { AMBER_THRESHOLD_PCT, stockLevelColor, stockLevelLabel, stockLevelStatus };

@@ -5,7 +5,7 @@ import {
 } from "@annix/product-data/pipe";
 
 export type { ReducerSizeCombination } from "@annix/product-data/pipe";
-export { SABS719_REDUCER_COMBINATIONS, SABS62_REDUCER_COMBINATIONS, ASTM_REDUCER_COMBINATIONS };
+export { ASTM_REDUCER_COMBINATIONS, SABS62_REDUCER_COMBINATIONS, SABS719_REDUCER_COMBINATIONS };
 
 export const validSmallNbForLargeNb = (
   largeNbMm: number,

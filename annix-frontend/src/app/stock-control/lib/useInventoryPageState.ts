@@ -129,6 +129,8 @@ interface InventoryPageState {
   isSavingPrices: boolean;
   isSavingLocations: boolean;
   expandedGroups: Map<number | null, boolean>;
+  listGroupByCategory: boolean;
+  isAutoCategorizing: boolean;
 }
 
 const INITIAL_STATE: InventoryPageState = {
@@ -174,6 +176,8 @@ const INITIAL_STATE: InventoryPageState = {
   isSavingPrices: false,
   isSavingLocations: false,
   expandedGroups: new Map(),
+  listGroupByCategory: false,
+  isAutoCategorizing: false,
 };
 
 export function useInventoryPageState(pdfPreview?: ReturnType<typeof usePdfPreview>) {
@@ -879,6 +883,23 @@ export function useInventoryPageState(pdfPreview?: ReturnType<typeof usePdfPrevi
     invalidateInventory();
   }, [updateState, invalidateInventory]);
 
+  const handleAutoCategorize = useCallback(async () => {
+    updateState({ isAutoCategorizing: true });
+    try {
+      const result = await stockControlApiClient.autoCategorize();
+      if (result.categorized > 0) {
+        invalidateInventory();
+      }
+      return result;
+    } finally {
+      updateState({ isAutoCategorizing: false });
+    }
+  }, [updateState, invalidateInventory]);
+
+  const toggleListGroupByCategory = useCallback(() => {
+    updateState({ listGroupByCategory: !state.listGroupByCategory });
+  }, [updateState, state.listGroupByCategory]);
+
   return {
     user,
     canEditPrices,
@@ -944,12 +965,15 @@ export function useInventoryPageState(pdfPreview?: ReturnType<typeof usePdfPrevi
     handleConfirmImport,
     dismissImport,
 
+    handleAutoCategorize,
+    toggleListGroupByCategory,
+
     invalidateInventory,
   };
 }
 
-export type { ViewMode, ImportStep, PageSize, LocationGroup, ModalForm, InventoryPageState };
-export { PAGE_SIZE_OPTIONS, isRandColumn, isImportRowBlank, isImportSectionTitle, formatRandCell };
+export type { ImportStep, InventoryPageState, LocationGroup, ModalForm, PageSize, ViewMode };
+export { formatRandCell, isImportRowBlank, isImportSectionTitle, isRandColumn, PAGE_SIZE_OPTIONS };
 
 function isRandColumn(header: string): boolean {
   return /value|price|cost|r\/p|amount|rand|zar/i.test(header);

@@ -169,7 +169,7 @@ export function extractSoilTexture(data: SoilGridsResponse | null): {
     organicCarbon: null as number | null,
   };
 
-  if (!data || !data.properties?.layers) {
+  if (!data?.properties?.layers) {
     return result;
   }
 
@@ -206,7 +206,7 @@ export function extractSoilTexture(data: SoilGridsResponse | null): {
  * Extract WRB soil class from classification response
  */
 export function extractWrbClass(data: SoilGridsClassResponse | null): string | null {
-  if (!data || !data.properties?.layers?.[0]?.depths?.[0]?.values?.most_probable) {
+  if (!data?.properties?.layers?.[0]?.depths?.[0]?.values?.most_probable) {
     return null;
   }
   return data.properties.layers[0].depths[0].values.most_probable;
@@ -398,7 +398,7 @@ function extractISDAsoilTexture(data: ISDAsoilPropertyResponse | null): ISDAsoil
     bulkDensity: null,
   };
 
-  if (!data || !data.property) {
+  if (!data?.property) {
     return result;
   }
 
@@ -1551,7 +1551,7 @@ export async function fetchAirPollutionData(
 export function classifyIndustrialPollution(
   data: AirPollutionResponse | null,
 ): IndustrialPollutionData | null {
-  if (!data || !data.list || data.list.length === 0) {
+  if (!data?.list || data.list.length === 0) {
     return null;
   }
 

@@ -406,5 +406,5 @@ function LoadingSpinner() {
   );
 }
 
-export { Select };
 export type { SelectOption, SelectOptionGroup, SelectProps };
+export { Select };

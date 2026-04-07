@@ -401,7 +401,7 @@ export class JobCardService {
       where: { jobCardId, companyId },
     });
 
-    if (!coatingAnalysis || !coatingAnalysis.coats || coatingAnalysis.coats.length === 0) {
+    if (!coatingAnalysis?.coats || coatingAnalysis.coats.length === 0) {
       return { requiresApproval: false, allowedLitres: null, alreadyAllocated: 0 };
     }
 

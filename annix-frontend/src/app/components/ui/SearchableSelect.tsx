@@ -202,5 +202,5 @@ function CheckIcon() {
   );
 }
 
-export { SearchableSelect };
 export type { SearchableSelectProps };
+export { SearchableSelect };

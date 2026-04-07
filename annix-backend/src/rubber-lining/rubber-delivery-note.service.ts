@@ -743,7 +743,7 @@ export class RubberDeliveryNoteService {
     }
 
     const extractedData = note.extractedData;
-    if (!extractedData || !extractedData.rolls || extractedData.rolls.length === 0) {
+    if (!extractedData?.rolls || extractedData.rolls.length === 0) {
       note.status = DeliveryNoteStatus.EXTRACTED;
       await this.deliveryNoteRepository.save(note);
       return { deliveryNoteIds: [note.id] };

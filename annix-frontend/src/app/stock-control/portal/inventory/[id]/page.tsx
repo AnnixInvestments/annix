@@ -565,7 +565,7 @@ export default function InventoryDetailPage() {
                 <XAxis dataKey="date" tick={{ fontSize: 11 }} />
                 <YAxis tick={{ fontSize: 11 }} />
                 <Tooltip
-                  formatter={(value: number) => [value.toFixed(1), "SOH"]}
+                  formatter={(value) => [Number(value).toFixed(1), "SOH"]}
                   contentStyle={{ fontSize: 12 }}
                 />
                 {item && (

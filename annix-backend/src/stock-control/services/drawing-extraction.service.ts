@@ -623,7 +623,7 @@ export class DrawingExtractionService {
       const parser = new DxfParser();
       const dxf = parser.parseSync(dxfString);
 
-      if (!dxf || !dxf.entities) {
+      if (!dxf?.entities) {
         return dxfString.substring(0, 15000);
       }
 

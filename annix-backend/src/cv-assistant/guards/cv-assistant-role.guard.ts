@@ -20,7 +20,7 @@ export class CvAssistantRoleGuard implements CanActivate {
 
     const { user } = context.switchToHttp().getRequest();
 
-    if (!user || !user.role) {
+    if (!user?.role) {
       throw new ForbiddenException("Access denied");
     }
 

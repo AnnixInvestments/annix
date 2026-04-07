@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { useState } from "react";
 import type { StockControlLocation, StockItem } from "@/app/lib/api/stockControlApi";
 import { formatZAR } from "../../lib/currency";
 import { PAGE_SIZE_OPTIONS, type PageSize } from "../../lib/useInventoryPageState";
@@ -15,6 +16,7 @@ interface InventoryListViewProps {
   pendingMinLevels: Map<number, number>;
   pendingPrices: Map<number, number>;
   pendingLocations: Map<number, number | null>;
+  groupByCategory?: boolean;
   onToggleSelectAll: () => void;
   onToggleSelectItem: (id: number) => void;
   onEditItem: (item: StockItem) => void;
@@ -29,31 +31,74 @@ interface InventoryListViewProps {
   locationForItem: (item: StockItem) => number | null;
 }
 
-export function InventoryListView({
-  items,
-  total,
-  totalPages,
-  currentPage,
-  pageSize,
-  selectedIds,
-  canEditPrices,
-  locations,
-  pendingMinLevels,
-  pendingPrices,
-  pendingLocations,
-  onToggleSelectAll,
-  onToggleSelectItem,
-  onEditItem,
-  onRequestDelete,
-  onMinLevelChange,
-  onPriceChange,
-  onLocationChange,
-  onChangePageSize,
-  onChangePage,
-  minLevelForItem,
-  priceForItem,
-  locationForItem,
-}: InventoryListViewProps) {
+function buildCategoryGroups(items: StockItem[]): { category: string; items: StockItem[] }[] {
+  const map = new Map<string, StockItem[]>();
+  const validItems = items.filter(
+    (item): item is StockItem => item != null && typeof item === "object",
+  );
+  for (const item of validItems) {
+    const cat = item.category || "Uncategorized";
+    const existing = map.get(cat);
+    if (existing) {
+      existing.push(item);
+    } else {
+      map.set(cat, [item]);
+    }
+  }
+  const groups = Array.from(map.entries())
+    .map(([category, groupItems]) => ({ category, items: groupItems }))
+    .sort((a, b) => {
+      if (a.category === "Uncategorized") return 1;
+      if (b.category === "Uncategorized") return -1;
+      return a.category.localeCompare(b.category);
+    });
+  return groups;
+}
+
+export function InventoryListView(props: InventoryListViewProps) {
+  const {
+    items,
+    total,
+    totalPages,
+    currentPage,
+    pageSize,
+    selectedIds,
+    canEditPrices,
+    locations,
+    pendingMinLevels,
+    pendingPrices,
+    pendingLocations,
+    groupByCategory,
+    onToggleSelectAll,
+    onToggleSelectItem,
+    onEditItem,
+    onRequestDelete,
+    onMinLevelChange,
+    onPriceChange,
+    onLocationChange,
+    onChangePageSize,
+    onChangePage,
+    minLevelForItem,
+    priceForItem,
+    locationForItem,
+  } = props;
+
+  const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set());
+
+  const toggleCategory = (category: string) => {
+    setCollapsedCategories((prev) => {
+      const next = new Set(prev);
+      if (next.has(category)) {
+        next.delete(category);
+      } else {
+        next.add(category);
+      }
+      return next;
+    });
+  };
+
+  const groups = groupByCategory ? buildCategoryGroups(items) : null;
+
   return (
     <div className="bg-white shadow rounded-lg overflow-x-auto">
       {items.length === 0 ? (
@@ -132,29 +177,57 @@ export function InventoryListView({
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {items
-                .filter((item): item is StockItem => item != null && typeof item === "object")
-                .map((item) => (
-                  <ListTableRow
-                    key={item.id}
-                    item={item}
-                    isSelected={selectedIds.has(item.id)}
-                    canEditPrices={canEditPrices}
-                    locations={locations}
-                    hasPendingMinLevel={pendingMinLevels.has(item.id)}
-                    hasPendingPrice={pendingPrices.has(item.id)}
-                    hasPendingLocation={pendingLocations.has(item.id)}
-                    onToggleSelect={onToggleSelectItem}
-                    onEdit={onEditItem}
-                    onRequestDelete={onRequestDelete}
-                    onMinLevelChange={onMinLevelChange}
-                    onPriceChange={onPriceChange}
-                    onLocationChange={onLocationChange}
-                    minLevel={minLevelForItem(item)}
-                    price={priceForItem(item)}
-                    locationValue={locationForItem(item)}
-                  />
-                ))}
+              {groups
+                ? groups.map((group) => {
+                    const isCollapsed = collapsedCategories.has(group.category);
+                    return (
+                      <CategoryGroup
+                        key={group.category}
+                        category={group.category}
+                        items={group.items}
+                        isCollapsed={isCollapsed}
+                        onToggle={toggleCategory}
+                        selectedIds={selectedIds}
+                        canEditPrices={canEditPrices}
+                        locations={locations}
+                        pendingMinLevels={pendingMinLevels}
+                        pendingPrices={pendingPrices}
+                        pendingLocations={pendingLocations}
+                        onToggleSelectItem={onToggleSelectItem}
+                        onEditItem={onEditItem}
+                        onRequestDelete={onRequestDelete}
+                        onMinLevelChange={onMinLevelChange}
+                        onPriceChange={onPriceChange}
+                        onLocationChange={onLocationChange}
+                        minLevelForItem={minLevelForItem}
+                        priceForItem={priceForItem}
+                        locationForItem={locationForItem}
+                      />
+                    );
+                  })
+                : items
+                    .filter((item): item is StockItem => item != null && typeof item === "object")
+                    .map((item) => (
+                      <ListTableRow
+                        key={item.id}
+                        item={item}
+                        isSelected={selectedIds.has(item.id)}
+                        canEditPrices={canEditPrices}
+                        locations={locations}
+                        hasPendingMinLevel={pendingMinLevels.has(item.id)}
+                        hasPendingPrice={pendingPrices.has(item.id)}
+                        hasPendingLocation={pendingLocations.has(item.id)}
+                        onToggleSelect={onToggleSelectItem}
+                        onEdit={onEditItem}
+                        onRequestDelete={onRequestDelete}
+                        onMinLevelChange={onMinLevelChange}
+                        onPriceChange={onPriceChange}
+                        onLocationChange={onLocationChange}
+                        minLevel={minLevelForItem(item)}
+                        price={priceForItem(item)}
+                        locationValue={locationForItem(item)}
+                      />
+                    ))}
             </tbody>
           </table>
         </div>
@@ -169,6 +242,110 @@ export function InventoryListView({
         onChangePage={onChangePage}
       />
     </div>
+  );
+}
+
+interface CategoryGroupProps {
+  category: string;
+  items: StockItem[];
+  isCollapsed: boolean;
+  onToggle: (category: string) => void;
+  selectedIds: Set<number>;
+  canEditPrices: boolean;
+  locations: StockControlLocation[];
+  pendingMinLevels: Map<number, number>;
+  pendingPrices: Map<number, number>;
+  pendingLocations: Map<number, number | null>;
+  onToggleSelectItem: (id: number) => void;
+  onEditItem: (item: StockItem) => void;
+  onRequestDelete: (id: number) => void;
+  onMinLevelChange: (itemId: number, value: number) => void;
+  onPriceChange: (itemId: number, value: number) => void;
+  onLocationChange: (itemId: number, value: number | null) => void;
+  minLevelForItem: (item: StockItem) => number;
+  priceForItem: (item: StockItem) => number;
+  locationForItem: (item: StockItem) => number | null;
+}
+
+function CategoryGroup(props: CategoryGroupProps) {
+  const {
+    category,
+    items,
+    isCollapsed,
+    onToggle,
+    selectedIds,
+    canEditPrices,
+    locations,
+    pendingMinLevels,
+    pendingPrices,
+    pendingLocations,
+    onToggleSelectItem,
+    onEditItem,
+    onRequestDelete,
+    onMinLevelChange,
+    onPriceChange,
+    onLocationChange,
+    minLevelForItem,
+    priceForItem,
+    locationForItem,
+  } = props;
+
+  const totalQty = items.reduce((sum, item) => sum + item.quantity, 0);
+
+  return (
+    <>
+      <tr
+        className="bg-gray-100 cursor-pointer hover:bg-gray-200 transition-colors"
+        onClick={() => onToggle(category)}
+      >
+        <td colSpan={8} className="px-4 py-2.5">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <svg
+                className={`w-4 h-4 text-gray-500 transition-transform ${isCollapsed ? "" : "rotate-90"}`}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M9 5l7 7-7 7"
+                />
+              </svg>
+              <span className="text-sm font-semibold text-gray-800">{category}</span>
+              <span className="text-xs text-gray-500 bg-gray-200 px-2 py-0.5 rounded-full">
+                {items.length} {items.length === 1 ? "item" : "items"}
+              </span>
+            </div>
+            <span className="text-xs text-gray-500">Total SOH: {totalQty}</span>
+          </div>
+        </td>
+      </tr>
+      {!isCollapsed &&
+        items.map((item) => (
+          <ListTableRow
+            key={item.id}
+            item={item}
+            isSelected={selectedIds.has(item.id)}
+            canEditPrices={canEditPrices}
+            locations={locations}
+            hasPendingMinLevel={pendingMinLevels.has(item.id)}
+            hasPendingPrice={pendingPrices.has(item.id)}
+            hasPendingLocation={pendingLocations.has(item.id)}
+            onToggleSelect={onToggleSelectItem}
+            onEdit={onEditItem}
+            onRequestDelete={onRequestDelete}
+            onMinLevelChange={onMinLevelChange}
+            onPriceChange={onPriceChange}
+            onLocationChange={onLocationChange}
+            minLevel={minLevelForItem(item)}
+            price={priceForItem(item)}
+            locationValue={locationForItem(item)}
+          />
+        ))}
+    </>
   );
 }
 

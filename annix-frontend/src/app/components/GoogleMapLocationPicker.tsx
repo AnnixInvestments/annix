@@ -138,7 +138,7 @@ export default function GoogleMapLocationPicker(props: GoogleMapLocationPickerPr
     if (autocompleteRef.current) {
       const place = autocompleteRef.current.getPlace();
 
-      if (!place.geometry || !place.geometry.location) {
+      if (!place.geometry?.location) {
         showToast(`No details available for input: '${place.name}'`, "error");
         return;
       }

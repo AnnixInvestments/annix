@@ -334,10 +334,10 @@ export function useUploadDrawing() {
 }
 
 export type {
+  AnalysisResult,
   Drawing,
-  PaginatedDrawingResult,
+  DrawingComment,
   DrawingDetail,
   DrawingVersion,
-  DrawingComment,
-  AnalysisResult,
+  PaginatedDrawingResult,
 };

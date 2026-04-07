@@ -202,7 +202,7 @@ export class RubberRollRejectionService {
     const rejection = await this.rejectionRepo.findOne({
       where: { id: rejectionId },
     });
-    if (!rejection || !rejection.returnDocumentPath) return null;
+    if (!rejection?.returnDocumentPath) return null;
     return this.storageService.presignedUrl(rejection.returnDocumentPath, 3600);
   }
 

@@ -502,7 +502,7 @@ export class BoqDistributionService {
       relations: ["rfq"],
     });
 
-    if (!boq || !boq.rfq) {
+    if (!boq?.rfq) {
       return [];
     }
 

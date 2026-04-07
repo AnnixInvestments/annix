@@ -753,7 +753,7 @@ export class RubberTaxInvoiceService {
     quantityKg: number,
   ): number | null {
     const data = invoice.extractedData;
-    if (!data || !data.subtotal || quantityKg <= 0) return null;
+    if (!data?.subtotal || quantityKg <= 0) return null;
     return Math.round((data.subtotal / quantityKg) * 100) / 100;
   }
 

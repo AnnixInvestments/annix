@@ -95,7 +95,7 @@ export default function DeliveryNoteDetailPage() {
         auRubberApiClient.supplierCocs({ processingStatus: "APPROVED" }),
         auRubberApiClient.companies(),
       ]);
-      if (!noteData || !noteData.id) {
+      if (!noteData?.id) {
         throw new Error("Delivery note not found");
       }
       setNote(noteData);

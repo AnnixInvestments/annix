@@ -51,5 +51,5 @@ const CurrencySelect = React.forwardRef<HTMLButtonElement, CurrencySelectProps>(
 
 CurrencySelect.displayName = "CurrencySelect";
 
-export { CurrencySelect, DEFAULT_CURRENCY };
 export type { CurrencySelectProps };
+export { CurrencySelect, DEFAULT_CURRENCY };

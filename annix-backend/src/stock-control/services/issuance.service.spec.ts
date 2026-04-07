@@ -459,7 +459,7 @@ describe("IssuanceService", () => {
       mockQueryRunnerManager.save.mockImplementation((_entity, data) =>
         Promise.resolve({ id: 1, ...data }),
       );
-      mockIssuanceRepo.findOne.mockResolvedValue({ id: 1 });
+      mockIssuanceRepo.findOne.mockResolvedValue(null);
 
       const result = await service.createBatchIssuance(
         1,

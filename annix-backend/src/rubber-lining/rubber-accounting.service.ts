@@ -228,7 +228,7 @@ export class RubberAccountingService {
     const account = await this.monthlyAccountRepository.findOne({
       where: { id },
     });
-    if (!account || !account.pdfPath) {
+    if (!account?.pdfPath) {
       throw new NotFoundException("Monthly account PDF not found");
     }
     return this.storageService.download(account.pdfPath);

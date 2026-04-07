@@ -33,4 +33,4 @@ export async function clearAllStores(): Promise<void> {
   ]);
 }
 
-export { get, set, del, clear, keys, entries };
+export { clear, del, entries, get, keys, set };

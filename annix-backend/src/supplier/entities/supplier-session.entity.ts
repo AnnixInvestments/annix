@@ -10,8 +10,10 @@ import {
 import { SessionInvalidationReason } from "../../shared/enums";
 import { SupplierProfile } from "./supplier-profile.entity";
 
-export { SessionInvalidationReason };
-export { SessionInvalidationReason as SupplierSessionInvalidationReason };
+export {
+  SessionInvalidationReason,
+  SessionInvalidationReason as SupplierSessionInvalidationReason,
+};
 
 @Entity("supplier_sessions")
 @Index(["sessionToken"], { unique: true })
