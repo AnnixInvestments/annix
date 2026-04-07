@@ -1,6 +1,6 @@
 import { BadRequestException, Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
+import { IsNull, Repository } from "typeorm";
 import { JobCardCoatingAnalysis } from "../../entities/coating-analysis.entity";
 import { CustomerPurchaseOrder } from "../../entities/customer-purchase-order.entity";
 import { JobCard } from "../../entities/job-card.entity";
@@ -1527,7 +1527,72 @@ export class QcMeasurementService {
       `Auto-generated ${created.length} CPO-level QCP(s) for CPO ${cpoId}: ${planTypes.join(", ")}`,
     );
 
+    for (const jc of childJobCards) {
+      await this.propagateCpoQcpsToJobCard(companyId, cpoId, jc.id);
+    }
+
     return created;
+  }
+
+  async propagateCpoQcpsToJobCard(
+    companyId: number,
+    cpoId: number,
+    jobCardId: number,
+  ): Promise<void> {
+    const cpoQcps = await this.controlPlanRepo.find({
+      where: { companyId, cpoId, jobCardId: IsNull() },
+    });
+
+    if (cpoQcps.length === 0) {
+      return;
+    }
+
+    const existingJcQcps = await this.controlPlanRepo.find({
+      where: { companyId, jobCardId },
+    });
+
+    const existingByTypeAndSource = existingJcQcps.reduce(
+      (acc, plan) => {
+        const key = `${plan.planType}:${plan.sourceCpoQcpId || ""}`;
+        return { ...acc, [key]: plan };
+      },
+      {} as Record<string, QcControlPlan>,
+    );
+
+    for (const cpoQcp of cpoQcps) {
+      const key = `${cpoQcp.planType}:${cpoQcp.id}`;
+      if (existingByTypeAndSource[key]) {
+        continue;
+      }
+
+      const cloned = this.controlPlanRepo.create({
+        companyId,
+        jobCardId,
+        cpoId,
+        sourceCpoQcpId: cpoQcp.id,
+        planType: cpoQcp.planType,
+        qcpNumber: cpoQcp.qcpNumber,
+        documentRef: cpoQcp.documentRef,
+        revision: cpoQcp.revision,
+        customerName: cpoQcp.customerName,
+        orderNumber: cpoQcp.orderNumber,
+        jobNumber: cpoQcp.jobNumber,
+        jobName: cpoQcp.jobName,
+        specification: cpoQcp.specification,
+        itemDescription: cpoQcp.itemDescription,
+        activities: JSON.parse(JSON.stringify(cpoQcp.activities)),
+        approvalSignatures: JSON.parse(JSON.stringify(cpoQcp.approvalSignatures)),
+        activeParties: cpoQcp.activeParties ? [...cpoQcp.activeParties] : null,
+        clientEmail: cpoQcp.clientEmail,
+        thirdPartyEmail: cpoQcp.thirdPartyEmail,
+        createdByName: cpoQcp.createdByName,
+        createdById: cpoQcp.createdById,
+      });
+
+      await this.controlPlanRepo.save(cloned);
+    }
+
+    this.logger.log(`Propagated ${cpoQcps.length} CPO QCP(s) to job card ${jobCardId}`);
   }
 
   // ── CPO-Level Items Release ─────────────────────────────────────

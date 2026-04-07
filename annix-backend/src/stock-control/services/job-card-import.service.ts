@@ -15,6 +15,7 @@ import {
 } from "../entities/job-card-import-mapping.entity";
 import { JobCardLineItem } from "../entities/job-card-line-item.entity";
 import { isValidLineItem } from "../lib/line-item-validation";
+import { QcMeasurementService } from "../qc/services/qc-measurement.service";
 import { CpoService } from "./cpo.service";
 import { DrawingExtractionService } from "./drawing-extraction.service";
 import { JobCardVersionService } from "./job-card-version.service";
@@ -458,6 +459,7 @@ export class JobCardImportService {
     private readonly cpoService: CpoService,
     private readonly versionService: JobCardVersionService,
     @Inject(STORAGE_SERVICE) private readonly storageService: IStorageService,
+    private readonly qcMeasurementService: QcMeasurementService,
   ) {}
 
   private async correctionHintsForCompany(companyId: number): Promise<string> {
@@ -1230,6 +1232,16 @@ export class JobCardImportService {
     );
 
     const deliveryMatch = await this.fuzzyMatchDeliveryItems(saved.id, parentJobCard, companyId);
+
+    if (parentJobCard.cpoId) {
+      await this.qcMeasurementService
+        .propagateCpoQcpsToJobCard(companyId, parentJobCard.cpoId, saved.id)
+        .catch((err) => {
+          this.logger.warn(
+            `QCP propagation failed for delivery JC ${saved.id}: ${err instanceof Error ? err.message : "Unknown"}`,
+          );
+        });
+    }
 
     return { jobCardId: saved.id, deliveryMatch };
   }

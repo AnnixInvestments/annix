@@ -7,6 +7,7 @@ import { JobCard, JobCardStatus } from "../entities/job-card.entity";
 import { JobCardExtractionCorrection } from "../entities/job-card-extraction-correction.entity";
 import { JobCardImportMapping } from "../entities/job-card-import-mapping.entity";
 import { JobCardLineItem } from "../entities/job-card-line-item.entity";
+import { QcMeasurementService } from "../qc/services/qc-measurement.service";
 import { CpoService } from "./cpo.service";
 import { DrawingExtractionService } from "./drawing-extraction.service";
 import { JobCardImportRow, JobCardImportService } from "./job-card-import.service";
@@ -86,6 +87,7 @@ describe("JobCardImportService", () => {
           provide: STORAGE_SERVICE,
           useValue: { download: jest.fn(), upload: jest.fn(), presignedUrl: jest.fn() },
         },
+        { provide: QcMeasurementService, useValue: {} },
       ],
     }).compile();
 

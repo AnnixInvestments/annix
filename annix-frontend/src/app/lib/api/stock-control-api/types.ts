@@ -1016,6 +1016,7 @@ export interface QcControlPlanRecord {
   activeParties: string[] | null;
   activities: QcpActivity[];
   approvalSignatures: QcpApprovalSignature[];
+  sourceCpoQcpId: number | null;
   createdByName: string;
   createdById: number | null;
   createdAt: string;

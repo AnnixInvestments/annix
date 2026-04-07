@@ -13,6 +13,7 @@ import { JobCard } from "../entities/job-card.entity";
 import { JobCardLineItem } from "../entities/job-card-line-item.entity";
 import { Requisition } from "../entities/requisition.entity";
 import { RequisitionItem } from "../entities/requisition-item.entity";
+import { QcMeasurementService } from "../qc/services/qc-measurement.service";
 import { CoatingAnalysisService } from "./coating-analysis.service";
 import { CpoService } from "./cpo.service";
 import { WorkflowNotificationService } from "./workflow-notification.service";
@@ -200,6 +201,10 @@ describe("CpoService", () => {
         { provide: getRepositoryToken(DeliveryNote), useValue: mockDeliveryNoteRepo },
         { provide: CoatingAnalysisService, useValue: mockCoatingAnalysisService },
         { provide: WorkflowNotificationService, useValue: mockNotificationService },
+        {
+          provide: QcMeasurementService,
+          useValue: { propagateCpoQcpsToJobCard: jest.fn().mockResolvedValue(undefined) },
+        },
       ],
     }).compile();
 

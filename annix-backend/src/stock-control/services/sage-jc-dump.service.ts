@@ -6,6 +6,7 @@ import { CpoStatus, CustomerPurchaseOrder } from "../entities/customer-purchase-
 import { CustomerPurchaseOrderItem } from "../entities/customer-purchase-order-item.entity";
 import { JobCard, JobCardStatus } from "../entities/job-card.entity";
 import { JobCardLineItem } from "../entities/job-card-line-item.entity";
+import { QcMeasurementService } from "../qc/services/qc-measurement.service";
 
 const WORKFLOW_STATUS_DRAFT = "draft";
 
@@ -168,6 +169,7 @@ export class SageJcDumpService {
     @InjectRepository(CustomerPurchaseOrderItem)
     private readonly cpoItemRepo: Repository<CustomerPurchaseOrderItem>,
     private readonly dataSource: DataSource,
+    private readonly qcMeasurementService: QcMeasurementService,
   ) {}
 
   async parseSageJcDump(
@@ -475,6 +477,16 @@ export class SageJcDumpService {
       await queryRunner.manager.update(CustomerPurchaseOrder, cpo.id, updates);
 
       await queryRunner.commitTransaction();
+
+      for (const jc of createdJobCards) {
+        await this.qcMeasurementService
+          .propagateCpoQcpsToJobCard(companyId, cpo.id, jc.id)
+          .catch((err) => {
+            this.logger.warn(
+              `QCP propagation failed for JC ${jc.id}: ${err instanceof Error ? err.message : "Unknown"}`,
+            );
+          });
+      }
 
       return {
         createdJobCards,

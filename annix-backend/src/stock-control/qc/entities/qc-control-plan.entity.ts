@@ -122,6 +122,9 @@ export class QcControlPlan {
   @Column({ name: "approval_signatures", type: "jsonb" })
   approvalSignatures: QcpApprovalSignature[];
 
+  @Column({ name: "source_cpo_qcp_id", type: "integer", nullable: true })
+  sourceCpoQcpId: number | null;
+
   @Column({ name: "created_by_name", type: "varchar", length: 255 })
   createdByName: string;
 

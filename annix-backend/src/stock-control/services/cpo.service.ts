@@ -20,6 +20,7 @@ import { JobCardLineItem } from "../entities/job-card-line-item.entity";
 import { Requisition, RequisitionSource, RequisitionStatus } from "../entities/requisition.entity";
 import { RequisitionItem } from "../entities/requisition-item.entity";
 import { isValidLineItem } from "../lib/line-item-validation";
+import { QcMeasurementService } from "../qc/services/qc-measurement.service";
 import { CoatingAnalysisService } from "./coating-analysis.service";
 import { JobCardImportRow } from "./job-card-import.service";
 import { WorkflowNotificationService } from "./workflow-notification.service";
@@ -64,6 +65,7 @@ export class CpoService {
     @Inject(forwardRef(() => CoatingAnalysisService))
     private readonly coatingAnalysisService: CoatingAnalysisService,
     private readonly notificationService: WorkflowNotificationService,
+    private readonly qcMeasurementService: QcMeasurementService,
   ) {}
 
   async findAll(
@@ -484,6 +486,14 @@ export class CpoService {
       this.logger.log(
         `Matched JC #${jobCard.jobNumber} to CPO ${cpo.cpoNumber} (${uniqueMatchedIds.length} items)`,
       );
+
+      await this.qcMeasurementService
+        .propagateCpoQcpsToJobCard(companyId, cpo.id, jobCardId)
+        .catch((err) => {
+          this.logger.warn(
+            `QCP propagation failed for JC ${jobCardId}: ${err instanceof Error ? err.message : "Unknown"}`,
+          );
+        });
 
       return {
         matched: true,
