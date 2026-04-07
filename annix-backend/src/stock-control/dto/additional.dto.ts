@@ -26,6 +26,14 @@ export class UpdateRubberPlanDto {
   @IsOptional()
   @IsString()
   suggestionOutcome?: "applied" | "applied_modified" | "ignored" | null;
+
+  @IsOptional()
+  @IsString()
+  reviewedBy?: string | null;
+
+  @IsOptional()
+  @IsString()
+  reviewedAt?: string | null;
 }
 
 export class MarkOffcutAsWastageDto {
