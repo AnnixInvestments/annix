@@ -290,7 +290,8 @@ function CategoryGroup(props: CategoryGroupProps) {
     locationForItem,
   } = props;
 
-  const totalQty = items.reduce((sum, item) => sum + item.quantity, 0);
+  const totalQty =
+    Math.round(items.reduce((sum, item) => sum + Number(item.quantity), 0) * 100) / 100;
 
   return (
     <>
