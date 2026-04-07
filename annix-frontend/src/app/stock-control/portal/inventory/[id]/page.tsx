@@ -3,19 +3,10 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useMemo, useState } from "react";
-import {
-  Area,
-  AreaChart,
-  CartesianGrid,
-  ReferenceLine,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
+import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { PdfPreviewModal, usePdfPreview } from "@/app/components/PdfPreviewModal";
 import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
-import { formatDateTimeZA, formatDateZA, fromISO, fromJSDate } from "@/app/lib/datetime";
+import { formatDateTimeZA, formatDateZA, fromJSDate } from "@/app/lib/datetime";
 import {
   useCreateManualAdjustment,
   useDownloadStockItemQrPdf,
@@ -28,11 +19,6 @@ import {
 import { PhotoCapture } from "@/app/stock-control/components/PhotoCapture";
 import { useViewAs } from "@/app/stock-control/context/ViewAsContext";
 import { formatZAR } from "@/app/stock-control/lib/currency";
-
-interface StockLevelPoint {
-  date: string;
-  soh: number;
-}
 
 interface RecipientSummary {
   name: string;
@@ -50,11 +36,6 @@ function movementTypeBadge(type: string): string {
     return: "bg-purple-100 text-purple-800",
   };
   return colors[type.toLowerCase()] || "bg-gray-100 text-gray-800";
-}
-
-function stockTakeDateFromNotes(notes: string): string | null {
-  const match = notes.match(/Stock take \((\d{4}-\d{2}-\d{2})\)/);
-  return match ? match[1] : null;
 }
 
 function recipientFromNotes(notes: string): string | null {
@@ -101,36 +82,24 @@ export default function InventoryDetailPage() {
     locationId: null as number | null,
   });
 
-  const stockLevelHistory = useMemo((): StockLevelPoint[] => {
-    if (!item || movements.length === 0) return [];
-    const effectiveDate = (m: (typeof movements)[0]): number => {
-      const ref = m.referenceType || "";
-      const stDate = ref === "stock_take" ? stockTakeDateFromNotes(m.notes || "") : null;
-      return stDate ? fromISO(stDate).toMillis() : new Date(m.createdAt).getTime();
-    };
-    const sorted = [...movements].sort((a, b) => effectiveDate(a) - effectiveDate(b));
-    const soh = item.quantity;
-    const deltas = sorted.map((m) => {
-      const qty = Number(m.quantity);
-      return m.movementType === "out" ? -qty : qty;
-    });
-    const startSoh = soh - deltas.reduce((s, d) => s + d, 0);
-    let running = startSoh;
-    const createdDt = fromJSDate(new Date(item.createdAt));
-    const startDate = createdDt.toFormat("dd MMM yyyy");
-    const perMovement = sorted.map((m, i) => {
-      running = running + deltas[i];
-      const refType = m.referenceType || "";
-      const notes = m.notes || "";
-      const stDate = refType === "stock_take" ? stockTakeDateFromNotes(notes) : null;
-      const dt = stDate ? fromISO(stDate) : fromJSDate(new Date(m.createdAt));
-      return { date: dt.toFormat("dd MMM yyyy"), soh: running };
-    });
-    const dailyMap = new Map<string, number>();
-    dailyMap.set(startDate, startSoh);
-    perMovement.forEach((p) => dailyMap.set(p.date, p.soh));
-    return Array.from(dailyMap.entries()).map(([date, endSoh]) => ({ date, soh: endSoh }));
-  }, [item, movements]);
+  const dailyIssuance = useMemo((): { date: string; issued: number }[] => {
+    if (movements.length === 0) return [];
+    const outMovements = movements.filter((m) => m.movementType === "out");
+    if (outMovements.length === 0) return [];
+    const dailyMap = new Map<string, { issued: number; ts: number }>();
+    for (const m of outMovements) {
+      const dt = fromJSDate(new Date(m.createdAt));
+      const dateKey = dt.toFormat("dd MMM yyyy");
+      const existing = dailyMap.get(dateKey);
+      const prev = existing ? existing.issued : 0;
+      const ts = existing ? existing.ts : dt.startOf("day").toMillis();
+      dailyMap.set(dateKey, { issued: prev + Number(m.quantity), ts });
+    }
+    return Array.from(dailyMap.entries())
+      .map(([date, val]) => ({ date, issued: Math.round(val.issued * 100) / 100, ts: val.ts }))
+      .sort((a, b) => a.ts - b.ts)
+      .map(({ date, issued }) => ({ date, issued }));
+  }, [movements]);
 
   const topRecipients = useMemo((): RecipientSummary[] => {
     if (movements.length === 0) return [];
@@ -544,46 +513,23 @@ export default function InventoryDetailPage() {
         </div>
       </div>
 
-      {stockLevelHistory.length >= 1 && (
+      {dailyIssuance.length >= 1 && (
         <div className="bg-white shadow rounded-lg">
           <div className="px-4 py-5 sm:px-6 border-b border-gray-200">
-            <h3 className="text-lg leading-6 font-medium text-gray-900">Stock Level</h3>
+            <h3 className="text-lg leading-6 font-medium text-gray-900">Daily Issuance</h3>
           </div>
           <div className="px-2 py-4" style={{ height: 250 }}>
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart
-                data={stockLevelHistory}
-                margin={{ top: 5, right: 20, left: 0, bottom: 5 }}
-              >
-                <defs>
-                  <linearGradient id="sohGradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#0d9488" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="#0d9488" stopOpacity={0.02} />
-                  </linearGradient>
-                </defs>
+              <BarChart data={dailyIssuance} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                 <XAxis dataKey="date" tick={{ fontSize: 11 }} />
-                <YAxis tick={{ fontSize: 11 }} />
+                <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
                 <Tooltip
-                  formatter={(value) => [Number(value).toFixed(1), "SOH"]}
+                  formatter={(value) => [Number(value), "Issued"]}
                   contentStyle={{ fontSize: 12 }}
                 />
-                {item && (
-                  <ReferenceLine
-                    y={item.minStockLevel}
-                    stroke="#ef4444"
-                    strokeDasharray="4 4"
-                    label={{ value: "Min", position: "right", fontSize: 10, fill: "#ef4444" }}
-                  />
-                )}
-                <Area
-                  type="monotone"
-                  dataKey="soh"
-                  stroke="#0d9488"
-                  strokeWidth={2}
-                  fill="url(#sohGradient)"
-                />
-              </AreaChart>
+                <Bar dataKey="issued" fill="#0d9488" radius={[4, 4, 0, 0]} />
+              </BarChart>
             </ResponsiveContainer>
           </div>
         </div>
