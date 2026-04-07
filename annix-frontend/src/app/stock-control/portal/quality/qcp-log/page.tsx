@@ -109,10 +109,10 @@ export default function QcpLogPage() {
   const handleViewPdf = useCallback(
     (plan: QcControlPlanRecord) => {
       const qcpNum = plan.qcpNumber || `QCP-${plan.id}`;
-      pdfPreview.openWithFetch(
-        () => stockControlApiClient.openControlPlanPdf(plan.jobCardId, plan.id),
-        `${qcpNum}.pdf`,
-      );
+      pdfPreview.openWithFetch(() => {
+        const jobCardId = plan.jobCardId || 0;
+        return stockControlApiClient.openControlPlanPdf(jobCardId, plan.id);
+      }, `${qcpNum}.pdf`);
     },
     [pdfPreview],
   );
