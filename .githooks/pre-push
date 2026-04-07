@@ -69,13 +69,7 @@ pull_rebase() {
 
 generate_evolution_report() {
   node "${ROOT_DIR}/scripts/generate-evolution-report.js"
-  if git diff --quiet "${ROOT_DIR}/annix-frontend/public/codebase-evolution-stats.html" 2>/dev/null; then
-    echo "Report unchanged."
-  else
-    git add "${ROOT_DIR}/annix-frontend/public/codebase-evolution-stats.html"
-    git commit --amend --no-edit
-    echo "Report updated and amended to latest commit."
-  fi
+  echo "Evolution report generated (local only, not committed)."
 }
 
 cd "$ROOT_DIR"
