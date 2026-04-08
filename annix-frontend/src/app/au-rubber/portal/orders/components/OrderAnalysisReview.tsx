@@ -331,6 +331,9 @@ export function OrderAnalysisReview(props: OrderAnalysisReviewProps) {
                   Qty
                 </th>
                 <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                  Price/Roll
+                </th>
+                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
                   Conf
                 </th>
                 <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
@@ -344,12 +347,14 @@ export function OrderAnalysisReview(props: OrderAnalysisReviewProps) {
                 const lineWidth = line.width;
                 const lineLength = line.length;
                 const lineQuantity = line.quantity;
+                const lineUnitPrice = line.unitPrice;
                 const lineConfidence = line.confidence;
                 const lineProductId = line.productId;
                 const editThickness = editedLine ? editedLine.thickness : null;
                 const editWidth = editedLine ? editedLine.width : null;
                 const editLength = editedLine ? editedLine.length : null;
                 const editQuantity = editedLine ? editedLine.quantity : null;
+                const editUnitPrice = editedLine ? editedLine.unitPrice : null;
                 const editProductId = editedLine ? editedLine.productId : null;
                 return (
                   <tr key={index}>
@@ -424,6 +429,20 @@ export function OrderAnalysisReview(props: OrderAnalysisReviewProps) {
                             className="w-14 text-sm rounded border-gray-300 border p-1"
                           />
                         </td>
+                        <td className="px-3 py-2">
+                          <input
+                            type="number"
+                            value={editUnitPrice || ""}
+                            onChange={(e) =>
+                              setEditedLine({
+                                ...editedLine,
+                                unitPrice: e.target.value ? Number(e.target.value) : null,
+                              })
+                            }
+                            className="w-20 text-sm rounded border-gray-300 border p-1"
+                            placeholder="R"
+                          />
+                        </td>
                         <td className="px-3 py-2"></td>
                         <td className="px-3 py-2">
                           <div className="flex space-x-1">
@@ -458,6 +477,11 @@ export function OrderAnalysisReview(props: OrderAnalysisReviewProps) {
                         <td className="px-3 py-2 text-sm text-gray-500">{lineWidth || "-"}</td>
                         <td className="px-3 py-2 text-sm text-gray-500">{lineLength || "-"}</td>
                         <td className="px-3 py-2 text-sm text-gray-500">{lineQuantity || "-"}</td>
+                        <td className="px-3 py-2 text-sm text-gray-500">
+                          {lineUnitPrice != null
+                            ? `R ${lineUnitPrice.toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                            : "-"}
+                        </td>
                         <td className="px-3 py-2">
                           <span className={`text-xs ${confidenceColor(lineConfidence)}`}>
                             {Math.round(lineConfidence * 100)}%
@@ -488,7 +512,7 @@ export function OrderAnalysisReview(props: OrderAnalysisReviewProps) {
               })}
               {analysis.lines.length === 0 && (
                 <tr>
-                  <td colSpan={8} className="px-3 py-4 text-center text-sm text-gray-500">
+                  <td colSpan={9} className="px-3 py-4 text-center text-sm text-gray-500">
                     No order lines detected
                   </td>
                 </tr>

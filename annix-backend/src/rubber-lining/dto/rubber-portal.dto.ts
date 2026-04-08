@@ -361,6 +361,7 @@ export class RubberOrderItemDto {
   width: number | null;
   length: number | null;
   quantity: number | null;
+  cpoUnitPrice: number | null;
   callOffs: CallOff[];
   kgPerRoll: number | null;
   totalKg: number | null;
@@ -388,6 +389,10 @@ export class CreateRubberOrderItemDto {
   quantity?: number | null;
 
   @IsOptional()
+  @IsNumber()
+  cpoUnitPrice?: number | null;
+
+  @IsOptional()
   @IsArray()
   callOffs?: CallOff[];
 }
@@ -412,6 +417,10 @@ export class UpdateRubberOrderItemDto {
   @IsOptional()
   @IsNumber()
   quantity?: number;
+
+  @IsOptional()
+  @IsNumber()
+  cpoUnitPrice?: number | null;
 
   @IsOptional()
   @IsArray()

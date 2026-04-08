@@ -121,6 +121,7 @@ interface EditableItem {
   width?: number;
   length?: number;
   quantity?: number;
+  cpoUnitPrice?: number | null;
   callOffs: CallOff[];
   kgPerRoll?: number | null;
 }
@@ -203,6 +204,7 @@ export default function AuRubberOrderDetailPage() {
         width: item.width || undefined,
         length: item.length || undefined,
         quantity: item.quantity || undefined,
+        cpoUnitPrice: item.cpoUnitPrice,
         callOffs: item.callOffs || [],
         kgPerRoll: item.kgPerRoll,
       }));
@@ -322,6 +324,7 @@ export default function AuRubberOrderDetailPage() {
             width: item.width,
             length: item.length,
             quantity: item.quantity,
+            cpoUnitPrice: item.cpoUnitPrice,
             callOffs: item.callOffs,
           })),
       });
@@ -351,6 +354,7 @@ export default function AuRubberOrderDetailPage() {
       width: item.width,
       length: item.length,
       quantity: item.quantity,
+      cpoUnitPrice: item.cpoUnitPrice,
       callOffs: [],
       kgPerRoll: item.kgPerRoll,
     };
@@ -395,6 +399,7 @@ export default function AuRubberOrderDetailPage() {
   };
 
   const calculatePricePerRoll = (item: EditableItem) => {
+    if (item.cpoUnitPrice != null) return item.cpoUnitPrice;
     const product = productById(item.productId);
     if (item.kgPerRoll === null || item.kgPerRoll === undefined || !product?.pricePerKg)
       return null;
@@ -797,6 +802,12 @@ export default function AuRubberOrderDetailPage() {
                     scope="col"
                     className="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase"
                   >
+                    CPO Price/Roll
+                  </th>
+                  <th
+                    scope="col"
+                    className="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase"
+                  >
                     Price/Roll
                   </th>
                   <th
@@ -1018,6 +1029,9 @@ export default function AuRubberOrderDetailPage() {
                               </svg>
                             </button>
                           </div>
+                        </td>
+                        <td className="px-3 py-3 text-right text-sm text-gray-900">
+                          {item.cpoUnitPrice != null ? formatCurrency(item.cpoUnitPrice) : "-"}
                         </td>
                         <td className="px-3 py-3 text-right text-sm text-gray-900">
                           {formatCurrency(pricePerRoll)}

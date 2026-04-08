@@ -107,6 +107,7 @@ export interface RubberOrderItemDto {
   width: number | null;
   length: number | null;
   quantity: number | null;
+  cpoUnitPrice: number | null;
   callOffs: CallOff[];
   kgPerRoll: number | null;
   totalKg: number | null;

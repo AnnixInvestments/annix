@@ -6,6 +6,7 @@ export interface AnalyzedOrderLine {
   width: number | null;
   length: number | null;
   quantity: number | null;
+  unitPrice: number | null;
   confidence: number;
   rawText: string | null;
 }
@@ -47,6 +48,7 @@ export interface CreateOrderLineFromAnalysisDto {
   width?: number | null;
   length?: number | null;
   quantity?: number | null;
+  unitPrice?: number | null;
 }
 
 export interface NewCompanyFromAnalysis {

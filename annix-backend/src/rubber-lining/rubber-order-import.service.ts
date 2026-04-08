@@ -538,6 +538,7 @@ Respond ONLY with a JSON object:
       "width": "number in mm or null",
       "length": "number in meters or null",
       "quantity": "number or null",
+      "unitPrice": "number in ZAR or null - price per roll from the UNIT PRICE column",
       "confidence": 0.0-1.0,
       "rawText": "the original text this line was extracted from"
     }
@@ -577,6 +578,7 @@ ${truncatedText}`;
             width: this.parseNumber(line.width),
             length: this.parseNumber(line.length),
             quantity: this.parseNumber(line.quantity),
+            unitPrice: this.parseNumber(line.unitPrice),
             confidence: line.confidence || 0.5,
             rawText: line.rawText || null,
           }),
@@ -715,12 +717,14 @@ ${truncatedText}`;
 
     const items = (overrides?.lines || analysis.lines).map((line, idx) => {
       const analysisLine = analysis.lines[idx] || {};
+      const rawUnitPrice = "unitPrice" in line ? line.unitPrice : analysisLine.unitPrice;
       return {
         productId: ("productId" in line ? line.productId : analysisLine.productId) || undefined,
         thickness: ("thickness" in line ? line.thickness : analysisLine.thickness) || undefined,
         width: ("width" in line ? line.width : analysisLine.width) || undefined,
         length: ("length" in line ? line.length : analysisLine.length) || undefined,
         quantity: ("quantity" in line ? line.quantity : analysisLine.quantity) || undefined,
+        cpoUnitPrice: rawUnitPrice != null ? rawUnitPrice : undefined,
       };
     });
 
@@ -799,6 +803,7 @@ Respond ONLY with JSON:
       "width": number in mm or null,
       "length": number in meters or null,
       "quantity": number or null,
+      "unitPrice": number in ZAR or null - price per roll from the UNIT PRICE column,
       "confidence": 0.0-1.0,
       "rawText": "the exact text as written on the document for this line"
     }
@@ -835,6 +840,7 @@ Respond ONLY with JSON:
             width: this.parseNumber(line.width),
             length: this.parseNumber(line.length),
             quantity: this.parseNumber(line.quantity),
+            unitPrice: this.parseNumber(line.unitPrice),
             confidence: line.confidence || 0.6,
             rawText: line.rawText || null,
           }),

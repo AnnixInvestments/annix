@@ -122,6 +122,7 @@ export function OrderImportModal(props: OrderImportModalProps) {
             width: line.width || undefined,
             length: line.length || undefined,
             quantity: line.quantity || undefined,
+            unitPrice: line.unitPrice,
           })),
           newCompany,
         },
