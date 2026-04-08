@@ -119,6 +119,7 @@ declare module "./base" {
     ): Promise<{ received: boolean; readingCount: number }>;
     positectorStreamingEventsUrl(sessionId: string): string;
     positectorWebhookUrl(companyId: number, deviceId: number): string;
+    positectorUploadsForJobCard(jobCardId: number): Promise<PositectorUploadRecord[]>;
   }
 }
 
@@ -265,6 +266,10 @@ proto.addPositectorStreamingReading = async function (sessionId, data) {
 
 proto.positectorStreamingEventsUrl = function (sessionId) {
   return `${this.baseURL}/stock-control/positector-streaming/sessions/${sessionId}/events`;
+};
+
+proto.positectorUploadsForJobCard = async function (jobCardId) {
+  return this.request(`/stock-control/job-cards/${jobCardId}/qc/positector-uploads`);
 };
 
 proto.positectorWebhookUrl = function (companyId, deviceId) {

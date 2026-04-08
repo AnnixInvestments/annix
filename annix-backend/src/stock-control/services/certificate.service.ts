@@ -21,6 +21,7 @@ import { CalibrationCertificate } from "../qc/entities/calibration-certificate.e
 import { QcControlPlan } from "../qc/entities/qc-control-plan.entity";
 import { QcDefelskoBatch } from "../qc/entities/qc-defelsko-batch.entity";
 import { QcReleaseCertificate } from "../qc/entities/qc-release-certificate.entity";
+import { PositectorUploadService } from "../qc/services/positector-upload.service";
 import { QcMeasurementService } from "../qc/services/qc-measurement.service";
 import { generateBrandedCoverPage } from "./branded-cover-page";
 import { CoatingAnalysisService } from "./coating-analysis.service";
@@ -109,6 +110,7 @@ export class CertificateService {
     private readonly storageService: IStorageService,
     private readonly dataBookPdfService: DataBookPdfService,
     private readonly qcMeasurementService: QcMeasurementService,
+    private readonly positectorUploadService: PositectorUploadService,
   ) {}
 
   async uploadCertificate(
@@ -505,6 +507,27 @@ export class CertificateService {
       } catch (err) {
         this.logger.warn(
           `Failed to include calibration cert ${cal.id} (${cal.originalFilename}) in data book: ${err}`,
+        );
+      }
+    }
+
+    const positectorUploads = await this.positectorUploadService.uploadsForJobCard(
+      companyId,
+      jobCardId,
+    );
+    const positectorPdfs = positectorUploads.filter(
+      (u) => u.s3FilePath && u.detectedFormat === "posisoft_pdf",
+    );
+
+    for (const upload of positectorPdfs) {
+      try {
+        const pdfBuffer = await this.storageService.download(upload.s3FilePath);
+        const uploadPdf = await pdfLib.PDFDocument.load(pdfBuffer);
+        const uploadPages = await mergedPdf.copyPages(uploadPdf, uploadPdf.getPageIndices());
+        uploadPages.forEach((page) => mergedPdf.addPage(page));
+      } catch (err) {
+        this.logger.warn(
+          `Failed to include PosiTector PDF ${upload.id} (${upload.originalFilename}) in data book: ${err}`,
         );
       }
     }

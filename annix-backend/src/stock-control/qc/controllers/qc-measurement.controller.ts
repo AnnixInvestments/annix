@@ -630,7 +630,11 @@ export class QcMeasurementController {
     return { deleted: true };
   }
 
-  // ── Defelsko Batches ──────────────────────────────────────────────
+  @Get("positector-uploads")
+  @ApiOperation({ summary: "Linked PosiTector uploads for a job card" })
+  async positectorUploadsForJobCard(@Req() req: any, @Param("jobCardId") jobCardId: number) {
+    return this.positectorUploadService.uploadsForJobCard(req.user.companyId, jobCardId);
+  }
 
   @Get("defelsko-batches")
   @ApiOperation({ summary: "Defelsko batch numbers for a job card" })

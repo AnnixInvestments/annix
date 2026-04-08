@@ -35,6 +35,13 @@ export class PositectorUploadService {
     private readonly importService: PositectorImportService,
   ) {}
 
+  async uploadsForJobCard(companyId: number, jobCardId: number): Promise<PositectorUpload[]> {
+    return this.uploadRepo.find({
+      where: { companyId, linkedJobCardId: jobCardId },
+      order: { createdAt: "DESC" },
+    });
+  }
+
   async storeUpload(
     companyId: number,
     file: Express.Multer.File,

@@ -131,6 +131,11 @@ import { WORK_ITEM_PROVIDER } from "./work-item-provider.interface";
     WebPushService,
     { provide: WORK_ITEM_PROVIDER, useClass: JobCardWorkItemProvider },
   ],
-  exports: [QcMeasurementService, CalibrationCertificateService, TypeOrmModule],
+  exports: [
+    QcMeasurementService,
+    CalibrationCertificateService,
+    PositectorUploadService,
+    TypeOrmModule,
+  ],
 })
 export class QcModule {}
