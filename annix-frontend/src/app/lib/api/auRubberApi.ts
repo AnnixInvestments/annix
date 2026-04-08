@@ -2593,19 +2593,24 @@ class AuRubberApiClient {
     });
   }
 
-  async sendAuCoc(id: number, email: string): Promise<RubberAuCocDto> {
+  async sendAuCoc(
+    id: number,
+    email: string,
+    options?: { cc?: string; bcc?: string },
+  ): Promise<RubberAuCocDto> {
     return this.request(`/rubber-lining/portal/au-cocs/${id}/send`, {
       method: "POST",
-      body: JSON.stringify({ email }),
+      body: JSON.stringify({ email, cc: options?.cc, bcc: options?.bcc }),
     });
   }
 
   async bulkSendAuCocs(
     email: string,
+    options?: { cc?: string; bcc?: string },
   ): Promise<{ sent: number; total: number; cocNumbers: string[] }> {
     return this.request("/rubber-lining/portal/au-cocs/bulk-send", {
       method: "POST",
-      body: JSON.stringify({ email }),
+      body: JSON.stringify({ email, cc: options?.cc, bcc: options?.bcc }),
     });
   }
 

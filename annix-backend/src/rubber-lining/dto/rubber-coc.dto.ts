@@ -673,6 +673,14 @@ export class CreateAuCocDto {
 export class SendAuCocDto {
   @IsString()
   email: string;
+
+  @IsOptional()
+  @IsString()
+  cc?: string;
+
+  @IsOptional()
+  @IsString()
+  bcc?: string;
 }
 
 export class RollTraceabilityDto {

@@ -473,6 +473,8 @@ export class RubberAuCocService {
 
     await this.emailService.sendEmail({
       to: dto.email,
+      cc: dto.cc,
+      bcc: dto.bcc,
       subject: `Certificate of Conformance - ${coc.cocNumber}`,
       fromName: "AU Industries",
       html: [
@@ -532,6 +534,8 @@ export class RubberAuCocService {
 
     await this.emailService.sendEmail({
       to: dto.email,
+      cc: dto.cc,
+      bcc: dto.bcc,
       subject: `Certificates of Conformance - ${cocNumbers.length} CoC(s)`,
       fromName: "AU Industries",
       html: [

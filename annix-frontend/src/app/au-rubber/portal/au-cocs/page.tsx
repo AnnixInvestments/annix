@@ -22,6 +22,7 @@ import {
 import { formatDateZA } from "@/app/lib/datetime";
 import { useAuRubberAuCocs } from "@/app/lib/query/hooks";
 import { Breadcrumb } from "../../components/Breadcrumb";
+import { CocEmailModal, type CocEmailMode } from "../../components/CocEmailModal";
 
 type SortColumn =
   | "cocNumber"
@@ -49,6 +50,8 @@ export default function AuCocsPage() {
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
   const [sendingId, setSendingId] = useState<number | null>(null);
   const [sendEmail, setSendEmail] = useState("");
+  const [sendCc, setSendCc] = useState("");
+  const [sendBcc, setSendBcc] = useState("");
   const [showSendModal, setShowSendModal] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [previewingId, setPreviewingId] = useState<number | null>(null);
@@ -59,11 +62,8 @@ export default function AuCocsPage() {
   const [isAutoGenerating, setIsAutoGenerating] = useState(false);
   const [isRegenerating, setIsRegenerating] = useState(false);
   const [isBulkSending, setIsBulkSending] = useState(false);
-  const [showBulkSendModal, setShowBulkSendModal] = useState(false);
-  const [bulkSendEmail, setBulkSendEmail] = useState("");
   const [isResending, setIsResending] = useState(false);
-  const [showResendModal, setShowResendModal] = useState(false);
-  const [resendEmail, setResendEmail] = useState("");
+  const [emailModalMode, setEmailModalMode] = useState<CocEmailMode | null>(null);
   const pdfPreview = usePdfPreview();
   const [progressModal, setProgressModal] = useState<{
     visible: boolean;
@@ -168,36 +168,43 @@ export default function AuCocsPage() {
     }
   };
 
-  const handleBulkSend = async () => {
-    if (!bulkSendEmail) {
-      showToast("Please enter an email address", "error");
+  const handleEmailModalSend = async (params: {
+    cocIds: number[];
+    email: string;
+    cc: string | undefined;
+    bcc: string | undefined;
+    customerName: string;
+  }) => {
+    const mode = emailModalMode;
+    if (!mode) return;
+    const cocsToSend = cocs.filter((c) => params.cocIds.includes(c.id));
+    if (cocsToSend.length === 0) {
+      showToast("No CoCs selected", "error");
       return;
     }
-    const generatedCocs = cocs.filter((c) => c.status === "GENERATED");
-    if (generatedCocs.length === 0) {
-      showToast("No generated CoCs to send", "error");
-      return;
-    }
-    const email = bulkSendEmail;
+    const emailOpts = { cc: params.cc, bcc: params.bcc };
+    const actionLabel = mode === "send" ? "Sending" : "Resending";
+    const doneLabel = mode === "send" ? "Send" : "Resend";
+    const setLoading = mode === "send" ? setIsBulkSending : setIsResending;
     try {
-      setIsBulkSending(true);
-      setShowBulkSendModal(false);
+      setLoading(true);
+      setEmailModalMode(null);
       let sent = 0;
       const sentNumbers: string[] = [];
       const failures: string[] = [];
-      for (let i = 0; i < generatedCocs.length; i++) {
-        const coc = generatedCocs[i];
+      for (let i = 0; i < cocsToSend.length; i++) {
+        const coc = cocsToSend[i];
         setProgressModal({
           visible: true,
-          title: "Sending CoCs",
+          title: `${actionLabel} CoCs`,
           status: "running",
-          message: `Sending ${coc.cocNumber} to ${email}...`,
+          message: `${actionLabel} ${coc.cocNumber} to ${params.email}...`,
           current: i + 1,
-          total: generatedCocs.length,
+          total: cocsToSend.length,
           currentLabel: coc.cocNumber,
         });
         try {
-          await auRubberApiClient.sendAuCoc(coc.id, email);
+          await auRubberApiClient.sendAuCoc(coc.id, params.email, emailOpts);
           sent++;
           sentNumbers.push(coc.cocNumber);
         } catch (err) {
@@ -207,78 +214,20 @@ export default function AuCocsPage() {
       const failedInfo = failures.length > 0 ? `\nFailed: ${failures.join(", ")}` : "";
       setProgressModal({
         visible: true,
-        title: "Bulk Send Complete",
+        title: `${doneLabel} Complete`,
         status: failures.length > 0 && sent === 0 ? "error" : "done",
-        message: `Sent ${sent} of ${generatedCocs.length} CoC(s) to ${email}: ${sentNumbers.join(", ")}${failedInfo}`,
+        message: `${doneLabel === "Send" ? "Sent" : "Resent"} ${sent} of ${cocsToSend.length} CoC(s) for ${params.customerName} to ${params.email}: ${sentNumbers.join(", ")}${failedInfo}`,
       });
-      setBulkSendEmail("");
       await cocsQuery.refetch();
     } catch (err) {
       setProgressModal({
         visible: true,
-        title: "Bulk Send Failed",
+        title: `${doneLabel} Failed`,
         status: "error",
         message: err instanceof Error ? err.message : "An unexpected error occurred.",
       });
     } finally {
-      setIsBulkSending(false);
-    }
-  };
-
-  const handleResendAll = async () => {
-    if (!resendEmail) {
-      showToast("Please enter an email address", "error");
-      return;
-    }
-    const sentCocs = cocs.filter((c) => c.status === "SENT");
-    if (sentCocs.length === 0) {
-      showToast("No sent CoCs to resend", "error");
-      return;
-    }
-    const email = resendEmail;
-    try {
-      setIsResending(true);
-      setShowResendModal(false);
-      let sent = 0;
-      const sentNumbers: string[] = [];
-      const failures: string[] = [];
-      for (let i = 0; i < sentCocs.length; i++) {
-        const coc = sentCocs[i];
-        setProgressModal({
-          visible: true,
-          title: "Resending CoCs",
-          status: "running",
-          message: `Resending ${coc.cocNumber} to ${email}...`,
-          current: i + 1,
-          total: sentCocs.length,
-          currentLabel: coc.cocNumber,
-        });
-        try {
-          await auRubberApiClient.sendAuCoc(coc.id, email);
-          sent++;
-          sentNumbers.push(coc.cocNumber);
-        } catch (err) {
-          failures.push(`${coc.cocNumber}: ${err instanceof Error ? err.message : "failed"}`);
-        }
-      }
-      const failedInfo = failures.length > 0 ? `\nFailed: ${failures.join(", ")}` : "";
-      setProgressModal({
-        visible: true,
-        title: "Resend Complete",
-        status: failures.length > 0 && sent === 0 ? "error" : "done",
-        message: `Resent ${sent} of ${sentCocs.length} CoC(s) to ${email}: ${sentNumbers.join(", ")}${failedInfo}`,
-      });
-      setResendEmail("");
-      await cocsQuery.refetch();
-    } catch (err) {
-      setProgressModal({
-        visible: true,
-        title: "Resend Failed",
-        status: "error",
-        message: err instanceof Error ? err.message : "An unexpected error occurred.",
-      });
-    } finally {
-      setIsResending(false);
+      setLoading(false);
     }
   };
 
@@ -387,13 +336,17 @@ export default function AuCocsPage() {
       showToast("Please enter an email address", "error");
       return;
     }
+    const ccValue = sendCc.trim() || undefined;
+    const bccValue = sendBcc.trim() || undefined;
     try {
       setIsSending(true);
-      await auRubberApiClient.sendAuCoc(sendingId, sendEmail);
+      await auRubberApiClient.sendAuCoc(sendingId, sendEmail, { cc: ccValue, bcc: bccValue });
       showToast("CoC sent successfully", "success");
       setShowSendModal(false);
       setSendingId(null);
       setSendEmail("");
+      setSendCc("");
+      setSendBcc("");
       cocsQuery.refetch();
     } catch (err) {
       showToast(err instanceof Error ? err.message : "Failed to send CoC", "error");
@@ -533,7 +486,7 @@ export default function AuCocsPage() {
           </button>
           {generatedCount > 0 && (
             <button
-              onClick={() => setShowBulkSendModal(true)}
+              onClick={() => setEmailModalMode("send")}
               disabled={isBulkSending}
               className="inline-flex items-center px-4 py-2 border border-purple-600 rounded-md shadow-sm text-sm font-medium text-purple-600 bg-white hover:bg-purple-50 disabled:opacity-50"
             >
@@ -547,7 +500,7 @@ export default function AuCocsPage() {
           )}
           {sentCount > 0 && (
             <button
-              onClick={() => setShowResendModal(true)}
+              onClick={() => setEmailModalMode("resend")}
               disabled={isResending}
               className="inline-flex items-center px-4 py-2 border border-orange-500 rounded-md shadow-sm text-sm font-medium text-orange-600 bg-white hover:bg-orange-50 disabled:opacity-50"
             >
@@ -858,132 +811,77 @@ export default function AuCocsPage() {
       </div>
 
       {showSendModal && (
-        <div className="fixed inset-0 z-50 overflow-y-auto">
-          <div className="flex min-h-screen items-center justify-center p-4">
-            <div
-              className="fixed inset-0 bg-black/10 backdrop-blur-md"
-              onClick={() => setShowSendModal(false)}
-            />
-            <div className="relative bg-white rounded-lg shadow-xl max-w-md w-full p-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Send Certificate</h3>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Recipient Email</label>
-                  <input
-                    type="email"
-                    value={sendEmail}
-                    onChange={(e) => setSendEmail(e.target.value)}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 sm:text-sm border p-2"
-                    placeholder="customer@example.com"
-                  />
-                </div>
+        <div
+          className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
+          role="dialog"
+          aria-modal="true"
+        >
+          <div
+            className="fixed inset-0 bg-black/10 backdrop-blur-md"
+            onClick={() => setShowSendModal(false)}
+            aria-hidden="true"
+          />
+          <div className="relative bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+            <h3 className="text-lg font-medium text-gray-900 mb-4">Send Certificate</h3>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700">To</label>
+                <input
+                  type="email"
+                  value={sendEmail}
+                  onChange={(e) => setSendEmail(e.target.value)}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 sm:text-sm border p-2"
+                  placeholder="customer@example.com"
+                />
               </div>
-              <div className="mt-6 flex justify-end space-x-3">
-                <button
-                  onClick={() => setShowSendModal(false)}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleSend}
-                  disabled={isSending || !sendEmail}
-                  className="px-4 py-2 text-sm font-medium text-white bg-purple-600 rounded-md hover:bg-purple-700 disabled:opacity-50"
-                >
-                  {isSending ? "Sending..." : "Send"}
-                </button>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">CC</label>
+                <input
+                  type="text"
+                  value={sendCc}
+                  onChange={(e) => setSendCc(e.target.value)}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 sm:text-sm border p-2"
+                  placeholder="cc@example.com (comma-separated)"
+                />
               </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">BCC</label>
+                <input
+                  type="text"
+                  value={sendBcc}
+                  onChange={(e) => setSendBcc(e.target.value)}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 sm:text-sm border p-2"
+                  placeholder="bcc@example.com (comma-separated)"
+                />
+              </div>
+            </div>
+            <div className="mt-6 flex justify-end space-x-3">
+              <button
+                onClick={() => setShowSendModal(false)}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSend}
+                disabled={isSending || !sendEmail}
+                className="px-4 py-2 text-sm font-medium text-white bg-purple-600 rounded-md hover:bg-purple-700 disabled:opacity-50"
+              >
+                {isSending ? "Sending..." : "Send"}
+              </button>
             </div>
           </div>
         </div>
       )}
 
-      {showBulkSendModal && (
-        <div className="fixed inset-0 z-50 overflow-y-auto">
-          <div className="flex min-h-screen items-center justify-center p-4">
-            <div
-              className="fixed inset-0 bg-black/10 backdrop-blur-md"
-              onClick={() => setShowBulkSendModal(false)}
-            />
-            <div className="relative bg-white rounded-lg shadow-xl max-w-md w-full p-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-2">Bulk Send to Customer</h3>
-              <p className="text-sm text-gray-500 mb-4">
-                Send all {generatedCount} generated CoC(s) in a single email with all PDFs attached.
-              </p>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Recipient Email</label>
-                  <input
-                    type="email"
-                    value={bulkSendEmail}
-                    onChange={(e) => setBulkSendEmail(e.target.value)}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 sm:text-sm border p-2"
-                    placeholder="customer@example.com"
-                  />
-                </div>
-              </div>
-              <div className="mt-6 flex justify-end space-x-3">
-                <button
-                  onClick={() => setShowBulkSendModal(false)}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleBulkSend}
-                  disabled={isBulkSending || !bulkSendEmail}
-                  className="px-4 py-2 text-sm font-medium text-white bg-purple-600 rounded-md hover:bg-purple-700 disabled:opacity-50"
-                >
-                  Send All
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {showResendModal && (
-        <div className="fixed inset-0 z-50 overflow-y-auto">
-          <div className="flex min-h-screen items-center justify-center p-4">
-            <div
-              className="fixed inset-0 bg-black/10 backdrop-blur-md"
-              onClick={() => setShowResendModal(false)}
-            />
-            <div className="relative bg-white rounded-lg shadow-xl max-w-md w-full p-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-2">Resend All CoCs</h3>
-              <p className="text-sm text-gray-500 mb-4">
-                Resend all {sentCount} previously sent CoC(s) to the specified email address.
-              </p>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Recipient Email</label>
-                  <input
-                    type="email"
-                    value={resendEmail}
-                    onChange={(e) => setResendEmail(e.target.value)}
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 sm:text-sm border p-2"
-                    placeholder="customer@example.com"
-                  />
-                </div>
-              </div>
-              <div className="mt-6 flex justify-end space-x-3">
-                <button
-                  onClick={() => setShowResendModal(false)}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleResendAll}
-                  disabled={isResending || !resendEmail}
-                  className="px-4 py-2 text-sm font-medium text-white bg-orange-500 rounded-md hover:bg-orange-600 disabled:opacity-50"
-                >
-                  Resend All
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
+      {emailModalMode !== null && (
+        <CocEmailModal
+          mode={emailModalMode}
+          cocs={cocs}
+          onClose={() => setEmailModalMode(null)}
+          onSend={handleEmailModalSend}
+          isSending={isBulkSending || isResending}
+        />
       )}
 
       <PdfPreviewModal state={pdfPreview.state} onClose={pdfPreview.close} />

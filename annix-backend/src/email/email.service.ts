@@ -14,6 +14,7 @@ export interface EmailAttachment {
 export interface EmailOptions {
   to: string;
   cc?: string;
+  bcc?: string;
   subject: string;
   html: string;
   text?: string;
@@ -99,6 +100,7 @@ export class EmailService {
         from,
         to: options.to,
         ...(options.cc ? { cc: options.cc } : {}),
+        ...(options.bcc ? { bcc: options.bcc } : {}),
         replyTo,
         subject: options.subject,
         html: options.html,
