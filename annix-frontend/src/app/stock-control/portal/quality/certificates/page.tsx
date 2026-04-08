@@ -318,7 +318,7 @@ function CertificatesTab() {
       const bProduct = b.stockItem?.name || b.description || "";
       return dir * aProduct.localeCompare(bProduct);
     }
-    return dir * (new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+    return dir * (fromISO(a.createdAt).toMillis() - fromISO(b.createdAt).toMillis());
   });
 
   const supplierGroupedCerts = analysisResult
