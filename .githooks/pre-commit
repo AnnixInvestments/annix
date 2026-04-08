@@ -150,7 +150,8 @@ if [ -n "$STAGED_TS_FILES" ]; then
     echo "Running biome check on staged files..."
     # Build file list for biome (one per line → space-separated)
     BIOME_FILES=$(echo "$STAGED_TS_FILES" | tr '\n' ' ')
-    if ! pnpm biome check $BIOME_FILES 2>/dev/null; then
+    BIOME_OUTPUT=$(pnpm biome check $BIOME_FILES 2>&1) && BIOME_EXIT=0 || BIOME_EXIT=$?
+    if [ $BIOME_EXIT -ne 0 ] && ! echo "$BIOME_OUTPUT" | grep -q "No files were processed"; then
         echo ""
         echo "============================================"
         echo "COMMIT BLOCKED: Biome check failed"

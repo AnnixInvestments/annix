@@ -84,7 +84,18 @@ function CertificatesTab() {
   const [filterSupplier, setFilterSupplier] = useState("");
   const [filterType, setFilterType] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
+  const [sortCol, setSortCol] = useState<"type" | "batch" | "supplier" | "uploaded">("uploaded");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const pdfPreview = usePdfPreview();
+
+  const toggleSort = (col: "type" | "batch" | "supplier" | "uploaded") => {
+    if (sortCol === col) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortCol(col);
+      setSortDir("asc");
+    }
+  };
 
   const [viewMode, setViewMode] = useState<ViewMode>("list");
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
@@ -293,6 +304,15 @@ function CertificatesTab() {
         );
       })
     : certificates;
+
+  const sortedCertificates = [...filteredCertificates].sort((a, b) => {
+    const dir = sortDir === "asc" ? 1 : -1;
+    if (sortCol === "type") return dir * a.certificateType.localeCompare(b.certificateType);
+    if (sortCol === "batch") return dir * (a.batchNumber ?? "").localeCompare(b.batchNumber ?? "");
+    if (sortCol === "supplier")
+      return dir * (a.supplier?.name ?? "").localeCompare(b.supplier?.name ?? "");
+    return dir * (new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+  });
 
   const supplierGroupedCerts = analysisResult
     ? analysisResult.certificates.reduce<
@@ -590,15 +610,18 @@ function CertificatesTab() {
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
-                      Type
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
-                      Batch
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
-                      Supplier
-                    </th>
+                    {(["type", "batch", "supplier"] as const).map((col) => (
+                      <th
+                        key={col}
+                        onClick={() => toggleSort(col)}
+                        className="cursor-pointer select-none px-4 py-3 text-left text-xs font-medium uppercase text-gray-500 hover:text-gray-700"
+                      >
+                        <span className="inline-flex items-center gap-1">
+                          {col === "type" ? "Type" : col === "batch" ? "Batch" : "Supplier"}
+                          {sortCol === col ? (sortDir === "asc" ? " ↑" : " ↓") : ""}
+                        </span>
+                      </th>
+                    ))}
                     <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
                       Product
                     </th>
@@ -608,8 +631,11 @@ function CertificatesTab() {
                     <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
                       File
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
-                      Uploaded
+                    <th
+                      onClick={() => toggleSort("uploaded")}
+                      className="cursor-pointer select-none px-4 py-3 text-left text-xs font-medium uppercase text-gray-500 hover:text-gray-700"
+                    >
+                      Uploaded{sortCol === "uploaded" ? (sortDir === "asc" ? " ↑" : " ↓") : ""}
                     </th>
                     <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">
                       Actions
@@ -617,7 +643,7 @@ function CertificatesTab() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
-                  {filteredCertificates.map((cert) => (
+                  {sortedCertificates.map((cert) => (
                     <tr key={cert.id} className="hover:bg-gray-50">
                       <td className="whitespace-nowrap px-4 py-3">
                         <span
