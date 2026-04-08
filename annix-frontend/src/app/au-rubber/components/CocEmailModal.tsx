@@ -19,6 +19,7 @@ function EmailTagInput(props: {
   tags: EmailTag[];
   onTagsChange: (tags: EmailTag[]) => void;
   placeholder: string;
+  name: string;
 }) {
   const [inputValue, setInputValue] = useState("");
 
@@ -89,6 +90,8 @@ function EmailTagInput(props: {
         })}
         <input
           type="text"
+          name={props.name}
+          autoComplete="off"
           value={inputValue}
           onChange={(e) => setInputValue(e.target.value)}
           onKeyDown={handleKeyDown}
@@ -238,6 +241,7 @@ export function CocEmailModal(props: CocEmailModalProps) {
 
           <EmailTagInput
             label="To"
+            name="coc-email-to"
             tags={toTags}
             onTagsChange={setToTags}
             placeholder="Enter email addresses"
@@ -267,6 +271,7 @@ export function CocEmailModal(props: CocEmailModalProps) {
           {showCc && (
             <EmailTagInput
               label="CC"
+              name="coc-email-cc"
               tags={ccTags}
               onTagsChange={setCcTags}
               placeholder="CC email addresses"
@@ -276,6 +281,7 @@ export function CocEmailModal(props: CocEmailModalProps) {
           {showBcc && (
             <EmailTagInput
               label="BCC"
+              name="coc-email-bcc"
               tags={bccTags}
               onTagsChange={setBccTags}
               placeholder="BCC email addresses"
