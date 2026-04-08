@@ -120,7 +120,7 @@ jobs:
             echo "is_feedback=false" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Run Claude Code (feedback issue)
+      - name: Run Claude Code (feedback issue — investigate only)
         if: |
           github.event_name != 'workflow_dispatch' &&
           steps.feedback-check.outputs.is_feedback == 'true'
@@ -129,107 +129,67 @@ jobs:
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           github_token: ${{ secrets.PROJECT_TOKEN }}
-          claude_args: "--allowedTools Bash,Read,Edit,MultiEdit,Write,Glob,Grep,LS,WebFetch,WebSearch,TodoRead,TodoWrite,Task"
+          claude_args: "--allowedTools Bash,Read,Glob,Grep,LS,WebFetch,WebSearch"
           prompt: |
             You are operating autonomously on a feedback issue auto-created from user submissions.
-            Do NOT ask questions or request clarification. Make all implementation decisions yourself.
+            Your role is INVESTIGATION ONLY — you must NOT make any code changes, create branches, or open PRs.
 
-            Read the CLAUDE.md and agents.md files for project conventions. Follow all existing patterns.
+            Read the CLAUDE.md file for project conventions.
 
             IMPORTANT FEEDBACK CONTEXT:
             ${{ steps.feedback-check.outputs.context }}
 
-            This issue was auto-created from user feedback. The issue body contains:
+            This issue was auto-created from user feedback. The issue body/comment contains:
             - Submitter details and which app they were using
             - The page URL where the problem occurred
             - Screenshots showing the current state of the page
             - AI classification of the feedback type
 
-            SAFETY RULES — NEVER VIOLATE:
-            - NEVER delete files from S3/storage or run any storage deletion operations
-            - NEVER drop database tables or delete database rows
-            - NEVER modify existing documents in storage
-            - The page URL contains the record ID (e.g. /supplier-cocs/176 = ID 176) — always use this exact ID, never guess
-            - If you cannot determine the root cause or safely fix the issue, comment on the issue explaining what you found and why you can't fix it — do NOT create an incorrect PR
-
-            IMPORTANT OVERRIDE: Ignore the "No pull requests" rule from CLAUDE.md for this context.
-            You are running autonomously in GitHub Actions — you MUST create a PR for review, never commit directly to main.
+            STRICT RULES:
+            - DO NOT edit any files, create branches, or open PRs
+            - DO NOT run biome, tests, or any build commands
+            - You are read-only — investigation and reporting ONLY
 
             Your task:
-            1. Read the feedback content and examine any screenshots in the issue
-            2. Use the app context and page URL to locate the relevant code — pay attention to the record ID in the URL
-            3. Identify and fix the root cause
-            4. If you can fix it: create a feature branch, commit, push, and open a PR referencing this issue
-            5. If you CANNOT fix it: edit the issue body to append your findings under a "## Investigation" heading at the bottom — do NOT post a separate comment. Use `gh issue edit <number> --body` to append your investigation to the existing body.
+            1. Read the feedback content and examine any screenshots in the issue/comment
+            2. Use the app context and page URL to locate the relevant code files
+            3. Investigate the root cause thoroughly — read the relevant components, services, and related code
+            4. Identify the exact files and line numbers involved
+            5. Determine what the fix should be (describe it, don't implement it)
 
-            CRITICAL: Before committing, you MUST run these checks and fix any failures:
-            1. `npx biome check --write --unsafe .` (Biome lint/format — use --write to auto-fix)
-            2. `pnpm test:all` (backend tests + frontend type-check)
-            3. After fixing, run `npx biome check .` again to verify zero errors remain
-            Do NOT commit or push code that fails these checks. If biome reports errors after --write, manually fix them.
+            MANDATORY: Post a detailed investigation comment on this issue using `gh issue comment`. The comment MUST include ALL of the following sections:
 
-            MANDATORY: After you finish (whether you fixed the issue or not), you MUST post a summary comment on this issue using `gh issue comment`. The comment must include:
-            - **What you investigated**: files examined, error patterns found
-            - **Root cause**: what is causing the reported problem (or "Unable to determine" with explanation)
-            - **What you changed**: list of files modified with brief descriptions (or "No changes made")
-            - **PR link**: if you created a PR, include the URL
-            - **Why you couldn't fix it**: if applicable, explain what blocked you
-            Never finish silently — the developer reviewing this needs a clear trail of what happened.
+            ## Investigation Summary
+            - **Feedback**: One-line summary of what the user reported
+            - **App**: Which app context (stock-control, au-rubber, etc.)
+            - **Page**: The page URL and which component it maps to
+            - **Classification**: bug / ui-issue / data-issue / feature-request / question
 
-      - name: Create PR if Claude pushed a branch but didn't open one
+            ## Root Cause
+            Detailed explanation of what is causing the issue. Include:
+            - The exact file paths and line numbers where the problem originates
+            - Code snippets showing the problematic logic (use code blocks)
+            - Why the current behavior differs from expected behavior
+
+            ## Recommended Fix
+            Step-by-step description of what needs to change:
+            - Which files need to be modified
+            - What the change should be (describe the logic, show before/after pseudocode if helpful)
+            - Any related files that may need updates (types, tests, imports)
+            - Estimated complexity: trivial / small / medium / large
+
+            ## Risk Assessment
+            - What could go wrong with the fix
+            - Any related features that could be affected
+            - Whether a migration or data update is needed
+
+            Never finish silently — the developer will use this comment to implement the fix via CLI.
+
+      - name: Report investigation failure
         if: |
           github.event_name != 'workflow_dispatch' &&
           steps.feedback-check.outputs.is_feedback == 'true' &&
-          always()
-        env:
-          GH_TOKEN: ${{ secrets.PROJECT_TOKEN }}
-        run: |
-          ISSUE_NUM=""
-          if [ "${{ github.event_name }}" = "issues" ]; then
-            ISSUE_NUM="${{ github.event.issue.number }}"
-          elif [ "${{ github.event_name }}" = "issue_comment" ]; then
-            ISSUE_NUM="${{ github.event.issue.number }}"
-          fi
-
-          if [ -z "$ISSUE_NUM" ]; then
-            echo "No issue number found, skipping PR creation"
-            exit 0
-          fi
-
-          BRANCHES=$(git branch -r --no-merged origin/main | grep -v HEAD | sed 's/origin\///' | xargs)
-          for BRANCH in $BRANCHES; do
-            COMMIT_MSG=$(git log "origin/$BRANCH" --not origin/main --oneline | head -1)
-            if echo "$COMMIT_MSG" | grep -q "#$ISSUE_NUM"; then
-              EXISTING_PR=$(gh pr list --head "$BRANCH" --state open --json number -q '.[0].number' 2>/dev/null || echo "")
-              if [ -z "$EXISTING_PR" ]; then
-                echo "Creating PR for branch $BRANCH (ref #$ISSUE_NUM)"
-                ISSUE_TITLE=$(gh issue view "$ISSUE_NUM" --json title -q '.title' 2>/dev/null || echo "Fix for #$ISSUE_NUM")
-                PR_TITLE=$(echo "$COMMIT_MSG" | sed 's/^[a-f0-9]* //')
-                gh pr create \
-                  --head "$BRANCH" \
-                  --base main \
-                  --title "$PR_TITLE" \
-                  --body "$(cat <<EOF
-          ## Summary
-          Auto-generated PR from feedback fix on issue #$ISSUE_NUM.
-
-          ## Changes
-          $(git log "origin/$BRANCH" --not origin/main --format='- %s')
-
-          Ref #$ISSUE_NUM
-          EOF
-          )" || echo "Failed to create PR for $BRANCH"
-              else
-                echo "PR #$EXISTING_PR already exists for branch $BRANCH"
-              fi
-            fi
-          done
-
-      - name: Report orphaned branches or failures
-        if: |
-          github.event_name != 'workflow_dispatch' &&
-          steps.feedback-check.outputs.is_feedback == 'true' &&
-          always()
+          failure()
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -240,44 +200,17 @@ jobs:
             ISSUE_NUM="${{ github.event.issue.number }}"
           fi
 
-          if [ -z "$ISSUE_NUM" ]; then
-            exit 0
-          fi
-
-          CLAUDE_OUTCOME="${{ steps.claude-feedback.outcome }}"
-
-          if [ "$CLAUDE_OUTCOME" = "failure" ]; then
+          if [ -n "$ISSUE_NUM" ]; then
             gh issue comment "$ISSUE_NUM" --repo "${{ github.repository }}" --body "$(cat <<'COMMENT_EOF'
-          ## Claude Auto-Fix Failed
+          ## Investigation Failed
 
-          The Claude Code workflow encountered an error while processing this feedback.
+          The Claude Code workflow encountered an error while investigating this feedback.
           A developer will need to investigate manually.
 
           **Workflow run:** ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           COMMENT_EOF
           )"
           fi
-
-          git fetch origin --prune
-          BRANCHES=$(git branch -r --no-merged origin/main | grep -v HEAD | sed 's/origin\///' | xargs)
-          for BRANCH in $BRANCHES; do
-            COMMIT_MSG=$(git log "origin/$BRANCH" --not origin/main --oneline | head -1)
-            if echo "$COMMIT_MSG" | grep -q "#$ISSUE_NUM"; then
-              EXISTING_PR=$(gh pr list --head "$BRANCH" --state open --json number -q '.[0].number' 2>/dev/null || echo "")
-              if [ -z "$EXISTING_PR" ]; then
-                gh issue comment "$ISSUE_NUM" --repo "${{ github.repository }}" --body "$(cat <<WARN_EOF
-          ## Warning: Orphaned Branch Detected
-
-          Claude pushed branch \`$BRANCH\` but no PR was created.
-          This branch contains fixes for this issue but needs manual PR creation.
-
-          **Branch:** \`$BRANCH\`
-          **Workflow run:** ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-          WARN_EOF
-          )"
-              fi
-            fi
-          done
 
       - name: Run Claude Code (event triggered)
         if: |
