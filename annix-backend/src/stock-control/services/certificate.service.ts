@@ -197,6 +197,45 @@ export class CertificateService {
     return this.findById(companyId, saved.id);
   }
 
+  async createFromInboundEmail(
+    companyId: number,
+    supplierId: number,
+    s3Path: string,
+    originalFilename: string,
+    fileSizeBytes: number,
+    mimeType: string,
+    certificateType: string,
+    batchNumber: string,
+  ): Promise<SupplierCertificate> {
+    const certificate = this.certRepo.create({
+      companyId,
+      supplierId,
+      stockItemId: null,
+      jobCardId: null,
+      certificateType: certificateType.toUpperCase(),
+      batchNumber,
+      filePath: s3Path,
+      originalFilename,
+      fileSizeBytes,
+      mimeType,
+      description: null,
+      expiryDate: null,
+      uploadedById: null,
+      uploadedByName: "Email Import",
+    });
+
+    const saved = await this.certRepo.save(certificate);
+    this.logger.log(
+      `Certificate created from email: ${certificateType} batch=${batchNumber} supplier=${supplierId}`,
+    );
+
+    this.linkUnlinkedBatchRecords(companyId, saved.id).catch((err) =>
+      this.logger.error(`Auto-link batch records failed for cert ${saved.id}: ${err.message}`),
+    );
+
+    return saved;
+  }
+
   async findAll(companyId: number, filters?: CertificateFilters): Promise<SupplierCertificate[]> {
     const qb = this.certRepo
       .createQueryBuilder("cert")

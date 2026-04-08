@@ -18,6 +18,7 @@ import {
 } from "../../lib/document-classification";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
 import { StockControlSupplier } from "../entities/stock-control-supplier.entity";
+import { CertificateService } from "./certificate.service";
 import { DeliveryService } from "./delivery.service";
 import { InvoiceService } from "./invoice.service";
 import { InvoiceExtractionService } from "./invoice-extraction.service";
@@ -95,6 +96,7 @@ export class ScEmailAdapterService implements EmailAppAdapter, OnModuleInit {
     private readonly deliveryService: DeliveryService,
     private readonly extractionService: InvoiceExtractionService,
     private readonly notificationService: WorkflowNotificationService,
+    private readonly certificateService: CertificateService,
     @InjectRepository(StockControlSupplier)
     private readonly supplierRepo: Repository<StockControlSupplier>,
   ) {}
@@ -208,6 +210,7 @@ Respond ONLY with a JSON object:
     companyId: number | null,
     fromEmail: string,
     subject: string,
+    supplierName?: string | null,
   ): Promise<RoutingResult> {
     if (!companyId) {
       this.logger.warn("No company ID for routing, skipping");
@@ -222,6 +225,16 @@ Respond ONLY with a JSON object:
 
     if (docType === ScDocumentType.DELIVERY_NOTE) {
       return this.routeDeliveryNote(attachment, fileBuffer, companyId, fromEmail, subject);
+    }
+
+    if (docType === ScDocumentType.SUPPLIER_CERTIFICATE) {
+      return this.routeCertificate(
+        attachment,
+        fileBuffer,
+        companyId,
+        fromEmail,
+        supplierName ?? null,
+      );
     }
 
     this.logger.log(
@@ -301,6 +314,108 @@ Respond ONLY with a JSON object:
       linkedEntityId: dn.id,
       extractionTriggered: false,
     };
+  }
+
+  private async routeCertificate(
+    attachment: InboundEmailAttachment,
+    fileBuffer: Buffer,
+    companyId: number,
+    fromEmail: string,
+    supplierName: string | null,
+  ): Promise<RoutingResult> {
+    if (!attachment.s3Path) {
+      this.logger.warn(`No S3 path on attachment ${attachment.id}, skipping certificate creation`);
+      return { linkedEntityType: null, linkedEntityId: null, extractionTriggered: false };
+    }
+
+    const resolvedSupplierName =
+      supplierName ?? (await this.extractSupplierNameFromContent(fileBuffer, attachment.mimeType));
+    const supplier = await this.resolveSupplier(companyId, fromEmail, resolvedSupplierName);
+    if (!supplier) {
+      this.logger.warn(
+        `No supplier found for email ${fromEmail} (supplierName=${resolvedSupplierName}) in company ${companyId}, skipping certificate creation`,
+      );
+      return { linkedEntityType: null, linkedEntityId: null, extractionTriggered: false };
+    }
+
+    const filenameBase = attachment.originalFilename.replace(/\.[^.]+$/, "");
+    const batchNumber = filenameBase;
+
+    const cert = await this.certificateService.createFromInboundEmail(
+      companyId,
+      supplier.id,
+      attachment.s3Path,
+      attachment.originalFilename,
+      attachment.fileSizeBytes,
+      attachment.mimeType,
+      "COC",
+      batchNumber,
+    );
+
+    this.logger.log(
+      `Created supplier certificate ${cert.id} from email: ${attachment.originalFilename}`,
+    );
+
+    return {
+      linkedEntityType: "SupplierCertificate",
+      linkedEntityId: cert.id,
+      extractionTriggered: false,
+    };
+  }
+
+  private async extractSupplierNameFromContent(
+    fileBuffer: Buffer,
+    mimeType: string,
+  ): Promise<string | null> {
+    try {
+      const isAvailable = await this.aiChatService.isAvailable();
+      if (!isAvailable) {
+        return null;
+      }
+      const imageBase64 = fileBuffer.toString("base64");
+      const mediaType = this.mimeToMediaType(mimeType);
+      const response = await this.aiChatService.chatWithImage(
+        imageBase64,
+        mediaType,
+        'What is the name of the company or supplier that issued this certificate? Reply with ONLY the company name, nothing else. If you cannot determine it, reply with "unknown".',
+      );
+      const name = response.content.trim();
+      return name === "unknown" || name.length === 0 ? null : name;
+    } catch {
+      return null;
+    }
+  }
+
+  private async resolveSupplier(
+    companyId: number,
+    fromEmail: string,
+    supplierName: string | null,
+  ): Promise<StockControlSupplier | null> {
+    const domain = fromEmail.split("@")[1] ?? "";
+    const suppliers = await this.supplierRepo.find({ where: { companyId } });
+
+    const emailMatch = suppliers.find((s) => s.email?.toLowerCase() === fromEmail.toLowerCase());
+    if (emailMatch) {
+      return emailMatch;
+    }
+
+    const domainMatch = suppliers.find((s) => s.email?.toLowerCase().endsWith(`@${domain}`));
+    if (domainMatch) {
+      return domainMatch;
+    }
+
+    if (supplierName) {
+      const normalised = supplierName.toLowerCase();
+      const nameMatch = suppliers.find(
+        (s) =>
+          s.name.toLowerCase().includes(normalised) || normalised.includes(s.name.toLowerCase()),
+      );
+      if (nameMatch) {
+        return nameMatch;
+      }
+    }
+
+    return null;
   }
 
   private async resolveSupplierName(companyId: number, fromEmail: string): Promise<string> {

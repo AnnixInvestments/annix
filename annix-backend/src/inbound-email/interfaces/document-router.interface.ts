@@ -13,6 +13,7 @@ export interface IDocumentRouter {
     companyId: number | null,
     fromEmail: string,
     subject: string,
+    supplierName?: string | null,
   ): Promise<RoutingResult>;
 
   supportedMimeTypes(): string[];

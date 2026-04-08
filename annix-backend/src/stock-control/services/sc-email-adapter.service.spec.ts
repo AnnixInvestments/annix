@@ -3,6 +3,7 @@ import { getRepositoryToken } from "@nestjs/typeorm";
 import { InboundEmailRegistry } from "../../inbound-email/inbound-email-registry.service";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
 import { StockControlSupplier } from "../entities/stock-control-supplier.entity";
+import { CertificateService } from "./certificate.service";
 import { DeliveryService } from "./delivery.service";
 import { InvoiceService } from "./invoice.service";
 import { InvoiceExtractionService } from "./invoice-extraction.service";
@@ -23,6 +24,7 @@ describe("ScEmailAdapterService (classification)", () => {
   const noopDeliveryService = {};
   const noopExtractionService = {};
   const noopNotificationService = {};
+  const noopCertificateService = {};
   const noopSupplierRepo = {};
 
   beforeEach(async () => {
@@ -35,6 +37,7 @@ describe("ScEmailAdapterService (classification)", () => {
         { provide: DeliveryService, useValue: noopDeliveryService },
         { provide: InvoiceExtractionService, useValue: noopExtractionService },
         { provide: WorkflowNotificationService, useValue: noopNotificationService },
+        { provide: CertificateService, useValue: noopCertificateService },
         { provide: getRepositoryToken(StockControlSupplier), useValue: noopSupplierRepo },
       ],
     }).compile();

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { PdfPreviewModal, usePdfPreview } from "@/app/components/PdfPreviewModal";
 import type {
   CalibrationCertificate,
   IssuanceBatchRecord,
@@ -83,6 +84,7 @@ function CertificatesTab() {
   const [filterSupplier, setFilterSupplier] = useState("");
   const [filterType, setFilterType] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
+  const pdfPreview = usePdfPreview();
 
   const [viewMode, setViewMode] = useState<ViewMode>("list");
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
@@ -150,7 +152,7 @@ function CertificatesTab() {
     try {
       const cert = await stockControlApiClient.certificateById(id);
       if (cert.downloadUrl) {
-        window.open(cert.downloadUrl, "_blank");
+        pdfPreview.open(cert.downloadUrl, cert.originalFilename || "certificate.pdf");
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to get download URL");
@@ -690,6 +692,8 @@ function CertificatesTab() {
           }}
         />
       )}
+
+      <PdfPreviewModal state={pdfPreview.state} onClose={pdfPreview.close} />
     </div>
   );
 }
@@ -699,6 +703,7 @@ function CalibrationTab() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showActive, setShowActive] = useState(true);
+  const pdfPreview = usePdfPreview();
 
   const fetchCalCerts = useCallback(async () => {
     try {
@@ -723,7 +728,7 @@ function CalibrationTab() {
     try {
       const cert = await stockControlApiClient.calibrationCertificateById(id);
       if (cert.downloadUrl) {
-        window.open(cert.downloadUrl, "_blank");
+        pdfPreview.open(cert.downloadUrl, cert.originalFilename || "calibration-certificate.pdf");
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to get download URL");
@@ -887,6 +892,8 @@ function CalibrationTab() {
           </table>
         </div>
       )}
+
+      <PdfPreviewModal state={pdfPreview.state} onClose={pdfPreview.close} />
     </div>
   );
 }
@@ -1073,6 +1080,7 @@ function BatchLookupTab() {
   const [batchRecords, setBatchRecords] = useState<IssuanceBatchRecord[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const pdfPreview = usePdfPreview();
 
   const handleSearch = async () => {
     const trimmed = batchNumber.trim();
@@ -1105,7 +1113,7 @@ function BatchLookupTab() {
     try {
       const cert = await stockControlApiClient.certificateById(id);
       if (cert.downloadUrl) {
-        window.open(cert.downloadUrl, "_blank");
+        pdfPreview.open(cert.downloadUrl, cert.originalFilename || "certificate.pdf");
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to get download URL");
@@ -1328,6 +1336,8 @@ function BatchLookupTab() {
           </p>
         </div>
       )}
+
+      <PdfPreviewModal state={pdfPreview.state} onClose={pdfPreview.close} />
     </div>
   );
 }

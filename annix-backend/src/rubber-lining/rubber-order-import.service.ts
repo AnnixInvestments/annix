@@ -126,7 +126,21 @@ export class RubberOrderImportService {
     try {
       const pdfData = await pdfParse(file.buffer);
       const text = pdfData.text || "";
-      this.logger.log(`Extracted ${text.length} characters from PDF ${file.originalname}`);
+      const strippedText = text.replace(/\s+/g, "");
+      const isTextPoor = strippedText.length < 50;
+      this.logger.log(
+        `Extracted ${text.length} characters from PDF ${file.originalname} (textPoor=${isTextPoor})`,
+      );
+
+      if (isTextPoor) {
+        this.logger.log(
+          "PDF has minimal extractable text (likely handwritten/scanned) — using full vision extraction",
+        );
+        const visionResult = await this.extractFullOrderWithVision(file.buffer, file.originalname);
+        Object.assign(result, visionResult);
+        await this.matchCompanyAndProducts(result);
+        return result;
+      }
 
       const formatHash = await this.templateService.computeFormatHash(file.buffer);
       result.formatHash = formatHash;
@@ -230,6 +244,32 @@ export class RubberOrderImportService {
         isNewFormat: result.isNewFormat,
         isNewCustomer: result.isNewCustomer,
       });
+
+      if (result.lines.length === 0) {
+        this.logger.log(
+          "Text-based AI extraction found 0 lines — falling back to full vision extraction",
+        );
+        const visionResult = await this.extractFullOrderWithVision(file.buffer, file.originalname);
+        const visionLines = visionResult.lines || [];
+        if (visionLines.length > 0) {
+          result.lines = visionLines;
+          result.confidence = Math.max(result.confidence || 0, visionResult.confidence || 0);
+          if (!result.poNumber && visionResult.poNumber) {
+            result.poNumber = visionResult.poNumber;
+          }
+          if (!result.companyName && visionResult.companyName) {
+            result.companyName = visionResult.companyName;
+          }
+          if (!result.orderDate && visionResult.orderDate) {
+            result.orderDate = visionResult.orderDate;
+          }
+          if (!result.deliveryDate && visionResult.deliveryDate) {
+            result.deliveryDate = visionResult.deliveryDate;
+          }
+        } else if (visionResult.errors && visionResult.errors.length > 0) {
+          result.errors = [...result.errors, ...visionResult.errors];
+        }
+      }
 
       await this.matchCompanyAndProducts(result);
     } catch (error) {
@@ -674,6 +714,154 @@ ${truncatedText}`;
     );
 
     return { orderId: order.id };
+  }
+
+  private async extractFullOrderWithVision(
+    buffer: Buffer,
+    filename: string,
+  ): Promise<Partial<AnalyzedOrderData>> {
+    const isAvailable = await this.aiChatService.isAvailable();
+    if (!isAvailable) {
+      this.logger.warn("AI chat service not available for vision extraction");
+      return { confidence: 0, errors: ["Vision extraction not available"] };
+    }
+
+    try {
+      this.logger.log(`Starting full vision-based order extraction for ${filename}`);
+
+      const correctionHints = await this.correctionHintsForCompany(null);
+
+      let visionPrompt = `You are NIX, an AI assistant for AU Industries' rubber lining operations.
+Analyze this purchase order document carefully. The document may be HANDWRITTEN, scanned, or a mix of printed and handwritten content. Read ALL text carefully, including handwritten notes, numbers, and annotations.
+
+Extract the FULL order information:
+- Company name (the customer placing the order — who sent this PO to AU Industries)
+- PO number / Purchase Order number / Order number / PR number / Requisition number
+- Order date
+- Requested delivery date
+- Line items
+
+CRITICAL — HOW TO READ LINE ITEMS:
+Each row in the table is one line item. The description column contains the full product spec written as free text. Common formats you will see:
+- "12 ROLLS 1200x6mm x 10m Natural Rubber 60 Duro" → qty=12, width=1200mm, thickness=6mm, length=10m
+- "ROLL 500AU RST 3.7 18ZG" → parse whatever dimensions you can read
+- Dimensions may appear as WIDTHxTHICKNESS, THICKNESSxWIDTH, or embedded in text
+- Numbers after "x" are typically dimensions in mm or m
+- "AU" often refers to a width code (e.g. 500AU = 500mm wide)
+- Read the QTY column (leftmost) for the quantity
+- Extract ALL rows from the table, even if some fields are unclear
+
+IMPORTANT RULES:
+- Read handwritten numbers very carefully — distinguish between similar digits (1/7, 5/6, 3/8, 0/6)
+- The order number may be labeled "ORDER", "PL", "PR", "PO", "Req No" — extract whatever reference number appears
+- If a dimension unit is ambiguous, use context: widths are typically 300-2000mm, thicknesses 3-25mm, lengths 1-50m
+- Include ALL line items, even partially legible ones (set lower confidence for unclear lines)
+- Do NOT skip rows just because the handwriting is difficult
+
+Respond ONLY with JSON:
+{
+  "companyName": "string or null",
+  "companyVatNumber": "string or null",
+  "companyAddress": "string or null",
+  "companyRegistrationNumber": "string or null",
+  "poNumber": "string or null",
+  "orderDate": "ISO date string or null",
+  "deliveryDate": "ISO date string or null",
+  "lines": [
+    {
+      "lineNumber": 1,
+      "productName": "product description as written",
+      "thickness": number in mm or null,
+      "width": number in mm or null,
+      "length": number in meters or null,
+      "quantity": number or null,
+      "confidence": 0.0-1.0,
+      "rawText": "the exact text as written on the document for this line"
+    }
+  ],
+  "confidence": 0.0-1.0,
+  "notes": "any extraction notes, legibility issues, or assumptions made"
+}`;
+
+      if (correctionHints) {
+        visionPrompt = `${visionPrompt}\n\n${correctionHints}`;
+      }
+
+      const pdfBase64 = buffer.toString("base64");
+      const chatResponse = await this.aiChatService.chatWithImage(
+        pdfBase64,
+        "application/pdf",
+        visionPrompt,
+      );
+
+      const content = chatResponse.content || "";
+      this.logger.log(
+        `Full vision extraction response (${content.length} chars): ${content.substring(0, 1000)}`,
+      );
+
+      // Write full response to debug file so it survives backend restarts
+      try {
+        const fs = await import("node:fs/promises");
+        const path = await import("node:path");
+        const debugPath = path.resolve(__dirname, "../../../../logs/vision-debug.txt");
+        await fs.writeFile(
+          debugPath,
+          `=== ${new Date().toISOString()} ===\nFILE: ${filename}\nRESPONSE (${content.length} chars):\n${content}\n`,
+        );
+        this.logger.log(`Vision debug response written to: ${debugPath}`);
+      } catch (writeErr) {
+        this.logger.warn(`Could not write vision debug file: ${writeErr.message}`);
+      }
+
+      const jsonMatch = content.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        const parsed = JSON.parse(jsonMatch[0]);
+        const lines: AnalyzedOrderLine[] = (parsed.lines || []).map(
+          (line: Partial<AnalyzedOrderLine>, idx: number) => ({
+            lineNumber: line.lineNumber || idx + 1,
+            productName: line.productName || null,
+            productId: null,
+            thickness: this.parseNumber(line.thickness),
+            width: this.parseNumber(line.width),
+            length: this.parseNumber(line.length),
+            quantity: this.parseNumber(line.quantity),
+            confidence: line.confidence || 0.6,
+            rawText: line.rawText || null,
+          }),
+        );
+
+        const filenamePo = this.extractPoFromFilename(filename);
+        const poNumber = filenamePo || parsed.poNumber || null;
+
+        this.logger.log(
+          `Full vision extraction: company="${parsed.companyName}", PO="${poNumber}", lines=${lines.length}`,
+        );
+
+        return {
+          companyName: parsed.companyName || null,
+          companyVatNumber: parsed.companyVatNumber || null,
+          companyAddress: parsed.companyAddress || null,
+          companyRegistrationNumber: parsed.companyRegistrationNumber || null,
+          poNumber,
+          errors:
+            lines.length === 0
+              ? [
+                  `Vision returned 0 lines. Gemini notes: ${parsed.notes || "(none)"}. Raw response snippet: ${content.substring(0, 500)}`,
+                ]
+              : [],
+          orderDate: parsed.orderDate || null,
+          deliveryDate: parsed.deliveryDate || null,
+          lines,
+          confidence: parsed.confidence || 0.6,
+          extractionMethod: "ai",
+        };
+      }
+
+      return { confidence: 0, errors: ["Could not parse vision response"] };
+    } catch (error) {
+      this.logger.error(`Full vision extraction failed: ${error.message}`);
+      return { confidence: 0, errors: [`Vision extraction failed: ${error.message}`] };
+    }
   }
 
   private async extractLinesWithVision(

@@ -234,6 +234,7 @@ export class InboundEmailMonitorService {
                 resolvedCompanyId,
                 fromEmail,
                 subject,
+                classification?.supplierName ?? null,
               );
 
               await this.inboundEmailService.updateAttachment(attachment.id, {
