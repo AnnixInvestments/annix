@@ -238,6 +238,12 @@ export class RubberAuCocService {
       throw new BadRequestException("Delivery note not found");
     }
 
+    if (deliveryNote.stockCategory) {
+      throw new BadRequestException(
+        `Delivery note ${deliveryNote.deliveryNoteNumber} is categorised as "${deliveryNote.stockCategory}" — CoCs are only generated for rubber rolls`,
+      );
+    }
+
     if (!deliveryNote.supplierCompanyId) {
       throw new BadRequestException("Delivery note has no customer assigned");
     }
@@ -1491,6 +1497,14 @@ export class RubberAuCocService {
 
     if (!deliveryNote) {
       return { auCoc: null, matchedSupplierCocs: [], message: "Delivery note not found" };
+    }
+
+    if (deliveryNote.stockCategory) {
+      return {
+        auCoc: null,
+        matchedSupplierCocs: [],
+        message: `Delivery note ${deliveryNote.deliveryNoteNumber} is categorised as "${deliveryNote.stockCategory}" — CoCs are only generated for rubber rolls`,
+      };
     }
 
     const deliveryNoteItems = await this.deliveryNoteItemRepository.find({

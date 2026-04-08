@@ -3,6 +3,7 @@ import { Test, TestingModule } from "@nestjs/testing";
 import { getRepositoryToken } from "@nestjs/typeorm";
 import { DataSource } from "typeorm";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
+import { NixLearning } from "../../nix/entities/nix-learning.entity";
 import { STORAGE_SERVICE } from "../../storage/storage.interface";
 import { StockItem } from "../entities/stock-item.entity";
 import { InventoryService } from "./inventory.service";
@@ -73,6 +74,10 @@ describe("InventoryService", () => {
       providers: [
         InventoryService,
         { provide: getRepositoryToken(StockItem), useValue: mockStockItemRepo },
+        {
+          provide: getRepositoryToken(NixLearning),
+          useValue: { save: jest.fn(), find: jest.fn().mockResolvedValue([]) },
+        },
         { provide: STORAGE_SERVICE, useValue: mockStorageService },
         { provide: RequisitionService, useValue: mockRequisitionService },
         { provide: DataSource, useValue: mockDataSource },
