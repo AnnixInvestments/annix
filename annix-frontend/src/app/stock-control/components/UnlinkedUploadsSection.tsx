@@ -28,7 +28,8 @@ export function UnlinkedUploadsSection(props: UnlinkedUploadsSectionProps) {
         entityType,
       });
       setUploads(Array.isArray(data) ? data : []);
-    } catch {
+    } catch (err) {
+      console.error("Failed to fetch unlinked uploads:", err);
       setUploads([]);
     } finally {
       setIsLoading(false);

@@ -1,6 +1,6 @@
 import { Inject, Injectable, Logger } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
+import { IsNull, Repository } from "typeorm";
 import { nowISO } from "../../../lib/datetime";
 import type { IStorageService } from "../../../storage/storage.interface";
 import { STORAGE_SERVICE, StorageArea } from "../../../storage/storage.interface";
@@ -87,15 +87,12 @@ export class PositectorUploadService {
   }
 
   async unlinkedUploads(companyId: number, entityType?: string): Promise<PositectorUpload[]> {
-    const where: Record<string, unknown> = {
-      companyId,
-      linkedJobCardId: null as unknown as number,
-    };
-    if (entityType) {
-      where.entityType = entityType;
-    }
     return this.uploadRepo.find({
-      where,
+      where: {
+        companyId,
+        linkedJobCardId: IsNull(),
+        ...(entityType ? { entityType } : {}),
+      },
       order: { createdAt: "DESC" },
     });
   }
