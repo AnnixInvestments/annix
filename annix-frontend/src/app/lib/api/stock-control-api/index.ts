@@ -1,4 +1,5 @@
 export { StockControlApiClient } from "./base";
+export type { CpoChildJcLineItems } from "./qcMethods";
 export * from "./types";
 
 import "./authMethods";

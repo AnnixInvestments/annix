@@ -29,6 +29,7 @@ export type {
   CostByJob,
   CpoCalloffBreakdown,
   CpoCalloffRecord,
+  CpoChildJcLineItems,
   CpoDeliveryHistory,
   CpoDeliveryHistoryItem,
   CpoFulfillmentReportItem,

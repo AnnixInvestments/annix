@@ -586,6 +586,182 @@ export class CertificateService {
     return saved;
   }
 
+  async compileCpoDataBook(
+    companyId: number,
+    cpoId: number,
+    user: UserContext,
+    force = false,
+  ): Promise<{ buffer: Buffer; filename: string }> {
+    const childJcs = await this.jobCardRepo.find({
+      where: { cpoId, companyId },
+      order: { createdAt: "ASC" },
+    });
+
+    if (childJcs.length === 0) {
+      throw new NotFoundException("No child job cards found for this CPO");
+    }
+
+    const company = await this.companyRepo.findOne({ where: { id: companyId } });
+    const qcEnabled = company?.qcEnabled ?? false;
+    const { default: pdfLib } = await import("pdf-lib");
+    const PDFKit = (await import("pdfkit")).default;
+    const mergedPdf = await pdfLib.PDFDocument.create();
+
+    const fetchLogo = async (logoUrl: string): Promise<Buffer> => {
+      if (logoUrl.startsWith("http")) {
+        return Buffer.from(await (await fetch(logoUrl)).arrayBuffer());
+      }
+      return this.storageService.download(logoUrl);
+    };
+
+    let totalCertCount = 0;
+
+    for (const jc of childJcs) {
+      const [certs, calCerts, coatingAnalysis] = await Promise.all([
+        this.certificatesForJobCard(companyId, jc.id),
+        this.calCertRepo.find({
+          where: { companyId, isActive: true },
+          order: { equipmentName: "ASC" },
+        }),
+        this.coatingRepo.findOne({ where: { companyId, jobCardId: jc.id } }),
+      ]);
+
+      const [controlPlans, releaseCerts] = qcEnabled
+        ? await Promise.all([
+            this.controlPlanRepo.find({
+              where: { companyId, jobCardId: jc.id },
+              order: { createdAt: "ASC" },
+            }),
+            this.releaseCertRepo.find({
+              where: { companyId, jobCardId: jc.id },
+              order: { createdAt: "ASC" },
+            }),
+          ])
+        : [[], []];
+
+      totalCertCount += certs.length + calCerts.length;
+
+      const coverBuffer = await generateBrandedCoverPage(
+        PDFKit,
+        company ?? null,
+        jc,
+        coatingAnalysis ?? null,
+        controlPlans,
+        releaseCerts,
+        certs,
+        calCerts,
+        user,
+        { fetchLogo },
+      );
+
+      const coverPdf = await pdfLib.PDFDocument.load(coverBuffer);
+      const coverPages = await mergedPdf.copyPages(coverPdf, coverPdf.getPageIndices());
+      coverPages.forEach((page) => mergedPdf.addPage(page));
+
+      const structuredBuffer = await this.dataBookPdfService.generateStructuredSections(
+        companyId,
+        jc.id,
+      );
+
+      if (structuredBuffer) {
+        const structuredPdf = await pdfLib.PDFDocument.load(structuredBuffer);
+        const structuredPages = await mergedPdf.copyPages(
+          structuredPdf,
+          structuredPdf.getPageIndices(),
+        );
+        structuredPages.forEach((page) => mergedPdf.addPage(page));
+      }
+
+      for (const cert of certs) {
+        try {
+          const certBuffer = await this.storageService.download(cert.filePath);
+          if (cert.mimeType === "application/pdf") {
+            const certPdf = await pdfLib.PDFDocument.load(certBuffer);
+            const certPages = await mergedPdf.copyPages(certPdf, certPdf.getPageIndices());
+            certPages.forEach((page) => mergedPdf.addPage(page));
+          } else {
+            const imagePage = mergedPdf.addPage();
+            let image: Awaited<ReturnType<typeof mergedPdf.embedJpg>>;
+            if (cert.mimeType === "image/png") {
+              image = await mergedPdf.embedPng(certBuffer);
+            } else {
+              image = await mergedPdf.embedJpg(certBuffer);
+            }
+            const { width, height } = imagePage.getSize();
+            const imgDims = image.scaleToFit(width - 100, height - 100);
+            imagePage.drawImage(image, {
+              x: (width - imgDims.width) / 2,
+              y: (height - imgDims.height) / 2,
+              width: imgDims.width,
+              height: imgDims.height,
+            });
+          }
+        } catch (err) {
+          this.logger.warn(`Failed to include certificate ${cert.id} in CPO data book: ${err}`);
+        }
+      }
+
+      for (const cal of calCerts) {
+        try {
+          const calBuffer = await this.storageService.download(cal.filePath);
+          if (cal.mimeType === "application/pdf") {
+            const calPdf = await pdfLib.PDFDocument.load(calBuffer);
+            const calPages = await mergedPdf.copyPages(calPdf, calPdf.getPageIndices());
+            calPages.forEach((page) => mergedPdf.addPage(page));
+          } else {
+            const imagePage = mergedPdf.addPage();
+            let image: Awaited<ReturnType<typeof mergedPdf.embedJpg>>;
+            if (cal.mimeType === "image/png") {
+              image = await mergedPdf.embedPng(calBuffer);
+            } else {
+              image = await mergedPdf.embedJpg(calBuffer);
+            }
+            const { width, height } = imagePage.getSize();
+            const imgDims = image.scaleToFit(width - 100, height - 100);
+            imagePage.drawImage(image, {
+              x: (width - imgDims.width) / 2,
+              y: (height - imgDims.height) / 2,
+              width: imgDims.width,
+              height: imgDims.height,
+            });
+          }
+        } catch (err) {
+          this.logger.warn(`Failed to include calibration cert ${cal.id} in CPO data book: ${err}`);
+        }
+      }
+
+      const positectorUploads = await this.positectorUploadService.uploadsForJobCard(
+        companyId,
+        jc.id,
+      );
+      const positectorPdfs = positectorUploads.filter(
+        (u) => u.s3FilePath && u.detectedFormat === "posisoft_pdf",
+      );
+
+      for (const upload of positectorPdfs) {
+        try {
+          const pdfBuffer = await this.storageService.download(upload.s3FilePath);
+          const uploadPdf = await pdfLib.PDFDocument.load(pdfBuffer);
+          const uploadPages = await mergedPdf.copyPages(uploadPdf, uploadPdf.getPageIndices());
+          uploadPages.forEach((page) => mergedPdf.addPage(page));
+        } catch (err) {
+          this.logger.warn(
+            `Failed to include PosiTector PDF ${upload.id} in CPO data book: ${err}`,
+          );
+        }
+      }
+    }
+
+    const mergedBuffer = Buffer.from(await mergedPdf.save());
+    const filename = `DataBook-CPO${cpoId}-${now().toFormat("yyyyMMdd-HHmmss")}.pdf`;
+
+    this.logger.log(
+      `CPO data book compiled for CPO ${cpoId}: ${childJcs.length} child JCs, ${totalCertCount} certificates, ${mergedBuffer.length} bytes`,
+    );
+
+    return { buffer: mergedBuffer, filename };
+  }
+
   async downloadDataBook(
     companyId: number,
     jobCardId: number,

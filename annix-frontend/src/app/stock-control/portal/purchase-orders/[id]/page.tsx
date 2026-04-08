@@ -27,6 +27,7 @@ import { stockControlKeys } from "@/app/lib/query/keys";
 import { QcpSection } from "@/app/stock-control/portal/job-cards/[id]/components/QcpSection";
 import { AsteriskAllocationModal } from "../../../components/AsteriskAllocationModal";
 import { CpoBatchAssignmentSection } from "./components/CpoBatchAssignmentSection";
+import { CpoDataBookSection } from "./components/CpoDataBookSection";
 import { CpoReleaseDocumentGenerator } from "./components/CpoReleaseDocumentGenerator";
 
 function statusBadgeColor(status: string): string {
@@ -589,6 +590,7 @@ export default function CpoDetailPage() {
           <QcpSection cpoId={id} />
           <CpoBatchAssignmentSection cpoId={id} />
           <CpoReleaseDocumentGenerator cpoId={id} />
+          <CpoDataBookSection cpoId={id} />
         </div>
       )}
 

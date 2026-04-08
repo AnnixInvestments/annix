@@ -1,6 +1,7 @@
 import { StockControlApiClient } from "./base";
 import type {
   BlastProfileWithJobCard,
+  CoatingAnalysis,
   CpoReleasableItem,
   CpoReleaseDocumentsResult,
   DftReadingWithJobCard,
@@ -22,6 +23,20 @@ import type {
   QcShoreHardnessRecord,
   ShoreHardnessWithJobCard,
 } from "./types";
+
+export interface CpoChildJcLineItems {
+  jobCardId: number;
+  jcNumber: string;
+  jtDnNumber: string | null;
+  coatingAnalysis: CoatingAnalysis | null;
+  lineItems: Array<{
+    id: number;
+    jobCardId: number;
+    itemCode: string;
+    description: string;
+    quantity: number;
+  }>;
+}
 
 declare module "./base" {
   interface StockControlApiClient {
@@ -160,6 +175,8 @@ declare module "./base" {
     batchAssignmentsSummaryForCpo(
       cpoId: number,
     ): Promise<Record<string, { total: number; assigned: number; fieldKey: string }>>;
+    childJcLineItemsForCpo(cpoId: number): Promise<CpoChildJcLineItems[]>;
+    compileCpoDataBook(cpoId: number, force?: boolean): Promise<Blob>;
     allDftReadings(): Promise<DftReadingWithJobCard[]>;
     allBlastProfiles(): Promise<BlastProfileWithJobCard[]>;
     allShoreHardnessRecords(): Promise<ShoreHardnessWithJobCard[]>;
@@ -629,4 +646,16 @@ proto.batchAssignmentsForCpo = async function (cpoId) {
 
 proto.batchAssignmentsSummaryForCpo = async function (cpoId) {
   return this.request(`/stock-control/cpos/${cpoId}/qc/batch-assignments/summary`);
+};
+
+proto.childJcLineItemsForCpo = async function (cpoId) {
+  return this.request(`/stock-control/cpos/${cpoId}/qc/child-jc-line-items`);
+};
+
+proto.compileCpoDataBook = async function (cpoId, force) {
+  return this.requestBlob(`/stock-control/cpos/${cpoId}/qc/data-book`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ force: force || false }),
+  });
 };

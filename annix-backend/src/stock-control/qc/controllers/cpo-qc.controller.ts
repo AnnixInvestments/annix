@@ -16,6 +16,7 @@ import { ApiOperation, ApiTags } from "@nestjs/swagger";
 import { InjectRepository } from "@nestjs/typeorm";
 import type { Response } from "express";
 import { Repository } from "typeorm";
+import { JobCardCoatingAnalysis } from "../../entities/coating-analysis.entity";
 import { JobCard } from "../../entities/job-card.entity";
 import { StockControlAuthGuard } from "../../guards/stock-control-auth.guard";
 import {
@@ -23,6 +24,7 @@ import {
   StockControlRoleGuard,
   StockControlRoles,
 } from "../../guards/stock-control-role.guard";
+import { CertificateService } from "../../services/certificate.service";
 import { DataBookPdfService } from "../../services/data-book-pdf.service";
 import { QcEnabledGuard } from "../guards/qc-enabled.guard";
 import { QcBatchAssignmentService } from "../services/qc-batch-assignment.service";
@@ -38,8 +40,11 @@ export class CpoQcController {
     private readonly qcService: QcMeasurementService,
     private readonly batchService: QcBatchAssignmentService,
     private readonly dataBookPdfService: DataBookPdfService,
+    private readonly certificateService: CertificateService,
     @InjectRepository(JobCard)
     private readonly jobCardRepo: Repository<JobCard>,
+    @InjectRepository(JobCardCoatingAnalysis)
+    private readonly coatingRepo: Repository<JobCardCoatingAnalysis>,
   ) {}
 
   @Get("control-plans")
@@ -197,5 +202,65 @@ export class CpoQcController {
   @ApiOperation({ summary: "Batch assignment completion summary for a CPO" })
   async batchAssignmentsSummary(@Req() req: any, @Param("cpoId") cpoId: number) {
     return this.batchService.completionSummaryForCpo(req.user.companyId, cpoId);
+  }
+
+  @Get("child-jc-line-items")
+  @ApiOperation({ summary: "Line items from all child JCs with coating analysis" })
+  async childJcLineItems(@Req() req: any, @Param("cpoId") cpoId: number) {
+    const companyId = req.user.companyId;
+    const childJcs = await this.jobCardRepo.find({
+      where: { cpoId, companyId },
+      relations: ["lineItems"],
+      order: { createdAt: "ASC" },
+    });
+
+    const results = await Promise.all(
+      childJcs.map(async (jc) => {
+        const coating = await this.coatingRepo.findOne({
+          where: { jobCardId: jc.id, companyId },
+        });
+        const items = (jc.lineItems || []).map((li) => ({
+          id: li.id,
+          jobCardId: jc.id,
+          itemCode: li.itemCode || "",
+          description: li.itemDescription || "",
+          quantity: li.quantity || 0,
+        }));
+        return {
+          jobCardId: jc.id,
+          jcNumber: jc.jcNumber || jc.jobNumber,
+          jtDnNumber: jc.jtDnNumber || null,
+          coatingAnalysis: coating || null,
+          lineItems: items,
+        };
+      }),
+    );
+
+    return results;
+  }
+
+  @Post("data-book")
+  @StockControlRoles("quality", "manager", "admin")
+  @PermissionKey("qc.measurements")
+  @ApiOperation({ summary: "Compile CPO-level data book merging all child JCs" })
+  async compileCpoDataBook(
+    @Req() req: any,
+    @Res() res: Response,
+    @Param("cpoId") cpoId: number,
+    @Body() body?: { force?: boolean },
+  ) {
+    const result = await this.certificateService.compileCpoDataBook(
+      req.user.companyId,
+      cpoId,
+      req.user,
+      body?.force ?? false,
+    );
+
+    res.set({
+      "Content-Type": "application/pdf",
+      "Content-Disposition": `inline; filename="${result.filename}"`,
+      "Content-Length": result.buffer.length.toString(),
+    });
+    res.end(result.buffer);
   }
 }

@@ -454,7 +454,7 @@ export class DeliveryExtractionService {
       roll.thicknessMm ? `${roll.thicknessMm}mm thick` : null,
       roll.widthMm ? `${roll.widthMm}mm wide` : null,
     ].filter((p): p is string => p !== null);
-    const description = dimensionParts.length > 0 ? dimensionParts.join(" x ") : null;
+    const description = dimensionParts.length > 0 ? dimensionParts.join(" x ") : "";
 
     this.logger.log(
       `Enriched roll #${rollNumber} from AU Rubber: ${compoundName} / ${enrichedSku} (${description})`,
