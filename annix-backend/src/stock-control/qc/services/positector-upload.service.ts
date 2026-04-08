@@ -211,7 +211,29 @@ export class PositectorUploadService {
     upload.importedAt = new Date();
     await this.uploadRepo.save(upload);
 
+    await this.linkUploadToBatchAssignments(companyId, upload);
+
     return { ...result, uploadId: upload.id };
+  }
+
+  private async linkUploadToBatchAssignments(
+    companyId: number,
+    upload: PositectorUpload,
+  ): Promise<void> {
+    if (!upload.linkedJobCardId || !upload.batchName) return;
+
+    const { QcBatchAssignment } = await import("../entities/qc-batch-assignment.entity");
+    const assignmentRepo = this.uploadRepo.manager.getRepository(QcBatchAssignment);
+
+    await assignmentRepo
+      .createQueryBuilder()
+      .update(QcBatchAssignment)
+      .set({ positectorUploadId: upload.id })
+      .where("companyId = :companyId", { companyId })
+      .andWhere("jobCardId = :jobCardId", { jobCardId: upload.linkedJobCardId })
+      .andWhere("LOWER(batchNumber) = LOWER(:batchNumber)", { batchNumber: upload.batchName })
+      .andWhere("positectorUploadId IS NULL")
+      .execute();
   }
 
   async retroactiveMatch(
