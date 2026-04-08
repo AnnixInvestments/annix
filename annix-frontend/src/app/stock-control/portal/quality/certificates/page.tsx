@@ -575,8 +575,8 @@ function CertificatesTab() {
                     if (result.processed > 0) {
                       await fetchCertificates();
                     }
-                  } catch {
-                    setError("Product extraction failed");
+                  } catch (err) {
+                    setError(err instanceof Error ? err.message : "Product extraction failed");
                   } finally {
                     setIsBackfilling(false);
                   }

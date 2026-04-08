@@ -136,7 +136,11 @@ proto.deleteCertificate = async function (id) {
 };
 
 proto.backfillCertificateProducts = async function () {
-  return this.request("/stock-control/certificates/backfill-products", { method: "POST" });
+  return this.request("/stock-control/certificates/backfill-products", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: "{}",
+  });
 };
 
 proto.certificatesByBatchNumber = async function (batchNumber) {
