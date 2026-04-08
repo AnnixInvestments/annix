@@ -18,7 +18,7 @@ export const DEFAULT_ACTION_PERMISSIONS: Record<string, string[]> = {
   "invoices.price-adjust": ["accounts", "manager", "admin"],
   "invoices.sage-export": ["manager", "admin"],
   "inventory.create": ["manager", "admin"],
-  "inventory.delete": ["manager", "admin"],
+  "inventory.delete": ["accounts", "manager", "admin"],
   "qc.measurements": ["quality", "manager", "admin"],
   "certificates.upload": ["accounts", "quality", "storeman", "manager", "admin"],
   "certificates.delete": ["quality", "manager", "admin"],

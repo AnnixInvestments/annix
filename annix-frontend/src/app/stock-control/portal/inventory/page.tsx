@@ -26,6 +26,8 @@ export default function InventoryPage() {
     printDropdownRef,
     isLoading,
     error,
+    actionError,
+    clearActionError,
     items,
     total,
     totalPages,
@@ -139,6 +141,19 @@ export default function InventoryPage() {
         onPrintStockList={handlePrintStockList}
         onOpenCreateModal={openCreateModal}
       />
+
+      {actionError && (
+        <div className="bg-red-50 border border-red-200 rounded-md px-4 py-3 flex items-center justify-between">
+          <p className="text-sm text-red-700">{actionError.message}</p>
+          <button
+            type="button"
+            onClick={clearActionError}
+            className="ml-4 text-red-400 hover:text-red-600 text-lg font-bold leading-none"
+          >
+            &times;
+          </button>
+        </div>
+      )}
 
       <InventoryLocationTabs
         locations={locations}

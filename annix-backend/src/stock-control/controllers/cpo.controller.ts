@@ -193,6 +193,7 @@ export class CpoController {
   }
 
   @Put(":id/coating-specs")
+  @StockControlRoles("accounts", "manager", "admin")
   @ApiOperation({ summary: "Update CPO coating specs and propagate to child JCs" })
   async updateCoatingSpecs(
     @Req() req: any,

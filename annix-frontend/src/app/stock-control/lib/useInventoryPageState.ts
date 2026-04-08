@@ -926,6 +926,8 @@ export function useInventoryPageState(pdfPreview?: ReturnType<typeof usePdfPrevi
     isGroupedView,
     isLoading,
     error,
+    actionError: state.actionError,
+    clearActionError: () => updateState({ actionError: null }),
     items,
     total,
     totalPages,

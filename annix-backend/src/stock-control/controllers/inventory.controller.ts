@@ -118,7 +118,7 @@ export class InventoryController {
     return this.inventoryService.update(req.user.companyId, id, dto);
   }
 
-  @StockControlRoles("manager", "admin")
+  @StockControlRoles("accounts", "manager", "admin")
   @PermissionKey("inventory.delete")
   @Delete(":id")
   @ApiOperation({ summary: "Delete a stock item" })

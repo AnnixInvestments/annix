@@ -169,7 +169,7 @@ export function InventoryListView(props: InventoryListViewProps) {
                 </th>
                 <th
                   scope="col"
-                  className="hidden xl:table-cell px-3 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  className="hidden lg:table-cell px-3 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
                 >
                   Location
                 </th>
@@ -494,7 +494,7 @@ function ListTableRow({
           <span className="text-gray-900">{formatZAR(item.costPerUnit)}</span>
         )}
       </td>
-      <td className="hidden xl:table-cell px-3 lg:px-6 py-4 whitespace-nowrap text-sm">
+      <td className="hidden lg:table-cell px-3 lg:px-6 py-4 whitespace-nowrap text-sm">
         <select
           value={locationValue || ""}
           onChange={(e) =>
