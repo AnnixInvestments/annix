@@ -201,10 +201,16 @@ export class PositectorController {
     @Query("unlinked") unlinked?: string,
     @Query("entityType") entityType?: string,
   ) {
-    if (unlinked === "true") {
-      return this.uploadService.unlinkedUploads(req.user.companyId, entityType);
+    try {
+      if (unlinked === "true") {
+        return this.uploadService.unlinkedUploads(req.user.companyId, entityType);
+      }
+      return this.uploadService.allUploads(req.user.companyId);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      this.logger.error(`listUploads failed: ${message}`, err instanceof Error ? err.stack : "");
+      throw err;
     }
-    return this.uploadService.allUploads(req.user.companyId);
   }
 
   @Get("uploads/:uploadId")

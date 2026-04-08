@@ -27,12 +27,27 @@ async function proxyRequest(request: NextRequest) {
   const body =
     request.method !== "GET" && request.method !== "HEAD" ? await request.arrayBuffer() : undefined;
 
-  const response = await fetch(targetUrl, {
-    method: request.method,
-    headers: forwardHeaders,
-    body,
-    redirect: "manual",
-  });
+  let response: Response;
+  try {
+    response = await fetch(targetUrl, {
+      method: request.method,
+      headers: forwardHeaders,
+      body,
+      redirect: "manual",
+    });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error(`[proxy] fetch failed for ${targetUrl}: ${msg}`);
+    return NextResponse.json({ error: "Backend unreachable", detail: msg }, { status: 502 });
+  }
+
+  if (response.status >= 500) {
+    const text = await response
+      .clone()
+      .text()
+      .catch(() => "");
+    console.error(`[proxy] backend ${response.status} for ${targetUrl}: ${text.slice(0, 500)}`);
+  }
 
   const responseHeaders = new Headers(response.headers);
   responseHeaders.delete("transfer-encoding");
