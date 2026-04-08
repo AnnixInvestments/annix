@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { memo } from "react";
 import type { StockControlLocation, StockItem } from "@/app/lib/api/stockControlApi";
+import { InlineCategoryEdit } from "./inventory/InlineCategoryEdit";
 
 type SortField = "name" | "quantity" | "stockLevel" | "updatedAt";
 type SortDirection = "asc" | "desc";
@@ -13,6 +14,7 @@ type ThumbnailSize = "S" | "M" | "L" | "XL";
 interface InventoryCardViewProps {
   items: StockItem[];
   locations: StockControlLocation[];
+  categories: string[];
   groupBy: GroupByOption;
   sortField: SortField;
   sortDirection: SortDirection;
@@ -21,6 +23,7 @@ interface InventoryCardViewProps {
   onToggleSelect: (id: number) => void;
   onEdit: (item: StockItem) => void;
   onDelete: (id: number) => void;
+  onCategoryChange: (itemId: number, category: string) => void;
   canEditPrices: boolean;
   thumbnailSize: ThumbnailSize;
 }
@@ -204,14 +207,26 @@ function StockLevelBar(props: { item: StockItem }) {
 
 function ItemCard(props: {
   item: StockItem;
+  categories: string[];
   selected: boolean;
   onToggleSelect: (id: number) => void;
   onEdit: (item: StockItem) => void;
   onDelete: (id: number) => void;
+  onCategoryChange: (itemId: number, category: string) => void;
   canEditPrices: boolean;
   thumbnailSize: ThumbnailSize;
 }) {
-  const { item, selected, onToggleSelect, onEdit, onDelete, canEditPrices, thumbnailSize } = props;
+  const {
+    item,
+    categories,
+    selected,
+    onToggleSelect,
+    onEdit,
+    onDelete,
+    onCategoryChange,
+    canEditPrices,
+    thumbnailSize,
+  } = props;
   const status = stockLevelStatus(item);
   const colors = stockLevelColor(status);
   const thumb = thumbnailClasses(thumbnailSize);
@@ -287,7 +302,14 @@ function ItemCard(props: {
             )}
           </div>
           <p className="text-xs text-gray-500 font-mono">{item.sku}</p>
-          {item.category && <p className="text-xs text-gray-500 mt-0.5">{item.category}</p>}
+          <div className="mt-0.5">
+            <InlineCategoryEdit
+              itemId={item.id}
+              currentCategory={item.category}
+              categories={categories}
+              onCategoryChange={onCategoryChange}
+            />
+          </div>
           <StockLevelBar item={item} />
           {canEditPrices && (
             <p className="text-xs text-gray-500 mt-1">{formatZAR(item.costPerUnit)} / unit</p>
@@ -344,7 +366,14 @@ function ItemCard(props: {
             )}
           </div>
           <p className="text-xs text-gray-500 font-mono">{item.sku}</p>
-          {item.category && <p className="text-xs text-gray-500 mt-0.5">{item.category}</p>}
+          <div className="mt-0.5">
+            <InlineCategoryEdit
+              itemId={item.id}
+              currentCategory={item.category}
+              categories={categories}
+              onCategoryChange={onCategoryChange}
+            />
+          </div>
           <StockLevelBar item={item} />
           {canEditPrices && (
             <p className="text-xs text-gray-500 mt-1">{formatZAR(item.costPerUnit)} / unit</p>
@@ -379,6 +408,7 @@ export const InventoryCardView = memo(function InventoryCardView(props: Inventor
   const {
     items,
     locations,
+    categories,
     groupBy,
     sortField,
     sortDirection,
@@ -387,6 +417,7 @@ export const InventoryCardView = memo(function InventoryCardView(props: Inventor
     onToggleSelect,
     onEdit,
     onDelete,
+    onCategoryChange,
     canEditPrices,
     thumbnailSize,
   } = props;
@@ -446,10 +477,12 @@ export const InventoryCardView = memo(function InventoryCardView(props: Inventor
               <ItemCard
                 key={item.id}
                 item={item}
+                categories={categories}
                 selected={selectedIds.has(item.id)}
                 onToggleSelect={onToggleSelect}
                 onEdit={onEdit}
                 onDelete={onDelete}
+                onCategoryChange={onCategoryChange}
                 canEditPrices={canEditPrices}
                 thumbnailSize={thumbnailSize}
               />

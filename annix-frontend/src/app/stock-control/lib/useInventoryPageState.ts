@@ -883,6 +883,20 @@ export function useInventoryPageState(pdfPreview?: ReturnType<typeof usePdfPrevi
     invalidateInventory();
   }, [updateState, invalidateInventory]);
 
+  const handleInlineCategoryChange = useCallback(
+    async (itemId: number, category: string) => {
+      try {
+        await stockControlApiClient.updateStockItem(itemId, { category });
+        invalidateInventory();
+      } catch (err) {
+        updateState({
+          actionError: err instanceof Error ? err : new Error("Failed to update category"),
+        });
+      }
+    },
+    [invalidateInventory, updateState],
+  );
+
   const handleAutoCategorize = useCallback(async () => {
     updateState({ isAutoCategorizing: true });
     try {
@@ -965,6 +979,7 @@ export function useInventoryPageState(pdfPreview?: ReturnType<typeof usePdfPrevi
     handleConfirmImport,
     dismissImport,
 
+    handleInlineCategoryChange,
     handleAutoCategorize,
     toggleListGroupByCategory,
 

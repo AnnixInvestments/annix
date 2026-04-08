@@ -2,6 +2,7 @@ import { forwardRef, Inject, Injectable, Logger, NotFoundException } from "@nest
 import { InjectRepository } from "@nestjs/typeorm";
 import { DataSource, In, IsNull, Repository } from "typeorm";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
+import { LearningSource, LearningType, NixLearning } from "../../nix/entities/nix-learning.entity";
 import { IStorageService, STORAGE_SERVICE } from "../../storage/storage.interface";
 import { StockItem } from "../entities/stock-item.entity";
 import { RequisitionService } from "./requisition.service";
@@ -13,6 +14,8 @@ export class InventoryService {
   constructor(
     @InjectRepository(StockItem)
     private readonly stockItemRepo: Repository<StockItem>,
+    @InjectRepository(NixLearning)
+    private readonly nixLearningRepo: Repository<NixLearning>,
     @Inject(STORAGE_SERVICE)
     private readonly storageService: IStorageService,
     @Inject(forwardRef(() => RequisitionService))
@@ -23,7 +26,15 @@ export class InventoryService {
 
   async create(companyId: number, data: Partial<StockItem>): Promise<StockItem> {
     const item = this.stockItemRepo.create({ ...data, companyId });
-    return this.stockItemRepo.save(item);
+    const saved = await this.stockItemRepo.save(item);
+
+    if (!saved.category && saved.name) {
+      this.inferCategoryForItem(companyId, saved).catch((err) =>
+        this.logger.error(`Auto-categorize on create failed: ${err.message}`),
+      );
+    }
+
+    return saved;
   }
 
   private async refreshPhotoUrls(items: StockItem[]): Promise<StockItem[]> {
@@ -172,12 +183,24 @@ export class InventoryService {
 
   async update(companyId: number, id: number, data: Partial<StockItem>): Promise<StockItem> {
     const item = await this.findById(companyId, id);
+    const previousCategory = item.category;
     const storedPhotoUrl = item.photoUrl;
     Object.assign(item, data);
     if (!data.photoUrl) {
       item.photoUrl = storedPhotoUrl;
     }
     const saved = await this.stockItemRepo.save(item);
+
+    if (
+      data.category !== undefined &&
+      data.category !== previousCategory &&
+      data.category &&
+      saved.name
+    ) {
+      this.recordCategoryLearning(saved.name, data.category, previousCategory).catch((err) =>
+        this.logger.error(`Failed to record category learning: ${err.message}`),
+      );
+    }
 
     if (saved.minStockLevel > 0 && saved.quantity < saved.minStockLevel) {
       this.requisitionService
@@ -481,15 +504,49 @@ export class InventoryService {
       return { categorized: 0, total: 0, categories: {} };
     }
 
-    const existingCategories = await this.categories(companyId);
-
-    const BATCH_SIZE = 50;
     const categoryCounts: Record<string, number> = {};
     let categorized = 0;
 
-    for (let i = 0; i < uncategorized.length; i += BATCH_SIZE) {
-      const batch = uncategorized.slice(i, i + BATCH_SIZE);
+    const allLearnings = await this.nixLearningRepo.find({
+      where: {
+        learningType: LearningType.CORRECTION,
+        category: "stock_categorization",
+        isActive: true,
+      },
+    });
+    const learnedMap = new Map<string, string>();
+    for (const l of allLearnings) {
+      const name = (l.context?.itemName || l.originalValue || "").toLowerCase().trim();
+      if (name) {
+        learnedMap.set(name, l.learnedValue);
+      }
+    }
+
+    const needsAi: typeof uncategorized = [];
+    for (const item of uncategorized) {
+      const learned = learnedMap.get(item.name.toLowerCase().trim());
+      if (learned) {
+        await this.stockItemRepo.update({ id: item.id, companyId }, { category: learned });
+        const count = categoryCounts[learned] || 0;
+        categoryCounts[learned] = count + 1;
+        categorized++;
+      } else {
+        needsAi.push(item);
+      }
+    }
+
+    const existingCategories = await this.categories(companyId);
+
+    const BATCH_SIZE = 50;
+
+    for (let i = 0; i < needsAi.length; i += BATCH_SIZE) {
+      const batch = needsAi.slice(i, i + BATCH_SIZE);
       const itemNames = batch.map((item) => `${item.id}:${item.name}`);
+
+      const learnedExamples = Array.from(learnedMap.entries())
+        .slice(0, 20)
+        .map(([name, cat]) => `"${name}" → "${cat}"`)
+        .join("; ");
 
       const systemPrompt = [
         "You are a stock inventory categorization assistant for an industrial rubber lining and coating company.",
@@ -497,11 +554,16 @@ export class InventoryService {
         existingCategories.length > 0
           ? `Prefer using existing categories: ${existingCategories.join(", ")}.`
           : "Create sensible general categories (e.g., Rollers, Grinding Discs, Brushes, Rubber Sheets, Adhesives, Solvents, PPE, Tools, Paint, Hardware, Consumables).",
+        learnedExamples.length > 0
+          ? `Here are examples of user-confirmed categorizations: ${learnedExamples}.`
+          : "",
         "For items that don't fit existing categories, suggest a new appropriate category name.",
         "Keep category names short (1-2 words), capitalised, and consistent.",
         "Return a JSON object mapping each item ID (the number before the colon) to its category.",
         "Respond with JSON only, no markdown fences.",
-      ].join(" ");
+      ]
+        .filter((s) => s.length > 0)
+        .join(" ");
 
       const userMessage = `Categorize these inventory items (format is id:name): ${JSON.stringify(itemNames)}`;
 
@@ -535,7 +597,7 @@ export class InventoryService {
           categorized++;
         }
 
-        if (i + BATCH_SIZE < uncategorized.length) {
+        if (i + BATCH_SIZE < needsAi.length) {
           existingCategories.push(
             ...Object.values(parsed).filter(
               (c) =>
@@ -556,5 +618,125 @@ export class InventoryService {
     );
 
     return { categorized, total: uncategorized.length, categories: categoryCounts };
+  }
+
+  private async recordCategoryLearning(
+    itemName: string,
+    newCategory: string,
+    previousCategory: string | null,
+  ): Promise<void> {
+    const normalizedName = itemName.toLowerCase().trim();
+    const patternKey = `category_assignment:${normalizedName.slice(0, 200)}`;
+
+    const existing = await this.nixLearningRepo.findOne({
+      where: {
+        patternKey,
+        learningType: LearningType.CORRECTION,
+        category: "stock_categorization",
+        learnedValue: newCategory,
+      },
+    });
+
+    if (existing) {
+      existing.confirmationCount += 1;
+      existing.confidence = Math.min(1, Number(existing.confidence) + 0.1);
+      await this.nixLearningRepo.save(existing);
+    } else {
+      const learning = this.nixLearningRepo.create({
+        learningType: LearningType.CORRECTION,
+        source: LearningSource.USER_CORRECTION,
+        category: "stock_categorization",
+        patternKey,
+        originalValue: previousCategory || itemName,
+        learnedValue: newCategory,
+        context: { itemName, previousCategory },
+        confidence: 0.8,
+        confirmationCount: 1,
+        applicableProducts: ["stock_item"],
+        isActive: true,
+      });
+      await this.nixLearningRepo.save(learning);
+    }
+
+    this.logger.log(`Recorded category learning: "${itemName}" → "${newCategory}"`);
+  }
+
+  private async learnedCategoryFor(itemName: string): Promise<string | null> {
+    const normalizedName = itemName.toLowerCase().trim();
+    const patternKey = `category_assignment:${normalizedName.slice(0, 200)}`;
+
+    const exact = await this.nixLearningRepo.findOne({
+      where: {
+        patternKey,
+        learningType: LearningType.CORRECTION,
+        category: "stock_categorization",
+        isActive: true,
+      },
+      order: { confidence: "DESC", confirmationCount: "DESC" },
+    });
+
+    if (exact) return exact.learnedValue;
+
+    return null;
+  }
+
+  private async inferCategoryForItem(companyId: number, item: StockItem): Promise<void> {
+    const learned = await this.learnedCategoryFor(item.name);
+    if (learned) {
+      await this.stockItemRepo.update({ id: item.id, companyId }, { category: learned });
+      this.logger.log(`Auto-categorized item ${item.id} from learning: "${learned}"`);
+      return;
+    }
+
+    const available = await this.aiChatService.isAvailable();
+    if (!available) return;
+
+    const existingCategories = await this.categories(companyId);
+    if (existingCategories.length === 0) return;
+
+    const allLearnings = await this.nixLearningRepo.find({
+      where: {
+        learningType: LearningType.CORRECTION,
+        category: "stock_categorization",
+        isActive: true,
+      },
+      order: { confidence: "DESC" },
+      take: 50,
+    });
+
+    const examples = allLearnings
+      .map((l) => {
+        const name = l.context?.itemName || l.originalValue || "";
+        return `"${name}" → "${l.learnedValue}"`;
+      })
+      .filter((e) => e.length > 6);
+
+    const systemPrompt = [
+      "You are a stock inventory categorization assistant for an industrial rubber lining and coating company.",
+      `Available categories: ${existingCategories.join(", ")}.`,
+      examples.length > 0
+        ? `Here are examples of how items have been categorized before: ${examples.slice(0, 20).join("; ")}.`
+        : "",
+      "Assign the item to the most fitting existing category.",
+      "Respond with the category name only, no explanation.",
+    ]
+      .filter((s) => s.length > 0)
+      .join(" ");
+
+    try {
+      const { content } = await this.aiChatService.chat(
+        [{ role: "user", content: `Categorize this item: "${item.name}"` }],
+        systemPrompt,
+      );
+
+      const category = content.replace(/['"]+/g, "").trim();
+      if (category && category.length < 100) {
+        await this.stockItemRepo.update({ id: item.id, companyId }, { category });
+        this.logger.log(`Auto-categorized item ${item.id} via AI: "${category}"`);
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Unknown error";
+      this.logger.error(`AI categorize for item ${item.id} failed: ${message}`);
+    }
   }
 }

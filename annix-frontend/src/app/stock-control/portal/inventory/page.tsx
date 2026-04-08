@@ -72,6 +72,7 @@ export default function InventoryPage() {
     handleDrop,
     handleConfirmImport,
     dismissImport,
+    handleInlineCategoryChange,
     handleAutoCategorize,
     toggleListGroupByCategory,
   } = inv;
@@ -195,6 +196,7 @@ export default function InventoryPage() {
         <InventoryCardView
           items={allItems}
           locations={locations}
+          categories={categories}
           groupBy={state.cardGroupBy}
           sortField={state.cardSortField}
           sortDirection={state.cardSortDirection}
@@ -203,6 +205,7 @@ export default function InventoryPage() {
           onToggleSelect={toggleSelectItem}
           onEdit={openEditModal}
           onDelete={(id) => updateState({ confirmDeleteId: id })}
+          onCategoryChange={handleInlineCategoryChange}
           canEditPrices={canEditPrices ?? false}
           thumbnailSize={state.thumbnailSize}
         />
@@ -240,11 +243,13 @@ export default function InventoryPage() {
           selectedIds={state.selectedIds}
           canEditPrices={canEditPrices ?? false}
           locations={locations}
+          categories={categories}
           pendingMinLevels={state.pendingMinLevels}
           pendingPrices={state.pendingPrices}
           pendingLocations={state.pendingLocations}
           groupByCategory={state.listGroupByCategory}
           onToggleSelectAll={toggleSelectAll}
+          onCategoryChange={handleInlineCategoryChange}
           onToggleSelectItem={toggleSelectItem}
           onEditItem={openEditModal}
           onRequestDelete={(id) => updateState({ confirmDeleteId: id })}

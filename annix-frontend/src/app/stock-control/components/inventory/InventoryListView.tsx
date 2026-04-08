@@ -3,6 +3,7 @@ import { useState } from "react";
 import type { StockControlLocation, StockItem } from "@/app/lib/api/stockControlApi";
 import { formatZAR } from "../../lib/currency";
 import { PAGE_SIZE_OPTIONS, type PageSize } from "../../lib/useInventoryPageState";
+import { InlineCategoryEdit } from "./InlineCategoryEdit";
 
 interface InventoryListViewProps {
   items: StockItem[];
@@ -16,9 +17,11 @@ interface InventoryListViewProps {
   pendingMinLevels: Map<number, number>;
   pendingPrices: Map<number, number>;
   pendingLocations: Map<number, number | null>;
+  categories?: string[];
   groupByCategory?: boolean;
   onToggleSelectAll: () => void;
   onToggleSelectItem: (id: number) => void;
+  onCategoryChange?: (itemId: number, category: string) => void;
   onEditItem: (item: StockItem) => void;
   onRequestDelete: (id: number) => void;
   onMinLevelChange: (itemId: number, value: number) => void;
@@ -68,9 +71,11 @@ export function InventoryListView(props: InventoryListViewProps) {
     pendingMinLevels,
     pendingPrices,
     pendingLocations,
+    categories: categoriesProp,
     groupByCategory,
     onToggleSelectAll,
     onToggleSelectItem,
+    onCategoryChange,
     onEditItem,
     onRequestDelete,
     onMinLevelChange,
@@ -190,6 +195,7 @@ export function InventoryListView(props: InventoryListViewProps) {
                         selectedIds={selectedIds}
                         canEditPrices={canEditPrices}
                         locations={locations}
+                        categories={categoriesProp || []}
                         pendingMinLevels={pendingMinLevels}
                         pendingPrices={pendingPrices}
                         pendingLocations={pendingLocations}
@@ -199,6 +205,7 @@ export function InventoryListView(props: InventoryListViewProps) {
                         onMinLevelChange={onMinLevelChange}
                         onPriceChange={onPriceChange}
                         onLocationChange={onLocationChange}
+                        onCategoryChange={onCategoryChange}
                         minLevelForItem={minLevelForItem}
                         priceForItem={priceForItem}
                         locationForItem={locationForItem}
@@ -214,6 +221,7 @@ export function InventoryListView(props: InventoryListViewProps) {
                         isSelected={selectedIds.has(item.id)}
                         canEditPrices={canEditPrices}
                         locations={locations}
+                        categories={categoriesProp || []}
                         hasPendingMinLevel={pendingMinLevels.has(item.id)}
                         hasPendingPrice={pendingPrices.has(item.id)}
                         hasPendingLocation={pendingLocations.has(item.id)}
@@ -223,6 +231,7 @@ export function InventoryListView(props: InventoryListViewProps) {
                         onMinLevelChange={onMinLevelChange}
                         onPriceChange={onPriceChange}
                         onLocationChange={onLocationChange}
+                        onCategoryChange={onCategoryChange}
                         minLevel={minLevelForItem(item)}
                         price={priceForItem(item)}
                         locationValue={locationForItem(item)}
@@ -253,6 +262,7 @@ interface CategoryGroupProps {
   selectedIds: Set<number>;
   canEditPrices: boolean;
   locations: StockControlLocation[];
+  categories: string[];
   pendingMinLevels: Map<number, number>;
   pendingPrices: Map<number, number>;
   pendingLocations: Map<number, number | null>;
@@ -262,6 +272,7 @@ interface CategoryGroupProps {
   onMinLevelChange: (itemId: number, value: number) => void;
   onPriceChange: (itemId: number, value: number) => void;
   onLocationChange: (itemId: number, value: number | null) => void;
+  onCategoryChange?: (itemId: number, category: string) => void;
   minLevelForItem: (item: StockItem) => number;
   priceForItem: (item: StockItem) => number;
   locationForItem: (item: StockItem) => number | null;
@@ -276,6 +287,7 @@ function CategoryGroup(props: CategoryGroupProps) {
     selectedIds,
     canEditPrices,
     locations,
+    categories,
     pendingMinLevels,
     pendingPrices,
     pendingLocations,
@@ -285,6 +297,7 @@ function CategoryGroup(props: CategoryGroupProps) {
     onMinLevelChange,
     onPriceChange,
     onLocationChange,
+    onCategoryChange,
     minLevelForItem,
     priceForItem,
     locationForItem,
@@ -332,6 +345,7 @@ function CategoryGroup(props: CategoryGroupProps) {
             isSelected={selectedIds.has(item.id)}
             canEditPrices={canEditPrices}
             locations={locations}
+            categories={categories}
             hasPendingMinLevel={pendingMinLevels.has(item.id)}
             hasPendingPrice={pendingPrices.has(item.id)}
             hasPendingLocation={pendingLocations.has(item.id)}
@@ -341,6 +355,7 @@ function CategoryGroup(props: CategoryGroupProps) {
             onMinLevelChange={onMinLevelChange}
             onPriceChange={onPriceChange}
             onLocationChange={onLocationChange}
+            onCategoryChange={onCategoryChange}
             minLevel={minLevelForItem(item)}
             price={priceForItem(item)}
             locationValue={locationForItem(item)}
@@ -355,6 +370,7 @@ interface ListTableRowProps {
   isSelected: boolean;
   canEditPrices: boolean;
   locations: StockControlLocation[];
+  categories: string[];
   hasPendingMinLevel: boolean;
   hasPendingPrice: boolean;
   hasPendingLocation: boolean;
@@ -367,6 +383,7 @@ interface ListTableRowProps {
   onMinLevelChange: (itemId: number, value: number) => void;
   onPriceChange: (itemId: number, value: number) => void;
   onLocationChange: (itemId: number, value: number | null) => void;
+  onCategoryChange?: (itemId: number, category: string) => void;
 }
 
 function ListTableRow({
@@ -374,6 +391,7 @@ function ListTableRow({
   isSelected,
   canEditPrices,
   locations,
+  categories,
   hasPendingMinLevel,
   hasPendingPrice,
   hasPendingLocation,
@@ -386,6 +404,7 @@ function ListTableRow({
   onMinLevelChange,
   onPriceChange,
   onLocationChange,
+  onCategoryChange,
 }: ListTableRowProps) {
   const rowClassName = item.needsQrPrint
     ? "bg-red-50 hover:bg-red-100"
@@ -421,6 +440,16 @@ function ListTableRow({
           )}
         </div>
         <span className="sm:hidden block text-xs text-gray-500 font-mono mt-0.5">{item.sku}</span>
+        {onCategoryChange && (
+          <div className="mt-0.5">
+            <InlineCategoryEdit
+              itemId={item.id}
+              currentCategory={item.category}
+              categories={categories}
+              onCategoryChange={onCategoryChange}
+            />
+          </div>
+        )}
       </td>
       <td className="px-3 lg:px-6 py-4 whitespace-nowrap text-sm text-right font-semibold text-gray-900">
         {item.quantity}
