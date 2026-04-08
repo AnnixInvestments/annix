@@ -37,6 +37,7 @@ import { QcpPublicController } from "./controllers/qcp-public.controller";
 import { CalibrationCertificate } from "./entities/calibration-certificate.entity";
 import { PositectorDevice } from "./entities/positector-device.entity";
 import { PositectorUpload } from "./entities/positector-upload.entity";
+import { QcBatchAssignment } from "./entities/qc-batch-assignment.entity";
 import { QcBlastProfile } from "./entities/qc-blast-profile.entity";
 import { QcControlPlan } from "./entities/qc-control-plan.entity";
 import { QcDefelskoBatch } from "./entities/qc-defelsko-batch.entity";
@@ -55,6 +56,7 @@ import { PositectorService } from "./services/positector.service";
 import { PositectorImportService } from "./services/positector-import.service";
 import { PositectorStreamingService } from "./services/positector-streaming.service";
 import { PositectorUploadService } from "./services/positector-upload.service";
+import { QcBatchAssignmentService } from "./services/qc-batch-assignment.service";
 import { QcMeasurementService } from "./services/qc-measurement.service";
 import { QcpApprovalService } from "./services/qcp-approval.service";
 import { WORK_ITEM_PROVIDER } from "./work-item-provider.interface";
@@ -72,6 +74,7 @@ import { WORK_ITEM_PROVIDER } from "./work-item-provider.interface";
       PositectorDevice,
       PositectorUpload,
       PushSubscription,
+      QcBatchAssignment,
       QcBlastProfile,
       QcControlPlan,
       QcpApprovalToken,
@@ -122,6 +125,7 @@ import { WORK_ITEM_PROVIDER } from "./work-item-provider.interface";
     CertificateService,
     CompanyEmailService,
     DataBookPdfService,
+    QcBatchAssignmentService,
     QcMeasurementService,
     QcpApprovalService,
     PositectorService,
@@ -132,6 +136,7 @@ import { WORK_ITEM_PROVIDER } from "./work-item-provider.interface";
     { provide: WORK_ITEM_PROVIDER, useClass: JobCardWorkItemProvider },
   ],
   exports: [
+    QcBatchAssignmentService,
     QcMeasurementService,
     CalibrationCertificateService,
     PositectorUploadService,

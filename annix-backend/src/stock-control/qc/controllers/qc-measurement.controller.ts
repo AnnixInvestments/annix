@@ -25,6 +25,7 @@ import { CertificateService } from "../../services/certificate.service";
 import { DataBookPdfService } from "../../services/data-book-pdf.service";
 import { QcEnabledGuard } from "../guards/qc-enabled.guard";
 import { PositectorUploadService } from "../services/positector-upload.service";
+import { QcBatchAssignmentService } from "../services/qc-batch-assignment.service";
 import { QcMeasurementService } from "../services/qc-measurement.service";
 import { QcpApprovalService } from "../services/qcp-approval.service";
 
@@ -40,6 +41,7 @@ export class QcMeasurementController {
     private readonly certificateService: CertificateService,
     private readonly approvalService: QcpApprovalService,
     private readonly positectorUploadService: PositectorUploadService,
+    private readonly batchAssignmentService: QcBatchAssignmentService,
   ) {}
 
   // ── Aggregate ──────────────────────────────────────────────────────
@@ -48,6 +50,60 @@ export class QcMeasurementController {
   @ApiOperation({ summary: "All QC measurements for a job card" })
   async allMeasurements(@Req() req: any, @Param("jobCardId") jobCardId: number) {
     return this.qcService.allMeasurementsForJobCard(req.user.companyId, jobCardId);
+  }
+
+  // ── Batch Assignments ──────────────────────────────────────────────
+
+  @Get("batch-assignments")
+  @ApiOperation({ summary: "Get item-level batch assignments for a job card" })
+  async batchAssignments(@Req() req: any, @Param("jobCardId") jobCardId: number) {
+    return this.batchAssignmentService.assignmentsForJobCard(req.user.companyId, jobCardId);
+  }
+
+  @Get("batch-assignments/unassigned/:fieldKey")
+  @ApiOperation({ summary: "Get unassigned line item IDs for a measurement type" })
+  async unassignedItems(
+    @Req() req: any,
+    @Param("jobCardId") jobCardId: number,
+    @Param("fieldKey") fieldKey: string,
+  ) {
+    return this.batchAssignmentService.unassignedItemsForJobCard(
+      req.user.companyId,
+      jobCardId,
+      fieldKey,
+    );
+  }
+
+  @Post("batch-assignments")
+  @StockControlRoles("manager", "admin")
+  @ApiOperation({ summary: "Assign a batch number to line items for a measurement type" })
+  async saveBatchAssignment(
+    @Req() req: any,
+    @Param("jobCardId") jobCardId: number,
+    @Body()
+    body: {
+      fieldKey: string;
+      category: string;
+      label: string;
+      batchNumber: string;
+      lineItemIds: number[];
+      notApplicable?: boolean;
+    },
+  ) {
+    return this.batchAssignmentService.saveBatchAssignment(
+      req.user.companyId,
+      jobCardId,
+      body,
+      req.user,
+    );
+  }
+
+  @Delete("batch-assignments/:assignmentId")
+  @StockControlRoles("manager", "admin")
+  @ApiOperation({ summary: "Remove a batch assignment" })
+  async removeBatchAssignment(@Req() req: any, @Param("assignmentId") assignmentId: number) {
+    await this.batchAssignmentService.removeAssignment(req.user.companyId, assignmentId);
+    return { deleted: true };
   }
 
   // ── Shore Hardness ─────────────────────────────────────────────────
