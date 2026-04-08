@@ -94,6 +94,17 @@ declare module "./base" {
       total: number;
       categories: Record<string, number>;
     }>;
+    normalizeRubber(): Promise<{
+      updated: number;
+      total: number;
+      details: Array<{
+        id: number;
+        oldSku: string;
+        oldName: string;
+        newSku: string;
+        newName: string;
+      }>;
+    }>;
   }
 }
 
@@ -217,6 +228,12 @@ proto.confirmReviewedImport = async function (rows, isStockTake = false, stockTa
 
 proto.autoCategorize = async function () {
   return this.request("/stock-control/inventory/auto-categorize", {
+    method: "POST",
+  });
+};
+
+proto.normalizeRubber = async function () {
+  return this.request("/stock-control/inventory/normalize-rubber", {
     method: "POST",
   });
 };

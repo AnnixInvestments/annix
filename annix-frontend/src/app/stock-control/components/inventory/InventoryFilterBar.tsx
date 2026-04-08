@@ -21,6 +21,7 @@ interface InventoryFilterBarProps {
   onToggleLowStockOnly: () => void;
   onToggleListGroupByCategory: () => void;
   onAutoCategorize: () => void;
+  onNormalizeRubber: () => void;
 }
 
 export function InventoryFilterBar({
@@ -44,6 +45,7 @@ export function InventoryFilterBar({
   onToggleLowStockOnly,
   onToggleListGroupByCategory,
   onAutoCategorize,
+  onNormalizeRubber,
 }: InventoryFilterBarProps) {
   return (
     <>
@@ -155,6 +157,25 @@ export function InventoryFilterBar({
               </svg>
             )}
             {isAutoCategorizing ? "Categorizing..." : "Auto-Categorize"}
+          </button>
+          <button
+            onClick={onNormalizeRubber}
+            className="inline-flex items-center px-3 py-2 rounded-md text-sm font-medium border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 transition-colors"
+          >
+            <svg
+              className="w-4 h-4 mr-1.5 text-gray-400"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+              />
+            </svg>
+            Fix Rubber Names
           </button>
         </div>
       )}

@@ -910,6 +910,21 @@ export function useInventoryPageState(pdfPreview?: ReturnType<typeof usePdfPrevi
     }
   }, [updateState, invalidateInventory]);
 
+  const handleNormalizeRubber = useCallback(async () => {
+    try {
+      const result = await stockControlApiClient.normalizeRubber();
+      if (result.updated > 0) {
+        invalidateInventory();
+      }
+      return result;
+    } catch (err) {
+      updateState({
+        actionError: err instanceof Error ? err : new Error("Failed to normalize rubber items"),
+      });
+      return null;
+    }
+  }, [invalidateInventory, updateState]);
+
   const toggleListGroupByCategory = useCallback(() => {
     updateState({ listGroupByCategory: !state.listGroupByCategory });
   }, [updateState, state.listGroupByCategory]);
@@ -983,6 +998,7 @@ export function useInventoryPageState(pdfPreview?: ReturnType<typeof usePdfPrevi
 
     handleInlineCategoryChange,
     handleAutoCategorize,
+    handleNormalizeRubber,
     toggleListGroupByCategory,
 
     invalidateInventory,

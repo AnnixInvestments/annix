@@ -76,6 +76,7 @@ export default function InventoryPage() {
     dismissImport,
     handleInlineCategoryChange,
     handleAutoCategorize,
+    handleNormalizeRubber,
     toggleListGroupByCategory,
   } = inv;
 
@@ -186,6 +187,7 @@ export default function InventoryPage() {
         onToggleLowStockOnly={() => updateState({ lowStockOnly: !state.lowStockOnly })}
         onToggleListGroupByCategory={toggleListGroupByCategory}
         onAutoCategorize={handleAutoCategorize}
+        onNormalizeRubber={handleNormalizeRubber}
       />
 
       <InventoryPendingChanges
