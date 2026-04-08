@@ -131,6 +131,7 @@ export class DeliveryExtractionService {
 
       const sku = this.generateSku(item);
       const { quantity, costPerUnit, unitOfMeasure } = this.calculateItemMetrics(item);
+      const rollNumber = this.extractRollNumber(item, sku);
 
       const stockItem = await this.resolveOrCreateStockItem(
         companyId,
@@ -151,13 +152,16 @@ export class DeliveryExtractionService {
       });
       await this.deliveryNoteItemRepo.save(noteItem);
 
+      const movementNotes = rollNumber
+        ? `Received via delivery ${deliveryNote.deliveryNumber} (Roll #${rollNumber})`
+        : `Received via delivery ${deliveryNote.deliveryNumber}`;
       const movement = this.movementRepo.create({
         stockItem,
         movementType: MovementType.IN,
         quantity,
         referenceType: ReferenceType.DELIVERY,
         referenceId: deliveryNote.id,
-        notes: `Received via delivery ${deliveryNote.deliveryNumber}`,
+        notes: movementNotes,
         createdBy: receivedBy || null,
         companyId,
       });
@@ -298,7 +302,7 @@ export class DeliveryExtractionService {
     const rubberData = await this.enrichFromRubberRollStock(item, sku);
     const rollNumber = this.extractRollNumber(item, sku);
     const isRubberItem = rubberData !== null || rollNumber !== null || category === "RUBBER";
-    const finalSku = rubberData?.sku || (rollNumber ? `ROLL-${rollNumber}` : sku);
+    const finalSku = rubberData?.sku || sku;
 
     const existingByEnrichedSku = rubberData
       ? await this.stockItemRepo.findOne({ where: { sku: finalSku, companyId } })
@@ -318,8 +322,7 @@ export class DeliveryExtractionService {
       (item.productCode ? item.productCode : null) ||
       item.description ||
       "Unknown Item";
-    const itemDescription =
-      rubberData?.description || (rollNumber ? `Roll #${rollNumber}` : null) || null;
+    const itemDescription = rubberData?.description || null;
 
     const packSizeLitres =
       item.isPaint && item.volumeLitersPerPack ? item.volumeLitersPerPack : null;
@@ -341,7 +344,7 @@ export class DeliveryExtractionService {
       widthMm: rubberData?.widthMm || null,
       lengthM: rubberData?.lengthM || null,
       compoundCode: rubberData?.compoundCode || null,
-      rollNumber: rubberData?.rollNumber || rollNumber || null,
+      rollNumber: null,
     });
     await this.stockItemRepo.save(created);
     const locLabel = inferredLocationId ? `location=${inferredLocationId}` : "no location";
@@ -434,15 +437,24 @@ export class DeliveryExtractionService {
 
     const compoundCode = roll.compoundCoding?.code || null;
     const compoundName = roll.compoundCoding?.name || item.description || "Rubber Roll";
-    const enrichedSku = compoundCode ? `${compoundCode}-R${rollNumber}` : `ROLL-${rollNumber}`;
+    const dimensionSuffix = [
+      roll.thicknessMm ? `${roll.thicknessMm}` : null,
+      roll.widthMm ? `${roll.widthMm}` : null,
+    ]
+      .filter((p): p is string => p !== null)
+      .join("x");
+    const enrichedSku = compoundCode
+      ? dimensionSuffix
+        ? `${compoundCode}-${dimensionSuffix}`
+        : compoundCode
+      : dimensionSuffix
+        ? `RUBBER-${dimensionSuffix}`
+        : `RUBBER-${rollNumber}`;
     const dimensionParts = [
       roll.thicknessMm ? `${roll.thicknessMm}mm thick` : null,
       roll.widthMm ? `${roll.widthMm}mm wide` : null,
-      roll.lengthM ? `${roll.lengthM}m long` : null,
     ].filter((p): p is string => p !== null);
-    const rollLabel = `Roll #${rollNumber}`;
-    const description =
-      dimensionParts.length > 0 ? `${rollLabel} — ${dimensionParts.join(" x ")}` : rollLabel;
+    const description = dimensionParts.length > 0 ? dimensionParts.join(" x ") : null;
 
     this.logger.log(
       `Enriched roll #${rollNumber} from AU Rubber: ${compoundName} / ${enrichedSku} (${description})`,

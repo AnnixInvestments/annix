@@ -320,53 +320,59 @@ export function QualityTab(props: QualityTabProps) {
               </div>
             ) : (
               <div className="divide-y divide-gray-200">
-                {blastProfiles.map((rec) => (
-                  <div
-                    key={`bp-${rec.id}`}
-                    className="flex items-center justify-between px-5 py-3 hover:bg-gray-50"
-                  >
-                    <div className="flex items-center gap-3">
-                      <span className="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-800">
-                        Blast
-                      </span>
-                      <span className="text-sm text-gray-500">
-                        Avg: {rec.averageMicrons?.toFixed(1) || "-"} μm / Spec: {rec.specMicrons} μm
-                      </span>
-                      {rec.abrasiveBatchNumber && (
-                        <span className="text-xs text-gray-500">
-                          Batch: {rec.abrasiveBatchNumber}
+                {blastProfiles.map((rec) => {
+                  const avgMicrons = rec.averageMicrons;
+                  const avgDisplay = typeof avgMicrons === "number" ? avgMicrons.toFixed(1) : "-";
+                  return (
+                    <div
+                      key={`bp-${rec.id}`}
+                      className="flex items-center justify-between px-5 py-3 hover:bg-gray-50"
+                    >
+                      <div className="flex items-center gap-3">
+                        <span className="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-800">
+                          Blast
                         </span>
-                      )}
-                      {rec.temperature !== null && (
-                        <span className="text-xs text-gray-400">{rec.temperature}°C</span>
-                      )}
-                      {rec.humidity !== null && (
-                        <span className="text-xs text-gray-400">{rec.humidity}% RH</span>
-                      )}
-                      <span className="text-xs text-gray-400">{rec.readingDate}</span>
+                        <span className="text-sm text-gray-500">
+                          Avg: {avgDisplay} μm / Spec: {rec.specMicrons} μm
+                        </span>
+                        {rec.abrasiveBatchNumber && (
+                          <span className="text-xs text-gray-500">
+                            Batch: {rec.abrasiveBatchNumber}
+                          </span>
+                        )}
+                        {rec.temperature !== null && (
+                          <span className="text-xs text-gray-400">{rec.temperature}°C</span>
+                        )}
+                        {rec.humidity !== null && (
+                          <span className="text-xs text-gray-400">{rec.humidity}% RH</span>
+                        )}
+                        <span className="text-xs text-gray-400">{rec.readingDate}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => {
+                            setEditingBlast(rec);
+                            setActiveForm("blast-profile");
+                          }}
+                          className="text-xs text-teal-600 hover:text-teal-800"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => handleDeleteQc("blast-profile", rec.id)}
+                          className="text-xs text-red-600 hover:text-red-800"
+                        >
+                          Delete
+                        </button>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => {
-                          setEditingBlast(rec);
-                          setActiveForm("blast-profile");
-                        }}
-                        className="text-xs text-teal-600 hover:text-teal-800"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        onClick={() => handleDeleteQc("blast-profile", rec.id)}
-                        className="text-xs text-red-600 hover:text-red-800"
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
 
                 {paintProfiles.map((rec) => {
                   const label = rec.coatLabel || "Paint";
+                  const paintAvg = rec.averageMicrons;
+                  const paintAvgDisplay = typeof paintAvg === "number" ? paintAvg.toFixed(1) : "-";
                   return (
                     <div
                       key={`pp-${rec.id}`}
@@ -378,8 +384,7 @@ export function QualityTab(props: QualityTabProps) {
                         </span>
                         <span className="text-sm font-medium text-gray-900">{label}</span>
                         <span className="text-sm text-gray-500">
-                          Avg: {rec.averageMicrons?.toFixed(1) || "-"} μm / Spec: {rec.specMicrons}{" "}
-                          μm
+                          Avg: {paintAvgDisplay} μm / Spec: {rec.specMicrons} μm
                         </span>
                         {rec.abrasiveBatchNumber && (
                           <span className="text-xs text-gray-500">
@@ -416,103 +421,111 @@ export function QualityTab(props: QualityTabProps) {
                   );
                 })}
 
-                {(qcData?.shoreHardness || []).map((rec) => (
-                  <div
-                    key={`sh-${rec.id}`}
-                    className="flex items-center justify-between px-5 py-3 hover:bg-gray-50"
-                  >
-                    <div className="flex items-center gap-3">
-                      <span className="inline-flex items-center rounded-full bg-violet-100 px-2.5 py-0.5 text-xs font-medium text-violet-800">
-                        Shore
-                      </span>
-                      <span className="text-sm font-medium text-gray-900">{rec.rubberSpec}</span>
-                      <span className="text-sm text-gray-500">
-                        Avg: {rec.averages.overall?.toFixed(1) || "-"} / Required:{" "}
-                        {rec.requiredShore}
-                      </span>
-                      {rec.averages.overall !== null &&
-                        Math.abs(rec.averages.overall - rec.requiredShore) > 5 && (
-                          <span className="inline-flex items-center rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-800">
-                            Out of spec
-                          </span>
-                        )}
-                      <span className="text-xs text-gray-400">{rec.readingDate}</span>
+                {(qcData?.shoreHardness || []).map((rec) => {
+                  const overallAvg = rec.averages?.overall;
+                  const overallDisplay =
+                    typeof overallAvg === "number" ? overallAvg.toFixed(1) : "-";
+                  return (
+                    <div
+                      key={`sh-${rec.id}`}
+                      className="flex items-center justify-between px-5 py-3 hover:bg-gray-50"
+                    >
+                      <div className="flex items-center gap-3">
+                        <span className="inline-flex items-center rounded-full bg-violet-100 px-2.5 py-0.5 text-xs font-medium text-violet-800">
+                          Shore
+                        </span>
+                        <span className="text-sm font-medium text-gray-900">{rec.rubberSpec}</span>
+                        <span className="text-sm text-gray-500">
+                          Avg: {overallDisplay} / Required: {rec.requiredShore}
+                        </span>
+                        {typeof overallAvg === "number" &&
+                          Math.abs(overallAvg - rec.requiredShore) > 5 && (
+                            <span className="inline-flex items-center rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-800">
+                              Out of spec
+                            </span>
+                          )}
+                        <span className="text-xs text-gray-400">{rec.readingDate}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => {
+                            setEditingShoreHardness(rec);
+                            setActiveForm("shore-hardness");
+                          }}
+                          className="text-xs text-teal-600 hover:text-teal-800"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => handleDeleteQc("shore-hardness", rec.id)}
+                          className="text-xs text-red-600 hover:text-red-800"
+                        >
+                          Delete
+                        </button>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => {
-                          setEditingShoreHardness(rec);
-                          setActiveForm("shore-hardness");
-                        }}
-                        className="text-xs text-teal-600 hover:text-teal-800"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        onClick={() => handleDeleteQc("shore-hardness", rec.id)}
-                        className="text-xs text-red-600 hover:text-red-800"
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
 
-                {(qcData?.dftReadings || []).map((rec) => (
-                  <div
-                    key={`dft-${rec.id}`}
-                    className="flex items-center justify-between px-5 py-3 hover:bg-gray-50"
-                  >
-                    <div className="flex items-center gap-3">
-                      <span
-                        className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                          rec.coatType === "primer"
-                            ? "bg-orange-100 text-orange-800"
+                {(qcData?.dftReadings || []).map((rec) => {
+                  const dftAvg = rec.averageMicrons;
+                  const dftAvgDisplay = typeof dftAvg === "number" ? dftAvg.toFixed(1) : "-";
+                  return (
+                    <div
+                      key={`dft-${rec.id}`}
+                      className="flex items-center justify-between px-5 py-3 hover:bg-gray-50"
+                    >
+                      <div className="flex items-center gap-3">
+                        <span
+                          className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                            rec.coatType === "primer"
+                              ? "bg-orange-100 text-orange-800"
+                              : rec.coatType === "intermediate"
+                                ? "bg-purple-100 text-purple-800"
+                                : "bg-blue-100 text-blue-800"
+                          }`}
+                        >
+                          DFT{" "}
+                          {rec.coatType === "primer"
+                            ? "Primer"
                             : rec.coatType === "intermediate"
-                              ? "bg-purple-100 text-purple-800"
-                              : "bg-blue-100 text-blue-800"
-                        }`}
-                      >
-                        DFT{" "}
-                        {rec.coatType === "primer"
-                          ? "Primer"
-                          : rec.coatType === "intermediate"
-                            ? "Intermediate"
-                            : "Final"}
-                      </span>
-                      <span className="text-sm font-medium text-gray-900">{rec.paintProduct}</span>
-                      <span className="text-sm text-gray-500">
-                        Avg: {rec.averageMicrons?.toFixed(1) || "-"} μm ({rec.specMinMicrons}-
-                        {rec.specMaxMicrons})
-                      </span>
-                      {rec.averageMicrons !== null &&
-                        (rec.averageMicrons < rec.specMinMicrons ||
-                          rec.averageMicrons > rec.specMaxMicrons) && (
-                          <span className="inline-flex items-center rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-800">
-                            Out of spec
-                          </span>
-                        )}
-                      <span className="text-xs text-gray-400">{rec.readingDate}</span>
+                              ? "Intermediate"
+                              : "Final"}
+                        </span>
+                        <span className="text-sm font-medium text-gray-900">
+                          {rec.paintProduct}
+                        </span>
+                        <span className="text-sm text-gray-500">
+                          Avg: {dftAvgDisplay} μm ({rec.specMinMicrons}-{rec.specMaxMicrons})
+                        </span>
+                        {typeof dftAvg === "number" &&
+                          (dftAvg < rec.specMinMicrons || dftAvg > rec.specMaxMicrons) && (
+                            <span className="inline-flex items-center rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-800">
+                              Out of spec
+                            </span>
+                          )}
+                        <span className="text-xs text-gray-400">{rec.readingDate}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => {
+                            setEditingDft(rec);
+                            setActiveForm("dft");
+                          }}
+                          className="text-xs text-teal-600 hover:text-teal-800"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => handleDeleteQc("dft", rec.id)}
+                          className="text-xs text-red-600 hover:text-red-800"
+                        >
+                          Delete
+                        </button>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => {
-                          setEditingDft(rec);
-                          setActiveForm("dft");
-                        }}
-                        className="text-xs text-teal-600 hover:text-teal-800"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        onClick={() => handleDeleteQc("dft", rec.id)}
-                        className="text-xs text-red-600 hover:text-red-800"
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
