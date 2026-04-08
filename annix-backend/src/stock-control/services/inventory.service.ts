@@ -484,6 +484,97 @@ export class InventoryService {
     };
   }
 
+  async normalizeRubberItems(companyId: number): Promise<{
+    updated: number;
+    total: number;
+    details: Array<{
+      id: number;
+      oldSku: string;
+      oldName: string;
+      newSku: string;
+      newName: string;
+    }>;
+  }> {
+    const rubberItems = await this.stockItemRepo.find({
+      where: { companyId, category: "RUBBER" },
+      order: { name: "ASC" },
+    });
+
+    const details: Array<{
+      id: number;
+      oldSku: string;
+      oldName: string;
+      newSku: string;
+      newName: string;
+    }> = [];
+
+    for (const item of rubberItems) {
+      const parsed = this.parseRubberDimensions(item.name, item.sku);
+      if (!parsed) continue;
+
+      const { productCode, thicknessMm, widthMm, lengthM } = parsed;
+
+      const lengthStr = String(lengthM);
+      const lengthSku = lengthM % 1 === 0 ? String(lengthM) : String(Math.round(lengthM * 10));
+
+      const newName = `${productCode} ${thicknessMm}mm x ${widthMm}mm x ${lengthStr}m`;
+      const newSku = `${productCode}-${thicknessMm}.${widthMm}.${lengthSku}`;
+
+      if (newName === item.name && newSku === item.sku) continue;
+
+      await this.stockItemRepo.update({ id: item.id, companyId }, { name: newName, sku: newSku });
+
+      details.push({
+        id: item.id,
+        oldSku: item.sku,
+        oldName: item.name,
+        newSku,
+        newName,
+      });
+    }
+
+    this.logger.log(
+      `Rubber normalize complete: ${details.length}/${rubberItems.length} items updated`,
+    );
+
+    return { updated: details.length, total: rubberItems.length, details };
+  }
+
+  private parseRubberDimensions(
+    name: string,
+    sku: string,
+  ): {
+    productCode: string;
+    thicknessMm: number;
+    widthMm: number;
+    lengthM: number;
+  } | null {
+    const dimMatch = name.match(
+      /(\d+(?:\.\d+)?)\s*mm\s*x\s*(\d+(?:\.\d+)?)\s*mm\s*x\s*(\d+(?:\.\d+)?)\s*m/i,
+    );
+    if (!dimMatch) return null;
+
+    const thicknessMm = Number(dimMatch[1]);
+    const widthMm = Number(dimMatch[2]);
+    const lengthM = Number(dimMatch[3]);
+
+    if (Number.isNaN(thicknessMm) || Number.isNaN(widthMm) || Number.isNaN(lengthM)) return null;
+
+    const codeMatch = sku.match(/^([A-Z]{2,}[A-Z0-9]*\d{1,2})/i);
+    const productCode = codeMatch ? codeMatch[1].toUpperCase() : null;
+
+    if (!productCode) {
+      const nameCodeMatch = name.match(
+        /\b(R[SP]CA\d{2}|B[SP]CA\d{2}|RPCA\d{2}|BPCA\d{2}|NR\d{2})\b/i,
+      );
+      if (nameCodeMatch)
+        return { productCode: nameCodeMatch[1].toUpperCase(), thicknessMm, widthMm, lengthM };
+      return null;
+    }
+
+    return { productCode, thicknessMm, widthMm, lengthM };
+  }
+
   async autoCategorize(companyId: number): Promise<{
     categorized: number;
     total: number;

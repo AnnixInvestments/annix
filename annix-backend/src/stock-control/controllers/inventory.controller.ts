@@ -184,6 +184,13 @@ export class InventoryController {
     return this.inventoryService.backfillRubberRollStock(req.user.companyId);
   }
 
+  @StockControlRoles("manager", "admin")
+  @Post("normalize-rubber")
+  @ApiOperation({ summary: "Normalize rubber item names and SKUs to standard format" })
+  async normalizeRubber(@Req() req: any) {
+    return this.inventoryService.normalizeRubberItems(req.user.companyId);
+  }
+
   @Get(":id/price-history")
   @ApiOperation({ summary: "Price history for a stock item" })
   async priceHistory(@Req() req: any, @Param("id") id: number) {
