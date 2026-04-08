@@ -796,22 +796,8 @@ Respond ONLY with JSON:
 
       const content = chatResponse.content || "";
       this.logger.log(
-        `Full vision extraction response (${content.length} chars): ${content.substring(0, 1000)}`,
+        `Vision PDF extraction response (${content.length} chars): ${content.substring(0, 500)}`,
       );
-
-      // Write full response to debug file so it survives backend restarts
-      try {
-        const fs = await import("node:fs/promises");
-        const path = await import("node:path");
-        const debugPath = path.resolve(__dirname, "../../../../logs/vision-debug.txt");
-        await fs.writeFile(
-          debugPath,
-          `=== ${new Date().toISOString()} ===\nFILE: ${filename}\nRESPONSE (${content.length} chars):\n${content}\n`,
-        );
-        this.logger.log(`Vision debug response written to: ${debugPath}`);
-      } catch (writeErr) {
-        this.logger.warn(`Could not write vision debug file: ${writeErr.message}`);
-      }
 
       const jsonMatch = content.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
@@ -843,12 +829,6 @@ Respond ONLY with JSON:
           companyAddress: parsed.companyAddress || null,
           companyRegistrationNumber: parsed.companyRegistrationNumber || null,
           poNumber,
-          errors:
-            lines.length === 0
-              ? [
-                  `Vision returned 0 lines. Gemini notes: ${parsed.notes || "(none)"}. Raw response snippet: ${content.substring(0, 500)}`,
-                ]
-              : [],
           orderDate: parsed.orderDate || null,
           deliveryDate: parsed.deliveryDate || null,
           lines,
