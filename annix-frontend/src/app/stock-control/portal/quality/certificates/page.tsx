@@ -84,11 +84,13 @@ function CertificatesTab() {
   const [filterSupplier, setFilterSupplier] = useState("");
   const [filterType, setFilterType] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
-  const [sortCol, setSortCol] = useState<"type" | "batch" | "supplier" | "uploaded">("uploaded");
+  const [sortCol, setSortCol] = useState<"type" | "batch" | "supplier" | "product" | "uploaded">(
+    "uploaded",
+  );
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const pdfPreview = usePdfPreview();
 
-  const toggleSort = (col: "type" | "batch" | "supplier" | "uploaded") => {
+  const toggleSort = (col: "type" | "batch" | "supplier" | "product" | "uploaded") => {
     if (sortCol === col) {
       setSortDir((d) => (d === "asc" ? "desc" : "asc"));
     } else {
@@ -311,6 +313,11 @@ function CertificatesTab() {
     if (sortCol === "batch") return dir * (a.batchNumber ?? "").localeCompare(b.batchNumber ?? "");
     if (sortCol === "supplier")
       return dir * (a.supplier?.name ?? "").localeCompare(b.supplier?.name ?? "");
+    if (sortCol === "product") {
+      const aProduct = a.stockItem?.name || a.description || "";
+      const bProduct = b.stockItem?.name || b.description || "";
+      return dir * aProduct.localeCompare(bProduct);
+    }
     return dir * (new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
   });
 
@@ -610,32 +617,33 @@ function CertificatesTab() {
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    {(["type", "batch", "supplier"] as const).map((col) => (
-                      <th
-                        key={col}
-                        onClick={() => toggleSort(col)}
-                        className="cursor-pointer select-none px-4 py-3 text-left text-xs font-medium uppercase text-gray-500 hover:text-gray-700"
-                      >
-                        <span className="inline-flex items-center gap-1">
-                          {col === "type" ? "Type" : col === "batch" ? "Batch" : "Supplier"}
-                          {sortCol === col ? (sortDir === "asc" ? " ↑" : " ↓") : ""}
-                        </span>
-                      </th>
-                    ))}
-                    <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
-                      Product
-                    </th>
+                    {(["type", "batch", "supplier", "product", "uploaded"] as const).map((col) => {
+                      const labels: Record<string, string> = {
+                        type: "Type",
+                        batch: "Batch",
+                        supplier: "Supplier",
+                        product: "Product",
+                        uploaded: "Uploaded",
+                      };
+                      const indicator = sortCol === col ? (sortDir === "asc" ? " ↑" : " ↓") : " ⇅";
+                      return (
+                        <th
+                          key={col}
+                          onClick={() => toggleSort(col)}
+                          className="cursor-pointer select-none px-4 py-3 text-left text-xs font-medium uppercase text-gray-500 hover:text-gray-700"
+                        >
+                          <span className="inline-flex items-center gap-1">
+                            {labels[col]}
+                            <span className={sortCol === col ? "" : "opacity-40"}>{indicator}</span>
+                          </span>
+                        </th>
+                      );
+                    })}
                     <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
                       Job Card
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
                       File
-                    </th>
-                    <th
-                      onClick={() => toggleSort("uploaded")}
-                      className="cursor-pointer select-none px-4 py-3 text-left text-xs font-medium uppercase text-gray-500 hover:text-gray-700"
-                    >
-                      Uploaded{sortCol === "uploaded" ? (sortDir === "asc" ? " ↑" : " ↓") : ""}
                     </th>
                     <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">
                       Actions
@@ -663,7 +671,7 @@ function CertificatesTab() {
                         {cert.supplier?.name || "-"}
                       </td>
                       <td className="px-4 py-3 text-sm text-gray-600">
-                        {cert.stockItem?.name || "-"}
+                        {cert.stockItem?.name || cert.description || "-"}
                       </td>
                       <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-600">
                         {cert.jobCard ? cert.jobCard.jobNumber : "-"}

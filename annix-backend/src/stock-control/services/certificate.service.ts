@@ -236,6 +236,24 @@ export class CertificateService {
     return saved;
   }
 
+  async updateExtractedProduct(
+    certId: number,
+    productDescription: string,
+    stockItemId: number | null,
+  ): Promise<void> {
+    await this.certRepo.update(certId, {
+      description: productDescription,
+      ...(stockItemId !== null ? { stockItemId } : {}),
+    });
+    this.logger.log(
+      `Updated cert ${certId} with extracted product: "${productDescription}"${stockItemId ? ` (stockItemId=${stockItemId})` : ""}`,
+    );
+  }
+
+  async stockItemsForCompany(companyId: number): Promise<StockItem[]> {
+    return this.stockItemRepo.find({ where: { companyId } });
+  }
+
   async findAll(companyId: number, filters?: CertificateFilters): Promise<SupplierCertificate[]> {
     const qb = this.certRepo
       .createQueryBuilder("cert")

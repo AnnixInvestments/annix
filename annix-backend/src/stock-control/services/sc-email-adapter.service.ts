@@ -356,11 +356,64 @@ Respond ONLY with a JSON object:
       `Created supplier certificate ${cert.id} from email: ${attachment.originalFilename}`,
     );
 
+    this.extractAndLinkProduct(cert.id, fileBuffer, attachment.mimeType, companyId).catch(
+      (error) => {
+        const msg = error instanceof Error ? error.message : String(error);
+        this.logger.error(`Product extraction failed for cert ${cert.id}: ${msg}`);
+      },
+    );
+
     return {
       linkedEntityType: "SupplierCertificate",
       linkedEntityId: cert.id,
       extractionTriggered: false,
     };
+  }
+
+  private async extractAndLinkProduct(
+    certId: number,
+    fileBuffer: Buffer,
+    mimeType: string,
+    companyId: number,
+  ): Promise<void> {
+    const productName = await this.extractProductInfo(fileBuffer, mimeType);
+    if (!productName) {
+      return;
+    }
+
+    const stockItems = await this.certificateService.stockItemsForCompany(companyId);
+    const normalised = productName.toLowerCase();
+    const matched = stockItems.find(
+      (item) =>
+        item.name.toLowerCase().includes(normalised) ||
+        normalised.includes(item.name.toLowerCase()),
+    );
+
+    await this.certificateService.updateExtractedProduct(
+      certId,
+      productName,
+      matched ? matched.id : null,
+    );
+  }
+
+  private async extractProductInfo(fileBuffer: Buffer, mimeType: string): Promise<string | null> {
+    try {
+      const isAvailable = await this.aiChatService.isAvailable();
+      if (!isAvailable) {
+        return null;
+      }
+      const imageBase64 = fileBuffer.toString("base64");
+      const mediaType = this.mimeToMediaType(mimeType);
+      const response = await this.aiChatService.chatWithImage(
+        imageBase64,
+        mediaType,
+        'What is the product name on this certificate? Look for fields labeled "Product", "Compound", "Material", "Grade", or similar. Reply with ONLY the product name value, nothing else. If you cannot determine it, reply with "unknown".',
+      );
+      const name = response.content.trim();
+      return name === "unknown" || name.length === 0 ? null : name;
+    } catch {
+      return null;
+    }
   }
 
   private async extractSupplierNameFromContent(
