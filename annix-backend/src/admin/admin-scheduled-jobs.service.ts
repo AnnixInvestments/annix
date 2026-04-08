@@ -78,7 +78,7 @@ const JOB_METADATA: Record<string, { description: string; module: string; defaul
   "cv-assistant:poll-emails": {
     description: "Poll inbound emails for CV submissions",
     module: "CV Assistant",
-    defaultCron: "*/30 * * * *",
+    defaultCron: "0 */6 * * *",
   },
   "cv-assistant:poll-job-sources": {
     description: "Poll external job listing sources",
@@ -121,14 +121,15 @@ const JOB_METADATA: Record<string, { description: string; module: string; defaul
     defaultCron: "0 3 1 * *",
   },
   "inbound-email:poll-all": {
-    description: "Poll all configured inbound email accounts",
+    description:
+      "Poll all configured inbound email accounts (polymer-app@annix.co.za, au-rubber-app@annix.co.za)",
     module: "Inbound Email",
-    defaultCron: "*/30 * * * *",
+    defaultCron: "0 */6 * * *",
   },
   "au-rubber:poll-emails": {
-    description: "Poll AU Rubber inbound emails for CoCs and DNs",
+    description: "Poll AU Rubber inbound emails for CoCs and DNs (au-rubber-app@annix.co.za)",
     module: "AU Rubber",
-    defaultCron: "*/30 * * * *",
+    defaultCron: "0 */6 * * *",
   },
   "secure-docs:cleanup-deleted": {
     description: "Permanently delete soft-deleted secure document folders",

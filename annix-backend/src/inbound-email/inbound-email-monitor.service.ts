@@ -1,5 +1,5 @@
 import { Inject, Injectable, Logger } from "@nestjs/common";
-import { Cron, CronExpression } from "@nestjs/schedule";
+import { Cron } from "@nestjs/schedule";
 import * as Imap from "imap-simple";
 import { simpleParser } from "mailparser";
 import { nowMillis } from "../lib/datetime";
@@ -39,7 +39,7 @@ export class InboundEmailMonitorService {
     private readonly storageService: IStorageService,
   ) {}
 
-  @Cron(CronExpression.EVERY_30_MINUTES, { name: "inbound-email:poll-all" })
+  @Cron("0 */6 * * *", { name: "inbound-email:poll-all" })
   async pollAllConfigs(): Promise<void> {
     if (this.isPolling) {
       return;
