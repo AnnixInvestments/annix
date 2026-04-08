@@ -211,3 +211,21 @@ if [ -n "$STAGED_FRONTEND_TS" ]; then
     fi
     echo "Frontend type-check passed."
 fi
+
+# 4. Backend type-check if any backend TS files changed
+STAGED_BACKEND_TS=$(echo "$STAGED_TS_FILES" | grep -E '^annix-backend/src/.*\.ts$' | grep -v '\.spec\.ts$' || true)
+
+if [ -n "$STAGED_BACKEND_TS" ]; then
+    echo ""
+    echo "Running backend type-check..."
+    if ! (cd "$ROOT_DIR/annix-backend" && npx tsc --noEmit 2>/dev/null); then
+        echo ""
+        echo "============================================"
+        echo "COMMIT BLOCKED: Backend TypeScript errors"
+        echo "============================================"
+        echo "Run 'cd annix-backend && npx tsc --noEmit' to see errors."
+        echo ""
+        exit 1
+    fi
+    echo "Backend type-check passed."
+fi

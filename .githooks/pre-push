@@ -95,7 +95,7 @@ build_be_start=$(_timer_ms)
 BUILD_BE_PID=$!
 
 build_fe_start=$(_timer_ms)
-( cd "$ROOT_DIR/annix-frontend" && pnpm run build > "$BUILD_FE_LOG" 2>&1 ) &
+( cd "$ROOT_DIR/annix-frontend" && rm -f .next/lock && pnpm run build > "$BUILD_FE_LOG" 2>&1 ) &
 BUILD_FE_PID=$!
 
 TEST_EXIT=0
