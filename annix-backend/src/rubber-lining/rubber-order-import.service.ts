@@ -136,8 +136,17 @@ export class RubberOrderImportService {
         this.logger.log(
           "PDF has minimal extractable text (likely handwritten/scanned) — using full vision extraction",
         );
-        const visionResult = await this.extractFullOrderWithVision(file.buffer, file.originalname);
+        const visionResult = await this.extractFullOrderWithVision(
+          file.buffer,
+          file.originalname,
+          null,
+        );
         Object.assign(result, visionResult);
+        const mappedCompany = await this.resolveCompanyFromMapping(result.companyName);
+        if (mappedCompany) {
+          result.companyId = mappedCompany.companyId;
+          result.companyName = mappedCompany.companyName;
+        }
         await this.matchCompanyAndProducts(result);
         return result;
       }
@@ -151,6 +160,16 @@ export class RubberOrderImportService {
         result.companyId = quickCompanyId;
         const company = await this.companyRepository.findOneBy({ id: quickCompanyId });
         result.companyName = company?.name || null;
+
+        const mappedCompany = await this.resolveCompanyFromMapping(result.companyName);
+        if (mappedCompany) {
+          this.logger.log(
+            `Company remapped via correction: "${result.companyName}" → "${mappedCompany.companyName}"`,
+          );
+          result.companyId = mappedCompany.companyId;
+          result.companyName = mappedCompany.companyName;
+          result.isNewCustomer = false;
+        }
 
         const template = await this.templateService.findTemplateForDocument(
           quickCompanyId,
@@ -249,7 +268,11 @@ export class RubberOrderImportService {
         this.logger.log(
           "Text-based AI extraction found 0 lines — falling back to full vision extraction",
         );
-        const visionResult = await this.extractFullOrderWithVision(file.buffer, file.originalname);
+        const visionResult = await this.extractFullOrderWithVision(
+          file.buffer,
+          file.originalname,
+          result.companyName,
+        );
         const visionLines = visionResult.lines || [];
         if (visionLines.length > 0) {
           result.lines = visionLines;
@@ -719,6 +742,7 @@ ${truncatedText}`;
   private async extractFullOrderWithVision(
     buffer: Buffer,
     filename: string,
+    companyName: string | null,
   ): Promise<Partial<AnalyzedOrderData>> {
     const isAvailable = await this.aiChatService.isAvailable();
     if (!isAvailable) {
@@ -729,7 +753,7 @@ ${truncatedText}`;
     try {
       this.logger.log(`Starting full vision-based order extraction for ${filename}`);
 
-      const correctionHints = await this.correctionHintsForCompany(null);
+      const correctionHints = await this.correctionHintsForCompany(companyName);
 
       let visionPrompt = `You are NIX, an AI assistant for AU Industries' rubber lining operations.
 Analyze this purchase order document carefully. The document may be HANDWRITTEN, scanned, or a mix of printed and handwritten content. Read ALL text carefully, including handwritten notes, numbers, and annotations.
@@ -1016,6 +1040,16 @@ Respond ONLY with JSON:
       companyName = company?.name || null;
     }
 
+    if (overrides.companyId && overrides.companyId !== originalAnalysis.companyId) {
+      corrections.push({
+        companyId: overrides.companyId,
+        companyName,
+        fieldName: "companyName",
+        originalValue: originalAnalysis.companyName || null,
+        correctedValue: companyName ?? undefined,
+      });
+    }
+
     if (
       overrides.poNumber !== undefined &&
       overrides.poNumber !== null &&
@@ -1074,6 +1108,25 @@ Respond ONLY with JSON:
       `Saving ${corrections.length} order import corrections for company "${companyName}"`,
     );
     await this.correctionRepository.save(corrections);
+  }
+
+  private async resolveCompanyFromMapping(
+    extractedCompanyName: string | null,
+  ): Promise<{ companyId: number; companyName: string } | null> {
+    if (!extractedCompanyName) {
+      return null;
+    }
+
+    const mapping = await this.correctionRepository.findOne({
+      where: { fieldName: "companyName", originalValue: extractedCompanyName },
+      order: { createdAt: "DESC" },
+    });
+
+    if (mapping?.companyId && mapping.companyName) {
+      return { companyId: mapping.companyId, companyName: mapping.companyName };
+    }
+
+    return null;
   }
 
   private async correctionHintsForCompany(companyName: string | null): Promise<string | null> {
