@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { Inject, Injectable, Logger } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
@@ -48,6 +49,36 @@ export class PositectorUploadService {
 
     const storageResult = await this.storageService.upload(file, subPath);
 
+    const readingsData = batch.readings.map((r) => ({
+      index: r.index,
+      value: r.value,
+      units: r.units,
+      raw: r.raw,
+    }));
+
+    const fingerprint = this.computeFingerprint(
+      batch.header.batchName || null,
+      batch.header.probeType || null,
+      batch.readings.length,
+      batch.readings,
+      batch.header.raw,
+    );
+
+    const existing = await this.uploadRepo.findOne({
+      where: { companyId, fingerprint },
+    });
+
+    if (existing) {
+      this.logger.log(
+        `Duplicate upload detected (batch=${existing.batchName}, id=${existing.id}), updating S3 path`,
+      );
+      existing.s3FilePath = storageResult.path;
+      existing.originalFilename = file.originalname;
+      existing.uploadedByName = user.name;
+      existing.uploadedById = user.id ?? null;
+      return this.uploadRepo.save(existing);
+    }
+
     const upload = this.uploadRepo.create({
       companyId,
       originalFilename: file.originalname,
@@ -57,12 +88,7 @@ export class PositectorUploadService {
       entityType,
       detectedFormat,
       headerData: batch.header.raw,
-      readingsData: batch.readings.map((r) => ({
-        index: r.index,
-        value: r.value,
-        units: r.units,
-        raw: r.raw,
-      })),
+      readingsData,
       statisticsData: batch.statistics || null,
       readingCount: batch.readings.length,
       linkedJobCardId: null,
@@ -70,6 +96,7 @@ export class PositectorUploadService {
       importedAt: null,
       uploadedByName: user.name,
       uploadedById: user.id ?? null,
+      fingerprint,
     });
 
     return this.uploadRepo.save(upload);
@@ -230,6 +257,27 @@ export class PositectorUploadService {
     }
 
     return results;
+  }
+
+  private computeFingerprint(
+    batchName: string | null,
+    probeType: string | null,
+    readingCount: number,
+    readings: Array<{ value: number }>,
+    headerRaw: Record<string, string>,
+  ): string {
+    const createdDate = headerRaw?.Created || headerRaw?.created || "";
+    const first3 = readings.slice(0, 3).map((r) => r.value);
+    const last3 = readings.slice(-3).map((r) => r.value);
+    const payload = [
+      batchName ?? "",
+      probeType ?? "",
+      createdDate,
+      String(readingCount),
+      ...first3.map(String),
+      ...last3.map(String),
+    ].join("|");
+    return createHash("sha256").update(payload).digest("hex");
   }
 
   private reconstructBatch(upload: PositectorUpload): PositectorBatch {

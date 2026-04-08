@@ -71,6 +71,9 @@ export class PositectorUpload {
   @Column({ name: "uploaded_by_id", type: "integer", nullable: true })
   uploadedById: number | null;
 
+  @Column({ name: "fingerprint", type: "varchar", length: 64, nullable: true })
+  fingerprint: string | null;
+
   @CreateDateColumn({ name: "created_at", type: "timestamp with time zone" })
   createdAt: Date;
 
