@@ -339,140 +339,153 @@ export function OrderAnalysisReview(props: OrderAnalysisReviewProps) {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {analysis.lines.map((line, index) => (
-                <tr key={index}>
-                  {editingLineIndex === index && editedLine ? (
-                    <>
-                      <td className="px-3 py-2 text-sm text-gray-500">{line.lineNumber}</td>
-                      <td className="px-3 py-2">
-                        <select
-                          value={editedLine.productId || ""}
-                          onChange={(e) =>
-                            handleProductChange(e.target.value ? Number(e.target.value) : null)
-                          }
-                          className="w-full text-sm rounded border-gray-300 border p-1"
-                        >
-                          <option value="">Select product</option>
-                          {products.map((product) => (
-                            <option key={product.id} value={product.id}>
-                              {product.title}
-                            </option>
-                          ))}
-                        </select>
-                      </td>
-                      <td className="px-3 py-2">
-                        <input
-                          type="number"
-                          value={editedLine.thickness ?? ""}
-                          onChange={(e) =>
-                            setEditedLine({
-                              ...editedLine,
-                              thickness: e.target.value ? Number(e.target.value) : null,
-                            })
-                          }
-                          className="w-16 text-sm rounded border-gray-300 border p-1"
-                        />
-                      </td>
-                      <td className="px-3 py-2">
-                        <input
-                          type="number"
-                          value={editedLine.width ?? ""}
-                          onChange={(e) =>
-                            setEditedLine({
-                              ...editedLine,
-                              width: e.target.value ? Number(e.target.value) : null,
-                            })
-                          }
-                          className="w-20 text-sm rounded border-gray-300 border p-1"
-                        />
-                      </td>
-                      <td className="px-3 py-2">
-                        <input
-                          type="number"
-                          value={editedLine.length ?? ""}
-                          onChange={(e) =>
-                            setEditedLine({
-                              ...editedLine,
-                              length: e.target.value ? Number(e.target.value) : null,
-                            })
-                          }
-                          className="w-16 text-sm rounded border-gray-300 border p-1"
-                        />
-                      </td>
-                      <td className="px-3 py-2">
-                        <input
-                          type="number"
-                          value={editedLine.quantity ?? ""}
-                          onChange={(e) =>
-                            setEditedLine({
-                              ...editedLine,
-                              quantity: e.target.value ? Number(e.target.value) : null,
-                            })
-                          }
-                          className="w-14 text-sm rounded border-gray-300 border p-1"
-                        />
-                      </td>
-                      <td className="px-3 py-2"></td>
-                      <td className="px-3 py-2">
-                        <div className="flex space-x-1">
-                          <button
-                            onClick={handleSaveEdit}
-                            className="p-1 text-green-600 hover:text-green-800"
-                            title="Save"
+              {analysis.lines.map((line, index) => {
+                const lineThickness = line.thickness;
+                const lineWidth = line.width;
+                const lineLength = line.length;
+                const lineQuantity = line.quantity;
+                const lineConfidence = line.confidence;
+                const lineProductId = line.productId;
+                const editThickness = editedLine ? editedLine.thickness : null;
+                const editWidth = editedLine ? editedLine.width : null;
+                const editLength = editedLine ? editedLine.length : null;
+                const editQuantity = editedLine ? editedLine.quantity : null;
+                const editProductId = editedLine ? editedLine.productId : null;
+                return (
+                  <tr key={index}>
+                    {editingLineIndex === index && editedLine ? (
+                      <>
+                        <td className="px-3 py-2 text-sm text-gray-500">{line.lineNumber}</td>
+                        <td className="px-3 py-2">
+                          <select
+                            value={editProductId || ""}
+                            onChange={(e) =>
+                              handleProductChange(e.target.value ? Number(e.target.value) : null)
+                            }
+                            className="w-full text-sm rounded border-gray-300 border p-1"
                           >
-                            <Save className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={handleCancelEdit}
-                            className="p-1 text-gray-400 hover:text-gray-600"
-                            title="Cancel"
-                          >
-                            <X className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </td>
-                    </>
-                  ) : (
-                    <>
-                      <td className="px-3 py-2 text-sm text-gray-500">{line.lineNumber}</td>
-                      <td className="px-3 py-2 text-sm text-gray-900">
-                        {line.productId ? (
-                          <span className="text-green-700">{line.productName}</span>
-                        ) : (
-                          <span className="text-yellow-600">{line.productName || "Unknown"}</span>
-                        )}
-                      </td>
-                      <td className="px-3 py-2 text-sm text-gray-500">{line.thickness ?? "-"}</td>
-                      <td className="px-3 py-2 text-sm text-gray-500">{line.width ?? "-"}</td>
-                      <td className="px-3 py-2 text-sm text-gray-500">{line.length ?? "-"}</td>
-                      <td className="px-3 py-2 text-sm text-gray-500">{line.quantity ?? "-"}</td>
-                      <td className="px-3 py-2">
-                        <span className={`text-xs ${confidenceColor(line.confidence)}`}>
-                          {Math.round(line.confidence * 100)}%
-                        </span>
-                      </td>
-                      <td className="px-3 py-2">
-                        <div className="flex space-x-1">
-                          <button
-                            onClick={() => handleStartEdit(index)}
-                            className="p-1 text-gray-400 hover:text-gray-600"
-                            title="Edit"
-                          >
-                            <Edit2 className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => handleRemoveLine(index)}
-                            className="p-1 text-red-400 hover:text-red-600"
-                            title="Remove"
-                          >
-                            <X className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </td>
-                    </>
-                  )}
-                </tr>
-              ))}
+                            <option value="">Select product</option>
+                            {products.map((product) => (
+                              <option key={product.id} value={product.id}>
+                                {product.title}
+                              </option>
+                            ))}
+                          </select>
+                        </td>
+                        <td className="px-3 py-2">
+                          <input
+                            type="number"
+                            value={editThickness || ""}
+                            onChange={(e) =>
+                              setEditedLine({
+                                ...editedLine,
+                                thickness: e.target.value ? Number(e.target.value) : null,
+                              })
+                            }
+                            className="w-16 text-sm rounded border-gray-300 border p-1"
+                          />
+                        </td>
+                        <td className="px-3 py-2">
+                          <input
+                            type="number"
+                            value={editWidth || ""}
+                            onChange={(e) =>
+                              setEditedLine({
+                                ...editedLine,
+                                width: e.target.value ? Number(e.target.value) : null,
+                              })
+                            }
+                            className="w-20 text-sm rounded border-gray-300 border p-1"
+                          />
+                        </td>
+                        <td className="px-3 py-2">
+                          <input
+                            type="number"
+                            value={editLength || ""}
+                            onChange={(e) =>
+                              setEditedLine({
+                                ...editedLine,
+                                length: e.target.value ? Number(e.target.value) : null,
+                              })
+                            }
+                            className="w-16 text-sm rounded border-gray-300 border p-1"
+                          />
+                        </td>
+                        <td className="px-3 py-2">
+                          <input
+                            type="number"
+                            value={editQuantity || ""}
+                            onChange={(e) =>
+                              setEditedLine({
+                                ...editedLine,
+                                quantity: e.target.value ? Number(e.target.value) : null,
+                              })
+                            }
+                            className="w-14 text-sm rounded border-gray-300 border p-1"
+                          />
+                        </td>
+                        <td className="px-3 py-2"></td>
+                        <td className="px-3 py-2">
+                          <div className="flex space-x-1">
+                            <button
+                              onClick={handleSaveEdit}
+                              className="p-1 text-green-600 hover:text-green-800"
+                              title="Save"
+                            >
+                              <Save className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={handleCancelEdit}
+                              className="p-1 text-gray-400 hover:text-gray-600"
+                              title="Cancel"
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </>
+                    ) : (
+                      <>
+                        <td className="px-3 py-2 text-sm text-gray-500">{line.lineNumber}</td>
+                        <td className="px-3 py-2 text-sm text-gray-900">
+                          {lineProductId ? (
+                            <span className="text-green-700">{line.productName}</span>
+                          ) : (
+                            <span className="text-yellow-600">{line.productName || "Unknown"}</span>
+                          )}
+                        </td>
+                        <td className="px-3 py-2 text-sm text-gray-500">{lineThickness || "-"}</td>
+                        <td className="px-3 py-2 text-sm text-gray-500">{lineWidth || "-"}</td>
+                        <td className="px-3 py-2 text-sm text-gray-500">{lineLength || "-"}</td>
+                        <td className="px-3 py-2 text-sm text-gray-500">{lineQuantity || "-"}</td>
+                        <td className="px-3 py-2">
+                          <span className={`text-xs ${confidenceColor(lineConfidence)}`}>
+                            {Math.round(lineConfidence * 100)}%
+                          </span>
+                        </td>
+                        <td className="px-3 py-2">
+                          <div className="flex space-x-1">
+                            <button
+                              onClick={() => handleStartEdit(index)}
+                              className="p-1 text-gray-400 hover:text-gray-600"
+                              title="Edit"
+                            >
+                              <Edit2 className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => handleRemoveLine(index)}
+                              className="p-1 text-red-400 hover:text-red-600"
+                              title="Remove"
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </>
+                    )}
+                  </tr>
+                );
+              })}
               {analysis.lines.length === 0 && (
                 <tr>
                   <td colSpan={8} className="px-3 py-4 text-center text-sm text-gray-500">
