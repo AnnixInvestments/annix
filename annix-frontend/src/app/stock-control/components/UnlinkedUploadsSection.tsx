@@ -30,8 +30,7 @@ export function UnlinkedUploadsSection(props: UnlinkedUploadsSectionProps) {
         return isUnlinked && matchesType;
       });
       setUploads(filtered);
-    } catch (err) {
-      console.error("Failed to fetch unlinked uploads:", err);
+    } catch {
       setUploads([]);
     } finally {
       setIsLoading(false);

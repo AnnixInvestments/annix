@@ -1,4 +1,5 @@
 import { BadRequestException, Injectable, Logger } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
 import { InjectRepository } from "@nestjs/typeorm";
 import { ILike, In, Repository } from "typeorm";
 import { EmailService } from "../email/email.service";
@@ -55,6 +56,7 @@ export class RubberRollIssuanceService {
     private readonly lineItemRepo: Repository<JobCardLineItem>,
     private readonly aiChatService: AiChatService,
     private readonly emailService: EmailService,
+    private readonly configService: ConfigService,
   ) {}
 
   async identifyRollFromPhoto(
@@ -414,19 +416,26 @@ Respond ONLY with valid JSON.`;
       "<p>Kind regards,<br/>AU Industries</p>",
     ].join("\n");
 
-    await this.emailService.sendEmail({
-      to: "store@auind.co.za",
-      subject: issuerSubject,
-      fromName: "AU Industries",
-      html: issuerHtml,
-    });
+    const storeEmail = this.configService.get<string>("AU_STORE_EMAIL");
+    const pmEmail = this.configService.get<string>("AU_PM_EMAIL");
 
-    await this.emailService.sendEmail({
-      to: "pm@auind.co.za",
-      subject: pmSubject,
-      fromName: "AU Industries",
-      html: pmHtml,
-    });
+    if (storeEmail) {
+      await this.emailService.sendEmail({
+        to: storeEmail,
+        subject: issuerSubject,
+        fromName: "AU Industries",
+        html: issuerHtml,
+      });
+    }
+
+    if (pmEmail) {
+      await this.emailService.sendEmail({
+        to: pmEmail,
+        subject: pmSubject,
+        fromName: "AU Industries",
+        html: pmHtml,
+      });
+    }
 
     this.logger.log(`Return notifications sent for issuance ${issuanceId}`);
   }

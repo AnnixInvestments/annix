@@ -63,6 +63,71 @@ export class PositectorController {
     return this.positectorService.findAll(req.user.companyId, filters);
   }
 
+  // ── Permanent Upload Storage ────────────────────────────────────────
+  // NOTE: These routes MUST be defined before @Get(":id") to prevent
+  // NestJS from matching "uploads" as a device ID parameter.
+
+  @Get("uploads")
+  @ApiOperation({ summary: "List all stored PosiTector uploads" })
+  async listUploads(
+    @Req() req: any,
+    @Query("unlinked") unlinked?: string,
+    @Query("entityType") entityType?: string,
+  ) {
+    if (unlinked === "true") {
+      return this.uploadService.unlinkedUploads(req.user.companyId, entityType);
+    }
+    return this.uploadService.allUploads(req.user.companyId);
+  }
+
+  @Get("uploads/:uploadId")
+  @ApiOperation({ summary: "Get a stored PosiTector upload by ID" })
+  async uploadById(@Req() req: any, @Param("uploadId") uploadId: number) {
+    const upload = await this.uploadService.uploadById(req.user.companyId, uploadId);
+    if (!upload) return { error: "Upload not found" };
+    return upload;
+  }
+
+  @Get("uploads/:uploadId/download-url")
+  @ApiOperation({ summary: "Get a presigned download URL for the original uploaded file" })
+  async uploadDownloadUrl(@Req() req: any, @Param("uploadId") uploadId: number) {
+    const upload = await this.uploadService.uploadById(req.user.companyId, uploadId);
+    if (!upload) return { error: "Upload not found" };
+    const url = await this.uploadService.presignedDownloadUrl(upload);
+    return { url };
+  }
+
+  @Post("uploads/:uploadId/link")
+  @StockControlRoles("manager", "admin")
+  @PermissionKey("positector.upload-import")
+  @ApiOperation({ summary: "Link a stored upload to a job card and import its data" })
+  async linkUpload(
+    @Req() req: any,
+    @Param("uploadId") uploadId: number,
+    @Body()
+    body: {
+      jobCardId: number;
+      coatType?: string;
+      paintProduct?: string;
+      specMinMicrons?: number;
+      specMaxMicrons?: number;
+      specMicrons?: number;
+      rubberSpec?: string;
+      rubberBatchNumber?: string | null;
+      requiredShore?: number;
+    },
+  ) {
+    return this.uploadService.linkAndImport(
+      req.user.companyId,
+      uploadId,
+      body.jobCardId,
+      body,
+      req.user,
+    );
+  }
+
+  // ── Device Routes (dynamic :id must come after static routes) ──────
+
   @Get(":id")
   @ApiOperation({ summary: "Get a PosiTector device by ID" })
   async findById(@Req() req: any, @Param("id") id: number) {
@@ -190,73 +255,6 @@ export class PositectorController {
     }
 
     return { error: `Unsupported entity type: ${body.entityType}` };
-  }
-
-  // ── Permanent Upload Storage ────────────────────────────────────────
-
-  @Get("uploads")
-  @ApiOperation({ summary: "List all stored PosiTector uploads" })
-  async listUploads(
-    @Req() req: any,
-    @Query("unlinked") unlinked?: string,
-    @Query("entityType") entityType?: string,
-  ) {
-    try {
-      if (unlinked === "true") {
-        return this.uploadService.unlinkedUploads(req.user.companyId, entityType);
-      }
-      return this.uploadService.allUploads(req.user.companyId);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      this.logger.error(`listUploads failed: ${message}`, err instanceof Error ? err.stack : "");
-      throw err;
-    }
-  }
-
-  @Get("uploads/:uploadId")
-  @ApiOperation({ summary: "Get a stored PosiTector upload by ID" })
-  async uploadById(@Req() req: any, @Param("uploadId") uploadId: number) {
-    const upload = await this.uploadService.uploadById(req.user.companyId, uploadId);
-    if (!upload) return { error: "Upload not found" };
-    return upload;
-  }
-
-  @Get("uploads/:uploadId/download-url")
-  @ApiOperation({ summary: "Get a presigned download URL for the original uploaded file" })
-  async uploadDownloadUrl(@Req() req: any, @Param("uploadId") uploadId: number) {
-    const upload = await this.uploadService.uploadById(req.user.companyId, uploadId);
-    if (!upload) return { error: "Upload not found" };
-    const url = await this.uploadService.presignedDownloadUrl(upload);
-    return { url };
-  }
-
-  @Post("uploads/:uploadId/link")
-  @StockControlRoles("manager", "admin")
-  @PermissionKey("positector.upload-import")
-  @ApiOperation({ summary: "Link a stored upload to a job card and import its data" })
-  async linkUpload(
-    @Req() req: any,
-    @Param("uploadId") uploadId: number,
-    @Body()
-    body: {
-      jobCardId: number;
-      coatType?: string;
-      paintProduct?: string;
-      specMinMicrons?: number;
-      specMaxMicrons?: number;
-      specMicrons?: number;
-      rubberSpec?: string;
-      rubberBatchNumber?: string | null;
-      requiredShore?: number;
-    },
-  ) {
-    return this.uploadService.linkAndImport(
-      req.user.companyId,
-      uploadId,
-      body.jobCardId,
-      body,
-      req.user,
-    );
   }
 
   @Post("upload")
