@@ -12,6 +12,7 @@ import type {
   NewCompanyFromAnalysis,
 } from "./dto/rubber-order-import.dto";
 import { CompanyType, RubberCompany } from "./entities/rubber-company.entity";
+import { RubberOrderStatus } from "./entities/rubber-order.entity";
 import { RubberOrderImportCorrection } from "./entities/rubber-order-import-correction.entity";
 import { RubberProduct } from "./entities/rubber-product.entity";
 import { RubberLiningService } from "./rubber-lining.service";
@@ -731,6 +732,7 @@ ${truncatedText}`;
     const order = await this.rubberLiningService.createOrder({
       companyId,
       companyOrderNumber: poNumber,
+      status: RubberOrderStatus.SUBMITTED,
       items,
     });
 

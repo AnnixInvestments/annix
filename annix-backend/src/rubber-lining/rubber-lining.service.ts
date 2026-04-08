@@ -964,7 +964,7 @@ export class RubberLiningService {
       firebaseUid: `pg_${generateUniqueId()}`,
       orderNumber,
       companyOrderNumber: dto.companyOrderNumber || null,
-      status: RubberOrderStatus.DRAFT,
+      status: dto.status ?? RubberOrderStatus.DRAFT,
       companyId: dto.companyId || null,
     });
     const savedOrder = await this.orderRepository.save(order);

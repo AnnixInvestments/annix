@@ -457,6 +457,10 @@ export class CreateRubberOrderDto {
   companyId?: number | null;
 
   @IsOptional()
+  @IsEnum(RubberOrderStatus)
+  status?: RubberOrderStatus;
+
+  @IsOptional()
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => CreateRubberOrderItemDto)
