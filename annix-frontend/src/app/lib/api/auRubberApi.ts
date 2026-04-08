@@ -1720,6 +1720,8 @@ class AuRubberApiClient {
         width?: number;
         length?: number;
         quantity?: number;
+        cpoUnitPrice?: number | null;
+        pricePerKg?: number | null;
         callOffs?: CallOff[];
       }[];
     },

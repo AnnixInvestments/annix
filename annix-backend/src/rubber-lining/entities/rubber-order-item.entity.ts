@@ -90,6 +90,9 @@ export class RubberOrderItem {
   @Column({ name: "cpo_unit_price", type: "decimal", precision: 12, scale: 2, nullable: true })
   cpoUnitPrice: number | null;
 
+  @Column({ name: "price_per_kg", type: "decimal", precision: 12, scale: 4, nullable: true })
+  pricePerKg: number | null;
+
   @Column({
     name: "call_offs",
     type: "jsonb",

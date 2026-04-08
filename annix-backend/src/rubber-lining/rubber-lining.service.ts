@@ -979,6 +979,7 @@ export class RubberLiningService {
           length: item.length || null,
           quantity: item.quantity || null,
           cpoUnitPrice: item.cpoUnitPrice != null ? item.cpoUnitPrice : null,
+          pricePerKg: item.pricePerKg != null ? item.pricePerKg : null,
           callOffs: item.callOffs || [],
         }),
       );
@@ -1022,6 +1023,7 @@ export class RubberLiningService {
           length: item.length || null,
           quantity: item.quantity || null,
           cpoUnitPrice: item.cpoUnitPrice != null ? item.cpoUnitPrice : null,
+          pricePerKg: item.pricePerKg != null ? item.pricePerKg : null,
           callOffs: item.callOffs || [],
         }),
       );
@@ -1267,6 +1269,7 @@ export class RubberLiningService {
       length: length || null,
       quantity: quantity || null,
       cpoUnitPrice: item.cpoUnitPrice != null ? Number(item.cpoUnitPrice) : null,
+      pricePerKg: item.pricePerKg != null ? Number(item.pricePerKg) : null,
       callOffs: item.callOffs,
       kgPerRoll,
       totalKg,

@@ -122,6 +122,7 @@ interface EditableItem {
   length?: number;
   quantity?: number;
   cpoUnitPrice?: number | null;
+  pricePerKg?: number | null;
   callOffs: CallOff[];
   kgPerRoll?: number | null;
 }
@@ -205,6 +206,7 @@ export default function AuRubberOrderDetailPage() {
         length: item.length || undefined,
         quantity: item.quantity || undefined,
         cpoUnitPrice: item.cpoUnitPrice,
+        pricePerKg: item.pricePerKg,
         callOffs: item.callOffs || [],
         kgPerRoll: item.kgPerRoll,
       }));
@@ -325,6 +327,7 @@ export default function AuRubberOrderDetailPage() {
             length: item.length,
             quantity: item.quantity,
             cpoUnitPrice: item.cpoUnitPrice,
+            pricePerKg: item.pricePerKg,
             callOffs: item.callOffs,
           })),
       });
@@ -355,6 +358,7 @@ export default function AuRubberOrderDetailPage() {
       length: item.length,
       quantity: item.quantity,
       cpoUnitPrice: item.cpoUnitPrice,
+      pricePerKg: item.pricePerKg,
       callOffs: [],
       kgPerRoll: item.kgPerRoll,
     };
@@ -401,9 +405,12 @@ export default function AuRubberOrderDetailPage() {
   const calculatePricePerRoll = (item: EditableItem) => {
     if (item.cpoUnitPrice != null) return item.cpoUnitPrice;
     const product = productById(item.productId);
-    if (item.kgPerRoll === null || item.kgPerRoll === undefined || !product?.pricePerKg)
-      return null;
-    return item.kgPerRoll * product.pricePerKg;
+    const itemPricePerKg = item.pricePerKg;
+    const productPricePerKg = product ? product.pricePerKg : null;
+    const effectivePricePerKg = itemPricePerKg != null ? itemPricePerKg : productPricePerKg;
+    const kgPerRoll = item.kgPerRoll;
+    if (kgPerRoll === null || kgPerRoll === undefined || !effectivePricePerKg) return null;
+    return kgPerRoll * effectivePricePerKg;
   };
 
   const calculateTotalPrice = (item: EditableItem) => {
@@ -970,8 +977,20 @@ export default function AuRubberOrderDetailPage() {
                         <td className="px-3 py-3 text-center text-sm text-gray-900">
                           {item.kgPerRoll != null ? `${item.kgPerRoll.toFixed(1)} Kg` : "-"}
                         </td>
-                        <td className="px-3 py-3 text-center text-sm text-gray-900">
-                          {product?.pricePerKg ? formatCurrency(product.pricePerKg) : "-"}
+                        <td className="px-3 py-3 text-center">
+                          <input
+                            type="number"
+                            value={item.pricePerKg != null ? item.pricePerKg : ""}
+                            onChange={(e) =>
+                              updateItem(index, {
+                                pricePerKg: e.target.value ? Number(e.target.value) : null,
+                              })
+                            }
+                            placeholder="-"
+                            className="w-24 text-center rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 text-sm border p-1"
+                            min="0"
+                            step="0.01"
+                          />
                         </td>
                         <td className="px-3 py-3 text-center">
                           <div className="flex items-center justify-center space-x-1">
@@ -1030,8 +1049,20 @@ export default function AuRubberOrderDetailPage() {
                             </button>
                           </div>
                         </td>
-                        <td className="px-3 py-3 text-right text-sm text-gray-900">
-                          {item.cpoUnitPrice != null ? formatCurrency(item.cpoUnitPrice) : "-"}
+                        <td className="px-3 py-3 text-center">
+                          <input
+                            type="number"
+                            value={item.cpoUnitPrice != null ? item.cpoUnitPrice : ""}
+                            onChange={(e) =>
+                              updateItem(index, {
+                                cpoUnitPrice: e.target.value ? Number(e.target.value) : null,
+                              })
+                            }
+                            placeholder="-"
+                            className="w-24 text-center rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 text-sm border p-1"
+                            min="0"
+                            step="0.01"
+                          />
                         </td>
                         <td className="px-3 py-3 text-right text-sm text-gray-900">
                           {formatCurrency(pricePerRoll)}
