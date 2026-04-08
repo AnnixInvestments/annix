@@ -1,6 +1,6 @@
 import { Inject, Injectable, Logger } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { IsNull, Repository } from "typeorm";
+import { Repository } from "typeorm";
 import { nowISO } from "../../../lib/datetime";
 import type { IStorageService } from "../../../storage/storage.interface";
 import { STORAGE_SERVICE, StorageArea } from "../../../storage/storage.interface";
@@ -87,14 +87,17 @@ export class PositectorUploadService {
   }
 
   async unlinkedUploads(companyId: number, entityType?: string): Promise<PositectorUpload[]> {
-    return this.uploadRepo.find({
-      where: {
-        companyId,
-        linkedJobCardId: IsNull(),
-        ...(entityType ? { entityType } : {}),
-      },
-      order: { createdAt: "DESC" },
-    });
+    const qb = this.uploadRepo
+      .createQueryBuilder("u")
+      .where("u.companyId = :companyId", { companyId })
+      .andWhere("u.linkedJobCardId IS NULL")
+      .orderBy("u.createdAt", "DESC");
+
+    if (entityType) {
+      qb.andWhere("u.entityType = :entityType", { entityType });
+    }
+
+    return qb.getMany();
   }
 
   async presignedDownloadUrl(upload: PositectorUpload): Promise<string> {

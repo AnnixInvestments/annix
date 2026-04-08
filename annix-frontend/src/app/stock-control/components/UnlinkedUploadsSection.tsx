@@ -23,11 +23,13 @@ export function UnlinkedUploadsSection(props: UnlinkedUploadsSectionProps) {
   const fetchUploads = useCallback(async () => {
     try {
       setIsLoading(true);
-      const data = await stockControlApiClient.positectorUploads({
-        unlinked: true,
-        entityType,
+      const all = await stockControlApiClient.positectorUploads();
+      const filtered = (Array.isArray(all) ? all : []).filter((u) => {
+        const isUnlinked = u.linkedJobCardId === null;
+        const matchesType = u.entityType === entityType;
+        return isUnlinked && matchesType;
       });
-      setUploads(Array.isArray(data) ? data : []);
+      setUploads(filtered);
     } catch (err) {
       console.error("Failed to fetch unlinked uploads:", err);
       setUploads([]);
