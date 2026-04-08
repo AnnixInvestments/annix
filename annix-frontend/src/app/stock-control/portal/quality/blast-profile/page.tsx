@@ -123,10 +123,14 @@ export default function BlastProfilePage() {
             <tbody className="divide-y divide-gray-200">
               {records.map((rec) => {
                 const jcLabel = [rec.jobNumber, rec.jcNumber].filter(Boolean).join(" / ");
-                const avgStr = rec.averageMicrons != null ? rec.averageMicrons.toFixed(1) : "-";
-                const tempStr = rec.temperature != null ? String(rec.temperature) : "-";
-                const humStr = rec.humidity != null ? String(rec.humidity) : "-";
-                const readingCount = Array.isArray(rec.readings) ? rec.readings.length : 0;
+                const avg = rec.averageMicrons;
+                const avgStr = avg != null ? Number(avg).toFixed(1) : "-";
+                const temp = rec.temperature;
+                const tempStr = temp != null ? String(temp) : "-";
+                const hum = rec.humidity;
+                const humStr = hum != null ? String(hum) : "-";
+                const readings = rec.readings;
+                const readingCount = Array.isArray(readings) ? readings.length : 0;
                 return (
                   <tr key={rec.id} className="hover:bg-gray-50">
                     <td className="whitespace-nowrap px-4 py-3 text-sm">

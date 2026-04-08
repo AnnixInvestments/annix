@@ -120,9 +120,12 @@ export default function EnvironmentalPage() {
             <tbody className="divide-y divide-gray-200">
               {records.map((rec) => {
                 const dateStr = formatDateZA(rec.recordDate);
-                const tempStr = String(rec.temperatureC);
-                const humStr = String(rec.humidity);
-                const dewStr = rec.dewPointC != null ? String(rec.dewPointC) : "-";
+                const tempC = rec.temperatureC;
+                const tempStr = String(tempC);
+                const humidity = rec.humidity;
+                const humStr = String(humidity);
+                const dewPoint = rec.dewPointC;
+                const dewStr = dewPoint != null ? String(dewPoint) : "-";
                 const jcLabel = [rec.jobNumber, rec.jcNumber].filter(Boolean).join(" / ");
                 return (
                   <tr key={rec.id} className="hover:bg-gray-50">

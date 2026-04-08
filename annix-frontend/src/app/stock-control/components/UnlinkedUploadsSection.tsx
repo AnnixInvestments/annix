@@ -25,9 +25,8 @@ export function UnlinkedUploadsSection(props: UnlinkedUploadsSectionProps) {
       setIsLoading(true);
       const all = await stockControlApiClient.positectorUploads();
       const filtered = (Array.isArray(all) ? all : []).filter((u) => {
-        const isUnlinked = u.linkedJobCardId === null;
         const matchesType = u.entityType === entityType;
-        return isUnlinked && matchesType;
+        return matchesType;
       });
       setUploads(filtered);
     } catch {
@@ -57,12 +56,14 @@ export function UnlinkedUploadsSection(props: UnlinkedUploadsSectionProps) {
     setExpandedId(expandedId === id ? null : id);
   };
 
+  const unlinkedCount = uploads.filter((u) => u.linkedJobCardId === null).length;
+
   return (
-    <div className="rounded-lg border border-amber-200 bg-amber-50">
-      <div className="px-4 py-3 border-b border-amber-200">
+    <div className="rounded-lg border border-gray-200 bg-white shadow-sm">
+      <div className="px-4 py-3 border-b border-gray-200">
         <div className="flex items-center gap-2">
           <svg
-            className="h-5 w-5 text-amber-600"
+            className="h-5 w-5 text-teal-600"
             fill="none"
             viewBox="0 0 24 24"
             strokeWidth={2}
@@ -71,42 +72,47 @@ export function UnlinkedUploadsSection(props: UnlinkedUploadsSectionProps) {
             <path
               strokeLinecap="round"
               strokeLinejoin="round"
-              d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"
+              d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"
             />
           </svg>
-          <h3 className="text-sm font-semibold text-amber-800">
-            Unlinked PosiTector Uploads ({uploads.length})
+          <h3 className="text-sm font-semibold text-gray-900">
+            PosiTector {entityLabel} Uploads ({uploads.length})
           </h3>
-          <span className="text-xs text-amber-600">
-            These {entityLabel} uploads are not yet linked to a job card
-          </span>
+          {unlinkedCount > 0 && (
+            <span className="text-xs text-amber-600">
+              {unlinkedCount} not yet linked to a job card
+            </span>
+          )}
         </div>
       </div>
       <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-amber-200">
-          <thead className="bg-amber-50">
+        <table className="min-w-full divide-y divide-gray-200">
+          <thead className="bg-gray-50">
             <tr>
-              <th className="px-4 py-2 text-left text-xs font-medium uppercase text-amber-700">
+              <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">
                 Batch
               </th>
-              <th className="px-4 py-2 text-left text-xs font-medium uppercase text-amber-700">
-                Date
+              <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">
+                Reading Date
               </th>
-              <th className="px-4 py-2 text-left text-xs font-medium uppercase text-amber-700">
+              <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">
                 Probe
               </th>
-              <th className="px-4 py-2 text-center text-xs font-medium uppercase text-amber-700">
+              <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">
+                Status
+              </th>
+              <th className="px-4 py-2 text-center text-xs font-medium uppercase text-gray-500">
                 Readings
               </th>
-              <th className="px-4 py-2 text-left text-xs font-medium uppercase text-amber-700">
+              <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">
                 Uploaded By
               </th>
-              <th className="px-4 py-2 text-right text-xs font-medium uppercase text-amber-700">
+              <th className="px-4 py-2 text-right text-xs font-medium uppercase text-gray-500">
                 Actions
               </th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-amber-100 bg-white">
+          <tbody className="divide-y divide-gray-100 bg-white">
             {uploads.map((upload) => {
               const isExpanded = expandedId === upload.id;
               const isPdf = upload.detectedFormat === "posisoft_pdf";
@@ -142,24 +148,43 @@ function UploadRow(props: {
   const onToggleExpand = props.onToggleExpand;
   const onViewPdf = props.onViewPdf;
 
+  const headerData = upload.headerData;
+  const createdRaw = headerData?.Created || headerData?.created || null;
+  const readingDate = createdRaw ? createdRaw.split(" ")[0] : null;
+  const displayDate = readingDate || upload.createdAt;
+  const batchLabel = upload.batchName || upload.originalFilename;
+
+  const isLinked = upload.linkedJobCardId !== null;
+  const linkedJcId = upload.linkedJobCardId;
+  const probeType = upload.probeType;
+  const readingCount = upload.readingCount;
+  const uploadedBy = upload.uploadedByName;
+
   return (
     <>
-      <tr className="hover:bg-amber-50/50">
+      <tr className="hover:bg-gray-50">
         <td className="whitespace-nowrap px-4 py-3 text-sm font-medium text-gray-900">
-          {upload.batchName || upload.originalFilename}
+          {batchLabel}
         </td>
         <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-600">
-          {formatDateZA(upload.createdAt)}
+          {formatDateZA(displayDate)}
         </td>
-        <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-600">
-          {upload.probeType || "-"}
+        <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-600">{probeType || "-"}</td>
+        <td className="whitespace-nowrap px-4 py-3 text-sm">
+          {isLinked ? (
+            <span className="inline-flex rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800">
+              Linked to JC #{linkedJcId}
+            </span>
+          ) : (
+            <span className="inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
+              Unlinked
+            </span>
+          )}
         </td>
         <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-600 text-center">
-          {upload.readingCount}
+          {readingCount}
         </td>
-        <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-500">
-          {upload.uploadedByName}
-        </td>
+        <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-500">{uploadedBy}</td>
         <td className="whitespace-nowrap px-4 py-3 text-right">
           <div className="flex items-center justify-end gap-2">
             <button
@@ -183,7 +208,7 @@ function UploadRow(props: {
       </tr>
       {isExpanded && (
         <tr>
-          <td colSpan={6} className="px-4 py-3 bg-gray-50">
+          <td colSpan={7} className="px-4 py-3 bg-gray-50">
             <div className="max-h-64 overflow-y-auto rounded border border-gray-200">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="sticky top-0 bg-gray-100">

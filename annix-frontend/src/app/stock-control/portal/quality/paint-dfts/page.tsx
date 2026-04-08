@@ -130,9 +130,11 @@ export default function PaintDftsPage() {
               {records.map((rec) => {
                 const jcLabel = [rec.jobNumber, rec.jcNumber].filter(Boolean).join(" / ");
                 const coatLabel = COAT_LABELS[rec.coatType] || rec.coatType;
-                const avgStr = rec.averageMicrons != null ? rec.averageMicrons.toFixed(1) : "-";
+                const avg = rec.averageMicrons;
+                const avgStr = avg != null ? Number(avg).toFixed(1) : "-";
                 const specStr = `${rec.specMinMicrons}-${rec.specMaxMicrons}`;
-                const readingCount = Array.isArray(rec.readings) ? rec.readings.length : 0;
+                const readings = rec.readings;
+                const readingCount = Array.isArray(readings) ? readings.length : 0;
                 return (
                   <tr key={rec.id} className="hover:bg-gray-50">
                     <td className="whitespace-nowrap px-4 py-3 text-sm">
