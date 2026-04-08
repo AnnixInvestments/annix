@@ -25,6 +25,7 @@ import {
 } from "../../guards/stock-control-role.guard";
 import { DataBookPdfService } from "../../services/data-book-pdf.service";
 import { QcEnabledGuard } from "../guards/qc-enabled.guard";
+import { QcBatchAssignmentService } from "../services/qc-batch-assignment.service";
 import { QcMeasurementService } from "../services/qc-measurement.service";
 
 @ApiTags("Stock Control - CPO QC")
@@ -35,6 +36,7 @@ export class CpoQcController {
 
   constructor(
     private readonly qcService: QcMeasurementService,
+    private readonly batchService: QcBatchAssignmentService,
     private readonly dataBookPdfService: DataBookPdfService,
     @InjectRepository(JobCard)
     private readonly jobCardRepo: Repository<JobCard>,
@@ -183,5 +185,17 @@ export class CpoQcController {
       "Content-Length": buffer.length.toString(),
     });
     res.end(buffer);
+  }
+
+  @Get("batch-assignments")
+  @ApiOperation({ summary: "Batch assignments for a CPO" })
+  async batchAssignmentsList(@Req() req: any, @Param("cpoId") cpoId: number) {
+    return this.batchService.assignmentsForCpo(req.user.companyId, cpoId);
+  }
+
+  @Get("batch-assignments/summary")
+  @ApiOperation({ summary: "Batch assignment completion summary for a CPO" })
+  async batchAssignmentsSummary(@Req() req: any, @Param("cpoId") cpoId: number) {
+    return this.batchService.completionSummaryForCpo(req.user.companyId, cpoId);
   }
 }

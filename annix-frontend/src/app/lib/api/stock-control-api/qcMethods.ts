@@ -5,6 +5,7 @@ import type {
   CpoReleaseDocumentsResult,
   DftReadingWithJobCard,
   EnvironmentalRecordWithJobCard,
+  QcBatchAssignment,
   QcBlastProfileRecord,
   QcControlPlanRecord,
   QcDefelskoBatchRecord,
@@ -155,6 +156,10 @@ declare module "./base" {
       }[],
     ): Promise<CpoReleaseDocumentsResult>;
     openItemsReleasePdfForCpo(cpoId: number, id: number): Promise<Blob>;
+    batchAssignmentsForCpo(cpoId: number): Promise<QcBatchAssignment[]>;
+    batchAssignmentsSummaryForCpo(
+      cpoId: number,
+    ): Promise<Record<string, { total: number; assigned: number; fieldKey: string }>>;
     allDftReadings(): Promise<DftReadingWithJobCard[]>;
     allBlastProfiles(): Promise<BlastProfileWithJobCard[]>;
     allShoreHardnessRecords(): Promise<ShoreHardnessWithJobCard[]>;
@@ -616,4 +621,12 @@ proto.autoGenerateReleaseDocumentsForCpo = async function (cpoId, selectedItems)
 
 proto.openItemsReleasePdfForCpo = async function (cpoId, id) {
   return this.requestBlob(`/stock-control/cpos/${cpoId}/qc/items-releases/${id}/pdf`);
+};
+
+proto.batchAssignmentsForCpo = async function (cpoId) {
+  return this.request(`/stock-control/cpos/${cpoId}/qc/batch-assignments`);
+};
+
+proto.batchAssignmentsSummaryForCpo = async function (cpoId) {
+  return this.request(`/stock-control/cpos/${cpoId}/qc/batch-assignments/summary`);
 };

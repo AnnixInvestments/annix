@@ -16,6 +16,7 @@ import { renderFooter } from "../../lib/pdf-templates";
 import { type IStorageService, STORAGE_SERVICE } from "../../storage/storage.interface";
 import { JobCard } from "../entities/job-card.entity";
 import { StockControlCompany } from "../entities/stock-control-company.entity";
+import { QcBatchAssignment } from "../qc/entities/qc-batch-assignment.entity";
 import { QcBlastProfile } from "../qc/entities/qc-blast-profile.entity";
 import { QcControlPlan } from "../qc/entities/qc-control-plan.entity";
 import { DftCoatType, QcDftReading } from "../qc/entities/qc-dft-reading.entity";
@@ -122,6 +123,7 @@ interface DataBookContext {
   controlPlans: QcControlPlan[];
   releaseCertificates: QcReleaseCertificate[];
   itemsReleases: QcItemsRelease[];
+  batchAssignments: QcBatchAssignment[];
 }
 
 @Injectable()
@@ -129,6 +131,8 @@ export class DataBookPdfService {
   private readonly logger = new Logger(DataBookPdfService.name);
 
   constructor(
+    @InjectRepository(QcBatchAssignment)
+    private readonly batchAssignmentRepo: Repository<QcBatchAssignment>,
     @InjectRepository(QcShoreHardness)
     private readonly shoreHardnessRepo: Repository<QcShoreHardness>,
     @InjectRepository(QcDftReading)
@@ -193,6 +197,7 @@ export class DataBookPdfService {
       controlPlans: [],
       releaseCertificates: [certificate],
       itemsReleases: [],
+      batchAssignments: [],
     };
 
     return this.renderStandaloneDocument(ctx, (doc, tocEntries) => {
@@ -230,6 +235,7 @@ export class DataBookPdfService {
       controlPlans,
       releaseCertificates: [],
       itemsReleases: [release],
+      batchAssignments: [],
     };
 
     return this.renderStandaloneDocument(
@@ -270,6 +276,7 @@ export class DataBookPdfService {
       controlPlans: [plan],
       releaseCertificates: [],
       itemsReleases: [],
+      batchAssignments: [],
     };
 
     return this.renderStandaloneDocument(
@@ -380,6 +387,7 @@ export class DataBookPdfService {
       controlPlans,
       releaseCertificates,
       itemsReleases,
+      batchAssignments,
     ] = await Promise.all([
       this.jobCardRepo.findOne({
         where: { id: jobCardId, companyId },
@@ -400,6 +408,10 @@ export class DataBookPdfService {
       this.controlPlanRepo.find({ where: { companyId, jobCardId }, order: { createdAt: "ASC" } }),
       this.releaseCertRepo.find({ where: { companyId, jobCardId }, order: { createdAt: "ASC" } }),
       this.itemsReleaseRepo.find({ where: { companyId, jobCardId }, order: { createdAt: "ASC" } }),
+      this.batchAssignmentRepo.find({
+        where: { companyId, jobCardId },
+        order: { lineItemId: "ASC", fieldKey: "ASC" },
+      }),
     ]);
 
     if (!jobCard) {
@@ -416,7 +428,8 @@ export class DataBookPdfService {
       blastProfiles.length > 0 ||
       controlPlans.length > 0 ||
       releaseCertificates.length > 0 ||
-      itemsReleases.length > 0;
+      itemsReleases.length > 0 ||
+      batchAssignments.length > 0;
 
     if (!hasAnyData) {
       return null;
@@ -452,6 +465,7 @@ export class DataBookPdfService {
       controlPlans,
       releaseCertificates,
       itemsReleases,
+      batchAssignments,
     };
 
     const doc = new PDFDocument({
@@ -499,6 +513,10 @@ export class DataBookPdfService {
     ctx.releaseCertificates.forEach((cert) => {
       this.renderReleaseCertificate(doc, ctx, cert, tocEntries);
     });
+
+    if (ctx.batchAssignments.length > 0) {
+      this.renderTraceabilityMatrix(doc, ctx, tocEntries);
+    }
 
     this.renderTocPage(doc, ctx, tocPageIndex, tocEntries);
 
@@ -2164,6 +2182,99 @@ export class DataBookPdfService {
           y,
         );
     }
+  }
+
+  private renderTraceabilityMatrix(
+    doc: PDFDoc,
+    ctx: DataBookContext,
+    tocEntries: TocEntry[],
+  ): void {
+    const traceabilityDoc: DocNumberEntry = {
+      docNumber: "QD_PLS_17",
+      title: "Traceability Matrix",
+      edition: "01",
+      revision: "00",
+    };
+    this.sectionHeader(doc, ctx, "Traceability Matrix", traceabilityDoc, tocEntries);
+
+    const fieldKeys = [
+      "paint_blast_profile",
+      "paint_dft_primer",
+      "paint_dft_intermediate",
+      "paint_dft_final",
+      "rubber_blast_profile",
+      "rubber_shore_hardness",
+    ];
+    const fieldLabels = ["Blast (P)", "DFT Primer", "DFT Inter", "DFT Final", "Blast (R)", "Shore"];
+
+    const lineItems = ctx.jobCard.lineItems || [];
+    const assignmentMap = new Map<string, string>();
+    ctx.batchAssignments.forEach((a) => {
+      const key = `${a.lineItemId}-${a.fieldKey}`;
+      assignmentMap.set(key, a.notApplicable ? "N/A" : a.batchNumber);
+    });
+
+    const colItemNo = { label: "Item #", x: A4.margin, width: 40, align: "center" as const };
+    const colItemCode = {
+      label: "Item Code",
+      x: A4.margin + 40,
+      width: 80,
+      align: "left" as const,
+    };
+    const colDesc = {
+      label: "Description",
+      x: A4.margin + 120,
+      width: 100,
+      align: "left" as const,
+    };
+
+    const fieldColWidth = Math.min(60, Math.floor((A4.contentWidth - 220) / fieldKeys.length));
+    const fieldCols = fieldKeys.map((_, idx) => ({
+      label: fieldLabels[idx],
+      x: A4.margin + 220 + idx * fieldColWidth,
+      width: fieldColWidth,
+      align: "center" as const,
+    }));
+
+    const allCols = [colItemNo, colItemCode, colDesc, ...fieldCols];
+
+    doc.fontSize(8).font(FONT.REGULAR);
+    doc.text(`Job Card: ${ctx.jobCard.jobNumber || ctx.jobCard.id}`, A4.margin, doc.y);
+    doc.moveDown(0.5);
+
+    let y = this.tableHeader(doc, allCols);
+
+    lineItems.forEach((item: any, idx: number) => {
+      if (y > 750) {
+        doc.addPage();
+        y = A4.margin + 20;
+        y = this.tableHeader(doc, allCols);
+      }
+
+      const itemNo = item.itemNo || String(idx + 1);
+      const itemCode = item.itemCode || "-";
+      const desc = item.itemDescription || "-";
+      const truncDesc = desc.length > 18 ? `${desc.substring(0, 16)}...` : desc;
+
+      const batchCols = fieldKeys.map((fk, fIdx) => {
+        const key = `${item.id}-${fk}`;
+        const batch = assignmentMap.get(key) || "-";
+        return {
+          text: batch,
+          x: fieldCols[fIdx].x,
+          width: fieldColWidth,
+          align: "center" as const,
+          color: batch === "N/A" ? "#9ca3af" : "#000000",
+        };
+      });
+
+      y = this.tableRow(doc, y, [
+        { text: itemNo, x: colItemNo.x, width: colItemNo.width, align: "center" },
+        { text: itemCode, x: colItemCode.x, width: colItemCode.width, align: "left" },
+        { text: truncDesc, x: colDesc.x, width: colDesc.width, align: "left" },
+        ...batchCols,
+      ]);
+    });
   }
 
   private renderTocPage(

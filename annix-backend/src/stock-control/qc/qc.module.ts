@@ -43,6 +43,7 @@ import { QcControlPlan } from "./entities/qc-control-plan.entity";
 import { QcDefelskoBatch } from "./entities/qc-defelsko-batch.entity";
 import { QcDftReading } from "./entities/qc-dft-reading.entity";
 import { QcDustDebrisTest } from "./entities/qc-dust-debris-test.entity";
+import { QcEnvironmentalBatchLink } from "./entities/qc-environmental-batch-link.entity";
 import { QcEnvironmentalRecord } from "./entities/qc-environmental-record.entity";
 import { QcItemsRelease } from "./entities/qc-items-release.entity";
 import { QcPullTest } from "./entities/qc-pull-test.entity";
@@ -75,6 +76,7 @@ import { WORK_ITEM_PROVIDER } from "./work-item-provider.interface";
       PositectorUpload,
       PushSubscription,
       QcBatchAssignment,
+      QcEnvironmentalBatchLink,
       QcBlastProfile,
       QcControlPlan,
       QcpApprovalToken,

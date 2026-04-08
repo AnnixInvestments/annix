@@ -4,6 +4,7 @@ import { fromISO, now } from "../../lib/datetime";
 import { STORAGE_SERVICE } from "../../storage/storage.interface";
 import { JobCard } from "../entities/job-card.entity";
 import { StockControlCompany } from "../entities/stock-control-company.entity";
+import { QcBatchAssignment } from "../qc/entities/qc-batch-assignment.entity";
 import { QcBlastProfile } from "../qc/entities/qc-blast-profile.entity";
 import { QcControlPlan } from "../qc/entities/qc-control-plan.entity";
 import { DftCoatType, QcDftReading } from "../qc/entities/qc-dft-reading.entity";
@@ -254,6 +255,7 @@ function makeItemsRelease(overrides: Record<string, any> = {}) {
 describe("DataBookPdfService", () => {
   let service: DataBookPdfService;
 
+  const batchAssignmentRepo = mockRepo();
   const shoreHardnessRepo = mockRepo();
   const dftReadingRepo = mockRepo();
   const blastProfileRepo = mockRepo();
@@ -269,6 +271,7 @@ describe("DataBookPdfService", () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         DataBookPdfService,
+        { provide: getRepositoryToken(QcBatchAssignment), useValue: batchAssignmentRepo },
         { provide: getRepositoryToken(QcShoreHardness), useValue: shoreHardnessRepo },
         { provide: getRepositoryToken(QcDftReading), useValue: dftReadingRepo },
         { provide: getRepositoryToken(QcBlastProfile), useValue: blastProfileRepo },

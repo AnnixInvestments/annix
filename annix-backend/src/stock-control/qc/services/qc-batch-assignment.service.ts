@@ -1,16 +1,37 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, Logger } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
+import { Between, Repository } from "typeorm";
+import { fromISO, now } from "../../../lib/datetime";
 import { JobCard } from "../../entities/job-card.entity";
+import { PositectorUpload } from "../entities/positector-upload.entity";
 import { QcBatchAssignment } from "../entities/qc-batch-assignment.entity";
+import { QcEnvironmentalBatchLink } from "../entities/qc-environmental-batch-link.entity";
+import { QcEnvironmentalRecord } from "../entities/qc-environmental-record.entity";
+
+const FIELD_KEY_LOOKBACK_DAYS: Record<string, number> = {
+  paint_blast_profile: 0,
+  rubber_blast_profile: 0,
+  paint_dft_primer: 2,
+  paint_dft_intermediate: 2,
+  paint_dft_final: 2,
+  rubber_shore_hardness: 4,
+};
 
 @Injectable()
 export class QcBatchAssignmentService {
+  private readonly logger = new Logger(QcBatchAssignmentService.name);
+
   constructor(
     @InjectRepository(QcBatchAssignment)
     private readonly assignmentRepo: Repository<QcBatchAssignment>,
     @InjectRepository(JobCard)
     private readonly jobCardRepo: Repository<JobCard>,
+    @InjectRepository(QcEnvironmentalRecord)
+    private readonly envRecordRepo: Repository<QcEnvironmentalRecord>,
+    @InjectRepository(QcEnvironmentalBatchLink)
+    private readonly envLinkRepo: Repository<QcEnvironmentalBatchLink>,
+    @InjectRepository(PositectorUpload)
+    private readonly uploadRepo: Repository<PositectorUpload>,
   ) {}
 
   async assignmentsForJobCard(companyId: number, jobCardId: number): Promise<QcBatchAssignment[]> {
@@ -132,5 +153,76 @@ export class QcBatchAssignmentService {
       summary[a.fieldKey].assigned += 1;
     }
     return summary;
+  }
+
+  async resolveEnvironmentalLinks(companyId: number, jobCardId: number): Promise<void> {
+    const assignments = await this.assignmentRepo.find({
+      where: { companyId, jobCardId },
+    });
+
+    const assignmentsWithUpload = assignments.filter((a) => a.positectorUploadId !== null);
+
+    const uploadIds = [
+      ...new Set(assignmentsWithUpload.map((a) => a.positectorUploadId as number)),
+    ];
+    const uploads = await Promise.all(
+      uploadIds.map((uid) => this.uploadRepo.findOne({ where: { id: uid, companyId } })),
+    );
+    const uploadMap = new Map(uploads.filter((u) => u !== null).map((u) => [u.id, u]));
+
+    for (const assignment of assignmentsWithUpload) {
+      const upload = uploadMap.get(assignment.positectorUploadId as number);
+      if (!upload) continue;
+
+      const createdRaw = upload.headerData?.Created;
+      if (!createdRaw) continue;
+
+      const readingDate = fromISO(createdRaw);
+      if (!readingDate.isValid) continue;
+
+      const lookbackDays = FIELD_KEY_LOOKBACK_DAYS[assignment.fieldKey];
+      if (lookbackDays === undefined) continue;
+
+      const pullRule = lookbackDays === 0 ? "same_day" : `${lookbackDays}d_prior`;
+
+      const endDate = readingDate;
+      const startDate = readingDate.minus({ days: lookbackDays });
+
+      const startDateStr = startDate.toFormat("yyyy-MM-dd");
+      const endDateStr = endDate.toFormat("yyyy-MM-dd");
+
+      const envRecords = await this.envRecordRepo.find({
+        where: {
+          companyId,
+          jobCardId,
+          recordDate: Between(startDateStr, endDateStr),
+        },
+      });
+
+      for (const envRecord of envRecords) {
+        const existingLink = await this.envLinkRepo.findOne({
+          where: {
+            batchAssignmentId: assignment.id,
+            environmentalRecordId: envRecord.id,
+          },
+        });
+
+        if (!existingLink) {
+          const link = this.envLinkRepo.create({
+            companyId,
+            batchAssignmentId: assignment.id,
+            environmentalRecordId: envRecord.id,
+            activityDate: now().toJSDate(),
+            pullRule,
+            resolvedDate: new Date(envRecord.recordDate),
+          });
+          await this.envLinkRepo.save(link);
+        }
+      }
+    }
+
+    this.logger.log(
+      `Resolved environmental links for JC ${jobCardId}: processed ${assignmentsWithUpload.length} assignments`,
+    );
   }
 }
