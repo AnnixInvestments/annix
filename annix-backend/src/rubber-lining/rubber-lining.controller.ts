@@ -123,6 +123,16 @@ import {
   QualityConfigDto,
   UpdateQualityConfigDto,
 } from "./dto/rubber-quality.dto";
+import {
+  CreateRollFromPhotoDto,
+  CreateRollIssuanceDto,
+  IdentifyRollPhotoDto,
+  type JcLineItemDto,
+  type JcSearchResultDto,
+  type RollPhotoIdentifyResponse,
+  type RubberRollIssuanceDto,
+  type RubberRollIssuanceRollDto,
+} from "./dto/rubber-roll-issuance.dto";
 import { AuCocStatus } from "./entities/rubber-au-coc.entity";
 import {
   CompoundMovementReferenceType,
@@ -183,6 +193,7 @@ import { RubberLiningService } from "./rubber-lining.service";
 import { RubberOtherStockService } from "./rubber-other-stock.service";
 import { RubberQualityTrackingService } from "./rubber-quality-tracking.service";
 import { RequisitionDto, RubberRequisitionService } from "./rubber-requisition.service";
+import { RubberRollIssuanceService } from "./rubber-roll-issuance.service";
 import {
   type RejectRollInput,
   type RollRejectionDto,
@@ -256,6 +267,7 @@ export class RubberLiningController {
     private readonly rubberAccountingService: RubberAccountingService,
     private readonly rubberCompanyDirectorService: RubberCompanyDirectorService,
     private readonly rubberStatementReconciliationService: RubberStatementReconciliationService,
+    private readonly rubberRollIssuanceService: RubberRollIssuanceService,
   ) {}
 
   @Get("types")
@@ -3930,5 +3942,71 @@ Formula: totalPrice = totalKg × salePricePerKg
     const result = await this.rubberStatementReconciliationService.reconciliationById(Number(id));
     if (!result) throw new NotFoundException("Reconciliation not found");
     return result;
+  }
+
+  @Post("portal/roll-issuances/identify-photo")
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: "Identify rubber roll from photo using AI" })
+  async identifyRollPhoto(@Body() dto: IdentifyRollPhotoDto): Promise<RollPhotoIdentifyResponse> {
+    return this.rubberRollIssuanceService.identifyRollFromPhoto(dto.imageBase64, dto.mediaType);
+  }
+
+  @Post("portal/roll-issuances/create-from-photo")
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: "Create roll stock entry from photo extraction" })
+  async createRollFromPhoto(
+    @Body() dto: CreateRollFromPhotoDto,
+  ): Promise<RubberRollIssuanceRollDto> {
+    return this.rubberRollIssuanceService.createRollFromPhoto(dto);
+  }
+
+  @Get("portal/roll-issuances/jc-search")
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: "Search job cards for roll issuing" })
+  async searchJobCardsForIssuing(@Query("q") query: string): Promise<JcSearchResultDto[]> {
+    return this.rubberRollIssuanceService.searchJobCards(query || "");
+  }
+
+  @Get("portal/roll-issuances/jc/:id/line-items")
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: "Get job card line items for roll issuing" })
+  async jobCardLineItemsForIssuing(@Param("id") id: string): Promise<JcLineItemDto[]> {
+    return this.rubberRollIssuanceService.jobCardLineItems(Number(id));
+  }
+
+  @Post("portal/roll-issuances")
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: "Create a roll issuance to one or more job cards" })
+  async createRollIssuance(@Body() dto: CreateRollIssuanceDto): Promise<RubberRollIssuanceDto> {
+    return this.rubberRollIssuanceService.createIssuance(dto);
+  }
+
+  @Get("portal/roll-issuances")
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: "List all roll issuances" })
+  async listRollIssuances(): Promise<RubberRollIssuanceDto[]> {
+    return this.rubberRollIssuanceService.allIssuances();
+  }
+
+  @Get("portal/roll-issuances/:id")
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: "Get roll issuance detail" })
+  async rollIssuanceById(@Param("id") id: string): Promise<RubberRollIssuanceDto> {
+    return this.rubberRollIssuanceService.issuanceById(Number(id));
+  }
+
+  @Post("portal/roll-issuances/:id/cancel")
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: "Cancel a roll issuance" })
+  async cancelRollIssuance(@Param("id") id: string): Promise<RubberRollIssuanceDto> {
+    return this.rubberRollIssuanceService.cancelIssuance(Number(id));
   }
 }

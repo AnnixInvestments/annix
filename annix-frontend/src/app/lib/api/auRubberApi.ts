@@ -62,6 +62,124 @@ export type DeliveryNoteStatus = "PENDING" | "EXTRACTED" | "APPROVED" | "LINKED"
 export type RollStockStatus = "IN_STOCK" | "RESERVED" | "SOLD" | "SCRAPPED" | "REJECTED";
 export type RollRejectionStatus = "PENDING_RETURN" | "RETURNED" | "REPLACEMENT_RECEIVED" | "CLOSED";
 export type AuCocStatus = "DRAFT" | "GENERATED" | "SENT";
+export type RollIssuanceStatus = "ACTIVE" | "RETURNED" | "CANCELLED";
+
+export interface RollPhotoExtractionDto {
+  date: string | null;
+  supplier: string | null;
+  compoundCode: string | null;
+  thicknessMm: number | null;
+  widthMm: number | null;
+  lengthM: number | null;
+  batchNumber: string | null;
+  weightKg: number | null;
+  confidence: number;
+  analysis: string;
+}
+
+export interface RollIssuanceRollDto {
+  id: number;
+  rollNumber: string;
+  compoundCode: string | null;
+  compoundName: string | null;
+  weightKg: number;
+  widthMm: number | null;
+  thicknessMm: number | null;
+  lengthM: number | null;
+  status: string;
+}
+
+export interface RollPhotoIdentifyResponse {
+  extraction: RollPhotoExtractionDto;
+  matchedRoll: RollIssuanceRollDto | null;
+  supplierResolved: string | null;
+}
+
+export interface JcSearchResultDto {
+  id: number;
+  jcNumber: string | null;
+  jobNumber: string;
+  jobName: string;
+  customerName: string | null;
+  status: string;
+}
+
+export interface JcLineItemDto {
+  id: number;
+  itemNo: string | null;
+  itemCode: string | null;
+  itemDescription: string | null;
+  quantity: number | null;
+  m2: number | null;
+}
+
+export interface CreateRollFromPhotoDto {
+  rollNumber: string;
+  compoundCode?: string | null;
+  weightKg: number;
+  widthMm?: number | null;
+  thicknessMm?: number | null;
+  lengthM?: number | null;
+}
+
+export interface CreateRollIssuanceLineItemInput {
+  lineItemId: number;
+  itemDescription?: string | null;
+  itemNo?: string | null;
+  quantity?: number | null;
+  m2?: number | null;
+}
+
+export interface CreateRollIssuanceItemInput {
+  jobCardId: number;
+  jcNumber: string;
+  jobName?: string | null;
+  lineItems: CreateRollIssuanceLineItemInput[];
+}
+
+export interface CreateRollIssuanceDto {
+  rollStockId: number;
+  issuedBy: string;
+  photoPath?: string | null;
+  notes?: string | null;
+  jobCards: CreateRollIssuanceItemInput[];
+}
+
+export interface RollIssuanceLineItemDto {
+  id: number;
+  lineItemId: number;
+  itemDescription: string | null;
+  itemNo: string | null;
+  quantity: number | null;
+  m2: number | null;
+  estimatedWeightKg: number | null;
+}
+
+export interface RollIssuanceItemDto {
+  id: number;
+  jobCardId: number;
+  jcNumber: string;
+  jobName: string | null;
+  lineItems: RollIssuanceLineItemDto[];
+}
+
+export interface RollIssuanceDto {
+  id: number;
+  rollStockId: number;
+  rollNumber: string;
+  compoundCode: string | null;
+  issuedBy: string;
+  issuedAt: string;
+  rollWeightAtIssueKg: number;
+  totalEstimatedUsageKg: number | null;
+  expectedReturnKg: number | null;
+  photoPath: string | null;
+  notes: string | null;
+  status: RollIssuanceStatus;
+  statusLabel: string;
+  items: RollIssuanceItemDto[];
+  createdAt: string;
+}
 export type RequisitionStatus =
   | "PENDING"
   | "APPROVED"
@@ -3557,6 +3675,54 @@ class AuRubberApiClient {
     return this.request("/feature-flags", {
       method: "PUT",
       body: JSON.stringify({ flagKey, enabled }),
+    });
+  }
+
+  async identifyRollPhoto(
+    imageBase64: string,
+    mediaType: "image/jpeg" | "image/png" | "image/webp",
+  ): Promise<RollPhotoIdentifyResponse> {
+    return this.request("/rubber-lining/portal/roll-issuances/identify-photo", {
+      method: "POST",
+      body: JSON.stringify({ imageBase64, mediaType }),
+    });
+  }
+
+  async createRollFromPhoto(dto: CreateRollFromPhotoDto): Promise<RollIssuanceRollDto> {
+    return this.request("/rubber-lining/portal/roll-issuances/create-from-photo", {
+      method: "POST",
+      body: JSON.stringify(dto),
+    });
+  }
+
+  async searchJobCardsForIssuing(query: string): Promise<JcSearchResultDto[]> {
+    return this.request(
+      `/rubber-lining/portal/roll-issuances/jc-search?q=${encodeURIComponent(query)}`,
+    );
+  }
+
+  async jobCardLineItems(jobCardId: number): Promise<JcLineItemDto[]> {
+    return this.request(`/rubber-lining/portal/roll-issuances/jc/${jobCardId}/line-items`);
+  }
+
+  async createRollIssuance(dto: CreateRollIssuanceDto): Promise<RollIssuanceDto> {
+    return this.request("/rubber-lining/portal/roll-issuances", {
+      method: "POST",
+      body: JSON.stringify(dto),
+    });
+  }
+
+  async rollIssuances(): Promise<RollIssuanceDto[]> {
+    return this.request("/rubber-lining/portal/roll-issuances");
+  }
+
+  async rollIssuanceById(id: number): Promise<RollIssuanceDto> {
+    return this.request(`/rubber-lining/portal/roll-issuances/${id}`);
+  }
+
+  async cancelRollIssuance(id: number): Promise<RollIssuanceDto> {
+    return this.request(`/rubber-lining/portal/roll-issuances/${id}/cancel`, {
+      method: "POST",
     });
   }
 }

@@ -8,6 +8,8 @@ import { UserAppAccess } from "../rbac/entities/user-app-access.entity";
 import { RbacModule } from "../rbac/rbac.module";
 import { SageExportModule } from "../sage-export/sage-export.module";
 import { SharedModule } from "../shared/shared.module";
+import { JobCard } from "../stock-control/entities/job-card.entity";
+import { JobCardLineItem } from "../stock-control/entities/job-card-line-item.entity";
 import { RubberAccountSignOff } from "./entities/rubber-account-sign-off.entity";
 import {
   RubberAdhesionRequirement,
@@ -43,6 +45,11 @@ import {
   RubberPurchaseRequisitionItem,
 } from "./entities/rubber-purchase-requisition.entity";
 import { RubberQualityAlert } from "./entities/rubber-quality-alert.entity";
+import {
+  RubberRollIssuance,
+  RubberRollIssuanceItem,
+  RubberRollIssuanceLineItem,
+} from "./entities/rubber-roll-issuance.entity";
 import { RubberRollRejection } from "./entities/rubber-roll-rejection.entity";
 import { RubberRollStock } from "./entities/rubber-roll-stock.entity";
 import { RubberSpecification } from "./entities/rubber-specification.entity";
@@ -75,6 +82,7 @@ import { RubberPoTemplateService } from "./rubber-po-template.service";
 import { RubberProductImportService } from "./rubber-product-import.service";
 import { RubberQualityTrackingService } from "./rubber-quality-tracking.service";
 import { RubberRequisitionService } from "./rubber-requisition.service";
+import { RubberRollIssuanceService } from "./rubber-roll-issuance.service";
 import { RubberRollRejectionService } from "./rubber-roll-rejection.service";
 import { RubberRollStockService } from "./rubber-roll-stock.service";
 import { RubberSageCocAdapterService } from "./rubber-sage-coc-adapter.service";
@@ -138,6 +146,11 @@ import { ArEmailAdapterService } from "./services/ar-email-adapter.service";
       RubberAccountSignOff,
       RubberStatementReconciliation,
       RubberCompanyDirector,
+      RubberRollIssuance,
+      RubberRollIssuanceItem,
+      RubberRollIssuanceLineItem,
+      JobCard,
+      JobCardLineItem,
     ]),
   ],
   controllers: [RubberLiningController, RubberAdminController, RubberInboundEmailController],
@@ -161,6 +174,7 @@ import { ArEmailAdapterService } from "./services/ar-email-adapter.service";
     RubberOtherStockService,
     RubberTaxInvoiceService,
     RubberDocumentVersioningService,
+    RubberRollIssuanceService,
     RubberRollRejectionService,
     RubberSageCocAdapterService,
     RubberSageContactSyncService,

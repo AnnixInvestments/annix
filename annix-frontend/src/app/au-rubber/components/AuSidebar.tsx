@@ -132,6 +132,11 @@ const navSections: NavSection[] = [
         label: "Roll Stock",
         permission: PAGE_PERMISSIONS["/au-rubber/portal/roll-stock"],
       },
+      {
+        href: "/au-rubber/portal/roll-issuing",
+        label: "Roll Issuing",
+        permission: PAGE_PERMISSIONS["/au-rubber/portal/roll-issuing"],
+      },
     ],
   },
   {
