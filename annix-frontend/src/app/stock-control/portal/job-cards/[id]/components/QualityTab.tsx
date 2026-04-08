@@ -16,6 +16,7 @@ import type {
 } from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { formatDateZA, fromISO, now } from "@/app/lib/datetime";
+import { BatchAssignmentSection } from "./BatchAssignmentSection";
 import BlastProfileForm from "./BlastProfileForm";
 import { DataBookCompletenessPanel } from "./DataBookCompletenessPanel";
 import { DefelskoBatchSection } from "./DefelskoBatchSection";
@@ -43,6 +44,12 @@ interface QualityTabProps {
   stepAssignments: Record<string, { name: string; isPrimary: boolean }[]>;
   currentUserName: string | null;
   rubberPlanOverride?: { manualRolls?: any[] | null } | null;
+  lineItems: Array<{
+    id: number;
+    itemCode: string;
+    description: string;
+    quantity: number;
+  }>;
 }
 
 export function QualityTab(props: QualityTabProps) {
@@ -56,6 +63,7 @@ export function QualityTab(props: QualityTabProps) {
     stepAssignments,
     currentUserName,
     rubberPlanOverride,
+    lineItems,
   } = props;
   const [certificates, setCertificates] = useState<SupplierCertificate[]>([]);
   const [calibrationCerts, setCalibrationCerts] = useState<CalibrationCertificate[]>([]);
@@ -242,6 +250,15 @@ export function QualityTab(props: QualityTabProps) {
           coatingAnalysis={coatingAnalysis}
           batchRecords={batchRecords}
           onComplete={onBatchComplete}
+        />
+      )}
+
+      {coatingLoaded && lineItems.length > 0 && (
+        <BatchAssignmentSection
+          jobCardId={jobCardId}
+          coatingAnalysis={coatingAnalysis}
+          lineItems={lineItems}
+          onAssignmentSaved={fetchQualityData}
         />
       )}
 

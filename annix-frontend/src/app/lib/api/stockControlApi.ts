@@ -116,6 +116,7 @@ export type {
   ProcessedBrandingResult,
   QaApplicability,
   QaReviewDecision,
+  QcBatchAssignment,
   QcBlastingCheck,
   QcBlastProfileEntry,
   QcBlastProfileRecord,

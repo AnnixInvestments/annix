@@ -2290,6 +2290,12 @@ export default function JobCardDetailPage() {
                 onFinalPhotosSaved={() => {
                   setFinalPhotosSaved(true);
                 }}
+                lineItems={(jobCard?.lineItems || []).map((li) => ({
+                  id: li.id,
+                  itemCode: li.itemCode || "",
+                  description: li.itemDescription || "",
+                  quantity: li.quantity || 0,
+                }))}
               />
             </div>
           </TabPanel>

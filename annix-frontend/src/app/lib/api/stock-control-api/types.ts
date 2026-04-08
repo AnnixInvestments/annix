@@ -884,6 +884,25 @@ export interface QcDefelskoBatchRecord {
   updatedAt: string;
 }
 
+export interface QcBatchAssignment {
+  id: number;
+  companyId: number;
+  batchNumber: string;
+  fieldKey: string;
+  category: string;
+  label: string;
+  lineItemId: number;
+  jobCardId: number;
+  cpoId: number | null;
+  positectorUploadId: number | null;
+  supplierCertificateId: number | null;
+  notApplicable: boolean;
+  capturedByName: string;
+  capturedById: number | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export type QcCheckResult = "pass" | "fail";
 
 export interface QcBlastingCheck {

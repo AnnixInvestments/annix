@@ -9,6 +9,7 @@ import type {
   PositectorStreamingSession,
   PositectorUploadRecord,
   PositectorUploadResponse,
+  QcBatchAssignment,
 } from "./types";
 
 declare module "./base" {
@@ -120,6 +121,20 @@ declare module "./base" {
     positectorStreamingEventsUrl(sessionId: string): string;
     positectorWebhookUrl(companyId: number, deviceId: number): string;
     positectorUploadsForJobCard(jobCardId: number): Promise<PositectorUploadRecord[]>;
+    batchAssignmentsForJobCard(jobCardId: number): Promise<QcBatchAssignment[]>;
+    saveBatchAssignment(
+      jobCardId: number,
+      data: {
+        fieldKey: string;
+        category: string;
+        label: string;
+        batchNumber: string;
+        lineItemIds: number[];
+        notApplicable?: boolean;
+      },
+    ): Promise<QcBatchAssignment[]>;
+    removeBatchAssignment(jobCardId: number, assignmentId: number): Promise<{ deleted: boolean }>;
+    unassignedItemsForField(jobCardId: number, fieldKey: string): Promise<number[]>;
   }
 }
 
@@ -277,5 +292,32 @@ proto.positectorWebhookUrl = function (companyId, deviceId) {
     `${this.baseURL}/stock-control/positector-streaming/webhook` +
     `?company=${companyId}&device=${deviceId}` +
     "&value=[thickness]&units=[units]&probe=[probetype]&serial=[gagesn]"
+  );
+};
+
+proto.batchAssignmentsForJobCard = async function (jobCardId) {
+  return this.request(`/stock-control/job-cards/${jobCardId}/qc/batch-assignments`);
+};
+
+proto.saveBatchAssignment = async function (jobCardId, data) {
+  return this.request(`/stock-control/job-cards/${jobCardId}/qc/batch-assignments`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+};
+
+proto.removeBatchAssignment = async function (jobCardId, assignmentId) {
+  return this.request(
+    `/stock-control/job-cards/${jobCardId}/qc/batch-assignments/${assignmentId}`,
+    {
+      method: "DELETE",
+    },
+  );
+};
+
+proto.unassignedItemsForField = async function (jobCardId, fieldKey) {
+  return this.request(
+    `/stock-control/job-cards/${jobCardId}/qc/batch-assignments/unassigned/${fieldKey}`,
   );
 };
