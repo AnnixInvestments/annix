@@ -46,6 +46,7 @@ declare module "./base" {
     }): Promise<SupplierCertificate[]>;
     certificateById(id: number): Promise<SupplierCertificate>;
     deleteCertificate(id: number): Promise<void>;
+    backfillCertificateProducts(): Promise<{ processed: number }>;
     certificatesByBatchNumber(batchNumber: string): Promise<SupplierCertificate[]>;
     batchRecordsByBatchNumber(batchNumber: string): Promise<IssuanceBatchRecord[]>;
     certificatesForJobCard(jobCardId: number): Promise<SupplierCertificate[]>;
@@ -132,6 +133,10 @@ proto.certificateById = async function (id) {
 
 proto.deleteCertificate = async function (id) {
   return this.request(`/stock-control/certificates/${id}`, { method: "DELETE" });
+};
+
+proto.backfillCertificateProducts = async function () {
+  return this.request("/stock-control/certificates/backfill-products", { method: "POST" });
 };
 
 proto.certificatesByBatchNumber = async function (batchNumber) {

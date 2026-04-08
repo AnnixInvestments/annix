@@ -370,6 +370,26 @@ Respond ONLY with a JSON object:
     };
   }
 
+  async backfillProductExtraction(companyId: number): Promise<{ processed: number }> {
+    const certs = await this.certificateService.certsWithoutDescription(companyId);
+    this.logger.log(
+      `Backfill: ${certs.length} cert(s) with no product description for company ${companyId}`,
+    );
+
+    await certs.reduce(async (prev, cert) => {
+      await prev;
+      try {
+        const buffer = await this.certificateService.downloadCertFile(cert);
+        await this.extractAndLinkProduct(cert.id, buffer, cert.mimeType, companyId);
+      } catch (error) {
+        const msg = error instanceof Error ? error.message : String(error);
+        this.logger.error(`Backfill failed for cert ${cert.id}: ${msg}`);
+      }
+    }, Promise.resolve());
+
+    return { processed: certs.length };
+  }
+
   private async extractAndLinkProduct(
     certId: number,
     fileBuffer: Buffer,

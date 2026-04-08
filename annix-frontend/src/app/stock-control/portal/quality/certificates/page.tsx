@@ -81,6 +81,7 @@ function CertificatesTab() {
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [droppedFile, setDroppedFile] = useState<File | null>(null);
   const [isDragOver, setIsDragOver] = useState(false);
+  const [isBackfilling, setIsBackfilling] = useState(false);
   const [filterSupplier, setFilterSupplier] = useState("");
   const [filterType, setFilterType] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
@@ -565,6 +566,27 @@ function CertificatesTab() {
               <option value="COC">COC</option>
             </select>
 
+            {certificates.some((c) => !c.description && !c.stockItem) && (
+              <button
+                onClick={async () => {
+                  setIsBackfilling(true);
+                  try {
+                    const result = await stockControlApiClient.backfillCertificateProducts();
+                    if (result.processed > 0) {
+                      await fetchCertificates();
+                    }
+                  } catch {
+                    setError("Product extraction failed");
+                  } finally {
+                    setIsBackfilling(false);
+                  }
+                }}
+                disabled={isBackfilling}
+                className="rounded-md border border-teal-600 px-4 py-2 text-sm font-medium text-teal-600 hover:bg-teal-50 disabled:opacity-50"
+              >
+                {isBackfilling ? "Extracting..." : "Extract Missing Products"}
+              </button>
+            )}
             <button
               onClick={() => setShowUploadModal(true)}
               className="rounded-md bg-teal-600 px-4 py-2 text-sm font-medium text-white hover:bg-teal-700"

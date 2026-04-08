@@ -1403,6 +1403,17 @@ export class CertificateService {
     await this.markDataBookStale(companyId, jobCardId);
   }
 
+  async certsWithoutDescription(companyId: number): Promise<SupplierCertificate[]> {
+    return this.certRepo.find({
+      where: { companyId, description: IsNull() },
+      select: ["id", "filePath", "mimeType", "companyId"],
+    });
+  }
+
+  async downloadCertFile(cert: SupplierCertificate): Promise<Buffer> {
+    return this.storageService.download(cert.filePath);
+  }
+
   private async extractPdfPages(
     file: Express.Multer.File,
     pageNumbers: number[],

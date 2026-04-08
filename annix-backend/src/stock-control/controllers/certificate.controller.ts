@@ -29,6 +29,7 @@ import {
   type UploadCertificateDto,
 } from "../services/certificate.service";
 import { CertificateAnalysisService } from "../services/certificate-analysis.service";
+import { ScEmailAdapterService } from "../services/sc-email-adapter.service";
 
 @ApiTags("Stock Control - Certificates")
 @Controller("stock-control/certificates")
@@ -39,6 +40,7 @@ export class CertificateController {
   constructor(
     private readonly certificateService: CertificateService,
     private readonly certificateAnalysisService: CertificateAnalysisService,
+    private readonly scEmailAdapterService: ScEmailAdapterService,
   ) {}
 
   @Post()
@@ -196,6 +198,13 @@ export class CertificateController {
     const cert = await this.certificateService.findById(req.user.companyId, id);
     const downloadUrl = await this.certificateService.presignedUrl(req.user.companyId, id);
     return { ...cert, downloadUrl };
+  }
+
+  @Post("backfill-products")
+  @StockControlRoles("quality", "manager", "admin")
+  @ApiOperation({ summary: "Backfill AI product extraction for certs with no product description" })
+  async backfillProducts(@Req() req: any) {
+    return this.scEmailAdapterService.backfillProductExtraction(req.user.companyId);
   }
 
   @Delete(":id")
