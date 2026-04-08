@@ -382,6 +382,32 @@ All apps follow the same **semantic versioning** rules (major.minor.patch):
 ## Stock Control How To Guides
 When you change any user-facing Stock Control feature (new button, renamed field, new workflow, changed flow), check `annix-frontend/src/app/stock-control/how-to/guides/*.md` for guides whose `relatedPaths` include the files you touched. If the guide content is no longer accurate, update it and bump its `lastUpdated` date. The pre-push hook runs `scripts/check-how-to-freshness.mjs` which compares git log against each guide's `lastUpdated` and warns when related paths have moved on without the guide being updated — warnings are non-blocking but should be addressed.
 
+### Automatic How To Creation (MANDATORY)
+**Every new user-facing feature MUST include a How To guide in the same commit.** This is not optional — if you add a new page, workflow, button, or feature that a user interacts with, create a guide for it before committing. Enhancements to existing features should update the relevant existing guide instead.
+
+How To guide format:
+```markdown
+---
+title: Feature Name
+slug: feature-slug
+category: Category (e.g. Quality, Inventory, Workflow)
+roles: [roles that can access this feature]
+order: N
+tags: [searchable, keywords]
+lastUpdated: YYYY-MM-DD
+summary: One-line description of what the feature does.
+readingMinutes: N
+relatedPaths: [paths to frontend/backend files this guide covers]
+---
+
+## What is / How it works (overview)
+## Step-by-step instructions
+## Rules or constraints the user should know
+## Tips (optional)
+```
+
+Place guides in `annix-frontend/src/app/stock-control/how-to/guides/`. Use kebab-case filenames. The `relatedPaths` array is critical — it connects the guide to the code for freshness checking.
+
 ## Communication
 - Be concise and direct
 - Do not use emojis unless requested

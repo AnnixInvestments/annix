@@ -5,10 +5,10 @@ category: Quality
 roles: [quality, manager, admin]
 order: 2
 tags: [positector, dft, blast profile, shore hardness, environmental, quality, measurements]
-lastUpdated: 2026-04-07
-summary: Upload PosiTector batch files — data is permanently stored and auto-imported to job cards when batch numbers match.
-readingMinutes: 4
-relatedPaths: [annix-frontend/src/app/stock-control/portal/quality/positector/upload, annix-backend/src/stock-control/qc/controllers/positector.controller.ts, annix-backend/src/stock-control/qc/services/positector-import.service.ts, annix-backend/src/stock-control/qc/services/positector-upload.service.ts]
+lastUpdated: 2026-04-08
+summary: Upload PosiTector batch files — data is permanently stored, deduplicated by fingerprint, and auto-imported to job cards when batch numbers match.
+readingMinutes: 5
+relatedPaths: [annix-frontend/src/app/stock-control/portal/quality/positector/upload, annix-backend/src/stock-control/qc/controllers/positector.controller.ts, annix-backend/src/stock-control/qc/services/positector-import.service.ts, annix-backend/src/stock-control/qc/services/positector-upload.service.ts, annix-frontend/src/app/stock-control/components/UnlinkedUploadsSection.tsx]
 ---
 
 ## How it works
@@ -87,9 +87,25 @@ After import, records are visible in two places:
   - Quality > Shore Hardness
   - Quality > Environmental
 
-## Duplicate warnings
+## Duplicate detection
 
-If readings for the same type and date already exist on the job card, the system shows an amber warning after import. The import still succeeds — this is informational only, in case you accidentally import the same batch twice.
+The system automatically detects duplicate uploads using a fingerprint based on the batch name, probe type, instrument creation date, reading count, and reading values. If you upload the same file twice, the existing record is updated instead of creating a duplicate.
+
+Different sessions with the same batch number (e.g. B243 reused after a device wipe) are kept as separate entries because the readings and creation dates differ.
+
+## Viewing uploaded PDFs
+
+After upload, you can view the original PosiSoft PDF report:
+
+- **On the upload page**: Click the **PosiSoft Desktop PDF Report - View** badge
+- **On quality pages** (Paint DFTs, Blast Profile, etc.): Click **View PDF** in the PosiTector Uploads table
+- **On the job card quality tab**: Click **View PDF** next to the batch assignment (once linked)
+
+The quality pages show all uploads with status badges:
+- **Linked to JC #N** (green) for uploads connected to a job card
+- **Unlinked** (amber) for uploads waiting to be matched
+
+The **Reading Date** column shows the date from the PosiTector instrument, not the date uploaded to the app.
 
 ## Tips
 
