@@ -137,3 +137,77 @@ check_version_bump "Annix Rep" \
 check_version_bump "CV Assistant" \
     "annix-frontend/src/app/cv-assistant/config/version.ts" \
     "annix-frontend/src/app/cv-assistant/" "annix-backend/src/cv-assistant/"
+
+# ─── Fast pre-commit checks ────────────────────────────────────────────
+# These catch issues that otherwise only surface during the slow pre-push
+# pipeline (biome, type-check, spec dependency mismatches).
+
+STAGED_TS_FILES=$(git diff --cached --name-only --diff-filter=ACMR | grep -E '\.(ts|tsx|js|jsx|json)$' || true)
+
+# 1. Biome lint on staged files only (prevents formatting failures at push)
+if [ -n "$STAGED_TS_FILES" ]; then
+    echo ""
+    echo "Running biome check on staged files..."
+    # Build file list for biome (one per line → space-separated)
+    BIOME_FILES=$(echo "$STAGED_TS_FILES" | tr '\n' ' ')
+    if ! pnpm biome check $BIOME_FILES 2>/dev/null; then
+        echo ""
+        echo "============================================"
+        echo "COMMIT BLOCKED: Biome check failed"
+        echo "============================================"
+        echo "Run 'npx biome check --write --unsafe .' to auto-fix."
+        echo ""
+        exit 1
+    fi
+    echo "Biome check passed."
+fi
+
+# 2. Backend spec dependency check — if a service constructor changed,
+#    verify its spec file can still resolve all providers.
+STAGED_BACKEND_SERVICES=$(echo "$STAGED_TS_FILES" | grep -E '^annix-backend/src/.*\.service\.ts$' | grep -v '\.spec\.ts$' || true)
+
+if [ -n "$STAGED_BACKEND_SERVICES" ]; then
+    echo ""
+    echo "Checking backend spec dependencies for changed services..."
+    SPEC_FAIL=0
+    for svc_file in $STAGED_BACKEND_SERVICES; do
+        spec_file="${svc_file%.ts}.spec.ts"
+        if [ -f "$spec_file" ]; then
+            # Quick dry-run: run only the "should be defined" test for this spec
+            spec_rel="${spec_file#annix-backend/}"
+            if ! (cd "$ROOT_DIR/annix-backend" && npx jest "$spec_rel" --no-coverage -t "should be defined" --silent 2>/dev/null); then
+                echo "  FAIL: $spec_file — spec cannot resolve service dependencies"
+                echo "        A new dependency was likely added to $(basename "$svc_file") without updating the spec."
+                SPEC_FAIL=1
+            fi
+        fi
+    done
+    if [ $SPEC_FAIL -eq 1 ]; then
+        echo ""
+        echo "============================================"
+        echo "COMMIT BLOCKED: Spec dependency mismatch"
+        echo "============================================"
+        echo "Add missing mock providers to the failing spec file(s)."
+        echo ""
+        exit 1
+    fi
+    echo "Spec dependency check passed."
+fi
+
+# 3. Frontend type-check if any frontend TS/TSX files changed
+STAGED_FRONTEND_TS=$(echo "$STAGED_TS_FILES" | grep -E '^annix-frontend/src/.*\.(ts|tsx)$' || true)
+
+if [ -n "$STAGED_FRONTEND_TS" ]; then
+    echo ""
+    echo "Running frontend type-check..."
+    if ! (cd "$ROOT_DIR/annix-frontend" && npx tsc --noEmit 2>/dev/null); then
+        echo ""
+        echo "============================================"
+        echo "COMMIT BLOCKED: TypeScript errors detected"
+        echo "============================================"
+        echo "Run 'cd annix-frontend && npx tsc --noEmit' to see errors."
+        echo ""
+        exit 1
+    fi
+    echo "Frontend type-check passed."
+fi
