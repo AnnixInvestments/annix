@@ -15,6 +15,7 @@ import {
 import { Breadcrumb } from "../../components/Breadcrumb";
 import { RequirePermission } from "../../components/RequirePermission";
 import { PAGE_PERMISSIONS } from "../../config/pagePermissions";
+import { CompanyInfoTab } from "./CompanyInfoTab";
 import { SageConfigSection } from "./SageConfigSection";
 import { SageContactSyncSection } from "./SageContactSyncSection";
 
@@ -1271,11 +1272,11 @@ function FeaturesTab() {
   );
 }
 
-type TabType = "branding" | "access" | "features";
+type TabType = "company" | "branding" | "access" | "features";
 
 export default function SettingsPage() {
   const { hasPermission, isLoading: authLoading } = useAuRubberAuth();
-  const [activeTab, setActiveTab] = useState<TabType>("branding");
+  const [activeTab, setActiveTab] = useState<TabType>("company");
 
   const canManageAccess = !authLoading && hasPermission("settings:manage");
 
@@ -1292,6 +1293,16 @@ export default function SettingsPage() {
 
         <div className="border-b border-gray-200">
           <nav className="-mb-px flex space-x-8">
+            <button
+              onClick={() => setActiveTab("company")}
+              className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                activeTab === "company"
+                  ? "border-yellow-500 text-yellow-600"
+                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+              }`}
+            >
+              Company Info
+            </button>
             <button
               onClick={() => setActiveTab("branding")}
               className={`py-4 px-1 border-b-2 font-medium text-sm ${
@@ -1329,6 +1340,7 @@ export default function SettingsPage() {
           </nav>
         </div>
 
+        {activeTab === "company" && <CompanyInfoTab />}
         {activeTab === "branding" && (
           <>
             <SageConfigSection />

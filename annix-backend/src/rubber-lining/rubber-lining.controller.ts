@@ -30,7 +30,9 @@ import {
   ApiResponse,
   ApiTags,
 } from "@nestjs/swagger";
+import { InjectRepository } from "@nestjs/typeorm";
 import { Response } from "express";
+import { Repository } from "typeorm";
 import { AdminAuthGuard, AdminRequest } from "../admin/guards/admin-auth.guard";
 import { Public } from "../auth/public.decorator";
 import { nowMillis } from "../lib/datetime";
@@ -133,6 +135,7 @@ import {
   type RubberRollIssuanceDto,
   type RubberRollIssuanceRollDto,
 } from "./dto/rubber-roll-issuance.dto";
+import { RubberAppProfile } from "./entities/rubber-app-profile.entity";
 import { AuCocStatus } from "./entities/rubber-au-coc.entity";
 import {
   CompoundMovementReferenceType,
@@ -270,6 +273,8 @@ export class RubberLiningController {
     private readonly rubberStatementReconciliationService: RubberStatementReconciliationService,
     private readonly rubberRollIssuanceService: RubberRollIssuanceService,
     private readonly rubberOrderConfirmationService: RubberOrderConfirmationService,
+    @InjectRepository(RubberAppProfile)
+    private readonly appProfileRepository: Repository<RubberAppProfile>,
   ) {}
 
   @Get("types")
@@ -1086,6 +1091,33 @@ export class RubberLiningController {
       body.bcc,
     );
     return { success: true };
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Get("portal/app-profile")
+  @ApiOperation({ summary: "Get app owner company profile" })
+  async appProfile(): Promise<RubberAppProfile> {
+    const profile = await this.appProfileRepository.findOne({ where: { id: 1 } });
+    if (!profile) {
+      const newProfile = this.appProfileRepository.create({ id: 1 });
+      return this.appProfileRepository.save(newProfile);
+    }
+    return profile;
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Put("portal/app-profile")
+  @ApiOperation({ summary: "Update app owner company profile" })
+  async updateAppProfile(@Body() body: Partial<RubberAppProfile>): Promise<RubberAppProfile> {
+    const existing = await this.appProfileRepository.findOne({ where: { id: 1 } });
+    if (!existing) {
+      const newProfile = this.appProfileRepository.create({ id: 1, ...body });
+      return this.appProfileRepository.save(newProfile);
+    }
+    const merged = this.appProfileRepository.merge(existing, body);
+    return this.appProfileRepository.save(merged);
   }
 
   @UseGuards(AdminAuthGuard, AuRubberAccessGuard)

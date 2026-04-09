@@ -1,10 +1,10 @@
 import { Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
-import { AdminCompanyProfileService } from "../../admin/admin-company-profile.service";
 import { EmailService } from "../../email/email.service";
 import { formatDateZA, now } from "../../lib/datetime";
 import { A4_PORTRAIT, createPdfDocument, PDF_FONTS } from "../../lib/pdf-builder";
+import { RubberAppProfile } from "../entities/rubber-app-profile.entity";
 import { RubberOrder } from "../entities/rubber-order.entity";
 
 interface OrderConfirmationData {
@@ -14,6 +14,7 @@ interface OrderConfirmationData {
   deliveryDate: string;
   salesRep: string;
   overallDiscount: string;
+  logoBuffer: Buffer | null;
   from: {
     companyName: string;
     vatNumber: string;
@@ -49,7 +50,8 @@ export class RubberOrderConfirmationService {
   constructor(
     @InjectRepository(RubberOrder)
     private readonly orderRepository: Repository<RubberOrder>,
-    private readonly companyProfileService: AdminCompanyProfileService,
+    @InjectRepository(RubberAppProfile)
+    private readonly appProfileRepository: Repository<RubberAppProfile>,
     private readonly emailService: EmailService,
   ) {}
 
@@ -104,8 +106,21 @@ export class RubberOrderConfirmationService {
       throw new NotFoundException(`Order ${orderId} not found`);
     }
 
-    const profile = await this.companyProfileService.profile();
+    const profile = await this.appProfileRepository.findOne({ where: { id: 1 } });
     const customer = order.company;
+
+    let logoBuffer: Buffer | null = null;
+    if (profile?.logoUrl) {
+      try {
+        const response = await fetch(profile.logoUrl);
+        if (response.ok) {
+          const arrayBuffer = await response.arrayBuffer();
+          logoBuffer = Buffer.from(arrayBuffer);
+        }
+      } catch (err) {
+        this.logger.warn(`Failed to fetch logo: ${err}`);
+      }
+    }
     const customerAddress = customer?.address || {};
     const postalStreet = customerAddress["postalStreet"] || customerAddress["street"] || "";
     const postalCity = customerAddress["postalCity"] || customerAddress["city"] || "";
@@ -160,25 +175,32 @@ export class RubberOrderConfirmationService {
     const totalVat = totalExclusive * vatRate;
     const grandTotal = totalExclusive + totalVat;
 
-    const profileAddress = [
-      profile.streetAddress,
-      profile.city,
-      profile.province,
-      profile.postalCode,
-    ].filter(Boolean) as string[];
+    const profileAddress = profile
+      ? ([profile.streetAddress, profile.city, profile.province, profile.postalCode].filter(
+          Boolean,
+        ) as string[])
+      : [];
+    const profilePostalAddress = profile?.postalAddress
+      ? profile.postalAddress.split("\n").filter(Boolean)
+      : profileAddress;
+    const profileDeliveryAddress = profile?.deliveryAddress
+      ? profile.deliveryAddress.split("\n").filter(Boolean)
+      : profileAddress;
+    const companyName = profile?.legalName || profile?.tradingName || "Company";
 
     return {
       orderNumber: order.orderNumber,
       reference: order.companyOrderNumber || "-",
       date: formatDateZA(now().toISO()),
       deliveryDate: "-",
-      salesRep: "AU Industries",
+      salesRep: companyName,
       overallDiscount: "0.00%",
+      logoBuffer,
       from: {
-        companyName: profile.legalName,
-        vatNumber: profile.vatNumber || "",
-        postalAddress: profileAddress,
-        deliveryAddress: profileAddress,
+        companyName,
+        vatNumber: profile?.vatNumber || "",
+        postalAddress: profilePostalAddress,
+        deliveryAddress: profileDeliveryAddress,
       },
       to: {
         companyName: customer?.name || "Unknown Customer",
@@ -204,6 +226,14 @@ export class RubberOrderConfirmationService {
     const right = layout.pageWidth - layout.margin;
     const contentW = right - left;
     let y = layout.margin;
+
+    if (data.logoBuffer) {
+      try {
+        doc.image(data.logoBuffer, right - 100, y, { width: 80, height: 60 });
+      } catch (err) {
+        this.logger.warn(`Failed to render logo in PDF: ${err}`);
+      }
+    }
 
     doc.font(PDF_FONTS.BOLD).fontSize(14).text("ORDER CONFIRMATION", left, y);
     y += 22;

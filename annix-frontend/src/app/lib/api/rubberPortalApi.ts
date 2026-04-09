@@ -3,6 +3,24 @@ import type { StatusHistoryEvent } from "@annix/product-data/rubber/orderStatus"
 import { throwIfNotOk } from "@/app/lib/api/apiError";
 import { API_BASE_URL } from "@/lib/api-config";
 
+export interface RubberAppProfileDto {
+  id: number;
+  legalName: string | null;
+  tradingName: string | null;
+  vatNumber: string | null;
+  registrationNumber: string | null;
+  streetAddress: string | null;
+  city: string | null;
+  province: string | null;
+  postalCode: string | null;
+  postalAddress: string | null;
+  deliveryAddress: string | null;
+  phone: string | null;
+  email: string | null;
+  websiteUrl: string | null;
+  logoUrl: string | null;
+}
+
 export interface RubberProductCodingDto {
   id: number;
   firebaseUid: string;

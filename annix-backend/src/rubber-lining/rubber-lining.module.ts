@@ -11,6 +11,7 @@ import { SharedModule } from "../shared/shared.module";
 import { JobCard } from "../stock-control/entities/job-card.entity";
 import { JobCardLineItem } from "../stock-control/entities/job-card-line-item.entity";
 import { RubberAccountSignOff } from "./entities/rubber-account-sign-off.entity";
+import { RubberAppProfile } from "./entities/rubber-app-profile.entity";
 import {
   RubberAdhesionRequirement,
   RubberApplicationRating,
@@ -150,6 +151,7 @@ import { RubberOrderConfirmationService } from "./services/rubber-order-confirma
       RubberRollIssuance,
       RubberRollIssuanceItem,
       RubberRollIssuanceLineItem,
+      RubberAppProfile,
       JobCard,
       JobCardLineItem,
     ]),

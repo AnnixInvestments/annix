@@ -1,4 +1,5 @@
 import { throwIfNotOk } from "@/app/lib/api/apiError";
+import type { RubberAppProfileDto } from "@/app/lib/api/rubberPortalApi";
 import { API_BASE_URL } from "@/lib/api-config";
 import type {
   CallOff,
@@ -1760,6 +1761,17 @@ class AuRubberApiClient {
     return this.request(`/rubber-lining/portal/orders/${orderId}/send-confirmation`, {
       method: "POST",
       body: JSON.stringify({ email, cc, bcc }),
+    });
+  }
+
+  async appProfile(): Promise<RubberAppProfileDto> {
+    return this.request("/rubber-lining/portal/app-profile");
+  }
+
+  async updateAppProfile(data: Partial<RubberAppProfileDto>): Promise<RubberAppProfileDto> {
+    return this.request("/rubber-lining/portal/app-profile", {
+      method: "PUT",
+      body: JSON.stringify(data),
     });
   }
 
