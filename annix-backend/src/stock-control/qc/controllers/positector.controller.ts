@@ -313,13 +313,17 @@ export class PositectorController {
       try {
         const batch = await this.positectorService.parsePosiSoftPdf(
           report.buffer,
-          `bundle_p${report.pageStart}-${report.pageEnd}.pdf`,
+          `${report.batchName}.pdf`,
         );
+        if (!batch.header.batchName || batch.header.batchName.startsWith("bundle_")) {
+          batch.header.batchName = report.batchName;
+        }
         const entityType = this.positectorService.detectQcEntityType(batch.header.probeType);
 
+        const dateLabel = report.createdAt ? report.createdAt.split(" ")[0] : "unknown";
         const multerFile: Express.Multer.File = {
           buffer: report.buffer,
-          originalname: `${report.instrumentType}_${report.createdAt || "unknown"}.pdf`,
+          originalname: `${report.batchName}_${report.instrumentType}_${dateLabel}.pdf`,
           mimetype: "application/pdf",
           size: report.buffer.length,
           fieldname: "file",
