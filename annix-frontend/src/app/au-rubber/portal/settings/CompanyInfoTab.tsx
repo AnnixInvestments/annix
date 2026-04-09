@@ -3,6 +3,7 @@
 import { Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useToast } from "@/app/components/Toast";
+import { useAuRubberBranding } from "@/app/context/AuRubberBrandingContext";
 import { auRubberApiClient } from "@/app/lib/api/auRubberApi";
 import type { RubberAppProfileDto } from "@/app/lib/api/rubberPortalApi";
 
@@ -67,6 +68,7 @@ function TextAreaField(props: {
 
 export function CompanyInfoTab() {
   const { showToast } = useToast();
+  const { branding } = useAuRubberBranding();
   const [profile, setProfile] = useState<RubberAppProfileDto>(EMPTY_PROFILE);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -75,6 +77,9 @@ export function CompanyInfoTab() {
     const load = async () => {
       try {
         const data = await auRubberApiClient.appProfile();
+        if (!data.logoUrl && branding.logoUrl) {
+          data.logoUrl = branding.logoUrl;
+        }
         setProfile(data);
       } catch (err) {
         console.error("Failed to load app profile:", err);
@@ -286,7 +291,7 @@ export function CompanyInfoTab() {
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Logo Preview</label>
             <img
-              src={profile.logoUrl}
+              src={auRubberApiClient.proxyImageUrl(profile.logoUrl)}
               alt="Company logo"
               className="h-16 max-w-[200px] object-contain border rounded p-2"
             />
