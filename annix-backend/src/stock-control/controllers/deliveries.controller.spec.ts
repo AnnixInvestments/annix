@@ -196,7 +196,12 @@ describe("DeliveriesController", () => {
 
       const result = await controller.linkExtractedToStock(mockReq(), 5);
 
-      expect(deliveryService.linkExtractedItemsToStock).toHaveBeenCalledWith(1, 5, "Test User");
+      expect(deliveryService.linkExtractedItemsToStock).toHaveBeenCalledWith(
+        1,
+        5,
+        "Test User",
+        undefined,
+      );
       expect(result).toBe(expected);
     });
   });

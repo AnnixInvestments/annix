@@ -289,7 +289,7 @@ export function DefelskoBatchSection(props: DefelskoBatchSectionProps) {
       id="defelsko-batch-section"
       className="rounded-lg border border-gray-200 bg-white shadow-sm"
     >
-      <div className="flex items-center justify-between border-b border-gray-200 px-4 py-2">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between border-b border-gray-200 px-3 sm:px-4 py-2">
         <h3 className="text-xs font-semibold text-gray-900">Defelsko Batch Numbers</h3>
         <div className="flex items-center gap-2">
           {saveSuccess && <span className="text-xs text-green-600 font-medium">Saved</span>}
@@ -312,8 +312,8 @@ export function DefelskoBatchSection(props: DefelskoBatchSectionProps) {
         </div>
       )}
 
-      <div className="px-4 py-3">
-        <div className="grid grid-cols-2 gap-4">
+      <div className="px-3 sm:px-4 py-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {paintFields.length > 0 && (
             <div>
               <h4 className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-1">
@@ -322,7 +322,7 @@ export function DefelskoBatchSection(props: DefelskoBatchSectionProps) {
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-gray-200">
-                    <th className="px-2 py-1 text-left text-[10px] font-medium text-gray-500 uppercase w-32">
+                    <th className="px-2 py-1 text-left text-[10px] font-medium text-gray-500 uppercase w-24 sm:w-32">
                       Item
                     </th>
                     <th className="px-2 py-1 text-left text-[10px] font-medium text-gray-500 uppercase">
@@ -343,7 +343,7 @@ export function DefelskoBatchSection(props: DefelskoBatchSectionProps) {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-gray-200">
-                  <th className="px-2 py-1 text-left text-[10px] font-medium text-gray-500 uppercase w-32">
+                  <th className="px-2 py-1 text-left text-[10px] font-medium text-gray-500 uppercase w-24 sm:w-32">
                     Item
                   </th>
                   <th className="px-2 py-1 text-left text-[10px] font-medium text-gray-500 uppercase">

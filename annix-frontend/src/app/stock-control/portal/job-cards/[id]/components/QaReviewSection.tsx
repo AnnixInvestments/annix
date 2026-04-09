@@ -280,7 +280,7 @@ export function QaReviewSection(props: QaReviewSectionProps) {
           <span className="text-gray-400">Cycle {latestDecision.cycleNumber}</span>
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {latestDecision.rubberApplicable && (
             <div className="flex items-center gap-2">
               <span className="text-sm text-gray-600">Rubber:</span>
@@ -480,7 +480,7 @@ export function QaReviewSection(props: QaReviewSectionProps) {
             <p className="text-xs font-semibold text-gray-700 uppercase tracking-wide">
               Previous Review — Cycle {latestDecision.cycleNumber}
             </p>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {latestDecision.rubberApplicable && (
                 <div className="flex items-center gap-2">
                   <span className="text-sm text-gray-600">Rubber:</span>
@@ -542,7 +542,7 @@ export function QaReviewSection(props: QaReviewSectionProps) {
         )}
 
         {applicability?.hasRubber && (
-          <div className="flex items-center justify-between rounded-md border border-gray-200 px-4 py-3">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between rounded-md border border-gray-200 px-3 sm:px-4 py-3">
             <div className="flex items-center gap-3">
               <span className="inline-flex items-center rounded-full bg-violet-100 px-2.5 py-0.5 text-xs font-medium text-violet-800">
                 Rubber
@@ -575,7 +575,7 @@ export function QaReviewSection(props: QaReviewSectionProps) {
         )}
 
         {applicability?.hasPaint && (
-          <div className="flex items-center justify-between rounded-md border border-gray-200 px-4 py-3">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between rounded-md border border-gray-200 px-3 sm:px-4 py-3">
             <div className="flex items-center gap-3">
               <span className="inline-flex items-center rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-800">
                 Paint

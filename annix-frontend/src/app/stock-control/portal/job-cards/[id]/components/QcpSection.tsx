@@ -532,7 +532,7 @@ export function QcpSection(props: QcpSectionProps) {
 
                 {isExpanded && (
                   <div className="border-t border-gray-100 bg-gray-50 px-5 py-3">
-                    <div className="mb-3 grid grid-cols-4 gap-3 text-xs text-gray-600">
+                    <div className="mb-3 grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs text-gray-600">
                       <div>
                         <span className="font-medium">Customer:</span> {plan.customerName || "-"}
                       </div>
@@ -564,65 +564,67 @@ export function QcpSection(props: QcpSectionProps) {
                       const visibleParties = allParties.filter((p) => activeKeys.includes(p.key));
 
                       return (
-                        <table className="w-full divide-y divide-gray-200 text-xs">
-                          <thead>
-                            <tr className="bg-gray-100">
-                              <th className="px-2 py-1.5 text-left font-medium text-gray-500">
-                                Op
-                              </th>
-                              <th className="px-2 py-1.5 text-left font-medium text-gray-500">
-                                Activity
-                              </th>
-                              <th className="px-2 py-1.5 text-left font-medium text-gray-500">
-                                Spec/Proc
-                              </th>
-                              <th className="px-2 py-1.5 text-left font-medium text-gray-500">
-                                Doc
-                              </th>
-                              {visibleParties.map((p) => (
-                                <th
-                                  key={p.key}
-                                  className="px-2 py-1.5 text-center font-medium text-gray-500"
-                                >
-                                  {p.label}
+                        <div className="overflow-x-auto">
+                          <table className="w-full divide-y divide-gray-200 text-xs">
+                            <thead>
+                              <tr className="bg-gray-100">
+                                <th className="px-2 py-1.5 text-left font-medium text-gray-500">
+                                  Op
                                 </th>
-                              ))}
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-gray-100">
-                            {plan.activities.map((a, i) => (
-                              <tr key={i}>
-                                <td className="px-2 py-1.5 text-center">{a.operationNumber}</td>
-                                <td className="px-2 py-1.5">{a.description}</td>
-                                <td className="px-2 py-1.5 text-gray-500">
-                                  {a.specification || "-"}
-                                </td>
-                                <td className="px-2 py-1.5 text-gray-500">
-                                  {(a as any).documentation || a.procedureRequired || "-"}
-                                </td>
+                                <th className="px-2 py-1.5 text-left font-medium text-gray-500">
+                                  Activity
+                                </th>
+                                <th className="px-2 py-1.5 text-left font-medium text-gray-500">
+                                  Spec/Proc
+                                </th>
+                                <th className="px-2 py-1.5 text-left font-medium text-gray-500">
+                                  Doc
+                                </th>
                                 {visibleParties.map((p) => (
-                                  <PartyCell
+                                  <th
                                     key={p.key}
-                                    activity={a}
-                                    activityIndex={i}
-                                    party={p.key}
-                                    editable={!readOnly && (p.key === "pls" || p.key === "mps")}
-                                    onChangeIntervention={(idx, party, val) =>
-                                      handlePartyInterventionChange(plan.id, idx, party, val)
-                                    }
-                                    onClickInitial={(idx, party) =>
-                                      setInitialsTarget({
-                                        planId: plan.id,
-                                        activityIdx: idx,
-                                        party,
-                                      })
-                                    }
-                                  />
+                                    className="px-2 py-1.5 text-center font-medium text-gray-500"
+                                  >
+                                    {p.label}
+                                  </th>
                                 ))}
                               </tr>
-                            ))}
-                          </tbody>
-                        </table>
+                            </thead>
+                            <tbody className="divide-y divide-gray-100">
+                              {plan.activities.map((a, i) => (
+                                <tr key={i}>
+                                  <td className="px-2 py-1.5 text-center">{a.operationNumber}</td>
+                                  <td className="px-2 py-1.5">{a.description}</td>
+                                  <td className="px-2 py-1.5 text-gray-500">
+                                    {a.specification || "-"}
+                                  </td>
+                                  <td className="px-2 py-1.5 text-gray-500">
+                                    {(a as any).documentation || a.procedureRequired || "-"}
+                                  </td>
+                                  {visibleParties.map((p) => (
+                                    <PartyCell
+                                      key={p.key}
+                                      activity={a}
+                                      activityIndex={i}
+                                      party={p.key}
+                                      editable={!readOnly && (p.key === "pls" || p.key === "mps")}
+                                      onChangeIntervention={(idx, party, val) =>
+                                        handlePartyInterventionChange(plan.id, idx, party, val)
+                                      }
+                                      onClickInitial={(idx, party) =>
+                                        setInitialsTarget({
+                                          planId: plan.id,
+                                          activityIdx: idx,
+                                          party,
+                                        })
+                                      }
+                                    />
+                                  ))}
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
                       );
                     })()}
 
