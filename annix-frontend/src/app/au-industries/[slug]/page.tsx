@@ -57,7 +57,7 @@ export default function AuIndustriesSlugPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-500" />
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#B8860B]" />
       </div>
     );
   }
@@ -65,8 +65,8 @@ export default function AuIndustriesSlugPage() {
   if (notFound || !page) {
     return (
       <div className="max-w-4xl mx-auto px-4 py-20 text-center">
-        <h1 className="text-3xl font-bold text-white mb-4">Page Not Found</h1>
-        <p className="text-gray-400">The page you are looking for does not exist.</p>
+        <h1 className="text-3xl font-bold text-gray-900 mb-4">Page Not Found</h1>
+        <p className="text-gray-500">The page you are looking for does not exist.</p>
       </div>
     );
   }
@@ -75,22 +75,33 @@ export default function AuIndustriesSlugPage() {
     <div>
       {page.heroImageUrl && (
         <div
-          className="relative h-80 md:h-96 bg-cover bg-center"
+          className="relative h-64 md:h-80 bg-cover bg-center"
           style={{ backgroundImage: `url(${page.heroImageUrl})` }}
         >
-          <div className="absolute inset-0 bg-black/60" />
-          <div className="relative max-w-4xl mx-auto px-4 h-full flex items-center">
-            <h1 className="text-4xl md:text-5xl font-bold text-white">{page.title}</h1>
+          <div className="absolute inset-0 bg-black/50" />
+          <div className="relative max-w-4xl mx-auto px-4 h-full flex items-center justify-center">
+            <h1 className="text-3xl md:text-5xl font-bold text-white uppercase tracking-wider text-center">
+              {page.title}
+            </h1>
           </div>
         </div>
       )}
 
-      <div className="max-w-4xl mx-auto px-4 py-12">
-        {!page.heroImageUrl && <h1 className="text-4xl font-bold text-white mb-8">{page.title}</h1>}
-        <div data-color-mode="dark" className="prose prose-invert max-w-none">
-          <MarkdownPreview source={page.content} style={{ backgroundColor: "transparent" }} />
+      <section className="bg-white py-16">
+        <div className="max-w-4xl mx-auto px-4">
+          {!page.heroImageUrl && (
+            <h1 className="text-3xl font-bold text-[#B8860B] uppercase tracking-wide mb-8 pb-4 border-b-2 border-[#B8860B]">
+              {page.title}
+            </h1>
+          )}
+          <div
+            data-color-mode="light"
+            className="prose prose-lg max-w-none prose-headings:text-[#B8860B] prose-headings:uppercase prose-headings:tracking-wide prose-strong:text-gray-900"
+          >
+            <MarkdownPreview source={page.content} style={{ backgroundColor: "transparent" }} />
+          </div>
         </div>
-      </div>
+      </section>
     </div>
   );
 }

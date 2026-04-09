@@ -38,49 +38,63 @@ export default function AuIndustriesHomePage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-500" />
-      </div>
-    );
-  }
-
-  if (!page) {
-    return (
-      <div className="max-w-4xl mx-auto px-4 py-20 text-center">
-        <h1 className="text-4xl font-bold text-white mb-4">AU Industries</h1>
-        <p className="text-gray-400 text-lg mb-8">
-          Specialists in rubber lining, rubber sheeting, HDPE lining, and industrial rubber
-          solutions.
-        </p>
-        <Link
-          href="/au-industries/contact"
-          className="inline-flex items-center px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium"
-        >
-          Contact Us
-        </Link>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#B8860B]" />
       </div>
     );
   }
 
   return (
     <div>
-      {page.heroImageUrl && (
-        <div
-          className="relative h-80 md:h-96 bg-cover bg-center"
-          style={{ backgroundImage: `url(${page.heroImageUrl})` }}
-        >
-          <div className="absolute inset-0 bg-black/60" />
-          <div className="relative max-w-4xl mx-auto px-4 h-full flex items-center">
-            <h1 className="text-4xl md:text-5xl font-bold text-white">{page.title}</h1>
-          </div>
+      <section
+        className="relative h-[500px] md:h-[600px] bg-cover bg-center"
+        style={{ backgroundImage: "url(/au-industries/hero-home.jpg)" }}
+      >
+        <div className="absolute inset-0 bg-black/50" />
+        <div className="relative max-w-4xl mx-auto px-4 h-full flex flex-col items-center justify-center text-center">
+          <h1 className="text-3xl md:text-5xl font-bold text-white uppercase tracking-wider leading-tight mb-8">
+            Rubber Products, Linings and Mining Solutions in Boksburg
+          </h1>
+          <Link
+            href="/au-industries/products-and-services"
+            className="inline-block px-10 py-4 bg-[#B8860B] text-white text-lg font-semibold uppercase tracking-wider hover:bg-[#9A7209] transition-colors"
+          >
+            Our Services
+          </Link>
         </div>
+      </section>
+
+      {page && (
+        <section className="bg-white py-16">
+          <div className="max-w-4xl mx-auto px-4">
+            <div
+              data-color-mode="light"
+              className="prose prose-lg max-w-none prose-headings:text-[#B8860B] prose-headings:uppercase prose-headings:tracking-wide prose-strong:text-gray-900"
+            >
+              <MarkdownPreview source={page.content} style={{ backgroundColor: "transparent" }} />
+            </div>
+          </div>
+        </section>
       )}
 
-      <div className="max-w-4xl mx-auto px-4 py-12">
-        {!page.heroImageUrl && <h1 className="text-4xl font-bold text-white mb-8">{page.title}</h1>}
-        <div data-color-mode="dark" className="prose prose-invert max-w-none">
-          <MarkdownPreview source={page.content} style={{ backgroundColor: "transparent" }} />
-        </div>
-      </div>
+      {!page && (
+        <section className="bg-white py-16">
+          <div className="max-w-4xl mx-auto px-4 text-center">
+            <h2 className="text-3xl font-bold text-[#B8860B] uppercase tracking-wide mb-4">
+              About Us
+            </h2>
+            <p className="text-gray-600 text-lg">
+              AU Industries was founded to provide high-quality rubber products, linings, and mining
+              solutions at competitive prices with fast turnaround times.
+            </p>
+            <Link
+              href="/au-industries/contact"
+              className="inline-block mt-8 px-8 py-3 bg-[#B8860B] text-white font-semibold uppercase tracking-wider hover:bg-[#9A7209] transition-colors"
+            >
+              Contact Us
+            </Link>
+          </div>
+        </section>
+      )}
     </div>
   );
 }

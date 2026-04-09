@@ -47,7 +47,7 @@ export function AuIndustriesLayoutClient(props: { children: React.ReactNode }) {
   const address = profile ? `${profile.streetAddress}, ${profile.city}, ${profile.province}` : "";
 
   return (
-    <div className="min-h-screen flex flex-col bg-gray-950 text-white">
+    <div className="min-h-screen flex flex-col bg-white text-gray-900">
       <Script
         src={`https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`}
         strategy="afterInteractive"

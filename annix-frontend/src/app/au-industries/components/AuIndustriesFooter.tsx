@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 
 interface FooterProps {
@@ -11,15 +12,23 @@ interface FooterProps {
 
 export function AuIndustriesFooter(props: FooterProps) {
   return (
-    <footer className="bg-gray-900 border-t border-gray-800 text-gray-400">
+    <footer className="bg-gray-900 text-gray-400">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           <div>
-            <h3 className="text-white text-lg font-semibold mb-4">{props.companyName}</h3>
+            <Image
+              src="/au-industries/logo.jpg"
+              alt="AU Industries"
+              width={140}
+              height={70}
+              className="h-12 w-auto mb-4 brightness-200"
+            />
             <p className="text-sm leading-relaxed">{props.address}</p>
           </div>
           <div>
-            <h3 className="text-white text-lg font-semibold mb-4">Contact</h3>
+            <h3 className="text-[#B8860B] text-lg font-semibold mb-4 uppercase tracking-wide">
+              Contact
+            </h3>
             <div className="space-y-2 text-sm">
               <p>
                 <a href={`tel:${props.phone}`} className="hover:text-white transition-colors">
@@ -34,10 +43,18 @@ export function AuIndustriesFooter(props: FooterProps) {
             </div>
           </div>
           <div>
-            <h3 className="text-white text-lg font-semibold mb-4">Quick Links</h3>
+            <h3 className="text-[#B8860B] text-lg font-semibold mb-4 uppercase tracking-wide">
+              Quick Links
+            </h3>
             <div className="space-y-2 text-sm">
               <Link href="/au-industries" className="block hover:text-white transition-colors">
                 Home
+              </Link>
+              <Link
+                href="/au-industries/products-and-services"
+                className="block hover:text-white transition-colors"
+              >
+                Products & Services
               </Link>
               <Link
                 href="/au-industries/contact"

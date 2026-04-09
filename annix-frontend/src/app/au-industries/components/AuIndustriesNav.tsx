@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
@@ -19,11 +20,18 @@ export function AuIndustriesNav(props: { pages: NavPage[] }) {
   };
 
   return (
-    <nav className="bg-gray-900 border-b border-gray-800 sticky top-0 z-50">
+    <nav className="bg-white border-b border-gray-200 sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
-          <Link href="/au-industries" className="flex items-center space-x-3">
-            <span className="text-xl font-bold text-white">AU Industries</span>
+        <div className="flex items-center justify-between h-20">
+          <Link href="/au-industries" className="flex-shrink-0">
+            <Image
+              src="/au-industries/logo.jpg"
+              alt="AU Industries"
+              width={160}
+              height={80}
+              className="h-14 w-auto"
+              priority
+            />
           </Link>
 
           <div className="hidden md:flex items-center space-x-1">
@@ -34,10 +42,10 @@ export function AuIndustriesNav(props: { pages: NavPage[] }) {
                 <Link
                   key={page.slug}
                   href={href}
-                  className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                  className={`px-4 py-2 text-sm font-semibold uppercase tracking-wide transition-colors ${
                     active
-                      ? "bg-red-700 text-white"
-                      : "text-gray-300 hover:bg-gray-800 hover:text-white"
+                      ? "text-[#B8860B] border-b-2 border-[#B8860B]"
+                      : "text-gray-700 hover:text-[#B8860B]"
                   }`}
                 >
                   {page.title}
@@ -46,19 +54,19 @@ export function AuIndustriesNav(props: { pages: NavPage[] }) {
             })}
             <Link
               href="/au-industries/contact"
-              className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+              className={`ml-2 px-5 py-2 text-sm font-semibold uppercase tracking-wide border-2 border-[#B8860B] transition-colors ${
                 pathname === "/au-industries/contact"
-                  ? "bg-red-700 text-white"
-                  : "text-gray-300 hover:bg-gray-800 hover:text-white"
+                  ? "bg-[#B8860B] text-white"
+                  : "text-[#B8860B] hover:bg-[#B8860B] hover:text-white"
               }`}
             >
-              Contact
+              Contact Us
             </Link>
           </div>
 
           <button
             onClick={() => setMenuOpen(!menuOpen)}
-            className="md:hidden text-gray-300 hover:text-white p-2"
+            className="md:hidden text-gray-700 hover:text-[#B8860B] p-2"
             aria-label="Toggle menu"
           >
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -82,7 +90,7 @@ export function AuIndustriesNav(props: { pages: NavPage[] }) {
         </div>
 
         {menuOpen && (
-          <div className="md:hidden pb-4 space-y-1">
+          <div className="md:hidden pb-4 space-y-1 border-t border-gray-200 pt-2">
             {props.pages.map((page) => {
               const href = page.isHomePage ? "/au-industries" : `/au-industries/${page.slug}`;
               const active = page.isHomePage ? pathname === "/au-industries" : isActive(page.slug);
@@ -91,10 +99,8 @@ export function AuIndustriesNav(props: { pages: NavPage[] }) {
                   key={page.slug}
                   href={href}
                   onClick={() => setMenuOpen(false)}
-                  className={`block px-3 py-2 rounded-md text-base font-medium ${
-                    active
-                      ? "bg-red-700 text-white"
-                      : "text-gray-300 hover:bg-gray-800 hover:text-white"
+                  className={`block px-3 py-2 text-base font-semibold uppercase ${
+                    active ? "text-[#B8860B]" : "text-gray-700 hover:text-[#B8860B]"
                   }`}
                 >
                   {page.title}
@@ -104,13 +110,13 @@ export function AuIndustriesNav(props: { pages: NavPage[] }) {
             <Link
               href="/au-industries/contact"
               onClick={() => setMenuOpen(false)}
-              className={`block px-3 py-2 rounded-md text-base font-medium ${
+              className={`block px-3 py-2 text-base font-semibold uppercase ${
                 pathname === "/au-industries/contact"
-                  ? "bg-red-700 text-white"
-                  : "text-gray-300 hover:bg-gray-800 hover:text-white"
+                  ? "text-[#B8860B]"
+                  : "text-gray-700 hover:text-[#B8860B]"
               }`}
             >
-              Contact
+              Contact Us
             </Link>
           </div>
         )}
