@@ -1093,6 +1093,9 @@ export default function CpoDetailPage() {
                     #
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Item No
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Item Code
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -1127,7 +1130,7 @@ export default function CpoDetailPage() {
                 {sortedItems.length === 0 && !addingItem && (
                   <tr>
                     <td
-                      colSpan={cpo.status === "active" ? 10 : 9}
+                      colSpan={cpo.status === "active" ? 11 : 10}
                       className="px-6 py-6 text-center text-sm text-gray-500"
                     >
                       No line items
@@ -1146,6 +1149,17 @@ export default function CpoDetailPage() {
                       <tr key={item.id} className="bg-teal-50">
                         <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-400">
                           {idx + 1}
+                        </td>
+                        <td className="px-4 py-2">
+                          <input
+                            type="text"
+                            value={editDraft.itemNo}
+                            onChange={(e) =>
+                              setEditDraft((d) => ({ ...d, itemNo: e.target.value }))
+                            }
+                            placeholder="Item No"
+                            className="w-20 text-sm border border-gray-300 rounded px-2 py-1"
+                          />
                         </td>
                         <td className="px-4 py-2">
                           <input
@@ -1257,6 +1271,9 @@ export default function CpoDetailPage() {
                       <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-400">
                         {idx + 1}
                       </td>
+                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
+                        {item.itemNo || "-"}
+                      </td>
                       <td className="px-4 py-3 whitespace-nowrap text-sm font-mono text-gray-900">
                         {item.itemCode || "-"}
                       </td>
@@ -1322,6 +1339,15 @@ export default function CpoDetailPage() {
                   <tr className="bg-teal-50">
                     <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-400">
                       {sortedItems.length + 1}
+                    </td>
+                    <td className="px-4 py-2">
+                      <input
+                        type="text"
+                        value={addDraft.itemNo}
+                        onChange={(e) => setAddDraft((d) => ({ ...d, itemNo: e.target.value }))}
+                        placeholder="Item No"
+                        className="w-20 text-sm border border-gray-300 rounded px-2 py-1"
+                      />
                     </td>
                     <td className="px-4 py-2">
                       <input
