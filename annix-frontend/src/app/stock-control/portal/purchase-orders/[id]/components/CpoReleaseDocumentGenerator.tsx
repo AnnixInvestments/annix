@@ -194,6 +194,7 @@ export function CpoReleaseDocumentGenerator(props: CpoReleaseDocumentGeneratorPr
                       className="rounded border-gray-300"
                     />
                   </th>
+                  <th className="px-2 py-2 text-left font-medium text-gray-500">Item No</th>
                   <th className="px-2 py-2 text-left font-medium text-gray-500">Item Code</th>
                   <th className="px-2 py-2 text-left font-medium text-gray-500">Description</th>
                   <th className="px-2 py-2 text-right font-medium text-gray-500">Ordered</th>
@@ -232,6 +233,7 @@ export function CpoReleaseDocumentGenerator(props: CpoReleaseDocumentGeneratorPr
                           className="rounded border-gray-300 disabled:cursor-not-allowed disabled:opacity-50"
                         />
                       </td>
+                      <td className="px-2 py-2 text-gray-500">{item.itemNo || "-"}</td>
                       <td className="px-2 py-2 font-mono max-w-[100px] sm:max-w-none truncate">
                         {item.itemCode || "-"}
                       </td>

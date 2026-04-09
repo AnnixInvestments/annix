@@ -74,6 +74,8 @@ function buildMeasurementFields(coatingAnalysis: CoatingAnalysis | null): BatchF
     coats.forEach((coat, idx) => {
       const rawProduct = coat.product;
       const product = rawProduct || `Coat ${idx + 1}`;
+      const isBanding = product.toUpperCase().includes("BANDING");
+      if (isBanding) return;
       fields.push({
         fieldKey: `paint_dft_${idx}`,
         category: "paint",

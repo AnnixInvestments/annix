@@ -1378,9 +1378,15 @@ export class QcMeasurementService {
   // ── CPO-Level Control Plans ──────────────────────────────────────
 
   async controlPlansForCpo(companyId: number, cpoId: number): Promise<QcControlPlan[]> {
-    return this.controlPlanRepo.find({
+    const allPlans = await this.controlPlanRepo.find({
       where: { companyId, cpoId },
       order: { createdAt: "DESC" },
+    });
+    const seenTypes = new Set<string>();
+    return allPlans.filter((plan) => {
+      if (seenTypes.has(plan.planType)) return false;
+      seenTypes.add(plan.planType);
+      return true;
     });
   }
 
@@ -1764,6 +1770,7 @@ export class QcMeasurementService {
   ): Promise<{
     items: {
       itemCode: string | null;
+      itemNo: string | null;
       description: string | null;
       orderedQty: number;
       arrivedQty: number;
@@ -1819,6 +1826,7 @@ export class QcMeasurementService {
       .reduce<
         {
           itemCode: string | null;
+          itemNo: string | null;
           itemDescription: string | null;
           totalOrdered: number;
           key: string;
@@ -1836,6 +1844,7 @@ export class QcMeasurementService {
           ...acc,
           {
             itemCode: ci.itemCode,
+            itemNo: ci.itemNo ?? null,
             itemDescription: ci.itemDescription,
             totalOrdered: Number(ci.quantityOrdered) || 0,
             key,
@@ -1874,6 +1883,7 @@ export class QcMeasurementService {
 
       return {
         itemCode: ci.itemCode,
+        itemNo: ci.itemNo,
         description: ci.itemDescription,
         orderedQty: ci.totalOrdered,
         arrivedQty,

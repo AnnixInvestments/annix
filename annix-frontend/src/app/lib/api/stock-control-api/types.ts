@@ -1128,6 +1128,7 @@ export interface QcReleaseDocumentsResult {
 
 export interface CpoReleasableItem {
   itemCode: string | null;
+  itemNo: string | null;
   description: string | null;
   orderedQty: number;
   arrivedQty: number;

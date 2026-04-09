@@ -87,6 +87,9 @@ function paintProductRows(coats: CoatingAnalysis["coats"] | null): PaintProductR
 
   const seen = new Set<string>();
   return coats.reduce<PaintProductRow[]>((acc, coat, idx) => {
+    const isBanding = coat.product.toUpperCase().includes("BANDING");
+    if (isBanding) return acc;
+
     const productKey = coat.product
       .toLowerCase()
       .replace(/\s+/g, "_")
