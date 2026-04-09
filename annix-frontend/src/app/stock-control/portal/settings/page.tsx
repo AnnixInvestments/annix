@@ -388,7 +388,7 @@ function MenuVisibilitySection({
               <table className="w-full border-collapse">
                 <thead>
                   <tr className="border-b border-gray-200">
-                    <th className="text-left text-[10px] font-medium text-gray-500 uppercase py-1 pr-2 w-[140px]">
+                    <th className="text-left text-[10px] font-medium text-gray-500 uppercase py-1 pr-2 w-[100px] sm:w-[140px]">
                       Page
                     </th>
                     {roles.map((role, ri) => (
@@ -643,7 +643,7 @@ function UserLocationAssignmentsSection({
               <table className="w-full border-collapse">
                 <thead>
                   <tr>
-                    <th className="text-left py-1 pr-3 pl-1 text-[10px] font-medium text-gray-500 uppercase tracking-wide sticky left-0 bg-white min-w-[120px]">
+                    <th className="text-left py-1 pr-3 pl-1 text-[10px] font-medium text-gray-500 uppercase tracking-wide sticky left-0 bg-white min-w-[90px] sm:min-w-[120px]">
                       Team Member
                     </th>
                     {activeLocations.map((loc) => (
@@ -878,7 +878,7 @@ function ActionPermissionsSection({
           <table className="w-full border-collapse">
             <thead>
               <tr className="border-b border-gray-200">
-                <th className="text-left text-[10px] font-medium text-gray-500 uppercase py-1 pr-2 w-[180px]">
+                <th className="text-left text-[10px] font-medium text-gray-500 uppercase py-1 pr-2 w-[120px] sm:w-[180px]">
                   Action
                 </th>
                 {roles.map((role) => (
