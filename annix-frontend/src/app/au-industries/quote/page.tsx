@@ -72,13 +72,9 @@ export default function AuIndustriesQuotePage() {
 
   return (
     <div>
-      <section
-        className="relative h-48 md:h-56 bg-cover bg-center"
-        style={{ backgroundImage: "url(/au-industries/hero-banner.jpg)" }}
-      >
-        <div className="absolute inset-0 bg-black/50" />
-        <div className="relative max-w-4xl mx-auto px-4 h-full flex items-center justify-center">
-          <h1 className="text-3xl md:text-4xl font-bold text-white uppercase tracking-wider">
+      <section className="bg-[#efcc54] py-12">
+        <div className="max-w-4xl mx-auto px-4 text-center">
+          <h1 className="text-3xl md:text-4xl font-bold text-gray-900 uppercase tracking-wider">
             Request a Quote
           </h1>
         </div>

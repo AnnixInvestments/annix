@@ -88,7 +88,7 @@ function GalleryCard(props: { section: GallerySection }) {
   const imageCount = props.section.images.length;
   return (
     <div>
-      <div className="bg-[#B8860B] text-white text-center py-4 px-4 uppercase font-bold text-sm tracking-wide leading-snug">
+      <div className="bg-[#efcc54] text-gray-900 text-center py-4 px-4 uppercase font-bold text-sm tracking-wide leading-snug">
         {props.section.title}
       </div>
       <div className={`grid ${imageCount === 2 ? "grid-cols-2" : "grid-cols-3"} gap-0.5`}>
@@ -124,9 +124,9 @@ export default function AuIndustriesGalleryPage() {
 
   return (
     <div>
-      <section className="bg-[#B8860B] py-10">
+      <section className="bg-[#efcc54] py-10">
         <div className="max-w-4xl mx-auto px-4 text-center">
-          <h1 className="text-3xl md:text-4xl font-bold text-white uppercase tracking-wider">
+          <h1 className="text-3xl md:text-4xl font-bold text-gray-900 uppercase tracking-wider">
             Gallery
           </h1>
         </div>

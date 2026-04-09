@@ -57,28 +57,50 @@ export default function AuIndustriesHomePage() {
         </div>
       </section>
 
-      <section className="relative">
-        <div className="grid grid-cols-1 md:grid-cols-2">
-          <div className="relative h-[400px] md:h-[500px] bg-gray-900 flex items-center justify-center gap-4 p-8">
-            <div className="relative w-1/2 h-[80%] rounded overflow-hidden shadow-lg">
-              <Image
-                src="/au-industries/hero-home.jpg"
-                alt="Rubber lined pipes"
-                fill
-                className="object-cover"
-              />
-            </div>
-            <div className="relative w-1/2 h-[80%] rounded overflow-hidden shadow-lg">
-              <Image
-                src="/au-industries/home-06.jpg"
-                alt="Red rubber sheeting"
-                fill
-                className="object-cover"
-              />
+      <section
+        className="relative bg-cover bg-center bg-fixed"
+        style={{ backgroundImage: "url(/au-industries/AUI-homeparallax.jpg)" }}
+      >
+        <div className="absolute inset-0 bg-black/60" />
+        <div className="relative grid grid-cols-1 md:grid-cols-2">
+          <div className="h-[500px] md:h-[600px] flex items-center justify-center p-8">
+            <div className="grid grid-cols-2 gap-3 w-full max-w-md">
+              <div className="relative h-48 md:h-56 rounded overflow-hidden shadow-lg">
+                <Image
+                  src="/au-industries/aui-home01.jpg"
+                  alt="Rubber lined pipes in warehouse"
+                  fill
+                  className="object-cover"
+                />
+              </div>
+              <div className="relative h-48 md:h-56 rounded overflow-hidden shadow-lg">
+                <Image
+                  src="/au-industries/aui-home05.jpg"
+                  alt="Red rubber sheeting"
+                  fill
+                  className="object-cover"
+                />
+              </div>
+              <div className="relative h-48 md:h-56 rounded overflow-hidden shadow-lg">
+                <Image
+                  src="/au-industries/aui-home04.jpg"
+                  alt="Rubber manufacturing"
+                  fill
+                  className="object-cover"
+                />
+              </div>
+              <div className="relative h-48 md:h-56 rounded overflow-hidden shadow-lg">
+                <Image
+                  src="/au-industries/aui-home06.jpg"
+                  alt="Rubber sheeting machine"
+                  fill
+                  className="object-cover"
+                />
+              </div>
             </div>
           </div>
 
-          <div className="bg-gray-900 text-white p-8 md:p-12 flex flex-col justify-center">
+          <div className="text-white p-8 md:p-12 flex flex-col justify-center">
             <h2 className="text-2xl md:text-3xl font-bold uppercase tracking-wider mb-2">
               Products and Services
             </h2>
@@ -120,34 +142,6 @@ export default function AuIndustriesHomePage() {
             >
               View All Services
             </Link>
-          </div>
-        </div>
-      </section>
-
-      <section className="bg-white py-20">
-        <div className="max-w-6xl mx-auto px-4 md:px-8 text-center">
-          <h2 className="text-3xl md:text-4xl font-bold text-[#B8860B] uppercase tracking-wider mb-2">
-            Why AU Industries?
-          </h2>
-          <div className="w-24 h-[3px] bg-[#B8860B] mx-auto mt-3 mb-12" />
-
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-            <div>
-              <div className="text-4xl font-bold text-[#B8860B] mb-2">40+</div>
-              <p className="text-gray-600 text-sm">Years combined industry experience</p>
-            </div>
-            <div>
-              <div className="text-4xl font-bold text-[#B8860B] mb-2">R&amp;D</div>
-              <p className="text-gray-600 text-sm">Custom rubber compounds developed in-house</p>
-            </div>
-            <div>
-              <div className="text-4xl font-bold text-[#B8860B] mb-2">5+</div>
-              <p className="text-gray-600 text-sm">Countries serviced across Southern Africa</p>
-            </div>
-            <div>
-              <div className="text-4xl font-bold text-[#B8860B] mb-2">24h</div>
-              <p className="text-gray-600 text-sm">Fast turnaround on quotes and deliveries</p>
-            </div>
           </div>
         </div>
       </section>
