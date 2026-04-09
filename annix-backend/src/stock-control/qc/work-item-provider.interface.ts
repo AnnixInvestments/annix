@@ -5,6 +5,7 @@ export interface WorkItemLineItem {
   description: string;
   jtNumber: string | null;
   quantity: number;
+  itemNo: string | null;
 }
 
 export interface IWorkItemProvider {

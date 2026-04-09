@@ -882,6 +882,7 @@ export class QcMeasurementService {
       paintingSpec: specs.paintingSpec,
       quantity: li.quantity,
       result: ItemReleaseResult.PASS,
+      itemNo: li.itemNo,
     }));
 
     const totalQuantity = items.reduce((sum, item) => sum + item.quantity, 0);
@@ -952,6 +953,7 @@ export class QcMeasurementService {
           paintingSpec: specs.paintingSpec,
           quantity: requestedQty,
           result: ItemReleaseResult.PASS,
+          itemNo: li.itemNo,
         };
       });
 
@@ -1909,6 +1911,7 @@ export class QcMeasurementService {
       paintingSpec: specs.paintingSpec,
       quantity: si.quantity,
       result: ItemReleaseResult.PASS,
+      itemNo: null,
     }));
 
     const totalQuantity = cpoReleaseItems.reduce((sum, item) => sum + item.quantity, 0);
@@ -1951,6 +1954,7 @@ export class QcMeasurementService {
         paintingSpec: jcSpecs.paintingSpec,
         quantity: si.quantity,
         result: ItemReleaseResult.PASS,
+        itemNo: null,
       }));
 
       const jcTotal = jcReleaseItems.reduce((sum, item) => sum + item.quantity, 0);

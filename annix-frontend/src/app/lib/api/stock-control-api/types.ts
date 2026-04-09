@@ -1091,6 +1091,7 @@ export interface ReleaseLineItem {
   paintingSpec: string | null;
   quantity: number;
   result: ItemReleaseResult;
+  itemNo: string | null;
 }
 
 export interface ReleasePartySignOff {

@@ -303,6 +303,9 @@ export function ReleaseDocumentGenerator(props: ReleaseDocumentGeneratorProps) {
                       />
                     </th>
                     <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">
+                      Item No
+                    </th>
+                    <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">
                       Item Code
                     </th>
                     <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">
@@ -357,6 +360,9 @@ export function ReleaseDocumentGenerator(props: ReleaseDocumentGeneratorProps) {
                             onClick={(e) => e.stopPropagation()}
                             className="h-4 w-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500 disabled:opacity-50"
                           />
+                        </td>
+                        <td className="whitespace-nowrap px-3 py-2 text-sm text-gray-500">
+                          {li.itemNo || "-"}
                         </td>
                         <td className="whitespace-nowrap px-3 py-2 text-sm font-medium text-gray-900">
                           {li.itemCode || "-"}

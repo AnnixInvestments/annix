@@ -1283,7 +1283,7 @@ export class DataBookPdfService {
 
     const checkedByW = 80;
     const dateW = 60;
-    const fixedColsWidth = 25 + 75 + 55 + 40 + 45 + checkedByW + dateW;
+    const fixedColsWidth = 25 + 50 + 75 + 55 + 40 + 45 + checkedByW + dateW;
     const specColsCount = (hasRubber ? 1 : 0) + (hasPaint ? 1 : 0);
     const specColWidth =
       specColsCount > 0 ? Math.floor((pg.contentWidth - fixedColsWidth) / (specColsCount + 1)) : 0;
@@ -1299,6 +1299,8 @@ export class DataBookPdfService {
 
     cols.push({ label: "#", x: xOffset, width: 25, align: "center" });
     xOffset += 25;
+    cols.push({ label: "Item No", x: xOffset, width: 50, align: "left" });
+    xOffset += 50;
     cols.push({ label: "Item Code", x: xOffset, width: 75, align: "left" });
     xOffset += 75;
     cols.push({ label: "Item Description", x: xOffset, width: descWidth, align: "left" });
@@ -1338,6 +1340,7 @@ export class DataBookPdfService {
       }
 
       const resultColor = item.result === "pass" ? "#166534" : "#991b1b";
+      const itemNo = item.itemNo ?? null;
       const rowCells: Array<{
         text: string;
         x: number;
@@ -1347,8 +1350,9 @@ export class DataBookPdfService {
         color?: string;
       }> = [
         { text: String(idx + 1), x: cols[0].x, width: cols[0].width, align: "center" },
-        { text: item.itemCode, x: cols[1].x, width: cols[1].width },
-        { text: item.description, x: cols[2].x, width: cols[2].width },
+        { text: itemNo ?? "-", x: cols[1].x, width: cols[1].width },
+        { text: item.itemCode, x: cols[2].x, width: cols[2].width },
+        { text: item.description, x: cols[3].x, width: cols[3].width },
       ];
 
       if (rubberColIdx >= 0) {
@@ -1367,7 +1371,7 @@ export class DataBookPdfService {
       }
 
       const qtyColIdx =
-        paintColIdx >= 0 ? paintColIdx + 1 : rubberColIdx >= 0 ? rubberColIdx + 1 : 3;
+        paintColIdx >= 0 ? paintColIdx + 1 : rubberColIdx >= 0 ? rubberColIdx + 1 : 4;
       const jtColIdx = qtyColIdx + 1;
       const pfColIdx = jtColIdx + 1;
       const checkedColIdx = pfColIdx + 1;

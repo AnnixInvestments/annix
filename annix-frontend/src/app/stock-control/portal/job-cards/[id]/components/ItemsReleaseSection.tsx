@@ -358,6 +358,9 @@ function ItemsReleaseForm({ jobCardId, existing, onSaved, onCancel }: ItemsRelea
             <tr>
               <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">#</th>
               <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">
+                Item No
+              </th>
+              <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">
                 Item Code
               </th>
               <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">
@@ -384,6 +387,15 @@ function ItemsReleaseForm({ jobCardId, existing, onSaved, onCancel }: ItemsRelea
             {items.map((item, index) => (
               <tr key={index} className="hover:bg-gray-50">
                 <td className="whitespace-nowrap px-3 py-2 text-sm text-gray-500">{index + 1}</td>
+                <td className="px-3 py-2">
+                  <input
+                    type="text"
+                    value={item.itemNo ?? ""}
+                    onChange={(e) => updateItem(index, "itemNo", e.target.value)}
+                    placeholder="Item No"
+                    className="w-20 rounded border border-gray-300 px-2 py-1 text-sm"
+                  />
+                </td>
                 <td className="px-3 py-2">
                   <input
                     type="text"

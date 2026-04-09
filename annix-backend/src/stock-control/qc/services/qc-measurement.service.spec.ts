@@ -348,6 +348,7 @@ describe("QcMeasurementService", () => {
             paintingSpec: null,
             quantity: 2,
             result: ItemReleaseResult.PASS,
+            itemNo: null,
           },
         ],
         totalQuantity: 2,

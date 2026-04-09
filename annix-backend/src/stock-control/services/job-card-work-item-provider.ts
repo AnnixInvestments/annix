@@ -26,6 +26,7 @@ export class JobCardWorkItemProvider implements IWorkItemProvider {
       description: li.itemDescription ?? "",
       jtNumber: li.jtNo ?? null,
       quantity: Number(li.quantity) || 0,
+      itemNo: li.itemNo ?? null,
     }));
   }
 }
