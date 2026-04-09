@@ -10,6 +10,16 @@ import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { formatDateZA } from "@/app/lib/datetime";
 import { HelpTooltip } from "../../../../components/HelpTooltip";
 
+function isBandingProduct(product: string, rawNotes: string | null): boolean {
+  if (!rawNotes) return false;
+  const upper = rawNotes.toUpperCase();
+  const productUpper = product.toUpperCase();
+  const bandingIdx = upper.indexOf("BANDING");
+  if (bandingIdx < 0) return false;
+  const afterBanding = upper.substring(bandingIdx);
+  return afterBanding.includes(productUpper);
+}
+
 function workTypeFromNotes(notes: string | null | undefined): string {
   if (!notes) return "—";
   const upper = notes.toUpperCase();
@@ -454,16 +464,16 @@ export function CoatingAnalysisTab(props: CoatingAnalysisTabProps) {
               );
             })()}
             {(() => {
-              const uniqueCoats = coatingAnalysis.coats.reduce<typeof coatingAnalysis.coats>(
-                (acc, coat) => {
+              const rawNotes = coatingAnalysis.rawNotes;
+              const uniqueCoats = coatingAnalysis.coats
+                .filter((coat) => !isBandingProduct(coat.product, rawNotes))
+                .reduce<typeof coatingAnalysis.coats>((acc, coat) => {
                   const exists = acc.find(
                     (c) => c.product === coat.product && c.area === coat.area,
                   );
                   if (!exists) acc.push(coat);
                   return acc;
-                },
-                [],
-              );
+                }, []);
               const totalLitres = uniqueCoats.reduce((sum, c) => sum + c.litersRequired, 0);
               return (
                 <div className="space-y-3">
@@ -516,8 +526,10 @@ export function CoatingAnalysisTab(props: CoatingAnalysisTabProps) {
             })()}
             {coatingAnalysis.stockAssessment.length > 0 &&
               (() => {
-                const sourceAssessment =
-                  coatingAnalysis.pmEditedAssessment || coatingAnalysis.stockAssessment;
+                const rawNotesForStock = coatingAnalysis.rawNotes;
+                const sourceAssessment = (
+                  coatingAnalysis.pmEditedAssessment || coatingAnalysis.stockAssessment
+                ).filter((item) => !isBandingProduct(item.product, rawNotesForStock));
                 const deduped = sourceAssessment.reduce<typeof coatingAnalysis.stockAssessment>(
                   (acc, item) => {
                     const existing = acc.find((a) => a.product === item.product);
