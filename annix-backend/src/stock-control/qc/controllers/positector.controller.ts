@@ -259,6 +259,15 @@ export class PositectorController {
     return { error: `Unsupported entity type: ${body.entityType}` };
   }
 
+  @Post("uploads/fix-bundle-names")
+  @StockControlRoles("quality", "manager", "admin")
+  @ApiOperation({
+    summary: "Fix batch names on existing bundle-imported uploads by re-parsing PDFs",
+  })
+  async fixBundleNames(@Req() req: any) {
+    return this.uploadService.fixBundleBatchNames(req.user.companyId);
+  }
+
   @Post("upload/bundle-analyze")
   @StockControlRoles("quality", "manager", "admin")
   @UseInterceptors(FileInterceptor("file"))

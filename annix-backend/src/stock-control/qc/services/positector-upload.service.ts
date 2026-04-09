@@ -120,6 +120,39 @@ export class PositectorUploadService {
     return this.uploadRepo.findOne({ where: { companyId, id } });
   }
 
+  async fixBundleBatchNames(companyId: number): Promise<{ updated: number; total: number }> {
+    const bundleUploads = await this.uploadRepo
+      .createQueryBuilder("u")
+      .where("u.companyId = :companyId", { companyId })
+      .andWhere("u.batchName LIKE :prefix", { prefix: "bundle_%" })
+      .getMany();
+
+    const BATCH_PATTERN = /DeFelsko\s+\d+\s+(B\d+)/;
+    let updated = 0;
+
+    for (const upload of bundleUploads) {
+      try {
+        const buffer = await this.storageService.download(upload.s3FilePath);
+        const pdfParseModule = require("pdf-parse");
+        const pdfParse = pdfParseModule.default ?? pdfParseModule;
+        const pdfData = await pdfParse(buffer);
+        const text: string = pdfData.text;
+        const match = text.match(BATCH_PATTERN);
+        if (match) {
+          const batchName = match[1];
+          await this.uploadRepo.update(upload.id, { batchName });
+          this.logger.log(`Fixed upload ${upload.id}: "${upload.batchName}" → "${batchName}"`);
+          updated++;
+        }
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        this.logger.warn(`Failed to fix batch name for upload ${upload.id}: ${msg}`);
+      }
+    }
+
+    return { updated, total: bundleUploads.length };
+  }
+
   async unlinkedUploads(companyId: number, entityType?: string): Promise<PositectorUpload[]> {
     const qb = this.uploadRepo
       .createQueryBuilder("u")
