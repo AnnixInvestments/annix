@@ -575,7 +575,10 @@ function CertificatesTab() {
               <option value="COC">COC</option>
             </select>
 
-            {certificates.some((c) => !c.description && !c.stockItem) && (
+            {certificates.some((c) => {
+              const desc = c.description || "";
+              return (!desc && !c.stockItem) || desc.length > 60;
+            }) && (
               <button
                 onClick={async () => {
                   setIsBackfilling(true);

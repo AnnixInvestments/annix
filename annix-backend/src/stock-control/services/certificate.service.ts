@@ -236,17 +236,28 @@ export class CertificateService {
     return saved;
   }
 
-  async updateExtractedProduct(
+  async updateExtractedFields(
     certId: number,
-    productDescription: string,
+    productDescription: string | null,
+    batchNumber: string | null,
     stockItemId: number | null,
   ): Promise<void> {
-    await this.certRepo.update(certId, {
-      description: productDescription,
-      ...(stockItemId !== null ? { stockItemId } : {}),
-    });
+    const updates: Record<string, string | number> = {};
+    if (productDescription) {
+      updates.description = productDescription;
+    }
+    if (batchNumber) {
+      updates.batchNumber = batchNumber;
+    }
+    if (stockItemId !== null) {
+      updates.stockItemId = stockItemId;
+    }
+    if (Object.keys(updates).length === 0) {
+      return;
+    }
+    await this.certRepo.update(certId, updates);
     this.logger.log(
-      `Updated cert ${certId} with extracted product: "${productDescription}"${stockItemId ? ` (stockItemId=${stockItemId})` : ""}`,
+      `Updated cert ${certId}: product="${productDescription}" batch="${batchNumber}"${stockItemId ? ` stockItemId=${stockItemId}` : ""}`,
     );
   }
 
@@ -1403,11 +1414,16 @@ export class CertificateService {
     await this.markDataBookStale(companyId, jobCardId);
   }
 
-  async certsWithoutDescription(companyId: number): Promise<SupplierCertificate[]> {
-    return this.certRepo.find({
-      where: { companyId, description: IsNull() },
-      select: ["id", "filePath", "mimeType", "companyId"],
-    });
+  async certsNeedingProductExtraction(companyId: number): Promise<SupplierCertificate[]> {
+    return this.certRepo
+      .createQueryBuilder("cert")
+      .where("cert.companyId = :companyId", { companyId })
+      .andWhere(
+        "(cert.description IS NULL OR LENGTH(cert.description) > 60 OR cert.uploadedByName = :emailImport)",
+        { emailImport: "Email Import" },
+      )
+      .select(["cert.id", "cert.filePath", "cert.mimeType", "cert.companyId"])
+      .getMany();
   }
 
   async downloadCertFile(cert: SupplierCertificate): Promise<Buffer> {

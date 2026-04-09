@@ -371,7 +371,7 @@ Respond ONLY with a JSON object:
   }
 
   async backfillProductExtraction(companyId: number): Promise<{ processed: number }> {
-    const certs = await this.certificateService.certsWithoutDescription(companyId);
+    const certs = await this.certificateService.certsNeedingProductExtraction(companyId);
     this.logger.log(
       `Backfill: ${certs.length} cert(s) with no product description for company ${companyId}`,
     );
@@ -396,27 +396,35 @@ Respond ONLY with a JSON object:
     mimeType: string,
     companyId: number,
   ): Promise<void> {
-    const productName = await this.extractProductInfo(fileBuffer, mimeType);
-    if (!productName) {
+    const extracted = await this.extractCertificateFields(fileBuffer, mimeType);
+    if (!extracted) {
       return;
     }
 
-    const stockItems = await this.certificateService.stockItemsForCompany(companyId);
-    const normalised = productName.toLowerCase();
-    const matched = stockItems.find(
-      (item) =>
-        item.name.toLowerCase().includes(normalised) ||
-        normalised.includes(item.name.toLowerCase()),
-    );
+    let matchedStockItemId: number | null = null;
+    if (extracted.productName) {
+      const stockItems = await this.certificateService.stockItemsForCompany(companyId);
+      const normalised = extracted.productName.toLowerCase();
+      const matched = stockItems.find(
+        (item) =>
+          item.name.toLowerCase().includes(normalised) ||
+          normalised.includes(item.name.toLowerCase()),
+      );
+      matchedStockItemId = matched ? matched.id : null;
+    }
 
-    await this.certificateService.updateExtractedProduct(
+    await this.certificateService.updateExtractedFields(
       certId,
-      productName,
-      matched ? matched.id : null,
+      extracted.productName,
+      extracted.batchNumber,
+      matchedStockItemId,
     );
   }
 
-  private async extractProductInfo(fileBuffer: Buffer, mimeType: string): Promise<string | null> {
+  private async extractCertificateFields(
+    fileBuffer: Buffer,
+    mimeType: string,
+  ): Promise<{ productName: string | null; batchNumber: string | null } | null> {
     try {
       const isAvailable = await this.aiChatService.isAvailable();
       if (!isAvailable) {
@@ -427,10 +435,25 @@ Respond ONLY with a JSON object:
       const response = await this.aiChatService.chatWithImage(
         imageBase64,
         mediaType,
-        'What is the product name on this certificate? Look for fields labeled "Product", "Compound", "Material", "Grade", or similar. Reply with ONLY the product name value, nothing else. If you cannot determine it, reply with "unknown".',
+        `Extract the following from this certificate. Respond ONLY with a JSON object, no other text.
+{
+  "productName": "the SHORT product name or compound code (e.g. RSCA40, IMP STEAM 50 B, HeroBond 080, JOTAMASTIC 90 ALU). Look for fields labeled Product, Compound, Material, Grade. Do NOT include dimensions, weights, roll numbers, or prices. Max 50 chars. null if not found.",
+  "batchNumber": "the batch number, roll number(s), or lot number from the certificate. Look for fields labeled Batch, Roll No, Lot, Batch Number. If multiple roll numbers, join with commas. null if not found."
+}`,
       );
-      const name = response.content.trim();
-      return name === "unknown" || name.length === 0 ? null : name;
+      const text = response.content.trim();
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) {
+        return null;
+      }
+      const parsed = JSON.parse(jsonMatch[0]);
+      const productRaw = parsed.productName ? String(parsed.productName).trim() : null;
+      const batchRaw = parsed.batchNumber ? String(parsed.batchNumber).trim() : null;
+      const productName =
+        productRaw && productRaw !== "null" && productRaw.length <= 60 ? productRaw : null;
+      const batchNumber =
+        batchRaw && batchRaw !== "null" && batchRaw.length <= 120 ? batchRaw : null;
+      return { productName, batchNumber };
     } catch {
       return null;
     }
