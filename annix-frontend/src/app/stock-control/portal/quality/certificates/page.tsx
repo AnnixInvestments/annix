@@ -311,12 +311,21 @@ function CertificatesTab() {
   const sortedCertificates = [...filteredCertificates].sort((a, b) => {
     const dir = sortDir === "asc" ? 1 : -1;
     if (sortCol === "type") return dir * a.certificateType.localeCompare(b.certificateType);
-    if (sortCol === "batch") return dir * (a.batchNumber ?? "").localeCompare(b.batchNumber ?? "");
-    if (sortCol === "supplier")
-      return dir * (a.supplier?.name ?? "").localeCompare(b.supplier?.name ?? "");
+    if (sortCol === "batch") {
+      const aBatch = a.batchNumber || "";
+      const bBatch = b.batchNumber || "";
+      return dir * aBatch.localeCompare(bBatch);
+    }
+    if (sortCol === "supplier") {
+      const aSupplierName = a.supplier ? a.supplier.name : "";
+      const bSupplierName = b.supplier ? b.supplier.name : "";
+      return dir * aSupplierName.localeCompare(bSupplierName);
+    }
     if (sortCol === "product") {
-      const aProduct = a.stockItem?.name || a.description || "";
-      const bProduct = b.stockItem?.name || b.description || "";
+      const aStockName = a.stockItem ? a.stockItem.name : "";
+      const bStockName = b.stockItem ? b.stockItem.name : "";
+      const aProduct = aStockName || a.description || "";
+      const bProduct = bStockName || b.description || "";
       return dir * aProduct.localeCompare(bProduct);
     }
     return dir * (fromISO(a.createdAt).toMillis() - fromISO(b.createdAt).toMillis());
@@ -693,7 +702,10 @@ function CertificatesTab() {
                         {cert.supplier?.name || "-"}
                       </td>
                       <td className="px-4 py-3 text-sm text-gray-600">
-                        {cert.stockItem?.name || cert.description || "-"}
+                        {(() => {
+                          const stockName = cert.stockItem ? cert.stockItem.name : "";
+                          return stockName || cert.description || "-";
+                        })()}
                       </td>
                       <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-600">
                         {cert.jobCard ? cert.jobCard.jobNumber : "-"}
