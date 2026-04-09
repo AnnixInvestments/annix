@@ -215,6 +215,16 @@ export class DeliveryService {
         await queryRunner.manager.remove(StockMovement, movement);
       }, Promise.resolve());
 
+      const linkedInvoices = await queryRunner.manager.find(SupplierInvoice, {
+        where: { deliveryNoteId: id, companyId },
+      });
+      if (linkedInvoices.length > 0) {
+        await queryRunner.manager.remove(SupplierInvoice, linkedInvoices);
+        this.logger.warn(
+          `Deleted ${linkedInvoices.length} supplier invoice(s) linked to delivery ${id}`,
+        );
+      }
+
       if (note.items && note.items.length > 0) {
         await queryRunner.manager.remove(DeliveryNoteItem, note.items);
       }
