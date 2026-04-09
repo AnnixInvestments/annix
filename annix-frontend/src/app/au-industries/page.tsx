@@ -46,17 +46,17 @@ export default function AuIndustriesHomePage() {
   return (
     <div>
       <section
-        className="relative h-[500px] md:h-[600px] bg-cover bg-center"
-        style={{ backgroundImage: "url(/au-industries/hero-home.jpg)" }}
+        className="relative h-[550px] md:h-[650px] bg-cover bg-center"
+        style={{ backgroundImage: "url(/au-industries/hero-excavator.jpg)" }}
       >
-        <div className="absolute inset-0 bg-black/50" />
+        <div className="absolute inset-0 bg-black/40" />
         <div className="relative max-w-4xl mx-auto px-4 h-full flex flex-col items-center justify-center text-center">
-          <h1 className="text-3xl md:text-5xl font-bold text-white uppercase tracking-wider leading-tight mb-8">
+          <h1 className="text-3xl md:text-5xl lg:text-6xl font-bold text-white uppercase tracking-wider leading-tight mb-10">
             Rubber Products, Linings and Mining Solutions in Boksburg
           </h1>
           <Link
             href="/au-industries/products-and-services"
-            className="inline-block px-10 py-4 bg-[#B8860B] text-white text-lg font-semibold uppercase tracking-wider hover:bg-[#9A7209] transition-colors"
+            className="inline-block px-12 py-4 bg-[#B8860B] text-white text-lg font-semibold uppercase tracking-wider hover:bg-[#9A7209] transition-colors"
           >
             Our Services
           </Link>
@@ -64,11 +64,11 @@ export default function AuIndustriesHomePage() {
       </section>
 
       {page && (
-        <section className="bg-white py-16">
+        <section className="bg-white py-20">
           <div className="max-w-4xl mx-auto px-4">
             <div
               data-color-mode="light"
-              className="prose prose-lg max-w-none prose-headings:text-[#B8860B] prose-headings:uppercase prose-headings:tracking-wide prose-strong:text-gray-900"
+              className="prose prose-lg max-w-none prose-headings:text-[#B8860B] prose-headings:uppercase prose-headings:tracking-wide prose-headings:border-b-[3px] prose-headings:border-[#B8860B] prose-headings:pb-3 prose-headings:inline-block prose-strong:text-gray-900 prose-li:text-gray-600"
             >
               <MarkdownPreview source={page.content} style={{ backgroundColor: "transparent" }} />
             </div>
