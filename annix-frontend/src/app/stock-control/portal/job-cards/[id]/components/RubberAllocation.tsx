@@ -729,42 +729,129 @@ function CuttingDiagram({
   );
 }
 
+function buildOffcutRoll(
+  match: OffcutMatch,
+  rollIndex: number,
+  originalCut: CutPiece | null,
+): RollAllocation {
+  const stockLengthMm = match.stockLengthMm;
+  const stockWidthMm = match.stockWidthMm;
+  const rollAreaSqM = (stockWidthMm / 1000) * (stockLengthMm / 1000);
+  const cutWidthMm = match.requiredWidthMm;
+  const cutLengthMm = match.requiredLengthMm;
+  const cutAreaSqM = (cutWidthMm / 1000) * (cutLengthMm / 1000);
+
+  const cut: CutPiece = originalCut
+    ? { ...originalCut, positionMm: 0, lane: 0, laneOffsetMm: 0, band: 0 }
+    : {
+        itemId: match.cutItemId,
+        itemNo: match.cutItemNo,
+        description: match.cutDescription,
+        widthMm: cutWidthMm,
+        lengthMm: cutLengthMm,
+        positionMm: 0,
+        lane: 0,
+        laneOffsetMm: 0,
+        band: 0,
+        stripsPerPiece: 1,
+        subPanels: null,
+      };
+
+  const offcuts: Offcut[] = [];
+  const widthWaste = stockWidthMm - cutWidthMm;
+  if (widthWaste > 0) {
+    offcuts.push({
+      widthMm: widthWaste,
+      lengthMm: cutLengthMm,
+      areaSqM: (widthWaste / 1000) * (cutLengthMm / 1000),
+    });
+  }
+  const tailLength = stockLengthMm - cutLengthMm;
+  if (tailLength > 0) {
+    offcuts.push({
+      widthMm: stockWidthMm,
+      lengthMm: tailLength,
+      areaSqM: (stockWidthMm / 1000) * (tailLength / 1000),
+    });
+  }
+
+  return {
+    rollIndex,
+    rollSpec: {
+      widthMm: stockWidthMm,
+      lengthM: stockLengthMm / 1000,
+      areaSqM: rollAreaSqM,
+      lanes: 1,
+      laneWidthMm: stockWidthMm,
+    },
+    cuts: [cut],
+    usedLengthMm: [cutLengthMm],
+    wastePercentage: rollAreaSqM > 0 ? ((rollAreaSqM - cutAreaSqM) / rollAreaSqM) * 100 : 0,
+    hasLengthwiseCut: false,
+    bands: [
+      {
+        bandIndex: 0,
+        lanes: 1,
+        laneWidthMm: cutWidthMm,
+        startMm: 0,
+        heightMm: cutLengthMm,
+        widthUsedMm: cutWidthMm,
+      },
+    ],
+    offcuts,
+    plyThicknessMm: match.stockThicknessMm,
+  };
+}
+
+function removeCutsFromPlan(
+  rolls: RollAllocation[],
+  selectedCutIds: Set<string>,
+): RollAllocation[] {
+  return rolls
+    .map((roll) => {
+      const remainingCuts = roll.cuts.filter((c) => !selectedCutIds.has(c.itemId));
+      if (remainingCuts.length === roll.cuts.length) return roll;
+      if (remainingCuts.length === 0) return null;
+
+      const usedSqM = remainingCuts.reduce(
+        (sum, c) => sum + (c.widthMm / 1000) * (c.lengthMm / 1000),
+        0,
+      );
+      const wastePercentage =
+        roll.rollSpec.areaSqM > 0
+          ? ((roll.rollSpec.areaSqM - usedSqM) / roll.rollSpec.areaSqM) * 100
+          : 0;
+
+      return { ...roll, cuts: remainingCuts, wastePercentage };
+    })
+    .filter((r): r is RollAllocation => r !== null);
+}
+
 function OffcutSuggestions(props: {
   matches: OffcutMatch[];
   jobCardId?: number;
   userRole?: string | null;
+  selectedCutIds: Set<string>;
+  onSelect: (match: OffcutMatch) => void;
+  onDeselect: (cutItemId: string) => void;
+  allocatingKey: string | null;
+  allocateError: string | null;
 }) {
-  const { matches, jobCardId, userRole } = props;
-  const [allocating, setAllocating] = useState<string | null>(null);
-  const [allocated, setAllocated] = useState<Set<string>>(new Set());
-  const [error, setError] = useState<string | null>(null);
+  const {
+    matches,
+    jobCardId,
+    userRole,
+    selectedCutIds,
+    onSelect,
+    onDeselect,
+    allocatingKey,
+    allocateError,
+  } = props;
 
   if (matches.length === 0) return null;
 
   const canAllocate =
     !!jobCardId && !!userRole && ["quality", "manager", "admin"].includes(userRole);
-
-  const handleUseStock = async (match: OffcutMatch) => {
-    if (!jobCardId) return;
-    const key = `${match.cutItemId}-${match.panelLabel || "main"}`;
-    setAllocating(key);
-    setError(null);
-    try {
-      const panelDesc = match.cutItemNo || match.cutDescription;
-      const label = match.panelLabel ? ` (${match.panelLabel})` : "";
-      await stockControlApiClient.allocateStock(jobCardId, {
-        stockItemId: match.stockItemId,
-        quantityUsed: 1,
-        notes: `Offcut used for ${panelDesc}${label} — ${match.requiredWidthMm}mm x ${(match.requiredLengthMm / 1000).toFixed(2)}m from ${match.stockItemName}`,
-      });
-      setAllocated((prev) => new Set([...prev, key]));
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to allocate stock";
-      setError(message);
-    } finally {
-      setAllocating(null);
-    }
-  };
 
   return (
     <div className="mt-4 border border-emerald-200 rounded-lg bg-emerald-50 p-3">
@@ -776,18 +863,19 @@ function OffcutSuggestions(props: {
           ? "Select offcuts to use instead of cutting from a new roll:"
           : "These panels can be cut from existing stock or offcuts instead of a new roll:"}
       </p>
-      {error && <p className="text-xs text-red-600 mb-2 bg-red-50 rounded px-2 py-1">{error}</p>}
+      {allocateError && (
+        <p className="text-xs text-red-600 mb-2 bg-red-50 rounded px-2 py-1">{allocateError}</p>
+      )}
       <div className="space-y-1">
         {matches.map((m) => {
-          const key = `${m.cutItemId}-${m.panelLabel || "main"}`;
-          const isAllocated = allocated.has(key);
-          const isAllocating = allocating === key;
+          const isSelected = selectedCutIds.has(m.cutItemId);
+          const isAllocating = allocatingKey === m.cutItemId;
 
           return (
             <div
-              key={key}
+              key={`${m.cutItemId}-${m.panelLabel || "main"}`}
               className={`flex items-center gap-2 text-xs rounded px-2 py-1.5 border ${
-                isAllocated ? "bg-emerald-100 border-emerald-300" : "bg-white border-emerald-100"
+                isSelected ? "bg-emerald-100 border-emerald-300" : "bg-white border-emerald-100"
               }`}
             >
               <span className="font-medium text-gray-800 shrink-0">
@@ -804,14 +892,18 @@ function OffcutSuggestions(props: {
                 waste: {m.wasteIfUsedSqM.toFixed(3)} m&#178;
               </span>
               <span className="ml-auto shrink-0">
-                {isAllocated ? (
-                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-200 text-emerald-800">
-                    Allocated
-                  </span>
+                {isSelected ? (
+                  <button
+                    type="button"
+                    onClick={() => onDeselect(m.cutItemId)}
+                    className="px-2 py-0.5 rounded text-xs font-medium bg-amber-500 text-white hover:bg-amber-600"
+                  >
+                    Undo
+                  </button>
                 ) : canAllocate ? (
                   <button
                     type="button"
-                    onClick={() => handleUseStock(m)}
+                    onClick={() => onSelect(m)}
                     disabled={isAllocating}
                     className="px-2 py-0.5 rounded text-xs font-medium bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50"
                   >
@@ -840,6 +932,48 @@ function PipeCuttingView({
   userRole?: string | null;
   stockRolls?: StockRollInfo[];
 }) {
+  const [offcutSelections, setOffcutSelections] = useState<Map<string, OffcutMatch>>(new Map());
+  const [allocatingKey, setAllocatingKey] = useState<string | null>(null);
+  const [allocateError, setAllocateError] = useState<string | null>(null);
+
+  const handleSelectOffcut = async (match: OffcutMatch) => {
+    if (!jobCardId) return;
+    setAllocatingKey(match.cutItemId);
+    setAllocateError(null);
+    try {
+      const panelDesc = match.cutItemNo || match.cutDescription;
+      const label = match.panelLabel ? ` (${match.panelLabel})` : "";
+      await stockControlApiClient.allocateStock(jobCardId, {
+        stockItemId: match.stockItemId,
+        quantityUsed: 1,
+        notes: `Offcut used for ${panelDesc}${label} — ${match.requiredWidthMm}mm x ${(match.requiredLengthMm / 1000).toFixed(2)}m from ${match.stockItemName}`,
+      });
+      setOffcutSelections((prev) => new Map([...prev, [match.cutItemId, match]]));
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to allocate stock";
+      setAllocateError(message);
+    } finally {
+      setAllocatingKey(null);
+    }
+  };
+
+  const handleDeselectOffcut = (cutItemId: string) => {
+    setOffcutSelections((prev) => {
+      const next = new Map(prev);
+      next.delete(cutItemId);
+      return next;
+    });
+  };
+
+  const selectedCutIds = new Set(offcutSelections.keys());
+
+  const standardRolls = removeCutsFromPlan(plan.rolls, selectedCutIds);
+
+  const offcutRolls = Array.from(offcutSelections.entries()).map(([cutItemId, match], idx) => {
+    const originalCut = plan.rolls.flatMap((r) => r.cuts).find((c) => c.itemId === cutItemId);
+    return buildOffcutRoll(match, plan.rolls.length + idx + 1, originalCut || null);
+  });
+
   const rollNumberForAllocation = (roll: RollAllocation): string | null => {
     if (!stockRolls || stockRolls.length === 0) return null;
     const thickness = roll.plyThicknessMm || plan.totalThicknessMm || 0;
@@ -851,11 +985,22 @@ function PipeCuttingView({
     return null;
   };
 
-  const groupableRolls = plan.rolls.filter(isGroupableRoll);
-  const individualRolls = plan.rolls.filter((r) => !isGroupableRoll(r));
+  const groupableRolls = standardRolls.filter(isGroupableRoll);
+  const individualRolls = standardRolls.filter((r) => !isGroupableRoll(r));
 
   const grouped = groupIdenticalRolls(groupableRolls);
   const fallbackThickness = plan.totalThicknessMm || fallbackThicknessMm || undefined;
+
+  const offcutMatches =
+    stockRolls && stockRolls.length > 0
+      ? plan.rolls.flatMap((roll) =>
+          matchOffcutsToPanel(
+            roll.cuts,
+            stockRolls,
+            roll.plyThicknessMm || plan.totalThicknessMm || 0,
+          ),
+        )
+      : [];
 
   return (
     <div>
@@ -865,8 +1010,11 @@ function PipeCuttingView({
           <p className="text-2xl font-bold text-blue-900">{plan.totalUsedSqM.toFixed(2)} m&#178;</p>
         </div>
         <div className="bg-teal-50 rounded-lg p-4">
-          <p className="text-sm font-medium text-teal-600">Rolls Required</p>
-          <p className="text-2xl font-bold text-teal-900">{plan.totalRollsNeeded}</p>
+          <p className="text-sm font-medium text-teal-600">New Rolls</p>
+          <p className="text-2xl font-bold text-teal-900">{standardRolls.length}</p>
+          {offcutRolls.length > 0 && (
+            <p className="text-xs text-emerald-600 mt-1">+ {offcutRolls.length} from offcuts</p>
+          )}
         </div>
         <div className="bg-amber-50 rounded-lg p-4">
           <p className="text-sm font-medium text-amber-600">Waste</p>
@@ -913,17 +1061,51 @@ function PipeCuttingView({
         ))}
       </div>
 
-      {stockRolls && stockRolls.length > 0 && (
+      {offcutRolls.length > 0 && (
+        <div className="mt-6 pt-4 border-t-2 border-emerald-300">
+          <h4 className="text-sm font-semibold text-emerald-800 mb-3">
+            Offcut Rolls (from existing stock)
+          </h4>
+          <p className="text-xs text-emerald-600 mb-3">
+            These panels will be cut from existing stock offcuts. PM to decide if remaining material
+            is waste or offcut to return to stock.
+          </p>
+          {offcutRolls.map((roll) => {
+            const match = offcutSelections.get(roll.cuts[0]?.itemId || "");
+            const stockLabel = match
+              ? `Offcut: ${match.stockItemName} (${match.stockThicknessMm}mm)`
+              : "Offcut";
+            return (
+              <div key={roll.rollIndex} className="border-2 border-emerald-200 rounded-lg mb-4">
+                <div className="px-3 py-1.5 bg-emerald-50 border-b border-emerald-200 flex items-center justify-between">
+                  <span className="text-xs font-medium text-emerald-800">{stockLabel}</span>
+                  <span className="text-xs text-emerald-600">
+                    {roll.rollSpec.widthMm}mm x {roll.rollSpec.lengthM}m
+                  </span>
+                </div>
+                <CuttingDiagram
+                  roll={roll}
+                  thicknessMm={roll.plyThicknessMm || fallbackThickness}
+                  jobCardId={jobCardId}
+                  rubberColor={plan.rubberSpec?.color}
+                  userRole={userRole}
+                />
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {offcutMatches.length > 0 && (
         <OffcutSuggestions
-          matches={plan.rolls.flatMap((roll) =>
-            matchOffcutsToPanel(
-              roll.cuts,
-              stockRolls,
-              roll.plyThicknessMm || plan.totalThicknessMm || 0,
-            ),
-          )}
+          matches={offcutMatches}
           jobCardId={jobCardId}
           userRole={userRole}
+          selectedCutIds={selectedCutIds}
+          onSelect={handleSelectOffcut}
+          onDeselect={handleDeselectOffcut}
+          allocatingKey={allocatingKey}
+          allocateError={allocateError}
         />
       )}
     </div>

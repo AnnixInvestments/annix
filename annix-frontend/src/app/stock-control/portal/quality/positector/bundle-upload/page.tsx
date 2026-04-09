@@ -1,6 +1,8 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useCallback, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 
 type ViewMode = "drop" | "analyzing" | "review" | "importing" | "done";
@@ -42,6 +44,7 @@ const ENTITY_COLORS: Record<string, string> = {
 };
 
 export default function BundleUploadPage() {
+  const router = useRouter();
   const [viewMode, setViewMode] = useState<ViewMode>("drop");
   const [file, setFile] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -155,311 +158,344 @@ export default function BundleUploadPage() {
     return { ...acc, [r.entityType]: (acc[r.entityType] || 0) + 1 };
   }, {});
 
-  return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900">Bundle Upload</h1>
-        {viewMode !== "drop" && (
-          <button
-            onClick={handleReset}
-            className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-          >
-            Start Over
-          </button>
-        )}
-      </div>
+  const handleClose = () => {
+    router.push("/stock-control/portal/quality");
+  };
 
-      <p className="text-sm text-gray-500">
-        Upload a multi-report PosiTector PDF (e.g. a PosiSoft Desktop batch export). The system will
-        identify individual reports and import them separately.
-      </p>
-
-      {error && (
-        <div className="rounded-md bg-red-50 p-3 text-sm text-red-700">
-          {error}
-          <button onClick={() => setError(null)} className="ml-2 font-medium underline">
-            Dismiss
-          </button>
-        </div>
-      )}
-
-      {viewMode === "drop" && (
-        <div
-          onDragEnter={handleDragEnter}
-          onDragOver={handleDragOver}
-          onDragLeave={handleDragLeave}
-          onDrop={handleDrop}
-          onClick={() => fileInputRef.current?.click()}
-          className={`cursor-pointer rounded-lg border-2 border-dashed py-16 text-center transition-colors ${
-            isDragOver
-              ? "border-teal-500 bg-teal-50"
-              : "border-gray-300 hover:border-gray-400 hover:bg-gray-50"
-          }`}
+  return createPortal(
+    <div
+      className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
+      role="dialog"
+      aria-modal="true"
+    >
+      <div
+        className="fixed inset-0 bg-black/10 backdrop-blur-md"
+        onClick={handleClose}
+        aria-hidden="true"
+      />
+      <div className="relative bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto p-6">
+        <button
+          onClick={handleClose}
+          className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
+          aria-label="Close"
         >
-          <svg
-            className="mx-auto h-12 w-12 text-gray-400"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
+          <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path
               strokeLinecap="round"
               strokeLinejoin="round"
               strokeWidth={2}
-              d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+              d="M6 18L18 6M6 6l12 12"
             />
           </svg>
-          <p className="mt-4 text-lg font-medium text-gray-900">
-            Drop a PosiTector bundle PDF here
-          </p>
-          <p className="mt-1 text-sm text-gray-500">or click to browse</p>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".pdf"
-            onChange={handleFileSelect}
-            className="hidden"
-          />
-        </div>
-      )}
+        </button>
 
-      {viewMode === "analyzing" && (
-        <div className="rounded-lg border border-gray-200 bg-white p-12 text-center shadow-sm">
-          <svg
-            className="mx-auto h-12 w-12 text-teal-600 animate-spin"
-            fill="none"
-            viewBox="0 0 24 24"
-          >
-            <circle
-              className="opacity-25"
-              cx="12"
-              cy="12"
-              r="10"
-              stroke="currentColor"
-              strokeWidth="4"
-            />
-            <path
-              className="opacity-75"
-              fill="currentColor"
-              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-            />
-          </svg>
-          <p className="mt-4 text-lg font-medium text-gray-900">Analyzing PDF bundle...</p>
-          <p className="mt-1 text-sm text-gray-500">
-            Scanning pages and identifying individual reports
-          </p>
-          {file && <p className="mt-2 text-xs text-gray-400">{file.name}</p>}
-        </div>
-      )}
-
-      {viewMode === "importing" && (
-        <div className="rounded-lg border border-gray-200 bg-white p-12 text-center shadow-sm">
-          <svg
-            className="mx-auto h-12 w-12 text-teal-600 animate-spin"
-            fill="none"
-            viewBox="0 0 24 24"
-          >
-            <circle
-              className="opacity-25"
-              cx="12"
-              cy="12"
-              r="10"
-              stroke="currentColor"
-              strokeWidth="4"
-            />
-            <path
-              className="opacity-75"
-              fill="currentColor"
-              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-            />
-          </svg>
-          <p className="mt-4 text-lg font-medium text-gray-900">
-            Importing {reports.length} reports...
-          </p>
-          <p className="mt-1 text-sm text-gray-500">
-            Splitting PDF, parsing readings, and storing each report
-          </p>
-        </div>
-      )}
-
-      {viewMode === "review" && (
-        <div className="space-y-4">
-          <div className="rounded-lg border border-green-200 bg-green-50 p-4">
-            <p className="text-sm font-medium text-green-800">
-              Found {reports.length} individual reports across {totalPages} pages
-            </p>
-            {summaryPageCount > 0 && (
-              <p className="mt-1 text-xs text-green-600">
-                Pages 1-{summaryPageCount} are a combined summary and will be skipped
-              </p>
+        <div className="space-y-6">
+          <div className="flex items-center justify-between pr-8">
+            <h1 className="text-xl font-bold text-gray-900">Bundle Upload</h1>
+            {viewMode !== "drop" && (
+              <button
+                onClick={handleReset}
+                className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+              >
+                Start Over
+              </button>
             )}
           </div>
 
-          <div className="flex flex-wrap gap-3">
-            {Object.entries(typeCounts).map(([type, count]) => {
-              const colorClass = ENTITY_COLORS[type] || ENTITY_COLORS.unknown;
-              const label = ENTITY_LABELS[type] || type;
-              return (
-                <div key={type} className={`rounded-lg px-4 py-3 text-center ${colorClass}`}>
-                  <p className="text-2xl font-bold">{count}</p>
-                  <p className="text-xs font-medium">{label}</p>
+          <p className="text-sm text-gray-500">
+            Upload a multi-report PosiTector PDF (e.g. a PosiSoft Desktop batch export). The system
+            will identify individual reports and import them separately.
+          </p>
+
+          {error && (
+            <div className="rounded-md bg-red-50 p-3 text-sm text-red-700">
+              {error}
+              <button onClick={() => setError(null)} className="ml-2 font-medium underline">
+                Dismiss
+              </button>
+            </div>
+          )}
+
+          {viewMode === "drop" && (
+            <div
+              onDragEnter={handleDragEnter}
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+              onClick={() => fileInputRef.current?.click()}
+              className={`cursor-pointer rounded-lg border-2 border-dashed py-16 text-center transition-colors ${
+                isDragOver
+                  ? "border-teal-500 bg-teal-50"
+                  : "border-gray-300 hover:border-gray-400 hover:bg-gray-50"
+              }`}
+            >
+              <svg
+                className="mx-auto h-12 w-12 text-gray-400"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+                />
+              </svg>
+              <p className="mt-4 text-lg font-medium text-gray-900">
+                Drop a PosiTector bundle PDF here
+              </p>
+              <p className="mt-1 text-sm text-gray-500">or click to browse</p>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".pdf"
+                onChange={handleFileSelect}
+                className="hidden"
+              />
+            </div>
+          )}
+
+          {viewMode === "analyzing" && (
+            <div className="rounded-lg border border-gray-200 bg-white p-12 text-center shadow-sm">
+              <svg
+                className="mx-auto h-12 w-12 text-teal-600 animate-spin"
+                fill="none"
+                viewBox="0 0 24 24"
+              >
+                <circle
+                  className="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                />
+                <path
+                  className="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                />
+              </svg>
+              <p className="mt-4 text-lg font-medium text-gray-900">Analyzing PDF bundle...</p>
+              <p className="mt-1 text-sm text-gray-500">
+                Scanning pages and identifying individual reports
+              </p>
+              {file && <p className="mt-2 text-xs text-gray-400">{file.name}</p>}
+            </div>
+          )}
+
+          {viewMode === "importing" && (
+            <div className="rounded-lg border border-gray-200 bg-white p-12 text-center shadow-sm">
+              <svg
+                className="mx-auto h-12 w-12 text-teal-600 animate-spin"
+                fill="none"
+                viewBox="0 0 24 24"
+              >
+                <circle
+                  className="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                />
+                <path
+                  className="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                />
+              </svg>
+              <p className="mt-4 text-lg font-medium text-gray-900">
+                Importing {reports.length} reports...
+              </p>
+              <p className="mt-1 text-sm text-gray-500">
+                Splitting PDF, parsing readings, and storing each report
+              </p>
+            </div>
+          )}
+
+          {viewMode === "review" && (
+            <div className="space-y-4">
+              <div className="rounded-lg border border-green-200 bg-green-50 p-4">
+                <p className="text-sm font-medium text-green-800">
+                  Found {reports.length} individual reports across {totalPages} pages
+                </p>
+                {summaryPageCount > 0 && (
+                  <p className="mt-1 text-xs text-green-600">
+                    Pages 1-{summaryPageCount} are a combined summary and will be skipped
+                  </p>
+                )}
+              </div>
+
+              <div className="flex flex-wrap gap-3">
+                {Object.entries(typeCounts).map(([type, count]) => {
+                  const colorClass = ENTITY_COLORS[type] || ENTITY_COLORS.unknown;
+                  const label = ENTITY_LABELS[type] || type;
+                  return (
+                    <div key={type} className={`rounded-lg px-4 py-3 text-center ${colorClass}`}>
+                      <p className="text-2xl font-bold">{count}</p>
+                      <p className="text-xs font-medium">{label}</p>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="rounded-lg border border-gray-200 bg-white shadow-sm overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200 text-xs">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-3 py-2 text-left font-medium uppercase text-gray-500">
+                          Batch
+                        </th>
+                        <th className="px-3 py-2 text-left font-medium uppercase text-gray-500">
+                          Type
+                        </th>
+                        <th className="hidden sm:table-cell px-3 py-2 text-left font-medium uppercase text-gray-500">
+                          Instrument
+                        </th>
+                        <th className="hidden sm:table-cell px-3 py-2 text-left font-medium uppercase text-gray-500">
+                          Pages
+                        </th>
+                        <th className="hidden sm:table-cell px-3 py-2 text-left font-medium uppercase text-gray-500">
+                          Created
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {reports.map((r, idx) => {
+                        const colorClass = ENTITY_COLORS[r.entityType] || ENTITY_COLORS.unknown;
+                        const label = ENTITY_LABELS[r.entityType] || r.entityType;
+                        return (
+                          <tr key={idx} className="hover:bg-gray-50">
+                            <td className="whitespace-nowrap px-3 py-2 font-mono font-medium text-gray-900">
+                              {r.batchName}
+                            </td>
+                            <td className="px-3 py-2">
+                              <span
+                                className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ${colorClass}`}
+                              >
+                                {label}
+                              </span>
+                            </td>
+                            <td className="hidden sm:table-cell whitespace-nowrap px-3 py-2 text-gray-500">
+                              {r.instrumentType}
+                            </td>
+                            <td className="hidden sm:table-cell whitespace-nowrap px-3 py-2 text-gray-500">
+                              {r.pageStart === r.pageEnd
+                                ? `p${r.pageStart}`
+                                : `p${r.pageStart}-${r.pageEnd}`}
+                            </td>
+                            <td className="hidden sm:table-cell whitespace-nowrap px-3 py-2 text-gray-500">
+                              {r.createdAt || "-"}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
                 </div>
-              );
-            })}
-          </div>
+              </div>
 
-          <div className="rounded-lg border border-gray-200 bg-white shadow-sm overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200 text-xs">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-3 py-2 text-left font-medium uppercase text-gray-500">
-                      Batch
-                    </th>
-                    <th className="px-3 py-2 text-left font-medium uppercase text-gray-500">
-                      Type
-                    </th>
-                    <th className="hidden sm:table-cell px-3 py-2 text-left font-medium uppercase text-gray-500">
-                      Instrument
-                    </th>
-                    <th className="hidden sm:table-cell px-3 py-2 text-left font-medium uppercase text-gray-500">
-                      Pages
-                    </th>
-                    <th className="hidden sm:table-cell px-3 py-2 text-left font-medium uppercase text-gray-500">
-                      Created
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {reports.map((r, idx) => {
-                    const colorClass = ENTITY_COLORS[r.entityType] || ENTITY_COLORS.unknown;
-                    const label = ENTITY_LABELS[r.entityType] || r.entityType;
-                    return (
-                      <tr key={idx} className="hover:bg-gray-50">
-                        <td className="whitespace-nowrap px-3 py-2 font-mono font-medium text-gray-900">
-                          {r.batchName}
-                        </td>
-                        <td className="px-3 py-2">
-                          <span
-                            className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ${colorClass}`}
-                          >
-                            {label}
-                          </span>
-                        </td>
-                        <td className="hidden sm:table-cell whitespace-nowrap px-3 py-2 text-gray-500">
-                          {r.instrumentType}
-                        </td>
-                        <td className="hidden sm:table-cell whitespace-nowrap px-3 py-2 text-gray-500">
-                          {r.pageStart === r.pageEnd
-                            ? `p${r.pageStart}`
-                            : `p${r.pageStart}-${r.pageEnd}`}
-                        </td>
-                        <td className="hidden sm:table-cell whitespace-nowrap px-3 py-2 text-gray-500">
-                          {r.createdAt || "-"}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+              <div className="flex items-center justify-end gap-3">
+                <button
+                  onClick={handleReset}
+                  className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleImport}
+                  className="rounded-md bg-teal-600 px-6 py-2 text-sm font-medium text-white hover:bg-teal-700"
+                >
+                  Import All {reports.length} Reports
+                </button>
+              </div>
             </div>
-          </div>
+          )}
 
-          <div className="flex items-center justify-end gap-3">
-            <button
-              onClick={handleReset}
-              className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleImport}
-              className="rounded-md bg-teal-600 px-6 py-2 text-sm font-medium text-white hover:bg-teal-700"
-            >
-              Import All {reports.length} Reports
-            </button>
-          </div>
-        </div>
-      )}
+          {viewMode === "done" && importStats && (
+            <div className="space-y-4">
+              <div className="rounded-lg border border-green-200 bg-green-50 p-4">
+                <p className="text-sm font-medium text-green-800">
+                  Successfully imported {importStats.imported} of {importStats.found} reports
+                </p>
+                {imports.filter((u) => u.autoMatch).length > 0 && (
+                  <p className="mt-1 text-xs text-green-600">
+                    {imports.filter((u) => u.autoMatch).length} report(s) auto-linked to job cards
+                  </p>
+                )}
+              </div>
 
-      {viewMode === "done" && importStats && (
-        <div className="space-y-4">
-          <div className="rounded-lg border border-green-200 bg-green-50 p-4">
-            <p className="text-sm font-medium text-green-800">
-              Successfully imported {importStats.imported} of {importStats.found} reports
-            </p>
-            {imports.filter((u) => u.autoMatch).length > 0 && (
-              <p className="mt-1 text-xs text-green-600">
-                {imports.filter((u) => u.autoMatch).length} report(s) auto-linked to job cards
-              </p>
-            )}
-          </div>
-
-          <div className="rounded-lg border border-gray-200 bg-white shadow-sm overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200 text-xs">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-3 py-2 text-left font-medium uppercase text-gray-500">
-                      Pages
-                    </th>
-                    <th className="px-3 py-2 text-left font-medium uppercase text-gray-500">
-                      Type
-                    </th>
-                    <th className="px-3 py-2 text-left font-medium uppercase text-gray-500">
-                      Created
-                    </th>
-                    <th className="px-3 py-2 text-left font-medium uppercase text-gray-500">
-                      Auto-Linked
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {imports.map((u) => {
-                    const colorClass = ENTITY_COLORS[u.entityType] || ENTITY_COLORS.unknown;
-                    const label = ENTITY_LABELS[u.entityType] || u.entityType;
-                    return (
-                      <tr key={u.uploadId} className="hover:bg-gray-50">
-                        <td className="whitespace-nowrap px-3 py-2 text-gray-900">
-                          p{u.pageRange}
-                        </td>
-                        <td className="px-3 py-2">
-                          <span
-                            className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ${colorClass}`}
-                          >
-                            {label}
-                          </span>
-                        </td>
-                        <td className="whitespace-nowrap px-3 py-2 text-gray-500">
-                          {u.createdAt || "-"}
-                        </td>
-                        <td className="px-3 py-2">
-                          {u.autoMatch ? (
-                            <span className="inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-medium text-green-700">
-                              {u.autoMatch.jobNumber}
-                            </span>
-                          ) : (
-                            <span className="text-gray-400">Unlinked</span>
-                          )}
-                        </td>
+              <div className="rounded-lg border border-gray-200 bg-white shadow-sm overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200 text-xs">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-3 py-2 text-left font-medium uppercase text-gray-500">
+                          Pages
+                        </th>
+                        <th className="px-3 py-2 text-left font-medium uppercase text-gray-500">
+                          Type
+                        </th>
+                        <th className="px-3 py-2 text-left font-medium uppercase text-gray-500">
+                          Created
+                        </th>
+                        <th className="px-3 py-2 text-left font-medium uppercase text-gray-500">
+                          Auto-Linked
+                        </th>
                       </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </div>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {imports.map((u) => {
+                        const colorClass = ENTITY_COLORS[u.entityType] || ENTITY_COLORS.unknown;
+                        const label = ENTITY_LABELS[u.entityType] || u.entityType;
+                        return (
+                          <tr key={u.uploadId} className="hover:bg-gray-50">
+                            <td className="whitespace-nowrap px-3 py-2 text-gray-900">
+                              p{u.pageRange}
+                            </td>
+                            <td className="px-3 py-2">
+                              <span
+                                className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ${colorClass}`}
+                              >
+                                {label}
+                              </span>
+                            </td>
+                            <td className="whitespace-nowrap px-3 py-2 text-gray-500">
+                              {u.createdAt || "-"}
+                            </td>
+                            <td className="px-3 py-2">
+                              {u.autoMatch ? (
+                                <span className="inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-medium text-green-700">
+                                  {u.autoMatch.jobNumber}
+                                </span>
+                              ) : (
+                                <span className="text-gray-400">Unlinked</span>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
 
-          <div className="flex items-center justify-end">
-            <button
-              onClick={handleReset}
-              className="rounded-md bg-teal-600 px-4 py-2 text-sm font-medium text-white hover:bg-teal-700"
-            >
-              Upload Another Bundle
-            </button>
-          </div>
+              <div className="flex items-center justify-end">
+                <button
+                  onClick={handleReset}
+                  className="rounded-md bg-teal-600 px-4 py-2 text-sm font-medium text-white hover:bg-teal-700"
+                >
+                  Upload Another Bundle
+                </button>
+              </div>
+            </div>
+          )}
         </div>
-      )}
-    </div>
+      </div>
+    </div>,
+    document.body,
   );
 }

@@ -1,6 +1,8 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { PdfPreviewModal, usePdfPreview } from "@/app/components/PdfPreviewModal";
 import type {
   PositectorImportResult,
@@ -27,6 +29,7 @@ const ENTITY_TYPE_LABELS: Record<string, string> = {
 };
 
 export default function PositectorUploadPage() {
+  const router = useRouter();
   const [isDragOver, setIsDragOver] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -207,375 +210,418 @@ export default function PositectorUploadPage() {
     return () => document.removeEventListener("paste", handlePaste);
   }, [uploadResponse, showImportForm, processFile, processTextData]);
 
-  return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">PosiTector Data Dump</h1>
-        <p className="mt-1 text-sm text-gray-500">
-          Upload PosiTector files — data is permanently stored in S3 and the database. If a matching
-          batch number exists on a job card, readings are auto-imported. Otherwise, they will be
-          imported automatically when the batch number is later entered on a job card.
-        </p>
-      </div>
+  const handleClose = () => {
+    router.push("/stock-control/portal/quality");
+  };
 
-      {error && (
-        <div className="rounded-md bg-red-50 p-4">
-          <div className="flex items-start justify-between gap-3">
-            <p className="whitespace-pre-line text-sm text-red-700">{error}</p>
-            <button
-              onClick={() => setError(null)}
-              className="shrink-0 text-sm text-red-500 hover:text-red-700"
-            >
-              Dismiss
-            </button>
-          </div>
-        </div>
-      )}
-
-      {importResult && (
-        <div
-          className={`rounded-md p-4 ${importResult.duplicateWarning ? "bg-amber-50" : "bg-green-50"}`}
+  return createPortal(
+    <div
+      className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
+      role="dialog"
+      aria-modal="true"
+    >
+      <div
+        className="fixed inset-0 bg-black/10 backdrop-blur-md"
+        onClick={handleClose}
+        aria-hidden="true"
+      />
+      <div className="relative bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto p-6">
+        <button
+          onClick={handleClose}
+          className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
+          aria-label="Close"
         >
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-green-800">
-                Imported {importResult.readingsImported} readings as{" "}
-                {ENTITY_TYPE_LABELS[importResult.entityType] || importResult.entityType}
-                {importResult.average !== null && ` (avg: ${importResult.average.toFixed(1)})`}
-              </p>
-              {importResult.duplicateWarning && (
-                <p className="mt-1 text-xs text-amber-700">
-                  Warning: Readings for this type and date already exist on this job card
-                </p>
-              )}
+          <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M6 18L18 6M6 6l12 12"
+            />
+          </svg>
+        </button>
+
+        <div className="space-y-6">
+          <div className="pr-8">
+            <h1 className="text-xl font-bold text-gray-900">PosiTector Data Dump</h1>
+            <p className="mt-1 text-sm text-gray-500">
+              Upload PosiTector files — data is permanently stored in S3 and the database. If a
+              matching batch number exists on a job card, readings are auto-imported. Otherwise,
+              they will be imported automatically when the batch number is later entered on a job
+              card.
+            </p>
+          </div>
+
+          {error && (
+            <div className="rounded-md bg-red-50 p-4">
+              <div className="flex items-start justify-between gap-3">
+                <p className="whitespace-pre-line text-sm text-red-700">{error}</p>
+                <button
+                  onClick={() => setError(null)}
+                  className="shrink-0 text-sm text-red-500 hover:text-red-700"
+                >
+                  Dismiss
+                </button>
+              </div>
             </div>
-            <button
-              onClick={() => setImportResult(null)}
-              className="text-sm text-gray-500 hover:text-gray-700"
-            >
-              Dismiss
-            </button>
-          </div>
-        </div>
-      )}
-
-      {!uploadResponse && (
-        <div
-          onClick={() => fileInputRef.current?.click()}
-          onDragOver={handleDragOver}
-          onDragLeave={handleDragLeave}
-          onDrop={handleDrop}
-          className={`cursor-pointer rounded-lg border-2 border-dashed p-12 text-center transition-colors ${
-            isDragOver
-              ? "border-blue-500 bg-blue-50"
-              : "border-gray-300 hover:border-gray-400 hover:bg-gray-50"
-          }`}
-        >
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".json,.csv,.txt,.pdf"
-            onChange={handleFileSelect}
-            className="hidden"
-          />
-
-          {isUploading ? (
-            <p className="text-sm text-gray-500">Uploading and storing data...</p>
-          ) : (
-            <>
-              <svg
-                className="mx-auto h-12 w-12 text-gray-400"
-                fill="none"
-                viewBox="0 0 24 24"
-                strokeWidth={1}
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"
-                />
-              </svg>
-              <p className="mt-4 text-sm font-medium text-gray-900">
-                Drop a PosiTector file here, or click to browse
-              </p>
-              <p className="mt-2 text-xs text-gray-500">
-                All data is permanently stored — original file in S3, parsed readings in the
-                database
-              </p>
-              <p className="mt-1 text-xs text-gray-400">
-                Supports: JSON, CSV (readings.txt), PosiSoft Desktop CSV, PosiSoft PDF reports
-              </p>
-              <p className="mt-3 text-xs text-gray-400">
-                You can also drag data directly from PosiSoft Desktop or paste from clipboard
-                (Ctrl+V)
-              </p>
-            </>
           )}
-        </div>
-      )}
 
-      {uploadResponse &&
-        (() => {
-          const upload = uploadResponse.upload;
-          const uploadBatchName = upload.batchName;
-          const uploadProbeType = upload.probeType;
-          const uploadEntityType = upload.entityType;
-          const uploadFilename = upload.originalFilename;
-          const uploadReadingCount = upload.readingCount;
-          const detectedFormat = uploadResponse.detectedFormat;
-          const autoMatch = uploadResponse.autoMatch;
-          const autoResult = uploadResponse.autoImportResult;
-          const isLinked = upload.linkedJobCardId !== null;
+          {importResult && (
+            <div
+              className={`rounded-md p-4 ${importResult.duplicateWarning ? "bg-amber-50" : "bg-green-50"}`}
+            >
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-green-800">
+                    Imported {importResult.readingsImported} readings as{" "}
+                    {ENTITY_TYPE_LABELS[importResult.entityType] || importResult.entityType}
+                    {importResult.average !== null && ` (avg: ${importResult.average.toFixed(1)})`}
+                  </p>
+                  {importResult.duplicateWarning && (
+                    <p className="mt-1 text-xs text-amber-700">
+                      Warning: Readings for this type and date already exist on this job card
+                    </p>
+                  )}
+                </div>
+                <button
+                  onClick={() => setImportResult(null)}
+                  className="text-sm text-gray-500 hover:text-gray-700"
+                >
+                  Dismiss
+                </button>
+              </div>
+            </div>
+          )}
 
-          return (
-            <div className="space-y-4">
-              <div className="rounded-md bg-green-50 p-4">
-                <div className="flex items-start gap-3">
+          {!uploadResponse && (
+            <div
+              onClick={() => fileInputRef.current?.click()}
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+              className={`cursor-pointer rounded-lg border-2 border-dashed p-12 text-center transition-colors ${
+                isDragOver
+                  ? "border-blue-500 bg-blue-50"
+                  : "border-gray-300 hover:border-gray-400 hover:bg-gray-50"
+              }`}
+            >
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".json,.csv,.txt,.pdf"
+                onChange={handleFileSelect}
+                className="hidden"
+              />
+
+              {isUploading ? (
+                <p className="text-sm text-gray-500">Uploading and storing data...</p>
+              ) : (
+                <>
                   <svg
-                    className="mt-0.5 h-5 w-5 text-green-600"
+                    className="mx-auto h-12 w-12 text-gray-400"
                     fill="none"
                     viewBox="0 0 24 24"
-                    strokeWidth={2}
+                    strokeWidth={1}
                     stroke="currentColor"
                   >
                     <path
                       strokeLinecap="round"
                       strokeLinejoin="round"
-                      d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                      d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"
                     />
                   </svg>
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-green-800">Data permanently stored</p>
-                    <p className="mt-1 text-xs text-green-700">
-                      Original file saved to S3, {uploadReadingCount} readings saved to database
-                      (Upload #{upload.id})
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {autoResult && (
-                <div
-                  className={`rounded-md p-4 ${autoResult.duplicateWarning ? "bg-amber-50" : "bg-teal-50"}`}
-                >
-                  <div className="flex items-start gap-3">
-                    <svg
-                      className="mt-0.5 h-5 w-5 text-teal-600"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      strokeWidth={2}
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m9.86-1.06a4.5 4.5 0 00-1.242-7.244l-4.5-4.5a4.5 4.5 0 00-6.364 6.364L4.34 8.374"
-                      />
-                    </svg>
-                    <div>
-                      <p className="text-sm font-medium text-teal-800">Auto-imported to job card</p>
-                      <p className="mt-1 text-xs text-teal-700">
-                        Batch name matched — {autoResult.readingsImported} readings imported as{" "}
-                        {ENTITY_TYPE_LABELS[autoResult.entityType] || autoResult.entityType}
-                        {autoResult.average != null && ` (avg: ${autoResult.average.toFixed(1)})`}
-                        {autoMatch &&
-                          (() => {
-                            const jcLabel = [autoMatch.jobNumber, autoMatch.jcNumber]
-                              .filter(Boolean)
-                              .join(" / ");
-                            return jcLabel ? ` to ${jcLabel}` : "";
-                          })()}
-                      </p>
-                      {autoResult.duplicateWarning && (
-                        <p className="mt-1 text-xs text-amber-700">
-                          Warning: Readings for this type and date already exist on this job card
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {!isLinked && !autoResult && (
-                <div className="rounded-md bg-blue-50 p-4">
-                  <div className="flex items-start gap-3">
-                    <svg
-                      className="mt-0.5 h-5 w-5 text-blue-600"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      strokeWidth={2}
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z"
-                      />
-                    </svg>
-                    <div>
-                      <p className="text-sm font-medium text-blue-800">
-                        Not yet linked to a job card
-                      </p>
-                      <p className="mt-1 text-xs text-blue-700">
-                        {uploadBatchName
-                          ? `Batch "${uploadBatchName}" was not found on any job card. When this batch number is entered on a job card, the data will be automatically imported.`
-                          : "No batch name detected. You can manually link this upload to a job card using the button below."}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              <div className="rounded-lg border border-gray-200 bg-white p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h2 className="text-lg font-semibold text-gray-900">
-                      {uploadBatchName || uploadFilename}
-                    </h2>
-                    <div className="mt-1 flex flex-wrap items-center gap-3 text-sm text-gray-500">
-                      {detectedFormat === "posisoft_pdf" ? (
-                        <button
-                          type="button"
-                          onClick={async () => {
-                            const result = await stockControlApiClient.positectorUploadDownloadUrl(
-                              upload.id,
-                            );
-                            const downloadUrl = result.url;
-                            if (downloadUrl) {
-                              const filename = uploadBatchName || uploadFilename || "report";
-                              pdfPreview.open(downloadUrl, `${filename}.pdf`);
-                            }
-                          }}
-                          className="inline-flex items-center gap-1 rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-800 hover:bg-blue-200 transition-colors cursor-pointer"
-                        >
-                          <svg
-                            className="h-3.5 w-3.5"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            strokeWidth={2}
-                            stroke="currentColor"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"
-                            />
-                          </svg>
-                          {FORMAT_LABELS[detectedFormat]} — View
-                        </button>
-                      ) : (
-                        <span className="inline-flex rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-800">
-                          {FORMAT_LABELS[detectedFormat] || detectedFormat}
-                        </span>
-                      )}
-                      {uploadProbeType && <span>Probe: {uploadProbeType}</span>}
-                      <span>Readings: {uploadReadingCount}</span>
-                      <span
-                        className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
-                          uploadEntityType !== "unknown"
-                            ? "bg-green-100 text-green-800"
-                            : "bg-gray-100 text-gray-800"
-                        }`}
-                      >
-                        Maps to: {ENTITY_TYPE_LABELS[uploadEntityType] || "Unknown"}
-                      </span>
-                      {isLinked && (
-                        <span className="inline-flex rounded-full bg-teal-100 px-2 py-0.5 text-xs font-medium text-teal-800">
-                          Linked to JC #{upload.linkedJobCardId}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    {!isLinked && uploadReadingCount > 0 && (
-                      <button
-                        onClick={() => setShowImportForm(true)}
-                        className="rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700"
-                      >
-                        Link to Job Card
-                      </button>
-                    )}
-                    <button
-                      onClick={handleClear}
-                      className="rounded-md border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                    >
-                      Upload Another
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              {upload.readingsData.length > 0 && (
-                <div className="overflow-hidden rounded-lg border border-gray-200">
-                  <div className="max-h-96 overflow-y-auto">
-                    <table className="min-w-full divide-y divide-gray-200">
-                      <thead className="sticky top-0 bg-gray-50">
-                        <tr>
-                          <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">
-                            #
-                          </th>
-                          <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">
-                            Value
-                          </th>
-                          <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">
-                            Units
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-200 bg-white">
-                        {upload.readingsData.map((reading) => {
-                          const readingIndex = reading.index;
-                          const readingValue = reading.value;
-                          const readingUnits = reading.units;
-                          return (
-                            <tr key={readingIndex} className="hover:bg-gray-50">
-                              <td className="px-4 py-2 text-sm text-gray-500">{readingIndex}</td>
-                              <td className="px-4 py-2 text-sm font-medium text-gray-900">
-                                {readingValue}
-                              </td>
-                              <td className="px-4 py-2 text-sm text-gray-500">
-                                {readingUnits || "-"}
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
+                  <p className="mt-4 text-sm font-medium text-gray-900">
+                    Drop a PosiTector file here, or click to browse
+                  </p>
+                  <p className="mt-2 text-xs text-gray-500">
+                    All data is permanently stored — original file in S3, parsed readings in the
+                    database
+                  </p>
+                  <p className="mt-1 text-xs text-gray-400">
+                    Supports: JSON, CSV (readings.txt), PosiSoft Desktop CSV, PosiSoft PDF reports
+                  </p>
+                  <p className="mt-3 text-xs text-gray-400">
+                    You can also drag data directly from PosiSoft Desktop or paste from clipboard
+                    (Ctrl+V)
+                  </p>
+                </>
               )}
             </div>
-          );
-        })()}
+          )}
 
-      <PdfPreviewModal state={pdfPreview.state} onClose={pdfPreview.close} />
+          {uploadResponse &&
+            (() => {
+              const upload = uploadResponse.upload;
+              const uploadBatchName = upload.batchName;
+              const uploadProbeType = upload.probeType;
+              const uploadEntityType = upload.entityType;
+              const uploadFilename = upload.originalFilename;
+              const uploadReadingCount = upload.readingCount;
+              const detectedFormat = uploadResponse.detectedFormat;
+              const autoMatch = uploadResponse.autoMatch;
+              const autoResult = uploadResponse.autoImportResult;
+              const isLinked = upload.linkedJobCardId !== null;
 
-      {showImportForm && uploadResponse && (
-        <LinkUploadForm
-          upload={uploadResponse.upload}
-          suggestedEntityType={uploadResponse.suggestedEntityType}
-          suggestedCoatType={uploadResponse.suggestedCoatType}
-          onClose={() => setShowImportForm(false)}
-          onLinked={(result) => {
-            setShowImportForm(false);
-            setImportResult(result);
-            setUploadResponse((prev) => {
-              if (!prev) return null;
-              return {
-                ...prev,
-                upload: {
-                  ...prev.upload,
-                  linkedJobCardId: result.recordId,
-                  importRecordId: result.recordId,
-                  importedAt: new Date().toISOString(),
-                },
-              };
-            });
-          }}
-        />
-      )}
-    </div>
+              return (
+                <div className="space-y-4">
+                  <div className="rounded-md bg-green-50 p-4">
+                    <div className="flex items-start gap-3">
+                      <svg
+                        className="mt-0.5 h-5 w-5 text-green-600"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        strokeWidth={2}
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                        />
+                      </svg>
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-green-800">
+                          Data permanently stored
+                        </p>
+                        <p className="mt-1 text-xs text-green-700">
+                          Original file saved to S3, {uploadReadingCount} readings saved to database
+                          (Upload #{upload.id})
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {autoResult && (
+                    <div
+                      className={`rounded-md p-4 ${autoResult.duplicateWarning ? "bg-amber-50" : "bg-teal-50"}`}
+                    >
+                      <div className="flex items-start gap-3">
+                        <svg
+                          className="mt-0.5 h-5 w-5 text-teal-600"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          strokeWidth={2}
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m9.86-1.06a4.5 4.5 0 00-1.242-7.244l-4.5-4.5a4.5 4.5 0 00-6.364 6.364L4.34 8.374"
+                          />
+                        </svg>
+                        <div>
+                          <p className="text-sm font-medium text-teal-800">
+                            Auto-imported to job card
+                          </p>
+                          <p className="mt-1 text-xs text-teal-700">
+                            Batch name matched — {autoResult.readingsImported} readings imported as{" "}
+                            {ENTITY_TYPE_LABELS[autoResult.entityType] || autoResult.entityType}
+                            {autoResult.average != null &&
+                              ` (avg: ${autoResult.average.toFixed(1)})`}
+                            {autoMatch &&
+                              (() => {
+                                const jcLabel = [autoMatch.jobNumber, autoMatch.jcNumber]
+                                  .filter(Boolean)
+                                  .join(" / ");
+                                return jcLabel ? ` to ${jcLabel}` : "";
+                              })()}
+                          </p>
+                          {autoResult.duplicateWarning && (
+                            <p className="mt-1 text-xs text-amber-700">
+                              Warning: Readings for this type and date already exist on this job
+                              card
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {!isLinked && !autoResult && (
+                    <div className="rounded-md bg-blue-50 p-4">
+                      <div className="flex items-start gap-3">
+                        <svg
+                          className="mt-0.5 h-5 w-5 text-blue-600"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          strokeWidth={2}
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z"
+                          />
+                        </svg>
+                        <div>
+                          <p className="text-sm font-medium text-blue-800">
+                            Not yet linked to a job card
+                          </p>
+                          <p className="mt-1 text-xs text-blue-700">
+                            {uploadBatchName
+                              ? `Batch "${uploadBatchName}" was not found on any job card. When this batch number is entered on a job card, the data will be automatically imported.`
+                              : "No batch name detected. You can manually link this upload to a job card using the button below."}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="rounded-lg border border-gray-200 bg-white p-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h2 className="text-lg font-semibold text-gray-900">
+                          {uploadBatchName || uploadFilename}
+                        </h2>
+                        <div className="mt-1 flex flex-wrap items-center gap-3 text-sm text-gray-500">
+                          {detectedFormat === "posisoft_pdf" ? (
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                const result =
+                                  await stockControlApiClient.positectorUploadDownloadUrl(
+                                    upload.id,
+                                  );
+                                const downloadUrl = result.url;
+                                if (downloadUrl) {
+                                  const filename = uploadBatchName || uploadFilename || "report";
+                                  pdfPreview.open(downloadUrl, `${filename}.pdf`);
+                                }
+                              }}
+                              className="inline-flex items-center gap-1 rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-800 hover:bg-blue-200 transition-colors cursor-pointer"
+                            >
+                              <svg
+                                className="h-3.5 w-3.5"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                strokeWidth={2}
+                                stroke="currentColor"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"
+                                />
+                              </svg>
+                              {FORMAT_LABELS[detectedFormat]} — View
+                            </button>
+                          ) : (
+                            <span className="inline-flex rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-800">
+                              {FORMAT_LABELS[detectedFormat] || detectedFormat}
+                            </span>
+                          )}
+                          {uploadProbeType && <span>Probe: {uploadProbeType}</span>}
+                          <span>Readings: {uploadReadingCount}</span>
+                          <span
+                            className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
+                              uploadEntityType !== "unknown"
+                                ? "bg-green-100 text-green-800"
+                                : "bg-gray-100 text-gray-800"
+                            }`}
+                          >
+                            Maps to: {ENTITY_TYPE_LABELS[uploadEntityType] || "Unknown"}
+                          </span>
+                          {isLinked && (
+                            <span className="inline-flex rounded-full bg-teal-100 px-2 py-0.5 text-xs font-medium text-teal-800">
+                              Linked to JC #{upload.linkedJobCardId}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        {!isLinked && uploadReadingCount > 0 && (
+                          <button
+                            onClick={() => setShowImportForm(true)}
+                            className="rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700"
+                          >
+                            Link to Job Card
+                          </button>
+                        )}
+                        <button
+                          onClick={handleClear}
+                          className="rounded-md border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                        >
+                          Upload Another
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {upload.readingsData.length > 0 && (
+                    <div className="overflow-hidden rounded-lg border border-gray-200">
+                      <div className="max-h-96 overflow-y-auto">
+                        <table className="min-w-full divide-y divide-gray-200">
+                          <thead className="sticky top-0 bg-gray-50">
+                            <tr>
+                              <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">
+                                #
+                              </th>
+                              <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">
+                                Value
+                              </th>
+                              <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">
+                                Units
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-gray-200 bg-white">
+                            {upload.readingsData.map((reading) => {
+                              const readingIndex = reading.index;
+                              const readingValue = reading.value;
+                              const readingUnits = reading.units;
+                              return (
+                                <tr key={readingIndex} className="hover:bg-gray-50">
+                                  <td className="px-4 py-2 text-sm text-gray-500">
+                                    {readingIndex}
+                                  </td>
+                                  <td className="px-4 py-2 text-sm font-medium text-gray-900">
+                                    {readingValue}
+                                  </td>
+                                  <td className="px-4 py-2 text-sm text-gray-500">
+                                    {readingUnits || "-"}
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+
+          <PdfPreviewModal state={pdfPreview.state} onClose={pdfPreview.close} />
+
+          {showImportForm && uploadResponse && (
+            <LinkUploadForm
+              upload={uploadResponse.upload}
+              suggestedEntityType={uploadResponse.suggestedEntityType}
+              suggestedCoatType={uploadResponse.suggestedCoatType}
+              onClose={() => setShowImportForm(false)}
+              onLinked={(result) => {
+                setShowImportForm(false);
+                setImportResult(result);
+                setUploadResponse((prev) => {
+                  if (!prev) return null;
+                  return {
+                    ...prev,
+                    upload: {
+                      ...prev.upload,
+                      linkedJobCardId: result.recordId,
+                      importRecordId: result.recordId,
+                      importedAt: new Date().toISOString(),
+                    },
+                  };
+                });
+              }}
+            />
+          )}
+        </div>
+      </div>
+    </div>,
+    document.body,
   );
 }
 
