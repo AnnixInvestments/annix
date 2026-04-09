@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import type { GlobalSettingsDto, NightSuspensionHours } from "@/app/lib/api/adminApi";
 import { adminApiClient } from "@/app/lib/api/adminApi";
 import { adminKeys } from "@/app/lib/query/keys";
 
@@ -41,6 +42,17 @@ export function useUpdateJobFrequency() {
   });
 }
 
+export function useUpdateJobNightSuspension() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (params: { name: string; nightSuspensionHours: NightSuspensionHours }) =>
+      adminApiClient.updateScheduledJobNightSuspension(params.name, params.nightSuspensionHours),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: adminKeys.scheduledJobs.all });
+    },
+  });
+}
+
 export function useSyncScheduledJobs() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -56,5 +68,24 @@ export function useScheduledJobsSyncStatus() {
     queryKey: [...adminKeys.scheduledJobs.all, "sync-status"],
     queryFn: () => adminApiClient.scheduledJobsSyncStatus(),
     refetchInterval: 30_000,
+  });
+}
+
+export function useScheduledJobsGlobalSettings() {
+  return useQuery({
+    queryKey: [...adminKeys.scheduledJobs.all, "global-settings"],
+    queryFn: () => adminApiClient.scheduledJobsGlobalSettings(),
+    refetchInterval: 30_000,
+  });
+}
+
+export function useUpdateScheduledJobsGlobalSettings() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (settings: GlobalSettingsDto) =>
+      adminApiClient.updateScheduledJobsGlobalSettings(settings),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: adminKeys.scheduledJobs.all });
+    },
   });
 }

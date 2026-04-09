@@ -1,15 +1,18 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
-import type { ScheduledJobDto } from "@/app/lib/api/adminApi";
+import type { NightSuspensionHours, ScheduledJobDto } from "@/app/lib/api/adminApi";
 import { fromISO } from "@/app/lib/datetime";
 import {
   usePauseJob,
   useResumeJob,
   useScheduledJobs,
+  useScheduledJobsGlobalSettings,
   useScheduledJobsSyncStatus,
   useSyncScheduledJobs,
   useUpdateJobFrequency,
+  useUpdateJobNightSuspension,
+  useUpdateScheduledJobsGlobalSettings,
 } from "@/app/lib/query/hooks";
 
 const PRESET_FREQUENCIES = [
@@ -19,6 +22,7 @@ const PRESET_FREQUENCIES = [
   { label: "Every 30 minutes", value: "*/30 * * * *" },
   { label: "Every hour", value: "0 * * * *" },
   { label: "Every 2 hours", value: "0 */2 * * *" },
+  { label: "Hourly (6am-6pm)", value: "0 6-18 * * *" },
   { label: "Every 6 hours", value: "0 */6 * * *" },
   { label: "Daily at 2am", value: "0 2 * * *" },
   { label: "Daily at 3am", value: "0 3 * * *" },
@@ -30,6 +34,13 @@ const PRESET_FREQUENCIES = [
   { label: "Daily at 9am", value: "0 9 * * *" },
   { label: "Daily at 10am", value: "0 10 * * *" },
   { label: "Weekly (Sunday midnight)", value: "0 0 * * 0" },
+];
+
+const NIGHT_SUSPENSION_OPTIONS: Array<{ label: string; value: string }> = [
+  { label: "None", value: "none" },
+  { label: "6h (9pm-3am)", value: "6" },
+  { label: "8h (8pm-4am)", value: "8" },
+  { label: "12h (6pm-6am)", value: "12" },
 ];
 
 function normalizeCronToFiveField(cronTime: string): string {
@@ -140,9 +151,13 @@ function JobRow(props: { job: ScheduledJobDto }) {
   const pauseMutation = usePauseJob();
   const resumeMutation = useResumeJob();
   const frequencyMutation = useUpdateJobFrequency();
+  const nightSuspensionMutation = useUpdateJobNightSuspension();
 
   const isMutating =
-    pauseMutation.isPending || resumeMutation.isPending || frequencyMutation.isPending;
+    pauseMutation.isPending ||
+    resumeMutation.isPending ||
+    frequencyMutation.isPending ||
+    nightSuspensionMutation.isPending;
 
   const handleToggle = () => {
     if (job.active) {
@@ -156,6 +171,11 @@ function JobRow(props: { job: ScheduledJobDto }) {
     frequencyMutation.mutate({ name: job.name, cronExpression: newCron });
   };
 
+  const handleNightSuspensionChange = (value: string) => {
+    const hours: NightSuspensionHours = value === "none" ? null : (Number(value) as 6 | 8 | 12);
+    nightSuspensionMutation.mutate({ name: job.name, nightSuspensionHours: hours });
+  };
+
   const moduleColor =
     MODULE_COLORS[job.module] || "bg-gray-100 text-gray-700 dark:bg-gray-700/50 dark:text-gray-300";
 
@@ -163,6 +183,8 @@ function JobRow(props: { job: ScheduledJobDto }) {
   const isCustomCron = !PRESET_FREQUENCIES.some((p) => p.value === currentValue);
   const defaultValue = job.defaultCron ? normalizeCronToFiveField(job.defaultCron) : null;
   const isOverridden = defaultValue ? currentValue !== defaultValue : false;
+
+  const nightSuspensionValue = job.nightSuspensionHours ? String(job.nightSuspensionHours) : "none";
 
   return (
     <tr className="hover:bg-gray-50 dark:hover:bg-slate-700/30">
@@ -215,6 +237,20 @@ function JobRow(props: { job: ScheduledJobDto }) {
           ) : null}
         </div>
       </td>
+      <td className="whitespace-nowrap px-4 py-3 text-sm">
+        <select
+          value={nightSuspensionValue}
+          onChange={(e) => handleNightSuspensionChange(e.target.value)}
+          disabled={isMutating}
+          className="rounded-md border border-gray-300 bg-white px-2 py-1 text-sm text-gray-700 hover:border-gray-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 disabled:opacity-50 dark:border-slate-600 dark:bg-slate-700 dark:text-gray-200"
+        >
+          {NIGHT_SUSPENSION_OPTIONS.map((opt) => (
+            <option key={opt.value} value={opt.value}>
+              {opt.label}
+            </option>
+          ))}
+        </select>
+      </td>
       <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-500 dark:text-gray-400">
         {formatDate(job.lastExecution)}
       </td>
@@ -235,6 +271,33 @@ function JobRow(props: { job: ScheduledJobDto }) {
         </button>
       </td>
     </tr>
+  );
+}
+
+function GlobalSettingsBar() {
+  const { data: settings } = useScheduledJobsGlobalSettings();
+  const updateMutation = useUpdateScheduledJobsGlobalSettings();
+
+  const checked = settings?.suspendOnSundaysAndHolidays || false;
+
+  const handleToggle = () => {
+    updateMutation.mutate({ suspendOnSundaysAndHolidays: !checked });
+  };
+
+  return (
+    <div className="flex items-center gap-3 rounded-lg border border-orange-200 bg-orange-50 px-4 py-3 dark:border-orange-800 dark:bg-orange-900/20">
+      <label className="flex cursor-pointer items-center gap-2 text-sm text-orange-700 dark:text-orange-300">
+        <input
+          type="checkbox"
+          checked={checked}
+          onChange={handleToggle}
+          disabled={updateMutation.isPending}
+          className="h-4 w-4 rounded border-orange-300 text-orange-600 focus:ring-orange-500 disabled:opacity-50"
+        />
+        <span className="font-medium">Suspend all jobs on Sundays and SA public holidays</span>
+      </label>
+      {updateMutation.isPending ? <span className="text-xs text-orange-400">Saving...</span> : null}
+    </div>
   );
 }
 
@@ -267,7 +330,14 @@ function SyncBar() {
   );
 }
 
-type SortKey = "module" | "description" | "status" | "frequency" | "lastRun" | "nextRun";
+type SortKey =
+  | "module"
+  | "description"
+  | "status"
+  | "frequency"
+  | "nightSuspension"
+  | "lastRun"
+  | "nextRun";
 type SortDir = "asc" | "desc";
 
 function JobSortIcon(props: { active: boolean; direction: SortDir }) {
@@ -298,6 +368,7 @@ function jobSortValue(job: ScheduledJobDto, key: SortKey): string {
   if (key === "description") return job.description.toLowerCase();
   if (key === "status") return job.active ? "active" : "paused";
   if (key === "frequency") return friendlyCron(job.cronTime).toLowerCase();
+  if (key === "nightSuspension") return String(job.nightSuspensionHours || 0);
   if (key === "lastRun") return job.lastExecution || "";
   if (key === "nextRun") return job.nextExecution || "";
   return "";
@@ -341,6 +412,7 @@ export default function ScheduledJobsPage() {
     { key: "description", label: "Description" },
     { key: "status", label: "Status" },
     { key: "frequency", label: "Frequency" },
+    { key: "nightSuspension", label: "Night Suspension" },
     { key: "lastRun", label: "Last Run" },
     { key: "nextRun", label: "Next Run" },
     { key: null, label: "Actions" },
@@ -361,6 +433,7 @@ export default function ScheduledJobsPage() {
         </p>
       </div>
 
+      <GlobalSettingsBar />
       <SyncBar />
 
       <div className="overflow-hidden rounded-lg bg-white shadow dark:bg-slate-800">
@@ -390,7 +463,7 @@ export default function ScheduledJobsPage() {
               {isLoading ? (
                 <tr>
                   <td
-                    colSpan={7}
+                    colSpan={8}
                     className="px-4 py-8 text-center text-sm text-gray-500 dark:text-gray-400"
                   >
                     Loading...
@@ -399,7 +472,7 @@ export default function ScheduledJobsPage() {
               ) : sortedJobs.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={7}
+                    colSpan={8}
                     className="px-4 py-8 text-center text-sm text-gray-500 dark:text-gray-400"
                   >
                     No scheduled jobs found

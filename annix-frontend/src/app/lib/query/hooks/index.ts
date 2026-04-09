@@ -87,9 +87,12 @@ export {
   usePauseJob,
   useResumeJob,
   useScheduledJobs,
+  useScheduledJobsGlobalSettings,
   useScheduledJobsSyncStatus,
   useSyncScheduledJobs,
   useUpdateJobFrequency,
+  useUpdateJobNightSuspension,
+  useUpdateScheduledJobsGlobalSettings,
 } from "./admin/useScheduledJobs";
 export {
   useCreateSecureDocument,

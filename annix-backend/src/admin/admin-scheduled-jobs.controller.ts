@@ -12,6 +12,8 @@ import { Roles } from "../auth/roles.decorator";
 import { RolesGuard } from "../auth/roles.guard";
 import {
   AdminScheduledJobsService,
+  type GlobalSettingsDto,
+  type NightSuspensionHours,
   type ScheduledJobDto,
   type ScheduledJobExportDto,
   type SyncResultDto,
@@ -46,6 +48,20 @@ export class AdminScheduledJobsController {
     return this.scheduledJobsService.syncStatus();
   }
 
+  @Get("global-settings")
+  @UseGuards(AdminAuthGuard, RolesGuard)
+  @Roles("admin")
+  async globalSettings(): Promise<GlobalSettingsDto> {
+    return this.scheduledJobsService.globalSettings();
+  }
+
+  @Post("global-settings")
+  @UseGuards(AdminAuthGuard, RolesGuard)
+  @Roles("admin")
+  async updateGlobalSettings(@Body() body: GlobalSettingsDto): Promise<GlobalSettingsDto> {
+    return this.scheduledJobsService.updateGlobalSettings(body);
+  }
+
   @Post("sync")
   @UseGuards(AdminAuthGuard, RolesGuard)
   @Roles("admin")
@@ -75,5 +91,15 @@ export class AdminScheduledJobsController {
     @Body("cronExpression") cronExpression: string,
   ): Promise<ScheduledJobDto> {
     return this.scheduledJobsService.updateFrequency(name, cronExpression);
+  }
+
+  @Post(":name/night-suspension")
+  @UseGuards(AdminAuthGuard, RolesGuard)
+  @Roles("admin")
+  async updateNightSuspension(
+    @Param("name") name: string,
+    @Body("nightSuspensionHours") nightSuspensionHours: NightSuspensionHours,
+  ): Promise<ScheduledJobDto> {
+    return this.scheduledJobsService.updateNightSuspension(name, nightSuspensionHours);
   }
 }

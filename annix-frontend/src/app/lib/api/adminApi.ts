@@ -1394,6 +1394,30 @@ class AdminApiClient {
     return this.request<SyncStatusDto>("/admin/scheduled-jobs/sync-status");
   }
 
+  async scheduledJobsGlobalSettings(): Promise<GlobalSettingsDto> {
+    return this.request<GlobalSettingsDto>("/admin/scheduled-jobs/global-settings");
+  }
+
+  async updateScheduledJobsGlobalSettings(settings: GlobalSettingsDto): Promise<GlobalSettingsDto> {
+    return this.request<GlobalSettingsDto>("/admin/scheduled-jobs/global-settings", {
+      method: "POST",
+      body: JSON.stringify(settings),
+    });
+  }
+
+  async updateScheduledJobNightSuspension(
+    name: string,
+    nightSuspensionHours: NightSuspensionHours,
+  ): Promise<ScheduledJobDto> {
+    return this.request<ScheduledJobDto>(
+      `/admin/scheduled-jobs/${encodeURIComponent(name)}/night-suspension`,
+      {
+        method: "POST",
+        body: JSON.stringify({ nightSuspensionHours }),
+      },
+    );
+  }
+
   async aiUsageLogs(params?: AiUsageQueryParams): Promise<AiUsageListResponse> {
     const searchParams = new URLSearchParams();
     if (params?.app) searchParams.append("app", params.app);
@@ -1864,6 +1888,8 @@ export interface RbacRoleProductsResponse {
   productKeys: string[];
 }
 
+export type NightSuspensionHours = 6 | 8 | 12 | null;
+
 export interface ScheduledJobDto {
   name: string;
   description: string;
@@ -1873,6 +1899,11 @@ export interface ScheduledJobDto {
   defaultCron: string;
   lastExecution: string | null;
   nextExecution: string | null;
+  nightSuspensionHours: NightSuspensionHours;
+}
+
+export interface GlobalSettingsDto {
+  suspendOnSundaysAndHolidays: boolean;
 }
 
 export interface SyncResultDto {

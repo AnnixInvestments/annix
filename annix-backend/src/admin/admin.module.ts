@@ -40,6 +40,7 @@ import { AdminScheduledJobsService } from "./admin-scheduled-jobs.service";
 import { AdminSession } from "./entities/admin-session.entity";
 import { CompanyProfile } from "./entities/company-profile.entity";
 import { ScheduledJobOverride } from "./entities/scheduled-job-override.entity";
+import { ScheduledJobsGlobalSettings } from "./entities/scheduled-jobs-global-settings.entity";
 import { AdminAuthGuard } from "./guards/admin-auth.guard";
 import { PublicCompanyProfileController } from "./public-company-profile.controller";
 
@@ -67,6 +68,7 @@ import { PublicCompanyProfileController } from "./public-company-profile.control
       AuditLog,
       CompanyProfile,
       ScheduledJobOverride,
+      ScheduledJobsGlobalSettings,
     ]),
     JwtModule.registerAsync({
       imports: [ConfigModule],

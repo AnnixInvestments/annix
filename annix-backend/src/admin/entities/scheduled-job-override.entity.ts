@@ -10,4 +10,7 @@ export class ScheduledJobOverride {
 
   @Column({ type: "varchar", length: 50, nullable: true })
   cronExpression: string | null;
+
+  @Column({ type: "smallint", nullable: true })
+  nightSuspensionHours: number | null;
 }

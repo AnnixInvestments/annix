@@ -3,8 +3,13 @@ import { ConfigService } from "@nestjs/config";
 import { Cron, CronExpression, SchedulerRegistry } from "@nestjs/schedule";
 import { InjectRepository } from "@nestjs/typeorm";
 import { CronTime } from "cron";
+import { DateTime } from "luxon";
 import { Repository } from "typeorm";
+import { isSAPublicHoliday } from "../lib/sa-public-holidays";
 import { ScheduledJobOverride } from "./entities/scheduled-job-override.entity";
+import { ScheduledJobsGlobalSettings } from "./entities/scheduled-jobs-global-settings.entity";
+
+export type NightSuspensionHours = 6 | 8 | 12 | null;
 
 export interface ScheduledJobDto {
   name: string;
@@ -15,12 +20,18 @@ export interface ScheduledJobDto {
   defaultCron: string;
   lastExecution: string | null;
   nextExecution: string | null;
+  nightSuspensionHours: NightSuspensionHours;
 }
 
 export interface ScheduledJobExportDto {
   jobName: string;
   active: boolean;
   cronExpression: string | null;
+  nightSuspensionHours: NightSuspensionHours;
+}
+
+export interface GlobalSettingsDto {
+  suspendOnSundaysAndHolidays: boolean;
 }
 
 export interface SyncResultDto {
@@ -78,7 +89,7 @@ const JOB_METADATA: Record<string, { description: string; module: string; defaul
   "cv-assistant:poll-emails": {
     description: "Poll inbound emails for CV submissions",
     module: "CV Assistant",
-    defaultCron: "0 */6 * * *",
+    defaultCron: "0 6-18 * * *",
   },
   "cv-assistant:poll-job-sources": {
     description: "Poll external job listing sources",
@@ -124,12 +135,12 @@ const JOB_METADATA: Record<string, { description: string; module: string; defaul
     description:
       "Poll all configured inbound email accounts (polymer-app@annix.co.za, au-rubber-app@annix.co.za)",
     module: "Inbound Email",
-    defaultCron: "0 */6 * * *",
+    defaultCron: "0 6-18 * * *",
   },
   "au-rubber:poll-emails": {
     description: "Poll AU Rubber inbound emails for CoCs and DNs (au-rubber-app@annix.co.za)",
     module: "AU Rubber",
-    defaultCron: "0 */6 * * *",
+    defaultCron: "0 6-18 * * *",
   },
   "secure-docs:cleanup-deleted": {
     description: "Permanently delete soft-deleted secure document folders",
@@ -153,17 +164,27 @@ const JOB_METADATA: Record<string, { description: string; module: string; defaul
   },
 };
 
+const NIGHT_SUSPENSION_WINDOWS: Record<number, { start: number; end: number }> = {
+  6: { start: 21, end: 3 },
+  8: { start: 20, end: 4 },
+  12: { start: 18, end: 6 },
+};
+
 @Injectable()
 export class AdminScheduledJobsService implements OnApplicationBootstrap {
   private readonly logger = new Logger(AdminScheduledJobsService.name);
   private readonly syncSource: string | null;
   private readonly syncToken: string | null;
   private lastSyncTimestamp: string | null = null;
+  private suspendOnSundaysAndHolidays = false;
+  private nightSuspensionByJob = new Map<string, NightSuspensionHours>();
 
   constructor(
     private readonly schedulerRegistry: SchedulerRegistry,
     @InjectRepository(ScheduledJobOverride)
     private readonly overrideRepo: Repository<ScheduledJobOverride>,
+    @InjectRepository(ScheduledJobsGlobalSettings)
+    private readonly globalSettingsRepo: Repository<ScheduledJobsGlobalSettings>,
     private readonly configService: ConfigService,
   ) {
     this.syncSource = this.configService.get<string>("SCHEDULED_JOBS_SYNC_SOURCE") || null;
@@ -171,6 +192,13 @@ export class AdminScheduledJobsService implements OnApplicationBootstrap {
   }
 
   async onApplicationBootstrap(): Promise<void> {
+    const globalSettings = await this.globalSettingsRepo.findOne({
+      where: { settingsKey: "default" },
+    });
+    if (globalSettings) {
+      this.suspendOnSundaysAndHolidays = globalSettings.suspendOnSundaysAndHolidays;
+    }
+
     if (this.syncSource) {
       try {
         await this.syncFromSource();
@@ -195,6 +223,13 @@ export class AdminScheduledJobsService implements OnApplicationBootstrap {
             this.logger.log(`Restored frequency for ${name}: ${override.cronExpression}`);
           }
 
+          if (override.nightSuspensionHours) {
+            this.nightSuspensionByJob.set(
+              name,
+              override.nightSuspensionHours as NightSuspensionHours,
+            );
+          }
+
           if (override.active) {
             job.start();
           } else {
@@ -209,6 +244,8 @@ export class AdminScheduledJobsService implements OnApplicationBootstrap {
         this.logger.warn(`Skipping bootstrap for unregistered job: ${name}`);
       }
     });
+
+    this.wrapCronJobsWithGuard();
 
     if (overrides.length > 0) {
       this.logger.log(`Applied ${overrides.length} scheduled job override(s) from database`);
@@ -236,6 +273,41 @@ export class AdminScheduledJobsService implements OnApplicationBootstrap {
     return this.jobToDto(name, job);
   }
 
+  async updateNightSuspension(
+    name: string,
+    nightSuspensionHours: NightSuspensionHours,
+  ): Promise<ScheduledJobDto> {
+    const job = this.schedulerRegistry.getCronJob(name);
+    this.nightSuspensionByJob.set(name, nightSuspensionHours);
+
+    const existing = await this.overrideRepo.findOne({ where: { jobName: name } });
+    await this.overrideRepo.save({
+      jobName: name,
+      active: existing?.active ?? job.isActive,
+      cronExpression: existing?.cronExpression || null,
+      nightSuspensionHours,
+    });
+
+    this.logger.log(`Updated night suspension for ${name}: ${nightSuspensionHours || "none"}`);
+    return this.jobToDto(name, job);
+  }
+
+  globalSettings(): GlobalSettingsDto {
+    return { suspendOnSundaysAndHolidays: this.suspendOnSundaysAndHolidays };
+  }
+
+  async updateGlobalSettings(settings: GlobalSettingsDto): Promise<GlobalSettingsDto> {
+    this.suspendOnSundaysAndHolidays = settings.suspendOnSundaysAndHolidays;
+    await this.globalSettingsRepo.save({
+      settingsKey: "default",
+      suspendOnSundaysAndHolidays: settings.suspendOnSundaysAndHolidays,
+    });
+    this.logger.log(
+      `Updated global settings: suspendOnSundaysAndHolidays=${settings.suspendOnSundaysAndHolidays}`,
+    );
+    return settings;
+  }
+
   validateSyncToken(token: string | null): boolean {
     return Boolean(this.syncToken) && token === this.syncToken;
   }
@@ -246,6 +318,7 @@ export class AdminScheduledJobsService implements OnApplicationBootstrap {
       jobName: name,
       active: job.isActive,
       cronExpression: this.normalizeCronToFiveField(String(job.cronTime.source)),
+      nightSuspensionHours: this.nightSuspensionByJob.get(name) || null,
     }));
   }
 
@@ -276,10 +349,17 @@ export class AdminScheduledJobsService implements OnApplicationBootstrap {
           jobName: remote.jobName,
           active: remote.active,
           cronExpression: remote.cronExpression,
+          nightSuspensionHours: remote.nightSuspensionHours,
         });
 
         if (remote.cronExpression) {
           job.setTime(new CronTime(remote.cronExpression));
+        }
+
+        if (remote.nightSuspensionHours) {
+          this.nightSuspensionByJob.set(remote.jobName, remote.nightSuspensionHours);
+        } else {
+          this.nightSuspensionByJob.delete(remote.jobName);
         }
 
         if (remote.active) {
@@ -342,6 +422,62 @@ export class AdminScheduledJobsService implements OnApplicationBootstrap {
     return this.jobToDto(name, job);
   }
 
+  shouldJobRun(jobName: string): boolean {
+    const now = DateTime.now().setZone("Africa/Johannesburg");
+
+    if (this.suspendOnSundaysAndHolidays) {
+      if (now.weekday === 7 || isSAPublicHoliday(now)) {
+        this.logger.debug(`Skipping ${jobName}: suspended on Sundays/public holidays`);
+        return false;
+      }
+    }
+
+    const suspension = this.nightSuspensionByJob.get(jobName);
+    if (suspension) {
+      const window = NIGHT_SUSPENSION_WINDOWS[suspension];
+      if (window) {
+        const hour = now.hour;
+        const suspended =
+          window.start > window.end
+            ? hour >= window.start || hour < window.end
+            : hour >= window.start && hour < window.end;
+        if (suspended) {
+          this.logger.debug(`Skipping ${jobName}: night suspension (${suspension}h) active`);
+          return false;
+        }
+      }
+    }
+
+    return true;
+  }
+
+  private wrapCronJobsWithGuard(): void {
+    const cronJobs = this.schedulerRegistry.getCronJobs();
+    for (const [name, job] of cronJobs.entries()) {
+      if (!JOB_METADATA[name]) {
+        continue;
+      }
+
+      const originalOnTick = (job as any)._callbacks?.[0] || (job as any).onTick;
+      if (!originalOnTick) {
+        continue;
+      }
+
+      const service = this;
+      const wrappedTick = function (this: any, ...args: any[]) {
+        if (!service.shouldJobRun(name)) {
+          return;
+        }
+        return originalOnTick.apply(this, args);
+      };
+
+      if ((job as any)._callbacks) {
+        (job as any)._callbacks[0] = wrappedTick;
+      }
+    }
+    this.logger.log("Wrapped all cron jobs with night/holiday suspension guard");
+  }
+
   private normalizeCronToFiveField(cronSource: string): string {
     const parts = cronSource.trim().split(/\s+/);
     const fiveField = parts.length === 6 ? parts.slice(1).join(" ") : parts.join(" ");
@@ -370,6 +506,7 @@ export class AdminScheduledJobsService implements OnApplicationBootstrap {
       defaultCron: meta.defaultCron,
       lastExecution: job.lastExecution ? job.lastExecution.toISOString() : null,
       nextExecution: String(job.nextDate().toISO()),
+      nightSuspensionHours: this.nightSuspensionByJob.get(name) || null,
     };
   }
 }
