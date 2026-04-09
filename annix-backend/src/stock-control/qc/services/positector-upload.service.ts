@@ -53,7 +53,7 @@ export class PositectorUploadService implements OnModuleInit {
     if (bundleUploads.length === 0) return;
 
     this.logger.log(`Fixing ${bundleUploads.length} bundle upload batch names...`);
-    const batchPattern = /DeFelsko\s+\d+\s+(B\d+)/;
+    const batchPattern = /\b(B\d+)\b/;
     let updated = 0;
 
     for (const upload of bundleUploads) {
@@ -168,7 +168,7 @@ export class PositectorUploadService implements OnModuleInit {
       .andWhere("u.batchName LIKE :prefix", { prefix: "bundle_%" })
       .getMany();
 
-    const BATCH_PATTERN = /DeFelsko\s+\d+\s+(B\d+)/;
+    const BATCH_PATTERN = /\b(B\d+)\b/;
     let updated = 0;
 
     for (const upload of bundleUploads) {

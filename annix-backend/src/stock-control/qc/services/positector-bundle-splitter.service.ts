@@ -28,7 +28,7 @@ interface PageInfo {
   hasReportHeader: boolean;
 }
 
-const BATCH_NAME_PATTERN = /DeFelsko\s+\d+\s+(B\d+)/;
+const BATCH_NAME_PATTERN = /\b(B\d+)\b/;
 
 const INSTRUMENT_PATTERN = /PosiTector\s+(DPM|6000\s*\w*|SPG|RTR|SHD[-\s]?A?|200\s*\w*|AT)\s*/i;
 
