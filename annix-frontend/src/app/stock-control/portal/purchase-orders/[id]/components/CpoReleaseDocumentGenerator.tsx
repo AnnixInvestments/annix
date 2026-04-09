@@ -101,7 +101,8 @@ export function CpoReleaseDocumentGenerator(props: CpoReleaseDocumentGeneratorPr
         const key = itemKey(item);
         if (!selectedKeys.has(key)) return;
 
-        const qty = releaseQuantities[key] || item.remainingToRelease;
+        const rawQty = releaseQuantities[key];
+        const qty = rawQty || item.remainingToRelease;
 
         item.deliveries.forEach((delivery) => {
           const deliveryPortion = Math.min(qty, delivery.quantity);
@@ -201,9 +202,7 @@ export function CpoReleaseDocumentGenerator(props: CpoReleaseDocumentGeneratorPr
                   <th className="hidden sm:table-cell px-2 py-2 text-right font-medium text-gray-500">
                     Arrived
                   </th>
-                  <th className="hidden sm:table-cell px-2 py-2 text-right font-medium text-gray-500">
-                    Remaining
-                  </th>
+                  <th className="px-2 py-2 text-right font-medium text-gray-500">Remaining</th>
                   <th className="px-2 py-2 text-right font-medium text-gray-500">Release Qty</th>
                   <th className="hidden md:table-cell px-2 py-2 text-left font-medium text-gray-500">
                     Deliveries
@@ -217,7 +216,8 @@ export function CpoReleaseDocumentGenerator(props: CpoReleaseDocumentGeneratorPr
                   const hasRemaining = item.remainingToRelease > 0;
                   const canSelect = isArrived && hasRemaining;
                   const isSelected = selectedKeys.has(key);
-                  const qtyValue = releaseQuantities[key] || item.remainingToRelease;
+                  const rawQtyValue = releaseQuantities[key];
+                  const qtyValue = rawQtyValue || item.remainingToRelease;
 
                   return (
                     <tr
@@ -248,7 +248,7 @@ export function CpoReleaseDocumentGenerator(props: CpoReleaseDocumentGeneratorPr
                           {item.arrivedQty}
                         </span>
                       </td>
-                      <td className="hidden sm:table-cell px-2 py-2 text-right">
+                      <td className="px-2 py-2 text-right">
                         <span
                           className={hasRemaining ? "text-blue-700 font-medium" : "text-gray-400"}
                         >
