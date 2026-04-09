@@ -446,7 +446,10 @@ export default function InvoicesPage() {
                   </td>
                   <td className="hidden md:table-cell px-3 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {invoice.deliveryNoteId ? (
-                      invoice.deliveryNote?.deliveryNumber || `DN-${invoice.deliveryNoteId}`
+                      (() => {
+                        const dn = invoice.deliveryNote;
+                        return dn ? dn.deliveryNumber : `DN-${invoice.deliveryNoteId}`;
+                      })()
                     ) : (
                       <span className="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-amber-100 text-amber-800">
                         Unlinked

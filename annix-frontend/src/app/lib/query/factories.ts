@@ -66,6 +66,7 @@ export function createMutationHook<TData, TVariables>(
     const queryClient = useQueryClient();
     return useMutation<TData, Error, TVariables>({
       mutationFn,
+      retry: false,
       ...(invalidateKeys
         ? {
             onSuccess: (data: TData, variables: TVariables) => {
