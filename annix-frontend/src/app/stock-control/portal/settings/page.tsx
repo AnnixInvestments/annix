@@ -20,6 +20,7 @@ import { useStockControlRbac } from "../../context/StockControlRbacContext";
 import { roleLabel } from "../../lib/roleLabels";
 import { DepartmentsLocationsSection } from "./DepartmentsLocationsSection";
 import { InboundEmailConfigSection } from "./InboundEmailConfigSection";
+import { SupplierMappingsSection } from "./SupplierMappingsSection";
 import { TeamManagementSection } from "./TeamManagementSection";
 import { WorkflowConfigurationSection } from "./WorkflowConfigurationSection";
 import { WorkflowPreviewSection } from "./WorkflowPreviewSection";
@@ -67,6 +68,7 @@ export default function StockControlSettingsPage() {
       )}
       <UserLocationAssignmentsSection locations={locations} teamMembers={teamMembers} />
       <InboundEmailConfigSection />
+      <SupplierMappingsSection />
     </div>
   );
 }

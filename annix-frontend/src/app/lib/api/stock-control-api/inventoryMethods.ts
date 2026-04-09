@@ -105,6 +105,19 @@ declare module "./base" {
         newName: string;
       }>;
     }>;
+    supplierMappings(): Promise<
+      Array<{
+        id: number;
+        supplier: string;
+        supplierSku: string;
+        stockItemId: number;
+        stockItemName: string | null;
+        stockItemSku: string | null;
+        confidence: number;
+        confirmationCount: number;
+      }>
+    >;
+    deleteSupplierMapping(id: number): Promise<{ deleted: boolean }>;
     detectDuplicates(): Promise<
       Array<{
         canonicalItem: StockItem;
@@ -256,6 +269,14 @@ proto.normalizeRubber = async function () {
   return this.request("/stock-control/inventory/normalize-rubber", {
     method: "POST",
   });
+};
+
+proto.supplierMappings = async function () {
+  return this.request("/stock-control/inventory/supplier-mappings");
+};
+
+proto.deleteSupplierMapping = async function (id) {
+  return this.request(`/stock-control/inventory/supplier-mappings/${id}`, { method: "DELETE" });
 };
 
 proto.detectDuplicates = async function () {

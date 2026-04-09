@@ -143,6 +143,10 @@ export default function IssueStockPage() {
   const [isScanning, setIsScanning] = useState(false);
   const [showCameraScanner, setShowCameraScanner] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [stockAlternatives, setStockAlternatives] = useState<
+    Array<{ id: number; sku: string; name: string; quantity: number; category: string | null }>
+  >([]);
+  const [pendingZeroStockItem, setPendingZeroStockItem] = useState<StockItem | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -490,6 +494,15 @@ export default function IssueStockPage() {
         const existingIndex = items.findIndex((i) => i.stockItem.id === stockItem.id);
         if (existingIndex >= 0) {
           setError(`${stockItem.name} is already in your list`);
+          return;
+        }
+        if (
+          result.alternatives &&
+          result.alternatives.length > 0 &&
+          Number(stockItem.quantity) <= 0
+        ) {
+          setStockAlternatives(result.alternatives);
+          setPendingZeroStockItem(stockItem);
           return;
         }
         setItems([...items, { stockItem, quantity: 1, batchNumber: "" }]);
@@ -1552,6 +1565,73 @@ export default function IssueStockPage() {
                       </p>
                     </div>
                   )}
+
+                {pendingZeroStockItem && stockAlternatives.length > 0 && (
+                  <div className="mb-4 bg-amber-50 border border-amber-200 rounded-lg p-4">
+                    <p className="text-sm font-semibold text-amber-800">
+                      {pendingZeroStockItem.name} has no stock available
+                    </p>
+                    <p className="text-xs text-amber-700 mt-1">
+                      These similar items have stock — tap one to use it instead:
+                    </p>
+                    <div className="mt-3 space-y-2">
+                      {stockAlternatives.map((alt) => (
+                        <button
+                          key={alt.id}
+                          type="button"
+                          onClick={() => {
+                            const altItem = {
+                              ...pendingZeroStockItem,
+                              id: alt.id,
+                              sku: alt.sku,
+                              name: alt.name,
+                              quantity: alt.quantity,
+                              category: alt.category,
+                            };
+                            setItems([
+                              ...items,
+                              { stockItem: altItem, quantity: 1, batchNumber: "" },
+                            ]);
+                            setStockAlternatives([]);
+                            setPendingZeroStockItem(null);
+                          }}
+                          className="w-full text-left bg-white border border-amber-200 rounded-md p-3 hover:bg-amber-50 transition-colors"
+                        >
+                          <p className="text-sm font-medium text-gray-900">{alt.name}</p>
+                          <p className="text-xs text-gray-500">
+                            SKU: {alt.sku} | Available: {alt.quantity}
+                          </p>
+                        </button>
+                      ))}
+                    </div>
+                    <div className="mt-3 flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setItems([
+                            ...items,
+                            { stockItem: pendingZeroStockItem, quantity: 1, batchNumber: "" },
+                          ]);
+                          setStockAlternatives([]);
+                          setPendingZeroStockItem(null);
+                        }}
+                        className="text-xs text-gray-500 hover:text-gray-700 underline"
+                      >
+                        Use original item anyway (0 stock)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setStockAlternatives([]);
+                          setPendingZeroStockItem(null);
+                        }}
+                        className="text-xs text-gray-500 hover:text-gray-700 underline"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                )}
 
                 {items.length > 0 && (
                   <div className="mb-4 space-y-3">

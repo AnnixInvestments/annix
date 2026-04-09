@@ -2022,6 +2022,13 @@ export interface IssuanceScanResult {
   type: "staff" | "stock_item" | "job_card";
   id: number;
   data: StaffMember | StockItem | JobCard;
+  alternatives?: Array<{
+    id: number;
+    sku: string;
+    name: string;
+    quantity: number;
+    category: string | null;
+  }>;
 }
 
 export interface CreateIssuanceDto {
