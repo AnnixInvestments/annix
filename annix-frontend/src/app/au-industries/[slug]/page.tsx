@@ -96,8 +96,24 @@ export default function AuIndustriesSlugPage() {
           )}
           <div
             data-color-mode="light"
-            className="prose prose-lg max-w-none prose-headings:text-[#B8860B] prose-headings:uppercase prose-headings:tracking-wide prose-strong:text-gray-900"
+            className="au-industries-content prose prose-lg max-w-none prose-headings:text-[#B8860B] prose-headings:uppercase prose-headings:tracking-wide prose-strong:text-gray-900"
           >
+            <style>{`
+              .au-industries-content p > a:only-child {
+                display: inline-block;
+                padding: 12px 40px;
+                background-color: #B8860B;
+                color: #fff !important;
+                font-weight: 600;
+                text-transform: uppercase;
+                letter-spacing: 0.05em;
+                text-decoration: none !important;
+                transition: background-color 0.2s;
+              }
+              .au-industries-content p > a:only-child:hover {
+                background-color: #9A7209;
+              }
+            `}</style>
             <MarkdownPreview source={page.content} style={{ backgroundColor: "transparent" }} />
           </div>
         </div>

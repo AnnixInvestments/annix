@@ -61,6 +61,8 @@ export function AuIndustriesLayoutClient(props: { children: React.ReactNode }) {
         `}
       </Script>
 
+      <Script src="https://static.elfsight.com/platform/platform.js" strategy="afterInteractive" />
+
       <AuIndustriesNav pages={pages} />
 
       <main className="flex-1">{props.children}</main>

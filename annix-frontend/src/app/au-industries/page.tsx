@@ -152,12 +152,167 @@ export default function AuIndustriesHomePage() {
         </div>
       </section>
 
-      <section className="bg-gray-100 py-16">
+      <section className="bg-white py-20">
+        <div className="max-w-6xl mx-auto px-4 md:px-8 text-center">
+          <h2 className="text-3xl md:text-4xl font-bold text-[#B8860B] uppercase tracking-wider mb-2">
+            Projects
+          </h2>
+          <div className="w-24 h-[3px] bg-[#B8860B] mx-auto mt-3 mb-4" />
+          <p className="text-gray-500 text-lg mb-10">Some of our projects</p>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+            <div className="relative h-64 overflow-hidden rounded shadow-md">
+              <Image
+                src="/au-industries/projects-01.jpg"
+                alt="Rubber lining installation"
+                fill
+                className="object-cover hover:scale-105 transition-transform duration-300"
+              />
+            </div>
+            <div className="relative h-64 overflow-hidden rounded shadow-md">
+              <Image
+                src="/au-industries/projects-02.jpg"
+                alt="Blue rubber lined pipes"
+                fill
+                className="object-cover hover:scale-105 transition-transform duration-300"
+              />
+            </div>
+            <div className="relative h-64 overflow-hidden rounded shadow-md">
+              <Image
+                src="/au-industries/projects-03.jpg"
+                alt="Ceramic embedded rubber products"
+                fill
+                className="object-cover hover:scale-105 transition-transform duration-300"
+              />
+            </div>
+            <div className="relative h-64 overflow-hidden rounded shadow-md">
+              <Image
+                src="/au-industries/projects-04.jpg"
+                alt="Pipe fabrication and delivery"
+                fill
+                className="object-cover hover:scale-105 transition-transform duration-300"
+              />
+            </div>
+          </div>
+
+          <Link
+            href="/au-industries/gallery"
+            className="inline-block px-10 py-4 bg-[#B8860B] text-white text-lg font-semibold uppercase tracking-wider hover:bg-[#9A7209] transition-colors"
+          >
+            View More Projects
+          </Link>
+        </div>
+      </section>
+
+      <section
+        className="relative bg-cover bg-center bg-fixed"
+        style={{ backgroundImage: "url(/au-industries/history-bg.jpg)" }}
+      >
+        <div className="absolute inset-0 bg-black/60" />
+        <div className="relative max-w-7xl mx-auto px-4 md:px-8 py-20">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+            <div>
+              <h2 className="text-3xl md:text-4xl font-bold text-[#B8860B] uppercase tracking-wider mb-2">
+                The History of Rubber
+              </h2>
+              <div className="w-24 h-[3px] bg-[#B8860B] mt-3 mb-8" />
+              <p className="text-[#B8860B] text-lg leading-relaxed mb-8">
+                The biggest producer of rubber is Thailand, followed by Indonesia, Vietnam, India
+                and China. Most of the rubber is produced in South-East Asia and Asia followed by
+                Africa and Central America.
+              </p>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="relative h-48 overflow-hidden rounded">
+                  <Image
+                    src="/au-industries/rubbertree01.jpg"
+                    alt="Rubber tree tapping"
+                    fill
+                    className="object-cover"
+                  />
+                </div>
+                <div className="relative h-48 overflow-hidden rounded">
+                  <Image
+                    src="/au-industries/rubbertree02.jpg"
+                    alt="Rubber tree plantation"
+                    fill
+                    className="object-cover"
+                  />
+                </div>
+                <div className="relative h-48 overflow-hidden rounded">
+                  <Image
+                    src="/au-industries/rubbertree03.jpg"
+                    alt="Rubber tree bark"
+                    fill
+                    className="object-cover"
+                  />
+                </div>
+                <div className="relative h-48 overflow-hidden rounded">
+                  <Image
+                    src="/au-industries/rubbertree04.jpg"
+                    alt="Latex collection"
+                    fill
+                    className="object-cover"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <h2 className="text-2xl md:text-3xl font-bold text-white uppercase tracking-wider mb-2">
+                Early Uses by Indigenous Cultures
+              </h2>
+              <div className="w-24 h-[3px] bg-[#B8860B] mt-3 mb-8" />
+              <div className="space-y-4">
+                <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6">
+                  <h3 className="text-xl font-bold text-[#B8860B] mb-3">
+                    Olmec, Maya, and Aztec Civilizations:
+                  </h3>
+                  <p className="text-gray-200 text-sm leading-relaxed text-justify">
+                    These Mesoamerican cultures were among the first to harness the latex sap from
+                    the rubber tree (primarily Hevea brasiliensis in the Amazon rainforest) for
+                    various purposes.
+                  </p>
+                </div>
+                <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6">
+                  <h3 className="text-xl font-bold text-[#B8860B] mb-3">Rubber Balls:</h3>
+                  <p className="text-gray-200 text-sm leading-relaxed text-justify">
+                    Indigenous populations used rubber to create balls for their ball games, which
+                    were often religious or recreational in nature.
+                  </p>
+                </div>
+                <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6">
+                  <h3 className="text-xl font-bold text-[#B8860B] mb-3">Waterproofing:</h3>
+                  <p className="text-gray-200 text-sm leading-relaxed text-justify">
+                    The latex was also used to make clothing and other items waterproof.
+                  </p>
+                </div>
+                <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6">
+                  <h3 className="text-xl font-bold text-[#B8860B] mb-3">Other Applications:</h3>
+                  <p className="text-gray-200 text-sm leading-relaxed text-justify">
+                    They also used it for containers, shoes, and even to decorate canoes.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="bg-gray-100 py-20">
+        <div className="max-w-4xl mx-auto px-4">
+          <div
+            className="elfsight-app-4c13c174-7edd-4de9-b428-dc35d38ec263"
+            data-elfsight-app-lazy
+          />
+        </div>
+      </section>
+
+      <section className="bg-gray-900 py-16">
         <div className="max-w-4xl mx-auto px-4 text-center">
-          <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-4">
+          <h2 className="text-2xl md:text-3xl font-bold text-white mb-4">
             Ready to discuss your project?
           </h2>
-          <p className="text-gray-600 mb-8">
+          <p className="text-gray-400 mb-8">
             Get in touch for a free consultation and competitive quote.
           </p>
           <Link

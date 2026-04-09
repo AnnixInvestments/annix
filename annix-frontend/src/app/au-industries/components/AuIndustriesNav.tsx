@@ -54,6 +54,16 @@ export function AuIndustriesNav(props: { pages: NavPage[] }) {
               );
             })}
             <Link
+              href="/au-industries/quote"
+              className={`px-4 py-2 text-sm font-semibold uppercase tracking-wide transition-colors ${
+                pathname === "/au-industries/quote"
+                  ? "text-[#B8860B] border-b-2 border-[#B8860B]"
+                  : "text-gray-700 hover:text-[#B8860B]"
+              }`}
+            >
+              Quote
+            </Link>
+            <Link
               href="/au-industries/contact"
               className={`ml-2 px-5 py-2 text-sm font-semibold uppercase tracking-wide border-2 border-[#B8860B] transition-colors ${
                 pathname === "/au-industries/contact"
@@ -109,6 +119,17 @@ export function AuIndustriesNav(props: { pages: NavPage[] }) {
                 </Link>
               );
             })}
+            <Link
+              href="/au-industries/quote"
+              onClick={() => setMenuOpen(false)}
+              className={`block px-3 py-2 text-base font-semibold uppercase ${
+                pathname === "/au-industries/quote"
+                  ? "text-[#B8860B]"
+                  : "text-gray-700 hover:text-[#B8860B]"
+              }`}
+            >
+              Quote
+            </Link>
             <Link
               href="/au-industries/contact"
               onClick={() => setMenuOpen(false)}
