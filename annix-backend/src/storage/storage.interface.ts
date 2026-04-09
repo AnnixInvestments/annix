@@ -6,6 +6,7 @@ export enum StorageArea {
   SECURE_DOCUMENTS = "secure-documents",
   STOCK_CONTROL = "stock-control",
   COMPLY_SA = "comply-sa",
+  AU_INDUSTRIES = "au-industries",
 }
 
 export interface StorageResult {

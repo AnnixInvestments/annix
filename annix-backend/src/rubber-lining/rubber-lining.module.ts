@@ -60,7 +60,9 @@ import { RubberSupplierCoc } from "./entities/rubber-supplier-coc.entity";
 import { RubberTaxInvoice } from "./entities/rubber-tax-invoice.entity";
 import { RubberTaxInvoiceCorrection } from "./entities/rubber-tax-invoice-correction.entity";
 import { RubberType } from "./entities/rubber-type.entity";
+import { WebsitePage } from "./entities/website-page.entity";
 import { AuRubberAccessGuard } from "./guards/au-rubber-access.guard";
+import { PublicAuIndustriesController } from "./public-au-industries.controller";
 import { RubberAccountingService } from "./rubber-accounting.service";
 import { RubberAccountingPdfService } from "./rubber-accounting-pdf.service";
 import { RubberAdminController } from "./rubber-admin.controller";
@@ -96,6 +98,8 @@ import { RubberStockLocationService } from "./rubber-stock-location.service";
 import { RubberTaxInvoiceService } from "./rubber-tax-invoice.service";
 import { ArEmailAdapterService } from "./services/ar-email-adapter.service";
 import { RubberOrderConfirmationService } from "./services/rubber-order-confirmation.service";
+import { WebsitePagesController } from "./website-pages.controller";
+import { WebsitePagesService } from "./website-pages.service";
 
 @Module({
   imports: [
@@ -152,11 +156,18 @@ import { RubberOrderConfirmationService } from "./services/rubber-order-confirma
       RubberRollIssuanceItem,
       RubberRollIssuanceLineItem,
       RubberAppProfile,
+      WebsitePage,
       JobCard,
       JobCardLineItem,
     ]),
   ],
-  controllers: [RubberLiningController, RubberAdminController, RubberInboundEmailController],
+  controllers: [
+    RubberLiningController,
+    RubberAdminController,
+    RubberInboundEmailController,
+    WebsitePagesController,
+    PublicAuIndustriesController,
+  ],
   providers: [
     RubberLiningService,
     RubberStockService,
@@ -186,6 +197,7 @@ import { RubberOrderConfirmationService } from "./services/rubber-order-confirma
     RubberSageInvoicePostService,
     RubberCostService,
     AuRubberAccessGuard,
+    WebsitePagesService,
     ArEmailAdapterService,
     RubberCompanyDirectorService,
     RubberAccountingPdfService,

@@ -75,4 +75,9 @@ export const rubberKeys = {
     all: ["rubber", "specifications"] as const,
     list: () => [...rubberKeys.specifications.all, "list"] as const,
   },
+  websitePages: {
+    all: ["rubber", "websitePages"] as const,
+    list: () => [...rubberKeys.websitePages.all, "list"] as const,
+    detail: (id: string) => [...rubberKeys.websitePages.all, "detail", id] as const,
+  },
 } as const;

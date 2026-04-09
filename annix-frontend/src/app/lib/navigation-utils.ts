@@ -11,7 +11,11 @@ export const shouldShowGlobalNavigation = (pathname: string): boolean => {
     return false;
   }
 
-  if (pathname.startsWith("/au-rubber") || pathname.startsWith("/stock-control")) {
+  if (
+    pathname.startsWith("/au-rubber") ||
+    pathname.startsWith("/au-industries") ||
+    pathname.startsWith("/stock-control")
+  ) {
     return false;
   }
 

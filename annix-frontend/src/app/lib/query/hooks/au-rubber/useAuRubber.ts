@@ -13,6 +13,7 @@ import {
   type RubberSpecificationDto,
   type RubberSupplierCocDto,
   type SupplierCocType,
+  type WebsitePageDto,
 } from "@/app/lib/api/auRubberApi";
 import type {
   RubberCompanyDto,
@@ -114,5 +115,20 @@ export function useAuRubberQualityAlerts() {
   return useQuery<QualityAlertDto[]>({
     queryKey: rubberKeys.qualityAlerts.list(),
     queryFn: () => auRubberApiClient.qualityAlerts(),
+  });
+}
+
+export function useAuRubberWebsitePages() {
+  return useQuery<WebsitePageDto[]>({
+    queryKey: rubberKeys.websitePages.list(),
+    queryFn: () => auRubberApiClient.websitePages(),
+  });
+}
+
+export function useAuRubberWebsitePage(id: string) {
+  return useQuery<WebsitePageDto>({
+    queryKey: rubberKeys.websitePages.detail(id),
+    queryFn: () => auRubberApiClient.websitePage(id),
+    enabled: !!id,
   });
 }

@@ -58,6 +58,7 @@ Shared workspace package (pnpm workspace). Both `annix-backend` and `annix-front
 | Company profile (Annix SoT) | `admin/admin-company-profile.service.ts` | ANY Annix legal/contact info. Never hardcode legal name, reg number, emails, addresses. |
 | Reference data API | `reference-data/` | Public `GET /public/reference/pipe-specs`, `POST /public/reference/b16-rating`, `/public/reference/currencies`. |
 | RBAC | `rbac/rbac.service.ts` | Permissions, role names, portal user access. `STOCK_CONTROL_ROLE_NAMES` is exported from here. |
+| Website pages CMS | `rubber-lining/website-pages.service.ts` | CRUD for AU Industries website pages. Public routes via `public-au-industries.controller.ts`. Admin routes via `website-pages.controller.ts`. |
 | Platform base entities | `platform/entities/base-portal-profile.ts` | Extend this for any portal-profile-shaped entity (customer, supplier). |
 | TanStack-compatible query helpers | `shared/validators/` | Shared NestJS validators (e.g. `rfq-compliance.validator.ts`). |
 
@@ -82,7 +83,7 @@ Existing shared components include: `DataTable`, `TableComponents`, `ConfirmModa
 | Auth / token storage | `lib/auth/PortalTokenStore` | Shared across all portals — customer, supplier, stock-control, AU, CV. |
 | SA validators | `lib/validators/` | ID numbers, VAT numbers, phone numbers, email, company registration numbers. |
 | Config | `lib/config/rfq/` | RFQ config — **thin re-export shims over `@annix/product-data/pipe`**. Do not add new local data here. |
-| Query hooks | `lib/query/hooks/<subject>/use<Subject>.ts` | ALL page-level data fetching must use these. Subjects: `admin`, `boq`, `customer`, `drawing`, `rfq`, `supplier`, `reference`. |
+| Query hooks | `lib/query/hooks/<subject>/use<Subject>.ts` | ALL page-level data fetching must use these. Subjects: `admin`, `au-rubber`, `boq`, `customer`, `drawing`, `rfq`, `supplier`, `reference`. |
 | Query keys | `lib/query/keys/<subject>Keys.ts` | Query key factories with shape `{ all, list, detail }`. |
 | corpId (static branding) | `lib/config/corpId.ts` | Colors, fonts, logos. **Never legal data** — use the company profile hook for that. |
 | Company profile hook | `lib/query/hooks/useAnnixCompanyProfile` | Annix legal/contact info. Never hardcode. |

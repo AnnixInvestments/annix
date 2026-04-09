@@ -3766,6 +3766,83 @@ class AuRubberApiClient {
       method: "POST",
     });
   }
+  async websitePages(): Promise<WebsitePageDto[]> {
+    return this.request("/rubber-lining/website-pages");
+  }
+
+  async websitePage(id: string): Promise<WebsitePageDto> {
+    return this.request(`/rubber-lining/website-pages/${id}`);
+  }
+
+  async createWebsitePage(data: CreateWebsitePageDto): Promise<WebsitePageDto> {
+    return this.request("/rubber-lining/website-pages", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateWebsitePage(id: string, data: UpdateWebsitePageDto): Promise<WebsitePageDto> {
+    return this.request(`/rubber-lining/website-pages/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteWebsitePage(id: string): Promise<void> {
+    return this.request(`/rubber-lining/website-pages/${id}`, {
+      method: "DELETE",
+    });
+  }
+
+  async reorderWebsitePage(id: string, sortOrder: number): Promise<WebsitePageDto> {
+    return this.request(`/rubber-lining/website-pages/${id}/reorder`, {
+      method: "PATCH",
+      body: JSON.stringify({ sortOrder }),
+    });
+  }
+
+  async uploadWebsiteImage(file: File): Promise<{ url: string }> {
+    return this.requestWithFiles("/rubber-lining/website-pages/upload-image", [file], {}, "file");
+  }
+}
+
+export interface WebsitePageDto {
+  id: string;
+  slug: string;
+  title: string;
+  metaTitle: string | null;
+  metaDescription: string | null;
+  content: string;
+  heroImageUrl: string | null;
+  sortOrder: number;
+  isPublished: boolean;
+  isHomePage: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateWebsitePageDto {
+  title: string;
+  slug: string;
+  metaTitle?: string | null;
+  metaDescription?: string | null;
+  content?: string;
+  heroImageUrl?: string | null;
+  sortOrder?: number;
+  isPublished?: boolean;
+  isHomePage?: boolean;
+}
+
+export interface UpdateWebsitePageDto {
+  title?: string;
+  slug?: string;
+  metaTitle?: string | null;
+  metaDescription?: string | null;
+  content?: string;
+  heroImageUrl?: string | null;
+  sortOrder?: number;
+  isPublished?: boolean;
+  isHomePage?: boolean;
 }
 
 export const auRubberApiClient = new AuRubberApiClient();
