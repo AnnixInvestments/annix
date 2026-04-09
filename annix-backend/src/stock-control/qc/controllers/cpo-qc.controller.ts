@@ -222,6 +222,7 @@ export class CpoQcController {
         const items = (jc.lineItems || []).map((li) => ({
           id: li.id,
           jobCardId: jc.id,
+          itemNo: li.itemNo || null,
           itemCode: li.itemCode || "",
           description: li.itemDescription || "",
           quantity: li.quantity || 0,

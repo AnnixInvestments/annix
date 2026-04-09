@@ -32,6 +32,7 @@ export interface CpoChildJcLineItems {
   lineItems: Array<{
     id: number;
     jobCardId: number;
+    itemNo: string | null;
     itemCode: string;
     description: string;
     quantity: number;

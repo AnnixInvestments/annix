@@ -99,6 +99,10 @@ export function CompanyInfoTab() {
     }
   };
 
+  const streetBlock = [profile.streetAddress, profile.city, profile.province, profile.postalCode]
+    .filter(Boolean)
+    .join("\n");
+
   const updateField = (field: keyof RubberAppProfileDto, value: string) => {
     setProfile((prev) => ({ ...prev, [field]: value || null }));
   };
@@ -206,18 +210,60 @@ export function CompanyInfoTab() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <TextAreaField
-            label="Postal Address (one line per row)"
-            value={profile.postalAddress || ""}
-            onChange={(v) => updateField("postalAddress", v)}
-            placeholder={"PO Box 1234\nCity\nProvince\n1234"}
-          />
-          <TextAreaField
-            label="Delivery Address (one line per row)"
-            value={profile.deliveryAddress || ""}
-            onChange={(v) => updateField("deliveryAddress", v)}
-            placeholder={"123 Street Name\nCity\nProvince\n1234"}
-          />
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-sm font-medium text-gray-700">
+                Postal Address (one line per row)
+              </label>
+              <label className="inline-flex items-center gap-1.5 text-xs text-gray-500 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={profile.postalAddress === streetBlock}
+                  onChange={(e) => {
+                    if (e.target.checked) {
+                      updateField("postalAddress", streetBlock);
+                    }
+                  }}
+                  className="rounded border-gray-300 text-yellow-600 focus:ring-yellow-500"
+                />
+                Same as street address
+              </label>
+            </div>
+            <textarea
+              value={profile.postalAddress || ""}
+              onChange={(e) => updateField("postalAddress", e.target.value)}
+              placeholder={"PO Box 1234\nCity\nProvince\n1234"}
+              rows={3}
+              className="w-full rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 text-sm border p-2"
+            />
+          </div>
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-sm font-medium text-gray-700">
+                Delivery Address (one line per row)
+              </label>
+              <label className="inline-flex items-center gap-1.5 text-xs text-gray-500 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={profile.deliveryAddress === streetBlock}
+                  onChange={(e) => {
+                    if (e.target.checked) {
+                      updateField("deliveryAddress", streetBlock);
+                    }
+                  }}
+                  className="rounded border-gray-300 text-yellow-600 focus:ring-yellow-500"
+                />
+                Same as street address
+              </label>
+            </div>
+            <textarea
+              value={profile.deliveryAddress || ""}
+              onChange={(e) => updateField("deliveryAddress", e.target.value)}
+              placeholder={"123 Street Name\nCity\nProvince\n1234"}
+              rows={3}
+              className="w-full rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 text-sm border p-2"
+            />
+          </div>
         </div>
 
         <hr className="border-gray-200" />

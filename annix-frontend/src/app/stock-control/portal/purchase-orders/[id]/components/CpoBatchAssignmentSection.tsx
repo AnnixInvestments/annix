@@ -31,6 +31,7 @@ interface CpoLineItem {
   id: number;
   jobCardId: number;
   jcNumber: string;
+  itemNo: string | null;
   itemCode: string;
   description: string;
   quantity: number;
@@ -40,6 +41,7 @@ interface AddFormState {
   fieldKey: string;
   batchNumber: string;
   selectedItemIds: Set<number>;
+  quantityOverrides: Record<number, number>;
   notApplicable: boolean;
 }
 
@@ -159,6 +161,7 @@ export function CpoBatchAssignmentSection(props: CpoBatchAssignmentSectionProps)
         id: li.id,
         jobCardId: li.jobCardId,
         jcNumber,
+        itemNo: li.itemNo || null,
         itemCode: li.itemCode,
         description: li.description,
         quantity: li.quantity,
@@ -237,7 +240,8 @@ export function CpoBatchAssignmentSection(props: CpoBatchAssignmentSectionProps)
     setAddForm({
       fieldKey,
       batchNumber: "",
-      selectedItemIds: new Set(unassigned.map((li) => li.id)),
+      selectedItemIds: new Set(),
+      quantityOverrides: {},
       notApplicable: false,
     });
   };
@@ -439,6 +443,16 @@ export function CpoBatchAssignmentSection(props: CpoBatchAssignmentSectionProps)
                   isSaving={isSaving}
                   onToggleItem={handleToggleItem}
                   onBatchNumberChange={(val) => setAddForm({ ...addForm, batchNumber: val })}
+                  onQuantityChange={(itemId, val) => {
+                    const num = parseFloat(val);
+                    setAddForm({
+                      ...addForm,
+                      quantityOverrides: {
+                        ...addForm.quantityOverrides,
+                        [itemId]: Number.isNaN(num) ? 0 : num,
+                      },
+                    });
+                  }}
                   onNotApplicableChange={(checked) =>
                     setAddForm({
                       ...addForm,
@@ -510,6 +524,7 @@ interface CpoAddBatchFormProps {
   isSaving: boolean;
   onToggleItem: (itemId: number) => void;
   onBatchNumberChange: (value: string) => void;
+  onQuantityChange: (itemId: number, value: string) => void;
   onNotApplicableChange: (checked: boolean) => void;
   onSave: () => void;
   onCancel: () => void;
@@ -594,10 +609,21 @@ function CpoAddBatchForm(props: CpoAddBatchFormProps) {
                             onChange={() => props.onToggleItem(li.id)}
                             className="rounded border-gray-300 text-teal-600 focus:ring-teal-500 h-4 w-4"
                           />
-                          <span className="text-xs text-gray-800">{itemLabel}</span>
-                          <span className="text-[10px] text-gray-400 ml-auto">
-                            Qty: {li.quantity}
-                          </span>
+                          {li.itemNo && (
+                            <span className="text-[10px] font-mono text-gray-500 shrink-0">
+                              {li.itemNo}
+                            </span>
+                          )}
+                          <span className="text-xs text-gray-800 truncate">{itemLabel}</span>
+                          <input
+                            type="number"
+                            value={props.addForm.quantityOverrides[li.id] ?? li.quantity}
+                            min={0}
+                            step="any"
+                            onChange={(e) => props.onQuantityChange(li.id, e.target.value)}
+                            onClick={(e) => e.stopPropagation()}
+                            className="ml-auto w-16 text-right text-[10px] rounded border border-gray-300 px-1 py-0.5"
+                          />
                         </label>
                       );
                     })}
