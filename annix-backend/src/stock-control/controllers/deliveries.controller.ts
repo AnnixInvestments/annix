@@ -96,14 +96,25 @@ export class DeliveriesController {
     return this.deliveryService.extractionStatus(req.user.companyId, id);
   }
 
+  @Post(":id/preview-stock-matches")
+  @ApiOperation({ summary: "Preview proposed stock item matches before linking" })
+  async previewStockMatches(@Req() req: any, @Param("id") id: number) {
+    return this.deliveryService.previewStockMatches(req.user.companyId, id);
+  }
+
   @Post(":id/link-to-stock")
   @ApiOperation({ summary: "Create stock items from extracted delivery note data" })
-  async linkExtractedToStock(@Req() req: any, @Param("id") id: number) {
+  async linkExtractedToStock(
+    @Req() req: any,
+    @Param("id") id: number,
+    @Body() body?: { overrides?: Array<{ description: string; matchedItemId: number | null }> },
+  ) {
     try {
       return await this.deliveryService.linkExtractedItemsToStock(
         req.user.companyId,
         id,
         req.user.name,
+        body?.overrides,
       );
     } catch (error) {
       this.logger.error(

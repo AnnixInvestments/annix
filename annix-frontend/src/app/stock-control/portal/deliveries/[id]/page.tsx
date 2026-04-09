@@ -12,6 +12,7 @@ import {
   useLinkDeliveryNoteToStock,
   useUploadDeliveryPhoto,
 } from "@/app/lib/query/hooks";
+import { DeliveryMatchReview } from "@/app/stock-control/components/DeliveryMatchReview";
 import { DeliveryNextAction } from "@/app/stock-control/components/NextActionBanner";
 import { PhotoCapture } from "@/app/stock-control/components/PhotoCapture";
 import { useViewAs } from "@/app/stock-control/context/ViewAsContext";
@@ -55,6 +56,7 @@ export default function DeliveryDetailPage() {
 
   const [isUploading, setIsUploading] = useState(false);
   const [mutationError, setMutationError] = useState<string | null>(null);
+  const [showMatchReview, setShowMatchReview] = useState(false);
 
   const queryErrorMessage = queryError
     ? queryError instanceof Error
@@ -74,10 +76,19 @@ export default function DeliveryDetailPage() {
     }
   };
 
-  const handleLinkToStock = async () => {
+  const handleLinkToStock = () => {
+    setMutationError(null);
+    setShowMatchReview(true);
+  };
+
+  const handleMatchReviewConfirm = async (
+    overrides: Array<{ description: string; matchedItemId: number | null }>,
+  ) => {
+    setShowMatchReview(false);
     try {
       setMutationError(null);
-      await linkToStockMutation.mutateAsync(deliveryId);
+      const effectiveOverrides = overrides.length > 0 ? overrides : undefined;
+      await linkToStockMutation.mutateAsync({ id: deliveryId, overrides: effectiveOverrides });
     } catch (err) {
       setMutationError(err instanceof Error ? err.message : "Failed to link items to stock");
     }
@@ -523,6 +534,13 @@ export default function DeliveryDetailPage() {
           </div>
         )}
       </div>
+      {showMatchReview && (
+        <DeliveryMatchReview
+          deliveryId={deliveryId}
+          onConfirm={handleMatchReviewConfirm}
+          onCancel={() => setShowMatchReview(false)}
+        />
+      )}
     </div>
   );
 }

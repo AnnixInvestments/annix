@@ -103,10 +103,11 @@ export class DeliverySupplierService {
     supplierName: string,
     description: string,
     newSku: string,
+    category?: string | null,
   ): Promise<{ existingItem: StockItem | null; sameSupplier: boolean; score: number }> {
     const allItems = await this.stockItemRepo.find({ where: { companyId } });
 
-    const candidates = this.scoreCandidates(allItems, description, newSku);
+    const candidates = this.scoreCandidates(allItems, description, newSku, category);
 
     if (candidates.length === 0) {
       return { existingItem: null, sameSupplier: false, score: 0 };
@@ -158,15 +159,23 @@ export class DeliverySupplierService {
     return { existingItem: null, sameSupplier: false, score: bestAnySupplier.score };
   }
 
-  scoreCandidates(allItems: StockItem[], description: string, newSku: string): MatchCandidate[] {
+  scoreCandidates(
+    allItems: StockItem[],
+    description: string,
+    newSku: string,
+    category?: string | null,
+  ): MatchCandidate[] {
     const normDesc = this.normalizeForComparison(description);
     const normSku = this.normaliseSku(newSku);
     const descTokens = this.tokenise(description);
+    const normCategory = category?.toLowerCase().trim() || null;
 
     const candidates: MatchCandidate[] = allItems
       .map((item) => {
         const normItemName = this.normalizeForComparison(item.name);
         const normItemSku = this.normaliseSku(item.sku);
+        const itemCategory = item.category?.toLowerCase().trim() || null;
+        const categoryMatch = normCategory && itemCategory ? normCategory === itemCategory : null;
 
         if (normSku.length >= 3 && normSku === normItemSku) {
           return { item, score: 0.95, matchType: "sku_normalised" as const };
@@ -178,7 +187,11 @@ export class DeliverySupplierService {
 
         const tokenScore = this.jaccardTokenSimilarity(descTokens, this.tokenise(item.name));
         if (tokenScore >= 0.5) {
-          return { item, score: tokenScore, matchType: "name_token" as const };
+          if (categoryMatch === false && tokenScore < 0.8) {
+            return null;
+          }
+          const boosted = categoryMatch === true ? Math.min(1, tokenScore + 0.05) : tokenScore;
+          return { item, score: boosted, matchType: "name_token" as const };
         }
 
         if (

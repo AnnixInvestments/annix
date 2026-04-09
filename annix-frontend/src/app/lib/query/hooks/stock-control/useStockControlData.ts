@@ -130,7 +130,10 @@ export const useDeleteDeliveryNote = createMutationHook(
 );
 
 export const useLinkDeliveryNoteToStock = createMutationHook(
-  (id: number) => stockControlApiClient.linkDeliveryNoteToStock(id),
+  (params: {
+    id: number;
+    overrides?: Array<{ description: string; matchedItemId: number | null }>;
+  }) => stockControlApiClient.linkDeliveryNoteToStock(params.id, params.overrides),
   [stockControlKeys.deliveries.all, stockControlKeys.inventory.all],
 );
 

@@ -171,7 +171,7 @@ export default function DeliveriesPage() {
   const handleBulkAddToStock = async () => {
     setIsBulkAdding(true);
     const ids = Array.from(selectedIds);
-    const results = await Promise.allSettled(ids.map((id) => linkMutation.mutateAsync(id)));
+    const results = await Promise.allSettled(ids.map((id) => linkMutation.mutateAsync({ id })));
     const successCount = results.filter((r) => r.status === "fulfilled").length;
     const failCount = results.filter((r) => r.status === "rejected").length;
 
@@ -202,7 +202,7 @@ export default function DeliveriesPage() {
         id: reviewTarget.id,
         confirmedData: editedData as unknown as Record<string, unknown>,
       });
-      await linkMutation.mutateAsync(reviewTarget.id);
+      await linkMutation.mutateAsync({ id: reviewTarget.id });
       showToast(
         `Delivery note ${reviewTarget.deliveryNumber} confirmed and added to stock`,
         "success",
@@ -233,10 +233,13 @@ export default function DeliveriesPage() {
   };
 
   const handleAddToStock = (delivery: DeliveryNote) => {
-    linkMutation.mutate(delivery.id, {
-      onSuccess: () => showToast(`${delivery.deliveryNumber} added to stock`, "success"),
-      onError: () => showToast("Failed to add to stock", "error"),
-    });
+    linkMutation.mutate(
+      { id: delivery.id },
+      {
+        onSuccess: () => showToast(`${delivery.deliveryNumber} added to stock`, "success"),
+        onError: () => showToast("Failed to add to stock", "error"),
+      },
+    );
   };
 
   const buildAnalyzedDataFromExtracted = (

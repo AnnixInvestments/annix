@@ -104,6 +104,13 @@ export class InventoryController {
     return this.inventoryService.detectDuplicates(req.user.companyId);
   }
 
+  @StockControlRoles("manager", "admin")
+  @Get("supplier-mappings")
+  @ApiOperation({ summary: "List learned supplier SKU to stock item mappings" })
+  async supplierMappings(@Req() req: any) {
+    return this.inventoryService.supplierSkuMappings(req.user.companyId);
+  }
+
   @Get(":id")
   @ApiOperation({ summary: "Stock item by ID" })
   async findById(@Req() req: any, @Param("id") id: number) {
@@ -175,6 +182,13 @@ export class InventoryController {
       mediaType,
       context,
     );
+  }
+
+  @StockControlRoles("manager", "admin")
+  @Delete("supplier-mappings/:id")
+  @ApiOperation({ summary: "Delete a supplier SKU mapping" })
+  async deleteSupplierMapping(@Req() req: any, @Param("id") id: number) {
+    return this.inventoryService.deleteSupplierSkuMapping(id);
   }
 
   @StockControlRoles("manager", "admin")

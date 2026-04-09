@@ -262,13 +262,19 @@ export class DeliveryService {
     };
   }
 
+  async previewStockMatches(companyId: number, id: number) {
+    const note = await this.findById(companyId, id);
+    return this.extractionService.previewStockMatches(companyId, note);
+  }
+
   async linkExtractedItemsToStock(
     companyId: number,
     id: number,
     receivedBy?: string,
+    overrides?: Array<{ description: string; matchedItemId: number | null }>,
   ): Promise<DeliveryNote> {
     const note = await this.findById(companyId, id);
-    await this.extractionService.linkExtractedItemsToStock(companyId, note, receivedBy);
+    await this.extractionService.linkExtractedItemsToStock(companyId, note, receivedBy, overrides);
     return this.findById(companyId, id);
   }
 

@@ -27,6 +27,13 @@ export interface ScanResult {
   type: "staff" | "stock_item" | "job_card";
   id: number;
   data: StaffMember | StockItem | JobCard;
+  alternatives?: Array<{
+    id: number;
+    sku: string;
+    name: string;
+    quantity: number;
+    category: string | null;
+  }>;
 }
 
 export interface CreateIssuanceDto {
@@ -129,7 +136,7 @@ export class IssuanceService {
         throw new NotFoundException(`Stock item not found for identifier: ${identifier}`);
       }
 
-      return { type: "stock_item", id: stockItem.id, data: stockItem };
+      return this.stockItemResultWithAlternatives(companyId, stockItem);
     }
 
     if (trimmed.startsWith("job:")) {
@@ -148,7 +155,7 @@ export class IssuanceService {
         const identifier = String(jsonData.id ?? jsonData.sku ?? jsonData.name);
         const stockItem = await this.findStockItem(companyId, identifier);
         if (stockItem) {
-          return { type: "stock_item", id: stockItem.id, data: stockItem };
+          return this.stockItemResultWithAlternatives(companyId, stockItem);
         }
       }
 
@@ -175,7 +182,7 @@ export class IssuanceService {
 
     const stockItem = await this.findStockItem(companyId, trimmed);
     if (stockItem) {
-      return { type: "stock_item", id: stockItem.id, data: stockItem };
+      return this.stockItemResultWithAlternatives(companyId, stockItem);
     }
 
     const jobCard = await this.findJobCard(companyId, trimmed);
@@ -211,6 +218,65 @@ export class IssuanceService {
     }
 
     return null;
+  }
+
+  private async stockItemResultWithAlternatives(
+    companyId: number,
+    stockItem: StockItem,
+  ): Promise<ScanResult> {
+    const alternatives =
+      Number(stockItem.quantity) <= 0
+        ? await this.findSimilarItemsWithStock(companyId, stockItem)
+        : [];
+    return {
+      type: "stock_item",
+      id: stockItem.id,
+      data: stockItem,
+      ...(alternatives.length > 0 ? { alternatives } : {}),
+    };
+  }
+
+  private async findSimilarItemsWithStock(
+    companyId: number,
+    item: StockItem,
+  ): Promise<
+    Array<{ id: number; sku: string; name: string; quantity: number; category: string | null }>
+  > {
+    const nameWords = item.name
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/g, " ")
+      .split(/\s+/)
+      .filter((w) => w.length > 2);
+
+    if (nameWords.length === 0) return [];
+
+    const conditions = nameWords.map((w) => `LOWER(si.name) LIKE '%${w.replace(/'/g, "''")}%'`);
+    const whereClause = conditions.join(" OR ");
+
+    const similar: Array<{
+      id: number;
+      sku: string;
+      name: string;
+      quantity: number;
+      category: string | null;
+    }> = await this.stockItemRepo
+      .createQueryBuilder("si")
+      .select(["si.id", "si.sku", "si.name", "si.quantity", "si.category"])
+      .where("si.companyId = :companyId", { companyId })
+      .andWhere("si.id != :excludeId", { excludeId: item.id })
+      .andWhere("si.quantity > 0")
+      .andWhere(`(${whereClause})`)
+      .orderBy("si.quantity", "DESC")
+      .take(5)
+      .getMany();
+
+    return similar.map((s) => ({
+      id: s.id,
+      sku: s.sku,
+      name: s.name,
+      quantity: Number(s.quantity),
+      category: s.category,
+    }));
   }
 
   private async findStockItem(companyId: number, identifier: string): Promise<StockItem | null> {

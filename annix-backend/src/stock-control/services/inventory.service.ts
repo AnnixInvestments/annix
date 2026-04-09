@@ -341,6 +341,72 @@ export class InventoryService {
     return { groups, total, page, limit };
   }
 
+  async supplierSkuMappings(companyId: number): Promise<
+    Array<{
+      id: number;
+      supplier: string;
+      supplierSku: string;
+      stockItemId: number;
+      stockItemName: string | null;
+      stockItemSku: string | null;
+      confidence: number;
+      confirmationCount: number;
+    }>
+  > {
+    const learnings = await this.nixLearningRepo.find({
+      where: {
+        learningType: LearningType.CORRECTION,
+        category: "delivery_stock_matching",
+        isActive: true,
+      },
+      order: { confidence: "DESC", confirmationCount: "DESC" },
+    });
+
+    const skuMappings = learnings.filter((l) => l.patternKey.startsWith("delivery_sku_map:"));
+
+    const stockItemIds = skuMappings
+      .map((l) => Number(l.learnedValue))
+      .filter((id) => !Number.isNaN(id) && id > 0);
+    const stockItems =
+      stockItemIds.length > 0
+        ? await this.stockItemRepo.find({ where: { id: In(stockItemIds), companyId } })
+        : [];
+    const itemMap = new Map(stockItems.map((si) => [si.id, si]));
+
+    return skuMappings
+      .map((l) => {
+        const parts = l.patternKey.replace("delivery_sku_map:", "").split(":");
+        const supplier = l.context?.supplier || parts[0] || "Unknown";
+        const supplierSku = l.originalValue || parts.slice(1).join(":") || "Unknown";
+        const stockItemId = Number(l.learnedValue);
+        const item = itemMap.get(stockItemId);
+        if (!item) return null;
+        return {
+          id: l.id,
+          supplier,
+          supplierSku,
+          stockItemId,
+          stockItemName: item.name,
+          stockItemSku: item.sku,
+          confidence: Number(l.confidence),
+          confirmationCount: l.confirmationCount,
+        };
+      })
+      .filter((m): m is NonNullable<typeof m> => m !== null);
+  }
+
+  async deleteSupplierSkuMapping(id: number): Promise<{ deleted: boolean }> {
+    const learning = await this.nixLearningRepo.findOne({
+      where: { id, category: "delivery_stock_matching" },
+    });
+    if (!learning) {
+      throw new NotFoundException("Mapping not found");
+    }
+    learning.isActive = false;
+    await this.nixLearningRepo.save(learning);
+    return { deleted: true };
+  }
+
   async detectDuplicates(companyId: number): Promise<DuplicateGroup[]> {
     const allItems = await this.stockItemRepo.find({
       where: { companyId },

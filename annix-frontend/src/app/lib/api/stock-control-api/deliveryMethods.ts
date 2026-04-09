@@ -21,7 +21,27 @@ declare module "./base" {
     }): Promise<DeliveryNote>;
     deleteDeliveryNote(id: number): Promise<void>;
     uploadDeliveryPhoto(id: number, file: File): Promise<DeliveryNote>;
-    linkDeliveryNoteToStock(id: number): Promise<DeliveryNote>;
+    previewDeliveryStockMatches(id: number): Promise<
+      Array<{
+        description: string;
+        sku: string;
+        quantity: number;
+        proposedMatch: {
+          id: number;
+          sku: string;
+          name: string;
+          quantity: number;
+          category: string | null;
+          score: number;
+          matchType: string;
+        } | null;
+        isNew: boolean;
+      }>
+    >;
+    linkDeliveryNoteToStock(
+      id: number,
+      overrides?: Array<{ description: string; matchedItemId: number | null }>,
+    ): Promise<DeliveryNote>;
     savePendingDeliveryNote(
       file: File,
       analyzedData: AnalyzedDeliveryNoteData,
@@ -81,8 +101,16 @@ proto.uploadDeliveryPhoto = async function (id, file) {
   return this.uploadFile(`/stock-control/deliveries/${id}/photo`, file);
 };
 
-proto.linkDeliveryNoteToStock = async function (id) {
-  return this.request(`/stock-control/deliveries/${id}/link-to-stock`, { method: "POST" });
+proto.previewDeliveryStockMatches = async function (id) {
+  return this.request(`/stock-control/deliveries/${id}/preview-stock-matches`, { method: "POST" });
+};
+
+proto.linkDeliveryNoteToStock = async function (id, overrides) {
+  const body = overrides ? JSON.stringify({ overrides }) : undefined;
+  return this.request(`/stock-control/deliveries/${id}/link-to-stock`, {
+    method: "POST",
+    body,
+  });
 };
 
 proto.savePendingDeliveryNote = async function (file, analyzedData) {

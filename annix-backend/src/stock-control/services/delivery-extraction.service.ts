@@ -35,6 +35,7 @@ type MediaType = "image/jpeg" | "image/png" | "image/gif" | "image/webp" | "appl
 @Injectable()
 export class DeliveryExtractionService {
   private readonly logger = new Logger(DeliveryExtractionService.name);
+  private overrideMap: Map<string, number | null> | null = null;
 
   constructor(
     @InjectRepository(DeliveryNote)
@@ -86,10 +87,168 @@ export class DeliveryExtractionService {
     }
   }
 
+  async previewStockMatches(
+    companyId: number,
+    note: DeliveryNote,
+  ): Promise<
+    Array<{
+      description: string;
+      sku: string;
+      quantity: number;
+      proposedMatch: {
+        id: number;
+        sku: string;
+        name: string;
+        quantity: number;
+        category: string | null;
+        score: number;
+        matchType: string;
+      } | null;
+      isNew: boolean;
+    }>
+  > {
+    const extractedData = note.extractedData as {
+      lineItems?: Array<ExtractedLineItem>;
+    } | null;
+
+    if (!extractedData?.lineItems || extractedData.lineItems.length === 0) {
+      return [];
+    }
+
+    const mergedItems = this.mergeIdenticalLines(extractedData.lineItems);
+    const results: Array<{
+      description: string;
+      sku: string;
+      quantity: number;
+      proposedMatch: {
+        id: number;
+        sku: string;
+        name: string;
+        quantity: number;
+        category: string | null;
+        score: number;
+        matchType: string;
+      } | null;
+      isNew: boolean;
+    }> = [];
+
+    for (const item of mergedItems) {
+      if (!item.description) continue;
+
+      const sku = this.generateSku(item);
+      const { quantity } = this.calculateItemMetrics(item);
+
+      const learnedMatch = await this.findLearnedStockItem(
+        companyId,
+        note.supplierName,
+        sku,
+        item.description,
+      );
+      if (learnedMatch) {
+        results.push({
+          description: item.description,
+          sku,
+          quantity,
+          proposedMatch: {
+            id: learnedMatch.id,
+            sku: learnedMatch.sku,
+            name: learnedMatch.name,
+            quantity: Number(learnedMatch.quantity),
+            category: learnedMatch.category,
+            score: 1.0,
+            matchType: "learned",
+          },
+          isNew: false,
+        });
+        continue;
+      }
+
+      const existingBySku = await this.stockItemRepo.findOne({
+        where: { sku, companyId },
+      });
+      if (existingBySku) {
+        results.push({
+          description: item.description,
+          sku,
+          quantity,
+          proposedMatch: {
+            id: existingBySku.id,
+            sku: existingBySku.sku,
+            name: existingBySku.name,
+            quantity: Number(existingBySku.quantity),
+            category: existingBySku.category,
+            score: 1.0,
+            matchType: "exact_sku",
+          },
+          isNew: false,
+        });
+        continue;
+      }
+
+      const normalisedMatch = await this.supplierService.findByNormalisedSku(companyId, sku);
+      if (normalisedMatch) {
+        results.push({
+          description: item.description,
+          sku,
+          quantity,
+          proposedMatch: {
+            id: normalisedMatch.id,
+            sku: normalisedMatch.sku,
+            name: normalisedMatch.name,
+            quantity: Number(normalisedMatch.quantity),
+            category: normalisedMatch.category,
+            score: 0.95,
+            matchType: "normalised_sku",
+          },
+          isNew: false,
+        });
+        continue;
+      }
+
+      const inferredCategory = this.inferCategory(item);
+      const matchResult = await this.supplierService.findMatchingStockItem(
+        companyId,
+        note.supplierName,
+        item.description,
+        sku,
+        inferredCategory,
+      );
+
+      if (matchResult.existingItem && (matchResult.sameSupplier || matchResult.score >= 0.85)) {
+        results.push({
+          description: item.description,
+          sku,
+          quantity,
+          proposedMatch: {
+            id: matchResult.existingItem.id,
+            sku: matchResult.existingItem.sku,
+            name: matchResult.existingItem.name,
+            quantity: Number(matchResult.existingItem.quantity),
+            category: matchResult.existingItem.category,
+            score: matchResult.score,
+            matchType: matchResult.sameSupplier ? "fuzzy_same_supplier" : "fuzzy_high_confidence",
+          },
+          isNew: false,
+        });
+      } else {
+        results.push({
+          description: item.description,
+          sku,
+          quantity,
+          proposedMatch: null,
+          isNew: true,
+        });
+      }
+    }
+
+    return results;
+  }
+
   async linkExtractedItemsToStock(
     companyId: number,
     note: DeliveryNote,
     receivedBy?: string,
+    overrides?: Array<{ description: string; matchedItemId: number | null }>,
   ): Promise<void> {
     if (note.items && note.items.length > 0) {
       this.logger.log(`Delivery note ${note.id} already has ${note.items.length} linked items`);
@@ -105,11 +264,19 @@ export class DeliveryExtractionService {
       return;
     }
 
+    if (overrides && overrides.length > 0) {
+      const overrideMap = new Map(overrides.map((o) => [o.description, o.matchedItemId]));
+      this.overrideMap = overrideMap;
+    } else {
+      this.overrideMap = null;
+    }
+
     this.logger.log(
       `Linking ${extractedData.lineItems.length} extracted items to stock for delivery note ${note.id}`,
     );
     await this.createStockItemsFromExtracted(companyId, note, extractedData.lineItems, receivedBy);
 
+    this.overrideMap = null;
     note.sdnStatus = SdnStatus.STOCK_LINKED;
     await this.deliveryNoteRepo.save(note);
   }
@@ -261,6 +428,29 @@ export class DeliveryExtractionService {
     costPerUnit: number,
     unitOfMeasure: string,
   ): Promise<StockItem> {
+    if (this.overrideMap && item.description) {
+      const overrideItemId = this.overrideMap.get(item.description);
+      if (overrideItemId !== undefined && overrideItemId !== null) {
+        const overrideItem = await this.stockItemRepo.findOne({
+          where: { id: overrideItemId, companyId },
+        });
+        if (overrideItem) {
+          overrideItem.quantity = overrideItem.quantity + quantity;
+          if (Number.isFinite(costPerUnit) && costPerUnit > 0) {
+            overrideItem.costPerUnit = costPerUnit;
+          }
+          await this.stockItemRepo.save(overrideItem);
+          this.logger.log(
+            `Matched via user override: "${sku}" -> "${overrideItem.sku}", +${quantity}`,
+          );
+          this.recordDeliveryMatch(supplierName, sku, item.description, overrideItem.id).catch(
+            (err) => this.logger.error(`Failed to record delivery match learning: ${err.message}`),
+          );
+          return overrideItem;
+        }
+      }
+    }
+
     const learnedMatch = await this.findLearnedStockItem(
       companyId,
       supplierName,
@@ -316,11 +506,13 @@ export class DeliveryExtractionService {
       return normalisedMatch;
     }
 
+    const inferredCategory = this.inferCategory(item);
     const matchResult = await this.supplierService.findMatchingStockItem(
       companyId,
       supplierName,
       item.description!,
       sku,
+      inferredCategory,
     );
 
     if (matchResult.existingItem && (matchResult.sameSupplier || matchResult.score >= 0.85)) {

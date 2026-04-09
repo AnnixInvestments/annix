@@ -301,21 +301,25 @@ export default function CpoDetailPage() {
       setItemFormError("Quantity ordered must be a valid number (0 or more)");
       return;
     }
-    setItemFormError(null);
-    const data = {
-      itemCode: itemForm.itemCode.trim() || null,
-      itemDescription: itemForm.itemDescription.trim() || null,
-      itemNo: itemForm.itemNo.trim() || null,
-      quantityOrdered: qty,
-      jtNo: itemForm.jtNo.trim() || null,
-      m2: itemForm.m2.trim() ? parseFloat(itemForm.m2) : null,
-    };
-    if (editingItem) {
-      await updateCpoItemMutation.mutateAsync({ cpoId: id, itemId: editingItem.id, data });
-    } else {
-      await addCpoItemMutation.mutateAsync({ cpoId: id, data });
+    try {
+      setItemFormError(null);
+      const data = {
+        itemCode: itemForm.itemCode.trim() || null,
+        itemDescription: itemForm.itemDescription.trim() || null,
+        itemNo: itemForm.itemNo.trim() || null,
+        quantityOrdered: qty,
+        jtNo: itemForm.jtNo.trim() || null,
+        m2: itemForm.m2.trim() ? parseFloat(itemForm.m2) : null,
+      };
+      if (editingItem) {
+        await updateCpoItemMutation.mutateAsync({ cpoId: id, itemId: editingItem.id, data });
+      } else {
+        await addCpoItemMutation.mutateAsync({ cpoId: id, data });
+      }
+      setItemModalOpen(false);
+    } catch (err) {
+      setItemFormError(err instanceof Error ? err.message : "Failed to save line item");
     }
-    setItemModalOpen(false);
   };
 
   const error = cpoError
