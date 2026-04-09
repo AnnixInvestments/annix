@@ -204,7 +204,7 @@ export function ReleaseDocumentGenerator(props: ReleaseDocumentGeneratorProps) {
         </span>
       </div>
 
-      <div className="px-5 py-4">
+      <div className="px-3 py-3 sm:px-5 sm:py-4">
         {error && (
           <div className="mb-3 rounded-md bg-red-50 p-2 text-sm text-red-700">
             {error}
@@ -302,7 +302,7 @@ export function ReleaseDocumentGenerator(props: ReleaseDocumentGeneratorProps) {
                         className="h-4 w-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500"
                       />
                     </th>
-                    <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">
+                    <th className="hidden sm:table-cell px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">
                       Item No
                     </th>
                     <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">
@@ -311,16 +311,16 @@ export function ReleaseDocumentGenerator(props: ReleaseDocumentGeneratorProps) {
                     <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">
                       Description
                     </th>
-                    <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">
+                    <th className="hidden md:table-cell px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">
                       JT No
                     </th>
                     <th className="px-3 py-2 text-right text-xs font-medium uppercase text-gray-500">
                       Total Qty
                     </th>
-                    <th className="px-3 py-2 text-right text-xs font-medium uppercase text-gray-500">
+                    <th className="hidden sm:table-cell px-3 py-2 text-right text-xs font-medium uppercase text-gray-500">
                       Released
                     </th>
-                    <th className="px-3 py-2 text-right text-xs font-medium uppercase text-gray-500">
+                    <th className="hidden sm:table-cell px-3 py-2 text-right text-xs font-medium uppercase text-gray-500">
                       Remaining
                     </th>
                     <th className="px-3 py-2 text-right text-xs font-medium uppercase text-gray-500">
@@ -361,22 +361,22 @@ export function ReleaseDocumentGenerator(props: ReleaseDocumentGeneratorProps) {
                             className="h-4 w-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500 disabled:opacity-50"
                           />
                         </td>
-                        <td className="whitespace-nowrap px-3 py-2 text-sm text-gray-500">
+                        <td className="hidden sm:table-cell whitespace-nowrap px-3 py-2 text-sm text-gray-500">
                           {li.itemNo || "-"}
                         </td>
-                        <td className="whitespace-nowrap px-3 py-2 text-sm font-medium text-gray-900">
+                        <td className="whitespace-nowrap px-3 py-2 text-sm font-medium text-gray-900 max-w-[100px] sm:max-w-none truncate">
                           {li.itemCode || "-"}
                         </td>
-                        <td className="px-3 py-2 text-sm text-gray-600">
+                        <td className="px-3 py-2 text-sm text-gray-600 max-w-[120px] sm:max-w-none truncate">
                           {li.itemDescription || "-"}
                         </td>
-                        <td className="whitespace-nowrap px-3 py-2 text-sm text-gray-500">
+                        <td className="hidden md:table-cell whitespace-nowrap px-3 py-2 text-sm text-gray-500">
                           {li.jtNo || "-"}
                         </td>
                         <td className="whitespace-nowrap px-3 py-2 text-right text-sm text-gray-600">
                           {info.totalQty || "-"}
                         </td>
-                        <td className="whitespace-nowrap px-3 py-2 text-right text-sm">
+                        <td className="hidden sm:table-cell whitespace-nowrap px-3 py-2 text-right text-sm">
                           {info.alreadyReleased > 0 ? (
                             <span className="font-medium text-blue-600">
                               {info.alreadyReleased}
@@ -385,7 +385,7 @@ export function ReleaseDocumentGenerator(props: ReleaseDocumentGeneratorProps) {
                             <span className="text-gray-400">0</span>
                           )}
                         </td>
-                        <td className="whitespace-nowrap px-3 py-2 text-right text-sm">
+                        <td className="hidden sm:table-cell whitespace-nowrap px-3 py-2 text-right text-sm">
                           {isFullyReleased ? (
                             <span className="inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
                               Done
@@ -419,7 +419,7 @@ export function ReleaseDocumentGenerator(props: ReleaseDocumentGeneratorProps) {
               </table>
             </div>
 
-            <div className="mt-3 flex items-center justify-between">
+            <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <span className="text-sm text-teal-700">
                 {selectedIndices.size} of{" "}
                 {lineItems.filter((_li, idx) => (remainingByIndex[idx]?.remaining || 0) > 0).length}{" "}

@@ -179,106 +179,120 @@ export function CpoReleaseDocumentGenerator(props: CpoReleaseDocumentGeneratorPr
           </p>
         </div>
       ) : (
-        <div className="p-5">
-          <table className="w-full divide-y divide-gray-200 text-xs">
-            <thead>
-              <tr className="bg-gray-50">
-                <th className="px-2 py-2 text-left">
-                  <input
-                    type="checkbox"
-                    checked={
-                      selectedKeys.size === selectableItems.length && selectableItems.length > 0
-                    }
-                    onChange={handleSelectAll}
-                    className="rounded border-gray-300"
-                  />
-                </th>
-                <th className="px-2 py-2 text-left font-medium text-gray-500">Item Code</th>
-                <th className="px-2 py-2 text-left font-medium text-gray-500">Description</th>
-                <th className="px-2 py-2 text-right font-medium text-gray-500">Ordered</th>
-                <th className="px-2 py-2 text-right font-medium text-gray-500">Arrived</th>
-                <th className="px-2 py-2 text-right font-medium text-gray-500">Remaining</th>
-                <th className="px-2 py-2 text-right font-medium text-gray-500">Release Qty</th>
-                <th className="px-2 py-2 text-left font-medium text-gray-500">Deliveries</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {releasableItems.map((item) => {
-                const key = itemKey(item);
-                const isArrived = item.arrivedQty > 0;
-                const hasRemaining = item.remainingToRelease > 0;
-                const canSelect = isArrived && hasRemaining;
-                const isSelected = selectedKeys.has(key);
-                const qtyValue = releaseQuantities[key] || item.remainingToRelease;
+        <div className="p-3 sm:p-5">
+          <div className="overflow-x-auto -mx-3 px-3 sm:mx-0 sm:px-0">
+            <table className="w-full divide-y divide-gray-200 text-xs">
+              <thead>
+                <tr className="bg-gray-50">
+                  <th className="px-2 py-2 text-left">
+                    <input
+                      type="checkbox"
+                      checked={
+                        selectedKeys.size === selectableItems.length && selectableItems.length > 0
+                      }
+                      onChange={handleSelectAll}
+                      className="rounded border-gray-300"
+                    />
+                  </th>
+                  <th className="px-2 py-2 text-left font-medium text-gray-500">Item Code</th>
+                  <th className="px-2 py-2 text-left font-medium text-gray-500">Description</th>
+                  <th className="px-2 py-2 text-right font-medium text-gray-500">Ordered</th>
+                  <th className="hidden sm:table-cell px-2 py-2 text-right font-medium text-gray-500">
+                    Arrived
+                  </th>
+                  <th className="hidden sm:table-cell px-2 py-2 text-right font-medium text-gray-500">
+                    Remaining
+                  </th>
+                  <th className="px-2 py-2 text-right font-medium text-gray-500">Release Qty</th>
+                  <th className="hidden md:table-cell px-2 py-2 text-left font-medium text-gray-500">
+                    Deliveries
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {releasableItems.map((item) => {
+                  const key = itemKey(item);
+                  const isArrived = item.arrivedQty > 0;
+                  const hasRemaining = item.remainingToRelease > 0;
+                  const canSelect = isArrived && hasRemaining;
+                  const isSelected = selectedKeys.has(key);
+                  const qtyValue = releaseQuantities[key] || item.remainingToRelease;
 
-                return (
-                  <tr
-                    key={key}
-                    className={canSelect ? "hover:bg-gray-50" : "bg-gray-50 opacity-60"}
-                  >
-                    <td className="px-2 py-2">
-                      <input
-                        type="checkbox"
-                        checked={isSelected}
-                        disabled={!canSelect}
-                        onChange={() => handleToggle(item)}
-                        className="rounded border-gray-300 disabled:cursor-not-allowed disabled:opacity-50"
-                      />
-                    </td>
-                    <td className="px-2 py-2 font-mono">{item.itemCode || "-"}</td>
-                    <td className="px-2 py-2 max-w-[200px] truncate">{item.description || "-"}</td>
-                    <td className="px-2 py-2 text-right">{item.orderedQty}</td>
-                    <td className="px-2 py-2 text-right">
-                      <span className={isArrived ? "text-green-700 font-medium" : "text-gray-400"}>
-                        {item.arrivedQty}
-                      </span>
-                    </td>
-                    <td className="px-2 py-2 text-right">
-                      <span
-                        className={hasRemaining ? "text-blue-700 font-medium" : "text-gray-400"}
-                      >
-                        {item.remainingToRelease}
-                      </span>
-                    </td>
-                    <td className="px-2 py-2 text-right">
-                      {canSelect && isSelected ? (
+                  return (
+                    <tr
+                      key={key}
+                      className={canSelect ? "hover:bg-gray-50" : "bg-gray-50 opacity-60"}
+                    >
+                      <td className="px-2 py-2">
                         <input
-                          type="number"
-                          value={qtyValue}
-                          min={1}
-                          max={item.remainingToRelease}
-                          onChange={(e) => handleQuantityChange(item, e.target.value)}
-                          className="w-16 rounded border border-gray-300 px-1 py-0.5 text-right text-xs"
+                          type="checkbox"
+                          checked={isSelected}
+                          disabled={!canSelect}
+                          onChange={() => handleToggle(item)}
+                          className="rounded border-gray-300 disabled:cursor-not-allowed disabled:opacity-50"
                         />
-                      ) : (
-                        <span className="text-gray-400">-</span>
-                      )}
-                    </td>
-                    <td className="px-2 py-2">
-                      <div className="flex flex-wrap gap-1">
-                        {item.deliveries.map((d) => {
-                          const jtLabel = d.jtNumber || `JC#${d.jobCardId}`;
-                          return (
-                            <span
-                              key={d.jobCardId}
-                              className="inline-flex items-center rounded bg-blue-50 px-1.5 py-0.5 text-[10px] text-blue-700"
-                            >
-                              {jtLabel}: {d.quantity}
-                            </span>
-                          );
-                        })}
-                        {item.deliveries.length === 0 && (
-                          <span className="text-[10px] text-gray-400 italic">Not arrived</span>
+                      </td>
+                      <td className="px-2 py-2 font-mono max-w-[100px] sm:max-w-none truncate">
+                        {item.itemCode || "-"}
+                      </td>
+                      <td className="px-2 py-2 max-w-[120px] sm:max-w-[200px] truncate">
+                        {item.description || "-"}
+                      </td>
+                      <td className="px-2 py-2 text-right">{item.orderedQty}</td>
+                      <td className="hidden sm:table-cell px-2 py-2 text-right">
+                        <span
+                          className={isArrived ? "text-green-700 font-medium" : "text-gray-400"}
+                        >
+                          {item.arrivedQty}
+                        </span>
+                      </td>
+                      <td className="hidden sm:table-cell px-2 py-2 text-right">
+                        <span
+                          className={hasRemaining ? "text-blue-700 font-medium" : "text-gray-400"}
+                        >
+                          {item.remainingToRelease}
+                        </span>
+                      </td>
+                      <td className="px-2 py-2 text-right">
+                        {canSelect && isSelected ? (
+                          <input
+                            type="number"
+                            value={qtyValue}
+                            min={1}
+                            max={item.remainingToRelease}
+                            onChange={(e) => handleQuantityChange(item, e.target.value)}
+                            className="w-16 rounded border border-gray-300 px-1 py-0.5 text-right text-xs"
+                          />
+                        ) : (
+                          <span className="text-gray-400">-</span>
                         )}
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                      </td>
+                      <td className="hidden md:table-cell px-2 py-2">
+                        <div className="flex flex-wrap gap-1">
+                          {item.deliveries.map((d) => {
+                            const jtLabel = d.jtNumber || `JC#${d.jobCardId}`;
+                            return (
+                              <span
+                                key={d.jobCardId}
+                                className="inline-flex items-center rounded bg-blue-50 px-1.5 py-0.5 text-[10px] text-blue-700"
+                              >
+                                {jtLabel}: {d.quantity}
+                              </span>
+                            );
+                          })}
+                          {item.deliveries.length === 0 && (
+                            <span className="text-[10px] text-gray-400 italic">Not arrived</span>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
 
-          <div className="mt-4 flex items-center justify-between">
+          <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div className="text-xs text-gray-500">
               {selectedKeys.size} of {selectableItems.length} available item(s) selected
             </div>
