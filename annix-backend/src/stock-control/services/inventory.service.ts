@@ -427,7 +427,7 @@ export class InventoryService {
         item.sku,
       );
 
-      const strongMatches = candidates.filter((c) => c.score >= 0.6);
+      const strongMatches = candidates.filter((c) => c.score >= 0.75);
       if (strongMatches.length === 0) return;
 
       processed.add(item.id);

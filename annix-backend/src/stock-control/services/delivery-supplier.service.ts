@@ -185,9 +185,13 @@ export class DeliverySupplierService {
           return { item, score: 0.9, matchType: "name_exact" as const };
         }
 
-        const tokenScore = this.jaccardTokenSimilarity(descTokens, this.tokenise(item.name));
-        if (tokenScore >= 0.5) {
-          if (categoryMatch === false && tokenScore < 0.8) {
+        const itemTokens = this.tokenise(item.name);
+        const tokenScore = this.jaccardTokenSimilarity(descTokens, itemTokens);
+        if (tokenScore >= 0.75) {
+          if (categoryMatch === false && tokenScore < 0.85) {
+            return null;
+          }
+          if (this.differByTrailingIdentifier(descTokens, itemTokens)) {
             return null;
           }
           const boosted = categoryMatch === true ? Math.min(1, tokenScore + 0.05) : tokenScore;
@@ -266,6 +270,48 @@ export class DeliverySupplierService {
     const intersection = [...setA].filter((t) => setB.has(t));
     const union = new Set([...setA, ...setB]);
     return intersection.length / union.size;
+  }
+
+  private differByTrailingIdentifier(tokensA: string[], tokensB: string[]): boolean {
+    if (tokensA.length === 0 || tokensB.length === 0) return false;
+    if (tokensA.length !== tokensB.length) return false;
+
+    const diffs: number[] = [];
+    tokensA.forEach((t, i) => {
+      if (t !== tokensB[i]) {
+        diffs.push(i);
+      }
+    });
+
+    if (diffs.length !== 1) return false;
+
+    const diffIdx = diffs[0];
+    const tokenA = tokensA[diffIdx];
+    const tokenB = tokensB[diffIdx];
+
+    if (/^\d+m?m?$/.test(tokenA) && /^\d+m?m?$/.test(tokenB)) return true;
+
+    if (/^\d+$/.test(tokenA) && /^\d+$/.test(tokenB)) return true;
+
+    const VARIANT_WORDS = new Set([
+      "complete",
+      "refill",
+      "replacement",
+      "spare",
+      "small",
+      "medium",
+      "large",
+      "xl",
+      "red",
+      "blue",
+      "green",
+      "black",
+      "white",
+      "yellow",
+    ]);
+    if (VARIANT_WORDS.has(tokenA) || VARIANT_WORDS.has(tokenB)) return true;
+
+    return false;
   }
 
   private async supplierHistoryForItems(
