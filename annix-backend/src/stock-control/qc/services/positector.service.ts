@@ -378,6 +378,13 @@ export class PositectorService {
 
     this.logger.debug(`PDF raw text:\n${text}`);
 
+    const bodySNCount = (text.match(/positector body s\/n/gi) || []).length;
+    if (bodySNCount > 1) {
+      throw new BadRequestException(
+        "This PDF contains multiple PosiTector reports. Use the Bundle Upload page to split and import each report separately.",
+      );
+    }
+
     const lines = text
       .split("\n")
       .map((l: string) => l.trim())

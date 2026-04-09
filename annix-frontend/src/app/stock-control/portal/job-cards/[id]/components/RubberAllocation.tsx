@@ -729,8 +729,42 @@ function CuttingDiagram({
   );
 }
 
-function OffcutSuggestions({ matches }: { matches: OffcutMatch[] }) {
+function OffcutSuggestions(props: {
+  matches: OffcutMatch[];
+  jobCardId?: number;
+  userRole?: string | null;
+}) {
+  const { matches, jobCardId, userRole } = props;
+  const [allocating, setAllocating] = useState<string | null>(null);
+  const [allocated, setAllocated] = useState<Set<string>>(new Set());
+  const [error, setError] = useState<string | null>(null);
+
   if (matches.length === 0) return null;
+
+  const canAllocate =
+    !!jobCardId && !!userRole && ["quality", "manager", "admin"].includes(userRole);
+
+  const handleUseStock = async (match: OffcutMatch) => {
+    if (!jobCardId) return;
+    const key = `${match.cutItemId}-${match.panelLabel || "main"}`;
+    setAllocating(key);
+    setError(null);
+    try {
+      const panelDesc = match.cutItemNo || match.cutDescription;
+      const label = match.panelLabel ? ` (${match.panelLabel})` : "";
+      await stockControlApiClient.allocateStock(jobCardId, {
+        stockItemId: match.stockItemId,
+        quantityUsed: 1,
+        notes: `Offcut used for ${panelDesc}${label} — ${match.requiredWidthMm}mm x ${(match.requiredLengthMm / 1000).toFixed(2)}m from ${match.stockItemName}`,
+      });
+      setAllocated((prev) => new Set([...prev, key]));
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to allocate stock";
+      setError(message);
+    } finally {
+      setAllocating(null);
+    }
+  };
 
   return (
     <div className="mt-4 border border-emerald-200 rounded-lg bg-emerald-50 p-3">
@@ -738,27 +772,56 @@ function OffcutSuggestions({ matches }: { matches: OffcutMatch[] }) {
         Offcut / Stock Suggestions (FIFO)
       </h4>
       <p className="text-xs text-emerald-600 mb-2">
-        These panels can be cut from existing stock or offcuts instead of a new roll:
+        {canAllocate
+          ? "Select offcuts to use instead of cutting from a new roll:"
+          : "These panels can be cut from existing stock or offcuts instead of a new roll:"}
       </p>
+      {error && <p className="text-xs text-red-600 mb-2 bg-red-50 rounded px-2 py-1">{error}</p>}
       <div className="space-y-1">
-        {matches.map((m) => (
-          <div
-            key={`${m.cutItemId}-${m.panelLabel || "main"}`}
-            className="flex items-center justify-between text-xs bg-white rounded px-2 py-1.5 border border-emerald-100"
-          >
-            <span className="font-medium text-gray-800">
-              {m.cutItemNo || "-"}
-              {m.panelLabel ? ` (${m.panelLabel})` : ""}
-            </span>
-            <span className="text-gray-500">
-              needs {m.requiredWidthMm}mm x {(m.requiredLengthMm / 1000).toFixed(2)}m
-            </span>
-            <span className="text-emerald-700 font-medium">
-              Stock: {m.stockItemName} ({m.stockThicknessMm}mm)
-            </span>
-            <span className="text-gray-400">waste: {m.wasteIfUsedSqM.toFixed(3)} m&#178;</span>
-          </div>
-        ))}
+        {matches.map((m) => {
+          const key = `${m.cutItemId}-${m.panelLabel || "main"}`;
+          const isAllocated = allocated.has(key);
+          const isAllocating = allocating === key;
+
+          return (
+            <div
+              key={key}
+              className={`flex items-center gap-2 text-xs rounded px-2 py-1.5 border ${
+                isAllocated ? "bg-emerald-100 border-emerald-300" : "bg-white border-emerald-100"
+              }`}
+            >
+              <span className="font-medium text-gray-800 shrink-0">
+                {m.cutItemNo || "-"}
+                {m.panelLabel ? ` (${m.panelLabel})` : ""}
+              </span>
+              <span className="text-gray-500 shrink-0">
+                needs {m.requiredWidthMm}mm x {(m.requiredLengthMm / 1000).toFixed(2)}m
+              </span>
+              <span className="text-emerald-700 font-medium shrink-0">
+                Stock: {m.stockItemName} ({m.stockThicknessMm}mm)
+              </span>
+              <span className="text-gray-400 shrink-0">
+                waste: {m.wasteIfUsedSqM.toFixed(3)} m&#178;
+              </span>
+              <span className="ml-auto shrink-0">
+                {isAllocated ? (
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-200 text-emerald-800">
+                    Allocated
+                  </span>
+                ) : canAllocate ? (
+                  <button
+                    type="button"
+                    onClick={() => handleUseStock(m)}
+                    disabled={isAllocating}
+                    className="px-2 py-0.5 rounded text-xs font-medium bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50"
+                  >
+                    {isAllocating ? "..." : "Use This"}
+                  </button>
+                ) : null}
+              </span>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
@@ -859,6 +922,8 @@ function PipeCuttingView({
               roll.plyThicknessMm || plan.totalThicknessMm || 0,
             ),
           )}
+          jobCardId={jobCardId}
+          userRole={userRole}
         />
       )}
     </div>

@@ -25,11 +25,16 @@ interface PageInfo {
   instrumentType: string | null;
   probeSerial: string | null;
   createdAt: string | null;
+  hasReportHeader: boolean;
 }
 
 const BATCH_NAME_PATTERN = /DeFelsko\s+\d+\s+(B\d+)/;
 
 const INSTRUMENT_PATTERN = /PosiTector\s+(DPM|6000\s*\w*|SPG|RTR|SHD[-\s]?A?|200\s*\w*|AT)\s*/i;
+
+const CREATED_PATTERN = /Created:\s*PosiTector\s+Body\s+S\/N/i;
+
+const BODY_SN_PATTERN = /PosiTector\s+Body\s+S\/N/i;
 
 const TIMESTAMP_PATTERN = /(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2})/;
 
@@ -45,7 +50,15 @@ export class PositectorBundleSplitterService {
     this.logger.log(`Bundle has ${totalPages} pages, extracting batch assignments`);
 
     const pageInfos = this.assignPagesToBatches(pageTexts);
-    const batchGroups = this.groupByBatch(pageInfos);
+    let batchGroups = this.groupByBatch(pageInfos);
+
+    if (batchGroups.length === 0) {
+      this.logger.warn(
+        "No DeFelsko batch names found — falling back to instrument-header boundary detection",
+      );
+      batchGroups = this.groupByInstrumentBoundary(pageInfos);
+    }
+
     this.logger.log(`Found ${batchGroups.length} batches`);
 
     const summaryEnd =
@@ -109,6 +122,8 @@ export class PositectorBundleSplitterService {
       const instrumentMatch = text.match(INSTRUMENT_PATTERN);
       const serialMatch = text.match(SERIAL_PATTERN);
       const timestampMatch = text.match(TIMESTAMP_PATTERN);
+      const hasReportHeader =
+        CREATED_PATTERN.test(text) || BODY_SN_PATTERN.test(text) || !!instrumentMatch;
 
       return {
         pageIndex,
@@ -116,6 +131,7 @@ export class PositectorBundleSplitterService {
         instrumentType: instrumentMatch ? instrumentMatch[1].trim() : null,
         probeSerial: serialMatch ? serialMatch[1] : null,
         createdAt: timestampMatch ? timestampMatch[1] : null,
+        hasReportHeader,
       };
     });
   }
@@ -174,6 +190,36 @@ export class PositectorBundleSplitterService {
       batchName,
       ...data,
     }));
+  }
+
+  private groupByInstrumentBoundary(pageInfos: PageInfo[]): Array<{
+    batchName: string;
+    pageIndices: number[];
+    instrumentType: string | null;
+    probeSerial: string | null;
+    createdAt: string | null;
+  }> {
+    const boundaryIndices = pageInfos
+      .filter((info) => info.hasReportHeader && info.instrumentType)
+      .map((info) => info.pageIndex);
+
+    if (boundaryIndices.length === 0) {
+      return [];
+    }
+
+    return boundaryIndices.map((startIdx, i) => {
+      const endIdx = i + 1 < boundaryIndices.length ? boundaryIndices[i + 1] : pageInfos.length;
+      const pages = pageInfos.slice(startIdx, endIdx);
+      const first = pageInfos[startIdx];
+
+      return {
+        batchName: `Report-${i + 1}`,
+        pageIndices: pages.map((p) => p.pageIndex),
+        instrumentType: first.instrumentType,
+        probeSerial: first.probeSerial,
+        createdAt: first.createdAt,
+      };
+    });
   }
 
   private async extractPageIndices(srcDoc: PDFDocument, pageIndices: number[]): Promise<Buffer> {
