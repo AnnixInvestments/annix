@@ -27,6 +27,7 @@ import {
   type RegisterDeviceDto,
   type UpdateDeviceDto,
 } from "../services/positector.service";
+import { PositectorBundleSplitterService } from "../services/positector-bundle-splitter.service";
 import { type ImportResult, PositectorImportService } from "../services/positector-import.service";
 import { PositectorUploadService } from "../services/positector-upload.service";
 import { QcMeasurementService } from "../services/qc-measurement.service";
@@ -39,6 +40,7 @@ export class PositectorController {
 
   constructor(
     private readonly positectorService: PositectorService,
+    private readonly bundleSplitter: PositectorBundleSplitterService,
     private readonly importService: PositectorImportService,
     private readonly uploadService: PositectorUploadService,
     private readonly qcService: QcMeasurementService,
@@ -255,6 +257,131 @@ export class PositectorController {
     }
 
     return { error: `Unsupported entity type: ${body.entityType}` };
+  }
+
+  @Post("upload/bundle-analyze")
+  @StockControlRoles("quality", "manager", "admin")
+  @UseInterceptors(FileInterceptor("file"))
+  @ApiOperation({
+    summary: "Analyze a multi-report PosiTector PDF bundle and identify individual reports",
+  })
+  async analyzeBundlePdf(@Req() req: any, @UploadedFile() file: Express.Multer.File) {
+    if (!file) {
+      return { error: "No file uploaded" };
+    }
+
+    const result = await this.bundleSplitter.splitBundle(file.buffer);
+
+    return {
+      totalPages: result.totalPages,
+      summaryPageCount: result.summaryPageCount,
+      reports: result.reports.map((r) => ({
+        pageStart: r.pageStart,
+        pageEnd: r.pageEnd,
+        pageCount: r.pageCount,
+        instrumentType: r.instrumentType,
+        probeSerial: r.probeSerial,
+        createdAt: r.createdAt,
+        entityType: r.entityType,
+      })),
+    };
+  }
+
+  @Post("upload/bundle-import")
+  @StockControlRoles("quality", "manager", "admin")
+  @UseInterceptors(FileInterceptor("file"))
+  @ApiOperation({
+    summary: "Split a multi-report PosiTector PDF bundle and store each report as an upload",
+  })
+  async importBundlePdf(@Req() req: any, @UploadedFile() file: Express.Multer.File) {
+    if (!file) {
+      return { error: "No file uploaded" };
+    }
+
+    const result = await this.bundleSplitter.splitBundle(file.buffer);
+    const uploads: Array<{
+      uploadId: number;
+      entityType: string;
+      instrumentType: string;
+      createdAt: string | null;
+      pageRange: string;
+      autoMatch: { jobCardId: number; jobNumber: string } | null;
+    }> = [];
+
+    for (const report of result.reports) {
+      try {
+        const batch = await this.positectorService.parsePosiSoftPdf(
+          report.buffer,
+          `bundle_p${report.pageStart}-${report.pageEnd}.pdf`,
+        );
+        const entityType = this.positectorService.detectQcEntityType(batch.header.probeType);
+
+        const multerFile: Express.Multer.File = {
+          buffer: report.buffer,
+          originalname: `${report.instrumentType}_${report.createdAt || "unknown"}.pdf`,
+          mimetype: "application/pdf",
+          size: report.buffer.length,
+          fieldname: "file",
+          encoding: "7bit",
+          stream: null as any,
+          destination: "",
+          filename: "",
+          path: "",
+        };
+
+        const stored = await this.uploadService.storeUpload(
+          req.user.companyId,
+          multerFile,
+          batch,
+          entityType,
+          "posisoft_pdf",
+          req.user,
+        );
+
+        const autoMatch = await this.qcService.matchBatchName(
+          req.user.companyId,
+          batch.header.batchName,
+        );
+
+        if (autoMatch) {
+          try {
+            await this.uploadService.linkAndImport(
+              req.user.companyId,
+              stored.id,
+              autoMatch.jobCardId,
+              {},
+              req.user,
+            );
+          } catch (err) {
+            const msg = err instanceof Error ? err.message : String(err);
+            this.logger.warn(`Auto-import for bundle report upload ${stored.id} failed: ${msg}`);
+          }
+        }
+
+        uploads.push({
+          uploadId: stored.id,
+          entityType,
+          instrumentType: report.instrumentType,
+          createdAt: report.createdAt,
+          pageRange: `${report.pageStart}-${report.pageEnd}`,
+          autoMatch: autoMatch
+            ? { jobCardId: autoMatch.jobCardId, jobNumber: autoMatch.jobNumber || "" }
+            : null,
+        });
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        this.logger.error(
+          `Failed to process bundle report pages ${report.pageStart}-${report.pageEnd}: ${msg}`,
+        );
+      }
+    }
+
+    return {
+      totalPages: result.totalPages,
+      reportsFound: result.reports.length,
+      reportsImported: uploads.length,
+      uploads,
+    };
   }
 
   @Post("upload")

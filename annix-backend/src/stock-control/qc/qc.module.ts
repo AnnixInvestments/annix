@@ -54,6 +54,7 @@ import { QcpCustomerPreference } from "./entities/qcp-customer-preference.entity
 import { QcEnabledGuard } from "./guards/qc-enabled.guard";
 import { CalibrationCertificateService } from "./services/calibration-certificate.service";
 import { PositectorService } from "./services/positector.service";
+import { PositectorBundleSplitterService } from "./services/positector-bundle-splitter.service";
 import { PositectorImportService } from "./services/positector-import.service";
 import { PositectorStreamingService } from "./services/positector-streaming.service";
 import { PositectorUploadService } from "./services/positector-upload.service";
@@ -131,6 +132,7 @@ import { WORK_ITEM_PROVIDER } from "./work-item-provider.interface";
     QcMeasurementService,
     QcpApprovalService,
     PositectorService,
+    PositectorBundleSplitterService,
     PositectorImportService,
     PositectorStreamingService,
     PositectorUploadService,
