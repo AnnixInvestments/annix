@@ -87,7 +87,7 @@ export function ItemsReleaseSection({ jobCardId }: ItemsReleaseSectionProps) {
 
   if (viewMode === "edit") {
     return (
-      <div className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
+      <div className="rounded-lg border border-gray-200 bg-white p-3 sm:p-5 shadow-sm">
         <ItemsReleaseForm
           jobCardId={jobCardId}
           existing={editingRelease}
@@ -103,7 +103,7 @@ export function ItemsReleaseSection({ jobCardId }: ItemsReleaseSectionProps) {
 
   return (
     <div className="rounded-lg border border-gray-200 bg-white shadow-sm">
-      <div className="flex items-center justify-between border-b border-gray-200 px-5 py-3">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between border-b border-gray-200 px-3 sm:px-5 py-3">
         <h3 className="text-sm font-semibold text-gray-900">
           Items Release
           {releases.length > 0 && (
@@ -114,14 +114,14 @@ export function ItemsReleaseSection({ jobCardId }: ItemsReleaseSectionProps) {
           type="button"
           onClick={handleAutoPopulate}
           disabled={isAutoPopulating}
-          className="rounded-md bg-teal-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-teal-700 disabled:opacity-50"
+          className="self-start rounded-md bg-teal-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-teal-700 disabled:opacity-50"
         >
           {isAutoPopulating ? "Loading..." : "+ New from Job Card"}
         </button>
       </div>
 
       {error && (
-        <div className="mx-5 mt-3 rounded-md bg-red-50 p-3 text-sm text-red-700">
+        <div className="mx-3 sm:mx-5 mt-3 rounded-md bg-red-50 p-3 text-sm text-red-700">
           {error}
           <button onClick={() => setError(null)} className="ml-2 font-medium underline">
             Dismiss
@@ -152,9 +152,9 @@ export function ItemsReleaseSection({ jobCardId }: ItemsReleaseSectionProps) {
             return (
               <div
                 key={release.id}
-                className="flex items-center justify-between px-5 py-3 hover:bg-gray-50"
+                className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between px-3 sm:px-5 py-3 hover:bg-gray-50"
               >
-                <div className="flex items-center gap-3">
+                <div className="flex flex-wrap items-center gap-2 sm:gap-3 min-w-0">
                   <span className="inline-flex items-center rounded-full bg-gray-200 px-2 py-0.5 text-xs font-semibold text-gray-700">
                     v{release.version || 1}
                   </span>
@@ -167,14 +167,14 @@ export function ItemsReleaseSection({ jobCardId }: ItemsReleaseSectionProps) {
                       All Pass
                     </span>
                   )}
-                  <div>
+                  <div className="min-w-0">
                     <span className="text-sm font-medium text-gray-900">
                       {release.items.length} item{release.items.length !== 1 ? "s" : ""}
                     </span>
                     <span className="ml-2 text-sm text-gray-500">
                       ({passCount} pass{failCount > 0 ? `, ${failCount} fail` : ""})
                     </span>
-                    <div className="flex items-center gap-2 text-xs text-gray-500">
+                    <div className="flex flex-wrap items-center gap-2 text-xs text-gray-500">
                       <span>Qty: {release.totalQuantity}</span>
                       {hasSignOffs > 0 && (
                         <>
@@ -191,7 +191,7 @@ export function ItemsReleaseSection({ jobCardId }: ItemsReleaseSectionProps) {
                     </div>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 shrink-0">
                   <button
                     type="button"
                     onClick={() => handleEdit(release)}
@@ -314,7 +314,7 @@ function ItemsReleaseForm({ jobCardId, existing, onSaved, onCancel }: ItemsRelea
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
         <h3 className="text-base font-semibold text-gray-900">
           {existing?.id
             ? `Edit Items Release (v${existing.version || 1} → v${(existing.version || 1) + 1})`
@@ -331,7 +331,7 @@ function ItemsReleaseForm({ jobCardId, existing, onSaved, onCancel }: ItemsRelea
         <div className="rounded-md bg-red-50 p-3 text-sm text-red-700">{saveError}</div>
       )}
 
-      <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center gap-3">
         <button
           type="button"
           onClick={markAllPass}
@@ -360,19 +360,19 @@ function ItemsReleaseForm({ jobCardId, existing, onSaved, onCancel }: ItemsRelea
               <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">
                 Item No
               </th>
-              <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">
+              <th className="hidden sm:table-cell px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">
                 Item Code
               </th>
               <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">
                 Description
               </th>
-              <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">
+              <th className="hidden md:table-cell px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">
                 JT No
               </th>
-              <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">
+              <th className="hidden md:table-cell px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">
                 Rubber Spec
               </th>
-              <th className="px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">
+              <th className="hidden md:table-cell px-3 py-2 text-left text-xs font-medium uppercase text-gray-500">
                 Paint Spec
               </th>
               <th className="px-3 py-2 text-right text-xs font-medium uppercase text-gray-500">
@@ -396,7 +396,7 @@ function ItemsReleaseForm({ jobCardId, existing, onSaved, onCancel }: ItemsRelea
                     className="w-20 rounded border border-gray-300 px-2 py-1 text-sm"
                   />
                 </td>
-                <td className="px-3 py-2">
+                <td className="hidden sm:table-cell px-3 py-2">
                   <input
                     type="text"
                     value={item.itemCode}
@@ -409,10 +409,10 @@ function ItemsReleaseForm({ jobCardId, existing, onSaved, onCancel }: ItemsRelea
                     type="text"
                     value={item.description}
                     onChange={(e) => updateItem(index, "description", e.target.value)}
-                    className="w-48 rounded border border-gray-300 px-2 py-1 text-sm"
+                    className="w-32 sm:w-48 rounded border border-gray-300 px-2 py-1 text-sm"
                   />
                 </td>
-                <td className="px-3 py-2">
+                <td className="hidden md:table-cell px-3 py-2">
                   <input
                     type="text"
                     value={item.jtNumber ?? ""}
@@ -421,7 +421,7 @@ function ItemsReleaseForm({ jobCardId, existing, onSaved, onCancel }: ItemsRelea
                     className="w-24 rounded border border-gray-300 px-2 py-1 text-sm"
                   />
                 </td>
-                <td className="px-3 py-2">
+                <td className="hidden md:table-cell px-3 py-2">
                   <input
                     type="text"
                     value={item.rubberSpec ?? ""}
@@ -429,7 +429,7 @@ function ItemsReleaseForm({ jobCardId, existing, onSaved, onCancel }: ItemsRelea
                     className="w-24 rounded border border-gray-300 px-2 py-1 text-sm"
                   />
                 </td>
-                <td className="px-3 py-2">
+                <td className="hidden md:table-cell px-3 py-2">
                   <input
                     type="text"
                     value={item.paintingSpec ?? ""}
@@ -463,7 +463,7 @@ function ItemsReleaseForm({ jobCardId, existing, onSaved, onCancel }: ItemsRelea
           </tbody>
           <tfoot className="bg-gray-50">
             <tr>
-              <td colSpan={6} className="px-3 py-2 text-sm font-medium text-gray-700">
+              <td colSpan={7} className="px-3 py-2 text-sm font-medium text-gray-700">
                 Total
               </td>
               <td className="px-3 py-2 text-right text-sm font-medium text-gray-900">

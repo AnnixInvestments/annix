@@ -46,8 +46,8 @@ export default function QualityPage() {
     <div className="space-y-6">
       <h1 className="text-2xl font-bold text-gray-900">Quality Management</h1>
 
-      <div className="border-b border-gray-200">
-        <nav className="-mb-px flex space-x-8">
+      <div className="border-b border-gray-200 overflow-x-auto">
+        <nav className="-mb-px flex space-x-4 sm:space-x-8">
           {QUALITY_TABS.map((tab) => (
             <button
               key={tab.key}
@@ -647,7 +647,7 @@ function CertificatesTab() {
               </button>
             </div>
           ) : (
-            <div className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
+            <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white shadow-sm">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
@@ -673,10 +673,10 @@ function CertificatesTab() {
                         </th>
                       );
                     })}
-                    <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                    <th className="hidden md:table-cell px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
                       Job Card
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                    <th className="hidden sm:table-cell px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
                       File
                     </th>
                     <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">
@@ -710,10 +710,10 @@ function CertificatesTab() {
                           return stockName || cert.description || "-";
                         })()}
                       </td>
-                      <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-600">
+                      <td className="hidden md:table-cell whitespace-nowrap px-4 py-3 text-sm text-gray-600">
                         {cert.jobCard ? cert.jobCard.jobNumber : "-"}
                       </td>
-                      <td className="px-4 py-3 text-sm text-gray-600">
+                      <td className="hidden sm:table-cell px-4 py-3 text-sm text-gray-600">
                         <span
                           className="max-w-[150px] truncate block"
                           title={cert.originalFilename}
@@ -869,17 +869,17 @@ function CalibrationTab() {
           </p>
         </div>
       ) : (
-        <div className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
+        <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white shadow-sm">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
                   Equipment
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                <th className="hidden sm:table-cell px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
                   Identifier
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                <th className="hidden md:table-cell px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
                   Certificate #
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
@@ -888,7 +888,7 @@ function CalibrationTab() {
                 <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
                   Status
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                <th className="hidden sm:table-cell px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
                   File
                 </th>
                 <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">
@@ -902,10 +902,10 @@ function CalibrationTab() {
                   <td className="whitespace-nowrap px-4 py-3 text-sm font-medium text-gray-900">
                     {cert.equipmentName}
                   </td>
-                  <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-600">
+                  <td className="hidden sm:table-cell whitespace-nowrap px-4 py-3 text-sm text-gray-600">
                     {cert.equipmentIdentifier ?? "-"}
                   </td>
-                  <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-600">
+                  <td className="hidden md:table-cell whitespace-nowrap px-4 py-3 text-sm text-gray-600">
                     {cert.certificateNumber ?? "-"}
                   </td>
                   <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-600">
@@ -930,7 +930,7 @@ function CalibrationTab() {
                       </span>
                     )}
                   </td>
-                  <td className="px-4 py-3 text-sm text-gray-600">
+                  <td className="hidden sm:table-cell px-4 py-3 text-sm text-gray-600">
                     <span className="max-w-[150px] truncate block" title={cert.originalFilename}>
                       {cert.originalFilename}
                     </span>
@@ -1051,17 +1051,17 @@ function DataBooksTab() {
           </p>
         </div>
       ) : (
-        <div className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
+        <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white shadow-sm">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
                   Job Number
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                <th className="hidden sm:table-cell px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
                   Job Name
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                <th className="hidden md:table-cell px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
                   Customer
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
@@ -1083,10 +1083,10 @@ function DataBooksTab() {
                     <td className="whitespace-nowrap px-4 py-3 text-sm font-medium text-teal-700">
                       {jc.jobNumber}
                     </td>
-                    <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-900">
+                    <td className="hidden sm:table-cell whitespace-nowrap px-4 py-3 text-sm text-gray-900">
                       {jc.jobName}
                     </td>
-                    <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-600">
+                    <td className="hidden md:table-cell whitespace-nowrap px-4 py-3 text-sm text-gray-600">
                       {jc.customerName || "-"}
                     </td>
                     <td className="whitespace-nowrap px-4 py-3 text-sm">
@@ -1244,7 +1244,7 @@ function BatchLookupTab() {
             {certificates.length === 0 ? (
               <p className="text-sm text-gray-500">No certificates found for this batch number</p>
             ) : (
-              <div className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
+              <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white shadow-sm">
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50">
                     <tr>
@@ -1254,13 +1254,13 @@ function BatchLookupTab() {
                       <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
                         Supplier
                       </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                      <th className="hidden sm:table-cell px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
                         Product
                       </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                      <th className="hidden sm:table-cell px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
                         File
                       </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
+                      <th className="hidden sm:table-cell px-4 py-3 text-left text-xs font-medium uppercase text-gray-500">
                         Uploaded
                       </th>
                       <th className="px-4 py-3 text-right text-xs font-medium uppercase text-gray-500">
@@ -1285,10 +1285,10 @@ function BatchLookupTab() {
                         <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-600">
                           {cert.supplier?.name || "-"}
                         </td>
-                        <td className="px-4 py-3 text-sm text-gray-600">
+                        <td className="hidden sm:table-cell px-4 py-3 text-sm text-gray-600">
                           {cert.stockItem?.name || "-"}
                         </td>
-                        <td className="px-4 py-3 text-sm text-gray-600">
+                        <td className="hidden sm:table-cell px-4 py-3 text-sm text-gray-600">
                           <span
                             className="max-w-[150px] truncate block"
                             title={cert.originalFilename}
@@ -1296,7 +1296,7 @@ function BatchLookupTab() {
                             {cert.originalFilename}
                           </span>
                         </td>
-                        <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-500">
+                        <td className="hidden sm:table-cell whitespace-nowrap px-4 py-3 text-sm text-gray-500">
                           {formatDateZA(cert.createdAt)}
                         </td>
                         <td className="whitespace-nowrap px-4 py-3 text-right text-sm">
@@ -1324,7 +1324,7 @@ function BatchLookupTab() {
                 No issuance records found for this batch number
               </p>
             ) : (
-              <div className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
+              <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white shadow-sm">
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50">
                     <tr>

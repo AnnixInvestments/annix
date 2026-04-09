@@ -201,8 +201,8 @@ export default function StaffLeavePage() {
 
   return (
     <div className="max-w-6xl mx-auto">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Staff Leave</h1>
+      <div className="flex items-center justify-between mb-4 sm:mb-6">
+        <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Staff Leave</h1>
       </div>
 
       {error && (
@@ -212,7 +212,7 @@ export default function StaffLeavePage() {
       )}
 
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+        <div className="flex items-center justify-between px-3 sm:px-6 py-3 sm:py-4 border-b border-gray-200">
           <button
             type="button"
             onClick={() => handleMonthChange(-1)}
@@ -260,7 +260,7 @@ export default function StaffLeavePage() {
                 key={dateKey}
                 type="button"
                 onClick={() => handleDayClick(day)}
-                className={`min-h-[80px] p-1 border-b border-r border-gray-100 text-left transition-colors hover:bg-gray-50 ${
+                className={`min-h-[60px] sm:min-h-[80px] p-0.5 sm:p-1 border-b border-r border-gray-100 text-left transition-colors hover:bg-gray-50 ${
                   !day.isCurrentMonth ? "bg-gray-50 text-gray-400" : ""
                 }`}
               >

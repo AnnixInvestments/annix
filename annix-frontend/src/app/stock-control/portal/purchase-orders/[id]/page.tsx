@@ -485,7 +485,7 @@ export default function CpoDetailPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <div className="flex items-center space-x-2 text-sm text-gray-500 mb-1">
             <Link href="/stock-control/portal/purchase-orders" className="hover:text-teal-600">
@@ -503,7 +503,7 @@ export default function CpoDetailPage() {
             )}
           </div>
         </div>
-        <div className="flex items-center space-x-3">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           <span
             className={`px-3 py-1 text-sm font-semibold rounded-full ${statusBadgeColor(cpo.status)}`}
           >
@@ -1089,34 +1089,34 @@ export default function CpoDetailPage() {
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-3 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     #
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="hidden sm:table-cell px-3 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Item No
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="hidden sm:table-cell px-3 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Item Code
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-3 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Description
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="hidden md:table-cell px-3 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     JT No
                   </th>
-                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-3 sm:px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Ordered
                   </th>
-                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-3 sm:px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Fulfilled
                   </th>
-                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="hidden md:table-cell px-3 sm:px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Remaining
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="hidden lg:table-cell px-3 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Progress
                   </th>
-                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="hidden lg:table-cell px-3 sm:px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                     m2
                   </th>
                   {cpo.status === "active" && (
@@ -1268,33 +1268,33 @@ export default function CpoDetailPage() {
 
                   return (
                     <tr key={item.id} className="hover:bg-gray-50">
-                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-400">
+                      <td className="px-3 sm:px-4 py-3 whitespace-nowrap text-sm text-gray-400">
                         {idx + 1}
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
+                      <td className="hidden sm:table-cell px-3 sm:px-4 py-3 whitespace-nowrap text-sm text-gray-500">
                         {item.itemNo || "-"}
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-sm font-mono text-gray-900">
+                      <td className="hidden sm:table-cell px-3 sm:px-4 py-3 whitespace-nowrap text-sm font-mono text-gray-900">
                         {item.itemCode || "-"}
                       </td>
-                      <td className="px-4 py-3 text-sm text-gray-900 max-w-xs truncate">
+                      <td className="px-3 sm:px-4 py-3 text-sm text-gray-900 max-w-[120px] sm:max-w-xs truncate">
                         {item.itemDescription || "-"}
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
+                      <td className="hidden md:table-cell px-3 sm:px-4 py-3 whitespace-nowrap text-sm text-gray-500">
                         {item.jtNo || "-"}
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 text-right">
+                      <td className="px-3 sm:px-4 py-3 whitespace-nowrap text-sm text-gray-900 text-right">
                         {ordered}
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 text-right">
+                      <td className="px-3 sm:px-4 py-3 whitespace-nowrap text-sm text-gray-900 text-right">
                         {fulfilled}
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-right">
+                      <td className="hidden md:table-cell px-3 sm:px-4 py-3 whitespace-nowrap text-sm font-medium text-right">
                         <span className={remaining > 0 ? "text-amber-600" : "text-green-600"}>
                           {remaining}
                         </span>
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap">
+                      <td className="hidden lg:table-cell px-3 sm:px-4 py-3 whitespace-nowrap">
                         <div className="flex items-center space-x-2">
                           <div className="w-16 h-2 bg-gray-200 rounded-full overflow-hidden">
                             <div
@@ -1305,7 +1305,7 @@ export default function CpoDetailPage() {
                           <span className="text-xs text-gray-500">{pct}%</span>
                         </div>
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500 text-right">
+                      <td className="hidden lg:table-cell px-3 sm:px-4 py-3 whitespace-nowrap text-sm text-gray-500 text-right">
                         {item.m2 != null ? Number(item.m2).toFixed(2) : "-"}
                       </td>
                       {cpo.status === "active" && (

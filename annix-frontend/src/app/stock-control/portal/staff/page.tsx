@@ -153,9 +153,9 @@ export default function StaffPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-2xl font-bold text-gray-900">Staff Members</h1>
-        <div className="flex items-center space-x-3">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           {selectedIds.size > 0 && (
             <span
               className={`text-sm ${selectedIds.size > 8 ? "text-red-600 font-medium" : "text-gray-600"}`}

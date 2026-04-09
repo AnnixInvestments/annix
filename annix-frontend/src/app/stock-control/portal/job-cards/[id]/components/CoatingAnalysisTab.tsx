@@ -237,50 +237,60 @@ export function CoatingAnalysisTab(props: CoatingAnalysisTabProps) {
           <h4 className="text-sm font-medium text-gray-900 mb-2">
             Line Items <span className="text-gray-400 font-normal">{lineItems.length} items</span>
           </h4>
-          <table className="min-w-full text-sm">
-            <thead>
-              <tr className="border-b border-gray-200">
-                <th className="text-left py-2 pr-4 font-medium text-gray-500 w-10">#</th>
-                <th className="text-left py-2 pr-4 font-medium text-gray-500">Type</th>
-                <th className="text-left py-2 pr-4 font-medium text-gray-500">Item No</th>
-                <th className="text-left py-2 pr-4 font-medium text-gray-500">Description</th>
-                <th className="text-right py-2 pr-4 font-medium text-gray-500">Qty</th>
-                <th className="text-right py-2 pr-4 font-medium text-gray-500">m²</th>
-                <th className="text-right py-2 pr-4 font-medium text-gray-500">Total m²</th>
-              </tr>
-            </thead>
-            <tbody>
-              {lineItems.map((li, idx) => {
-                const m2 = Number(li.m2) || 0;
-                const qty = Number(li.quantity) || 1;
-                return (
-                  <tr key={li.id} className="border-b border-gray-100">
-                    <td className="py-2 pr-4 text-gray-400">{idx + 1}</td>
-                    <td className="py-2 pr-4 text-gray-700">{workTypeFromNotes(li.notes)}</td>
-                    <td className="py-2 pr-4 text-gray-900 font-medium">{li.itemNo || "—"}</td>
-                    <td className="py-2 pr-4 text-gray-700">{li.itemDescription || "—"}</td>
-                    <td className="py-2 pr-4 text-right font-semibold text-gray-900">{qty}</td>
-                    <td className="py-2 pr-4 text-right text-gray-700">
-                      {m2 > 0 ? m2.toFixed(2) : "—"}
-                    </td>
-                    <td className="py-2 pr-4 text-right font-semibold text-teal-700">
-                      {m2 > 0 ? (m2 * qty).toFixed(2) : "—"}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-            <tfoot>
-              <tr className="border-t border-gray-300">
-                <td colSpan={5} className="py-2 pr-4 text-right font-medium text-gray-600">
-                  Total m²
-                </td>
-                <td className="py-2 pr-4 text-right font-bold text-teal-800">
-                  {totalM2.toFixed(2)}
-                </td>
-              </tr>
-            </tfoot>
-          </table>
+          <div className="overflow-x-auto">
+            <table className="min-w-full text-sm">
+              <thead>
+                <tr className="border-b border-gray-200">
+                  <th className="text-left py-2 pr-4 font-medium text-gray-500 w-10">#</th>
+                  <th className="hidden sm:table-cell text-left py-2 pr-4 font-medium text-gray-500">
+                    Type
+                  </th>
+                  <th className="text-left py-2 pr-4 font-medium text-gray-500">Item No</th>
+                  <th className="text-left py-2 pr-4 font-medium text-gray-500">Description</th>
+                  <th className="text-right py-2 pr-4 font-medium text-gray-500">Qty</th>
+                  <th className="hidden sm:table-cell text-right py-2 pr-4 font-medium text-gray-500">
+                    m²
+                  </th>
+                  <th className="text-right py-2 pr-4 font-medium text-gray-500">Total m²</th>
+                </tr>
+              </thead>
+              <tbody>
+                {lineItems.map((li, idx) => {
+                  const m2 = Number(li.m2) || 0;
+                  const qty = Number(li.quantity) || 1;
+                  return (
+                    <tr key={li.id} className="border-b border-gray-100">
+                      <td className="py-2 pr-4 text-gray-400">{idx + 1}</td>
+                      <td className="hidden sm:table-cell py-2 pr-4 text-gray-700">
+                        {workTypeFromNotes(li.notes)}
+                      </td>
+                      <td className="py-2 pr-4 text-gray-900 font-medium">{li.itemNo || "—"}</td>
+                      <td className="py-2 pr-4 text-gray-700 max-w-[120px] sm:max-w-none truncate">
+                        {li.itemDescription || "—"}
+                      </td>
+                      <td className="py-2 pr-4 text-right font-semibold text-gray-900">{qty}</td>
+                      <td className="hidden sm:table-cell py-2 pr-4 text-right text-gray-700">
+                        {m2 > 0 ? m2.toFixed(2) : "—"}
+                      </td>
+                      <td className="py-2 pr-4 text-right font-semibold text-teal-700">
+                        {m2 > 0 ? (m2 * qty).toFixed(2) : "—"}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+              <tfoot>
+                <tr className="border-t border-gray-300">
+                  <td colSpan={5} className="py-2 pr-4 text-right font-medium text-gray-600">
+                    Total m²
+                  </td>
+                  <td className="py-2 pr-4 text-right font-bold text-teal-800">
+                    {totalM2.toFixed(2)}
+                  </td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
         </div>
       )}
 
@@ -288,8 +298,8 @@ export function CoatingAnalysisTab(props: CoatingAnalysisTabProps) {
         (coatingAnalysis.status === "analysed" || coatingAnalysis.status === "accepted") &&
         coatingAnalysis.coats.length > 0 && (
           <div id="coating-spec-review" className="mt-6 pt-4 border-t border-gray-200">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center space-x-2">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between mb-4">
+              <div className="flex flex-wrap items-center gap-2">
                 <h4 className="text-sm font-medium text-gray-900">
                   Coating Specification <HelpTooltip term="DFT" />
                 </h4>
@@ -300,7 +310,7 @@ export function CoatingAnalysisTab(props: CoatingAnalysisTabProps) {
                   </span>
                 )}
               </div>
-              <div className="flex items-center space-x-2">
+              <div className="flex flex-wrap items-center gap-2">
                 {coatingAnalysis.status === "analysed" && (
                   <button
                     onClick={async () => {

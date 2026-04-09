@@ -298,7 +298,7 @@ export function QualityTab(props: QualityTabProps) {
       ) : (
         <>
           <div className="rounded-lg border border-gray-200 bg-white shadow-sm">
-            <div className="flex items-center justify-between border-b border-gray-200 px-5 py-3">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between border-b border-gray-200 px-3 sm:px-5 py-3">
               <h3 className="text-sm font-semibold text-gray-900">QC Measurements</h3>
               <div className="flex flex-wrap gap-2">
                 <button
@@ -343,9 +343,9 @@ export function QualityTab(props: QualityTabProps) {
                   return (
                     <div
                       key={`bp-${rec.id}`}
-                      className="flex items-center justify-between px-5 py-3 hover:bg-gray-50"
+                      className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between px-3 sm:px-5 py-3 hover:bg-gray-50"
                     >
-                      <div className="flex items-center gap-3">
+                      <div className="flex flex-wrap items-center gap-2 sm:gap-3 min-w-0">
                         <span className="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-800">
                           Blast
                         </span>
@@ -353,19 +353,23 @@ export function QualityTab(props: QualityTabProps) {
                           Avg: {avgDisplay} μm / Spec: {rec.specMicrons} μm
                         </span>
                         {rec.abrasiveBatchNumber && (
-                          <span className="text-xs text-gray-500">
+                          <span className="hidden sm:inline text-xs text-gray-500">
                             Batch: {rec.abrasiveBatchNumber}
                           </span>
                         )}
                         {rec.temperature !== null && (
-                          <span className="text-xs text-gray-400">{rec.temperature}°C</span>
+                          <span className="hidden sm:inline text-xs text-gray-400">
+                            {rec.temperature}°C
+                          </span>
                         )}
                         {rec.humidity !== null && (
-                          <span className="text-xs text-gray-400">{rec.humidity}% RH</span>
+                          <span className="hidden sm:inline text-xs text-gray-400">
+                            {rec.humidity}% RH
+                          </span>
                         )}
                         <span className="text-xs text-gray-400">{rec.readingDate}</span>
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 shrink-0">
                         <button
                           onClick={() => {
                             setEditingBlast(rec);
@@ -393,9 +397,9 @@ export function QualityTab(props: QualityTabProps) {
                   return (
                     <div
                       key={`pp-${rec.id}`}
-                      className="flex items-center justify-between px-5 py-3 hover:bg-gray-50"
+                      className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between px-3 sm:px-5 py-3 hover:bg-gray-50"
                     >
-                      <div className="flex items-center gap-3">
+                      <div className="flex flex-wrap items-center gap-2 sm:gap-3 min-w-0">
                         <span className="inline-flex items-center rounded-full bg-indigo-100 px-2.5 py-0.5 text-xs font-medium text-indigo-800">
                           Paint
                         </span>
@@ -404,19 +408,23 @@ export function QualityTab(props: QualityTabProps) {
                           Avg: {paintAvgDisplay} μm / Spec: {rec.specMicrons} μm
                         </span>
                         {rec.abrasiveBatchNumber && (
-                          <span className="text-xs text-gray-500">
+                          <span className="hidden sm:inline text-xs text-gray-500">
                             Batch: {rec.abrasiveBatchNumber}
                           </span>
                         )}
                         {rec.temperature !== null && (
-                          <span className="text-xs text-gray-400">{rec.temperature}°C</span>
+                          <span className="hidden sm:inline text-xs text-gray-400">
+                            {rec.temperature}°C
+                          </span>
                         )}
                         {rec.humidity !== null && (
-                          <span className="text-xs text-gray-400">{rec.humidity}% RH</span>
+                          <span className="hidden sm:inline text-xs text-gray-400">
+                            {rec.humidity}% RH
+                          </span>
                         )}
                         <span className="text-xs text-gray-400">{rec.readingDate}</span>
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 shrink-0">
                         <button
                           onClick={() => {
                             setEditingBlast(rec);
@@ -445,9 +453,9 @@ export function QualityTab(props: QualityTabProps) {
                   return (
                     <div
                       key={`sh-${rec.id}`}
-                      className="flex items-center justify-between px-5 py-3 hover:bg-gray-50"
+                      className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between px-3 sm:px-5 py-3 hover:bg-gray-50"
                     >
-                      <div className="flex items-center gap-3">
+                      <div className="flex flex-wrap items-center gap-2 sm:gap-3 min-w-0">
                         <span className="inline-flex items-center rounded-full bg-violet-100 px-2.5 py-0.5 text-xs font-medium text-violet-800">
                           Shore
                         </span>
@@ -463,7 +471,7 @@ export function QualityTab(props: QualityTabProps) {
                           )}
                         <span className="text-xs text-gray-400">{rec.readingDate}</span>
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 shrink-0">
                         <button
                           onClick={() => {
                             setEditingShoreHardness(rec);
@@ -490,9 +498,9 @@ export function QualityTab(props: QualityTabProps) {
                   return (
                     <div
                       key={`dft-${rec.id}`}
-                      className="flex items-center justify-between px-5 py-3 hover:bg-gray-50"
+                      className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between px-3 sm:px-5 py-3 hover:bg-gray-50"
                     >
-                      <div className="flex items-center gap-3">
+                      <div className="flex flex-wrap items-center gap-2 sm:gap-3 min-w-0">
                         <span
                           className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
                             rec.coatType === "primer"
@@ -523,7 +531,7 @@ export function QualityTab(props: QualityTabProps) {
                           )}
                         <span className="text-xs text-gray-400">{rec.readingDate}</span>
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 shrink-0">
                         <button
                           onClick={() => {
                             setEditingDft(rec);
@@ -569,16 +577,16 @@ export function QualityTab(props: QualityTabProps) {
 
           {certificates.length > 0 && (
             <div className="rounded-lg border border-gray-200 bg-white shadow-sm">
-              <div className="border-b border-gray-200 px-5 py-3">
+              <div className="border-b border-gray-200 px-3 sm:px-5 py-3">
                 <h3 className="text-sm font-semibold text-gray-900">Supplier Certificates</h3>
               </div>
               <div className="divide-y divide-gray-200">
                 {certificates.map((cert) => (
                   <div
                     key={cert.id}
-                    className="flex items-center justify-between px-5 py-3 hover:bg-gray-50"
+                    className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between px-3 sm:px-5 py-3 hover:bg-gray-50"
                   >
-                    <div className="flex items-center gap-3">
+                    <div className="flex flex-wrap items-center gap-2 sm:gap-3 min-w-0">
                       <span
                         className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
                           cert.certificateType === "COA"
@@ -589,12 +597,16 @@ export function QualityTab(props: QualityTabProps) {
                         {cert.certificateType}
                       </span>
                       <span className="text-sm font-medium text-gray-900">{cert.batchNumber}</span>
-                      <span className="text-sm text-gray-500">{cert.supplier?.name || ""}</span>
-                      <span className="text-xs text-gray-400">{cert.originalFilename}</span>
+                      <span className="hidden sm:inline text-sm text-gray-500">
+                        {cert.supplier?.name || ""}
+                      </span>
+                      <span className="hidden sm:inline text-xs text-gray-400">
+                        {cert.originalFilename}
+                      </span>
                     </div>
                     <button
                       onClick={() => handleViewCertificate(cert.id)}
-                      className="text-sm text-teal-600 hover:text-teal-800"
+                      className="self-start text-sm text-teal-600 hover:text-teal-800 shrink-0"
                     >
                       View
                     </button>
@@ -606,7 +618,7 @@ export function QualityTab(props: QualityTabProps) {
 
           {calibrationCerts.length > 0 && (
             <div className="rounded-lg border border-gray-200 bg-white shadow-sm">
-              <div className="border-b border-gray-200 px-5 py-3">
+              <div className="border-b border-gray-200 px-3 sm:px-5 py-3">
                 <h3 className="text-sm font-semibold text-gray-900">
                   Calibration Certificates
                   <span className="ml-2 text-xs font-normal text-gray-500">
@@ -624,9 +636,9 @@ export function QualityTab(props: QualityTabProps) {
                   return (
                     <div
                       key={cal.id}
-                      className="flex items-center justify-between px-5 py-3 hover:bg-gray-50"
+                      className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between px-3 sm:px-5 py-3 hover:bg-gray-50"
                     >
-                      <div className="flex items-center gap-3">
+                      <div className="flex flex-wrap items-center gap-2 sm:gap-3 min-w-0">
                         <span className="inline-flex items-center rounded-full bg-indigo-100 px-2.5 py-0.5 text-xs font-medium text-indigo-800">
                           CAL
                         </span>
@@ -634,7 +646,9 @@ export function QualityTab(props: QualityTabProps) {
                           {cal.equipmentName}
                         </span>
                         {cal.equipmentIdentifier && (
-                          <span className="text-xs text-gray-500">({cal.equipmentIdentifier})</span>
+                          <span className="hidden sm:inline text-xs text-gray-500">
+                            ({cal.equipmentIdentifier})
+                          </span>
                         )}
                         <span
                           className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
@@ -652,7 +666,9 @@ export function QualityTab(props: QualityTabProps) {
                               : `Expires ${cal.expiryDate}`}
                         </span>
                       </div>
-                      <span className="text-xs text-gray-400">{cal.originalFilename}</span>
+                      <span className="hidden sm:inline text-xs text-gray-400">
+                        {cal.originalFilename}
+                      </span>
                     </div>
                   );
                 })}
@@ -662,7 +678,7 @@ export function QualityTab(props: QualityTabProps) {
 
           {batchRecords.length > 0 && (
             <div className="rounded-lg border border-gray-200 bg-white shadow-sm">
-              <div className="border-b border-gray-200 px-5 py-3">
+              <div className="border-b border-gray-200 px-3 sm:px-5 py-3">
                 <h3 className="text-sm font-semibold text-gray-900">Batch Records</h3>
               </div>
               <div className="overflow-x-auto">

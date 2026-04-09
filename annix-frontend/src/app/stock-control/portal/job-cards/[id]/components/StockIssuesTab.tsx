@@ -96,22 +96,22 @@ export function StockIssuesTab(props: StockIssuesTabProps) {
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Item Name
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="hidden md:table-cell px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     SKU
                   </th>
                   <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Qty Issued
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="hidden sm:table-cell px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Batch #
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="hidden md:table-cell px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Issued By
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="hidden sm:table-cell px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Issued At
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="hidden lg:table-cell px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Notes
                   </th>
                   <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -125,7 +125,7 @@ export function StockIssuesTab(props: StockIssuesTabProps) {
                     <td className="px-4 py-3 text-sm font-medium text-gray-900 whitespace-nowrap">
                       {alloc.stockItem ? alloc.stockItem.name : "-"}
                     </td>
-                    <td className="px-4 py-3 text-sm text-gray-500 whitespace-nowrap font-mono">
+                    <td className="hidden md:table-cell px-4 py-3 text-sm text-gray-500 whitespace-nowrap font-mono">
                       {alloc.stockItem ? alloc.stockItem.sku : "-"}
                     </td>
                     <td className="px-4 py-3 text-sm text-right font-semibold text-gray-900 whitespace-nowrap">
@@ -136,20 +136,20 @@ export function StockIssuesTab(props: StockIssuesTabProps) {
                         </span>
                       ) : null}
                     </td>
-                    <td className="px-4 py-3 text-sm text-gray-600 whitespace-nowrap font-mono">
+                    <td className="hidden sm:table-cell px-4 py-3 text-sm text-gray-600 whitespace-nowrap font-mono">
                       {batchForStockItem(alloc.stockItem) || (
                         <span className="text-gray-300">-</span>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-sm text-gray-600 whitespace-nowrap">
+                    <td className="hidden md:table-cell px-4 py-3 text-sm text-gray-600 whitespace-nowrap">
                       {alloc.issuedByName || alloc.allocatedBy || "-"}
                     </td>
-                    <td className="px-4 py-3 text-sm text-gray-500 whitespace-nowrap">
+                    <td className="hidden sm:table-cell px-4 py-3 text-sm text-gray-500 whitespace-nowrap">
                       {alloc.issuedAt
                         ? formatDateZA(alloc.issuedAt)
                         : formatDateZA(alloc.createdAt)}
                     </td>
-                    <td className="px-4 py-3 text-sm text-gray-500 max-w-[200px] truncate">
+                    <td className="hidden lg:table-cell px-4 py-3 text-sm text-gray-500 max-w-[200px] truncate">
                       {alloc.notes || "-"}
                     </td>
                     <td className="px-4 py-3 text-sm text-center whitespace-nowrap">

@@ -187,8 +187,8 @@ export default function DispatchTab(props: DispatchTabProps) {
         </div>
       )}
 
-      <div className="bg-white shadow rounded-lg p-6">
-        <div className="flex items-center justify-between mb-4">
+      <div className="bg-white shadow rounded-lg p-4 sm:p-6">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between mb-4">
           <h2 className="text-lg font-semibold text-gray-900 flex items-center">
             <FileText className="w-5 h-5 mr-2 text-teal-600" />
             Customer Delivery Note (CDN)
@@ -273,19 +273,19 @@ export default function DispatchTab(props: DispatchTabProps) {
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                   CDN Item
                 </th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">
+                <th className="px-3 sm:px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">
                   CDN Qty
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                <th className="hidden sm:table-cell px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                   Matched JC Item
                 </th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">
+                <th className="hidden sm:table-cell px-3 sm:px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">
                   JC Qty
                 </th>
-                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
+                <th className="px-3 sm:px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">
                   Confidence
                 </th>
               </tr>
@@ -294,21 +294,21 @@ export default function DispatchTab(props: DispatchTabProps) {
               {cdns.flatMap((cdn) =>
                 (cdn.lineMatches || ([] as CdnLineMatch[])).map((match, idx) => (
                   <tr key={`${cdn.id}-${idx}`}>
-                    <td className="px-6 py-4 text-sm text-gray-900 max-w-xs truncate">
+                    <td className="px-3 sm:px-6 py-4 text-sm text-gray-900 max-w-[150px] sm:max-w-xs truncate">
                       {match.cdnDescription}
                     </td>
-                    <td className="px-6 py-4 text-sm text-gray-900 text-right">
+                    <td className="px-3 sm:px-6 py-4 text-sm text-gray-900 text-right">
                       {match.cdnQuantity || "-"}
                     </td>
-                    <td className="px-6 py-4 text-sm text-gray-600 max-w-xs truncate">
+                    <td className="hidden sm:table-cell px-3 sm:px-6 py-4 text-sm text-gray-600 max-w-xs truncate">
                       {match.matchedDescription || (
                         <span className="text-orange-500 italic">No match</span>
                       )}
                     </td>
-                    <td className="px-6 py-4 text-sm text-gray-600 text-right">
+                    <td className="hidden sm:table-cell px-3 sm:px-6 py-4 text-sm text-gray-600 text-right">
                       {match.matchedQuantity || "-"}
                     </td>
-                    <td className="px-6 py-4 text-center">
+                    <td className="px-3 sm:px-6 py-4 text-center">
                       <span
                         className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
                           match.confidence >= 0.7
@@ -329,8 +329,8 @@ export default function DispatchTab(props: DispatchTabProps) {
         </div>
       )}
 
-      <div className="bg-white shadow rounded-lg p-6">
-        <div className="flex items-center justify-between mb-4">
+      <div className="bg-white shadow rounded-lg p-4 sm:p-6">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between mb-4">
           <h2 className="text-lg font-semibold text-gray-900 flex items-center">
             <Camera className="w-5 h-5 mr-2 text-teal-600" />
             Load Photos

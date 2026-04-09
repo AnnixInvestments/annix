@@ -447,14 +447,14 @@ export function MaterialBatchSection(props: MaterialBatchSectionProps) {
 
   return (
     <div className="rounded-lg border border-gray-200 bg-white shadow-sm">
-      <div className="flex items-center justify-between border-b border-gray-200 px-5 py-3">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between border-b border-gray-200 px-3 sm:px-5 py-3">
         <div>
           <h3 className="text-sm font-semibold text-gray-900">Material Batch Numbers</h3>
           <p className="text-xs text-gray-500 mt-0.5">
             Auto-populated from stock issuances, or enter manually
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0">
           {saveSuccess && <span className="text-xs text-green-600">Saved</span>}
           {error && <span className="text-xs text-red-600">{error}</span>}
           <button
@@ -468,8 +468,12 @@ export function MaterialBatchSection(props: MaterialBatchSectionProps) {
         </div>
       </div>
 
-      <div className="px-5 py-4">
-        <div className={showRubber && showPaint ? "grid grid-cols-2 gap-8" : ""}>
+      <div className="px-3 sm:px-5 py-4">
+        <div
+          className={
+            showRubber && showPaint ? "grid grid-cols-1 sm:grid-cols-2 gap-6 sm:gap-8" : ""
+          }
+        >
           {showRubber && (
             <div>
               <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">
@@ -520,8 +524,11 @@ export function MaterialBatchSection(props: MaterialBatchSectionProps) {
                     </button>
                   </div>
                   {rubberManual.map((entry) => (
-                    <div key={entry.fieldKey} className="flex items-center gap-2">
-                      <label className="text-xs text-gray-600 w-36 flex-shrink-0">
+                    <div
+                      key={entry.fieldKey}
+                      className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2"
+                    >
+                      <label className="text-xs text-gray-600 sm:w-36 sm:flex-shrink-0">
                         {entry.label}
                       </label>
                       <input
@@ -564,7 +571,7 @@ export function MaterialBatchSection(props: MaterialBatchSectionProps) {
                       return (
                         <div
                           key={`offcut-used-${idx}`}
-                          className="flex items-center gap-3 text-xs text-gray-600 bg-amber-50 border border-amber-200 rounded px-2 py-1.5"
+                          className="flex flex-wrap items-center gap-2 sm:gap-3 text-xs text-gray-600 bg-amber-50 border border-amber-200 rounded px-2 py-1.5"
                         >
                           <span className="inline-flex items-center rounded bg-amber-100 px-1.5 py-0.5 font-medium text-amber-800">
                             Offcut
