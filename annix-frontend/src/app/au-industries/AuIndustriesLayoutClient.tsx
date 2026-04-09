@@ -43,7 +43,7 @@ export function AuIndustriesLayoutClient(props: { children: React.ReactNode }) {
 
   const companyName = profile?.tradingName || "AU Industries";
   const phone = profile?.phone || "+27 11 000 0000";
-  const email = profile?.generalEmail || "info@auind.co.za";
+  const email = profile?.generalEmail || "info@example.com";
   const address = profile ? `${profile.streetAddress}, ${profile.city}, ${profile.province}` : "";
 
   return (

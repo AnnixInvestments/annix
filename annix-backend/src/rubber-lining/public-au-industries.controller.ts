@@ -59,7 +59,7 @@ export class PublicAuIndustriesController {
   @ApiResponse({ status: 201 })
   async submitContactForm(@Body() dto: ContactFormDto): Promise<ApiMessageResponse> {
     const profile = await this.companyProfileService.profile();
-    const recipientEmail = profile.generalEmail || "andy@auind.co.za";
+    const recipientEmail = profile.generalEmail || "info@example.com";
 
     const html = `
       <h2>New Contact Form Submission</h2>
