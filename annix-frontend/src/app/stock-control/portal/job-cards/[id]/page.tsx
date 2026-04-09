@@ -1821,6 +1821,23 @@ export default function JobCardDetailPage() {
                   </button>
                 </span>
               )}
+              {canApprove &&
+                currentStep &&
+                currentStepActionCompleted &&
+                (prevStepBgPending || currentStepBlueBgPending) && (
+                  <span className="text-xs text-amber-600 italic">
+                    Waiting for background tasks to complete before approval
+                  </span>
+                )}
+              {!canApprove &&
+                !canAcceptDraft &&
+                !receptionIsPending &&
+                userPendingBgSteps.length === 0 &&
+                !qcpsNeedApproval && (
+                  <span className="text-xs text-gray-400 italic">
+                    No pending actions for you on this job card
+                  </span>
+                )}
             </div>
           </div>
         )}

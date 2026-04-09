@@ -718,18 +718,20 @@ export class QcMeasurementController {
         materialCategories.has(b.category) && b.batchNumber,
     );
 
-    materialBatches.forEach((entry: { fieldKey: string; batchNumber: string }) => {
-      this.certificateService
-        .linkMaterialBatchToCertificate(
-          req.user.companyId,
-          jobCardId,
-          entry.fieldKey,
-          entry.batchNumber,
-        )
-        .catch((err: Error) =>
-          this.logger.warn(`Auto-link cert for field ${entry.fieldKey} failed: ${err.message}`),
-        );
-    });
+    await Promise.all(
+      materialBatches.map((entry: { fieldKey: string; batchNumber: string }) =>
+        this.certificateService
+          .linkMaterialBatchToCertificate(
+            req.user.companyId,
+            jobCardId,
+            entry.fieldKey,
+            entry.batchNumber,
+          )
+          .catch((err: Error) =>
+            this.logger.warn(`Auto-link cert for field ${entry.fieldKey} failed: ${err.message}`),
+          ),
+      ),
+    );
 
     const batchesWithNumbers = (body.batches || []).filter(
       (b: { batchNumber: string | null }) => b.batchNumber,

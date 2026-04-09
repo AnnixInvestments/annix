@@ -399,6 +399,7 @@ export function MaterialBatchSection(props: MaterialBatchSectionProps) {
       await stockControlApiClient.saveDefelskoBatches(jobCardId, { batches });
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);
+      loadSavedBatches();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save");
     } finally {
