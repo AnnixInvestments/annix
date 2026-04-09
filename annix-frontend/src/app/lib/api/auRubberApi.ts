@@ -1738,6 +1738,31 @@ class AuRubberApiClient {
     });
   }
 
+  async orderConfirmationPdfBlob(orderId: number): Promise<Blob> {
+    const url = `${this.baseURL}/rubber-lining/portal/orders/${orderId}/confirmation-pdf`;
+    const headers: Record<string, string> = {};
+    if (this.accessToken) {
+      headers["Authorization"] = `Bearer ${this.accessToken}`;
+    }
+    const response = await fetch(url, { headers });
+    if (!response.ok) {
+      throw new Error(`Failed to generate confirmation PDF: ${response.statusText}`);
+    }
+    return response.blob();
+  }
+
+  async sendOrderConfirmation(
+    orderId: number,
+    email: string,
+    cc?: string,
+    bcc?: string,
+  ): Promise<{ success: boolean }> {
+    return this.request(`/rubber-lining/portal/orders/${orderId}/send-confirmation`, {
+      method: "POST",
+      body: JSON.stringify({ email, cc, bcc }),
+    });
+  }
+
   async orderStatuses(): Promise<{ value: number; label: string }[]> {
     return this.request("/rubber-lining/portal/order-statuses");
   }

@@ -225,6 +225,7 @@ import {
   RubberTaxInvoiceService,
   UpdateTaxInvoiceDto,
 } from "./rubber-tax-invoice.service";
+import { RubberOrderConfirmationService } from "./services/rubber-order-confirmation.service";
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const pdfParseModule = require("pdf-parse");
@@ -268,6 +269,7 @@ export class RubberLiningController {
     private readonly rubberCompanyDirectorService: RubberCompanyDirectorService,
     private readonly rubberStatementReconciliationService: RubberStatementReconciliationService,
     private readonly rubberRollIssuanceService: RubberRollIssuanceService,
+    private readonly rubberOrderConfirmationService: RubberOrderConfirmationService,
   ) {}
 
   @Get("types")
@@ -1051,6 +1053,39 @@ export class RubberLiningController {
   async deleteOrder(@Param("id") id: string): Promise<void> {
     const deleted = await this.rubberLiningService.deleteOrder(Number(id));
     if (!deleted) throw new NotFoundException("Order not found");
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Get("portal/orders/:id/confirmation-pdf")
+  @ApiOperation({ summary: "Generate order confirmation PDF" })
+  @ApiParam({ name: "id", description: "Order ID" })
+  async orderConfirmationPdf(@Param("id") id: string, @Res() res: Response): Promise<void> {
+    const buffer = await this.rubberOrderConfirmationService.confirmationPdf(Number(id));
+    res.set({
+      "Content-Type": "application/pdf",
+      "Content-Disposition": `inline; filename="Order-Confirmation-${id}.pdf"`,
+      "Content-Length": buffer.length,
+    });
+    res.end(buffer);
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Post("portal/orders/:id/send-confirmation")
+  @ApiOperation({ summary: "Send order confirmation email to customer" })
+  @ApiParam({ name: "id", description: "Order ID" })
+  async sendOrderConfirmation(
+    @Param("id") id: string,
+    @Body() body: { email: string; cc?: string; bcc?: string },
+  ): Promise<{ success: boolean }> {
+    await this.rubberOrderConfirmationService.sendConfirmation(
+      Number(id),
+      body.email,
+      body.cc,
+      body.bcc,
+    );
+    return { success: true };
   }
 
   @UseGuards(AdminAuthGuard, AuRubberAccessGuard)

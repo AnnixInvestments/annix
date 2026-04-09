@@ -35,6 +35,7 @@ import type {
   RubberProductDto,
 } from "@/app/lib/api/rubberPortalApi";
 import { formatDateTimeZA, formatDateZA, fromMillis, nowMillis } from "@/app/lib/datetime";
+import { OrderConfirmationModal } from "../components/OrderConfirmationModal";
 
 function CalloffStatusUpdate({
   currentStatus,
@@ -148,6 +149,7 @@ export default function AuRubberOrderDetailPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [showConfirmationModal, setShowConfirmationModal] = useState(false);
 
   const fetchOrder = async () => {
     try {
@@ -585,6 +587,12 @@ export default function AuRubberOrderDetailPage() {
           {hasUnsavedChanges && (
             <span className="text-sm text-orange-600 font-medium">Unsaved changes</span>
           )}
+          <button
+            onClick={() => setShowConfirmationModal(true)}
+            className="inline-flex items-center px-4 py-2 border border-yellow-300 rounded-md shadow-sm text-sm font-medium text-yellow-700 bg-yellow-100 hover:bg-yellow-200"
+          >
+            Send Confirmation
+          </button>
           <button
             onClick={handleSave}
             disabled={isSaving}
@@ -1329,6 +1337,14 @@ export default function AuRubberOrderDetailPage() {
           </div>
         )}
       </div>
+      <OrderConfirmationModal
+        isOpen={showConfirmationModal}
+        onClose={() => setShowConfirmationModal(false)}
+        orderId={orderId}
+        orderNumber={order.orderNumber}
+        customerName={order.companyName || "Unknown Customer"}
+        onSent={() => showToast("Order confirmation sent", "success")}
+      />
     </div>
   );
 }

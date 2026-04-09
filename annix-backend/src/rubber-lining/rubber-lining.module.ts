@@ -94,6 +94,7 @@ import { RubberStockService } from "./rubber-stock.service";
 import { RubberStockLocationService } from "./rubber-stock-location.service";
 import { RubberTaxInvoiceService } from "./rubber-tax-invoice.service";
 import { ArEmailAdapterService } from "./services/ar-email-adapter.service";
+import { RubberOrderConfirmationService } from "./services/rubber-order-confirmation.service";
 
 @Module({
   imports: [
@@ -174,6 +175,7 @@ import { ArEmailAdapterService } from "./services/ar-email-adapter.service";
     RubberOtherStockService,
     RubberTaxInvoiceService,
     RubberDocumentVersioningService,
+    RubberOrderConfirmationService,
     RubberRollIssuanceService,
     RubberRollRejectionService,
     RubberSageCocAdapterService,
