@@ -2,6 +2,7 @@ import { BadRequestException, Inject, Injectable, Logger } from "@nestjs/common"
 import { InjectRepository } from "@nestjs/typeorm";
 import { ILike, Repository } from "typeorm";
 import { nowMillis } from "../../lib/datetime";
+import { LearningSource, LearningType, NixLearning } from "../../nix/entities/nix-learning.entity";
 import { RubberProductCoding } from "../../rubber-lining/entities/rubber-product-coding.entity";
 import { RubberRollStock } from "../../rubber-lining/entities/rubber-roll-stock.entity";
 import { IStorageService, STORAGE_SERVICE } from "../../storage/storage.interface";
@@ -48,6 +49,8 @@ export class DeliveryExtractionService {
     private readonly rubberRollStockRepo: Repository<RubberRollStock>,
     @InjectRepository(RubberProductCoding)
     private readonly rubberProductCodingRepo: Repository<RubberProductCoding>,
+    @InjectRepository(NixLearning)
+    private readonly nixLearningRepo: Repository<NixLearning>,
     @Inject(STORAGE_SERVICE)
     private readonly storageService: IStorageService,
     private readonly extractionService: InvoiceExtractionService,
@@ -117,6 +120,11 @@ export class DeliveryExtractionService {
     lineItems: Array<ExtractedLineItem>,
     receivedBy?: string,
   ): Promise<void> {
+    const mergedItems = this.mergeIdenticalLines(lineItems);
+    this.logger.log(
+      `Merged ${lineItems.length} extracted lines into ${mergedItems.length} distinct items`,
+    );
+
     const processItem = async (item: ExtractedLineItem): Promise<void> => {
       if (!item.description) {
         return;
@@ -169,7 +177,7 @@ export class DeliveryExtractionService {
     };
 
     let failedCount = 0;
-    await lineItems.reduce(
+    await mergedItems.reduce(
       (chain, item) =>
         chain.then(async () => {
           try {
@@ -179,7 +187,7 @@ export class DeliveryExtractionService {
             this.logger.error(
               `Failed to process item "${item.description}" for delivery ${deliveryNote.id}: ${error instanceof Error ? error.message : String(error)}`,
             );
-            if (failedCount >= lineItems.length) {
+            if (failedCount >= mergedItems.length) {
               throw error;
             }
           }
@@ -253,6 +261,25 @@ export class DeliveryExtractionService {
     costPerUnit: number,
     unitOfMeasure: string,
   ): Promise<StockItem> {
+    const learnedMatch = await this.findLearnedStockItem(
+      companyId,
+      supplierName,
+      sku,
+      item.description!,
+    );
+    if (learnedMatch) {
+      learnedMatch.quantity = learnedMatch.quantity + quantity;
+      if (Number.isFinite(costPerUnit) && costPerUnit > 0) {
+        learnedMatch.costPerUnit = costPerUnit;
+      }
+      if (item.isPaint && item.volumeLitersPerPack && !learnedMatch.packSizeLitres) {
+        learnedMatch.packSizeLitres = item.volumeLitersPerPack;
+      }
+      await this.stockItemRepo.save(learnedMatch);
+      this.logger.log(`Matched via NixLearning: "${sku}" -> "${learnedMatch.sku}", +${quantity}`);
+      return learnedMatch;
+    }
+
     const existingBySku = await this.stockItemRepo.findOne({
       where: { sku, companyId },
     });
@@ -270,6 +297,25 @@ export class DeliveryExtractionService {
       return existingBySku;
     }
 
+    const normalisedMatch = await this.supplierService.findByNormalisedSku(companyId, sku);
+    if (normalisedMatch) {
+      normalisedMatch.quantity = normalisedMatch.quantity + quantity;
+      if (Number.isFinite(costPerUnit) && costPerUnit > 0) {
+        normalisedMatch.costPerUnit = costPerUnit;
+      }
+      if (item.isPaint && item.volumeLitersPerPack && !normalisedMatch.packSizeLitres) {
+        normalisedMatch.packSizeLitres = item.volumeLitersPerPack;
+      }
+      await this.stockItemRepo.save(normalisedMatch);
+      this.logger.log(
+        `Matched via normalised SKU: "${sku}" -> existing "${normalisedMatch.sku}", +${quantity}`,
+      );
+      this.recordDeliveryMatch(supplierName, sku, item.description!, normalisedMatch.id).catch(
+        (err) => this.logger.error(`Failed to record delivery match learning: ${err.message}`),
+      );
+      return normalisedMatch;
+    }
+
     const matchResult = await this.supplierService.findMatchingStockItem(
       companyId,
       supplierName,
@@ -277,10 +323,12 @@ export class DeliveryExtractionService {
       sku,
     );
 
-    if (matchResult.existingItem && matchResult.sameSupplier) {
+    if (matchResult.existingItem && (matchResult.sameSupplier || matchResult.score >= 0.85)) {
       const matched = matchResult.existingItem;
       const oldSku = matched.sku;
-      matched.sku = sku;
+      if (matchResult.sameSupplier) {
+        matched.sku = sku;
+      }
       matched.quantity = matched.quantity + quantity;
       if (Number.isFinite(costPerUnit) && costPerUnit > 0) {
         matched.costPerUnit = costPerUnit;
@@ -290,7 +338,11 @@ export class DeliveryExtractionService {
       }
       await this.stockItemRepo.save(matched);
       this.logger.log(
-        `Merged item: updated SKU from ${oldSku} to ${sku}, added ${quantity} (same supplier: ${supplierName})`,
+        `Merged item: "${oldSku}" -> "${matched.sku}", +${quantity} ` +
+          `(score=${matchResult.score.toFixed(2)}, sameSupplier=${matchResult.sameSupplier}, supplier="${supplierName}")`,
+      );
+      this.recordDeliveryMatch(supplierName, sku, item.description!, matched.id).catch((err) =>
+        this.logger.error(`Failed to record delivery match learning: ${err.message}`),
       );
       return matched;
     }
@@ -472,6 +524,191 @@ export class DeliveryExtractionService {
     };
   }
 
+  private async findLearnedStockItem(
+    companyId: number,
+    supplierName: string,
+    sku: string,
+    description: string,
+  ): Promise<StockItem | null> {
+    const normalisedSupplier = this.supplierService.normaliseSupplierName(supplierName);
+    const patternKey = `delivery_sku_map:${normalisedSupplier}:${sku.toLowerCase().trim()}`;
+
+    const learning = await this.nixLearningRepo.findOne({
+      where: {
+        patternKey,
+        learningType: LearningType.CORRECTION,
+        category: "delivery_stock_matching",
+        isActive: true,
+      },
+      order: { confidence: "DESC" },
+    });
+
+    if (!learning) {
+      const descKey = `delivery_desc_map:${normalisedSupplier}:${this.supplierService.normalizeForComparison(description)}`;
+      const descLearning = await this.nixLearningRepo.findOne({
+        where: {
+          patternKey: descKey,
+          learningType: LearningType.CORRECTION,
+          category: "delivery_stock_matching",
+          isActive: true,
+        },
+        order: { confidence: "DESC" },
+      });
+
+      if (!descLearning) return null;
+
+      const itemId = Number(descLearning.learnedValue);
+      if (Number.isNaN(itemId)) return null;
+
+      return this.stockItemRepo.findOne({ where: { id: itemId, companyId } });
+    }
+
+    const itemId = Number(learning.learnedValue);
+    if (Number.isNaN(itemId)) return null;
+
+    return this.stockItemRepo.findOne({ where: { id: itemId, companyId } });
+  }
+
+  private async recordDeliveryMatch(
+    supplierName: string,
+    sku: string,
+    description: string,
+    matchedItemId: number,
+  ): Promise<void> {
+    const normalisedSupplier = this.supplierService.normaliseSupplierName(supplierName);
+    const patternKey = `delivery_sku_map:${normalisedSupplier}:${sku.toLowerCase().trim()}`;
+
+    const existing = await this.nixLearningRepo.findOne({
+      where: {
+        patternKey,
+        learningType: LearningType.CORRECTION,
+        category: "delivery_stock_matching",
+      },
+    });
+
+    if (existing) {
+      existing.learnedValue = String(matchedItemId);
+      existing.confirmationCount += 1;
+      existing.confidence = Math.min(1, Number(existing.confidence) + 0.1);
+      existing.isActive = true;
+      await this.nixLearningRepo.save(existing);
+    } else {
+      const learning = this.nixLearningRepo.create({
+        learningType: LearningType.CORRECTION,
+        source: LearningSource.AGGREGATED,
+        category: "delivery_stock_matching",
+        patternKey,
+        originalValue: sku,
+        learnedValue: String(matchedItemId),
+        context: { supplier: supplierName, description },
+        confidence: 0.7,
+        confirmationCount: 1,
+        applicableProducts: ["stock_item"],
+        isActive: true,
+      });
+      await this.nixLearningRepo.save(learning);
+    }
+
+    const descKey = `delivery_desc_map:${normalisedSupplier}:${this.supplierService.normalizeForComparison(description)}`;
+    const existingDesc = await this.nixLearningRepo.findOne({
+      where: {
+        patternKey: descKey,
+        learningType: LearningType.CORRECTION,
+        category: "delivery_stock_matching",
+      },
+    });
+
+    if (existingDesc) {
+      existingDesc.learnedValue = String(matchedItemId);
+      existingDesc.confirmationCount += 1;
+      existingDesc.confidence = Math.min(1, Number(existingDesc.confidence) + 0.1);
+      existingDesc.isActive = true;
+      await this.nixLearningRepo.save(existingDesc);
+    } else {
+      const descLearning = this.nixLearningRepo.create({
+        learningType: LearningType.CORRECTION,
+        source: LearningSource.AGGREGATED,
+        category: "delivery_stock_matching",
+        patternKey: descKey,
+        originalValue: description,
+        learnedValue: String(matchedItemId),
+        context: { supplier: supplierName, sku },
+        confidence: 0.7,
+        confirmationCount: 1,
+        applicableProducts: ["stock_item"],
+        isActive: true,
+      });
+      await this.nixLearningRepo.save(descLearning);
+    }
+  }
+
+  private mergeIdenticalLines(items: Array<ExtractedLineItem>): Array<ExtractedLineItem> {
+    const groups = new Map<string, ExtractedLineItem>();
+
+    items.forEach((item) => {
+      if (!item.description) {
+        const key = `__empty_${groups.size}`;
+        groups.set(key, { ...item });
+        return;
+      }
+
+      const normalised = item.description
+        .toLowerCase()
+        .replace(/[^a-z0-9]/g, "")
+        .trim();
+
+      const rollNumber = this.extractRollNumber(item, "");
+      if (rollNumber) {
+        const baseDesc = item.description
+          .replace(/ROLL[\s#-]*\d{4,6}/gi, "")
+          .replace(/\s+/g, " ")
+          .trim()
+          .toLowerCase()
+          .replace(/[^a-z0-9]/g, "");
+        const rollGroupKey = `roll:${baseDesc}`;
+
+        const existing = groups.get(rollGroupKey);
+        if (existing) {
+          const existingQty = existing.quantity ?? 1;
+          const newQty = item.quantity ?? 1;
+          groups.set(rollGroupKey, {
+            ...existing,
+            quantity: existingQty + newQty,
+            lineTotal: (existing.lineTotal ?? 0) + (item.lineTotal ?? 0) || undefined,
+          });
+        } else {
+          const cleanDesc = item.description
+            .replace(/ROLL[\s#-]*\d{4,6}/gi, "")
+            .replace(/\s+/g, " ")
+            .trim();
+          groups.set(rollGroupKey, {
+            ...item,
+            description: cleanDesc || item.description,
+          });
+        }
+        return;
+      }
+
+      const uom = (item.unitOfMeasure || "each").toLowerCase();
+      const key = `${normalised}:${uom}`;
+
+      const existing = groups.get(key);
+      if (existing) {
+        const existingQty = existing.quantity ?? 1;
+        const newQty = item.quantity ?? 1;
+        groups.set(key, {
+          ...existing,
+          quantity: existingQty + newQty,
+          lineTotal: (existing.lineTotal ?? 0) + (item.lineTotal ?? 0) || undefined,
+        });
+      } else {
+        groups.set(key, { ...item });
+      }
+    });
+
+    return [...groups.values()];
+  }
+
   private async handleReturnedItem(
     companyId: number,
     deliveryNote: DeliveryNote,
@@ -480,9 +717,9 @@ export class DeliveryExtractionService {
   ): Promise<void> {
     const sku = this.generateSku(item);
 
-    const stockItem = await this.stockItemRepo.findOne({
-      where: { sku, companyId },
-    });
+    const stockItem =
+      (await this.stockItemRepo.findOne({ where: { sku, companyId } })) ||
+      (await this.supplierService.findByNormalisedSku(companyId, sku));
 
     if (!stockItem) {
       this.logger.log(

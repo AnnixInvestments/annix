@@ -5,7 +5,12 @@ import { DataSource } from "typeorm";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
 import { NixLearning } from "../../nix/entities/nix-learning.entity";
 import { STORAGE_SERVICE } from "../../storage/storage.interface";
+import { DeliveryNoteItem } from "../entities/delivery-note-item.entity";
+import { StockAllocation } from "../entities/stock-allocation.entity";
+import { StockIssuance } from "../entities/stock-issuance.entity";
 import { StockItem } from "../entities/stock-item.entity";
+import { StockMovement } from "../entities/stock-movement.entity";
+import { DeliverySupplierService } from "./delivery-supplier.service";
 import { InventoryService } from "./inventory.service";
 import { RequisitionService } from "./requisition.service";
 
@@ -78,10 +83,38 @@ describe("InventoryService", () => {
           provide: getRepositoryToken(NixLearning),
           useValue: { save: jest.fn(), find: jest.fn().mockResolvedValue([]) },
         },
+        {
+          provide: getRepositoryToken(StockMovement),
+          useValue: {
+            create: jest.fn(),
+            save: jest.fn(),
+            find: jest.fn().mockResolvedValue([]),
+            update: jest.fn(),
+          },
+        },
+        {
+          provide: getRepositoryToken(DeliveryNoteItem),
+          useValue: { find: jest.fn().mockResolvedValue([]), update: jest.fn() },
+        },
+        {
+          provide: getRepositoryToken(StockAllocation),
+          useValue: { find: jest.fn().mockResolvedValue([]), update: jest.fn() },
+        },
+        {
+          provide: getRepositoryToken(StockIssuance),
+          useValue: { find: jest.fn().mockResolvedValue([]), update: jest.fn() },
+        },
         { provide: STORAGE_SERVICE, useValue: mockStorageService },
         { provide: RequisitionService, useValue: mockRequisitionService },
         { provide: DataSource, useValue: mockDataSource },
         { provide: AiChatService, useValue: { chat: jest.fn().mockResolvedValue("") } },
+        {
+          provide: DeliverySupplierService,
+          useValue: {
+            scoreCandidates: jest.fn().mockReturnValue([]),
+            normaliseSupplierName: jest.fn().mockReturnValue(""),
+          },
+        },
       ],
     }).compile();
 

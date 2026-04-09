@@ -78,6 +78,7 @@ export default function InventoryPage() {
     handleAutoCategorize,
     handleNormalizeRubber,
     toggleListGroupByCategory,
+    invalidateInventory,
   } = inv;
 
   if (isLoading && items.length === 0 && groupedData.length === 0) {
@@ -141,6 +142,7 @@ export default function InventoryPage() {
         onTogglePrintDropdown={() => updateState({ showPrintDropdown: !state.showPrintDropdown })}
         onPrintStockList={handlePrintStockList}
         onOpenCreateModal={openCreateModal}
+        onRefresh={invalidateInventory}
       />
 
       {actionError && (

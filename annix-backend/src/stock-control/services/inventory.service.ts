@@ -1,11 +1,40 @@
-import { forwardRef, Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
+import {
+  BadRequestException,
+  forwardRef,
+  Inject,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { DataSource, In, IsNull, Repository } from "typeorm";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
 import { LearningSource, LearningType, NixLearning } from "../../nix/entities/nix-learning.entity";
 import { IStorageService, STORAGE_SERVICE } from "../../storage/storage.interface";
+import { DeliveryNoteItem } from "../entities/delivery-note-item.entity";
+import { StockAllocation } from "../entities/stock-allocation.entity";
+import { StockIssuance } from "../entities/stock-issuance.entity";
 import { StockItem } from "../entities/stock-item.entity";
+import { MovementType, ReferenceType, StockMovement } from "../entities/stock-movement.entity";
+import { DeliverySupplierService } from "./delivery-supplier.service";
 import { RequisitionService } from "./requisition.service";
+
+export interface DuplicateGroup {
+  canonicalItem: StockItem;
+  duplicates: Array<{
+    item: StockItem;
+    score: number;
+    matchType: string;
+  }>;
+  totalQuantity: number;
+}
+
+export interface MergeResult {
+  targetItem: StockItem;
+  mergedCount: number;
+  quantityAdded: number;
+  movementsTransferred: number;
+}
 
 @Injectable()
 export class InventoryService {
@@ -16,12 +45,21 @@ export class InventoryService {
     private readonly stockItemRepo: Repository<StockItem>,
     @InjectRepository(NixLearning)
     private readonly nixLearningRepo: Repository<NixLearning>,
+    @InjectRepository(StockMovement)
+    private readonly movementRepo: Repository<StockMovement>,
+    @InjectRepository(DeliveryNoteItem)
+    private readonly deliveryNoteItemRepo: Repository<DeliveryNoteItem>,
+    @InjectRepository(StockAllocation)
+    private readonly allocationRepo: Repository<StockAllocation>,
+    @InjectRepository(StockIssuance)
+    private readonly issuanceRepo: Repository<StockIssuance>,
     @Inject(STORAGE_SERVICE)
     private readonly storageService: IStorageService,
     @Inject(forwardRef(() => RequisitionService))
     private readonly requisitionService: RequisitionService,
     private readonly dataSource: DataSource,
     private readonly aiChatService: AiChatService,
+    private readonly supplierService: DeliverySupplierService,
   ) {}
 
   async create(companyId: number, data: Partial<StockItem>): Promise<StockItem> {
@@ -301,6 +339,156 @@ export class InventoryService {
         : grouped;
 
     return { groups, total, page, limit };
+  }
+
+  async detectDuplicates(companyId: number): Promise<DuplicateGroup[]> {
+    const allItems = await this.stockItemRepo.find({
+      where: { companyId },
+      order: { name: "ASC" },
+    });
+
+    if (allItems.length < 2) return [];
+
+    const processed = new Set<number>();
+    const groups: DuplicateGroup[] = [];
+
+    allItems.forEach((item) => {
+      if (processed.has(item.id)) return;
+
+      const candidates = this.supplierService.scoreCandidates(
+        allItems.filter((other) => other.id !== item.id && !processed.has(other.id)),
+        item.name,
+        item.sku,
+      );
+
+      const strongMatches = candidates.filter((c) => c.score >= 0.6);
+      if (strongMatches.length === 0) return;
+
+      processed.add(item.id);
+      const duplicates = strongMatches.map((c) => {
+        processed.add(c.item.id);
+        return { item: c.item, score: c.score, matchType: c.matchType };
+      });
+
+      const totalQuantity =
+        Number(item.quantity) + duplicates.reduce((sum, d) => sum + Number(d.item.quantity), 0);
+
+      groups.push({ canonicalItem: item, duplicates, totalQuantity });
+    });
+
+    return groups.sort((a, b) => b.duplicates.length - a.duplicates.length);
+  }
+
+  async mergeItems(
+    companyId: number,
+    targetItemId: number,
+    sourceItemIds: number[],
+    mergedBy: string,
+  ): Promise<MergeResult> {
+    if (sourceItemIds.includes(targetItemId)) {
+      throw new BadRequestException("Target item cannot be in the source list");
+    }
+
+    if (sourceItemIds.length === 0) {
+      throw new BadRequestException("At least one source item is required");
+    }
+
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      const targetItem = await queryRunner.manager.findOne(StockItem, {
+        where: { id: targetItemId, companyId },
+        lock: { mode: "pessimistic_write" },
+      });
+
+      if (!targetItem) {
+        throw new NotFoundException("Target stock item not found");
+      }
+
+      const sourceItems = await queryRunner.manager.find(StockItem, {
+        where: { id: In(sourceItemIds), companyId },
+        lock: { mode: "pessimistic_write" },
+      });
+
+      if (sourceItems.length !== sourceItemIds.length) {
+        const foundIds = new Set(sourceItems.map((s) => s.id));
+        const missing = sourceItemIds.filter((id) => !foundIds.has(id));
+        throw new NotFoundException(`Source stock items not found: ${missing.join(", ")}`);
+      }
+
+      let quantityAdded = 0;
+      let movementsTransferred = 0;
+
+      for (const source of sourceItems) {
+        quantityAdded += Number(source.quantity);
+
+        const movedMovements = await queryRunner.manager.update(
+          StockMovement,
+          { stockItem: { id: source.id }, companyId },
+          { stockItem: { id: targetItemId } as any },
+        );
+        movementsTransferred += movedMovements.affected || 0;
+
+        await queryRunner.manager.update(
+          DeliveryNoteItem,
+          { stockItem: { id: source.id }, companyId },
+          { stockItem: { id: targetItemId } as any },
+        );
+
+        await queryRunner.manager.update(
+          StockAllocation,
+          { stockItem: { id: source.id }, companyId },
+          { stockItem: { id: targetItemId } as any },
+        );
+
+        await queryRunner.manager.update(
+          StockIssuance,
+          { stockItemId: source.id, companyId },
+          { stockItemId: targetItemId },
+        );
+
+        const mergeMovement = queryRunner.manager.create(StockMovement, {
+          stockItem: { id: targetItemId } as StockItem,
+          movementType: MovementType.IN,
+          quantity: Number(source.quantity),
+          referenceType: ReferenceType.MANUAL,
+          referenceId: source.id,
+          notes: `Merged from "${source.name}" (SKU: ${source.sku}) — duplicate consolidation`,
+          createdBy: mergedBy,
+          companyId,
+        });
+        await queryRunner.manager.save(StockMovement, mergeMovement);
+
+        await queryRunner.manager.remove(StockItem, source);
+
+        this.logger.log(
+          `Merged stock item "${source.name}" (id=${source.id}, qty=${source.quantity}) into "${targetItem.name}" (id=${targetItemId})`,
+        );
+      }
+
+      targetItem.quantity = Number(targetItem.quantity) + quantityAdded;
+      const saved = await queryRunner.manager.save(StockItem, targetItem);
+
+      await queryRunner.commitTransaction();
+
+      this.logger.log(
+        `Merge complete: ${sourceItems.length} items into "${targetItem.name}", total qty now ${saved.quantity}`,
+      );
+
+      return {
+        targetItem: saved,
+        mergedCount: sourceItems.length,
+        quantityAdded,
+        movementsTransferred,
+      };
+    } catch (err) {
+      await queryRunner.rollbackTransaction();
+      throw err;
+    } finally {
+      await queryRunner.release();
+    }
   }
 
   async adjustQuantity(companyId: number, id: number, delta: number): Promise<StockItem> {

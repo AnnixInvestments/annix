@@ -97,6 +97,13 @@ export class InventoryController {
     );
   }
 
+  @StockControlRoles("manager", "admin")
+  @Get("duplicates")
+  @ApiOperation({ summary: "Detect duplicate stock items that may need merging" })
+  async detectDuplicates(@Req() req: any) {
+    return this.inventoryService.detectDuplicates(req.user.companyId);
+  }
+
   @Get(":id")
   @ApiOperation({ summary: "Stock item by ID" })
   async findById(@Req() req: any, @Param("id") id: number) {
@@ -167,6 +174,21 @@ export class InventoryController {
       base64,
       mediaType,
       context,
+    );
+  }
+
+  @StockControlRoles("manager", "admin")
+  @Post("merge")
+  @ApiOperation({ summary: "Merge duplicate stock items into a single target item" })
+  async mergeItems(
+    @Req() req: any,
+    @Body() dto: { targetItemId: number; sourceItemIds: number[] },
+  ) {
+    return this.inventoryService.mergeItems(
+      req.user.companyId,
+      dto.targetItemId,
+      dto.sourceItemIds,
+      req.user.name || req.user.email || "system",
     );
   }
 

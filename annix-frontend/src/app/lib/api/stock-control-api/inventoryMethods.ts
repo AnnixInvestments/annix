@@ -105,6 +105,26 @@ declare module "./base" {
         newName: string;
       }>;
     }>;
+    detectDuplicates(): Promise<
+      Array<{
+        canonicalItem: StockItem;
+        duplicates: Array<{
+          item: StockItem;
+          score: number;
+          matchType: string;
+        }>;
+        totalQuantity: number;
+      }>
+    >;
+    mergeItems(
+      targetItemId: number,
+      sourceItemIds: number[],
+    ): Promise<{
+      targetItem: StockItem;
+      mergedCount: number;
+      quantityAdded: number;
+      movementsTransferred: number;
+    }>;
   }
 }
 
@@ -235,5 +255,16 @@ proto.autoCategorize = async function () {
 proto.normalizeRubber = async function () {
   return this.request("/stock-control/inventory/normalize-rubber", {
     method: "POST",
+  });
+};
+
+proto.detectDuplicates = async function () {
+  return this.request("/stock-control/inventory/duplicates");
+};
+
+proto.mergeItems = async function (targetItemId, sourceItemIds) {
+  return this.request("/stock-control/inventory/merge", {
+    method: "POST",
+    body: JSON.stringify({ targetItemId, sourceItemIds }),
   });
 };
