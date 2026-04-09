@@ -28,6 +28,51 @@ const ENTITY_TYPE_LABELS: Record<string, string> = {
   unknown: "Unknown",
 };
 
+interface BundleAnalysis {
+  file: File;
+  totalPages: number;
+  summaryPageCount: number;
+  reports: Array<{
+    batchName: string;
+    pageStart: number;
+    pageEnd: number;
+    pageCount: number;
+    instrumentType: string;
+    probeSerial: string | null;
+    createdAt: string | null;
+    entityType: string;
+  }>;
+}
+
+interface BundleImportResult {
+  reportsFound: number;
+  reportsImported: number;
+  uploads: Array<{
+    uploadId: number;
+    entityType: string;
+    instrumentType: string;
+    createdAt: string | null;
+    pageRange: string;
+    autoMatch: { jobCardId: number; jobNumber: string } | null;
+  }>;
+}
+
+const BUNDLE_ENTITY_LABELS: Record<string, string> = {
+  dft: "Coating Thickness (DFT)",
+  blast_profile: "Surface Profile",
+  shore_hardness: "Shore Hardness",
+  environmental: "Environmental",
+  unknown: "Unknown",
+};
+
+const BUNDLE_ENTITY_COLORS: Record<string, string> = {
+  dft: "bg-blue-100 text-blue-800",
+  blast_profile: "bg-amber-100 text-amber-800",
+  shore_hardness: "bg-purple-100 text-purple-800",
+  environmental: "bg-green-100 text-green-800",
+  unknown: "bg-gray-100 text-gray-800",
+};
+
 export default function PositectorUploadPage() {
   const router = useRouter();
   const [isDragOver, setIsDragOver] = useState(false);
@@ -36,6 +81,9 @@ export default function PositectorUploadPage() {
   const [uploadResponse, setUploadResponse] = useState<PositectorUploadResponse | null>(null);
   const [showImportForm, setShowImportForm] = useState(false);
   const [importResult, setImportResult] = useState<PositectorImportResult | null>(null);
+  const [bundleAnalysis, setBundleAnalysis] = useState<BundleAnalysis | null>(null);
+  const [bundleImporting, setBundleImporting] = useState(false);
+  const [bundleResult, setBundleResult] = useState<BundleImportResult | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const pdfPreview = usePdfPreview();
 
@@ -114,6 +162,18 @@ export default function PositectorUploadPage() {
       setError(null);
       setUploadResponse(null);
       setImportResult(null);
+      setBundleAnalysis(null);
+      setBundleResult(null);
+
+      const isPdf = file.name.toLowerCase().endsWith(".pdf");
+      if (isPdf) {
+        const analysis = await stockControlApiClient.analyzeBundlePdf(file);
+        if (analysis.reports.length > 1) {
+          setBundleAnalysis({ file, ...analysis });
+          setIsUploading(false);
+          return;
+        }
+      }
 
       const result = await stockControlApiClient.uploadPositectorFile(file);
       setUploadResponse(result);
@@ -123,6 +183,21 @@ export default function PositectorUploadPage() {
       setIsUploading(false);
     }
   }, []);
+
+  const handleBundleImport = useCallback(async () => {
+    if (!bundleAnalysis) return;
+    try {
+      setBundleImporting(true);
+      setError(null);
+      const result = await stockControlApiClient.importBundlePdf(bundleAnalysis.file);
+      setBundleResult(result);
+      setBundleAnalysis(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Bundle import failed");
+    } finally {
+      setBundleImporting(false);
+    }
+  }, [bundleAnalysis]);
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -593,6 +668,106 @@ export default function PositectorUploadPage() {
             })()}
 
           <PdfPreviewModal state={pdfPreview.state} onClose={pdfPreview.close} />
+
+          {bundleAnalysis && !bundleImporting && !bundleResult && (
+            <div className="space-y-4">
+              <div className="rounded-lg border border-green-200 bg-green-50 p-4">
+                <p className="text-sm font-medium text-green-800">
+                  Multi-report PDF detected: {bundleAnalysis.reports.length} individual reports
+                  across {bundleAnalysis.totalPages} pages
+                </p>
+                {bundleAnalysis.summaryPageCount > 0 && (
+                  <p className="mt-1 text-xs text-green-600">
+                    Pages 1-{bundleAnalysis.summaryPageCount} (combined summary) will be skipped
+                  </p>
+                )}
+              </div>
+              <div className="flex flex-wrap gap-3">
+                {Object.entries(
+                  bundleAnalysis.reports.reduce<Record<string, number>>(
+                    (acc, r) => ({ ...acc, [r.entityType]: (acc[r.entityType] || 0) + 1 }),
+                    {},
+                  ),
+                ).map(([type, count]) => {
+                  const colorClass = BUNDLE_ENTITY_COLORS[type] || BUNDLE_ENTITY_COLORS.unknown;
+                  const label = BUNDLE_ENTITY_LABELS[type] || type;
+                  return (
+                    <div key={type} className={`rounded-lg px-4 py-3 text-center ${colorClass}`}>
+                      <p className="text-2xl font-bold">{count}</p>
+                      <p className="text-xs font-medium">{label}</p>
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="flex items-center justify-end gap-3">
+                <button
+                  onClick={() => setBundleAnalysis(null)}
+                  className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleBundleImport}
+                  className="rounded-md bg-teal-600 px-6 py-2 text-sm font-medium text-white hover:bg-teal-700"
+                >
+                  Import All {bundleAnalysis.reports.length} Reports
+                </button>
+              </div>
+            </div>
+          )}
+
+          {bundleImporting && (
+            <div className="rounded-lg border border-gray-200 bg-white p-12 text-center">
+              <svg
+                className="mx-auto h-12 w-12 text-teal-600 animate-spin"
+                fill="none"
+                viewBox="0 0 24 24"
+              >
+                <circle
+                  className="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                />
+                <path
+                  className="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                />
+              </svg>
+              <p className="mt-4 text-lg font-medium text-gray-900">Importing reports...</p>
+              <p className="mt-1 text-sm text-gray-500">
+                Splitting PDF, parsing readings, and storing each report
+              </p>
+            </div>
+          )}
+
+          {bundleResult && (
+            <div className="space-y-4">
+              <div className="rounded-lg border border-green-200 bg-green-50 p-4">
+                <p className="text-sm font-medium text-green-800">
+                  Imported {bundleResult.reportsImported} of {bundleResult.reportsFound} reports
+                </p>
+                {bundleResult.uploads.filter((u) => u.autoMatch).length > 0 && (
+                  <p className="mt-1 text-xs text-green-600">
+                    {bundleResult.uploads.filter((u) => u.autoMatch).length} auto-linked to job
+                    cards
+                  </p>
+                )}
+              </div>
+              <button
+                onClick={() => {
+                  setBundleResult(null);
+                  setError(null);
+                }}
+                className="rounded-md bg-teal-600 px-4 py-2 text-sm font-medium text-white hover:bg-teal-700"
+              >
+                Upload Another
+              </button>
+            </div>
+          )}
 
           {showImportForm && uploadResponse && (
             <LinkUploadForm
