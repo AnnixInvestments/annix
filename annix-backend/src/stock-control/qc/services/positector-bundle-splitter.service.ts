@@ -2,6 +2,7 @@ import { Injectable, Logger } from "@nestjs/common";
 import { PDFDocument } from "pdf-lib";
 
 export interface SplitReport {
+  batchName: string;
   pageStart: number;
   pageEnd: number;
   pageCount: number;
@@ -18,17 +19,17 @@ export interface BundleSplitResult {
   summaryPageCount: number;
 }
 
-interface PageBoundary {
+interface PageInfo {
   pageIndex: number;
-  instrumentType: string;
+  batchName: string | null;
+  instrumentType: string | null;
   probeSerial: string | null;
   createdAt: string | null;
 }
 
-const INSTRUMENT_PATTERN =
-  /PosiTector\s+(DPM|6000\s*\w*|SPG|RTR|SHD[-\s]?A?|200\s*\w*|AT)\s*(\d*)/i;
+const BATCH_NAME_PATTERN = /DeFelsko\s+\d+\s+(B\d+)/;
 
-const CREATED_PATTERN = /Created:\s*PosiTector\s+Body\s+S\/N/i;
+const INSTRUMENT_PATTERN = /PosiTector\s+(DPM|6000\s*\w*|SPG|RTR|SHD[-\s]?A?|200\s*\w*|AT)\s*/i;
 
 const TIMESTAMP_PATTERN = /(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2})/;
 
@@ -41,43 +42,42 @@ export class PositectorBundleSplitterService {
   async splitBundle(pdfBuffer: Buffer): Promise<BundleSplitResult> {
     const pageTexts = await this.extractPerPageText(pdfBuffer);
     const totalPages = pageTexts.length;
-    this.logger.log(`Bundle has ${totalPages} pages, extracting report boundaries`);
+    this.logger.log(`Bundle has ${totalPages} pages, extracting batch assignments`);
 
-    const boundaries = this.detectReportBoundaries(pageTexts);
-    this.logger.log(`Found ${boundaries.length} report boundaries`);
+    const pageInfos = this.assignPagesToBatches(pageTexts);
+    const batchGroups = this.groupByBatch(pageInfos);
+    this.logger.log(`Found ${batchGroups.length} batches`);
 
-    const reportRanges = this.buildReportRanges(boundaries, totalPages);
-
-    const summaryEnd = boundaries.length > 0 ? boundaries[0].pageIndex : totalPages;
+    const summaryEnd =
+      batchGroups.length > 0 ? Math.min(...batchGroups.map((g) => g.pageIndices[0])) : totalPages;
 
     const srcDoc = await PDFDocument.load(pdfBuffer);
     const reports: SplitReport[] = [];
 
-    for (const range of reportRanges) {
-      const subBuffer = await this.extractPages(srcDoc, range.pageStart, range.pageEnd);
-      const entityType = this.instrumentToEntityType(range.instrumentType);
+    for (const group of batchGroups) {
+      const subBuffer = await this.extractPageIndices(srcDoc, group.pageIndices);
+      const entityType = this.instrumentToEntityType(group.instrumentType || "unknown");
+      const firstPage = Math.min(...group.pageIndices);
+      const lastPage = Math.max(...group.pageIndices);
 
       reports.push({
-        pageStart: range.pageStart + 1,
-        pageEnd: range.pageEnd + 1,
-        pageCount: range.pageEnd - range.pageStart + 1,
-        instrumentType: range.instrumentType,
-        probeSerial: range.probeSerial,
-        createdAt: range.createdAt,
+        batchName: group.batchName,
+        pageStart: firstPage + 1,
+        pageEnd: lastPage + 1,
+        pageCount: group.pageIndices.length,
+        instrumentType: group.instrumentType || "unknown",
+        probeSerial: group.probeSerial,
+        createdAt: group.createdAt,
         entityType,
         buffer: subBuffer,
       });
     }
 
     this.logger.log(
-      `Split into ${reports.length} reports: ${reports.map((r) => `${r.instrumentType}(p${r.pageStart}-${r.pageEnd})`).join(", ")}`,
+      `Split into ${reports.length} reports: ${reports.map((r) => `${r.batchName}:${r.instrumentType}(p${r.pageStart}-${r.pageEnd})`).join(", ")}`,
     );
 
-    return {
-      totalPages,
-      reports,
-      summaryPageCount: summaryEnd,
-    };
+    return { totalPages, reports, summaryPageCount: summaryEnd };
   }
 
   private async extractPerPageText(pdfBuffer: Buffer): Promise<string[]> {
@@ -103,58 +103,81 @@ export class PositectorBundleSplitterService {
     return pageTexts;
   }
 
-  private detectReportBoundaries(pageTexts: string[]): PageBoundary[] {
-    const boundaries: PageBoundary[] = [];
-
-    pageTexts.forEach((text, pageIndex) => {
-      if (!CREATED_PATTERN.test(text)) {
-        return;
-      }
-
+  private assignPagesToBatches(pageTexts: string[]): PageInfo[] {
+    return pageTexts.map((text, pageIndex) => {
+      const batchMatch = text.match(BATCH_NAME_PATTERN);
       const instrumentMatch = text.match(INSTRUMENT_PATTERN);
-      const instrumentType = instrumentMatch ? instrumentMatch[1].trim() : "unknown";
-
       const serialMatch = text.match(SERIAL_PATTERN);
-      const probeSerial = serialMatch ? serialMatch[1] : null;
-
       const timestampMatch = text.match(TIMESTAMP_PATTERN);
-      const createdAt = timestampMatch ? timestampMatch[1] : null;
 
-      boundaries.push({ pageIndex, instrumentType, probeSerial, createdAt });
-    });
-
-    return boundaries;
-  }
-
-  private buildReportRanges(
-    boundaries: PageBoundary[],
-    totalPages: number,
-  ): Array<{
-    pageStart: number;
-    pageEnd: number;
-    instrumentType: string;
-    probeSerial: string | null;
-    createdAt: string | null;
-  }> {
-    return boundaries.map((boundary, idx) => {
-      const nextStart = idx + 1 < boundaries.length ? boundaries[idx + 1].pageIndex : totalPages;
       return {
-        pageStart: boundary.pageIndex,
-        pageEnd: nextStart - 1,
-        instrumentType: boundary.instrumentType,
-        probeSerial: boundary.probeSerial,
-        createdAt: boundary.createdAt,
+        pageIndex,
+        batchName: batchMatch ? batchMatch[1] : null,
+        instrumentType: instrumentMatch ? instrumentMatch[1].trim() : null,
+        probeSerial: serialMatch ? serialMatch[1] : null,
+        createdAt: timestampMatch ? timestampMatch[1] : null,
       };
     });
   }
 
-  private async extractPages(
-    srcDoc: PDFDocument,
-    startIdx: number,
-    endIdx: number,
-  ): Promise<Buffer> {
+  private groupByBatch(pageInfos: PageInfo[]): Array<{
+    batchName: string;
+    pageIndices: number[];
+    instrumentType: string | null;
+    probeSerial: string | null;
+    createdAt: string | null;
+  }> {
+    const batchMap = new Map<
+      string,
+      {
+        pageIndices: number[];
+        instrumentType: string | null;
+        probeSerial: string | null;
+        createdAt: string | null;
+      }
+    >();
+
+    let currentBatch: string | null = null;
+
+    pageInfos.forEach((info) => {
+      if (info.batchName) {
+        currentBatch = info.batchName;
+      }
+
+      if (!currentBatch) {
+        return;
+      }
+
+      const existing = batchMap.get(currentBatch);
+      if (existing) {
+        existing.pageIndices.push(info.pageIndex);
+        if (info.instrumentType && !existing.instrumentType) {
+          existing.instrumentType = info.instrumentType;
+        }
+        if (info.probeSerial && !existing.probeSerial) {
+          existing.probeSerial = info.probeSerial;
+        }
+        if (info.createdAt && !existing.createdAt) {
+          existing.createdAt = info.createdAt;
+        }
+      } else {
+        batchMap.set(currentBatch, {
+          pageIndices: [info.pageIndex],
+          instrumentType: info.instrumentType,
+          probeSerial: info.probeSerial,
+          createdAt: info.createdAt,
+        });
+      }
+    });
+
+    return Array.from(batchMap.entries()).map(([batchName, data]) => ({
+      batchName,
+      ...data,
+    }));
+  }
+
+  private async extractPageIndices(srcDoc: PDFDocument, pageIndices: number[]): Promise<Buffer> {
     const newDoc = await PDFDocument.create();
-    const pageIndices = Array.from({ length: endIdx - startIdx + 1 }, (_, i) => startIdx + i);
     const copiedPages = await newDoc.copyPages(srcDoc, pageIndices);
     copiedPages.forEach((page) => newDoc.addPage(page));
     const pdfBytes = await newDoc.save();

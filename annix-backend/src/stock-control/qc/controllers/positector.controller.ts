@@ -276,6 +276,7 @@ export class PositectorController {
       totalPages: result.totalPages,
       summaryPageCount: result.summaryPageCount,
       reports: result.reports.map((r) => ({
+        batchName: r.batchName,
         pageStart: r.pageStart,
         pageEnd: r.pageEnd,
         pageCount: r.pageCount,

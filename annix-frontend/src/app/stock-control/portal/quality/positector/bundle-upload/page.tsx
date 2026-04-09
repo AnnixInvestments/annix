@@ -6,6 +6,7 @@ import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 type ViewMode = "drop" | "analyzing" | "review" | "importing" | "done";
 
 interface AnalyzedReport {
+  batchName: string;
   pageStart: number;
   pageEnd: number;
   pageCount: number;
@@ -313,13 +314,16 @@ export default function BundleUploadPage() {
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="px-3 py-2 text-left font-medium uppercase text-gray-500">
-                      Pages
+                      Batch
                     </th>
                     <th className="px-3 py-2 text-left font-medium uppercase text-gray-500">
                       Type
                     </th>
                     <th className="hidden sm:table-cell px-3 py-2 text-left font-medium uppercase text-gray-500">
                       Instrument
+                    </th>
+                    <th className="hidden sm:table-cell px-3 py-2 text-left font-medium uppercase text-gray-500">
+                      Pages
                     </th>
                     <th className="hidden sm:table-cell px-3 py-2 text-left font-medium uppercase text-gray-500">
                       Created
@@ -332,10 +336,8 @@ export default function BundleUploadPage() {
                     const label = ENTITY_LABELS[r.entityType] || r.entityType;
                     return (
                       <tr key={idx} className="hover:bg-gray-50">
-                        <td className="whitespace-nowrap px-3 py-2 text-gray-900">
-                          {r.pageStart === r.pageEnd
-                            ? `p${r.pageStart}`
-                            : `p${r.pageStart}-${r.pageEnd}`}
+                        <td className="whitespace-nowrap px-3 py-2 font-mono font-medium text-gray-900">
+                          {r.batchName}
                         </td>
                         <td className="px-3 py-2">
                           <span
@@ -346,6 +348,11 @@ export default function BundleUploadPage() {
                         </td>
                         <td className="hidden sm:table-cell whitespace-nowrap px-3 py-2 text-gray-500">
                           {r.instrumentType}
+                        </td>
+                        <td className="hidden sm:table-cell whitespace-nowrap px-3 py-2 text-gray-500">
+                          {r.pageStart === r.pageEnd
+                            ? `p${r.pageStart}`
+                            : `p${r.pageStart}-${r.pageEnd}`}
                         </td>
                         <td className="hidden sm:table-cell whitespace-nowrap px-3 py-2 text-gray-500">
                           {r.createdAt || "-"}

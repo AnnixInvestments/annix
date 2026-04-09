@@ -62,6 +62,7 @@ declare module "./base" {
       totalPages: number;
       summaryPageCount: number;
       reports: Array<{
+        batchName: string;
         pageStart: number;
         pageEnd: number;
         pageCount: number;
