@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { Inject, Injectable, Logger } from "@nestjs/common";
+import { Inject, Injectable, Logger, OnModuleInit } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { nowISO } from "../../../lib/datetime";
@@ -20,7 +20,7 @@ interface UserContext {
 }
 
 @Injectable()
-export class PositectorUploadService {
+export class PositectorUploadService implements OnModuleInit {
   private readonly logger = new Logger(PositectorUploadService.name);
 
   constructor(
@@ -34,6 +34,47 @@ export class PositectorUploadService {
     private readonly storageService: IStorageService,
     private readonly importService: PositectorImportService,
   ) {}
+
+  async onModuleInit() {
+    setTimeout(() => {
+      this.fixAllBundleBatchNames().catch((err) => {
+        const msg = err instanceof Error ? err.message : String(err);
+        this.logger.warn(`Auto-fix bundle batch names failed: ${msg}`);
+      });
+    }, 10000);
+  }
+
+  private async fixAllBundleBatchNames(): Promise<void> {
+    const bundleUploads = await this.uploadRepo
+      .createQueryBuilder("u")
+      .where("u.batchName LIKE :prefix", { prefix: "bundle_%" })
+      .getMany();
+
+    if (bundleUploads.length === 0) return;
+
+    this.logger.log(`Fixing ${bundleUploads.length} bundle upload batch names...`);
+    const batchPattern = /DeFelsko\s+\d+\s+(B\d+)/;
+    let updated = 0;
+
+    for (const upload of bundleUploads) {
+      try {
+        const buffer = await this.storageService.download(upload.s3FilePath);
+        const pdfParseModule = require("pdf-parse");
+        const pdfParse = pdfParseModule.default ?? pdfParseModule;
+        const pdfData = await pdfParse(buffer);
+        const text: string = pdfData.text;
+        const match = text.match(batchPattern);
+        if (match) {
+          await this.uploadRepo.update(upload.id, { batchName: match[1] });
+          updated++;
+        }
+      } catch {
+        this.logger.warn(`Failed to fix batch name for upload ${upload.id}`);
+      }
+    }
+
+    this.logger.log(`Fixed ${updated}/${bundleUploads.length} bundle batch names`);
+  }
 
   async uploadsForJobCard(companyId: number, jobCardId: number): Promise<PositectorUpload[]> {
     return this.uploadRepo.find({
