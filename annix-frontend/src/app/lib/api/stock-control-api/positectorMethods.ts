@@ -58,6 +58,32 @@ declare module "./base" {
       },
     ): Promise<PositectorImportResult>;
     uploadPositectorFile(file: File): Promise<PositectorUploadResponse>;
+    analyzeBundlePdf(file: File): Promise<{
+      totalPages: number;
+      summaryPageCount: number;
+      reports: Array<{
+        pageStart: number;
+        pageEnd: number;
+        pageCount: number;
+        instrumentType: string;
+        probeSerial: string | null;
+        createdAt: string | null;
+        entityType: string;
+      }>;
+    }>;
+    importBundlePdf(file: File): Promise<{
+      totalPages: number;
+      reportsFound: number;
+      reportsImported: number;
+      uploads: Array<{
+        uploadId: number;
+        entityType: string;
+        instrumentType: string;
+        createdAt: string | null;
+        pageRange: string;
+        autoMatch: { jobCardId: number; jobNumber: string } | null;
+      }>;
+    }>;
     positectorUploads(filters?: {
       unlinked?: boolean;
       entityType?: string;
@@ -195,6 +221,14 @@ proto.importPositectorBatch = async function (deviceId, buid, data) {
 
 proto.uploadPositectorFile = async function (file) {
   return this.uploadFile("/stock-control/positector-devices/upload", file);
+};
+
+proto.analyzeBundlePdf = async function (file) {
+  return this.uploadFile("/stock-control/positector-devices/upload/bundle-analyze", file);
+};
+
+proto.importBundlePdf = async function (file) {
+  return this.uploadFile("/stock-control/positector-devices/upload/bundle-import", file);
 };
 
 proto.positectorUploads = async function (filters) {

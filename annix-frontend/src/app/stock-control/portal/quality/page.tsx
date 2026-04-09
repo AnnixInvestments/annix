@@ -8,6 +8,7 @@ const DESCRIPTIONS: Record<string, string> = {
   calibration: "Track equipment calibration certificates and expiry dates",
   positector: "PosiTector coating thickness measurement tools",
   "positector-upload": "Upload PosiTector measurement data files",
+  "positector-bundle-upload": "Split and import multi-report PosiTector PDF bundles",
   "positector-live": "Stream live readings from PosiTector devices",
   "positector-ble": "Connect to PosiTector gauges via Bluetooth",
   "data-books": "Compile and download job card data books",
