@@ -658,6 +658,13 @@ export class DataBookPdfService {
   ): number {
     doc.fontSize(7).font(FONT.REGULAR);
 
+    const rowHeight = columns.reduce((max, col) => {
+      doc.font(col.bold ? FONT.BOLD : FONT.REGULAR);
+      const h = doc.heightOfString(col.text, { width: col.width });
+      doc.font(FONT.REGULAR);
+      return Math.max(max, h);
+    }, 10);
+
     columns.forEach((col) => {
       doc.fillColor(col.color ?? "#000000");
       if (col.bold) {
@@ -666,12 +673,14 @@ export class DataBookPdfService {
       doc.text(col.text, col.x, y, {
         width: col.width,
         align: col.align ?? "left",
+        height: rowHeight,
+        ellipsis: true,
       });
       doc.font(FONT.REGULAR);
     });
 
     doc.fillColor("#000000");
-    return y + 12;
+    return y + rowHeight + 2;
   }
 
   private passFailBadge(result: string | null): string {
@@ -1281,9 +1290,9 @@ export class DataBookPdfService {
     doc.lineWidth(1);
     y += 6;
 
-    const checkedByW = 80;
-    const dateW = 60;
-    const fixedColsWidth = 25 + 50 + 75 + 55 + 40 + 45 + checkedByW + dateW;
+    const checkedByW = 65;
+    const dateW = 50;
+    const fixedColsWidth = 25 + 40 + 65 + 45 + 40 + 35 + checkedByW + dateW;
     const specColsCount = (hasRubber ? 1 : 0) + (hasPaint ? 1 : 0);
     const specColWidth =
       specColsCount > 0 ? Math.floor((pg.contentWidth - fixedColsWidth) / (specColsCount + 1)) : 0;
@@ -1299,10 +1308,10 @@ export class DataBookPdfService {
 
     cols.push({ label: "#", x: xOffset, width: 25, align: "center" });
     xOffset += 25;
-    cols.push({ label: "Item No", x: xOffset, width: 50, align: "left" });
-    xOffset += 50;
-    cols.push({ label: "Item Code", x: xOffset, width: 75, align: "left" });
-    xOffset += 75;
+    cols.push({ label: "Item No", x: xOffset, width: 40, align: "left" });
+    xOffset += 40;
+    cols.push({ label: "Item Code", x: xOffset, width: 65, align: "left" });
+    xOffset += 65;
     cols.push({ label: "Item Description", x: xOffset, width: descWidth, align: "left" });
     xOffset += descWidth;
 
@@ -1317,12 +1326,12 @@ export class DataBookPdfService {
       xOffset += specColWidth;
     }
 
-    cols.push({ label: "Qty", x: xOffset, width: 40, align: "right" });
-    xOffset += 40;
-    cols.push({ label: "JT No", x: xOffset, width: 55, align: "left" });
-    xOffset += 55;
-    cols.push({ label: "P/F", x: xOffset, width: 45, align: "center" });
+    cols.push({ label: "Qty", x: xOffset, width: 45, align: "right" });
     xOffset += 45;
+    cols.push({ label: "JT No", x: xOffset, width: 40, align: "left" });
+    xOffset += 40;
+    cols.push({ label: "P/F", x: xOffset, width: 35, align: "center" });
+    xOffset += 35;
     cols.push({ label: "Checked By", x: xOffset, width: checkedByW, align: "left" });
     xOffset += checkedByW;
     cols.push({ label: "Date", x: xOffset, width: dateW, align: "left" });
@@ -1333,7 +1342,21 @@ export class DataBookPdfService {
     y = this.tableHeader(doc, cols, pg);
 
     release.items.forEach((item, idx) => {
-      if (y > maxY) {
+      const estimatedHeight = (() => {
+        doc.fontSize(7).font(FONT.REGULAR);
+        const descH = doc.heightOfString(item.description || "", { width: cols[3].width });
+        const specText = item.paintingSpec || item.rubberSpec || "";
+        const specW =
+          rubberColIdx >= 0
+            ? cols[rubberColIdx].width
+            : paintColIdx >= 0
+              ? cols[paintColIdx].width
+              : 100;
+        const specH = specText ? doc.heightOfString(specText, { width: specW }) : 10;
+        return Math.max(descH, specH, 10) + 2;
+      })();
+
+      if (y + estimatedHeight > maxY) {
         doc.addPage({ size: "A4", layout: "landscape" });
         doc.y = pg.margin + 20;
         y = this.tableHeader(doc, cols, pg);
@@ -1441,7 +1464,7 @@ export class DataBookPdfService {
       signOffParties.push({ label: "3RD PARTY", signOff: release.thirdPartySignOff });
     }
 
-    if (y > maxY - 80) {
+    if (y > maxY - 120) {
       doc.addPage({ size: "A4", layout: "landscape" });
       y = pg.margin + 20;
     }
