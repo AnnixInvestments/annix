@@ -2071,6 +2071,108 @@ export interface BatchIssuanceResult {
   errors: Array<{ stockItemId: number; message: string }>;
 }
 
+export type IssuanceSessionScope = "single_jc" | "cpo_batch";
+
+export type IssuanceSessionStatus =
+  | "active"
+  | "pending_approval"
+  | "approved"
+  | "rejected"
+  | "undone";
+
+export interface IssuanceSession {
+  id: number;
+  companyId: number;
+  cpoId: number | null;
+  cpo?: CustomerPurchaseOrder | null;
+  issuerStaffId: number;
+  issuerStaff?: StaffMember;
+  recipientStaffId: number;
+  recipientStaff?: StaffMember;
+  scope: IssuanceSessionScope;
+  status: IssuanceSessionStatus;
+  jobCardIds: number[];
+  notes: string | null;
+  issuedByUserId: number | null;
+  issuedByName: string | null;
+  issuedAt: string;
+  approvedByManagerId: number | null;
+  approvedAt: string | null;
+  rejectedAt: string | null;
+  rejectionReason: string | null;
+  undoneAt: string | null;
+  undoneByName: string | null;
+  issuances?: StockIssuance[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CpoBatchSplitDto {
+  jobCardId: number;
+  quantity: number;
+}
+
+export interface CpoBatchItemDto {
+  stockItemId: number;
+  totalQuantity: number;
+  batchNumber?: string | null;
+  splits: CpoBatchSplitDto[];
+}
+
+export interface CpoBatchIssuanceDto {
+  cpoId: number;
+  jobCardIds: number[];
+  issuerStaffId: number;
+  recipientStaffId: number;
+  items: CpoBatchItemDto[];
+  notes?: string | null;
+}
+
+export interface CpoBatchIssuanceResult {
+  sessionId: number;
+  cpoId: number;
+  created: number;
+  issuances: StockIssuance[];
+  warnings: string[];
+}
+
+export interface CpoBatchChildJobCard {
+  id: number;
+  jobNumber: string;
+  jcNumber: string | null;
+  jobName: string;
+  status: string;
+  extM2: number;
+  intM2: number;
+  coatingAnalysis: {
+    id: number;
+    status: string;
+    coats: CoatDetail[];
+  } | null;
+  lineItemCount: number;
+}
+
+export interface CpoBatchAggregateCoat {
+  product: string;
+  coatRole: string | null;
+  litresRequired: number;
+  alreadyAllocated: number;
+  litresRemaining: number;
+  stockItemId: number | null;
+  stockItemName: string | null;
+}
+
+export interface CpoBatchIssueContext {
+  cpo: {
+    id: number;
+    cpoNumber: string;
+    jobName: string | null;
+    customerName: string | null;
+  };
+  jobCards: CpoBatchChildJobCard[];
+  aggregatedCoats: CpoBatchAggregateCoat[];
+}
+
 export interface InventoryColumnMapping {
   sku: number | null;
   name: number | null;

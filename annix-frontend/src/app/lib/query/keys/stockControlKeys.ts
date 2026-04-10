@@ -119,6 +119,18 @@ export const stockControlKeys = {
     recentIssuances: () => [...stockControlKeys.issueStock.all, "recent-issuances"] as const,
     linkedStaff: (id: number) => [...stockControlKeys.issueStock.all, "linked-staff", id] as const,
   },
+  cpoBatchIssuance: {
+    all: ["stock-control", "cpo-batch-issuance"] as const,
+    context: (cpoId: number) =>
+      [...stockControlKeys.cpoBatchIssuance.all, "context", cpoId] as const,
+    session: (sessionId: number) =>
+      [...stockControlKeys.cpoBatchIssuance.all, "session", sessionId] as const,
+    pendingApproval: () => [...stockControlKeys.cpoBatchIssuance.all, "pending-approval"] as const,
+    forCpo: (cpoId: number) =>
+      [...stockControlKeys.cpoBatchIssuance.all, "for-cpo", cpoId] as const,
+    forJobCard: (jobCardId: number) =>
+      [...stockControlKeys.cpoBatchIssuance.all, "for-job-card", jobCardId] as const,
+  },
   positector: {
     all: ["stock-control", "positector"] as const,
     devices: () => [...stockControlKeys.positector.all, "devices"] as const,

@@ -6,6 +6,8 @@ import {
   ManyToOne,
   PrimaryGeneratedColumn,
 } from "typeorm";
+import { CustomerPurchaseOrder } from "./customer-purchase-order.entity";
+import { IssuanceSession } from "./issuance-session.entity";
 import { JobCard } from "./job-card.entity";
 import { StockControlCompany } from "./stock-control-company.entity";
 import { StockIssuance } from "./stock-issuance.entity";
@@ -44,6 +46,20 @@ export class IssuanceBatchRecord {
 
   @Column({ name: "job_card_id", nullable: true })
   jobCardId: number | null;
+
+  @ManyToOne(() => IssuanceSession, { nullable: true, onDelete: "SET NULL" })
+  @JoinColumn({ name: "session_id" })
+  session: IssuanceSession | null;
+
+  @Column({ name: "session_id", nullable: true })
+  sessionId: number | null;
+
+  @ManyToOne(() => CustomerPurchaseOrder, { nullable: true, onDelete: "SET NULL" })
+  @JoinColumn({ name: "cpo_id" })
+  cpo: CustomerPurchaseOrder | null;
+
+  @Column({ name: "cpo_id", nullable: true })
+  cpoId: number | null;
 
   @Column({ name: "batch_number", type: "varchar", length: 255 })
   batchNumber: string;

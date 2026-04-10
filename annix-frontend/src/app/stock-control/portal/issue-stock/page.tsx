@@ -7,6 +7,8 @@ import type {
   BatchIssuanceDto,
   BatchIssuanceResult,
   CoatingAnalysis,
+  CpoBatchIssuanceDto,
+  CpoBatchIssueContext,
   IssuanceScanResult,
   JobCard,
   StaffMember,
@@ -17,6 +19,8 @@ import type {
 } from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { fromISO, nowISO, nowMillis } from "@/app/lib/datetime";
+import { CpoBatchPicker } from "../../components/CpoBatchPicker";
+import { PerJcSplitEditor, type SplitLine } from "../../components/PerJcSplitEditor";
 import { QrScanner } from "../../components/QrScanner";
 
 type Step = "issuer" | "recipient" | "stock_items" | "job_card" | "confirm";
@@ -25,6 +29,7 @@ interface IssuanceItem {
   stockItem: StockItem;
   quantity: number;
   batchNumber: string;
+  splits?: SplitLine[];
 }
 
 interface SessionIssuance {
@@ -38,6 +43,7 @@ interface SessionIssuance {
   jobNumber: string | null;
   timestamp: string;
   canUndo: boolean;
+  cpoBatchSessionId?: number;
 }
 
 interface FavouriteCombo {
@@ -53,7 +59,39 @@ interface FavouriteCombo {
 const FAVOURITES_KEY = "asca-issuance-favourites";
 const QUICK_ISSUE_KEY = "asca-quick-issue-mode";
 const BATCH_MODE_KEY = "asca-batch-mode";
+const CPO_BATCH_MODE_KEY = "asca-cpo-batch-mode";
 const UNDO_WINDOW_MS = 5 * 60 * 1000;
+
+function proRataSplitByM2(
+  totalQuantity: number,
+  jobCards: CpoBatchIssueContext["jobCards"],
+): SplitLine[] {
+  if (jobCards.length === 0) return [];
+  const totalM2 = jobCards.reduce((sum, jc) => sum + jc.extM2 + jc.intM2, 0);
+
+  if (totalM2 <= 0) {
+    const evenShare = Math.round((totalQuantity / jobCards.length) * 100) / 100;
+    return jobCards.map((jc, idx) => ({
+      jobCardId: jc.id,
+      quantity:
+        idx === jobCards.length - 1
+          ? Math.round((totalQuantity - evenShare * (jobCards.length - 1)) * 100) / 100
+          : evenShare,
+    }));
+  }
+
+  const rounded = jobCards.map((jc) => ({
+    jobCardId: jc.id,
+    quantity: Math.round(((jc.extM2 + jc.intM2) / totalM2) * totalQuantity * 100) / 100,
+  }));
+  const roundedSum = rounded.reduce((sum, r) => sum + r.quantity, 0);
+  const drift = Math.round((totalQuantity - roundedSum) * 100) / 100;
+  if (Math.abs(drift) > 0.01 && rounded.length > 0) {
+    rounded[rounded.length - 1].quantity =
+      Math.round((rounded[rounded.length - 1].quantity + drift) * 100) / 100;
+  }
+  return rounded;
+}
 
 const STEPS: { key: Step; label: string }[] = [
   { key: "issuer", label: "Issuer" },
@@ -160,6 +198,10 @@ export default function IssueStockPage() {
 
   const [quickIssueMode, setQuickIssueMode] = useState(false);
   const [batchMode, setBatchMode] = useState(false);
+  const [cpoBatchMode, setCpoBatchMode] = useState(false);
+  const [cpoBatchContext, setCpoBatchContext] = useState<CpoBatchIssueContext | null>(null);
+  const [cpoBatchJobCardIds, setCpoBatchJobCardIds] = useState<number[]>([]);
+  const [showCpoBatchPicker, setShowCpoBatchPicker] = useState(false);
   const [linkedStaff, setLinkedStaff] = useState<StaffMember | null>(null);
   const [sessionIssuances, setSessionIssuances] = useState<SessionIssuance[]>([]);
   const [showSessionSummary, setShowSessionSummary] = useState(false);
@@ -209,6 +251,7 @@ export default function IssueStockPage() {
   useEffect(() => {
     setQuickIssueMode(localStorage.getItem(QUICK_ISSUE_KEY) === "true");
     setBatchMode(localStorage.getItem(BATCH_MODE_KEY) === "true");
+    setCpoBatchMode(localStorage.getItem(CPO_BATCH_MODE_KEY) === "true");
     setFavourites(loadFavourites());
   }, []);
 
@@ -565,6 +608,9 @@ export default function IssueStockPage() {
 
   const handleUpdateQuantity = (index: number, quantity: number) => {
     setItems(items.map((item, i) => (i === index ? { ...item, quantity } : item)));
+    if (cpoBatchMode && cpoBatchContext) {
+      refreshSplitsForQty(index, quantity);
+    }
   };
 
   const handleUpdateBatchNumber = (index: number, batchNumber: string) => {
@@ -672,10 +718,108 @@ export default function IssueStockPage() {
       return;
     }
 
+    if (cpoBatchMode) {
+      if (!cpoBatchContext || cpoBatchJobCardIds.length === 0) {
+        setError("CPO batch mode is on but no CPO/JCs are selected. Please pick a CPO.");
+        return;
+      }
+      const selectedCpoJobCards = cpoBatchContext.jobCards.filter((jc) =>
+        cpoBatchJobCardIds.includes(jc.id),
+      );
+      const unbalanced = items.filter((item) => {
+        const splits =
+          item.splits && item.splits.length > 0
+            ? item.splits
+            : proRataSplitByM2(item.quantity, selectedCpoJobCards);
+        const sum = splits.reduce((s, split) => s + split.quantity, 0);
+        return Math.abs(sum - item.quantity) > 0.01;
+      });
+      if (unbalanced.length > 0) {
+        setError(
+          `Split totals don't match issued quantity for: ${unbalanced
+            .map((i) => i.stockItem.name)
+            .join(", ")}`,
+        );
+        return;
+      }
+    }
+
     try {
       submittingRef.current = true;
       setIsSubmitting(true);
       setError(null);
+
+      if (cpoBatchMode && cpoBatchContext) {
+        const selectedCpoJobCards = cpoBatchContext.jobCards.filter((jc) =>
+          cpoBatchJobCardIds.includes(jc.id),
+        );
+        const dto: CpoBatchIssuanceDto = {
+          cpoId: cpoBatchContext.cpo.id,
+          jobCardIds: cpoBatchJobCardIds,
+          issuerStaffId: issuer.id,
+          recipientStaffId: recipient.id,
+          notes: notes.trim() || null,
+          items: items.map((item) => {
+            const splits =
+              item.splits && item.splits.length > 0
+                ? item.splits
+                : proRataSplitByM2(item.quantity, selectedCpoJobCards);
+            return {
+              stockItemId: item.stockItem.id,
+              totalQuantity: item.quantity,
+              batchNumber: item.batchNumber.trim() || null,
+              splits: splits.filter((s) => s.quantity > 0),
+            };
+          }),
+        };
+
+        const cpoResult = await stockControlApiClient.createCpoBatchIssuance(dto);
+
+        triggerHaptic();
+        playSuccessSound();
+
+        updateFavourites(recipient, items);
+        setFavourites(loadFavourites());
+
+        const itemSummary = items
+          .map((item) => `${item.quantity}x ${item.stockItem.name}`)
+          .join(", ");
+
+        const sessionEntry: SessionIssuance = {
+          id: cpoResult.sessionId,
+          issuanceIds: cpoResult.issuances.map((i) => i.id),
+          issuerName: issuer.name,
+          recipientName: recipient.name,
+          itemSummary: `[CPO ${cpoBatchContext.cpo.cpoNumber}, ${cpoBatchJobCardIds.length} JCs] ${itemSummary}`,
+          itemCount: items.length,
+          totalQty: items.reduce((sum, item) => sum + item.quantity, 0),
+          jobNumber: cpoBatchContext.cpo.cpoNumber,
+          timestamp: nowISO(),
+          canUndo: true,
+          cpoBatchSessionId: cpoResult.sessionId,
+        };
+
+        setSessionIssuances((prev) => [sessionEntry, ...prev]);
+
+        const warnings =
+          cpoResult.warnings.length > 0 ? ` (warnings: ${cpoResult.warnings.join("; ")})` : "";
+        setSuccessMessage(
+          `Issued ${cpoResult.created} rows across ${cpoBatchJobCardIds.length} JCs for CPO ${cpoBatchContext.cpo.cpoNumber}${warnings}`,
+        );
+
+        stockControlApiClient
+          .recentIssuances()
+          .then(setRecentIssuances)
+          .catch(() => {});
+
+        if (batchMode) {
+          setItems([]);
+          setNotes("");
+          setCurrentStep("stock_items");
+        }
+
+        return;
+      }
 
       const dto: BatchIssuanceDto = {
         issuerStaffId: issuer.id,
@@ -767,10 +911,14 @@ export default function IssueStockPage() {
 
     try {
       setUndoingId(sessionEntry.id);
-      const undoPromises = sessionEntry.issuanceIds.map((issuanceId) =>
-        stockControlApiClient.undoIssuance(issuanceId),
-      );
-      await Promise.all(undoPromises);
+      if (sessionEntry.cpoBatchSessionId) {
+        await stockControlApiClient.undoIssuanceSession(sessionEntry.cpoBatchSessionId);
+      } else {
+        const undoPromises = sessionEntry.issuanceIds.map((issuanceId) =>
+          stockControlApiClient.undoIssuance(issuanceId),
+        );
+        await Promise.all(undoPromises);
+      }
 
       setSessionIssuances((prev) =>
         prev.map((s) => (s.id === sessionEntry.id ? { ...s, canUndo: false } : s)),
@@ -846,6 +994,52 @@ export default function IssueStockPage() {
     setBatchMode(enabled);
     localStorage.setItem(BATCH_MODE_KEY, String(enabled));
   };
+
+  const toggleCpoBatchMode = (enabled: boolean) => {
+    setCpoBatchMode(enabled);
+    localStorage.setItem(CPO_BATCH_MODE_KEY, String(enabled));
+    if (!enabled) {
+      setCpoBatchContext(null);
+      setCpoBatchJobCardIds([]);
+      setItems((prev) => prev.map((item) => ({ ...item, splits: undefined })));
+    }
+  };
+
+  const handleCpoBatchPickerConfirm = (
+    context: CpoBatchIssueContext,
+    selectedJobCardIds: number[],
+  ) => {
+    setCpoBatchContext(context);
+    setCpoBatchJobCardIds(selectedJobCardIds);
+    setShowCpoBatchPicker(false);
+    setJobCard(null);
+    const selectedJobCards = context.jobCards.filter((jc) => selectedJobCardIds.includes(jc.id));
+    setItems((prev) =>
+      prev.map((item) => ({
+        ...item,
+        splits: proRataSplitByM2(item.quantity, selectedJobCards),
+      })),
+    );
+    setCurrentStep("stock_items");
+  };
+
+  const updateItemSplits = (index: number, splits: SplitLine[]) => {
+    setItems((prev) => prev.map((item, i) => (i === index ? { ...item, splits } : item)));
+  };
+
+  const refreshSplitsForQty = useCallback(
+    (index: number, quantity: number) => {
+      if (!cpoBatchMode || !cpoBatchContext) return;
+      const selectedJobCards = cpoBatchContext.jobCards.filter((jc) =>
+        cpoBatchJobCardIds.includes(jc.id),
+      );
+      const nextSplits = proRataSplitByM2(quantity, selectedJobCards);
+      setItems((prev) =>
+        prev.map((item, i) => (i === index ? { ...item, splits: nextSplits } : item)),
+      );
+    },
+    [cpoBatchMode, cpoBatchContext, cpoBatchJobCardIds],
+  );
 
   const totalItemsQty = items.reduce((sum, item) => sum + item.quantity, 0);
   const hasInvalidQuantities = items.some(
@@ -977,7 +1171,27 @@ export default function IssueStockPage() {
             />
             <span className="text-sm text-gray-700">Batch Mode</span>
           </label>
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={cpoBatchMode}
+              onChange={(e) => toggleCpoBatchMode(e.target.checked)}
+              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+            />
+            <span className="text-sm text-gray-700">CPO Batch (multi-JC)</span>
+            {cpoBatchMode && cpoBatchContext && (
+              <span className="text-xs text-blue-600 font-medium">
+                ({cpoBatchContext.cpo.cpoNumber}, {cpoBatchJobCardIds.length} JCs)
+              </span>
+            )}
+          </label>
         </div>
+
+        <CpoBatchPicker
+          isOpen={showCpoBatchPicker}
+          onClose={() => setShowCpoBatchPicker(false)}
+          onConfirm={handleCpoBatchPickerConfirm}
+        />
 
         {showSessionSummary && sessionIssuances.length > 0 && (
           <div className="bg-white shadow rounded-lg p-4">
@@ -1646,95 +1860,115 @@ export default function IssueStockPage() {
                       const overAllocated = allocation
                         ? item.quantity > allocation.quantityUsed
                         : false;
+                      const selectedCpoJobCards =
+                        cpoBatchMode && cpoBatchContext
+                          ? cpoBatchContext.jobCards.filter((jc) =>
+                              cpoBatchJobCardIds.includes(jc.id),
+                            )
+                          : [];
                       return (
                         <div
                           key={item.stockItem.id}
-                          className="bg-gray-50 rounded-lg p-3 flex items-center gap-3"
+                          className="bg-gray-50 rounded-lg p-3 space-y-2"
                         >
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-gray-900 truncate">
-                              {item.stockItem.name}
-                            </p>
-                            <p className="text-xs text-gray-500">
-                              SKU: {item.stockItem.sku} | Available: {item.stockItem.quantity}{" "}
-                              {item.stockItem.unitOfMeasure}
-                            </p>
-                            {allocation && (
-                              <p
-                                className={`text-xs font-medium mt-0.5 ${overAllocated ? "text-red-600" : "text-blue-600"}`}
-                              >
-                                JC Allocated: {allocation.quantityUsed}{" "}
-                                {item.stockItem.unitOfMeasure}
-                                {overAllocated && " — exceeds allocation!"}
+                          <div className="flex items-center gap-3">
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-gray-900 truncate">
+                                {item.stockItem.name}
                               </p>
-                            )}
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <label className="text-xs text-gray-500">Qty:</label>
-                            <input
-                              type="number"
-                              min="1"
-                              max={item.stockItem.quantity}
-                              value={item.quantity}
-                              onChange={(e) =>
-                                handleUpdateQuantity(index, parseInt(e.target.value, 10) || 0)
-                              }
-                              className={`w-16 text-center rounded-md border shadow-sm focus:border-teal-500 focus:ring-teal-500 text-sm py-1 ${
-                                item.quantity > item.stockItem.quantity
-                                  ? "border-red-300 bg-red-50"
-                                  : "border-gray-300"
-                              }`}
-                            />
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <label className="text-xs text-gray-500">Batch:</label>
-                            <input
-                              type="text"
-                              list={`batches-${item.stockItem.id}`}
-                              value={item.batchNumber}
-                              onChange={(e) => handleUpdateBatchNumber(index, e.target.value)}
-                              placeholder="Optional"
-                              className="w-24 rounded-md border border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 text-sm py-1 px-2"
-                            />
-                            <datalist id={`batches-${item.stockItem.id}`}>
-                              {batchSuggestions.map((b) => (
-                                <option key={b} value={b} />
-                              ))}
-                            </datalist>
-                            {certStatusMap[index] && (
-                              <span className="inline-flex items-center gap-1">
-                                <svg
-                                  className="w-4 h-4 text-green-500"
-                                  fill="currentColor"
-                                  viewBox="0 0 20 20"
+                              <p className="text-xs text-gray-500">
+                                SKU: {item.stockItem.sku} | Available: {item.stockItem.quantity}{" "}
+                                {item.stockItem.unitOfMeasure}
+                              </p>
+                              {allocation && (
+                                <p
+                                  className={`text-xs font-medium mt-0.5 ${overAllocated ? "text-red-600" : "text-blue-600"}`}
                                 >
-                                  <path
-                                    fillRule="evenodd"
-                                    d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                                    clipRule="evenodd"
-                                  />
-                                </svg>
-                                <span
-                                  className={`text-xs font-medium px-1.5 py-0.5 rounded-full ${certStatusMap[index]?.[0]?.certificateType === "COA" ? "bg-blue-100 text-blue-700" : "bg-purple-100 text-purple-700"}`}
-                                >
-                                  {certStatusMap[index]?.[0]?.certificateType}
-                                </span>
-                              </span>
-                            )}
-                          </div>
-                          <button
-                            onClick={() => handleRemoveItem(index)}
-                            className="p-1 text-red-500 hover:text-red-700"
-                            title="Remove item"
-                          >
-                            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                              <path
-                                fillRule="evenodd"
-                                d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-                                clipRule="evenodd"
+                                  JC Allocated: {allocation.quantityUsed}{" "}
+                                  {item.stockItem.unitOfMeasure}
+                                  {overAllocated && " — exceeds allocation!"}
+                                </p>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <label className="text-xs text-gray-500">Qty:</label>
+                              <input
+                                type="number"
+                                min="1"
+                                max={item.stockItem.quantity}
+                                value={item.quantity}
+                                onChange={(e) =>
+                                  handleUpdateQuantity(index, parseInt(e.target.value, 10) || 0)
+                                }
+                                className={`w-16 text-center rounded-md border shadow-sm focus:border-teal-500 focus:ring-teal-500 text-sm py-1 ${
+                                  item.quantity > item.stockItem.quantity
+                                    ? "border-red-300 bg-red-50"
+                                    : "border-gray-300"
+                                }`}
                               />
-                            </svg>
-                          </button>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <label className="text-xs text-gray-500">Batch:</label>
+                              <input
+                                type="text"
+                                list={`batches-${item.stockItem.id}`}
+                                value={item.batchNumber}
+                                onChange={(e) => handleUpdateBatchNumber(index, e.target.value)}
+                                placeholder="Optional"
+                                className="w-24 rounded-md border border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 text-sm py-1 px-2"
+                              />
+                              <datalist id={`batches-${item.stockItem.id}`}>
+                                {batchSuggestions.map((b) => (
+                                  <option key={b} value={b} />
+                                ))}
+                              </datalist>
+                              {certStatusMap[index] && (
+                                <span className="inline-flex items-center gap-1">
+                                  <svg
+                                    className="w-4 h-4 text-green-500"
+                                    fill="currentColor"
+                                    viewBox="0 0 20 20"
+                                  >
+                                    <path
+                                      fillRule="evenodd"
+                                      d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                                      clipRule="evenodd"
+                                    />
+                                  </svg>
+                                  <span
+                                    className={`text-xs font-medium px-1.5 py-0.5 rounded-full ${certStatusMap[index]?.[0]?.certificateType === "COA" ? "bg-blue-100 text-blue-700" : "bg-purple-100 text-purple-700"}`}
+                                  >
+                                    {certStatusMap[index]?.[0]?.certificateType}
+                                  </span>
+                                </span>
+                              )}
+                            </div>
+                            <button
+                              onClick={() => handleRemoveItem(index)}
+                              className="p-1 text-red-500 hover:text-red-700"
+                              title="Remove item"
+                            >
+                              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                                <path
+                                  fillRule="evenodd"
+                                  d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                                  clipRule="evenodd"
+                                />
+                              </svg>
+                            </button>
+                          </div>
+                          {cpoBatchMode && cpoBatchContext && selectedCpoJobCards.length > 0 && (
+                            <PerJcSplitEditor
+                              totalQuantity={item.quantity}
+                              jobCards={selectedCpoJobCards}
+                              splits={
+                                item.splits && item.splits.length > 0
+                                  ? item.splits
+                                  : proRataSplitByM2(item.quantity, selectedCpoJobCards)
+                              }
+                              onChange={(splits) => updateItemSplits(index, splits)}
+                            />
+                          )}
                         </div>
                       );
                     })}
@@ -2110,7 +2344,47 @@ export default function IssueStockPage() {
                   </button>
                 </div>
 
-                {currentStep === "job_card" && (
+                {currentStep === "job_card" && cpoBatchMode && (
+                  <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg space-y-2">
+                    <div className="text-sm font-medium text-blue-900">CPO Batch Mode</div>
+                    {!cpoBatchContext && (
+                      <button
+                        type="button"
+                        onClick={() => setShowCpoBatchPicker(true)}
+                        className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded hover:bg-blue-700"
+                      >
+                        Pick a CPO + JCs
+                      </button>
+                    )}
+                    {cpoBatchContext && (
+                      <div className="space-y-2">
+                        <div className="text-sm">
+                          <strong>{cpoBatchContext.cpo.cpoNumber}</strong> ·{" "}
+                          {cpoBatchContext.cpo.jobName || "—"} · {cpoBatchJobCardIds.length} JCs
+                          selected
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setShowCpoBatchPicker(true)}
+                            className="text-xs text-blue-600 hover:underline"
+                          >
+                            Change selection
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setCurrentStep("stock_items")}
+                            className="ml-auto px-3 py-1.5 text-xs font-medium text-white bg-blue-600 rounded hover:bg-blue-700"
+                          >
+                            Continue to items →
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {currentStep === "job_card" && !cpoBatchMode && (
                   <div className="mt-4">
                     <button
                       onClick={() => setShowJobCardDropdown(!showJobCardDropdown)}

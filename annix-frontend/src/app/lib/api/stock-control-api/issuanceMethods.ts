@@ -2,9 +2,13 @@ import { StockControlApiClient } from "./base";
 import type {
   BatchIssuanceDto,
   BatchIssuanceResult,
+  CpoBatchIssuanceDto,
+  CpoBatchIssuanceResult,
+  CpoBatchIssueContext,
   CreateIssuanceDto,
   IssuanceFilters,
   IssuanceScanResult,
+  IssuanceSession,
   StockIssuance,
 } from "./types";
 
@@ -13,10 +17,19 @@ declare module "./base" {
     scanIssuanceQr(qrCode: string): Promise<IssuanceScanResult>;
     createIssuance(dto: CreateIssuanceDto): Promise<StockIssuance>;
     createBatchIssuance(dto: BatchIssuanceDto): Promise<BatchIssuanceResult>;
+    createCpoBatchIssuance(dto: CpoBatchIssuanceDto): Promise<CpoBatchIssuanceResult>;
+    cpoBatchIssueContext(cpoId: number): Promise<CpoBatchIssueContext>;
     issuanceHistory(filters?: IssuanceFilters): Promise<StockIssuance[]>;
     issuanceById(id: number): Promise<StockIssuance>;
     recentIssuances(): Promise<StockIssuance[]>;
     undoIssuance(id: number): Promise<StockIssuance>;
+    issuanceSessionById(id: number): Promise<IssuanceSession>;
+    undoIssuanceSession(id: number): Promise<IssuanceSession>;
+    approveIssuanceSession(id: number, managerStaffId: number): Promise<IssuanceSession>;
+    rejectIssuanceSession(id: number, reason: string): Promise<IssuanceSession>;
+    pendingApprovalSessions(): Promise<IssuanceSession[]>;
+    sessionsForCpo(cpoId: number): Promise<IssuanceSession[]>;
+    sessionsForJobCard(jobCardId: number): Promise<IssuanceSession[]>;
   }
 }
 
@@ -64,4 +77,49 @@ proto.recentIssuances = async function () {
 
 proto.undoIssuance = async function (id) {
   return this.request(`/stock-control/issuance/${id}/undo`, { method: "POST" });
+};
+
+proto.createCpoBatchIssuance = async function (dto) {
+  return this.request("/stock-control/issuance/cpo-batch", {
+    method: "POST",
+    body: JSON.stringify(dto),
+  });
+};
+
+proto.cpoBatchIssueContext = async function (cpoId) {
+  return this.request(`/stock-control/issuance/cpo-batch/context/${cpoId}`);
+};
+
+proto.issuanceSessionById = async function (id) {
+  return this.request(`/stock-control/issuance/sessions/${id}`);
+};
+
+proto.undoIssuanceSession = async function (id) {
+  return this.request(`/stock-control/issuance/sessions/${id}/undo`, { method: "POST" });
+};
+
+proto.approveIssuanceSession = async function (id, managerStaffId) {
+  return this.request(`/stock-control/issuance/sessions/${id}/approve`, {
+    method: "POST",
+    body: JSON.stringify({ managerStaffId }),
+  });
+};
+
+proto.rejectIssuanceSession = async function (id, reason) {
+  return this.request(`/stock-control/issuance/sessions/${id}/reject`, {
+    method: "POST",
+    body: JSON.stringify({ reason }),
+  });
+};
+
+proto.pendingApprovalSessions = async function () {
+  return this.request("/stock-control/issuance/sessions/pending-approval");
+};
+
+proto.sessionsForCpo = async function (cpoId) {
+  return this.request(`/stock-control/issuance/sessions/by-cpo/${cpoId}`);
+};
+
+proto.sessionsForJobCard = async function (jobCardId) {
+  return this.request(`/stock-control/issuance/sessions/by-job-card/${jobCardId}`);
 };

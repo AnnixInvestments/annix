@@ -21,6 +21,7 @@ import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { formatDateZA, nowMillis } from "@/app/lib/datetime";
 import { useInvalidateJobCards } from "@/app/lib/query/hooks";
 import { ApprovalModal } from "@/app/stock-control/components/ApprovalModal";
+import { CpoBatchSessionList } from "@/app/stock-control/components/CpoBatchSessionList";
 import { JobCardNextAction } from "@/app/stock-control/components/NextActionBanner";
 import { WorkflowStatus } from "@/app/stock-control/components/WorkflowStatus";
 import { useViewAs } from "@/app/stock-control/context/ViewAsContext";
@@ -2438,6 +2439,7 @@ export default function JobCardDetailPage() {
           </div>
         </div>
       )}
+      <CpoBatchSessionList scope="job-card" id={jobId} title="Linked CPO Batch Sessions" />
       {pdfPreviewUrl &&
         createPortal(
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">

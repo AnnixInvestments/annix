@@ -62,6 +62,7 @@ import { InspectionBooking } from "./entities/inspection-booking.entity";
 import { InvoiceClarification } from "./entities/invoice-clarification.entity";
 import { InvoiceExtractionCorrection } from "./entities/invoice-extraction-correction.entity";
 import { IssuanceBatchRecord } from "./entities/issuance-batch-record.entity";
+import { IssuanceSession } from "./entities/issuance-session.entity";
 import { JobCard } from "./entities/job-card.entity";
 import { JobCardActionCompletion } from "./entities/job-card-action-completion.entity";
 import { JobCardApproval } from "./entities/job-card-approval.entity";
@@ -232,6 +233,7 @@ import { WorkflowStepConfigService } from "./services/workflow-step-config.servi
       SupplierCertificate,
       SupplierDocument,
       IssuanceBatchRecord,
+      IssuanceSession,
       JobCardDataBook,
       ChatMessage,
       ChatConversation,

@@ -4,18 +4,31 @@ import {
   Entity,
   JoinColumn,
   ManyToOne,
+  OneToMany,
   PrimaryGeneratedColumn,
+  UpdateDateColumn,
 } from "typeorm";
 import { CustomerPurchaseOrder } from "./customer-purchase-order.entity";
-import { IssuanceSession } from "./issuance-session.entity";
-import { JobCard } from "./job-card.entity";
 import { StaffMember } from "./staff-member.entity";
 import { StockControlCompany } from "./stock-control-company.entity";
 import { StockControlUser } from "./stock-control-user.entity";
-import { StockItem } from "./stock-item.entity";
+import { StockIssuance } from "./stock-issuance.entity";
 
-@Entity("stock_issuances")
-export class StockIssuance {
+export enum IssuanceSessionScope {
+  SINGLE_JC = "single_jc",
+  CPO_BATCH = "cpo_batch",
+}
+
+export enum IssuanceSessionStatus {
+  ACTIVE = "active",
+  PENDING_APPROVAL = "pending_approval",
+  APPROVED = "approved",
+  REJECTED = "rejected",
+  UNDONE = "undone",
+}
+
+@Entity("issuance_sessions")
+export class IssuanceSession {
   @PrimaryGeneratedColumn()
   id: number;
 
@@ -26,12 +39,12 @@ export class StockIssuance {
   @Column({ name: "company_id" })
   companyId: number;
 
-  @ManyToOne(() => StockItem, { onDelete: "CASCADE" })
-  @JoinColumn({ name: "stock_item_id" })
-  stockItem: StockItem;
+  @ManyToOne(() => CustomerPurchaseOrder, { nullable: true, onDelete: "SET NULL" })
+  @JoinColumn({ name: "cpo_id" })
+  cpo: CustomerPurchaseOrder | null;
 
-  @Column({ name: "stock_item_id" })
-  stockItemId: number;
+  @Column({ name: "cpo_id", nullable: true })
+  cpoId: number | null;
 
   @ManyToOne(() => StaffMember, { onDelete: "CASCADE" })
   @JoinColumn({ name: "issuer_staff_id" })
@@ -47,29 +60,14 @@ export class StockIssuance {
   @Column({ name: "recipient_staff_id" })
   recipientStaffId: number;
 
-  @ManyToOne(() => JobCard, { nullable: true, onDelete: "SET NULL" })
-  @JoinColumn({ name: "job_card_id" })
-  jobCard: JobCard | null;
+  @Column({ type: "varchar", length: 30, default: IssuanceSessionScope.SINGLE_JC })
+  scope: IssuanceSessionScope;
 
-  @Column({ name: "job_card_id", nullable: true })
-  jobCardId: number | null;
+  @Column({ type: "varchar", length: 30, default: IssuanceSessionStatus.ACTIVE })
+  status: IssuanceSessionStatus;
 
-  @ManyToOne(() => IssuanceSession, { nullable: true, onDelete: "SET NULL" })
-  @JoinColumn({ name: "session_id" })
-  session: IssuanceSession | null;
-
-  @Column({ name: "session_id", nullable: true })
-  sessionId: number | null;
-
-  @ManyToOne(() => CustomerPurchaseOrder, { nullable: true, onDelete: "SET NULL" })
-  @JoinColumn({ name: "cpo_id" })
-  cpo: CustomerPurchaseOrder | null;
-
-  @Column({ name: "cpo_id", nullable: true })
-  cpoId: number | null;
-
-  @Column({ type: "integer" })
-  quantity: number;
+  @Column({ name: "job_card_ids", type: "jsonb", default: [] })
+  jobCardIds: number[];
 
   @Column({ type: "text", nullable: true })
   notes: string | null;
@@ -87,8 +85,21 @@ export class StockIssuance {
   @Column({ name: "issued_at", type: "timestamptz" })
   issuedAt: Date;
 
-  @Column({ type: "boolean", default: false })
-  undone: boolean;
+  @ManyToOne(() => StaffMember, { nullable: true, onDelete: "SET NULL" })
+  @JoinColumn({ name: "approved_by_manager_id" })
+  approvedByManager: StaffMember | null;
+
+  @Column({ name: "approved_by_manager_id", nullable: true })
+  approvedByManagerId: number | null;
+
+  @Column({ name: "approved_at", type: "timestamptz", nullable: true })
+  approvedAt: Date | null;
+
+  @Column({ name: "rejected_at", type: "timestamptz", nullable: true })
+  rejectedAt: Date | null;
+
+  @Column({ name: "rejection_reason", type: "text", nullable: true })
+  rejectionReason: string | null;
 
   @Column({ name: "undone_at", type: "timestamptz", nullable: true })
   undoneAt: Date | null;
@@ -96,6 +107,15 @@ export class StockIssuance {
   @Column({ name: "undone_by_name", type: "varchar", length: 255, nullable: true })
   undoneByName: string | null;
 
+  @OneToMany(
+    () => StockIssuance,
+    (issuance) => issuance.session,
+  )
+  issuances: StockIssuance[];
+
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;
+
+  @UpdateDateColumn({ name: "updated_at" })
+  updatedAt: Date;
 }

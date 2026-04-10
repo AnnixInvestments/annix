@@ -4,7 +4,9 @@ import { getRepositoryToken } from "@nestjs/typeorm";
 import { DataSource } from "typeorm";
 import { AuditService } from "../../audit/audit.service";
 import { JobCardCoatingAnalysis } from "../entities/coating-analysis.entity";
+import { CustomerPurchaseOrder } from "../entities/customer-purchase-order.entity";
 import { IssuanceBatchRecord } from "../entities/issuance-batch-record.entity";
+import { IssuanceSession } from "../entities/issuance-session.entity";
 import { JobCard } from "../entities/job-card.entity";
 import { JobCardDataBook } from "../entities/job-card-data-book.entity";
 import { StaffMember } from "../entities/staff-member.entity";
@@ -40,6 +42,7 @@ describe("IssuanceService", () => {
   const mockJobCardRepo = {
     findOne: jest.fn(),
     createQueryBuilder: jest.fn(),
+    find: jest.fn().mockResolvedValue([]),
   };
 
   const mockMovementRepo = {
@@ -50,6 +53,8 @@ describe("IssuanceService", () => {
   const mockAllocationRepo = {
     create: jest.fn().mockImplementation((data) => ({ ...data })),
     save: jest.fn().mockImplementation((entity) => Promise.resolve({ id: 1, ...entity })),
+    find: jest.fn().mockResolvedValue([]),
+    createQueryBuilder: jest.fn(),
   };
 
   const mockBatchRecordRepo = {
@@ -70,6 +75,19 @@ describe("IssuanceService", () => {
 
   const mockCoatingAnalysisRepo = {
     findOne: jest.fn().mockResolvedValue(null),
+    find: jest.fn().mockResolvedValue([]),
+  };
+
+  const mockSessionRepo = {
+    create: jest.fn().mockImplementation((data) => ({ ...data })),
+    save: jest.fn().mockImplementation((entity) => Promise.resolve({ id: 1, ...entity })),
+    find: jest.fn().mockResolvedValue([]),
+    findOne: jest.fn(),
+  };
+
+  const mockCpoRepo = {
+    findOne: jest.fn(),
+    find: jest.fn().mockResolvedValue([]),
   };
 
   const mockNotificationService = {
@@ -120,6 +138,8 @@ describe("IssuanceService", () => {
         { provide: getRepositoryToken(SupplierCertificate), useValue: mockCertRepo },
         { provide: getRepositoryToken(JobCardDataBook), useValue: mockDataBookRepo },
         { provide: getRepositoryToken(JobCardCoatingAnalysis), useValue: mockCoatingAnalysisRepo },
+        { provide: getRepositoryToken(IssuanceSession), useValue: mockSessionRepo },
+        { provide: getRepositoryToken(CustomerPurchaseOrder), useValue: mockCpoRepo },
         { provide: DataSource, useValue: mockDataSource },
         { provide: AuditService, useValue: mockAuditService },
         { provide: WorkflowNotificationService, useValue: mockNotificationService },
@@ -498,6 +518,250 @@ describe("IssuanceService", () => {
 
       expect(result.errors).toHaveLength(1);
       expect(result.errors[0].message).toContain("greater than 0");
+    });
+  });
+
+  describe("CPO batch issuance", () => {
+    const mockCpo = {
+      id: 10,
+      companyId: 1,
+      cpoNumber: "CPO-001",
+      jobName: "Test Job",
+      customerName: "Test Customer",
+    };
+
+    beforeEach(() => {
+      mockCpoRepo.findOne.mockResolvedValue(mockCpo);
+      mockStaffRepo.findOne
+        .mockResolvedValueOnce({ id: 1, name: "Issuer" })
+        .mockResolvedValueOnce({ id: 2, name: "Recipient" });
+    });
+
+    describe("validateCpoBatchDto (via createCpoBatchIssuance)", () => {
+      it("rejects empty items", async () => {
+        await expect(
+          service.createCpoBatchIssuance(
+            1,
+            {
+              cpoId: 10,
+              jobCardIds: [100, 101],
+              issuerStaffId: 1,
+              recipientStaffId: 2,
+              items: [],
+            },
+            mockUser,
+          ),
+        ).rejects.toThrow(BadRequestException);
+      });
+
+      it("rejects empty jobCardIds", async () => {
+        await expect(
+          service.createCpoBatchIssuance(
+            1,
+            {
+              cpoId: 10,
+              jobCardIds: [],
+              issuerStaffId: 1,
+              recipientStaffId: 2,
+              items: [
+                {
+                  stockItemId: 1,
+                  totalQuantity: 10,
+                  splits: [{ jobCardId: 100, quantity: 10 }],
+                },
+              ],
+            },
+            mockUser,
+          ),
+        ).rejects.toThrow(BadRequestException);
+      });
+
+      it("rejects splits that do not sum to totalQuantity", async () => {
+        mockJobCardRepo.find = jest.fn().mockResolvedValue([
+          { id: 100, cpoId: 10, jobNumber: "JC-001" },
+          { id: 101, cpoId: 10, jobNumber: "JC-002" },
+        ]);
+
+        await expect(
+          service.createCpoBatchIssuance(
+            1,
+            {
+              cpoId: 10,
+              jobCardIds: [100, 101],
+              issuerStaffId: 1,
+              recipientStaffId: 2,
+              items: [
+                {
+                  stockItemId: 1,
+                  totalQuantity: 30,
+                  splits: [
+                    { jobCardId: 100, quantity: 10 },
+                    { jobCardId: 101, quantity: 15 },
+                  ],
+                },
+              ],
+            },
+            mockUser,
+          ),
+        ).rejects.toThrow(/split sum/i);
+      });
+
+      it("rejects splits that reference a job card not in jobCardIds", async () => {
+        mockJobCardRepo.find = jest
+          .fn()
+          .mockResolvedValue([{ id: 100, cpoId: 10, jobNumber: "JC-001" }]);
+
+        await expect(
+          service.createCpoBatchIssuance(
+            1,
+            {
+              cpoId: 10,
+              jobCardIds: [100],
+              issuerStaffId: 1,
+              recipientStaffId: 2,
+              items: [
+                {
+                  stockItemId: 1,
+                  totalQuantity: 20,
+                  splits: [
+                    { jobCardId: 100, quantity: 10 },
+                    { jobCardId: 999, quantity: 10 },
+                  ],
+                },
+              ],
+            },
+            mockUser,
+          ),
+        ).rejects.toThrow(/not in the session/i);
+      });
+    });
+
+    describe("checkCpoBatchCoatingLimit", () => {
+      it("aggregates allowed litres across multiple JCs", async () => {
+        mockCoatingAnalysisRepo.find.mockResolvedValue([
+          {
+            jobCardId: 100,
+            companyId: 1,
+            coats: [{ product: "Jotun Primer", litersRequired: 10 }],
+          },
+          {
+            jobCardId: 101,
+            companyId: 1,
+            coats: [{ product: "Jotun Primer", litersRequired: 15 }],
+          },
+          {
+            jobCardId: 102,
+            companyId: 1,
+            coats: [{ product: "Jotun Primer", litersRequired: 5 }],
+          },
+        ]);
+        mockAllocationRepo.find = jest.fn().mockResolvedValue([]);
+
+        const stockItem = { id: 1, name: "Jotun Primer 20L" } as StockItem;
+        const result = await service.checkCpoBatchCoatingLimit(1, [100, 101, 102], stockItem, 25);
+
+        expect(result.allowedLitres).toBe(30);
+        expect(result.alreadyAllocated).toBe(0);
+        expect(result.requiresApproval).toBe(false);
+        expect(result.perJobCard).toHaveLength(3);
+      });
+
+      it("requires approval when aggregate request exceeds aggregate allowance", async () => {
+        mockCoatingAnalysisRepo.find.mockResolvedValue([
+          {
+            jobCardId: 100,
+            companyId: 1,
+            coats: [{ product: "Jotun Primer", litersRequired: 10 }],
+          },
+          {
+            jobCardId: 101,
+            companyId: 1,
+            coats: [{ product: "Jotun Primer", litersRequired: 10 }],
+          },
+        ]);
+        mockAllocationRepo.find = jest.fn().mockResolvedValue([]);
+
+        const stockItem = { id: 1, name: "Jotun Primer 20L" } as StockItem;
+        const result = await service.checkCpoBatchCoatingLimit(1, [100, 101], stockItem, 25);
+
+        expect(result.allowedLitres).toBe(20);
+        expect(result.requiresApproval).toBe(true);
+      });
+
+      it("subtracts previously allocated litres from the remaining budget", async () => {
+        mockCoatingAnalysisRepo.find.mockResolvedValue([
+          {
+            jobCardId: 100,
+            companyId: 1,
+            coats: [{ product: "Jotun Primer", litersRequired: 10 }],
+          },
+          {
+            jobCardId: 101,
+            companyId: 1,
+            coats: [{ product: "Jotun Primer", litersRequired: 10 }],
+          },
+        ]);
+        mockAllocationRepo.find = jest
+          .fn()
+          .mockResolvedValue([{ quantityUsed: 12 }, { quantityUsed: 3 }]);
+
+        const stockItem = { id: 1, name: "Jotun Primer 20L" } as StockItem;
+        const result = await service.checkCpoBatchCoatingLimit(1, [100, 101], stockItem, 10);
+
+        expect(result.allowedLitres).toBe(20);
+        expect(result.alreadyAllocated).toBe(15);
+        expect(result.requiresApproval).toBe(true);
+      });
+
+      it("returns no approval required when no coats match the stock item", async () => {
+        mockCoatingAnalysisRepo.find.mockResolvedValue([
+          {
+            jobCardId: 100,
+            companyId: 1,
+            coats: [{ product: "Something Else", litersRequired: 10 }],
+          },
+        ]);
+
+        const stockItem = { id: 1, name: "Jotun Primer 20L" } as StockItem;
+        const result = await service.checkCpoBatchCoatingLimit(1, [100], stockItem, 10);
+
+        expect(result.requiresApproval).toBe(false);
+        expect(result.allowedLitres).toBeNull();
+      });
+
+      it("handles empty job card list gracefully", async () => {
+        const stockItem = { id: 1, name: "Jotun Primer 20L" } as StockItem;
+        const result = await service.checkCpoBatchCoatingLimit(1, [], stockItem, 10);
+
+        expect(result.requiresApproval).toBe(false);
+        expect(result.allowedLitres).toBeNull();
+        expect(result.alreadyAllocated).toBe(0);
+      });
+    });
+
+    describe("cpoBatchIssueContext", () => {
+      it("throws when CPO is not found", async () => {
+        mockCpoRepo.findOne.mockResolvedValue(null);
+        await expect(service.cpoBatchIssueContext(1, 999)).rejects.toThrow(NotFoundException);
+      });
+
+      it("returns empty lists when CPO has no linked JCs", async () => {
+        mockCpoRepo.findOne.mockResolvedValue(mockCpo);
+        const qb = {
+          leftJoinAndSelect: jest.fn().mockReturnThis(),
+          where: jest.fn().mockReturnThis(),
+          andWhere: jest.fn().mockReturnThis(),
+          orderBy: jest.fn().mockReturnThis(),
+          addOrderBy: jest.fn().mockReturnThis(),
+          getMany: jest.fn().mockResolvedValue([]),
+        };
+        mockJobCardRepo.createQueryBuilder.mockReturnValue(qb);
+
+        const result = await service.cpoBatchIssueContext(1, 10);
+        expect(result.cpo.id).toBe(10);
+        expect(result.jobCards).toHaveLength(0);
+        expect(result.aggregatedCoats).toHaveLength(0);
+      });
     });
   });
 });
