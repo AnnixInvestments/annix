@@ -1190,6 +1190,9 @@ export class IssuanceService {
           quantity: li.quantity !== null ? Number(li.quantity) : null,
           m2: li.m2 !== null ? Number(li.m2) : null,
         }));
+      const nonBandingCoats = analysis
+        ? this.stripBandingCoats(analysis.coats ?? [], analysis.rawNotes)
+        : [];
       return {
         id: jc.id,
         jobNumber: jc.jobNumber,
@@ -1202,7 +1205,7 @@ export class IssuanceService {
           ? {
               id: analysis.id,
               status: analysis.status,
-              coats: analysis.coats ?? [],
+              coats: nonBandingCoats,
             }
           : null,
         lineItems,
@@ -1241,11 +1244,29 @@ export class IssuanceService {
     };
   }
 
+  private isBandingCoat(productName: string, rawNotes: string | null): boolean {
+    const productUpper = productName.toUpperCase();
+    if (!rawNotes) {
+      return productUpper.includes("BANDING");
+    }
+    const notesUpper = rawNotes.toUpperCase();
+    const bandingIdx = notesUpper.indexOf("BANDING");
+    if (bandingIdx < 0) {
+      return productUpper.includes("BANDING");
+    }
+    const afterBanding = notesUpper.substring(bandingIdx);
+    return afterBanding.includes(productUpper);
+  }
+
+  private stripBandingCoats(coats: CoatDetail[], rawNotes: string | null): CoatDetail[] {
+    return coats.filter((coat) => !this.isBandingCoat(coat.product, rawNotes));
+  }
+
   private aggregateCoatsAcrossJobCards(
     analyses: JobCardCoatingAnalysis[],
   ): CpoBatchAggregateCoat[] {
     const byProduct = analyses.reduce((acc, analysis) => {
-      const coats = analysis.coats ?? [];
+      const coats = this.stripBandingCoats(analysis.coats ?? [], analysis.rawNotes);
       return coats.reduce((innerAcc, coat) => {
         const key = coat.product.trim().toLowerCase();
         const existing = innerAcc.get(key);
@@ -1336,7 +1357,8 @@ export class IssuanceService {
     });
 
     const perJobCard = analyses.map((analysis) => {
-      const matchingCoat = this.fuzzyMatchCoat(stockItem.name, analysis.coats ?? []);
+      const nonBandingCoats = this.stripBandingCoats(analysis.coats ?? [], analysis.rawNotes);
+      const matchingCoat = this.fuzzyMatchCoat(stockItem.name, nonBandingCoats);
       return {
         jobCardId: analysis.jobCardId,
         matchedCoat: matchingCoat?.product ?? null,
