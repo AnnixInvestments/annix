@@ -1,7 +1,7 @@
 import { Test, TestingModule } from "@nestjs/testing";
 import { getRepositoryToken } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
-import { fromISO } from "../../lib/datetime";
+import { fromISO, now } from "../../lib/datetime";
 import { Meeting, MeetingStatus, Prospect, ProspectStatus, Visit } from "../entities";
 import { AnalyticsService } from "./analytics.service";
 
@@ -354,10 +354,13 @@ describe("AnalyticsService", () => {
     });
 
     it("should count visits in the correct day/hour cell", async () => {
-      const wednesdayAt10 = fromISO("2026-03-11T10:00:00+02:00").toJSDate();
+      const recentVisitTime = now()
+        .minus({ days: 2 })
+        .set({ hour: 10, minute: 0, second: 0 })
+        .toJSDate();
       const visits = [
-        mockVisit({ id: 1, startedAt: wednesdayAt10 }),
-        mockVisit({ id: 2, startedAt: wednesdayAt10 }),
+        mockVisit({ id: 1, startedAt: recentVisitTime }),
+        mockVisit({ id: 2, startedAt: recentVisitTime }),
       ];
       (mockVisitRepo.find as jest.Mock).mockResolvedValue(visits);
 
