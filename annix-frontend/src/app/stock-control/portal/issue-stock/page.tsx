@@ -1005,7 +1005,7 @@ export default function IssueStockPage() {
     }
   };
 
-  const handleCpoBatchPickerConfirm = (
+  const handleCpoBatchPickerConfirm = async (
     context: CpoBatchIssueContext,
     selectedJobCardIds: number[],
   ) => {
@@ -1014,12 +1014,50 @@ export default function IssueStockPage() {
     setShowCpoBatchPicker(false);
     setJobCard(null);
     const selectedJobCards = context.jobCards.filter((jc) => selectedJobCardIds.includes(jc.id));
-    setItems((prev) =>
-      prev.map((item) => ({
+
+    const suggestable = context.aggregatedCoats.filter(
+      (coat) => coat.stockItemId !== null && coat.litresRemaining > 0,
+    );
+
+    const suggestedStockItems = await Promise.all(
+      suggestable.map(async (coat) => {
+        try {
+          const stockItem = await stockControlApiClient.stockItemById(coat.stockItemId!);
+          return { stockItem, coat };
+        } catch {
+          return null;
+        }
+      }),
+    );
+
+    const suggestedItems: IssuanceItem[] = suggestedStockItems
+      .filter(
+        (entry): entry is { stockItem: StockItem; coat: (typeof context.aggregatedCoats)[0] } =>
+          entry !== null,
+      )
+      .map(({ stockItem, coat }) => {
+        const available = Number(stockItem.quantity);
+        const requested = Math.min(coat.litresRemaining, available);
+        const rounded = Math.round(requested * 100) / 100;
+        return {
+          stockItem,
+          quantity: rounded > 0 ? rounded : 0,
+          batchNumber: "",
+          splits: proRataSplitByM2(rounded, selectedJobCards),
+        };
+      })
+      .filter((item) => item.quantity > 0);
+
+    setItems((prev) => {
+      const existingIds = new Set(prev.map((i) => i.stockItem.id));
+      const rehydratedExisting = prev.map((item) => ({
         ...item,
         splits: proRataSplitByM2(item.quantity, selectedJobCards),
-      })),
-    );
+      }));
+      const newSuggestions = suggestedItems.filter((s) => !existingIds.has(s.stockItem.id));
+      return [...rehydratedExisting, ...newSuggestions];
+    });
+
     setCurrentStep("stock_items");
   };
 
@@ -1876,6 +1914,14 @@ export default function IssueStockPage() {
                   </div>
                 )}
 
+                {cpoBatchMode && cpoBatchContext && items.length > 0 && (
+                  <div className="mb-3 p-2 bg-blue-50 border border-blue-200 rounded text-xs text-blue-800">
+                    Items below were auto-suggested from the coating analyses of the{" "}
+                    {cpoBatchJobCardIds.length} selected JCs. Quantities show remaining litres
+                    (total required minus already allocated), capped at available stock. Adjust,
+                    remove, or add more items as needed.
+                  </div>
+                )}
                 {items.length > 0 && (
                   <div className="mb-4 space-y-3">
                     <p className="text-sm font-medium text-gray-700">
