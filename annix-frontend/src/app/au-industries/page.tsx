@@ -24,7 +24,7 @@ export default function AuIndustriesHomePage() {
         </div>
       </section>
 
-      <section className="bg-white py-20">
+      <section className="bg-[#fdf8e8] py-20">
         <div className="max-w-6xl mx-auto px-4 md:px-8">
           <h2 className="text-3xl md:text-4xl font-bold text-[#B8860B] uppercase tracking-wider">
             About Us
@@ -61,11 +61,11 @@ export default function AuIndustriesHomePage() {
         className="relative bg-cover bg-center bg-fixed"
         style={{ backgroundImage: "url(/au-industries/AUI-homeparallax.jpg)" }}
       >
-        <div className="absolute inset-0 bg-black/60" />
+        <div className="absolute inset-0 bg-black/35" />
         <div className="relative grid grid-cols-1 md:grid-cols-2">
           <div className="h-[500px] md:h-[600px] flex items-center justify-center p-8">
             <div className="grid grid-cols-2 gap-3 w-full max-w-md">
-              <div className="relative h-48 md:h-56 rounded overflow-hidden shadow-lg">
+              <div className="relative h-48 md:h-56 rounded-xl overflow-hidden shadow-lg border-2 border-white">
                 <Image
                   src="/au-industries/aui-home01.jpg"
                   alt="Rubber lined pipes in warehouse"
@@ -73,7 +73,7 @@ export default function AuIndustriesHomePage() {
                   className="object-cover"
                 />
               </div>
-              <div className="relative h-48 md:h-56 rounded overflow-hidden shadow-lg">
+              <div className="relative h-48 md:h-56 rounded-xl overflow-hidden shadow-lg border-2 border-white">
                 <Image
                   src="/au-industries/aui-home05.jpg"
                   alt="Red rubber sheeting"
@@ -81,7 +81,7 @@ export default function AuIndustriesHomePage() {
                   className="object-cover"
                 />
               </div>
-              <div className="relative h-48 md:h-56 rounded overflow-hidden shadow-lg">
+              <div className="relative h-48 md:h-56 rounded-xl overflow-hidden shadow-lg border-2 border-white">
                 <Image
                   src="/au-industries/aui-home04.jpg"
                   alt="Rubber manufacturing"
@@ -89,7 +89,7 @@ export default function AuIndustriesHomePage() {
                   className="object-cover"
                 />
               </div>
-              <div className="relative h-48 md:h-56 rounded overflow-hidden shadow-lg">
+              <div className="relative h-48 md:h-56 rounded-xl overflow-hidden shadow-lg border-2 border-white">
                 <Image
                   src="/au-industries/aui-home06.jpg"
                   alt="Rubber sheeting machine"
@@ -146,16 +146,33 @@ export default function AuIndustriesHomePage() {
         </div>
       </section>
 
-      <section className="bg-white py-20">
-        <div className="max-w-6xl mx-auto px-4 md:px-8 text-center">
-          <h2 className="text-3xl md:text-4xl font-bold text-[#B8860B] uppercase tracking-wider mb-2">
+      <section
+        className="relative py-10 bg-cover bg-center bg-fixed"
+        style={{ backgroundImage: "url(/au-industries/AUI-banner2.jpg)" }}
+      >
+        <div className="absolute inset-0 bg-black/30" />
+        <div className="relative max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div
+            className="elfsight-app-4c13c174-7edd-4de9-b428-dc35d38ec263"
+            data-elfsight-app-lazy
+          />
+        </div>
+      </section>
+
+      <section
+        className="relative py-20 bg-cover bg-center bg-fixed"
+        style={{ backgroundImage: "url(/au-industries/AUI-banner6.jpg)" }}
+      >
+        <div className="absolute inset-0 bg-black/40" />
+        <div className="relative max-w-6xl mx-auto px-4 md:px-8 text-center">
+          <h2 className="text-3xl md:text-4xl font-bold text-[#efcc54] uppercase tracking-wider mb-2">
             Projects
           </h2>
-          <div className="w-24 h-[3px] bg-[#B8860B] mx-auto mt-3 mb-4" />
-          <p className="text-gray-500 text-lg mb-10">Some of our projects</p>
+          <div className="w-24 h-[3px] bg-[#efcc54] mx-auto mt-3 mb-4" />
+          <p className="text-gray-300 text-lg mb-10">Some of our projects</p>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
-            <div className="relative h-64 overflow-hidden rounded shadow-md">
+            <div className="relative h-64 overflow-hidden rounded-xl shadow-md border-2 border-white">
               <Image
                 src="/au-industries/projects-01.jpg"
                 alt="Rubber lining installation"
@@ -163,7 +180,7 @@ export default function AuIndustriesHomePage() {
                 className="object-cover hover:scale-105 transition-transform duration-300"
               />
             </div>
-            <div className="relative h-64 overflow-hidden rounded shadow-md">
+            <div className="relative h-64 overflow-hidden rounded-xl shadow-md border-2 border-white">
               <Image
                 src="/au-industries/projects-02.jpg"
                 alt="Blue rubber lined pipes"
@@ -171,7 +188,7 @@ export default function AuIndustriesHomePage() {
                 className="object-cover hover:scale-105 transition-transform duration-300"
               />
             </div>
-            <div className="relative h-64 overflow-hidden rounded shadow-md">
+            <div className="relative h-64 overflow-hidden rounded-xl shadow-md border-2 border-white">
               <Image
                 src="/au-industries/projects-03.jpg"
                 alt="Ceramic embedded rubber products"
@@ -179,7 +196,7 @@ export default function AuIndustriesHomePage() {
                 className="object-cover hover:scale-105 transition-transform duration-300"
               />
             </div>
-            <div className="relative h-64 overflow-hidden rounded shadow-md">
+            <div className="relative h-64 overflow-hidden rounded-xl shadow-md border-2 border-white">
               <Image
                 src="/au-industries/projects-04.jpg"
                 alt="Pipe fabrication and delivery"
@@ -202,7 +219,7 @@ export default function AuIndustriesHomePage() {
         className="relative bg-cover bg-center bg-fixed"
         style={{ backgroundImage: "url(/au-industries/history-bg.jpg)" }}
       >
-        <div className="absolute inset-0 bg-black/60" />
+        <div className="absolute inset-0 bg-black/20" />
         <div className="relative max-w-7xl mx-auto px-4 md:px-8 py-20">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
             <div>
@@ -216,7 +233,7 @@ export default function AuIndustriesHomePage() {
                 Africa and Central America.
               </p>
               <div className="grid grid-cols-2 gap-4">
-                <div className="relative h-48 overflow-hidden rounded">
+                <div className="relative h-48 overflow-hidden rounded-xl border-2 border-white">
                   <Image
                     src="/au-industries/rubbertree01.jpg"
                     alt="Rubber tree tapping"
@@ -224,7 +241,7 @@ export default function AuIndustriesHomePage() {
                     className="object-cover"
                   />
                 </div>
-                <div className="relative h-48 overflow-hidden rounded">
+                <div className="relative h-48 overflow-hidden rounded-xl border-2 border-white">
                   <Image
                     src="/au-industries/rubbertree02.jpg"
                     alt="Rubber tree plantation"
@@ -232,7 +249,7 @@ export default function AuIndustriesHomePage() {
                     className="object-cover"
                   />
                 </div>
-                <div className="relative h-48 overflow-hidden rounded">
+                <div className="relative h-48 overflow-hidden rounded-xl border-2 border-white">
                   <Image
                     src="/au-industries/rubbertree03.jpg"
                     alt="Rubber tree bark"
@@ -240,7 +257,7 @@ export default function AuIndustriesHomePage() {
                     className="object-cover"
                   />
                 </div>
-                <div className="relative h-48 overflow-hidden rounded">
+                <div className="relative h-48 overflow-hidden rounded-xl border-2 border-white">
                   <Image
                     src="/au-industries/rubbertree04.jpg"
                     alt="Latex collection"
@@ -289,15 +306,6 @@ export default function AuIndustriesHomePage() {
               </div>
             </div>
           </div>
-        </div>
-      </section>
-
-      <section className="bg-gray-100 py-20">
-        <div className="max-w-4xl mx-auto px-4">
-          <div
-            className="elfsight-app-4c13c174-7edd-4de9-b428-dc35d38ec263"
-            data-elfsight-app-lazy
-          />
         </div>
       </section>
 

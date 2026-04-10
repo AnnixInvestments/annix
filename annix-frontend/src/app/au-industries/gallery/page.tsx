@@ -193,11 +193,13 @@ const gallerySections: GallerySection[] = [
 function GalleryCard(props: { section: GallerySection }) {
   const imageCount = props.section.images.length;
   return (
-    <div>
+    <div className="rounded-xl overflow-hidden border-2 border-white shadow-md">
       <div className="bg-[#efcc54] text-gray-900 text-center py-4 px-4 uppercase font-bold text-sm tracking-wide leading-snug">
         {props.section.title}
       </div>
-      <div className={`grid ${imageCount === 2 ? "grid-cols-2" : "grid-cols-3"} gap-0.5`}>
+      <div
+        className={`grid ${imageCount === 2 ? "grid-cols-2" : "grid-cols-3"} gap-[2px] bg-white`}
+      >
         {props.section.images.map((img) => (
           <div key={img.src} className="relative h-32 sm:h-36 md:h-40">
             <Image
@@ -227,38 +229,33 @@ export default function AuIndustriesGalleryPage() {
     }
   }, []);
 
-  const pairs: GallerySection[][] = [];
-  for (let i = 0; i < gallerySections.length; i += 2) {
-    const pair = [gallerySections[i]];
-    if (i + 1 < gallerySections.length) {
-      pair.push(gallerySections[i + 1]);
-    }
-    pairs.push(pair);
-  }
-
   return (
     <div>
-      <section className="bg-[#efcc54] py-10">
-        <div className="max-w-4xl mx-auto px-4 text-center">
-          <h1 className="text-3xl md:text-4xl font-bold text-gray-900 uppercase tracking-wider">
+      <section
+        className="relative h-56 md:h-72 bg-cover bg-center bg-fixed"
+        style={{ backgroundImage: "url(/au-industries/AUI-banner8.jpg)" }}
+      >
+        <div className="absolute inset-0 bg-black/50" />
+        <div className="relative max-w-4xl mx-auto px-4 h-full flex items-center justify-center">
+          <h1 className="text-3xl md:text-5xl font-bold text-white uppercase tracking-wider text-center">
             Gallery
           </h1>
         </div>
       </section>
 
-      <section className="bg-white py-12">
-        <div className="max-w-6xl mx-auto px-4">
-          <p className="text-center text-[#B8860B] text-lg mb-12">
+      <section
+        className="relative py-12 bg-cover bg-center bg-fixed"
+        style={{ backgroundImage: "url(/au-industries/AUI-banner3.jpg)" }}
+      >
+        <div className="absolute inset-0 bg-black/40" />
+        <div className="relative mx-auto px-4 sm:px-6 lg:px-8">
+          <p className="text-center text-[#efcc54] text-lg mb-12">
             Below are a few images of our products, projects and services
           </p>
 
-          <div className="space-y-12">
-            {pairs.map((pair, idx) => (
-              <div key={idx} className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                {pair.map((section) => (
-                  <GalleryCard key={section.title} section={section} />
-                ))}
-              </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+            {gallerySections.map((section) => (
+              <GalleryCard key={section.title} section={section} />
             ))}
           </div>
         </div>
