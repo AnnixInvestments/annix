@@ -111,6 +111,16 @@ export interface CpoBatchIssuanceResult {
   warnings: string[];
 }
 
+export interface CpoBatchLineItem {
+  id: number;
+  itemCode: string | null;
+  itemDescription: string | null;
+  itemNo: string | null;
+  jtNo: string | null;
+  quantity: number | null;
+  m2: number | null;
+}
+
 export interface CpoBatchChildJobCard {
   id: number;
   jobNumber: string;
@@ -124,6 +134,7 @@ export interface CpoBatchChildJobCard {
     status: string;
     coats: CoatDetail[];
   } | null;
+  lineItems: CpoBatchLineItem[];
   lineItemCount: number;
 }
 
@@ -1167,6 +1178,18 @@ export class IssuanceService {
 
     const childJobCards: CpoBatchChildJobCard[] = jobCards.map((jc) => {
       const analysis = analysisByJc.get(jc.id) ?? null;
+      const lineItems = (jc.lineItems ?? [])
+        .slice()
+        .sort((a, b) => a.sortOrder - b.sortOrder)
+        .map((li) => ({
+          id: li.id,
+          itemCode: li.itemCode,
+          itemDescription: li.itemDescription,
+          itemNo: li.itemNo,
+          jtNo: li.jtNo,
+          quantity: li.quantity !== null ? Number(li.quantity) : null,
+          m2: li.m2 !== null ? Number(li.m2) : null,
+        }));
       return {
         id: jc.id,
         jobNumber: jc.jobNumber,
@@ -1182,7 +1205,8 @@ export class IssuanceService {
               coats: analysis.coats ?? [],
             }
           : null,
-        lineItemCount: (jc.lineItems ?? []).length,
+        lineItems,
+        lineItemCount: lineItems.length,
       };
     });
 

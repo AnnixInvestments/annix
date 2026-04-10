@@ -2136,6 +2136,16 @@ export interface CpoBatchIssuanceResult {
   warnings: string[];
 }
 
+export interface CpoBatchLineItem {
+  id: number;
+  itemCode: string | null;
+  itemDescription: string | null;
+  itemNo: string | null;
+  jtNo: string | null;
+  quantity: number | null;
+  m2: number | null;
+}
+
 export interface CpoBatchChildJobCard {
   id: number;
   jobNumber: string;
@@ -2149,6 +2159,7 @@ export interface CpoBatchChildJobCard {
     status: string;
     coats: CoatDetail[];
   } | null;
+  lineItems: CpoBatchLineItem[];
   lineItemCount: number;
 }
 

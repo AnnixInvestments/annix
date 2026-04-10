@@ -62,12 +62,34 @@ const BATCH_MODE_KEY = "asca-batch-mode";
 const CPO_BATCH_MODE_KEY = "asca-cpo-batch-mode";
 const UNDO_WINDOW_MS = 5 * 60 * 1000;
 
+function selectedM2ForJc(
+  jc: CpoBatchIssueContext["jobCards"][number],
+  lineItemIds: number[] | undefined,
+): number {
+  if (!lineItemIds || lineItemIds.length === 0) return 0;
+  const selectedSet = new Set(lineItemIds);
+  const sum = jc.lineItems
+    .filter((li) => selectedSet.has(li.id))
+    .reduce((total, li) => total + (li.m2 || 0), 0);
+  if (sum > 0) return sum;
+  return (jc.extM2 + jc.intM2) * (lineItemIds.length / Math.max(1, jc.lineItems.length));
+}
+
 function proRataSplitByM2(
   totalQuantity: number,
   jobCards: CpoBatchIssueContext["jobCards"],
+  lineItemsByJc?: Record<number, number[]>,
 ): SplitLine[] {
   if (jobCards.length === 0) return [];
-  const totalM2 = jobCards.reduce((sum, jc) => sum + jc.extM2 + jc.intM2, 0);
+
+  const getM2 = (jc: CpoBatchIssueContext["jobCards"][number]) => {
+    if (lineItemsByJc) {
+      return selectedM2ForJc(jc, lineItemsByJc[jc.id]);
+    }
+    return jc.extM2 + jc.intM2;
+  };
+
+  const totalM2 = jobCards.reduce((sum, jc) => sum + getM2(jc), 0);
 
   if (totalM2 <= 0) {
     const evenShare = Math.round((totalQuantity / jobCards.length) * 100) / 100;
@@ -82,7 +104,7 @@ function proRataSplitByM2(
 
   const rounded = jobCards.map((jc) => ({
     jobCardId: jc.id,
-    quantity: Math.round(((jc.extM2 + jc.intM2) / totalM2) * totalQuantity * 100) / 100,
+    quantity: Math.round((getM2(jc) / totalM2) * totalQuantity * 100) / 100,
   }));
   const roundedSum = rounded.reduce((sum, r) => sum + r.quantity, 0);
   const drift = Math.round((totalQuantity - roundedSum) * 100) / 100;
@@ -201,6 +223,7 @@ export default function IssueStockPage() {
   const [cpoBatchMode, setCpoBatchMode] = useState(false);
   const [cpoBatchContext, setCpoBatchContext] = useState<CpoBatchIssueContext | null>(null);
   const [cpoBatchJobCardIds, setCpoBatchJobCardIds] = useState<number[]>([]);
+  const [cpoBatchLineItemsByJc, setCpoBatchLineItemsByJc] = useState<Record<number, number[]>>({});
   const [showCpoBatchPicker, setShowCpoBatchPicker] = useState(false);
   const [linkedStaff, setLinkedStaff] = useState<StaffMember | null>(null);
   const [sessionIssuances, setSessionIssuances] = useState<SessionIssuance[]>([]);
@@ -730,7 +753,7 @@ export default function IssueStockPage() {
         const splits =
           item.splits && item.splits.length > 0
             ? item.splits
-            : proRataSplitByM2(item.quantity, selectedCpoJobCards);
+            : proRataSplitByM2(item.quantity, selectedCpoJobCards, cpoBatchLineItemsByJc);
         const sum = splits.reduce((s, split) => s + split.quantity, 0);
         return Math.abs(sum - item.quantity) > 0.01;
       });
@@ -763,7 +786,7 @@ export default function IssueStockPage() {
             const splits =
               item.splits && item.splits.length > 0
                 ? item.splits
-                : proRataSplitByM2(item.quantity, selectedCpoJobCards);
+                : proRataSplitByM2(item.quantity, selectedCpoJobCards, cpoBatchLineItemsByJc);
             return {
               stockItemId: item.stockItem.id,
               totalQuantity: item.quantity,
@@ -1001,6 +1024,7 @@ export default function IssueStockPage() {
     if (!enabled) {
       setCpoBatchContext(null);
       setCpoBatchJobCardIds([]);
+      setCpoBatchLineItemsByJc({});
       setItems((prev) => prev.map((item) => ({ ...item, splits: undefined })));
     }
   };
@@ -1008,19 +1032,51 @@ export default function IssueStockPage() {
   const handleCpoBatchPickerConfirm = async (
     context: CpoBatchIssueContext,
     selectedJobCardIds: number[],
+    selectedLineItemsByJc: Record<number, number[]>,
   ) => {
     setCpoBatchContext(context);
     setCpoBatchJobCardIds(selectedJobCardIds);
+    setCpoBatchLineItemsByJc(selectedLineItemsByJc);
     setShowCpoBatchPicker(false);
     setJobCard(null);
     const selectedJobCards = context.jobCards.filter((jc) => selectedJobCardIds.includes(jc.id));
 
-    const suggestable = context.aggregatedCoats.filter(
-      (coat) => coat.stockItemId !== null && coat.litresRemaining > 0,
-    );
+    const jcRatios = new Map<number, number>();
+    selectedJobCards.forEach((jc) => {
+      const selectedIds = selectedLineItemsByJc[jc.id] || [];
+      const totalM2 = jc.lineItems.reduce((sum, li) => sum + (li.m2 || 0), 0);
+      if (totalM2 > 0) {
+        const selSum = jc.lineItems
+          .filter((li) => selectedIds.includes(li.id))
+          .reduce((sum, li) => sum + (li.m2 || 0), 0);
+        jcRatios.set(jc.id, selSum / totalM2);
+      } else if (jc.lineItems.length > 0) {
+        jcRatios.set(jc.id, selectedIds.length / jc.lineItems.length);
+      } else {
+        jcRatios.set(jc.id, 1);
+      }
+    });
+
+    const scaledAggregates = context.aggregatedCoats
+      .map((coat) => {
+        const scaledLitres = selectedJobCards.reduce((sum, jc) => {
+          const ratio = jcRatios.get(jc.id) ?? 0;
+          const analysis = jc.coatingAnalysis;
+          const coats = analysis ? analysis.coats : [];
+          const matching = coats.find(
+            (c) => c.product.trim().toLowerCase() === coat.product.trim().toLowerCase(),
+          );
+          if (!matching) return sum;
+          const base = Number(matching.litersRequired);
+          return sum + (Number.isFinite(base) ? base : 0) * ratio;
+        }, 0);
+        const remaining = Math.max(0, scaledLitres - coat.alreadyAllocated);
+        return { ...coat, scaledLitres, scaledRemaining: remaining };
+      })
+      .filter((coat) => coat.stockItemId !== null && coat.scaledRemaining > 0);
 
     const suggestedStockItems = await Promise.all(
-      suggestable.map(async (coat) => {
+      scaledAggregates.map(async (coat) => {
         try {
           const stockItem = await stockControlApiClient.stockItemById(coat.stockItemId!);
           return { stockItem, coat };
@@ -1032,18 +1088,18 @@ export default function IssueStockPage() {
 
     const suggestedItems: IssuanceItem[] = suggestedStockItems
       .filter(
-        (entry): entry is { stockItem: StockItem; coat: (typeof context.aggregatedCoats)[0] } =>
+        (entry): entry is { stockItem: StockItem; coat: (typeof scaledAggregates)[0] } =>
           entry !== null,
       )
       .map(({ stockItem, coat }) => {
         const available = Number(stockItem.quantity);
-        const requested = Math.min(coat.litresRemaining, available);
+        const requested = Math.min(coat.scaledRemaining, available);
         const rounded = Math.round(requested * 100) / 100;
         return {
           stockItem,
           quantity: rounded > 0 ? rounded : 0,
           batchNumber: "",
-          splits: proRataSplitByM2(rounded, selectedJobCards),
+          splits: proRataSplitByM2(rounded, selectedJobCards, selectedLineItemsByJc),
         };
       })
       .filter((item) => item.quantity > 0);
@@ -1052,7 +1108,7 @@ export default function IssueStockPage() {
       const existingIds = new Set(prev.map((i) => i.stockItem.id));
       const rehydratedExisting = prev.map((item) => ({
         ...item,
-        splits: proRataSplitByM2(item.quantity, selectedJobCards),
+        splits: proRataSplitByM2(item.quantity, selectedJobCards, selectedLineItemsByJc),
       }));
       const newSuggestions = suggestedItems.filter((s) => !existingIds.has(s.stockItem.id));
       return [...rehydratedExisting, ...newSuggestions];
@@ -1071,12 +1127,12 @@ export default function IssueStockPage() {
       const selectedJobCards = cpoBatchContext.jobCards.filter((jc) =>
         cpoBatchJobCardIds.includes(jc.id),
       );
-      const nextSplits = proRataSplitByM2(quantity, selectedJobCards);
+      const nextSplits = proRataSplitByM2(quantity, selectedJobCards, cpoBatchLineItemsByJc);
       setItems((prev) =>
         prev.map((item, i) => (i === index ? { ...item, splits: nextSplits } : item)),
       );
     },
-    [cpoBatchMode, cpoBatchContext, cpoBatchJobCardIds],
+    [cpoBatchMode, cpoBatchContext, cpoBatchJobCardIds, cpoBatchLineItemsByJc],
   );
 
   const totalItemsQty = items.reduce((sum, item) => sum + item.quantity, 0);
@@ -2039,7 +2095,11 @@ export default function IssueStockPage() {
                               splits={
                                 item.splits && item.splits.length > 0
                                   ? item.splits
-                                  : proRataSplitByM2(item.quantity, selectedCpoJobCards)
+                                  : proRataSplitByM2(
+                                      item.quantity,
+                                      selectedCpoJobCards,
+                                      cpoBatchLineItemsByJc,
+                                    )
                               }
                               onChange={(splits) => updateItemSplits(index, splits)}
                             />

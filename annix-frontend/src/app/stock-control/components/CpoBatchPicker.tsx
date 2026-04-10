@@ -1,6 +1,6 @@
 "use client";
 
-import { Package, X } from "lucide-react";
+import { ChevronDown, ChevronRight, Package, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import type {
@@ -14,7 +14,11 @@ import { useCpoBatchIssueContext } from "@/app/lib/query/hooks/stock-control";
 interface CpoBatchPickerProps {
   isOpen: boolean;
   onClose: () => void;
-  onConfirm: (context: CpoBatchIssueContext, selectedJobCardIds: number[]) => void;
+  onConfirm: (
+    context: CpoBatchIssueContext,
+    selectedJobCardIds: number[],
+    selectedLineItemsByJc: Record<number, number[]>,
+  ) => void;
 }
 
 export function CpoBatchPicker(props: CpoBatchPickerProps) {
@@ -24,6 +28,10 @@ export function CpoBatchPicker(props: CpoBatchPickerProps) {
   const [isLoadingCpos, setIsLoadingCpos] = useState(false);
   const [selectedCpoId, setSelectedCpoId] = useState<number | null>(null);
   const [selectedJobCardIds, setSelectedJobCardIds] = useState<Set<number>>(new Set());
+  const [selectedLineItemsByJc, setSelectedLineItemsByJc] = useState<Record<number, Set<number>>>(
+    {},
+  );
+  const [expandedJcIds, setExpandedJcIds] = useState<Set<number>>(new Set());
 
   const {
     data: context,
@@ -51,6 +59,8 @@ export function CpoBatchPicker(props: CpoBatchPickerProps) {
     if (!isOpen) {
       setSelectedCpoId(null);
       setSelectedJobCardIds(new Set());
+      setSelectedLineItemsByJc({});
+      setExpandedJcIds(new Set());
       setCpoSearch("");
     }
   }, [isOpen]);
@@ -59,6 +69,11 @@ export function CpoBatchPicker(props: CpoBatchPickerProps) {
     if (context && context.jobCards.length > 0) {
       const allIds = new Set(context.jobCards.map((jc) => jc.id));
       setSelectedJobCardIds(allIds);
+      const lineItemsInit: Record<number, Set<number>> = {};
+      context.jobCards.forEach((jc) => {
+        lineItemsInit[jc.id] = new Set(jc.lineItems.map((li) => li.id));
+      });
+      setSelectedLineItemsByJc(lineItemsInit);
     }
   }, [context]);
 
@@ -79,14 +94,53 @@ export function CpoBatchPicker(props: CpoBatchPickerProps) {
     );
   });
 
-  const toggleJobCard = (id: number) => {
+  const toggleJobCard = (jc: CpoBatchChildJobCard) => {
     setSelectedJobCardIds((prev) => {
       const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
+      if (next.has(jc.id)) {
+        next.delete(jc.id);
+        setSelectedLineItemsByJc((prevItems) => ({ ...prevItems, [jc.id]: new Set() }));
       } else {
-        next.add(id);
+        next.add(jc.id);
+        setSelectedLineItemsByJc((prevItems) => ({
+          ...prevItems,
+          [jc.id]: new Set(jc.lineItems.map((li) => li.id)),
+        }));
       }
+      return next;
+    });
+  };
+
+  const toggleExpand = (jcId: number) => {
+    setExpandedJcIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(jcId)) {
+        next.delete(jcId);
+      } else {
+        next.add(jcId);
+      }
+      return next;
+    });
+  };
+
+  const toggleLineItem = (jcId: number, lineItemId: number) => {
+    setSelectedLineItemsByJc((prev) => {
+      const current = prev[jcId] ? new Set(prev[jcId]) : new Set<number>();
+      if (current.has(lineItemId)) {
+        current.delete(lineItemId);
+      } else {
+        current.add(lineItemId);
+      }
+      const next = { ...prev, [jcId]: current };
+      setSelectedJobCardIds((jcPrev) => {
+        const jcNext = new Set(jcPrev);
+        if (current.size === 0) {
+          jcNext.delete(jcId);
+        } else {
+          jcNext.add(jcId);
+        }
+        return jcNext;
+      });
       return next;
     });
   };
@@ -95,21 +149,55 @@ export function CpoBatchPicker(props: CpoBatchPickerProps) {
     if (!context) return;
     if (selectedJobCardIds.size === context.jobCards.length) {
       setSelectedJobCardIds(new Set());
+      setSelectedLineItemsByJc({});
     } else {
       setSelectedJobCardIds(new Set(context.jobCards.map((jc) => jc.id)));
+      const all: Record<number, Set<number>> = {};
+      context.jobCards.forEach((jc) => {
+        all[jc.id] = new Set(jc.lineItems.map((li) => li.id));
+      });
+      setSelectedLineItemsByJc(all);
     }
   };
 
   const allJobCards = context ? context.jobCards : [];
   const selectedJobCards = allJobCards.filter((jc) => selectedJobCardIds.has(jc.id));
-  const selectedExtM2 = selectedJobCards.reduce((sum, jc) => sum + jc.extM2, 0);
-  const selectedIntM2 = selectedJobCards.reduce((sum, jc) => sum + jc.intM2, 0);
 
-  const aggregatedCoatsForSelection = aggregateForSelection(context, selectedJobCardIds);
+  const computeSelectedM2 = (jc: CpoBatchChildJobCard) => {
+    const selected = selectedLineItemsByJc[jc.id];
+    if (!selected || selected.size === 0) return 0;
+    return jc.lineItems
+      .filter((li) => selected.has(li.id))
+      .reduce((sum, li) => sum + (li.m2 || 0), 0);
+  };
+
+  const computeTotalM2 = (jc: CpoBatchChildJobCard) => {
+    return jc.lineItems.reduce((sum, li) => sum + (li.m2 || 0), 0);
+  };
+
+  const jcSelectionRatio = (jc: CpoBatchChildJobCard) => {
+    const total = computeTotalM2(jc);
+    if (total <= 0) {
+      const selected = selectedLineItemsByJc[jc.id];
+      const selectedCount = selected ? selected.size : 0;
+      return jc.lineItems.length > 0 ? selectedCount / jc.lineItems.length : 1;
+    }
+    return computeSelectedM2(jc) / total;
+  };
+
+  const selectedM2Total = selectedJobCards.reduce((sum, jc) => sum + computeSelectedM2(jc), 0);
+
+  const aggregatedCoatsForSelection = aggregateForSelection(context, selectedJobCardIds, (jc) =>
+    jcSelectionRatio(jc),
+  );
 
   const handleConfirm = () => {
     if (!context || selectedJobCardIds.size === 0) return;
-    onConfirm(context, Array.from(selectedJobCardIds));
+    const lineItemRecord: Record<number, number[]> = {};
+    Object.entries(selectedLineItemsByJc).forEach(([jcId, ids]) => {
+      lineItemRecord[Number(jcId)] = Array.from(ids);
+    });
+    onConfirm(context, Array.from(selectedJobCardIds), lineItemRecord);
   };
 
   if (!isOpen) return null;
@@ -134,7 +222,7 @@ export function CpoBatchPicker(props: CpoBatchPickerProps) {
               CPO Batch Issuing
             </h2>
             <p className="text-sm text-gray-600">
-              Pick a CPO and select the JCs you are painting / lining together
+              Pick a CPO and select the JCs (and line items) you are painting / lining together
             </p>
           </div>
           <button
@@ -240,13 +328,17 @@ export function CpoBatchPicker(props: CpoBatchPickerProps) {
                     </button>
                   </div>
 
-                  <div className="space-y-2 max-h-[35vh] overflow-y-auto border rounded">
+                  <div className="space-y-2 max-h-[45vh] overflow-y-auto border rounded">
                     {context.jobCards.map((jc) => (
                       <JobCardRow
                         key={jc.id}
                         jobCard={jc}
-                        selected={selectedJobCardIds.has(jc.id)}
-                        onToggle={() => toggleJobCard(jc.id)}
+                        selectedLineItemIds={selectedLineItemsByJc[jc.id] || new Set<number>()}
+                        isJcSelected={selectedJobCardIds.has(jc.id)}
+                        isExpanded={expandedJcIds.has(jc.id)}
+                        onToggleJc={() => toggleJobCard(jc)}
+                        onToggleExpand={() => toggleExpand(jc.id)}
+                        onToggleLineItem={(lineItemId) => toggleLineItem(jc.id, lineItemId)}
                       />
                     ))}
                   </div>
@@ -277,10 +369,7 @@ export function CpoBatchPicker(props: CpoBatchPickerProps) {
                     )}
                     <div className="mt-2 pt-2 border-t text-xs text-gray-600 flex items-center gap-4">
                       <span>
-                        External: <strong>{selectedExtM2.toFixed(1)} m²</strong>
-                      </span>
-                      <span>
-                        Internal: <strong>{selectedIntM2.toFixed(1)} m²</strong>
+                        Selected m²: <strong>{selectedM2Total.toFixed(1)}</strong>
                       </span>
                     </div>
                   </div>
@@ -315,10 +404,22 @@ export function CpoBatchPicker(props: CpoBatchPickerProps) {
 
 function JobCardRow(props: {
   jobCard: CpoBatchChildJobCard;
-  selected: boolean;
-  onToggle: () => void;
+  selectedLineItemIds: Set<number>;
+  isJcSelected: boolean;
+  isExpanded: boolean;
+  onToggleJc: () => void;
+  onToggleExpand: () => void;
+  onToggleLineItem: (lineItemId: number) => void;
 }) {
-  const { jobCard, selected, onToggle } = props;
+  const {
+    jobCard,
+    selectedLineItemIds,
+    isJcSelected,
+    isExpanded,
+    onToggleJc,
+    onToggleExpand,
+    onToggleLineItem,
+  } = props;
   const analysis = jobCard.coatingAnalysis;
   const coats = analysis ? analysis.coats : [];
   const totalLitres = coats.reduce((sum, coat) => {
@@ -326,29 +427,85 @@ function JobCardRow(props: {
     return sum + (Number.isFinite(required) ? required : 0);
   }, 0);
   const coatingStatus = analysis ? analysis.status : "none";
+  const totalM2 = jobCard.lineItems.reduce((sum, li) => sum + (li.m2 || 0), 0);
+  const selectedM2 = jobCard.lineItems
+    .filter((li) => selectedLineItemIds.has(li.id))
+    .reduce((sum, li) => sum + (li.m2 || 0), 0);
+  const allSelected =
+    jobCard.lineItems.length > 0 && selectedLineItemIds.size === jobCard.lineItems.length;
+  const partial = selectedLineItemIds.size > 0 && !allSelected;
 
   return (
-    <label className="flex items-start gap-3 p-3 border-b last:border-b-0 hover:bg-blue-50 cursor-pointer">
-      <input
-        type="checkbox"
-        checked={selected}
-        onChange={onToggle}
-        className="mt-1 h-4 w-4 text-blue-600 rounded"
-      />
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2">
-          <span className="font-semibold text-sm">{jobCard.jcNumber || jobCard.jobNumber}</span>
-          <span className="text-xs text-gray-500">{jobCard.jobName}</span>
+    <div className="border-b last:border-b-0">
+      <div className="flex items-start gap-2 p-3 hover:bg-blue-50">
+        <input
+          type="checkbox"
+          checked={isJcSelected}
+          onChange={onToggleJc}
+          className="mt-1 h-4 w-4 text-blue-600 rounded"
+        />
+        <button
+          type="button"
+          onClick={onToggleExpand}
+          className="mt-0.5 text-gray-400 hover:text-gray-700"
+          aria-label={isExpanded ? "Collapse" : "Expand"}
+        >
+          {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+        </button>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <span className="font-semibold text-sm">{jobCard.jcNumber || jobCard.jobNumber}</span>
+            <span className="text-xs text-gray-500 truncate">{jobCard.jobName}</span>
+          </div>
+          <div className="text-xs text-gray-500 mt-0.5">
+            {jobCard.lineItemCount} items · Selected {selectedLineItemIds.size}/
+            {jobCard.lineItemCount} · {selectedM2.toFixed(1)}/{totalM2.toFixed(1)} m² · Paint{" "}
+            {totalLitres.toFixed(1)}L
+            {partial && <span className="ml-2 text-amber-700 font-medium">Partial</span>}
+          </div>
         </div>
-        <div className="text-xs text-gray-500 mt-0.5">
-          {jobCard.lineItemCount} line items · Ext {jobCard.extM2.toFixed(1)}m² · Int{" "}
-          {jobCard.intM2.toFixed(1)}m² · Paint {totalLitres.toFixed(1)}L
+        <div className="text-xs">
+          <CoatingStatusBadge status={coatingStatus} />
         </div>
       </div>
-      <div className="text-xs">
-        <CoatingStatusBadge status={coatingStatus} />
-      </div>
-    </label>
+      {isExpanded && jobCard.lineItems.length > 0 && (
+        <div className="pl-10 pr-3 pb-3 space-y-1 bg-gray-50">
+          {jobCard.lineItems.map((li) => {
+            const isChecked = selectedLineItemIds.has(li.id);
+            const label = li.itemNo || li.itemCode || `#${li.id}`;
+            const description = li.itemDescription || "";
+            return (
+              <label
+                key={li.id}
+                className={`flex items-center gap-2 px-2 py-1 rounded text-xs cursor-pointer ${
+                  isChecked ? "bg-blue-100" : "bg-white border"
+                }`}
+              >
+                <input
+                  type="checkbox"
+                  checked={isChecked}
+                  onChange={() => onToggleLineItem(li.id)}
+                  className="h-3.5 w-3.5 text-blue-600 rounded"
+                />
+                <span className="font-mono text-gray-700 w-16 truncate">{label}</span>
+                <span className="flex-1 truncate text-gray-700">{description}</span>
+                {li.jtNo && <span className="text-gray-400">JT {li.jtNo}</span>}
+                {li.m2 !== null && (
+                  <span className="text-gray-600 font-mono whitespace-nowrap">
+                    {li.m2.toFixed(2)} m²
+                  </span>
+                )}
+              </label>
+            );
+          })}
+        </div>
+      )}
+      {isExpanded && jobCard.lineItems.length === 0 && (
+        <div className="pl-10 pr-3 pb-3 text-xs text-gray-400 italic">
+          No line items on this job card
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -372,22 +529,27 @@ function CoatingStatusBadge({ status }: { status: string }) {
 function aggregateForSelection(
   context: CpoBatchIssueContext | undefined,
   selectedIds: Set<number>,
+  ratioForJc: (jc: CpoBatchChildJobCard) => number,
 ): { product: string; litresRequired: number }[] {
   if (!context) return [];
-  const allCoats = context.jobCards
+  const scaledEntries = context.jobCards
     .filter((jc) => selectedIds.has(jc.id))
     .flatMap((jc) => {
       const analysis = jc.coatingAnalysis;
-      return analysis ? analysis.coats : [];
+      const coats = analysis ? analysis.coats : [];
+      const ratio = ratioForJc(jc);
+      return coats.map((coat) => {
+        const base = Number(coat.litersRequired);
+        const safe = Number.isFinite(base) ? base : 0;
+        return { product: coat.product, scaled: safe * ratio };
+      });
     });
 
-  const byProduct = allCoats.reduce((acc, coat) => {
-    const key = coat.product.trim();
+  const byProduct = scaledEntries.reduce((acc, entry) => {
+    const key = entry.product.trim();
     const existing = acc.get(key);
     const previous = existing === undefined ? 0 : existing;
-    const required = Number(coat.litersRequired);
-    const safeRequired = Number.isFinite(required) ? required : 0;
-    acc.set(key, previous + safeRequired);
+    acc.set(key, previous + entry.scaled);
     return acc;
   }, new Map<string, number>());
 

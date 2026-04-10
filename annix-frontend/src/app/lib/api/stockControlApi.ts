@@ -33,6 +33,7 @@ export type {
   CpoBatchIssuanceResult,
   CpoBatchIssueContext,
   CpoBatchItemDto,
+  CpoBatchLineItem,
   CpoBatchSplitDto,
   CpoCalloffBreakdown,
   CpoCalloffRecord,
