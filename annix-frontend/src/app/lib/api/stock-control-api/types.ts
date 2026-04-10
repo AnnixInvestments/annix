@@ -1110,6 +1110,7 @@ export interface QcItemsReleaseRecord {
   totalQuantity: number;
   checkedByName: string | null;
   checkedByDate: string | null;
+  checkedBySignature: string | null;
   plsSignOff: ReleasePartySignOff;
   mpsSignOff: ReleasePartySignOff;
   clientSignOff: ReleasePartySignOff;

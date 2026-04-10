@@ -46,8 +46,55 @@ export function AuIndustriesLayoutClient(props: { children: React.ReactNode }) {
   const email = profile?.generalEmail || "info@example.com";
   const address = profile ? `${profile.streetAddress}, ${profile.city}, ${profile.province}` : "";
 
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "LocalBusiness",
+    name: companyName,
+    description:
+      "Rubber lining, rubber sheeting, HDPE lining, and industrial rubber solutions for mining, chemical processing, and water treatment in South Africa.",
+    url: "https://auind.co.za",
+    logo: "https://auind.co.za/au-industries/logo.jpg",
+    image: "https://auind.co.za/au-industries/hero-excavator.jpg",
+    telephone: phone,
+    email: email,
+    address: profile
+      ? {
+          "@type": "PostalAddress",
+          streetAddress: profile.streetAddress,
+          addressLocality: profile.city,
+          addressRegion: profile.province,
+          addressCountry: "ZA",
+        }
+      : undefined,
+    geo: {
+      "@type": "GeoCoordinates",
+      latitude: -26.2125,
+      longitude: 28.2536,
+    },
+    openingHoursSpecification: {
+      "@type": "OpeningHoursSpecification",
+      dayOfWeek: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
+      opens: "08:00",
+      closes: "17:00",
+    },
+    areaServed: [
+      { "@type": "Country", name: "South Africa" },
+      { "@type": "Country", name: "Mozambique" },
+      { "@type": "Country", name: "Namibia" },
+      { "@type": "Country", name: "Zambia" },
+      { "@type": "Country", name: "Botswana" },
+      { "@type": "Country", name: "Zimbabwe" },
+    ],
+    priceRange: "$$",
+    sameAs: [],
+  };
+
   return (
     <div className="min-h-screen flex flex-col bg-white text-gray-900">
+      <Script id="au-industries-jsonld" type="application/ld+json" strategy="afterInteractive">
+        {JSON.stringify(jsonLd)}
+      </Script>
+
       <Script
         src={`https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`}
         strategy="afterInteractive"

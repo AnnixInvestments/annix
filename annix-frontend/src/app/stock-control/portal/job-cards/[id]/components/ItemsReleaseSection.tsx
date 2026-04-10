@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import type {
   ItemReleaseResult,
   QcItemsReleaseRecord,
@@ -8,7 +9,8 @@ import type {
   ReleasePartySignOff,
 } from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
-import { nowISO } from "@/app/lib/datetime";
+import { now } from "@/app/lib/datetime";
+import { SignaturePad } from "@/app/stock-control/components/SignaturePad";
 
 interface ItemsReleaseSectionProps {
   jobCardId: number;
@@ -239,6 +241,8 @@ function ItemsReleaseForm({ jobCardId, existing, onSaved, onCancel }: ItemsRelea
   );
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [showSignatureModal, setShowSignatureModal] = useState(false);
+  const [signatureDate, setSignatureDate] = useState(now().toFormat("yyyy-MM-dd"));
 
   const totalQuantity = items.reduce((sum, item) => sum + item.quantity, 0);
   const passCount = items.filter((i) => i.result === "pass").length;
@@ -282,16 +286,22 @@ function ItemsReleaseForm({ jobCardId, existing, onSaved, onCancel }: ItemsRelea
     setters[party]({ ...current[party], [field]: value });
   };
 
-  const handleSave = async () => {
+  const handleSaveClick = () => {
+    setShowSignatureModal(true);
+  };
+
+  const handleSaveWithSignature = async (signatureDataUrl: string) => {
     try {
       setIsSaving(true);
       setSaveError(null);
+      setShowSignatureModal(false);
 
       const payload: Partial<QcItemsReleaseRecord> = {
         items,
         totalQuantity,
         checkedByName: checkedByName || null,
-        checkedByDate: checkedByName ? nowISO() : null,
+        checkedByDate: signatureDate,
+        checkedBySignature: signatureDataUrl || null,
         plsSignOff,
         mpsSignOff,
         clientSignOff,
@@ -544,13 +554,66 @@ function ItemsReleaseForm({ jobCardId, existing, onSaved, onCancel }: ItemsRelea
         </button>
         <button
           type="button"
-          onClick={handleSave}
+          onClick={handleSaveClick}
           disabled={isSaving || items.length === 0}
           className="rounded-md bg-teal-600 px-4 py-2 text-sm font-medium text-white hover:bg-teal-700 disabled:opacity-50"
         >
-          {isSaving ? "Saving..." : "Save"}
+          {isSaving ? "Saving..." : "Sign & Save"}
         </button>
       </div>
+
+      {showSignatureModal &&
+        createPortal(
+          <div
+            className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
+            role="dialog"
+            aria-modal="true"
+          >
+            <div
+              className="fixed inset-0 bg-black/10 backdrop-blur-md"
+              onClick={() => setShowSignatureModal(false)}
+              aria-hidden="true"
+            />
+            <div className="relative bg-white rounded-lg shadow-xl w-full max-w-lg p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                Sign Items Release Document
+              </h3>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Inspector Name
+                  </label>
+                  <input
+                    type="text"
+                    value={checkedByName}
+                    onChange={(e) => setCheckedByName(e.target.value)}
+                    placeholder="Your name"
+                    className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Inspection Date
+                  </label>
+                  <input
+                    type="date"
+                    value={signatureDate}
+                    onChange={(e) => setSignatureDate(e.target.value)}
+                    className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Signature</label>
+                  <SignaturePad
+                    onSave={(dataUrl) => handleSaveWithSignature(dataUrl)}
+                    onCancel={() => setShowSignatureModal(false)}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>,
+          document.body,
+        )}
     </div>
   );
 }

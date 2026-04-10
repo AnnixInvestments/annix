@@ -1453,8 +1453,16 @@ export class DataBookPdfService {
     const companyShort = ctx.company?.name?.toUpperCase() ?? "POLYMER LINERS";
     const clientName = ctx.jobCard.customerName?.toUpperCase() ?? "CLIENT";
 
+    const plsSignOff = release.checkedByName
+      ? {
+          name: release.checkedByName,
+          date: release.checkedByDate,
+          signatureUrl: release.checkedBySignature ?? release.plsSignOff?.signatureUrl ?? null,
+        }
+      : release.plsSignOff;
+
     const signOffParties: Array<{ label: string; signOff: ReleasePartySignOff }> = [
-      { label: companyShort, signOff: release.plsSignOff },
+      { label: companyShort, signOff: plsSignOff },
       { label: "MPS", signOff: release.mpsSignOff },
     ];
     if (hasClient) {
@@ -1470,7 +1478,7 @@ export class DataBookPdfService {
     }
 
     const boxW = Math.floor(pg.contentWidth / signOffParties.length);
-    const boxH = 60;
+    const boxH = 80;
     const lineGap = 14;
 
     signOffParties.forEach((p, idx) => {
@@ -1488,19 +1496,41 @@ export class DataBookPdfService {
         .fillColor("#000000")
         .text(p.label, bx + 4, y + 4, { width: innerW, lineBreak: false });
 
+      const signName = p.signOff?.name ?? "";
+      const signDate = p.signOff?.date ?? "";
+      const signUrl = p.signOff?.signatureUrl ?? null;
+
       doc.fontSize(7).font(FONT.REGULAR);
-      doc.text(`NAME: ${p.signOff?.name ?? ""}`, bx + 4, y + 4 + lineGap, {
+      doc.text(`NAME: ${signName}`, bx + 4, y + 4 + lineGap, {
         width: innerW,
         lineBreak: false,
       });
-      doc.text(`DATE: ${p.signOff?.date ?? ""}`, bx + 4, y + 4 + lineGap * 2, {
+      doc.text(`DATE: ${signDate}`, bx + 4, y + 4 + lineGap * 2, {
         width: innerW,
         lineBreak: false,
       });
-      doc.text("SIGNATURE: ________________", bx + 4, y + 4 + lineGap * 3, {
-        width: innerW,
-        lineBreak: false,
-      });
+
+      if (signUrl?.startsWith("data:image")) {
+        try {
+          const base64 = signUrl.split(",")[1];
+          const imgBuf = Buffer.from(base64, "base64");
+          doc.image(imgBuf, bx + 4, y + 4 + lineGap * 3, {
+            width: Math.min(innerW - 8, 120),
+            height: 25,
+            fit: [Math.min(innerW - 8, 120), 25],
+          });
+        } catch {
+          doc.text("SIGNATURE: ________________", bx + 4, y + 4 + lineGap * 3, {
+            width: innerW,
+            lineBreak: false,
+          });
+        }
+      } else {
+        doc.text("SIGNATURE: ________________", bx + 4, y + 4 + lineGap * 3, {
+          width: innerW,
+          lineBreak: false,
+        });
+      }
     });
   }
 

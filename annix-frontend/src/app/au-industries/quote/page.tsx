@@ -16,6 +16,13 @@ export default function AuIndustriesQuotePage() {
 
   useEffect(() => {
     document.title = "Request a Quote | AU Industries";
+    const metaDesc = document.querySelector('meta[name="description"]');
+    if (metaDesc) {
+      metaDesc.setAttribute(
+        "content",
+        "Request a quote from AU Industries for rubber lining, compound, sheeting, HDPE piping, mining projects and industrial rubber products.",
+      );
+    }
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {

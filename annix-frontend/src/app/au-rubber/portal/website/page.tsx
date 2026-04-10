@@ -66,6 +66,32 @@ export default function WebsitePagesListPage() {
     }
   };
 
+  const handleMoveUp = async (page: WebsitePageDto) => {
+    const idx = sorted.findIndex((p) => p.id === page.id);
+    if (idx <= 0) return;
+    const target = sorted[idx - 1];
+    try {
+      await auRubberApiClient.reorderWebsitePage(page.id, target.sortOrder);
+      await auRubberApiClient.reorderWebsitePage(target.id, page.sortOrder);
+      queryClient.invalidateQueries({ queryKey: rubberKeys.websitePages.all });
+    } catch {
+      showToast("Failed to reorder page", "error");
+    }
+  };
+
+  const handleMoveDown = async (page: WebsitePageDto) => {
+    const idx = sorted.findIndex((p) => p.id === page.id);
+    if (idx < 0 || idx >= sorted.length - 1) return;
+    const target = sorted[idx + 1];
+    try {
+      await auRubberApiClient.reorderWebsitePage(page.id, target.sortOrder);
+      await auRubberApiClient.reorderWebsitePage(target.id, page.sortOrder);
+      queryClient.invalidateQueries({ queryKey: rubberKeys.websitePages.all });
+    } catch {
+      showToast("Failed to reorder page", "error");
+    }
+  };
+
   return (
     <RequirePermission permission={PAGE_PERMISSIONS["/au-rubber/portal/website"]}>
       <Breadcrumb items={[{ label: "Website Pages" }]} />
@@ -160,7 +186,51 @@ export default function WebsitePagesListPage() {
                         <span className="text-sm text-gray-500 font-mono">/{page.slug}</span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {page.sortOrder}
+                        <div className="flex items-center space-x-1">
+                          <span className="w-6 text-center">{page.sortOrder}</span>
+                          <button
+                            onClick={() => handleMoveUp(page)}
+                            className="p-1 text-gray-400 hover:text-yellow-600 disabled:opacity-30"
+                            disabled={sorted.findIndex((p) => p.id === page.id) === 0}
+                            title="Move up"
+                          >
+                            <svg
+                              className="w-4 h-4"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M5 15l7-7 7 7"
+                              />
+                            </svg>
+                          </button>
+                          <button
+                            onClick={() => handleMoveDown(page)}
+                            className="p-1 text-gray-400 hover:text-yellow-600 disabled:opacity-30"
+                            disabled={
+                              sorted.findIndex((p) => p.id === page.id) === sorted.length - 1
+                            }
+                            title="Move down"
+                          >
+                            <svg
+                              className="w-4 h-4"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M19 9l-7 7-7-7"
+                              />
+                            </svg>
+                          </button>
+                        </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <button

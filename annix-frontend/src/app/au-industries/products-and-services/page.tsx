@@ -7,6 +7,13 @@ import { useEffect } from "react";
 export default function AuIndustriesProductsPage() {
   useEffect(() => {
     document.title = "Products, Projects & Services | AU Industries";
+    const metaDesc = document.querySelector('meta[name="description"]');
+    if (metaDesc) {
+      metaDesc.setAttribute(
+        "content",
+        "AU Industries products and services: rubber compound, rubber sheeting, ceramic embedded wear panels, HDPE piping, pipe and tank fabrication, and on-site maintenance for mining.",
+      );
+    }
   }, []);
 
   return (

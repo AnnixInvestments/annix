@@ -26,6 +26,13 @@ export default function AuIndustriesContactPage() {
 
   useEffect(() => {
     document.title = "Contact Us | AU Industries";
+    const metaDesc = document.querySelector('meta[name="description"]');
+    if (metaDesc) {
+      metaDesc.setAttribute(
+        "content",
+        "Contact AU Industries in Boksburg for rubber lining, rubber sheeting, HDPE piping and mining solutions. Call 072 039 8429 or send us an enquiry.",
+      );
+    }
     const base = browserBaseUrl();
     fetch(`${base}/public/au-industries/contact`)
       .then((res) => res.json())

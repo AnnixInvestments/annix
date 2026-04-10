@@ -64,6 +64,9 @@ export class QcItemsRelease {
   @Column({ name: "checked_by_date", type: "date", nullable: true })
   checkedByDate: string | null;
 
+  @Column({ name: "checked_by_signature", type: "text", nullable: true })
+  checkedBySignature: string | null;
+
   @Column({ name: "pls_sign_off", type: "jsonb", default: "{}" })
   plsSignOff: ReleasePartySignOff;
 
