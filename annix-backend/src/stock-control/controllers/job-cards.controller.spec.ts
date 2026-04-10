@@ -18,6 +18,7 @@ import { JobFileService } from "../services/job-file.service";
 import { RequisitionService } from "../services/requisition.service";
 import { RubberCuttingTrainingService } from "../services/rubber-cutting-training.service";
 import { StockAllocationService } from "../services/stock-allocation.service";
+import { WorkflowNotificationService } from "../services/workflow-notification.service";
 import { JobCardsController } from "./job-cards.controller";
 
 describe("JobCardsController", () => {
@@ -140,6 +141,10 @@ describe("JobCardsController", () => {
           },
         },
         { provide: RubberCuttingTrainingService, useValue: {} },
+        {
+          provide: WorkflowNotificationService,
+          useValue: { notifyApprovalRequired: jest.fn() },
+        },
         { provide: getRepositoryToken(StockItem), useValue: stockItemRepo },
         { provide: getRepositoryToken(RubberDimensionOverride), useValue: dimensionOverrideRepo },
         { provide: getRepositoryToken(StockMovement), useValue: stockMovementRepo },

@@ -1833,7 +1833,19 @@ export default function JobCardDetailPage() {
                 !canAcceptDraft &&
                 !receptionIsPending &&
                 userPendingBgSteps.length === 0 &&
-                !qcpsNeedApproval && (
+                !qcpsNeedApproval &&
+                currentStep === "manager_approval" &&
+                !specsNeedReview && (
+                  <span className="text-xs text-green-600 italic">
+                    Coating spec and rubber plan accepted — awaiting PM release to factory
+                  </span>
+                )}
+              {!canApprove &&
+                !canAcceptDraft &&
+                !receptionIsPending &&
+                userPendingBgSteps.length === 0 &&
+                !qcpsNeedApproval &&
+                !(currentStep === "manager_approval" && !specsNeedReview) && (
                   <span className="text-xs text-gray-400 italic">
                     No pending actions for you on this job card
                   </span>

@@ -56,6 +56,7 @@ import { JobFileService } from "../services/job-file.service";
 import { RequisitionService } from "../services/requisition.service";
 import { RubberCuttingTrainingService } from "../services/rubber-cutting-training.service";
 import { StockAllocationService } from "../services/stock-allocation.service";
+import { WorkflowNotificationService } from "../services/workflow-notification.service";
 
 @ApiTags("Stock Control - Job Cards")
 @Controller("stock-control/job-cards")
@@ -75,6 +76,7 @@ export class JobCardsController {
     private readonly jobFileService: JobFileService,
     private readonly stockAllocationService: StockAllocationService,
     private readonly rubberCuttingTrainingService: RubberCuttingTrainingService,
+    private readonly workflowNotificationService: WorkflowNotificationService,
     @InjectRepository(StockItem)
     private readonly stockItemRepo: Repository<StockItem>,
     @InjectRepository(RubberDimensionOverride)
@@ -353,11 +355,30 @@ export class JobCardsController {
   @Patch(":id/coating-analysis/accept")
   @ApiOperation({ summary: "Accept coating analysis recommendation" })
   async acceptCoatingAnalysis(@Req() req: any, @Param("id") id: number) {
-    return this.coatingAnalysisService.acceptRecommendation(
+    const result = await this.coatingAnalysisService.acceptRecommendation(
       req.user.companyId,
       id,
       req.user.name || req.user.email || req.user.uid,
     );
+    await this.notifyManagerApprovalIfPending(req, id);
+    return result;
+  }
+
+  private async notifyManagerApprovalIfPending(req: any, jobCardId: number): Promise<void> {
+    try {
+      const jobCard = await this.jobCardService.findById(req.user.companyId, jobCardId);
+      if (jobCard.workflowStatus === "manager_approval") {
+        await this.workflowNotificationService.notifyApprovalRequired(
+          req.user.companyId,
+          jobCardId,
+          "manager_approval",
+          { id: req.user.id, name: req.user.name || req.user.email || "System" },
+        );
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Unknown error";
+      this.logger.warn(`Failed to notify PM for job card ${jobCardId}: ${message}`);
+    }
   }
 
   @StockControlRoles("admin")
@@ -630,6 +651,10 @@ export class JobCardsController {
           const message = err instanceof Error ? err.message : "Unknown error";
           this.logger.warn(`Failed to record suggestion feedback: ${message}`);
         });
+    }
+
+    if (dto.status === "accepted" || dto.status === "manual") {
+      await this.notifyManagerApprovalIfPending(req, id);
     }
 
     return result;
