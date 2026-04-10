@@ -96,6 +96,107 @@ export function CpoReleaseDocumentGenerator(props: CpoReleaseDocumentGeneratorPr
     setReleaseQuantities((prev) => ({ ...prev, [key]: clamped }));
   };
 
+  const handleRegenerate = async (release: QcItemsReleaseRecord) => {
+    if (
+      !confirm(
+        `Re-generate release #${release.id}? The old release will be deleted and replaced with a new one containing the same items, using the latest data.`,
+      )
+    ) {
+      return;
+    }
+    try {
+      setError(null);
+      const itemsToRegen: SelectedItem[] = [];
+      release.items.forEach((ri) => {
+        const matchingReleasable = releasableItems.find(
+          (r) =>
+            (r.itemCode || "").toLowerCase() === (ri.itemCode || "").toLowerCase() &&
+            (r.description || "").toLowerCase() === (ri.description || "").toLowerCase(),
+        );
+        if (matchingReleasable) {
+          let remaining = ri.quantity;
+          matchingReleasable.deliveries.forEach((d) => {
+            if (remaining <= 0) return;
+            const portion = Math.min(remaining, d.quantity);
+            if (portion > 0) {
+              itemsToRegen.push({
+                itemCode: ri.itemCode || "",
+                description: ri.description || "",
+                quantity: portion,
+                jobCardId: d.jobCardId,
+              });
+              remaining -= portion;
+            }
+          });
+        }
+      });
+
+      await stockControlApiClient.deleteItemsReleaseForCpo(cpoId, release.id);
+      await fetchData();
+
+      if (itemsToRegen.length === 0) {
+        setError("Could not match items from the old release to current deliveries");
+        return;
+      }
+
+      setPendingItems(itemsToRegen);
+      setShowSignatureModal(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to re-generate release");
+    }
+  };
+
+  const handleEdit = async (release: QcItemsReleaseRecord) => {
+    if (
+      !confirm(
+        `Edit release #${release.id}? The old release will be deleted and the items will be loaded into the form above so you can modify quantities or add/remove items.`,
+      )
+    ) {
+      return;
+    }
+    try {
+      setError(null);
+      const itemKeys = new Set<string>();
+      const quantities: Record<string, number> = {};
+      release.items.forEach((ri) => {
+        const code = (ri.itemCode || "").toLowerCase();
+        const desc = (ri.description || "").toLowerCase();
+        const key = `${code}||${desc}`;
+        itemKeys.add(key);
+        quantities[key] = (quantities[key] || 0) + ri.quantity;
+      });
+
+      await stockControlApiClient.deleteItemsReleaseForCpo(cpoId, release.id);
+      await fetchData();
+
+      setSelectedKeys(itemKeys);
+      setReleaseQuantities(quantities);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      setSuccess(
+        `Loaded ${release.items.length} item(s) from release #${release.id}. Modify quantities below and click Generate.`,
+      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load release for editing");
+    }
+  };
+
+  const handleDelete = async (release: QcItemsReleaseRecord) => {
+    if (
+      !confirm(
+        `Delete release #${release.id}? This cannot be undone. The released items will become available again for a new release.`,
+      )
+    ) {
+      return;
+    }
+    try {
+      setError(null);
+      await stockControlApiClient.deleteItemsReleaseForCpo(cpoId, release.id);
+      await fetchData();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to delete release");
+    }
+  };
+
   const handleGenerate = () => {
     setError(null);
     setSuccess(null);
@@ -357,11 +458,14 @@ export function CpoReleaseDocumentGenerator(props: CpoReleaseDocumentGeneratorPr
               const itemCount = release.items.length;
               const totalQty = release.totalQuantity;
               return (
-                <div key={release.id} className="flex items-center justify-between text-xs">
+                <div
+                  key={release.id}
+                  className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between text-xs py-1"
+                >
                   <span className="text-gray-600">
                     Release #{release.id} - {itemCount} item(s), qty {totalQty} - v{release.version}
                   </span>
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <button
                       type="button"
                       onClick={() =>
@@ -370,30 +474,30 @@ export function CpoReleaseDocumentGenerator(props: CpoReleaseDocumentGeneratorPr
                           `CPO_Release_${release.id}.pdf`,
                         )
                       }
-                      className="text-blue-600 hover:text-blue-800"
+                      className="rounded-md border border-blue-600 px-2.5 py-1 text-xs font-medium text-blue-600 hover:bg-blue-50"
                     >
-                      PDF
+                      View PDF
                     </button>
                     <button
                       type="button"
-                      onClick={async () => {
-                        if (
-                          !confirm(
-                            `Delete release #${release.id} and re-generate? This will allow you to create a new release with updated information.`,
-                          )
-                        ) {
-                          return;
-                        }
-                        try {
-                          await stockControlApiClient.deleteItemsReleaseForCpo(cpoId, release.id);
-                          fetchData();
-                        } catch (err) {
-                          setError(err instanceof Error ? err.message : "Failed to delete release");
-                        }
-                      }}
-                      className="text-red-600 hover:text-red-800"
+                      onClick={() => handleRegenerate(release)}
+                      className="rounded-md border border-teal-600 px-2.5 py-1 text-xs font-medium text-teal-600 hover:bg-teal-50"
                     >
-                      Delete & Regenerate
+                      Re-Gen
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleEdit(release)}
+                      className="rounded-md border border-amber-600 px-2.5 py-1 text-xs font-medium text-amber-600 hover:bg-amber-50"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDelete(release)}
+                      className="rounded-md border border-red-600 px-2.5 py-1 text-xs font-medium text-red-600 hover:bg-red-50"
+                    >
+                      Delete
                     </button>
                   </div>
                 </div>
