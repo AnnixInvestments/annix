@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useToast } from "@/app/components/Toast";
-import { useAuRubberAuth } from "@/app/context/AuRubberAuthContext";
+import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
 import {
   auRubberApiClient,
   type CreateRollIssuanceItemInput,
@@ -15,7 +15,6 @@ import {
   type RollIssuanceRollDto,
   type RollPhotoExtractionDto,
 } from "@/app/lib/api/auRubberApi";
-import { Breadcrumb } from "../../../components/Breadcrumb";
 
 type WizardStep = "identify" | "select-jcs" | "tick-items" | "review";
 
@@ -25,10 +24,10 @@ interface SelectedJc {
   selectedLineItemIds: Set<number>;
 }
 
-export default function NewRollIssuancePage() {
+export default function NewRubberIssuancePage() {
   const router = useRouter();
   const { showToast } = useToast();
-  const { user } = useAuRubberAuth();
+  const { profile } = useStockControlAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [step, setStep] = useState<WizardStep>("identify");
@@ -153,18 +152,17 @@ export default function NewRollIssuancePage() {
       .reduce((s, li) => s + (li.m2 || 0), sum);
   }, 0);
 
-  const thicknessMm = selectedRoll?.thicknessMm || extraction?.thicknessMm || null;
+  const rollThickness = selectedRoll ? selectedRoll.thicknessMm : null;
+  const extractionThickness = extraction ? extraction.thicknessMm : null;
+  const thicknessMm = rollThickness || extractionThickness || null;
   const estimatedUsageKg =
     thicknessMm && totalSelectedM2 > 0 ? totalSelectedM2 * (thicknessMm / 1000) * 1150 : null;
-  const rollWeight = selectedRoll?.weightKg || 0;
+  const rollWeight = selectedRoll ? selectedRoll.weightKg : 0;
   const expectedReturnKg = estimatedUsageKg !== null ? rollWeight - estimatedUsageKg : null;
 
   const handleSubmit = async () => {
     if (!selectedRoll) return;
-    const userName =
-      user?.firstName && user?.lastName
-        ? `${user.firstName} ${user.lastName}`
-        : user?.email || "Unknown";
+    const userName = profile ? profile.name : "Unknown";
 
     const jobCards: CreateRollIssuanceItemInput[] = selectedJcs.map((sjc) => ({
       jobCardId: sjc.jc.id,
@@ -242,7 +240,7 @@ export default function NewRollIssuancePage() {
           </div>
           <div className="mt-6">
             <button
-              onClick={() => router.push("/au-rubber/portal/roll-issuing")}
+              onClick={() => router.push("/stock-control/portal/rubber-issuing")}
               className="w-full px-4 py-3 text-sm font-medium text-white bg-yellow-600 rounded-md hover:bg-yellow-700"
             >
               Done
@@ -256,12 +254,13 @@ export default function NewRollIssuancePage() {
 
   return (
     <div className="space-y-4 pb-24">
-      <Breadcrumb
-        items={[
-          { label: "Roll Issuing", href: "/au-rubber/portal/roll-issuing" },
-          { label: "New Issuance" },
-        ]}
-      />
+      <div className="flex items-center gap-2 text-sm text-gray-500">
+        <a href="/stock-control/portal/rubber-issuing" className="hover:text-yellow-700">
+          Rubber Issuing
+        </a>
+        <span>/</span>
+        <span className="text-gray-900">New Issuance</span>
+      </div>
 
       <div className="flex gap-1 mb-4">
         {(["identify", "select-jcs", "tick-items", "review"] as WizardStep[]).map((s, i) => {

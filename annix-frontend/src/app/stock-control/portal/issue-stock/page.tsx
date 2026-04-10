@@ -1149,6 +1149,35 @@ export default function IssueStockPage() {
           </div>
         </div>
 
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <svg
+              className="w-5 h-5 text-amber-600 flex-shrink-0"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
+            </svg>
+            <div className="text-sm text-amber-900">
+              <strong>Issuing rubber rolls?</strong> This page is for consumable stock (paint,
+              primers, thinners, consumables). Rubber rolls are tracked by weight and roll ID on the
+              Rubber Issuing page.
+            </div>
+          </div>
+          <a
+            href="/stock-control/portal/rubber-issuing/new"
+            className="flex-shrink-0 px-3 py-1.5 text-xs font-semibold text-white bg-amber-600 rounded hover:bg-amber-700 whitespace-nowrap"
+          >
+            Go to Rubber Issuing →
+          </a>
+        </div>
+
         <div className="flex flex-wrap gap-4 bg-gray-50 rounded-lg p-3">
           <label className="flex items-center gap-2 cursor-pointer">
             <input
