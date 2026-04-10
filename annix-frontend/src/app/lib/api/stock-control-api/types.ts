@@ -1133,6 +1133,7 @@ export interface CpoReleasableItem {
   description: string | null;
   orderedQty: number;
   arrivedQty: number;
+  releasedQty: number;
   remainingToRelease: number;
   deliveries: { jobCardId: number; jtNumber: string | null; quantity: number }[];
 }

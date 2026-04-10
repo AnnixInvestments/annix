@@ -205,6 +205,7 @@ export function CpoReleaseDocumentGenerator(props: CpoReleaseDocumentGeneratorPr
                   <th className="hidden sm:table-cell px-2 py-2 text-right font-medium text-gray-500">
                     Arrived
                   </th>
+                  <th className="px-2 py-2 text-right font-medium text-gray-500">Released</th>
                   <th className="px-2 py-2 text-right font-medium text-gray-500">Remaining</th>
                   <th className="px-2 py-2 text-right font-medium text-gray-500">Release Qty</th>
                   <th className="hidden md:table-cell px-2 py-2 text-left font-medium text-gray-500">
@@ -249,6 +250,15 @@ export function CpoReleaseDocumentGenerator(props: CpoReleaseDocumentGeneratorPr
                           className={isArrived ? "text-green-700 font-medium" : "text-gray-400"}
                         >
                           {item.arrivedQty}
+                        </span>
+                      </td>
+                      <td className="px-2 py-2 text-right">
+                        <span
+                          className={
+                            item.releasedQty > 0 ? "text-purple-700 font-medium" : "text-gray-400"
+                          }
+                        >
+                          {item.releasedQty}
                         </span>
                       </td>
                       <td className="px-2 py-2 text-right">
@@ -325,18 +335,41 @@ export function CpoReleaseDocumentGenerator(props: CpoReleaseDocumentGeneratorPr
                   <span className="text-gray-600">
                     Release #{release.id} - {itemCount} item(s), qty {totalQty} - v{release.version}
                   </span>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      pdfPreview.openWithFetch(
-                        () => stockControlApiClient.openItemsReleasePdfForCpo(cpoId, release.id),
-                        `CPO_Release_${release.id}.pdf`,
-                      )
-                    }
-                    className="text-blue-600 hover:text-blue-800"
-                  >
-                    PDF
-                  </button>
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        pdfPreview.openWithFetch(
+                          () => stockControlApiClient.openItemsReleasePdfForCpo(cpoId, release.id),
+                          `CPO_Release_${release.id}.pdf`,
+                        )
+                      }
+                      className="text-blue-600 hover:text-blue-800"
+                    >
+                      PDF
+                    </button>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        if (
+                          !confirm(
+                            `Delete release #${release.id} and re-generate? This will allow you to create a new release with updated information.`,
+                          )
+                        ) {
+                          return;
+                        }
+                        try {
+                          await stockControlApiClient.deleteItemsReleaseForCpo(cpoId, release.id);
+                          fetchData();
+                        } catch (err) {
+                          setError(err instanceof Error ? err.message : "Failed to delete release");
+                        }
+                      }}
+                      className="text-red-600 hover:text-red-800"
+                    >
+                      Delete & Regenerate
+                    </button>
+                  </div>
                 </div>
               );
             })}

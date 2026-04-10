@@ -815,6 +815,37 @@ export class QcMeasurementService {
     await this.itemsReleaseRepo.remove(record);
   }
 
+  async deleteCpoItemsRelease(companyId: number, id: number): Promise<void> {
+    const cpoRelease = await this.findOrFail(
+      this.itemsReleaseRepo,
+      companyId,
+      id,
+      "CPO items release",
+    );
+    if (!cpoRelease.cpoId) {
+      await this.itemsReleaseRepo.remove(cpoRelease);
+      return;
+    }
+
+    const createdAt = cpoRelease.createdAt;
+    const windowStart = new Date(createdAt.getTime() - 5000);
+    const windowEnd = new Date(createdAt.getTime() + 5000);
+
+    const childReleases = await this.itemsReleaseRepo
+      .createQueryBuilder("r")
+      .where("r.companyId = :companyId", { companyId })
+      .andWhere("r.cpoId IS NULL")
+      .andWhere("r.jobCardId IS NOT NULL")
+      .andWhere("r.createdAt BETWEEN :start AND :end", { start: windowStart, end: windowEnd })
+      .andWhere("r.createdById = :createdById", { createdById: cpoRelease.createdById })
+      .getMany();
+
+    if (childReleases.length > 0) {
+      await this.itemsReleaseRepo.remove(childReleases);
+    }
+    await this.itemsReleaseRepo.remove(cpoRelease);
+  }
+
   private async coatingSpecsForJobCard(
     companyId: number,
     jobCardId: number,
@@ -1774,6 +1805,7 @@ export class QcMeasurementService {
       description: string | null;
       orderedQty: number;
       arrivedQty: number;
+      releasedQty: number;
       remainingToRelease: number;
       deliveries: { jobCardId: number; jtNumber: string | null; quantity: number }[];
     }[];
@@ -1887,6 +1919,7 @@ export class QcMeasurementService {
         description: ci.itemDescription,
         orderedQty: ci.totalOrdered,
         arrivedQty,
+        releasedQty: alreadyReleased,
         remainingToRelease,
         deliveries,
       };

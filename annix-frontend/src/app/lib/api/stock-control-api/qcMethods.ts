@@ -161,6 +161,7 @@ declare module "./base" {
     deleteControlPlanForCpo(cpoId: number, id: number): Promise<void>;
     openControlPlanPdfForCpo(cpoId: number, id: number): Promise<Blob>;
     itemsReleasesForCpo(cpoId: number): Promise<QcItemsReleaseRecord[]>;
+    deleteItemsReleaseForCpo(cpoId: number, id: number): Promise<void>;
     releasableItemsForCpo(cpoId: number): Promise<{ items: CpoReleasableItem[] }>;
     autoGenerateReleaseDocumentsForCpo(
       cpoId: number,
@@ -623,6 +624,10 @@ proto.openControlPlanPdfForCpo = async function (cpoId, id) {
 
 proto.itemsReleasesForCpo = async function (cpoId) {
   return this.request(`/stock-control/cpos/${cpoId}/qc/items-releases`);
+};
+
+proto.deleteItemsReleaseForCpo = async function (cpoId, id) {
+  return this.request(`/stock-control/cpos/${cpoId}/qc/items-releases/${id}`, { method: "DELETE" });
 };
 
 proto.releasableItemsForCpo = async function (cpoId) {

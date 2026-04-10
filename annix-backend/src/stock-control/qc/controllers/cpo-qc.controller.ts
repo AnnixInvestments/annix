@@ -126,6 +126,15 @@ export class CpoQcController {
     return this.qcService.itemsReleasesForCpo(req.user.companyId, cpoId);
   }
 
+  @Delete("items-releases/:id")
+  @StockControlRoles("quality", "manager", "admin")
+  @PermissionKey("qc.measurements")
+  @ApiOperation({ summary: "Delete CPO items release and cascaded child JC releases" })
+  async deleteCpoItemsRelease(@Req() req: any, @Param("id") id: number) {
+    await this.qcService.deleteCpoItemsRelease(req.user.companyId, id);
+    return { deleted: true };
+  }
+
   @Get("releasable-items")
   @ApiOperation({ summary: "Items with arrival status for CPO release" })
   async releasableItems(@Req() req: any, @Param("cpoId") cpoId: number) {
