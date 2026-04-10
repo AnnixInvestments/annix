@@ -1246,13 +1246,19 @@ export class IssuanceService {
 
   private isBandingCoat(productName: string, rawNotes: string | null): boolean {
     const productUpper = productName.toUpperCase();
+    if (productUpper.includes("BANDING")) {
+      return true;
+    }
+    if (/RAL\s*\d/i.test(productName)) {
+      return true;
+    }
     if (!rawNotes) {
-      return productUpper.includes("BANDING");
+      return false;
     }
     const notesUpper = rawNotes.toUpperCase();
     const bandingIdx = notesUpper.indexOf("BANDING");
     if (bandingIdx < 0) {
-      return productUpper.includes("BANDING");
+      return false;
     }
     const afterBanding = notesUpper.substring(bandingIdx);
     return afterBanding.includes(productUpper);
