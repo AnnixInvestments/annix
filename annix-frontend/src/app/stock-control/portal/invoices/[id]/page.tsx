@@ -695,10 +695,35 @@ export default function InvoiceDetailPage() {
         <div className="space-y-6">
           {!invoice.deliveryNoteId && (
             <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-              <h3 className="text-sm font-medium text-amber-800 mb-3">Link to Delivery Note</h3>
-              <p className="text-xs text-amber-600 mb-4">
-                This invoice is not linked to a delivery note. Link it to match stock deliveries.
+              <h3 className="text-sm font-medium text-amber-800 mb-2 flex items-center gap-2">
+                <svg
+                  className="h-5 w-5 text-amber-600"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                  />
+                </svg>
+                No Delivery Note — Stock NOT received yet
+              </h3>
+              <p className="text-xs text-amber-700 mb-3">
+                <strong>
+                  Approving this invoice only updates cost prices, not stock quantities.
+                </strong>{" "}
+                To increase stock for the items on this invoice, you must either link an existing
+                delivery note below or create a new one from the Deliveries page.
               </p>
+              <a
+                href="/stock-control/portal/deliveries"
+                className="inline-flex items-center mb-3 rounded-md bg-amber-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-amber-700"
+              >
+                + Create Delivery Note
+              </a>
 
               {linkError && (
                 <div className="mb-3 p-2 bg-red-50 border border-red-200 rounded-md">
