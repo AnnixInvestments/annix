@@ -102,10 +102,12 @@ export function CpoReleaseDocumentGenerator(props: CpoReleaseDocumentGeneratorPr
         if (!selectedKeys.has(key)) return;
 
         const rawQty = releaseQuantities[key];
-        const qty = rawQty || item.remainingToRelease;
+        const targetQty = rawQty || item.remainingToRelease;
+        let remaining = targetQty;
 
         item.deliveries.forEach((delivery) => {
-          const deliveryPortion = Math.min(qty, delivery.quantity);
+          if (remaining <= 0) return;
+          const deliveryPortion = Math.min(remaining, delivery.quantity);
           if (deliveryPortion > 0) {
             selectedItems.push({
               itemCode: item.itemCode || "",
@@ -113,6 +115,7 @@ export function CpoReleaseDocumentGenerator(props: CpoReleaseDocumentGeneratorPr
               quantity: deliveryPortion,
               jobCardId: delivery.jobCardId,
             });
+            remaining -= deliveryPortion;
           }
         });
       });
