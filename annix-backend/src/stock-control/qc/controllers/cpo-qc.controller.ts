@@ -155,6 +155,7 @@ export class CpoQcController {
         quantity: number;
         jobCardId: number;
       }[];
+      checkedBy?: { name: string; date: string; signature: string };
     },
   ) {
     return this.qcService.autoGenerateReleaseDocumentsForCpo(
@@ -162,6 +163,7 @@ export class CpoQcController {
       cpoId,
       body.selectedItems,
       req.user,
+      body.checkedBy,
     );
   }
 

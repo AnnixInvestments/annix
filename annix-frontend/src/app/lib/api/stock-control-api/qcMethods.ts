@@ -171,6 +171,11 @@ declare module "./base" {
         quantity: number;
         jobCardId: number;
       }[],
+      checkedBy?: {
+        name: string;
+        date: string;
+        signature: string;
+      },
     ): Promise<CpoReleaseDocumentsResult>;
     openItemsReleasePdfForCpo(cpoId: number, id: number): Promise<Blob>;
     batchAssignmentsForCpo(cpoId: number): Promise<QcBatchAssignment[]>;
@@ -634,11 +639,11 @@ proto.releasableItemsForCpo = async function (cpoId) {
   return this.request(`/stock-control/cpos/${cpoId}/qc/releasable-items`);
 };
 
-proto.autoGenerateReleaseDocumentsForCpo = async function (cpoId, selectedItems) {
+proto.autoGenerateReleaseDocumentsForCpo = async function (cpoId, selectedItems, checkedBy) {
   return this.request(`/stock-control/cpos/${cpoId}/qc/release-documents/auto-generate`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ selectedItems }),
+    body: JSON.stringify({ selectedItems, checkedBy }),
   });
 };
 

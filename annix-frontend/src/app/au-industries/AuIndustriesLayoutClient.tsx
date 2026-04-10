@@ -51,7 +51,7 @@ export function AuIndustriesLayoutClient(props: { children: React.ReactNode }) {
     "@type": "LocalBusiness",
     name: companyName,
     description:
-      "Rubber lining, rubber sheeting, HDPE lining, and industrial rubber solutions for mining, chemical processing, and water treatment in South Africa.",
+      "BEE Level 4 certified supplier of rubber lining, rubber sheeting, HDPE lining, and industrial rubber solutions for mining, chemical processing, and water treatment in South Africa.",
     url: "https://auind.co.za",
     logo: "https://auind.co.za/au-industries/logo.jpg",
     image: "https://auind.co.za/au-industries/hero-excavator.jpg",
@@ -85,6 +85,12 @@ export function AuIndustriesLayoutClient(props: { children: React.ReactNode }) {
       { "@type": "Country", name: "Botswana" },
       { "@type": "Country", name: "Zimbabwe" },
     ],
+    award: "B-BBEE Level 4 Certified — 100% Procurement Recognition",
+    additionalProperty: {
+      "@type": "PropertyValue",
+      name: "B-BBEE Status",
+      value: "Level 4",
+    },
     priceRange: "$$",
     sameAs: [],
   };

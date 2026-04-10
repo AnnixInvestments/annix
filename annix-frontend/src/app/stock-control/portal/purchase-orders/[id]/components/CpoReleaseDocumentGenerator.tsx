@@ -1,9 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { PdfPreviewModal, usePdfPreview } from "@/app/components/PdfPreviewModal";
 import type { CpoReleasableItem, QcItemsReleaseRecord } from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
+import { now } from "@/app/lib/datetime";
+import { SignaturePad } from "@/app/stock-control/components/SignaturePad";
 
 interface CpoReleaseDocumentGeneratorProps {
   cpoId: number;
@@ -27,6 +30,10 @@ export function CpoReleaseDocumentGenerator(props: CpoReleaseDocumentGeneratorPr
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [showSignatureModal, setShowSignatureModal] = useState(false);
+  const [pendingItems, setPendingItems] = useState<SelectedItem[]>([]);
+  const [signatureName, setSignatureName] = useState("");
+  const [signatureDate, setSignatureDate] = useState(now().toFormat("yyyy-MM-dd"));
   const pdfPreview = usePdfPreview();
 
   const fetchData = useCallback(async () => {
@@ -89,53 +96,72 @@ export function CpoReleaseDocumentGenerator(props: CpoReleaseDocumentGeneratorPr
     setReleaseQuantities((prev) => ({ ...prev, [key]: clamped }));
   };
 
-  const handleGenerate = async () => {
+  const handleGenerate = () => {
+    setError(null);
+    setSuccess(null);
+
+    const selectedItems: SelectedItem[] = [];
+
+    releasableItems.forEach((item) => {
+      const key = itemKey(item);
+      if (!selectedKeys.has(key)) return;
+
+      const rawQty = releaseQuantities[key];
+      const targetQty = rawQty || item.remainingToRelease;
+      let remaining = targetQty;
+
+      item.deliveries.forEach((delivery) => {
+        if (remaining <= 0) return;
+        const deliveryPortion = Math.min(remaining, delivery.quantity);
+        if (deliveryPortion > 0) {
+          selectedItems.push({
+            itemCode: item.itemCode || "",
+            description: item.description || "",
+            quantity: deliveryPortion,
+            jobCardId: delivery.jobCardId,
+          });
+          remaining -= deliveryPortion;
+        }
+      });
+    });
+
+    if (selectedItems.length === 0) {
+      setError("No items selected for release");
+      return;
+    }
+
+    setPendingItems(selectedItems);
+    setShowSignatureModal(true);
+  };
+
+  const handleGenerateWithSignature = async (signatureDataUrl: string) => {
+    if (pendingItems.length === 0) return;
+    if (!signatureName.trim()) {
+      setError("Inspector name is required");
+      return;
+    }
     try {
       setIsGenerating(true);
       setError(null);
-      setSuccess(null);
-
-      const selectedItems: SelectedItem[] = [];
-
-      releasableItems.forEach((item) => {
-        const key = itemKey(item);
-        if (!selectedKeys.has(key)) return;
-
-        const rawQty = releaseQuantities[key];
-        const targetQty = rawQty || item.remainingToRelease;
-        let remaining = targetQty;
-
-        item.deliveries.forEach((delivery) => {
-          if (remaining <= 0) return;
-          const deliveryPortion = Math.min(remaining, delivery.quantity);
-          if (deliveryPortion > 0) {
-            selectedItems.push({
-              itemCode: item.itemCode || "",
-              description: item.description || "",
-              quantity: deliveryPortion,
-              jobCardId: delivery.jobCardId,
-            });
-            remaining -= deliveryPortion;
-          }
-        });
-      });
-
-      if (selectedItems.length === 0) {
-        setError("No items selected for release");
-        return;
-      }
+      setShowSignatureModal(false);
 
       const result = await stockControlApiClient.autoGenerateReleaseDocumentsForCpo(
         cpoId,
-        selectedItems,
+        pendingItems,
+        {
+          name: signatureName.trim(),
+          date: signatureDate,
+          signature: signatureDataUrl,
+        },
       );
 
       const childCount = result.childReleases.length;
       setSuccess(
-        `Release created with ${selectedItems.length} item(s), cascaded to ${childCount} child JC(s)`,
+        `Release created with ${pendingItems.length} item(s), cascaded to ${childCount} child JC(s)`,
       );
       setSelectedKeys(new Set());
       setReleaseQuantities({});
+      setPendingItems([]);
       fetchData();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to generate release documents");
@@ -377,6 +403,60 @@ export function CpoReleaseDocumentGenerator(props: CpoReleaseDocumentGeneratorPr
         </div>
       )}
       <PdfPreviewModal state={pdfPreview.state} onClose={pdfPreview.close} />
+
+      {showSignatureModal &&
+        createPortal(
+          <div
+            className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
+            role="dialog"
+            aria-modal="true"
+          >
+            <div
+              className="fixed inset-0 bg-black/10 backdrop-blur-md"
+              onClick={() => setShowSignatureModal(false)}
+              aria-hidden="true"
+            />
+            <div className="relative bg-white rounded-lg shadow-xl w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Sign Release Document</h3>
+              <p className="text-xs text-gray-500 mb-4">
+                Releasing {pendingItems.length} item(s). Sign as the QAM to confirm inspection.
+              </p>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Inspector Name
+                  </label>
+                  <input
+                    type="text"
+                    value={signatureName}
+                    onChange={(e) => setSignatureName(e.target.value)}
+                    placeholder="Your name"
+                    className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Inspection Date
+                  </label>
+                  <input
+                    type="date"
+                    value={signatureDate}
+                    onChange={(e) => setSignatureDate(e.target.value)}
+                    className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Signature</label>
+                  <SignaturePad
+                    onSave={(dataUrl) => handleGenerateWithSignature(dataUrl)}
+                    onCancel={() => setShowSignatureModal(false)}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>,
+          document.body,
+        )}
     </div>
   );
 }

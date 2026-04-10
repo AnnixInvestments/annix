@@ -1938,6 +1938,7 @@ export class QcMeasurementService {
       jobCardId: number;
     }[],
     user: UserContext,
+    checkedBy?: { name: string; date: string; signature: string },
   ): Promise<{ cpoRelease: QcItemsRelease; childReleases: QcItemsRelease[] }> {
     if (selectedItems.length === 0) {
       throw new BadRequestException("No items selected for release");
@@ -1946,16 +1947,50 @@ export class QcMeasurementService {
     const firstChildJcId = selectedItems[0].jobCardId;
     const specs = await this.coatingSpecsForJobCard(companyId, firstChildJcId);
 
-    const cpoReleaseItems: ReleaseLineItem[] = selectedItems.map((si) => ({
-      itemCode: si.itemCode,
-      description: si.description,
-      jtNumber: null,
-      rubberSpec: specs.rubberSpec,
-      paintingSpec: specs.paintingSpec,
-      quantity: si.quantity,
-      result: ItemReleaseResult.PASS,
-      itemNo: null,
-    }));
+    const cpo = await this.cpoRepo.findOne({
+      where: { id: cpoId, companyId },
+      relations: ["items"],
+    });
+    const cpoItemNoLookup = new Map<string, string>();
+    if (cpo) {
+      cpo.items.forEach((ci) => {
+        const code = (ci.itemCode || "").trim().toLowerCase();
+        const desc = (ci.itemDescription || "").trim().toLowerCase();
+        const key = `${code}||${desc}`;
+        if (ci.itemNo) {
+          cpoItemNoLookup.set(key, ci.itemNo);
+        }
+      });
+    }
+
+    const stripBanding = (spec: string | null): string | null => {
+      if (!spec) return spec;
+      const bandingIdx = spec.toUpperCase().indexOf("BANDING");
+      if (bandingIdx < 0) return spec;
+      return spec
+        .substring(0, bandingIdx)
+        .trim()
+        .replace(/[+&,]\s*$/, "")
+        .trim();
+    };
+
+    const cleanPaintingSpec = stripBanding(specs.paintingSpec);
+
+    const cpoReleaseItems: ReleaseLineItem[] = selectedItems.map((si) => {
+      const code = (si.itemCode || "").trim().toLowerCase();
+      const desc = (si.description || "").trim().toLowerCase();
+      const lookupKey = `${code}||${desc}`;
+      return {
+        itemCode: si.itemCode,
+        description: si.description,
+        jtNumber: null,
+        rubberSpec: specs.rubberSpec,
+        paintingSpec: cleanPaintingSpec,
+        quantity: si.quantity,
+        result: ItemReleaseResult.PASS,
+        itemNo: cpoItemNoLookup.get(lookupKey) ?? null,
+      };
+    });
 
     const totalQuantity = cpoReleaseItems.reduce((sum, item) => sum + item.quantity, 0);
 
@@ -1968,7 +2003,12 @@ export class QcMeasurementService {
         totalQuantity,
         createdByName: user.name,
         createdById: user.id,
-        plsSignOff: { name: null, date: null, signatureUrl: null },
+        checkedByName: checkedBy?.name ?? null,
+        checkedByDate: checkedBy?.date ?? null,
+        checkedBySignature: checkedBy?.signature ?? null,
+        plsSignOff: checkedBy
+          ? { name: checkedBy.name, date: checkedBy.date, signatureUrl: checkedBy.signature }
+          : { name: null, date: null, signatureUrl: null },
         mpsSignOff: { name: null, date: null, signatureUrl: null },
         clientSignOff: { name: null, date: null, signatureUrl: null },
         thirdPartySignOff: { name: null, date: null, signatureUrl: null },
@@ -1988,17 +2028,39 @@ export class QcMeasurementService {
     for (const [jcIdStr, jcItems] of Object.entries(itemsByJobCard)) {
       const jcId = Number(jcIdStr);
       const jcSpecs = await this.coatingSpecsForJobCard(companyId, jcId);
+      const cleanJcPaintingSpec = stripBanding(jcSpecs.paintingSpec);
 
-      const jcReleaseItems: ReleaseLineItem[] = jcItems.map((si) => ({
-        itemCode: si.itemCode,
-        description: si.description,
-        jtNumber: null,
-        rubberSpec: jcSpecs.rubberSpec,
-        paintingSpec: jcSpecs.paintingSpec,
-        quantity: si.quantity,
-        result: ItemReleaseResult.PASS,
-        itemNo: null,
-      }));
+      const jcCard = await this.jobCardRepo.findOne({
+        where: { id: jcId, companyId },
+        relations: ["lineItems"],
+      });
+      const jcItemNoLookup = new Map<string, string>();
+      if (jcCard) {
+        (jcCard.lineItems || []).forEach((li) => {
+          const code = (li.itemCode || "").trim().toLowerCase();
+          const desc = (li.itemDescription || "").trim().toLowerCase();
+          const key = `${code}||${desc}`;
+          if (li.itemNo) {
+            jcItemNoLookup.set(key, li.itemNo);
+          }
+        });
+      }
+
+      const jcReleaseItems: ReleaseLineItem[] = jcItems.map((si) => {
+        const code = (si.itemCode || "").trim().toLowerCase();
+        const desc = (si.description || "").trim().toLowerCase();
+        const lookupKey = `${code}||${desc}`;
+        return {
+          itemCode: si.itemCode,
+          description: si.description,
+          jtNumber: null,
+          rubberSpec: jcSpecs.rubberSpec,
+          paintingSpec: cleanJcPaintingSpec,
+          quantity: si.quantity,
+          result: ItemReleaseResult.PASS,
+          itemNo: jcItemNoLookup.get(lookupKey) ?? cpoItemNoLookup.get(lookupKey) ?? null,
+        };
+      });
 
       const jcTotal = jcReleaseItems.reduce((sum, item) => sum + item.quantity, 0);
 
@@ -2011,7 +2073,12 @@ export class QcMeasurementService {
           totalQuantity: jcTotal,
           createdByName: user.name,
           createdById: user.id,
-          plsSignOff: { name: null, date: null, signatureUrl: null },
+          checkedByName: checkedBy?.name ?? null,
+          checkedByDate: checkedBy?.date ?? null,
+          checkedBySignature: checkedBy?.signature ?? null,
+          plsSignOff: checkedBy
+            ? { name: checkedBy.name, date: checkedBy.date, signatureUrl: checkedBy.signature }
+            : { name: null, date: null, signatureUrl: null },
           mpsSignOff: { name: null, date: null, signatureUrl: null },
           clientSignOff: { name: null, date: null, signatureUrl: null },
           thirdPartySignOff: { name: null, date: null, signatureUrl: null },
