@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import React, { Suspense, useEffect, useLayoutEffect } from "react";
+import React, { Suspense, useEffect, useLayoutEffect, useState } from "react";
 import { FeedbackWidget } from "@/app/components/FeedbackWidget";
 import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
 import { ChatPanel } from "../components/ChatPanel";
@@ -51,9 +51,16 @@ function PageAccessGuard({ children }: { children: React.ReactNode }) {
   const { rbacConfig, isLoaded } = useStockControlRbac();
   const { effectiveRole } = useViewAs();
   const { profile } = useStockControlAuth();
+  const [accessDenied, setAccessDenied] = useState<{
+    label: string;
+    reason: "rbac" | "qc" | "staffLeave";
+  } | null>(null);
 
   useEffect(() => {
-    if (!isLoaded) return;
+    if (!isLoaded) {
+      setAccessDenied(null);
+      return;
+    }
 
     const candidates = ALL_NAV_ITEMS.filter((item) => {
       if (item.group === "hidden") return false;
@@ -63,24 +70,67 @@ function PageAccessGuard({ children }: { children: React.ReactNode }) {
 
     const matchingItem = candidates[0] ?? null;
 
-    if (!matchingItem) return;
-
-    const hasAccess = isNavItemAllowedForRole(matchingItem, effectiveRole, rbacConfig);
+    if (!matchingItem) {
+      setAccessDenied(null);
+      return;
+    }
 
     if (matchingItem.requiresQc && !profile?.qcEnabled && effectiveRole !== "admin") {
-      router.replace("/stock-control/portal/dashboard");
+      setAccessDenied({ label: matchingItem.label, reason: "qc" });
       return;
     }
 
     if (matchingItem.requiresStaffLeave && !profile?.staffLeaveEnabled) {
-      router.replace("/stock-control/portal/dashboard");
+      setAccessDenied({ label: matchingItem.label, reason: "staffLeave" });
       return;
     }
 
+    const hasAccess = isNavItemAllowedForRole(matchingItem, effectiveRole, rbacConfig);
     if (!hasAccess) {
-      router.replace("/stock-control/portal/dashboard");
+      setAccessDenied({ label: matchingItem.label, reason: "rbac" });
+      return;
     }
-  }, [pathname, rbacConfig, effectiveRole, isLoaded, router, profile]);
+
+    setAccessDenied(null);
+  }, [pathname, rbacConfig, effectiveRole, isLoaded, profile]);
+
+  if (accessDenied) {
+    const reasonText =
+      accessDenied.reason === "qc"
+        ? "The Quality Control module is not enabled for your company. Contact your administrator to enable it."
+        : accessDenied.reason === "staffLeave"
+          ? "The Staff Leave module is not enabled for your company. Contact your administrator to enable it."
+          : `Your role (${effectiveRole}) does not have permission to access "${accessDenied.label}". Contact your administrator to request access.`;
+
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center p-6">
+        <div className="max-w-md rounded-lg border border-amber-200 bg-amber-50 p-6 text-center shadow-sm">
+          <svg
+            className="mx-auto h-12 w-12 text-amber-500"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+            />
+          </svg>
+          <h2 className="mt-3 text-lg font-semibold text-gray-900">Access Denied</h2>
+          <p className="mt-2 text-sm text-gray-700">{reasonText}</p>
+          <button
+            type="button"
+            onClick={() => router.replace("/stock-control/portal/dashboard")}
+            className="mt-4 rounded-md bg-teal-600 px-4 py-2 text-sm font-medium text-white hover:bg-teal-700"
+          >
+            Back to Dashboard
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return <>{children}</>;
 }
