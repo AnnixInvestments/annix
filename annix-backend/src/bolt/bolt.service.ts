@@ -1,7 +1,7 @@
-import { BadRequestException, Injectable } from "@nestjs/common";
+import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
-import { findOneOrFail } from "../lib/entity-helpers";
+import { BaseCrudService } from "../lib/base-crud.service";
 import { NutMass } from "../nut-mass/entities/nut-mass.entity";
 import { Washer } from "../washer/entities/washer.entity";
 import { CreateBoltDto } from "./dto/create-bolt.dto";
@@ -11,10 +11,17 @@ import { PipeClampEntity } from "./entities/pipe-clamp.entity";
 import { ThreadedInsert } from "./entities/threaded-insert.entity";
 import { UBoltEntity } from "./entities/u-bolt.entity";
 
+export interface BoltFilters {
+  grade?: string;
+  material?: string;
+  headStyle?: string;
+  size?: string;
+}
+
 @Injectable()
-export class BoltService {
+export class BoltService extends BaseCrudService<Bolt, CreateBoltDto, UpdateBoltDto> {
   constructor(
-    @InjectRepository(Bolt) private readonly boltRepo: Repository<Bolt>,
+    @InjectRepository(Bolt) boltRepo: Repository<Bolt>,
     @InjectRepository(UBoltEntity)
     private readonly uBoltRepo: Repository<UBoltEntity>,
     @InjectRepository(PipeClampEntity)
@@ -25,25 +32,24 @@ export class BoltService {
     private readonly washerRepo: Repository<Washer>,
     @InjectRepository(ThreadedInsert)
     private readonly threadedInsertRepo: Repository<ThreadedInsert>,
-  ) {}
-
-  async create(createBoltDto: CreateBoltDto): Promise<Bolt> {
-    const exists = await this.boltRepo.findOne({
-      where: { designation: createBoltDto.designation },
-    });
-    if (exists) throw new BadRequestException(`Bolt ${createBoltDto.designation} already exists`);
-
-    const bolt = this.boltRepo.create(createBoltDto);
-    return this.boltRepo.save(bolt);
+  ) {
+    super(boltRepo, { entityName: "Bolt" });
   }
 
-  async findAll(filters?: {
-    grade?: string;
-    material?: string;
-    headStyle?: string;
-    size?: string;
-  }): Promise<Bolt[]> {
-    const query = this.boltRepo.createQueryBuilder("bolt");
+  async create(dto: CreateBoltDto): Promise<Bolt> {
+    await this.checkUnique(
+      { designation: dto.designation },
+      `Bolt ${dto.designation} already exists`,
+    );
+    return super.create(dto);
+  }
+
+  async findAll(input?: BoltFilters | string[]): Promise<Bolt[]> {
+    if (Array.isArray(input)) {
+      return super.findAll(input);
+    }
+    const filters = input;
+    const query = this.repo.createQueryBuilder("bolt");
 
     if (filters?.grade) {
       query.andWhere("bolt.grade = :grade", { grade: filters.grade });
@@ -67,28 +73,19 @@ export class BoltService {
     return query.orderBy("bolt.designation", "ASC").getMany();
   }
 
-  async findOne(id: number): Promise<Bolt> {
-    return findOneOrFail(this.boltRepo, { where: { id } }, "Bolt");
-  }
-
   async update(id: number, dto: UpdateBoltDto): Promise<Bolt> {
     const bolt = await this.findOne(id);
 
     if (dto.designation) {
-      const exists = await this.boltRepo.findOne({
-        where: { designation: dto.designation },
-      });
-      if (exists && exists.id !== id)
-        throw new BadRequestException(`Bolt ${dto.designation} already exists`);
+      await this.checkUniqueExceptId(
+        { designation: dto.designation },
+        id,
+        `Bolt ${dto.designation} already exists`,
+      );
       bolt.designation = dto.designation;
     }
 
-    return this.boltRepo.save(bolt);
-  }
-
-  async remove(id: number): Promise<void> {
-    const bolt = await this.findOne(id);
-    await this.boltRepo.remove(bolt);
+    return this.repo.save(bolt);
   }
 
   async uBolts(nbMm?: number): Promise<UBoltEntity[]> {
@@ -143,7 +140,7 @@ export class BoltService {
   async fastenerTypesGrouped(): Promise<
     Array<{ category: string; types: Array<{ type: string; count: number }> }>
   > {
-    const boltCategories = await this.boltRepo
+    const boltCategories = await this.repo
       .createQueryBuilder("b")
       .select("b.category", "type")
       .addSelect("COUNT(*)", "count")
@@ -184,7 +181,7 @@ export class BoltService {
 
   async fastenerSizesForType(category: string, type: string): Promise<Array<{ size: string }>> {
     if (category === "bolt") {
-      const results = await this.boltRepo
+      const results = await this.repo
         .createQueryBuilder("b")
         .select("DISTINCT b.designation", "size")
         .where("b.category = :type", { type })
@@ -227,7 +224,7 @@ export class BoltService {
     size: string,
   ): Promise<Array<{ grade: string | null; material: string | null }>> {
     if (category === "bolt") {
-      const results = await this.boltRepo
+      const results = await this.repo
         .createQueryBuilder("b")
         .select("DISTINCT b.grade", "grade")
         .addSelect("b.material", "material")

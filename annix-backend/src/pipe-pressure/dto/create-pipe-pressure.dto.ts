@@ -1,9 +1,12 @@
-// export class CreatePipePressureDto {}
-
 import { ApiProperty } from "@nestjs/swagger";
 import { IsNotEmpty, IsNumber, IsOptional } from "class-validator";
 
 export class CreatePipePressureDto {
+  @ApiProperty({ description: "Pipe dimension ID this pressure belongs to", example: 1 })
+  @IsNumber()
+  @IsNotEmpty()
+  pipeDimensionId: number;
+
   @ApiProperty({
     description: "Temperature in °C (nullable)",
     example: 371,
@@ -26,9 +29,4 @@ export class CreatePipePressureDto {
   @IsNumber()
   @IsNotEmpty()
   allowable_stress_mpa: number;
-
-  //   @ApiProperty({ description: 'Pipe dimension ID this pressure belongs to', example: 1 })
-  //   @IsNumber()
-  //   @IsNotEmpty()
-  //   pipeDimensionId: number;
 }

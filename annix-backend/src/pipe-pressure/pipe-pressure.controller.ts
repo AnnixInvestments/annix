@@ -21,11 +21,8 @@ export class PipePressureController {
     status: 400,
     description: "Invalid request or duplicate pipe pressure",
   })
-  create(
-    @Param("pipeDimensionId", ParseIntPipe) pipeDimensionId: number,
-    @Body() dto: CreatePipePressureDto,
-  ) {
-    return this.pipePressureService.create(pipeDimensionId, dto);
+  create(@Body() dto: CreatePipePressureDto) {
+    return this.pipePressureService.create(dto);
   }
 
   @Get()
