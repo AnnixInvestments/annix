@@ -48,7 +48,6 @@ function useAsync<T>(fetcher: () => Promise<T>, deps: ReadonlyArray<unknown>): A
     } finally {
       setIsLoading(false);
     }
-    // biome-ignore lint/correctness/useExhaustiveDependencies: deps array is the contract
   }, deps);
 
   useEffect(() => {

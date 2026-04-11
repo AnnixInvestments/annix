@@ -45,7 +45,6 @@ export function useFifoCompanyValuation(): FifoValuationState {
 
   useEffect(() => {
     refetch();
-    // biome-ignore lint/correctness/useExhaustiveDependencies: refetch is stable
   }, [client]);
 
   const totalValueR = data ? data.totalValueR : null;
