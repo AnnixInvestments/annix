@@ -9,6 +9,7 @@ import { FifoBatchController } from "./controllers/fifo-batch.controller";
 import { IssuableProductController } from "./controllers/issuable-product.controller";
 import { IssuanceController } from "./controllers/issuance.controller";
 import { LocationMigrationController } from "./controllers/location-migration.controller";
+import { PhotoIdentificationController } from "./controllers/photo-identification.controller";
 import { ProductCategoryController } from "./controllers/product-category.controller";
 import { ProductDatasheetController } from "./controllers/product-datasheet.controller";
 import { ReturnsController } from "./controllers/returns.controller";
@@ -52,6 +53,7 @@ import { IssuableProductService } from "./services/issuable-product.service";
 import { IssuanceService } from "./services/issuance.service";
 import { LocationClassificationService } from "./services/location-classification.service";
 import { PaintClassificationService } from "./services/paint-classification.service";
+import { PhotoIdentificationService } from "./services/photo-identification.service";
 import { ProductCategoryService } from "./services/product-category.service";
 import { ProductDatasheetService } from "./services/product-datasheet.service";
 import { ReturnsService } from "./services/returns.service";
@@ -114,6 +116,7 @@ import { VarianceCategoryService } from "./services/variance-category.service";
     LocationMigrationController,
     StockHoldController,
     VarianceCategoryController,
+    PhotoIdentificationController,
   ],
   providers: [
     StockManagementLicenseService,
@@ -135,6 +138,7 @@ import { VarianceCategoryService } from "./services/variance-category.service";
     StockHoldService,
     VarianceCategoryService,
     StockManagementNotificationsService,
+    PhotoIdentificationService,
   ],
   exports: [
     StockManagementLicenseService,
@@ -155,6 +159,7 @@ import { VarianceCategoryService } from "./services/variance-category.service";
     StockHoldService,
     VarianceCategoryService,
     StockManagementNotificationsService,
+    PhotoIdentificationService,
   ],
 })
 export class StockManagementModule {}
