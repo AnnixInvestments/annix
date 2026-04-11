@@ -1,4 +1,11 @@
-import { ConflictException, Injectable, Logger, NotFoundException } from "@nestjs/common";
+import {
+  ConflictException,
+  forwardRef,
+  Inject,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import {
@@ -6,6 +13,7 @@ import {
   type RubberCompoundDatasheetStatus,
   type RubberCompoundFamily,
 } from "../entities/rubber-compound.entity";
+import { StockManagementNotificationsService } from "./stock-management-notifications.service";
 
 export interface CreateRubberCompoundDto {
   code: string;
@@ -140,6 +148,8 @@ export class RubberCompoundService {
   constructor(
     @InjectRepository(RubberCompound)
     private readonly compoundRepo: Repository<RubberCompound>,
+    @Inject(forwardRef(() => StockManagementNotificationsService))
+    private readonly notifications: StockManagementNotificationsService,
   ) {}
 
   async list(companyId: number, includeInactive = false): Promise<RubberCompound[]> {
@@ -192,7 +202,21 @@ export class RubberCompoundService {
       datasheetStatus: "missing",
       active: true,
     });
-    return this.compoundRepo.save(created);
+    const saved = await this.compoundRepo.save(created);
+    void this.notifications
+      .notifyMissingDatasheet({
+        productType: "rubber_compound",
+        productId: saved.id,
+        productName: saved.name,
+      })
+      .catch((err) => {
+        this.logger.warn(
+          `Failed to fire missing-datasheet notification for compound ${saved.id}: ${
+            err instanceof Error ? err.message : String(err)
+          }`,
+        );
+      });
+    return saved;
   }
 
   async update(

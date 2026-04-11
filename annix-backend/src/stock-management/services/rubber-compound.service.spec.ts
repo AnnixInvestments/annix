@@ -3,6 +3,7 @@ import { Test, TestingModule } from "@nestjs/testing";
 import { getRepositoryToken } from "@nestjs/typeorm";
 import { RubberCompound } from "../entities/rubber-compound.entity";
 import { RubberCompoundService } from "./rubber-compound.service";
+import { StockManagementNotificationsService } from "./stock-management-notifications.service";
 
 describe("RubberCompoundService", () => {
   let service: RubberCompoundService;
@@ -20,11 +21,16 @@ describe("RubberCompoundService", () => {
     update: jest.fn().mockResolvedValue({ affected: 1 }),
   };
 
+  const mockNotifications = {
+    notifyMissingDatasheet: jest.fn().mockResolvedValue(undefined),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         RubberCompoundService,
         { provide: getRepositoryToken(RubberCompound), useValue: mockCompoundRepo },
+        { provide: StockManagementNotificationsService, useValue: mockNotifications },
       ],
     }).compile();
 

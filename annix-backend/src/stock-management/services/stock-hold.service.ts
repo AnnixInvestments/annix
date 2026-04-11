@@ -8,6 +8,7 @@ import {
   StockHoldItem,
   type StockHoldReason,
 } from "../entities/stock-hold-item.entity";
+import { StockManagementNotificationsService } from "./stock-management-notifications.service";
 
 export interface FlagStockHoldInput {
   productId: number;
@@ -38,6 +39,7 @@ export class StockHoldService {
     private readonly holdRepo: Repository<StockHoldItem>,
     @InjectRepository(IssuableProduct)
     private readonly productRepo: Repository<IssuableProduct>,
+    private readonly notifications: StockManagementNotificationsService,
   ) {}
 
   async flagStock(companyId: number, input: FlagStockHoldInput): Promise<StockHoldItem> {
@@ -71,7 +73,22 @@ export class StockHoldService {
       dispositionStatus: "pending",
       notes: input.notes ?? null,
     });
-    return this.holdRepo.save(hold);
+    const saved = await this.holdRepo.save(hold);
+    void this.notifications
+      .notifyStockHoldFlagged({
+        productName: product.name,
+        holdItemId: saved.id,
+        reason: input.reason,
+        writeOffValueR,
+      })
+      .catch((err) => {
+        this.logger.warn(
+          `Failed to fire stock-hold-flagged notification for hold ${saved.id}: ${
+            err instanceof Error ? err.message : String(err)
+          }`,
+        );
+      });
+    return saved;
   }
 
   async listPending(companyId: number): Promise<StockHoldItem[]> {

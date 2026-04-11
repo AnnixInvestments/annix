@@ -4,6 +4,7 @@ import { getRepositoryToken } from "@nestjs/typeorm";
 import { IssuableProduct } from "../entities/issuable-product.entity";
 import { StockHoldItem } from "../entities/stock-hold-item.entity";
 import { StockHoldService } from "./stock-hold.service";
+import { StockManagementNotificationsService } from "./stock-management-notifications.service";
 
 describe("StockHoldService", () => {
   let service: StockHoldService;
@@ -19,12 +20,17 @@ describe("StockHoldService", () => {
     findOne: jest.fn(),
   };
 
+  const mockNotifications = {
+    notifyStockHoldFlagged: jest.fn().mockResolvedValue(undefined),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         StockHoldService,
         { provide: getRepositoryToken(StockHoldItem), useValue: mockHoldRepo },
         { provide: getRepositoryToken(IssuableProduct), useValue: mockProductRepo },
+        { provide: StockManagementNotificationsService, useValue: mockNotifications },
       ],
     }).compile();
 

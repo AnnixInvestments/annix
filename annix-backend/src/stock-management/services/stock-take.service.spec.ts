@@ -53,7 +53,7 @@ describe("StockTakeService", () => {
 
   describe("byId", () => {
     it("throws NotFoundException when stock take does not exist", async () => {
-      const stockTakeRepo = service["stockTakeRepo"] as { findOne: jest.Mock };
+      const stockTakeRepo = service["stockTakeRepo"] as unknown as { findOne: jest.Mock };
       stockTakeRepo.findOne.mockResolvedValueOnce(null);
       await expect(service.byId(1, 999)).rejects.toThrow(NotFoundException);
     });
