@@ -1,64 +1,57 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { Type } from "class-transformer";
-import { IsArray, IsIn, IsNumber, IsOptional, IsString, ValidateNested } from "class-validator";
+import { IsArray, IsIn, IsString, ValidateNested } from "class-validator";
+import { OptionalNumber, OptionalString } from "../../lib/dto/validation-decorators";
 
 export class ExpectedCompanyDataDto {
   @ApiPropertyOptional({
     description: "Expected VAT number",
     example: "4123456789",
   })
-  @IsString()
-  @IsOptional()
+  @OptionalString()
   vatNumber?: string;
 
   @ApiPropertyOptional({
     description: "Expected company registration number",
     example: "2020/123456/07",
   })
-  @IsString()
-  @IsOptional()
+  @OptionalString()
   registrationNumber?: string;
 
   @ApiPropertyOptional({
     description: "Expected company legal name",
     example: "ACME INDUSTRIES (PTY) LTD",
   })
-  @IsString()
-  @IsOptional()
+  @OptionalString()
   companyName?: string;
 
   @ApiPropertyOptional({
     description: "Expected street address",
     example: "123 MAIN STREET",
   })
-  @IsString()
-  @IsOptional()
+  @OptionalString()
   streetAddress?: string;
 
   @ApiPropertyOptional({
     description: "Expected city",
     example: "JOHANNESBURG",
   })
-  @IsString()
-  @IsOptional()
+  @OptionalString()
   city?: string;
 
   @ApiPropertyOptional({
     description: "Expected province/state",
     example: "GAUTENG",
   })
-  @IsString()
-  @IsOptional()
+  @OptionalString()
   provinceState?: string;
 
   @ApiPropertyOptional({ description: "Expected postal code", example: "2000" })
-  @IsString()
-  @IsOptional()
+  @OptionalString()
   postalCode?: string;
 
   @ApiPropertyOptional({ description: "Expected BEE level (1-8)", example: 2 })
-  @IsNumber()
-  @IsOptional()
+  @OptionalNumber()
   beeLevel?: number;
 }
 

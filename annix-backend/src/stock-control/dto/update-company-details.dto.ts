@@ -1,100 +1,62 @@
 import {
-  IsBoolean,
-  IsEmail,
-  IsInt,
-  IsOptional,
-  IsString,
-  Max,
-  MaxLength,
-  Min,
-} from "class-validator";
+  OptionalBoolean,
+  OptionalEmail,
+  OptionalInt,
+  OptionalString,
+} from "../../lib/dto/validation-decorators";
 
 export class UpdateCompanyDetailsDto {
-  @IsOptional()
-  @IsString()
-  @MaxLength(255)
+  @OptionalString({ maxLength: 255 })
   name?: string;
 
-  @IsOptional()
-  @IsString()
-  @MaxLength(50)
+  @OptionalString({ maxLength: 50 })
   registrationNumber?: string;
 
-  @IsOptional()
-  @IsString()
-  @MaxLength(50)
+  @OptionalString({ maxLength: 50 })
   vatNumber?: string;
 
-  @IsOptional()
-  @IsString()
-  @MaxLength(500)
+  @OptionalString({ maxLength: 500 })
   streetAddress?: string;
 
-  @IsOptional()
-  @IsString()
-  @MaxLength(100)
+  @OptionalString({ maxLength: 100 })
   city?: string;
 
-  @IsOptional()
-  @IsString()
-  @MaxLength(50)
+  @OptionalString({ maxLength: 50 })
   province?: string;
 
-  @IsOptional()
-  @IsString()
-  @MaxLength(10)
+  @OptionalString({ maxLength: 10 })
   postalCode?: string;
 
-  @IsOptional()
-  @IsString()
-  @MaxLength(30)
+  @OptionalString({ maxLength: 30 })
   phone?: string;
 
-  @IsOptional()
-  @IsEmail()
-  @MaxLength(255)
+  @OptionalEmail({ maxLength: 255 })
   email?: string;
 
-  @IsOptional()
-  @IsString()
-  @MaxLength(500)
+  @OptionalString({ maxLength: 500 })
   websiteUrl?: string;
 
-  @IsOptional()
-  @IsInt()
-  @Min(0)
-  @Max(100)
+  @OptionalInt({ min: 0, max: 100 })
   pipingLossFactorPct?: number;
 
-  @IsOptional()
-  @IsInt()
-  @Min(0)
-  @Max(100)
+  @OptionalInt({ min: 0, max: 100 })
   flatPlateLossFactorPct?: number;
 
-  @IsOptional()
-  @IsInt()
-  @Min(0)
-  @Max(100)
+  @OptionalInt({ min: 0, max: 100 })
   structuralSteelLossFactorPct?: number;
 
-  @IsOptional()
-  @IsBoolean()
+  @OptionalBoolean()
   qcEnabled?: boolean;
 
-  @IsOptional()
-  @IsBoolean()
+  @OptionalBoolean()
   messagingEnabled?: boolean;
 
-  @IsOptional()
-  @IsBoolean()
+  @OptionalBoolean()
   staffLeaveEnabled?: boolean;
 
-  @IsOptional()
-  @IsBoolean()
+  @OptionalBoolean()
   workflowEnabled?: boolean;
 
-  @IsOptional()
-  @IsBoolean()
+  @OptionalBoolean()
   notificationsEnabled?: boolean;
 }

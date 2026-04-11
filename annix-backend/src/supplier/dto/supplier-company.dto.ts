@@ -1,92 +1,73 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
+import { COMPANY_SIZE_VALUES } from "../../lib/dto/common-company.dto";
 import {
-  IsArray,
-  IsBoolean,
-  IsDateString,
-  IsEmail,
-  IsIn,
-  IsInt,
-  IsNotEmpty,
-  IsOptional,
-  IsString,
-  Max,
-  MaxLength,
-  Min,
-} from "class-validator";
-import { IsZAPhone } from "../../shared/validators";
+  OptionalBoolean,
+  OptionalDateString,
+  OptionalEmail,
+  OptionalIn,
+  OptionalInt,
+  OptionalPhone,
+  OptionalString,
+  OptionalStringArray,
+  RequiredEmail,
+  RequiredPhone,
+  RequiredString,
+} from "../../lib/dto/validation-decorators";
 
 export class SupplierCompanyDto {
   @ApiProperty({
     description: "Company legal name",
     example: "ABC Supplies (Pty) Ltd",
   })
-  @IsString()
-  @IsNotEmpty()
-  @MaxLength(255)
+  @RequiredString({ maxLength: 255 })
   legalName: string;
 
   @ApiPropertyOptional({
     description: "Trading name if different from legal name",
     example: "ABC Supplies",
   })
-  @IsString()
-  @IsOptional()
-  @MaxLength(255)
+  @OptionalString({ maxLength: 255 })
   tradingName?: string;
 
   @ApiProperty({
     description: "Company registration number (CIPC)",
     example: "2020/123456/07",
   })
-  @IsString()
-  @IsNotEmpty()
-  @MaxLength(50)
+  @RequiredString({ maxLength: 50 })
   registrationNumber: string;
 
   @ApiPropertyOptional({ description: "Tax number", example: "1234567890" })
-  @IsString()
-  @IsOptional()
-  @MaxLength(50)
+  @OptionalString({ maxLength: 50 })
   taxNumber?: string;
 
   @ApiPropertyOptional({
     description: "VAT registration number",
     example: "4123456789",
   })
-  @IsString()
-  @IsOptional()
-  @MaxLength(50)
+  @OptionalString({ maxLength: 50 })
   vatNumber?: string;
 
   @ApiProperty({
     description: "Street address",
     example: "456 Supplier Avenue",
   })
-  @IsString()
-  @IsNotEmpty()
+  @RequiredString()
   streetAddress: string;
 
   @ApiPropertyOptional({ description: "Address line 2", example: "Unit 5" })
-  @IsString()
-  @IsOptional()
+  @OptionalString()
   addressLine2?: string;
 
   @ApiProperty({ description: "City", example: "Cape Town" })
-  @IsString()
-  @IsNotEmpty()
-  @MaxLength(100)
+  @RequiredString({ maxLength: 100 })
   city: string;
 
   @ApiProperty({ description: "Province or state", example: "Western Cape" })
-  @IsString()
-  @IsNotEmpty()
-  @MaxLength(100)
+  @RequiredString({ maxLength: 100 })
   provinceState: string;
 
   @ApiProperty({ description: "Postal code", example: "8001" })
-  @IsString()
-  @IsNotEmpty()
-  @MaxLength(20)
+  @RequiredString({ maxLength: 20 })
   postalCode: string;
 
   @ApiPropertyOptional({
@@ -94,9 +75,7 @@ export class SupplierCompanyDto {
     example: "South Africa",
     default: "South Africa",
   })
-  @IsString()
-  @IsOptional()
-  @MaxLength(100)
+  @OptionalString({ maxLength: 100 })
   country?: string;
 
   @ApiPropertyOptional({
@@ -104,69 +83,53 @@ export class SupplierCompanyDto {
     example: "ZAR",
     default: "ZAR",
   })
-  @IsString()
-  @IsOptional()
-  @MaxLength(3)
+  @OptionalString({ maxLength: 3 })
   currencyCode?: string;
 
   @ApiProperty({ description: "Primary contact name", example: "Jane Doe" })
-  @IsString()
-  @IsNotEmpty()
-  @MaxLength(200)
+  @RequiredString({ maxLength: 200 })
   primaryContactName: string;
 
   @ApiProperty({
     description: "Primary contact email",
     example: "jane@example.com",
   })
-  @IsEmail()
-  @IsNotEmpty()
+  @RequiredEmail()
   primaryContactEmail: string;
 
   @ApiProperty({
     description: "Primary contact phone",
     example: "+27 21 000 0123",
   })
-  @IsString()
-  @IsNotEmpty()
-  @MaxLength(30)
-  @IsZAPhone()
+  @RequiredPhone()
   primaryContactPhone: string;
 
   @ApiPropertyOptional({
     description: "Company main phone number",
     example: "+27 21 000 0100",
   })
-  @IsString()
-  @IsOptional()
-  @MaxLength(30)
-  @IsZAPhone()
+  @OptionalPhone()
   primaryPhone?: string;
 
   @ApiPropertyOptional({
     description: "Fax number",
     example: "+27 21 000 0101",
   })
-  @IsString()
-  @IsOptional()
-  @MaxLength(30)
+  @OptionalString({ maxLength: 30 })
   faxNumber?: string;
 
   @ApiPropertyOptional({
     description: "General company email",
     example: "info@example.com",
   })
-  @IsEmail()
-  @IsOptional()
+  @OptionalEmail()
   generalEmail?: string;
 
   @ApiPropertyOptional({
     description: "Company website",
     example: "https://www.example.com",
   })
-  @IsString()
-  @IsOptional()
-  @MaxLength(255)
+  @OptionalString({ maxLength: 255 })
   website?: string;
 
   @ApiPropertyOptional({
@@ -174,61 +137,48 @@ export class SupplierCompanyDto {
     example: ["Gauteng", "Western Cape", "KwaZulu-Natal"],
     type: [String],
   })
-  @IsArray()
-  @IsString({ each: true })
-  @IsOptional()
+  @OptionalStringArray()
   operationalRegions?: string[];
 
   @ApiPropertyOptional({
     description: "Industry type",
     example: "Manufacturing",
   })
-  @IsString()
-  @IsOptional()
-  @MaxLength(100)
+  @OptionalString({ maxLength: 100 })
   industryType?: string;
 
   @ApiPropertyOptional({
     description: "Company size category",
     example: "medium",
   })
-  @IsIn(["micro", "small", "medium", "large", "enterprise"])
-  @IsOptional()
+  @OptionalIn(COMPANY_SIZE_VALUES)
   companySize?: string;
 
-  // BEE (Broad-Based Black Economic Empowerment) fields
   @ApiPropertyOptional({
     description: "BEE Level (1-8)",
     example: 3,
   })
-  @IsInt()
-  @Min(1)
-  @Max(8)
-  @IsOptional()
+  @OptionalInt({ min: 1, max: 8 })
   beeLevel?: number;
 
   @ApiPropertyOptional({
     description: "BEE Certificate expiry date",
     example: "2025-12-31",
   })
-  @IsDateString()
-  @IsOptional()
+  @OptionalDateString()
   beeCertificateExpiry?: string;
 
   @ApiPropertyOptional({
     description: "BEE Verification agency name",
     example: "Empowerdex",
   })
-  @IsString()
-  @IsOptional()
-  @MaxLength(255)
+  @OptionalString({ maxLength: 255 })
   beeVerificationAgency?: string;
 
   @ApiPropertyOptional({
     description: "Whether company is an exempt micro enterprise (EME)",
     example: false,
   })
-  @IsBoolean()
-  @IsOptional()
+  @OptionalBoolean()
   isExemptMicroEnterprise?: boolean;
 }

@@ -45,9 +45,8 @@ Shared workspace package (pnpm workspace). Both `annix-backend` and `annix-front
 | Entity helpers | `lib/entity-helpers.ts` | `findOneOrFail`, base entity utilities. |
 | Base CRUD service | `lib/base-crud.service.ts` | Generic `BaseCrudService<Entity, CreateDto, UpdateDto>`. Pure-CRUD reference-data services should `extends BaseCrudService<...>` to inherit `create / findAll / findOne / update / remove` + `checkUnique`/`checkUniqueExceptId` helpers. |
 | Pagination DTO | `lib/dto/pagination-query.dto.ts` | Shared `PaginationQueryDto`, `PaginatedResult<T>`, `buildPaginatedResult` helper. Use in any service that returns paginated lists. |
-| Common Address DTO | `lib/dto/common-address.dto.ts` | `CommonAddressDto` (streetAddress, city, provinceState, postalCode, countryCode). Extend instead of redeclaring per app. |
-| Common Contact DTO | `lib/dto/common-contact.dto.ts` | `CommonContactDto` (firstName, lastName, fullName, email, phone, jobTitle). |
-| Common Company DTO | `lib/dto/common-company.dto.ts` | `CommonCompanyDto` (companyName, registrationNumber, vatNumber, companySize enum, beeLevel, currencyCode). |
+| Validation decorator factories | `lib/dto/validation-decorators.ts` | `RequiredString`/`OptionalString`, `RequiredEmail`/`OptionalEmail`, `RequiredPhone`/`OptionalPhone` (ZA-aware), `RequiredInt`/`OptionalInt`, `RequiredNumber`/`OptionalNumber`, `RequiredBoolean`/`OptionalBoolean`, `RequiredIn`/`OptionalIn`, `RequiredDateString`/`OptionalDateString`, `RequiredStringArray`/`OptionalStringArray`. Replace 3-4 line `@IsX @IsY @MaxLength()` triplets with one decorator. Per-context constraints stay in the field declaration (e.g. `@OptionalString({ maxLength: 500 })`), but the decorator stack is centralized. |
+| Company size enum | `lib/dto/common-company.dto.ts` | `CompanySize` enum + `COMPANY_SIZE_VALUES` const for `OptionalIn(COMPANY_SIZE_VALUES)`. The original Common*Dto classes were removed in commit (this commit) — they couldn't accommodate the per-context field-name and constraint variations across customer/supplier/admin DTOs (see issue #191 Q3). |
 
 ### Shared services (standalone NestJS modules)
 

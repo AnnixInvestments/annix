@@ -1,95 +1,75 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { Type } from "class-transformer";
+import { IsObject, IsString, Matches, MinLength, ValidateNested } from "class-validator";
+import { COMPANY_SIZE_VALUES } from "../../lib/dto/common-company.dto";
 import {
-  IsBoolean,
-  IsEmail,
-  IsIn,
-  IsNotEmpty,
-  IsObject,
-  IsOptional,
-  IsString,
-  Matches,
-  MaxLength,
-  MinLength,
-  ValidateNested,
-} from "class-validator";
-import { IsZAPhone } from "../../shared/validators";
+  OptionalEmail,
+  OptionalIn,
+  OptionalPhone,
+  OptionalString,
+  RequiredBoolean,
+  RequiredEmail,
+  RequiredPhone,
+  RequiredString,
+} from "../../lib/dto/validation-decorators";
 
 export class CompanyDetailsDto {
   @ApiProperty({
     description: "Company legal name",
     example: "Acme Industrial Solutions (Pty) Ltd",
   })
-  @IsString()
-  @IsNotEmpty()
-  @MaxLength(255)
+  @RequiredString({ maxLength: 255 })
   legalName: string;
 
   @ApiPropertyOptional({
     description: "Trading name if different from legal name",
     example: "Acme Industrial",
   })
-  @IsString()
-  @IsOptional()
-  @MaxLength(255)
+  @OptionalString({ maxLength: 255 })
   tradingName?: string;
 
   @ApiProperty({
     description: "Company registration number",
     example: "2020/123456/07",
   })
-  @IsString()
-  @IsNotEmpty()
-  @MaxLength(50)
+  @RequiredString({ maxLength: 50 })
   registrationNumber: string;
 
   @ApiPropertyOptional({
     description: "VAT registration number",
     example: "4123456789",
   })
-  @IsString()
-  @IsOptional()
-  @MaxLength(50)
+  @OptionalString({ maxLength: 50 })
   vatNumber?: string;
 
   @ApiPropertyOptional({ description: "Industry type", example: "Mining" })
-  @IsString()
-  @IsOptional()
-  @MaxLength(100)
+  @OptionalString({ maxLength: 100 })
   industry?: string;
 
   @ApiPropertyOptional({
     description: "Company size category",
     example: "medium",
   })
-  @IsIn(["micro", "small", "medium", "large", "enterprise"])
-  @IsOptional()
+  @OptionalIn(COMPANY_SIZE_VALUES)
   companySize?: string;
 
   @ApiProperty({
     description: "Street address",
     example: "123 Industrial Road",
   })
-  @IsString()
-  @IsNotEmpty()
+  @RequiredString()
   streetAddress: string;
 
   @ApiProperty({ description: "City", example: "Johannesburg" })
-  @IsString()
-  @IsNotEmpty()
-  @MaxLength(100)
+  @RequiredString({ maxLength: 100 })
   city: string;
 
   @ApiProperty({ description: "Province or state", example: "Gauteng" })
-  @IsString()
-  @IsNotEmpty()
-  @MaxLength(100)
+  @RequiredString({ maxLength: 100 })
   provinceState: string;
 
   @ApiProperty({ description: "Postal code", example: "2000" })
-  @IsString()
-  @IsNotEmpty()
-  @MaxLength(20)
+  @RequiredString({ maxLength: 20 })
   postalCode: string;
 
   @ApiPropertyOptional({
@@ -97,9 +77,7 @@ export class CompanyDetailsDto {
     example: "South Africa",
     default: "South Africa",
   })
-  @IsString()
-  @IsOptional()
-  @MaxLength(100)
+  @OptionalString({ maxLength: 100 })
   country?: string;
 
   @ApiPropertyOptional({
@@ -107,76 +85,59 @@ export class CompanyDetailsDto {
     example: "ZAR",
     default: "ZAR",
   })
-  @IsString()
-  @IsOptional()
-  @MaxLength(3)
+  @OptionalString({ maxLength: 3 })
   currencyCode?: string;
 
   @ApiProperty({
     description: "Primary contact phone number",
     example: "+27 11 000 0123",
   })
-  @IsString()
-  @IsNotEmpty()
-  @MaxLength(30)
-  @IsZAPhone()
+  @RequiredPhone()
   primaryPhone: string;
 
   @ApiPropertyOptional({
     description: "Fax number",
     example: "+27 11 000 0124",
   })
-  @IsString()
-  @IsOptional()
-  @MaxLength(30)
+  @OptionalString({ maxLength: 30 })
   faxNumber?: string;
 
   @ApiPropertyOptional({
     description: "General company email",
     example: "info@example.com",
   })
-  @IsEmail()
-  @IsOptional()
+  @OptionalEmail()
   generalEmail?: string;
 
   @ApiPropertyOptional({
     description: "Company website",
     example: "https://www.example.com",
   })
-  @IsString()
-  @IsOptional()
-  @MaxLength(255)
+  @OptionalString({ maxLength: 255 })
   website?: string;
 }
 
 export class UserDetailsDto {
   @ApiProperty({ description: "First name", example: "John" })
-  @IsString()
-  @IsNotEmpty()
-  @MaxLength(100)
+  @RequiredString({ maxLength: 100 })
   firstName: string;
 
   @ApiProperty({ description: "Last name", example: "Smith" })
-  @IsString()
-  @IsNotEmpty()
-  @MaxLength(100)
+  @RequiredString({ maxLength: 100 })
   lastName: string;
 
   @ApiPropertyOptional({
     description: "Job title or role",
     example: "Procurement Manager",
   })
-  @IsString()
-  @IsOptional()
-  @MaxLength(100)
+  @OptionalString({ maxLength: 100 })
   jobTitle?: string;
 
   @ApiProperty({
     description: "Email address (used as login)",
     example: "john.smith@example.com",
   })
-  @IsEmail()
-  @IsNotEmpty()
+  @RequiredEmail()
   email: string;
 
   @ApiProperty({
@@ -195,20 +156,14 @@ export class UserDetailsDto {
     description: "Direct phone number",
     example: "+27 11 000 0125",
   })
-  @IsString()
-  @IsOptional()
-  @MaxLength(30)
-  @IsZAPhone()
+  @OptionalPhone()
   directPhone?: string;
 
   @ApiPropertyOptional({
     description: "Mobile phone number",
     example: "+27 82 000 0123",
   })
-  @IsString()
-  @IsOptional()
-  @MaxLength(30)
-  @IsZAPhone()
+  @OptionalPhone()
   mobilePhone?: string;
 }
 
@@ -217,31 +172,29 @@ export class DeviceBindingDto {
     description: "Device fingerprint hash",
     example: "a1b2c3d4e5f6...",
   })
-  @IsString()
-  @IsNotEmpty()
+  @RequiredString()
   deviceFingerprint: string;
 
   @ApiPropertyOptional({ description: "Browser and device information" })
   @IsObject()
-  @IsOptional()
   browserInfo?: Record<string, any>;
 
   @ApiProperty({ description: "Terms and conditions accepted", example: true })
-  @IsBoolean()
+  @RequiredBoolean()
   termsAccepted: boolean;
 
   @ApiProperty({
     description: "Security policy accepted (account locked to this device)",
     example: true,
   })
-  @IsBoolean()
+  @RequiredBoolean()
   securityPolicyAccepted: boolean;
 
   @ApiProperty({
     description: "Document storage policy accepted (secure encrypted storage)",
     example: true,
   })
-  @IsBoolean()
+  @RequiredBoolean()
   documentStorageAccepted: boolean;
 }
 
