@@ -1,11 +1,18 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   annixRepApi,
+  type CalendarColorScheme,
+  type CalendarColorType,
   type CalendarProvider,
   type ConnectCalendarDto,
+  DEFAULT_MEETING_TYPE_COLORS,
+  DEFAULT_STATUS_COLORS,
   type UpdateCalendarConnectionDto,
 } from "@/app/lib/api/annixRepApi";
 import { annixRepKeys } from "@/app/lib/query/keys/annixRepKeys";
+
+export type { CalendarColorScheme, CalendarColorType };
+export { DEFAULT_MEETING_TYPE_COLORS, DEFAULT_STATUS_COLORS };
 
 export function useCalendarConnections() {
   return useQuery({
@@ -142,6 +149,37 @@ export function useDetectConflicts() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: annixRepKeys.calendars.conflicts() });
       queryClient.invalidateQueries({ queryKey: annixRepKeys.calendars.conflictCount() });
+    },
+  });
+}
+
+export function useCalendarColors() {
+  return useQuery<CalendarColorScheme>({
+    queryKey: ["annix-rep", "calendar-colors"],
+    queryFn: () => annixRepApi.calendars.colors(),
+  });
+}
+
+export function useSaveCalendarColors() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (
+      colors: Array<{ colorType: CalendarColorType; colorKey: string; colorValue: string }>,
+    ) => annixRepApi.calendars.setColors(colors),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["annix-rep", "calendar-colors"] });
+    },
+  });
+}
+
+export function useResetCalendarColors() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: () => annixRepApi.calendars.resetColors(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["annix-rep", "calendar-colors"] });
     },
   });
 }

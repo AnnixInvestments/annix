@@ -10,9 +10,9 @@ import type {
   Transcript,
   TranscriptSegment,
 } from "@/app/lib/api/annixRepApi";
-import { annixRepApi } from "@/app/lib/api/annixRepApi";
 import { useDisclosure } from "@/app/lib/hooks/useDisclosure";
 import {
+  recordingStreamUrl,
   useMeeting,
   useMeetingRecording,
   useMeetingTranscript,
@@ -40,13 +40,13 @@ const speakerTextColors: Record<string, string> = {
 };
 
 function speakerColor(label: string): string {
-  return (
-    speakerColors[label] ?? "bg-gray-100 dark:bg-gray-800 border-gray-300 dark:border-gray-600"
-  );
+  const mapped = speakerColors[label];
+  return mapped ? mapped : "bg-gray-100 dark:bg-gray-800 border-gray-300 dark:border-gray-600";
 }
 
 function speakerTextColor(label: string): string {
-  return speakerTextColors[label] ?? "text-gray-700 dark:text-gray-300";
+  const mapped = speakerTextColors[label];
+  return mapped ? mapped : "text-gray-700 dark:text-gray-300";
 }
 
 function formatTime(seconds: number): string {
@@ -685,7 +685,7 @@ export default function TranscriptPage() {
 
   const audioUrl = useMemo(() => {
     if (!recording) return null;
-    return annixRepApi.recordings.streamUrl(recording.id);
+    return recordingStreamUrl(recording.id);
   }, [recording]);
 
   const matchingIndices = useMemo(() => {

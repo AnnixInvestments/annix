@@ -16,6 +16,10 @@ export function useRecording(recordingId: number) {
   });
 }
 
+export function recordingStreamUrl(recordingId: number): string | null {
+  return annixRepApi.recordings.streamUrl(recordingId);
+}
+
 export function useMeetingRecording(meetingId: number) {
   return useQuery({
     queryKey: annixRepKeys.recordings.byMeeting(meetingId),

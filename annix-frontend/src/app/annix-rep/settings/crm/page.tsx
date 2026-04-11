@@ -9,12 +9,12 @@ import type {
   CrmType,
   WebhookConfig,
 } from "@/app/lib/api/annixRepApi";
-import { annixRepApi } from "@/app/lib/api/annixRepApi";
 import { formatDateLongZA, fromJSDate, isExpired } from "@/app/lib/datetime";
 import {
   useCreateCrmConfig,
   useCrmConfigs,
   useCrmDisconnect,
+  useCrmOAuthUrl,
   useCrmSyncStatus,
   useDeleteCrmConfig,
   useExportMeetingsCsv,
@@ -363,6 +363,7 @@ function OAuthProviderCard({
   onConnected: () => void;
 }) {
   const [isConnecting, setIsConnecting] = useState(false);
+  const oauthUrlMutation = useCrmOAuthUrl();
 
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
@@ -381,7 +382,10 @@ function OAuthProviderCard({
     setIsConnecting(true);
     try {
       const redirectUri = `${window.location.origin}/annix-rep/settings/crm/callback`;
-      const { url } = await annixRepApi.crm.oauthUrl(provider.id, redirectUri);
+      const { url } = await oauthUrlMutation.mutateAsync({
+        provider: provider.id,
+        redirectUri,
+      });
 
       const width = 600;
       const height = 700;
@@ -493,19 +497,29 @@ function CreateConfigModal({
     syncOnCreate: boolean;
     syncOnUpdate: boolean;
     isActive: boolean;
-  }>({
-    name: editConfig?.name || "",
-    crmType: editConfig?.crmType || "webhook",
-    webhookUrl: editConfig?.webhookConfig?.url || "",
-    webhookMethod: editConfig?.webhookConfig?.method || "POST",
-    webhookHeaders: editConfig?.webhookConfig?.headers
-      ? JSON.stringify(editConfig.webhookConfig.headers, null, 2)
-      : "{}",
-    syncProspects: editConfig?.syncProspects || true,
-    syncMeetings: editConfig?.syncMeetings || true,
-    syncOnCreate: editConfig?.syncOnCreate || true,
-    syncOnUpdate: editConfig?.syncOnUpdate || true,
-    isActive: editConfig?.isActive || true,
+  }>(() => {
+    const editName = editConfig?.name;
+    const editCrmType = editConfig?.crmType;
+    const editWebhook = editConfig?.webhookConfig;
+    const editWebhookUrl = editWebhook?.url;
+    const editWebhookMethod = editWebhook?.method;
+    const editSyncProspects = editConfig?.syncProspects;
+    const editSyncMeetings = editConfig?.syncMeetings;
+    const editSyncOnCreate = editConfig?.syncOnCreate;
+    const editSyncOnUpdate = editConfig?.syncOnUpdate;
+    const editIsActive = editConfig?.isActive;
+    return {
+      name: editName ? editName : "",
+      crmType: editCrmType ? editCrmType : "webhook",
+      webhookUrl: editWebhookUrl ? editWebhookUrl : "",
+      webhookMethod: editWebhookMethod ? editWebhookMethod : "POST",
+      webhookHeaders: editWebhook?.headers ? JSON.stringify(editWebhook.headers, null, 2) : "{}",
+      syncProspects: editSyncProspects || true,
+      syncMeetings: editSyncMeetings || true,
+      syncOnCreate: editSyncOnCreate || true,
+      syncOnUpdate: editSyncOnUpdate || true,
+      isActive: editIsActive || true,
+    };
   });
 
   const handleSubmit = async (e: React.FormEvent) => {

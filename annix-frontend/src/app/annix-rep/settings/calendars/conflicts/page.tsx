@@ -1,14 +1,14 @@
 "use client";
 
-import { DateTime } from "luxon";
 import Link from "next/link";
 import { useState } from "react";
 import type { SyncConflict } from "@/app/lib/api/annixRepApi";
+import { fromISO } from "@/app/lib/datetime";
 import { useDetectConflicts, useResolveConflict, useSyncConflicts } from "@/app/lib/query/hooks";
 
 function formatDateTime(isoString: string | undefined): string {
   if (!isoString) return "N/A";
-  return DateTime.fromISO(isoString).toFormat("ccc, d LLL yyyy 'at' HH:mm");
+  return fromISO(isoString).toFormat("ccc, d LLL yyyy 'at' HH:mm");
 }
 
 function ConflictCard({
@@ -47,7 +47,7 @@ function ConflictCard({
             {conflict.conflictType === "deleted_remotely" && "Deleted Remotely"}
           </span>
           <span className="text-xs text-amber-600 dark:text-amber-400">
-            Detected {DateTime.fromISO(conflict.createdAt.toString()).toRelative()}
+            Detected {fromISO(conflict.createdAt.toString()).toRelative()}
           </span>
         </div>
       </div>

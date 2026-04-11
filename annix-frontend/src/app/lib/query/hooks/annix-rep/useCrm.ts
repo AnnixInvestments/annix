@@ -142,12 +142,10 @@ export function useExportMeetingsCsv() {
   });
 }
 
-export function useCrmOAuthUrl(provider: CrmProvider, redirectUri: string) {
-  return useQuery({
-    queryKey: ["annixRep", "crm", "oauth", provider, redirectUri],
-    queryFn: () => annixRepApi.crm.oauthUrl(provider, redirectUri),
-    enabled: Boolean(provider && redirectUri),
-    staleTime: 5 * 60 * 1000,
+export function useCrmOAuthUrl() {
+  return useMutation({
+    mutationFn: ({ provider, redirectUri }: { provider: CrmProvider; redirectUri: string }) =>
+      annixRepApi.crm.oauthUrl(provider, redirectUri),
   });
 }
 

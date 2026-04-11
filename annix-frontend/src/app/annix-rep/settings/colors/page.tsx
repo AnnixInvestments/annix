@@ -1,15 +1,15 @@
 "use client";
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { useState } from "react";
 import {
-  annixRepApi,
-  type CalendarColorScheme,
   type CalendarColorType,
   DEFAULT_MEETING_TYPE_COLORS,
   DEFAULT_STATUS_COLORS,
-} from "@/app/lib/api/annixRepApi";
+  useCalendarColors,
+  useResetCalendarColors,
+  useSaveCalendarColors,
+} from "@/app/lib/query/hooks";
 
 const MEETING_TYPE_LABELS: Record<string, string> = {
   in_person: "In Person",
@@ -67,12 +67,7 @@ function ColorPicker({
 }
 
 export default function ColorsSettingsPage() {
-  const queryClient = useQueryClient();
-
-  const { data: colorScheme, isLoading } = useQuery<CalendarColorScheme>({
-    queryKey: ["annix-rep", "calendar-colors"],
-    queryFn: () => annixRepApi.calendars.colors(),
-  });
+  const { data: colorScheme, isLoading } = useCalendarColors();
 
   const [meetingTypes, setMeetingTypes] = useState<Record<string, string>>(
     DEFAULT_MEETING_TYPE_COLORS,
@@ -87,38 +82,23 @@ export default function ColorsSettingsPage() {
     setHasInitialized(true);
   }
 
-  const saveMutation = useMutation({
-    mutationFn: async () => {
-      const colors: Array<{ colorType: CalendarColorType; colorKey: string; colorValue: string }> =
-        [];
-
-      Object.entries(meetingTypes).forEach(([key, value]) => {
-        colors.push({ colorType: "meeting_type", colorKey: key, colorValue: value });
-      });
-
-      Object.entries(statuses).forEach(([key, value]) => {
-        colors.push({ colorType: "status", colorKey: key, colorValue: value });
-      });
-
-      return annixRepApi.calendars.setColors(colors);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["annix-rep", "calendar-colors"] });
-    },
-  });
-
-  const resetMutation = useMutation({
-    mutationFn: () => annixRepApi.calendars.resetColors(),
-    onSuccess: () => {
-      setMeetingTypes(DEFAULT_MEETING_TYPE_COLORS);
-      setStatuses(DEFAULT_STATUS_COLORS);
-      queryClient.invalidateQueries({ queryKey: ["annix-rep", "calendar-colors"] });
-    },
-  });
+  const saveMutation = useSaveCalendarColors();
+  const resetMutation = useResetCalendarColors();
 
   const handleSave = async () => {
     setIsSaving(true);
-    await saveMutation.mutateAsync();
+    const colors: Array<{ colorType: CalendarColorType; colorKey: string; colorValue: string }> =
+      [];
+
+    Object.entries(meetingTypes).forEach(([key, value]) => {
+      colors.push({ colorType: "meeting_type", colorKey: key, colorValue: value });
+    });
+
+    Object.entries(statuses).forEach(([key, value]) => {
+      colors.push({ colorType: "status", colorKey: key, colorValue: value });
+    });
+
+    await saveMutation.mutateAsync(colors);
     setIsSaving(false);
   };
 
@@ -176,7 +156,14 @@ export default function ColorsSettingsPage() {
         <div className="flex gap-2">
           <button
             type="button"
-            onClick={() => resetMutation.mutate()}
+            onClick={() =>
+              resetMutation.mutate(undefined, {
+                onSuccess: () => {
+                  setMeetingTypes(DEFAULT_MEETING_TYPE_COLORS);
+                  setStatuses(DEFAULT_STATUS_COLORS);
+                },
+              })
+            }
             disabled={resetMutation.isPending}
             className="px-4 py-2 text-sm text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-slate-700 rounded-lg hover:bg-gray-200 dark:hover:bg-slate-600 disabled:opacity-50"
           >
@@ -199,15 +186,20 @@ export default function ColorsSettingsPage() {
             Meeting Types
           </h2>
           <div className="space-y-1">
-            {Object.entries(MEETING_TYPE_LABELS).map(([key, label]) => (
-              <ColorPicker
-                key={key}
-                label={label}
-                value={meetingTypes[key] ?? DEFAULT_MEETING_TYPE_COLORS[key]}
-                onChange={(color) => setMeetingTypes((prev) => ({ ...prev, [key]: color }))}
-                defaultValue={DEFAULT_MEETING_TYPE_COLORS[key]}
-              />
-            ))}
+            {Object.entries(MEETING_TYPE_LABELS).map(([key, label]) => {
+              const current = meetingTypes[key];
+              const defaultColor = DEFAULT_MEETING_TYPE_COLORS[key];
+              const value = current ? current : defaultColor;
+              return (
+                <ColorPicker
+                  key={key}
+                  label={label}
+                  value={value}
+                  onChange={(color) => setMeetingTypes((prev) => ({ ...prev, [key]: color }))}
+                  defaultValue={defaultColor}
+                />
+              );
+            })}
           </div>
         </div>
 
@@ -216,15 +208,20 @@ export default function ColorsSettingsPage() {
             Meeting Statuses
           </h2>
           <div className="space-y-1">
-            {Object.entries(STATUS_LABELS).map(([key, label]) => (
-              <ColorPicker
-                key={key}
-                label={label}
-                value={statuses[key] ?? DEFAULT_STATUS_COLORS[key]}
-                onChange={(color) => setStatuses((prev) => ({ ...prev, [key]: color }))}
-                defaultValue={DEFAULT_STATUS_COLORS[key]}
-              />
-            ))}
+            {Object.entries(STATUS_LABELS).map(([key, label]) => {
+              const current = statuses[key];
+              const defaultColor = DEFAULT_STATUS_COLORS[key];
+              const value = current ? current : defaultColor;
+              return (
+                <ColorPicker
+                  key={key}
+                  label={label}
+                  value={value}
+                  onChange={(color) => setStatuses((prev) => ({ ...prev, [key]: color }))}
+                  defaultValue={defaultColor}
+                />
+              );
+            })}
           </div>
         </div>
       </div>
@@ -237,29 +234,37 @@ export default function ColorsSettingsPage() {
               Meeting Types
             </h3>
             <div className="flex flex-wrap gap-2">
-              {Object.entries(MEETING_TYPE_LABELS).map(([key, label]) => (
-                <span
-                  key={key}
-                  className="px-3 py-1 rounded-full text-sm text-white font-medium"
-                  style={{ backgroundColor: meetingTypes[key] ?? DEFAULT_MEETING_TYPE_COLORS[key] }}
-                >
-                  {label}
-                </span>
-              ))}
+              {Object.entries(MEETING_TYPE_LABELS).map(([key, label]) => {
+                const current = meetingTypes[key];
+                const bg = current ? current : DEFAULT_MEETING_TYPE_COLORS[key];
+                return (
+                  <span
+                    key={key}
+                    className="px-3 py-1 rounded-full text-sm text-white font-medium"
+                    style={{ backgroundColor: bg }}
+                  >
+                    {label}
+                  </span>
+                );
+              })}
             </div>
           </div>
           <div>
             <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Statuses</h3>
             <div className="flex flex-wrap gap-2">
-              {Object.entries(STATUS_LABELS).map(([key, label]) => (
-                <span
-                  key={key}
-                  className="px-3 py-1 rounded-full text-sm text-white font-medium"
-                  style={{ backgroundColor: statuses[key] ?? DEFAULT_STATUS_COLORS[key] }}
-                >
-                  {label}
-                </span>
-              ))}
+              {Object.entries(STATUS_LABELS).map(([key, label]) => {
+                const current = statuses[key];
+                const bg = current ? current : DEFAULT_STATUS_COLORS[key];
+                return (
+                  <span
+                    key={key}
+                    className="px-3 py-1 rounded-full text-sm text-white font-medium"
+                    style={{ backgroundColor: bg }}
+                  >
+                    {label}
+                  </span>
+                );
+              })}
             </div>
           </div>
         </div>

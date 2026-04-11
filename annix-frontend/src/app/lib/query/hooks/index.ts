@@ -181,8 +181,12 @@ export {
   useAnnixRepLogout,
   useAnnixRepRegister,
 } from "./annix-rep/useAnnixRepAuth";
+export type { CalendarColorScheme, CalendarColorType } from "./annix-rep/useCalendar";
 export {
+  DEFAULT_MEETING_TYPE_COLORS,
+  DEFAULT_STATUS_COLORS,
   useAvailableCalendars,
+  useCalendarColors,
   useCalendarConnection,
   useCalendarConnections,
   useCalendarEvents,
@@ -190,7 +194,9 @@ export {
   useConnectCalendar,
   useDetectConflicts,
   useDisconnectCalendar,
+  useResetCalendarColors,
   useResolveConflict,
+  useSaveCalendarColors,
   useSyncCalendar,
   useSyncConflict,
   useSyncConflictCount,
@@ -237,6 +243,7 @@ export {
   useUpdateMeetingPlatformConnection,
 } from "./annix-rep/useMeetingPlatforms";
 export {
+  recordingStreamUrl,
   useCompleteRecordingUpload,
   useDeleteRecording,
   useInitiateRecordingUpload,
