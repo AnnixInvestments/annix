@@ -13,6 +13,7 @@ import { ProductCategoryController } from "./controllers/product-category.contro
 import { ProductDatasheetController } from "./controllers/product-datasheet.controller";
 import { ReturnsController } from "./controllers/returns.controller";
 import { RubberCompoundController } from "./controllers/rubber-compound.controller";
+import { StockHoldController } from "./controllers/stock-hold.controller";
 import { StockManagementLicenseController } from "./controllers/stock-management-license.controller";
 import { StockTakeController } from "./controllers/stock-take.controller";
 import { CompanyModuleLicense } from "./entities/company-module-license.entity";
@@ -35,6 +36,7 @@ import { RubberWastageBin } from "./entities/rubber-wastage-bin.entity";
 import { RubberWastageEntry } from "./entities/rubber-wastage-entry.entity";
 import { SolutionIssuanceRow } from "./entities/solution-issuance-row.entity";
 import { SolutionProduct } from "./entities/solution-product.entity";
+import { StockHoldItem } from "./entities/stock-hold-item.entity";
 import { StockMovementBatchConsumption } from "./entities/stock-movement-batch-consumption.entity";
 import { StockPurchaseBatch } from "./entities/stock-purchase-batch.entity";
 import { StockTake } from "./entities/stock-take.entity";
@@ -53,6 +55,7 @@ import { ProductCategoryService } from "./services/product-category.service";
 import { ProductDatasheetService } from "./services/product-datasheet.service";
 import { ReturnsService } from "./services/returns.service";
 import { RubberCompoundService } from "./services/rubber-compound.service";
+import { StockHoldService } from "./services/stock-hold.service";
 import { StockManagementLicenseService } from "./services/stock-management-license.service";
 import { StockTakeService } from "./services/stock-take.service";
 import { StockTakeCronService } from "./services/stock-take-cron.service";
@@ -86,6 +89,7 @@ import { StockTakeCronService } from "./services/stock-take-cron.service";
       StockTakeLine,
       StockTakeAdjustment,
       StockTakeVarianceCategory,
+      StockHoldItem,
     ]),
     AuthModule,
     FeatureFlagsModule,
@@ -104,6 +108,7 @@ import { StockTakeCronService } from "./services/stock-take-cron.service";
     ReturnsController,
     StockTakeController,
     LocationMigrationController,
+    StockHoldController,
   ],
   providers: [
     StockManagementLicenseService,
@@ -121,6 +126,7 @@ import { StockTakeCronService } from "./services/stock-take-cron.service";
     StockTakeService,
     StockTakeCronService,
     LocationClassificationService,
+    StockHoldService,
   ],
   exports: [
     StockManagementLicenseService,
@@ -137,6 +143,7 @@ import { StockTakeCronService } from "./services/stock-take-cron.service";
     ReturnsService,
     StockTakeService,
     LocationClassificationService,
+    StockHoldService,
   ],
 })
 export class StockManagementModule {}
