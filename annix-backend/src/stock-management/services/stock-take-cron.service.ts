@@ -17,7 +17,7 @@ export class StockTakeCronService {
   ) {}
 
   @Cron("0 0 1 * *", {
-    name: "stockManagement.monthlyStockTakeSnapshot",
+    name: "stock-management:monthly-snapshot",
     timeZone: "Africa/Johannesburg",
   })
   async monthlySnapshot(): Promise<void> {
