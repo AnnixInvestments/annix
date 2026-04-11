@@ -6,6 +6,8 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from "typeorm";
+import { ConsumableReturn } from "./consumable-return.entity";
+import { PaintReturn } from "./paint-return.entity";
 import { RubberOffcutReturn } from "./rubber-offcut-return.entity";
 
 export type ReturnSessionKind =
@@ -60,4 +62,16 @@ export class ReturnSession {
     (offcut) => offcut.returnSession,
   )
   offcutReturns: RubberOffcutReturn[];
+
+  @OneToMany(
+    () => PaintReturn,
+    (paint) => paint.returnSession,
+  )
+  paintReturns: PaintReturn[];
+
+  @OneToMany(
+    () => ConsumableReturn,
+    (consumable) => consumable.returnSession,
+  )
+  consumableReturns: ConsumableReturn[];
 }

@@ -302,6 +302,30 @@ export class StockManagementApiClient {
     return this.request("POST", "/returns/rubber-offcut", input);
   }
 
+  async createPaintReturn(input: {
+    targetIssuanceRowId?: number | null;
+    sourceProductId?: number | null;
+    litresReturned: number;
+    condition: "usable" | "contaminated";
+    batchNumber?: string | null;
+    photoUrl?: string | null;
+    notes?: string | null;
+  }): Promise<unknown> {
+    return this.request("POST", "/returns/paint", input);
+  }
+
+  async createConsumableReturn(input: {
+    targetIssuanceRowId?: number | null;
+    sourceProductId?: number | null;
+    quantityReturned: number;
+    condition: "usable" | "contaminated";
+    batchNumber?: string | null;
+    photoUrl?: string | null;
+    notes?: string | null;
+  }): Promise<unknown> {
+    return this.request("POST", "/returns/consumable", input);
+  }
+
   async confirmReturnSession(id: number): Promise<unknown> {
     return this.request("POST", `/returns/sessions/${id}/confirm`);
   }
@@ -396,13 +420,22 @@ export class StockManagementApiClient {
   }> {
     const formData = new FormData();
     formData.append("file", file);
+    const rawHeaders = this.options.headers ? this.options.headers() : {};
+    const headers: Record<string, string> = {};
+    for (const [key, value] of Object.entries(rawHeaders)) {
+      if (key.toLowerCase() !== "content-type") {
+        headers[key] = value;
+      }
+    }
     const response = await fetch(`${this.options.baseUrl}/issuance/identify-photo`, {
       method: "POST",
+      headers,
       body: formData,
       credentials: "include",
     });
     if (!response.ok) {
-      throw new Error(`Photo identification failed: ${response.status}`);
+      const text = await response.text().catch(() => "");
+      throw new Error(`Photo identification failed: ${response.status} ${text}`);
     }
     return response.json();
   }

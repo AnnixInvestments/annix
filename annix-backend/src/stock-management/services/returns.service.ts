@@ -2,7 +2,12 @@ import { BadRequestException, Injectable, Logger, NotFoundException } from "@nes
 import { InjectRepository } from "@nestjs/typeorm";
 import { DataSource, Repository } from "typeorm";
 import { now } from "../../lib/datetime";
+import {
+  ConsumableReturn,
+  type ConsumableReturnCondition,
+} from "../entities/consumable-return.entity";
 import { IssuableProduct } from "../entities/issuable-product.entity";
+import { PaintReturn, type PaintReturnCondition } from "../entities/paint-return.entity";
 import { ReturnSession, type ReturnSessionKind } from "../entities/return-session.entity";
 import { RubberOffcutReturn } from "../entities/rubber-offcut-return.entity";
 import { RubberOffcutStock } from "../entities/rubber-offcut-stock.entity";
@@ -35,6 +40,28 @@ export interface CreateWastageEntryInput {
   addedByStaffId?: number | null;
 }
 
+export interface CreatePaintReturnInput {
+  targetIssuanceRowId?: number | null;
+  sourceProductId?: number | null;
+  litresReturned: number;
+  condition: PaintReturnCondition;
+  batchNumber?: string | null;
+  photoUrl?: string | null;
+  notes?: string | null;
+  returnedByStaffId?: number | null;
+}
+
+export interface CreateConsumableReturnInput {
+  targetIssuanceRowId?: number | null;
+  sourceProductId?: number | null;
+  quantityReturned: number;
+  condition: ConsumableReturnCondition;
+  batchNumber?: string | null;
+  photoUrl?: string | null;
+  notes?: string | null;
+  returnedByStaffId?: number | null;
+}
+
 @Injectable()
 export class ReturnsService {
   private readonly logger = new Logger(ReturnsService.name);
@@ -52,14 +79,128 @@ export class ReturnsService {
     private readonly binRepo: Repository<RubberWastageBin>,
     @InjectRepository(RubberWastageEntry)
     private readonly wastageEntryRepo: Repository<RubberWastageEntry>,
+    @InjectRepository(PaintReturn)
+    private readonly paintReturnRepo: Repository<PaintReturn>,
+    @InjectRepository(ConsumableReturn)
+    private readonly consumableReturnRepo: Repository<ConsumableReturn>,
     private readonly dataSource: DataSource,
   ) {}
 
   async outstandingReturns(companyId: number): Promise<ReturnSession[]> {
     return this.sessionRepo.find({
       where: { companyId, status: "pending" },
-      relations: { offcutReturns: true },
+      relations: { offcutReturns: true, paintReturns: true, consumableReturns: true },
       order: { createdAt: "DESC" },
+    });
+  }
+
+  async createPaintReturnSession(
+    companyId: number,
+    input: CreatePaintReturnInput,
+  ): Promise<ReturnSession> {
+    if (input.litresReturned <= 0) {
+      throw new BadRequestException("litresReturned must be greater than zero");
+    }
+    if (input.condition !== "usable" && input.condition !== "contaminated") {
+      throw new BadRequestException("condition must be 'usable' or 'contaminated'");
+    }
+    return this.dataSource.transaction(async (manager) => {
+      const sessionRepo = manager.getRepository(ReturnSession);
+      const paintReturnRepo = manager.getRepository(PaintReturn);
+
+      const session = sessionRepo.create({
+        companyId,
+        returnKind: "paint_litres" as ReturnSessionKind,
+        targetIssuanceRowId: input.targetIssuanceRowId ?? null,
+        targetSessionId: null,
+        targetJobCardId: null,
+        returnedByStaffId: input.returnedByStaffId ?? null,
+        status: "pending",
+        notes: input.notes ?? null,
+      });
+      const savedSession = await sessionRepo.save(session);
+
+      const paintReturn = paintReturnRepo.create({
+        returnSessionId: savedSession.id,
+        companyId,
+        sourceIssuanceRowId: input.targetIssuanceRowId ?? null,
+        sourceProductId: input.sourceProductId ?? null,
+        litresReturned: input.litresReturned,
+        condition: input.condition,
+        batchNumber: input.batchNumber ?? null,
+        photoUrl: input.photoUrl ?? null,
+        notes: input.notes ?? null,
+      });
+      await paintReturnRepo.save(paintReturn);
+
+      // TODO (post-preview): when condition === "usable", restore the returned
+      // litres to the source StockPurchaseBatch remaining quantity, or create a
+      // new micro-batch so FIFO valuation reflects the return. When
+      // contaminated, log to a paint wastage bin analogous to rubber wastage.
+      // Tracked as scope gap on issue #192.
+
+      const fullSession = await sessionRepo.findOne({
+        where: { id: savedSession.id },
+        relations: { offcutReturns: true, paintReturns: true, consumableReturns: true },
+      });
+      if (!fullSession) {
+        throw new NotFoundException(`Return session ${savedSession.id} disappeared after creation`);
+      }
+      return fullSession;
+    });
+  }
+
+  async createConsumableReturnSession(
+    companyId: number,
+    input: CreateConsumableReturnInput,
+  ): Promise<ReturnSession> {
+    if (input.quantityReturned <= 0) {
+      throw new BadRequestException("quantityReturned must be greater than zero");
+    }
+    if (input.condition !== "usable" && input.condition !== "contaminated") {
+      throw new BadRequestException("condition must be 'usable' or 'contaminated'");
+    }
+    return this.dataSource.transaction(async (manager) => {
+      const sessionRepo = manager.getRepository(ReturnSession);
+      const consumableReturnRepo = manager.getRepository(ConsumableReturn);
+
+      const session = sessionRepo.create({
+        companyId,
+        returnKind: "consumable_qty" as ReturnSessionKind,
+        targetIssuanceRowId: input.targetIssuanceRowId ?? null,
+        targetSessionId: null,
+        targetJobCardId: null,
+        returnedByStaffId: input.returnedByStaffId ?? null,
+        status: "pending",
+        notes: input.notes ?? null,
+      });
+      const savedSession = await sessionRepo.save(session);
+
+      const consumableReturn = consumableReturnRepo.create({
+        returnSessionId: savedSession.id,
+        companyId,
+        sourceIssuanceRowId: input.targetIssuanceRowId ?? null,
+        sourceProductId: input.sourceProductId ?? null,
+        quantityReturned: input.quantityReturned,
+        condition: input.condition,
+        batchNumber: input.batchNumber ?? null,
+        photoUrl: input.photoUrl ?? null,
+        notes: input.notes ?? null,
+      });
+      await consumableReturnRepo.save(consumableReturn);
+
+      // TODO (post-preview): restore usable quantities to source
+      // StockPurchaseBatch or log contaminated units to a consumable wastage
+      // sink. Tracked as scope gap on issue #192.
+
+      const fullSession = await sessionRepo.findOne({
+        where: { id: savedSession.id },
+        relations: { offcutReturns: true, paintReturns: true, consumableReturns: true },
+      });
+      if (!fullSession) {
+        throw new NotFoundException(`Return session ${savedSession.id} disappeared after creation`);
+      }
+      return fullSession;
     });
   }
 

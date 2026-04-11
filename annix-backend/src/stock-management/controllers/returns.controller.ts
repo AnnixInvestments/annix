@@ -4,7 +4,9 @@ import { StockControlAuthGuard } from "../../stock-control/guards/stock-control-
 import { StockManagementFeature } from "../guards/stock-management-feature.decorator";
 import { StockManagementFeatureGuard } from "../guards/stock-management-feature.guard";
 import {
+  type CreateConsumableReturnInput,
   type CreateOffcutReturnInput,
+  type CreatePaintReturnInput,
   type CreateWastageEntryInput,
   ReturnsService,
 } from "../services/returns.service";
@@ -34,6 +36,34 @@ export class ReturnsController {
   async createOffcutReturn(@Req() req: any, @Body() body: CreateOffcutReturnInput) {
     const staffId = req.user.linkedStaffId ?? req.user.id ?? null;
     return this.returnsService.createOffcutReturnSession(Number(req.user.companyId), {
+      ...body,
+      returnedByStaffId: staffId,
+    });
+  }
+
+  @Post("paint")
+  @StockManagementFeature("BASIC_ISSUING")
+  @ApiOperation({
+    summary:
+      "Create a paint return session — usable litres can be re-issued, contaminated is logged",
+  })
+  async createPaintReturn(@Req() req: any, @Body() body: CreatePaintReturnInput) {
+    const staffId = req.user.linkedStaffId ?? req.user.id ?? null;
+    return this.returnsService.createPaintReturnSession(Number(req.user.companyId), {
+      ...body,
+      returnedByStaffId: staffId,
+    });
+  }
+
+  @Post("consumable")
+  @StockManagementFeature("BASIC_ISSUING")
+  @ApiOperation({
+    summary:
+      "Create a consumable return session — usable units can be re-issued, contaminated is logged",
+  })
+  async createConsumableReturn(@Req() req: any, @Body() body: CreateConsumableReturnInput) {
+    const staffId = req.user.linkedStaffId ?? req.user.id ?? null;
+    return this.returnsService.createConsumableReturnSession(Number(req.user.companyId), {
       ...body,
       returnedByStaffId: staffId,
     });

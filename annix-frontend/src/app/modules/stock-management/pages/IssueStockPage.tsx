@@ -160,13 +160,15 @@ export function IssueStockPage() {
   const stepIndex = STEPS.findIndex((s) => s.key === currentStep);
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-4 p-3 sm:space-y-6 sm:p-6">
       <header>
-        <h1 className="text-2xl font-bold text-gray-900">{config.label("issueStock.title")}</h1>
+        <h1 className="text-xl sm:text-2xl font-bold text-gray-900">
+          {config.label("issueStock.title")}
+        </h1>
         <p className="mt-1 text-sm text-gray-600">{config.label("issueStock.subtitle")}</p>
       </header>
 
-      <nav className="flex items-center gap-3 flex-wrap">
+      <nav className="flex items-center gap-2 flex-wrap">
         {STEPS.map((step, index) => {
           const isActive = step.key === currentStep;
           const isComplete = index < stepIndex;
@@ -180,7 +182,7 @@ export function IssueStockPage() {
               key={step.key}
               type="button"
               onClick={() => setCurrentStep(step.key)}
-              className={`px-3 py-1.5 rounded-full text-xs font-medium transition ${tone}`}
+              className={`px-2.5 py-1.5 rounded-full text-xs font-medium transition ${tone}`}
             >
               {index + 1}. {config.label(`issueStock.step.${step.key}`, step.label)}
             </button>
@@ -188,7 +190,7 @@ export function IssueStockPage() {
         })}
       </nav>
 
-      <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
+      <div className="rounded-lg border border-gray-200 bg-white p-4 sm:p-6 shadow-sm">
         {currentStep === "issuer" && (
           <div className="space-y-3">
             <h2 className="text-lg font-semibold">Issuer (storeman issuing the stock)</h2>
@@ -340,37 +342,52 @@ export function IssueStockPage() {
                 <h3 className="text-sm font-semibold">Cart ({cart.length})</h3>
                 <div className="rounded-lg border border-gray-200 divide-y">
                   {cart.map((row) => (
-                    <div key={row.product.id} className="p-3 flex items-center gap-3">
-                      <div className="flex-1">
-                        <div className="text-sm font-medium">{row.product.name}</div>
-                        <div className="text-xs text-gray-500">
-                          {row.product.sku} · {row.product.productType}
+                    <div key={row.product.id} className="p-3 space-y-2">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm font-medium truncate">{row.product.name}</div>
+                          <div className="text-xs text-gray-500 truncate">
+                            {row.product.sku} · {row.product.productType}
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => removeFromCart(row.product.id)}
+                          className="shrink-0 text-red-600 text-xs hover:underline px-2 py-1"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="flex-1">
+                          <label className="block text-[10px] uppercase tracking-wide text-gray-500 mb-0.5">
+                            Qty
+                          </label>
+                          <input
+                            type="number"
+                            inputMode="decimal"
+                            value={row.quantity}
+                            onChange={(e) =>
+                              updateCartRow(row.product.id, { quantity: Number(e.target.value) })
+                            }
+                            className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm"
+                          />
+                        </div>
+                        <div className="flex-1">
+                          <label className="block text-[10px] uppercase tracking-wide text-gray-500 mb-0.5">
+                            Batch #
+                          </label>
+                          <input
+                            type="text"
+                            value={row.batchNumber}
+                            onChange={(e) =>
+                              updateCartRow(row.product.id, { batchNumber: e.target.value })
+                            }
+                            placeholder="optional"
+                            className="w-full border border-gray-300 rounded px-2 py-1.5 text-xs"
+                          />
                         </div>
                       </div>
-                      <input
-                        type="number"
-                        value={row.quantity}
-                        onChange={(e) =>
-                          updateCartRow(row.product.id, { quantity: Number(e.target.value) })
-                        }
-                        className="w-20 border border-gray-300 rounded px-2 py-1 text-sm"
-                      />
-                      <input
-                        type="text"
-                        value={row.batchNumber}
-                        onChange={(e) =>
-                          updateCartRow(row.product.id, { batchNumber: e.target.value })
-                        }
-                        placeholder="Batch #"
-                        className="w-28 border border-gray-300 rounded px-2 py-1 text-xs"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => removeFromCart(row.product.id)}
-                        className="text-red-600 text-xs hover:underline"
-                      >
-                        Remove
-                      </button>
                     </div>
                   ))}
                 </div>

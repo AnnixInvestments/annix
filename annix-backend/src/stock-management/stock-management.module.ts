@@ -24,11 +24,13 @@ import { VarianceCategoryController } from "./controllers/variance-category.cont
 import { CompanyModuleLicense } from "./entities/company-module-license.entity";
 import { ConsumableIssuanceRow } from "./entities/consumable-issuance-row.entity";
 import { ConsumableProduct } from "./entities/consumable-product.entity";
+import { ConsumableReturn } from "./entities/consumable-return.entity";
 import { IssuableProduct } from "./entities/issuable-product.entity";
 import { IssuanceRow } from "./entities/issuance-row.entity";
 import { IssuanceSession } from "./entities/issuance-session.entity";
 import { PaintIssuanceRow } from "./entities/paint-issuance-row.entity";
 import { PaintProduct } from "./entities/paint-product.entity";
+import { PaintReturn } from "./entities/paint-return.entity";
 import { ProductCategory } from "./entities/product-category.entity";
 import { ProductDatasheet } from "./entities/product-datasheet.entity";
 import { ReturnSession } from "./entities/return-session.entity";
@@ -93,6 +95,8 @@ import { VarianceCategoryService } from "./services/variance-category.service";
       RubberRollIssuanceRow,
       SolutionIssuanceRow,
       ReturnSession,
+      PaintReturn,
+      ConsumableReturn,
       RubberOffcutReturn,
       RubberWastageBin,
       RubberWastageEntry,

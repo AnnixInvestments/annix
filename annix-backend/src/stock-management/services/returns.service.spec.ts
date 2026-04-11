@@ -2,7 +2,9 @@ import { BadRequestException } from "@nestjs/common";
 import { Test, TestingModule } from "@nestjs/testing";
 import { getRepositoryToken } from "@nestjs/typeorm";
 import { DataSource } from "typeorm";
+import { ConsumableReturn } from "../entities/consumable-return.entity";
 import { IssuableProduct } from "../entities/issuable-product.entity";
+import { PaintReturn } from "../entities/paint-return.entity";
 import { ReturnSession } from "../entities/return-session.entity";
 import { RubberOffcutReturn } from "../entities/rubber-offcut-return.entity";
 import { RubberOffcutStock } from "../entities/rubber-offcut-stock.entity";
@@ -34,6 +36,8 @@ describe("ReturnsService", () => {
         { provide: getRepositoryToken(IssuableProduct), useValue: baseRepoMock() },
         { provide: getRepositoryToken(RubberWastageBin), useValue: baseRepoMock() },
         { provide: getRepositoryToken(RubberWastageEntry), useValue: baseRepoMock() },
+        { provide: getRepositoryToken(PaintReturn), useValue: baseRepoMock() },
+        { provide: getRepositoryToken(ConsumableReturn), useValue: baseRepoMock() },
         { provide: DataSource, useValue: mockDataSource },
       ],
     }).compile();
