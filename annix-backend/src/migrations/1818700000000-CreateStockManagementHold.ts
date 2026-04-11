@@ -75,6 +75,6 @@ export class CreateStockManagementHold1818700000000 implements MigrationInterfac
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`DROP TABLE IF EXISTS sm_stock_hold_item CASCADE;`);
+    await queryRunner.query("DROP TABLE IF EXISTS sm_stock_hold_item CASCADE;");
   }
 }
