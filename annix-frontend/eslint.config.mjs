@@ -200,6 +200,32 @@ export default tseslint.config(
               message:
                 "Page components should use TanStack Query hooks from '@/app/lib/query/hooks' instead of raw fetch. Create a hook in the query/hooks directory if one doesn't exist yet.",
             },
+            {
+              name: "@/app/lib/api/client",
+              allowTypeImports: true,
+              message:
+                "Page components should use TanStack Query hooks from '@/app/lib/query/hooks' instead of the raw API client. Type imports are allowed. See Phase 9 of annix/annix#191.",
+            },
+            {
+              name: "@/app/lib/api/annixRepApi",
+              allowTypeImports: true,
+              message:
+                "Page components should use TanStack Query hooks from '@/app/lib/query/hooks/annix-rep' instead of annixRepApi. Type imports are allowed. See Phase 9 of annix/annix#191.",
+            },
+            {
+              name: "@/app/lib/api/stockControlApi",
+              allowTypeImports: true,
+              message:
+                "Page components should use TanStack Query hooks from '@/app/lib/query/hooks/stock-control' instead of stockControlApi. Type imports are allowed. See Phase 9 of annix/annix#191.",
+            },
+          ],
+          patterns: [
+            {
+              group: ["@/app/lib/api/stock-control-api/*"],
+              allowTypeImports: true,
+              message:
+                "Page components should use TanStack Query hooks from '@/app/lib/query/hooks/stock-control' instead of direct stock-control-api module imports. Type imports are allowed. See Phase 9 of annix/annix#191.",
+            },
           ],
         },
       ],
