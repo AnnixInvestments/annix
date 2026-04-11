@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { StockManagementApiClient } from "../api/stockManagementApi";
+import { JobCardOrCpoPicker, type TargetSelection } from "../components/JobCardOrCpoPicker";
+import { StaffPicker } from "../components/StaffPicker";
 import { useCreateIssuanceSession, useIssuableProducts } from "../hooks/useIssuanceQueries";
 import {
   useStockManagementConfig,
@@ -30,10 +32,12 @@ export function IssueStockPage() {
   const config = useStockManagementConfig();
   const isBasicEnabled = useStockManagementFeature("BASIC_ISSUING");
   const isPhotoEnabled = useStockManagementFeature("PHOTO_IDENTIFICATION");
+  const loggedInStaffId = config.currentUser.staffId;
+  const initialIssuerStaffId: number | "" = loggedInStaffId == null ? "" : loggedInStaffId;
   const [currentStep, setCurrentStep] = useState<StepKey>("issuer");
-  const [issuerStaffId, setIssuerStaffId] = useState<number | "">("");
+  const [issuerStaffId, setIssuerStaffId] = useState<number | "">(initialIssuerStaffId);
   const [recipientStaffId, setRecipientStaffId] = useState<number | "">("");
-  const [jobCardId, setJobCardId] = useState<number | "">("");
+  const [target, setTarget] = useState<TargetSelection | null>(null);
   const [search, setSearch] = useState("");
   const [cart, setCart] = useState<CartRow[]>([]);
   const [photoCapturing, setPhotoCapturing] = useState(false);
@@ -98,12 +102,13 @@ export function IssueStockPage() {
       alert("Cart is empty");
       return;
     }
+    const rowJobCardId = target != null && target.kind === "job_card" ? target.id : null;
     const rows: IssuanceRowInputDto[] = cart.map((row) => {
       if (row.product.productType === "paint") {
         return {
           rowType: "paint",
           productId: row.product.id,
-          jobCardId: jobCardId === "" ? null : Number(jobCardId),
+          jobCardId: rowJobCardId,
           litres: row.quantity,
           batchNumber: row.batchNumber || null,
         };
@@ -112,7 +117,7 @@ export function IssueStockPage() {
         return {
           rowType: "rubber_roll",
           productId: row.product.id,
-          jobCardId: jobCardId === "" ? null : Number(jobCardId),
+          jobCardId: rowJobCardId,
           weightKgIssued: row.quantity,
         };
       }
@@ -120,7 +125,7 @@ export function IssueStockPage() {
         return {
           rowType: "solution",
           productId: row.product.id,
-          jobCardId: jobCardId === "" ? null : Number(jobCardId),
+          jobCardId: rowJobCardId,
           volumeL: row.quantity,
           batchNumber: row.batchNumber || null,
         };
@@ -128,16 +133,19 @@ export function IssueStockPage() {
       return {
         rowType: "consumable",
         productId: row.product.id,
-        jobCardId: jobCardId === "" ? null : Number(jobCardId),
+        jobCardId: rowJobCardId,
         quantity: row.quantity,
         batchNumber: row.batchNumber || null,
       };
     });
+    const sessionCpoId = target != null && target.kind === "cpo" ? target.id : null;
+    const sessionJobCardIds = target != null && target.kind === "job_card" ? [target.id] : null;
     try {
       await createMutation.createSession({
         issuerStaffId: issuerStaffId === "" ? null : Number(issuerStaffId),
         recipientStaffId: recipientStaffId === "" ? null : Number(recipientStaffId),
-        jobCardIds: jobCardId === "" ? null : [Number(jobCardId)],
+        cpoId: sessionCpoId,
+        jobCardIds: sessionJobCardIds,
         rows,
       });
       alert("Session created successfully");
@@ -184,12 +192,10 @@ export function IssueStockPage() {
         {currentStep === "issuer" && (
           <div className="space-y-3">
             <h2 className="text-lg font-semibold">Issuer (storeman issuing the stock)</h2>
-            <input
-              type="number"
+            <StaffPicker
               value={issuerStaffId}
-              onChange={(e) => setIssuerStaffId(e.target.value ? Number(e.target.value) : "")}
-              placeholder="Staff ID"
-              className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+              onChange={setIssuerStaffId}
+              placeholder="Search staff issuing the stock"
             />
             <button
               type="button"
@@ -205,12 +211,10 @@ export function IssueStockPage() {
         {currentStep === "recipient" && (
           <div className="space-y-3">
             <h2 className="text-lg font-semibold">Recipient (staff receiving the stock)</h2>
-            <input
-              type="number"
+            <StaffPicker
               value={recipientStaffId}
-              onChange={(e) => setRecipientStaffId(e.target.value ? Number(e.target.value) : "")}
-              placeholder="Staff ID"
-              className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+              onChange={setRecipientStaffId}
+              placeholder="Search staff receiving the stock"
             />
             <button
               type="button"
@@ -226,20 +230,32 @@ export function IssueStockPage() {
         {currentStep === "target" && (
           <div className="space-y-3">
             <h2 className="text-lg font-semibold">Job Card or CPO</h2>
-            <input
-              type="number"
-              value={jobCardId}
-              onChange={(e) => setJobCardId(e.target.value ? Number(e.target.value) : "")}
-              placeholder="Job Card ID (optional)"
-              className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
-            />
-            <button
-              type="button"
-              onClick={() => setCurrentStep("items")}
-              className="px-4 py-2 bg-teal-600 text-white rounded text-sm font-medium"
-            >
-              Next →
-            </button>
+            <p className="text-xs text-gray-500">
+              Optional. Pick a job card or a CPO to link this issuance to, or skip to continue
+              without one.
+            </p>
+            <JobCardOrCpoPicker value={target} onChange={setTarget} />
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setCurrentStep("items")}
+                className="px-4 py-2 bg-teal-600 text-white rounded text-sm font-medium"
+              >
+                Next →
+              </button>
+              {target != null ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTarget(null);
+                    setCurrentStep("items");
+                  }}
+                  className="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded text-sm font-medium hover:bg-gray-50"
+                >
+                  Skip (clear selection)
+                </button>
+              ) : null}
+            </div>
           </div>
         )}
 
@@ -378,7 +394,11 @@ export function IssueStockPage() {
             <div className="text-sm space-y-1">
               <div>Issuer: Staff #{issuerStaffId}</div>
               <div>Recipient: Staff #{recipientStaffId}</div>
-              {jobCardId && <div>Job Card: #{jobCardId}</div>}
+              {target != null ? (
+                <div>
+                  {target.kind === "cpo" ? "CPO" : "Job Card"}: {target.label}
+                </div>
+              ) : null}
             </div>
             <div className="rounded-lg border border-gray-200 divide-y">
               {cart.map((row) => (
