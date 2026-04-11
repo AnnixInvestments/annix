@@ -1,5 +1,14 @@
 export { StockManagementApiClient } from "./api/stockManagementApi";
 export {
+  useAdminMutations,
+  useProductCategories,
+  useProductDatasheets,
+  useRubberCompounds,
+  useStockHoldAging,
+  useStockHoldPending,
+  useVarianceCategories,
+} from "./hooks/useAdminQueries";
+export {
   useCreateIssuanceSession,
   useIssuableProducts,
   useIssuanceSessions,
@@ -14,6 +23,13 @@ export {
   STOCK_MANAGEMENT_NAV_ITEMS,
   type StockManagementNavItem,
 } from "./manifest";
+export { AdminLocationMigrationPage } from "./pages/AdminLocationMigrationPage";
+export { AdminPaintMigrationPage } from "./pages/AdminPaintMigrationPage";
+export { AdminProductCategoriesPage } from "./pages/AdminProductCategoriesPage";
+export { AdminProductDatasheetsPage } from "./pages/AdminProductDatasheetsPage";
+export { AdminRubberCompoundsPage } from "./pages/AdminRubberCompoundsPage";
+export { AdminStockHoldPage } from "./pages/AdminStockHoldPage";
+export { AdminVarianceCategoriesPage } from "./pages/AdminVarianceCategoriesPage";
 export { IssueStockPage } from "./pages/IssueStockPage";
 export { ModuleLicensePage } from "./pages/ModuleLicensePage";
 export {
@@ -30,6 +46,18 @@ export type {
   StockManagementThemeOverrides,
   StockManagementThemeTokens,
 } from "./theme/theme-types";
+export type {
+  CreateProductCategoryInput,
+  CreateRubberCompoundInput,
+  CreateVarianceCategoryInput,
+  LocationCandidateInput,
+  LocationClassificationSuggestionDto,
+  ProductDatasheetDto,
+  ResolveDispositionInput,
+  RubberCompoundDto,
+  StockHoldItemDto,
+  VarianceCategoryDto,
+} from "./types/admin";
 export type {
   StockManagementCurrentUser,
   StockManagementHostAppKey,

@@ -1,4 +1,16 @@
 import type {
+  CreateProductCategoryInput,
+  CreateRubberCompoundInput,
+  CreateVarianceCategoryInput,
+  LocationCandidateInput,
+  LocationClassificationSuggestionDto,
+  ProductDatasheetDto,
+  ResolveDispositionInput,
+  RubberCompoundDto,
+  StockHoldItemDto,
+  VarianceCategoryDto,
+} from "../types/admin";
+import type {
   CreateIssuanceSessionDto,
   IssuanceSessionDto,
   IssuanceSessionFiltersDto,
@@ -114,6 +126,111 @@ export class StockManagementApiClient {
 
   async undoIssuanceSession(id: number): Promise<IssuanceSessionDto> {
     return this.request("POST", `/issuance/sessions/${id}/undo`);
+  }
+
+  async createProductCategory(dto: CreateProductCategoryInput): Promise<ProductCategoryDto> {
+    return this.request("POST", "/product-categories", dto);
+  }
+
+  async updateProductCategory(
+    id: number,
+    dto: Partial<CreateProductCategoryInput>,
+  ): Promise<ProductCategoryDto> {
+    return this.request("PATCH", `/product-categories/${id}`, dto);
+  }
+
+  async deleteProductCategory(id: number): Promise<ProductCategoryDto> {
+    return this.request("DELETE", `/product-categories/${id}`);
+  }
+
+  async seedProductCategories(): Promise<{ created: number }> {
+    return this.request("POST", "/product-categories/seed");
+  }
+
+  async listRubberCompounds(includeInactive = false): Promise<RubberCompoundDto[]> {
+    return this.request(
+      "GET",
+      `/rubber-compounds${includeInactive ? "?includeInactive=true" : ""}`,
+    );
+  }
+
+  async createRubberCompound(dto: CreateRubberCompoundInput): Promise<RubberCompoundDto> {
+    return this.request("POST", "/rubber-compounds", dto);
+  }
+
+  async updateRubberCompound(
+    id: number,
+    dto: Partial<CreateRubberCompoundInput> & { active?: boolean },
+  ): Promise<RubberCompoundDto> {
+    return this.request("PATCH", `/rubber-compounds/${id}`, dto);
+  }
+
+  async seedRubberCompounds(): Promise<{ created: number }> {
+    return this.request("POST", "/rubber-compounds/seed");
+  }
+
+  async listVarianceCategories(includeInactive = false): Promise<VarianceCategoryDto[]> {
+    return this.request(
+      "GET",
+      `/variance-categories${includeInactive ? "?includeInactive=true" : ""}`,
+    );
+  }
+
+  async createVarianceCategory(dto: CreateVarianceCategoryInput): Promise<VarianceCategoryDto> {
+    return this.request("POST", "/variance-categories", dto);
+  }
+
+  async updateVarianceCategory(
+    id: number,
+    dto: Partial<CreateVarianceCategoryInput> & { active?: boolean },
+  ): Promise<VarianceCategoryDto> {
+    return this.request("PATCH", `/variance-categories/${id}`, dto);
+  }
+
+  async seedVarianceCategories(): Promise<{ created: number }> {
+    return this.request("POST", "/variance-categories/seed");
+  }
+
+  async listStockHold(status?: StockHoldItemDto["dispositionStatus"]): Promise<StockHoldItemDto[]> {
+    return this.request("GET", `/stock-hold${status ? `?status=${status}` : ""}`);
+  }
+
+  async listPendingStockHold(): Promise<StockHoldItemDto[]> {
+    return this.request("GET", "/stock-hold/pending");
+  }
+
+  async stockHoldAging(): Promise<{ fresh: number; week: number; month: number; older: number }> {
+    return this.request("GET", "/stock-hold/aging");
+  }
+
+  async resolveStockHold(id: number, dto: ResolveDispositionInput): Promise<StockHoldItemDto> {
+    return this.request("POST", `/stock-hold/${id}/resolve`, dto);
+  }
+
+  async listProductDatasheets(
+    productType?: ProductDatasheetDto["productType"],
+  ): Promise<ProductDatasheetDto[]> {
+    return this.request("GET", `/datasheets${productType ? `?productType=${productType}` : ""}`);
+  }
+
+  async datasheetDownloadUrl(id: number): Promise<{ url: string }> {
+    return this.request("GET", `/datasheets/${id}/download-url`);
+  }
+
+  async verifyDatasheet(id: number): Promise<ProductDatasheetDto> {
+    return this.request("POST", `/datasheets/${id}/verify`);
+  }
+
+  async classifyUnassignedLocations(
+    locations: LocationCandidateInput[],
+  ): Promise<LocationClassificationSuggestionDto[]> {
+    return this.request("POST", "/location-migration/classify", { locations });
+  }
+
+  async applyLocationClassifications(
+    decisions: Array<{ productId: number; locationId: number | null }>,
+  ): Promise<{ updated: number }> {
+    return this.request("POST", "/location-migration/apply", { decisions });
   }
 
   private async request<T>(method: string, path: string, body?: unknown): Promise<T> {
