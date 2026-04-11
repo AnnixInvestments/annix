@@ -1,19 +1,20 @@
 "use client";
 
 import { DollarSign, Edit2, Plus, Save, Trash2, X } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { Pagination, TableLoadingState } from "@/app/components/shared/TableComponents";
 import { useToast } from "@/app/components/Toast";
-import { useAuRubberBranding } from "@/app/context/AuRubberBrandingContext";
-import {
-  type CalendererConversionRates,
-  type CostRateDto,
-  type CostRateType,
-  type RollCosDto,
-  type RubberProductCodingDto,
-  rubberPortalApi,
-} from "@/app/lib/api/rubberPortalApi";
+import type { CostRateType } from "@/app/lib/api/rubberPortalApi";
 import { formatDateZA } from "@/app/lib/datetime";
+import {
+  useAllRollCos,
+  useCalendererConversionRates,
+  useCreateCostRate,
+  useDeleteCostRate,
+  useRubberCodings,
+  useRubberCostRates,
+  useUpdateCostRate,
+} from "@/app/lib/query/hooks";
 import { Breadcrumb } from "../../components/Breadcrumb";
 import { ConfirmModal } from "../../components/ConfirmModal";
 
@@ -62,18 +63,27 @@ function ProfitBadge(props: { profitLossZar: number | null }) {
 
 export default function CostOfSalePage() {
   const { showToast } = useToast();
-  const { colors } = useAuRubberBranding();
   const [activeTab, setActiveTab] = useState<ActiveTab>("rates");
 
-  const [costRates, setCostRates] = useState<CostRateDto[]>([]);
-  const [compounds, setCompounds] = useState<RubberProductCodingDto[]>([]);
-  const [calendererRates, setCalendererRates] = useState<CalendererConversionRates>({
-    uncuredPerKg: null,
-    curedBuffedPerKg: null,
-  });
-  const [rollCosData, setRollCosData] = useState<RollCosDto[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isLoadingRolls, setIsLoadingRolls] = useState(false);
+  const costRatesQuery = useRubberCostRates();
+  const compoundsQuery = useRubberCodings("COMPOUND");
+  const calendererRatesQuery = useCalendererConversionRates();
+  const updateCostRateMutation = useUpdateCostRate();
+  const createCostRateMutation = useCreateCostRate();
+  const deleteCostRateMutation = useDeleteCostRate();
+
+  const costRatesData = costRatesQuery.data;
+  const costRates = costRatesData ? costRatesData : [];
+  const compoundsData = compoundsQuery.data;
+  const compounds = compoundsData ? compoundsData : [];
+  const calendererRatesData = calendererRatesQuery.data;
+  const calendererRates = calendererRatesData
+    ? calendererRatesData
+    : { uncuredPerKg: null, curedBuffedPerKg: null };
+  const costRatesLoading = costRatesQuery.isLoading;
+  const compoundsLoading = compoundsQuery.isLoading;
+  const calendererRatesLoading = calendererRatesQuery.isLoading;
+  const isLoading = costRatesLoading || compoundsLoading || calendererRatesLoading;
 
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editValue, setEditValue] = useState("");
@@ -93,50 +103,20 @@ export default function CostOfSalePage() {
   const [rollPageSize, setRollPageSize] = useState(ITEMS_PER_PAGE);
   const [rollFilter, setRollFilter] = useState<"ALL" | "IN_STOCK" | "SOLD">("ALL");
 
-  const loadRates = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      const [rates, codings, calRates] = await Promise.all([
-        rubberPortalApi.costRates(),
-        rubberPortalApi.productCodings("COMPOUND"),
-        rubberPortalApi.calendererConversionRates(),
-      ]);
-      setCostRates(rates);
-      setCompounds(codings);
-      setCalendererRates(calRates);
-      setUncuredInput(calRates.uncuredPerKg !== null ? String(calRates.uncuredPerKg) : "");
-      setCuredBuffedInput(
-        calRates.curedBuffedPerKg !== null ? String(calRates.curedBuffedPerKg) : "",
-      );
-    } catch (err) {
-      showToast(err instanceof Error ? err.message : "Failed to load cost rates", "error");
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  const loadRollCos = useCallback(async () => {
-    try {
-      setIsLoadingRolls(true);
-      const status = rollFilter === "ALL" ? undefined : rollFilter;
-      const data = await rubberPortalApi.allRollCos(status);
-      setRollCosData(data);
-    } catch (err) {
-      showToast(err instanceof Error ? err.message : "Failed to load roll COS data", "error");
-    } finally {
-      setIsLoadingRolls(false);
-    }
-  }, [rollFilter]);
+  const rollCosStatus = rollFilter === "ALL" ? undefined : rollFilter;
+  const rollCosQuery = useAllRollCos(rollCosStatus, {
+    enabled: activeTab === "profitability",
+  });
+  const rollCosQueryData = rollCosQuery.data;
+  const rollCosData = rollCosQueryData ? rollCosQueryData : [];
+  const isLoadingRolls = rollCosQuery.isLoading && activeTab === "profitability";
 
   useEffect(() => {
-    loadRates();
-  }, [loadRates]);
-
-  useEffect(() => {
-    if (activeTab === "profitability") {
-      loadRollCos();
-    }
-  }, [activeTab, loadRollCos]);
+    const calUncured = calendererRates.uncuredPerKg;
+    const calCured = calendererRates.curedBuffedPerKg;
+    setUncuredInput(calUncured !== null ? String(calUncured) : "");
+    setCuredBuffedInput(calCured !== null ? String(calCured) : "");
+  }, [calendererRates.uncuredPerKg, calendererRates.curedBuffedPerKg]);
 
   const compoundRates = costRates.filter((r) => r.rateType === "COMPOUND");
 
@@ -156,10 +136,13 @@ export default function CostOfSalePage() {
 
       if (uncuredInput && !Number.isNaN(uncuredVal)) {
         if (uncuredRate) {
-          await rubberPortalApi.updateCostRate(uncuredRate.id, { costPerKgZar: uncuredVal });
+          await updateCostRateMutation.mutateAsync({
+            id: uncuredRate.id,
+            data: { costPerKgZar: uncuredVal },
+          });
         } else {
-          await rubberPortalApi.createCostRate({
-            rateType: "CALENDERER_UNCURED",
+          await createCostRateMutation.mutateAsync({
+            rateType: "CALENDERER_UNCURED" as CostRateType,
             costPerKgZar: uncuredVal,
           });
         }
@@ -167,10 +150,13 @@ export default function CostOfSalePage() {
 
       if (curedBuffedInput && !Number.isNaN(curedVal)) {
         if (curedRate) {
-          await rubberPortalApi.updateCostRate(curedRate.id, { costPerKgZar: curedVal });
+          await updateCostRateMutation.mutateAsync({
+            id: curedRate.id,
+            data: { costPerKgZar: curedVal },
+          });
         } else {
-          await rubberPortalApi.createCostRate({
-            rateType: "CALENDERER_CURED_BUFFED",
+          await createCostRateMutation.mutateAsync({
+            rateType: "CALENDERER_CURED_BUFFED" as CostRateType,
             costPerKgZar: curedVal,
           });
         }
@@ -178,7 +164,6 @@ export default function CostOfSalePage() {
 
       showToast("Calenderer conversion rates saved", "success");
       setIsEditingCalenderer(false);
-      await loadRates();
     } catch (err) {
       showToast(err instanceof Error ? err.message : "Failed to save rates", "error");
     } finally {
@@ -190,8 +175,8 @@ export default function CostOfSalePage() {
     if (!addCompoundId || !addCompoundCost) return;
     try {
       setIsSaving(true);
-      await rubberPortalApi.createCostRate({
-        rateType: "COMPOUND",
+      await createCostRateMutation.mutateAsync({
+        rateType: "COMPOUND" as CostRateType,
         costPerKgZar: parseFloat(addCompoundCost),
         compoundCodingId: addCompoundId,
         notes: addCompoundNotes || null,
@@ -201,7 +186,6 @@ export default function CostOfSalePage() {
       setAddCompoundId(null);
       setAddCompoundCost("");
       setAddCompoundNotes("");
-      await loadRates();
     } catch (err) {
       showToast(err instanceof Error ? err.message : "Failed to add compound rate", "error");
     } finally {
@@ -214,13 +198,12 @@ export default function CostOfSalePage() {
     if (Number.isNaN(val)) return;
     try {
       setIsSaving(true);
-      await rubberPortalApi.updateCostRate(id, {
-        costPerKgZar: val,
-        notes: editNotes || null,
+      await updateCostRateMutation.mutateAsync({
+        id,
+        data: { costPerKgZar: val, notes: editNotes || null },
       });
       showToast("Cost rate updated", "success");
       setEditingId(null);
-      await loadRates();
     } catch (err) {
       showToast(err instanceof Error ? err.message : "Failed to update rate", "error");
     } finally {
@@ -231,10 +214,9 @@ export default function CostOfSalePage() {
   const handleDeleteRate = async () => {
     if (!deletingId) return;
     try {
-      await rubberPortalApi.deleteCostRate(deletingId);
+      await deleteCostRateMutation.mutateAsync(deletingId);
       showToast("Cost rate deleted", "success");
       setDeletingId(null);
-      await loadRates();
     } catch (err) {
       showToast(err instanceof Error ? err.message : "Failed to delete rate", "error");
     }

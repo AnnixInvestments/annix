@@ -1,6 +1,10 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
 import {
   type AuCocStatus,
+  type AuRubberPermissionDto,
+  type AuRubberRoleDto,
+  type AuRubberUserAccessDto,
   auRubberApiClient,
   type CocProcessingStatus,
   type CompoundQualityDetailDto,
@@ -10,8 +14,10 @@ import {
   type QualityAlertDto,
   type RubberAuCocDto,
   type RubberDeliveryNoteDto,
+  type RubberDeliveryNoteItemDto,
   type RubberSpecificationDto,
   type RubberSupplierCocDto,
+  type ScrapedBrandingCandidates,
   type SupplierCocType,
   type WebsitePageDto,
 } from "@/app/lib/api/auRubberApi";
@@ -130,5 +136,356 @@ export function useAuRubberWebsitePage(id: string) {
     queryKey: rubberKeys.websitePages.detail(id),
     queryFn: () => auRubberApiClient.websitePage(id),
     enabled: !!id,
+  });
+}
+
+export function useAuRubberProxyImageBlob(url: string | null) {
+  const [objectUrl, setObjectUrl] = useState<string | null>(null);
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    if (!url) {
+      setObjectUrl(null);
+      setFailed(false);
+      return;
+    }
+    const controller = new AbortController();
+    const proxyUrl = auRubberApiClient.proxyImageUrl(url);
+    const headers = auRubberApiClient.authHeaders();
+    let createdObjectUrl: string | null = null;
+    setFailed(false);
+    fetch(proxyUrl, { headers, signal: controller.signal })
+      .then((res) => (res.ok ? res.blob() : Promise.reject(new Error("proxy failed"))))
+      .then((blob) => {
+        if (!controller.signal.aborted) {
+          createdObjectUrl = URL.createObjectURL(blob);
+          setObjectUrl(createdObjectUrl);
+        }
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) setFailed(true);
+      });
+
+    return () => {
+      controller.abort();
+      if (createdObjectUrl) {
+        URL.revokeObjectURL(createdObjectUrl);
+      }
+    };
+  }, [url]);
+
+  return { objectUrl, failed };
+}
+
+export function useAuRubberDeliveryNoteDetail(id: number) {
+  return useQuery<RubberDeliveryNoteDto>({
+    queryKey: rubberKeys.deliveryNotes.detail(id),
+    queryFn: () => auRubberApiClient.deliveryNoteById(id),
+    enabled: id > 0,
+  });
+}
+
+export function useAuRubberDeliveryNoteItems(deliveryNoteId: number) {
+  return useQuery<RubberDeliveryNoteItemDto[]>({
+    queryKey: [...rubberKeys.deliveryNotes.detail(deliveryNoteId), "items"] as const,
+    queryFn: () => auRubberApiClient.deliveryNoteItems(deliveryNoteId),
+    enabled: deliveryNoteId > 0,
+  });
+}
+
+export function useAuRubberSaveDeliveryNoteCorrections() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      id,
+      data,
+    }: {
+      id: number;
+      data: Parameters<typeof auRubberApiClient.saveExtractedDataCorrections>[1];
+    }) => auRubberApiClient.saveExtractedDataCorrections(id, data),
+    onSuccess: (_result, variables) => {
+      queryClient.invalidateQueries({ queryKey: rubberKeys.deliveryNotes.detail(variables.id) });
+      queryClient.invalidateQueries({ queryKey: rubberKeys.deliveryNotes.all });
+    },
+  });
+}
+
+export function useAuRubberExtractDeliveryNote() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => auRubberApiClient.extractDeliveryNote(id),
+    onSuccess: (_result, id) => {
+      queryClient.invalidateQueries({ queryKey: rubberKeys.deliveryNotes.detail(id) });
+      queryClient.invalidateQueries({ queryKey: rubberKeys.deliveryNotes.all });
+    },
+  });
+}
+
+export function useAuRubberDeliveryNotePageUrl() {
+  return useMutation({
+    mutationFn: ({ id, pageNumber }: { id: number; pageNumber: number }) =>
+      auRubberApiClient.deliveryNotePageUrl(id, pageNumber),
+  });
+}
+
+export function useAuRubberDeleteDeliveryNote() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => auRubberApiClient.deleteDeliveryNote(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: rubberKeys.deliveryNotes.all });
+    },
+  });
+}
+
+export function useAuRubberLinkDeliveryNoteToCoc() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, cocId }: { id: number; cocId: number }) =>
+      auRubberApiClient.linkDeliveryNoteToCoc(id, cocId),
+    onSuccess: (_result, variables) => {
+      queryClient.invalidateQueries({ queryKey: rubberKeys.deliveryNotes.detail(variables.id) });
+      queryClient.invalidateQueries({ queryKey: rubberKeys.deliveryNotes.all });
+    },
+  });
+}
+
+export function useAuRubberFinalizeDeliveryNote() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => auRubberApiClient.finalizeDeliveryNote(id),
+    onSuccess: (_result, id) => {
+      queryClient.invalidateQueries({ queryKey: rubberKeys.deliveryNotes.detail(id) });
+      queryClient.invalidateQueries({ queryKey: rubberKeys.deliveryNotes.all });
+    },
+  });
+}
+
+export function useAuRubberAnalyzeSupplierCocs() {
+  return useMutation({
+    mutationFn: (files: File[]) => auRubberApiClient.analyzeSupplierCocs(files),
+  });
+}
+
+export function useAuRubberCreateCocsFromAnalysis() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      files,
+      analysis,
+    }: {
+      files: File[];
+      analysis: Parameters<typeof auRubberApiClient.createCocsFromAnalysis>[1];
+    }) => auRubberApiClient.createCocsFromAnalysis(files, analysis),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: rubberKeys.supplierCocs.all });
+    },
+  });
+}
+
+export function useAuRubberUploadSupplierCocWithFiles() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      files,
+      data,
+    }: {
+      files: File[];
+      data: Parameters<typeof auRubberApiClient.uploadSupplierCocWithFiles>[1];
+    }) => auRubberApiClient.uploadSupplierCocWithFiles(files, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: rubberKeys.supplierCocs.all });
+    },
+  });
+}
+
+export function useAuRubberUploadSupplierCoc() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: Parameters<typeof auRubberApiClient.uploadSupplierCoc>[0]) =>
+      auRubberApiClient.uploadSupplierCoc(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: rubberKeys.supplierCocs.all });
+    },
+  });
+}
+
+export function useAuRubberDeleteSupplierCoc() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => auRubberApiClient.deleteSupplierCoc(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: rubberKeys.supplierCocs.all });
+    },
+  });
+}
+
+export function useAuRubberExtractSupplierCoc() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => auRubberApiClient.extractSupplierCoc(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: rubberKeys.supplierCocs.all });
+    },
+  });
+}
+
+export function useAuRubberApproveSupplierCoc() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => auRubberApiClient.approveSupplierCoc(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: rubberKeys.supplierCocs.all });
+    },
+  });
+}
+
+export function useAuRubberAuthorizeVersion() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      kind,
+      id,
+    }: {
+      kind: "supplier-cocs" | "delivery-notes" | "tax-invoices";
+      id: number;
+    }) => auRubberApiClient.authorizeVersion(kind, id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: rubberKeys.supplierCocs.all });
+      queryClient.invalidateQueries({ queryKey: rubberKeys.deliveryNotes.all });
+    },
+  });
+}
+
+export function useAuRubberRejectVersion() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      kind,
+      id,
+    }: {
+      kind: "supplier-cocs" | "delivery-notes" | "tax-invoices";
+      id: number;
+    }) => auRubberApiClient.rejectVersion(kind, id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: rubberKeys.supplierCocs.all });
+      queryClient.invalidateQueries({ queryKey: rubberKeys.deliveryNotes.all });
+    },
+  });
+}
+
+export function useAuRubberDocumentUrl() {
+  return useMutation({
+    mutationFn: (documentPath: string) => auRubberApiClient.documentUrl(documentPath),
+  });
+}
+
+export function useAuRubberAccessUsers() {
+  return useQuery<AuRubberUserAccessDto[]>({
+    queryKey: rubberKeys.accessUsers.list(),
+    queryFn: () => auRubberApiClient.accessUsers(),
+  });
+}
+
+export function useAuRubberAccessRoles() {
+  return useQuery<AuRubberRoleDto[]>({
+    queryKey: rubberKeys.accessRoles.list(),
+    queryFn: () => auRubberApiClient.accessRoles(),
+  });
+}
+
+export function useAuRubberAccessPermissions() {
+  return useQuery<AuRubberPermissionDto[]>({
+    queryKey: rubberKeys.accessPermissions.list(),
+    queryFn: () => auRubberApiClient.accessPermissions(),
+  });
+}
+
+export function useAuRubberSetRolePermissions() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ roleId, permissions }: { roleId: number; permissions: string[] }) =>
+      auRubberApiClient.setRolePermissions(roleId, permissions),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: rubberKeys.accessRoles.all });
+    },
+  });
+}
+
+export function useAuRubberDeleteRole() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (roleId: number) => auRubberApiClient.deleteRole(roleId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: rubberKeys.accessRoles.all });
+      queryClient.invalidateQueries({ queryKey: rubberKeys.accessUsers.all });
+    },
+  });
+}
+
+export function useAuRubberCreateRole() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: Parameters<typeof auRubberApiClient.createRole>[0]) =>
+      auRubberApiClient.createRole(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: rubberKeys.accessRoles.all });
+    },
+  });
+}
+
+export function useAuRubberInviteUser() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: Parameters<typeof auRubberApiClient.inviteUser>[0]) =>
+      auRubberApiClient.inviteUser(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: rubberKeys.accessUsers.all });
+    },
+  });
+}
+
+export function useAuRubberUpdateUserAccess() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ accessId, roleCode }: { accessId: number; roleCode: string }) =>
+      auRubberApiClient.updateUserAccess(accessId, roleCode),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: rubberKeys.accessUsers.all });
+    },
+  });
+}
+
+export function useAuRubberRevokeUserAccess() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (accessId: number) => auRubberApiClient.revokeUserAccess(accessId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: rubberKeys.accessUsers.all });
+    },
+  });
+}
+
+export function useAuRubberScrapeBranding() {
+  return useMutation<ScrapedBrandingCandidates, Error, string>({
+    mutationFn: (websiteUrl: string) => auRubberApiClient.scrapeBranding(websiteUrl),
+  });
+}
+
+export function useAuRubberFeatureFlagsDetailed() {
+  return useQuery({
+    queryKey: rubberKeys.featureFlags.list(),
+    queryFn: () => auRubberApiClient.featureFlagsDetailed(),
+  });
+}
+
+export function useAuRubberUpdateFeatureFlag() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ flagKey, enabled }: { flagKey: string; enabled: boolean }) =>
+      auRubberApiClient.updateFeatureFlag(flagKey, enabled),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: rubberKeys.featureFlags.all });
+    },
   });
 }

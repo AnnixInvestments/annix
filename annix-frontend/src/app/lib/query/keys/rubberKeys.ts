@@ -5,6 +5,7 @@ import type {
   DeliveryNoteType,
   SupplierCocType,
 } from "@/app/lib/api/auRubberApi";
+import type { CostRateType } from "@/app/lib/api/rubberPortalApi";
 
 export const rubberKeys = {
   orders: {
@@ -79,5 +80,35 @@ export const rubberKeys = {
     all: ["rubber", "websitePages"] as const,
     list: () => [...rubberKeys.websitePages.all, "list"] as const,
     detail: (id: string) => [...rubberKeys.websitePages.all, "detail", id] as const,
+  },
+  costRates: {
+    all: ["rubber", "costRates"] as const,
+    list: (rateType?: CostRateType) =>
+      [...rubberKeys.costRates.all, "list", rateType ?? null] as const,
+  },
+  accessUsers: {
+    all: ["rubber", "accessUsers"] as const,
+    list: () => [...rubberKeys.accessUsers.all, "list"] as const,
+  },
+  accessRoles: {
+    all: ["rubber", "accessRoles"] as const,
+    list: () => [...rubberKeys.accessRoles.all, "list"] as const,
+  },
+  accessPermissions: {
+    all: ["rubber", "accessPermissions"] as const,
+    list: () => [...rubberKeys.accessPermissions.all, "list"] as const,
+  },
+  featureFlags: {
+    all: ["rubber", "featureFlags"] as const,
+    list: () => [...rubberKeys.featureFlags.all, "list"] as const,
+  },
+  calendererRates: {
+    all: ["rubber", "calendererRates"] as const,
+    list: () => [...rubberKeys.calendererRates.all, "list"] as const,
+  },
+  rollCos: {
+    all: ["rubber", "rollCos"] as const,
+    list: (status?: string) => [...rubberKeys.rollCos.all, "list", status ?? null] as const,
+    detail: (id: number) => [...rubberKeys.rollCos.all, "detail", id] as const,
   },
 } as const;

@@ -1,17 +1,31 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useConfirm } from "@/app/au-rubber/hooks/useConfirm";
 import { useToast } from "@/app/components/Toast";
 import { useAuRubberAuth } from "@/app/context/AuRubberAuthContext";
 import { useAuRubberBranding } from "@/app/context/AuRubberBrandingContext";
-import {
-  type AuRubberPermissionDto,
-  type AuRubberRoleDto,
-  type AuRubberUserAccessDto,
-  auRubberApiClient,
-  type CandidateImage,
+import type {
+  AuRubberPermissionDto,
+  AuRubberRoleDto,
+  AuRubberUserAccessDto,
+  CandidateImage,
 } from "@/app/lib/api/auRubberApi";
+import {
+  useAuRubberAccessPermissions,
+  useAuRubberAccessRoles,
+  useAuRubberAccessUsers,
+  useAuRubberCreateRole,
+  useAuRubberDeleteRole,
+  useAuRubberFeatureFlagsDetailed,
+  useAuRubberInviteUser,
+  useAuRubberProxyImageBlob,
+  useAuRubberRevokeUserAccess,
+  useAuRubberScrapeBranding,
+  useAuRubberSetRolePermissions,
+  useAuRubberUpdateFeatureFlag,
+  useAuRubberUpdateUserAccess,
+} from "@/app/lib/query/hooks";
 import { Breadcrumb } from "../../components/Breadcrumb";
 import { RequirePermission } from "../../components/RequirePermission";
 import { PAGE_PERMISSIONS } from "../../config/pagePermissions";
@@ -43,46 +57,17 @@ function CandidateThumbnail({
   onSelect: () => void;
   size: "small" | "large";
 }) {
-  const [objectUrl, setObjectUrl] = useState<string | null>(null);
+  const { objectUrl, failed: loadFailed } = useAuRubberProxyImageBlob(candidate.url);
   const [failed, setFailed] = useState(false);
 
-  useEffect(() => {
-    const controller = new AbortController();
-    const proxyUrl = auRubberApiClient.proxyImageUrl(candidate.url);
-    const headers = auRubberApiClient.authHeaders();
-
-    fetch(proxyUrl, { headers, signal: controller.signal })
-      .then((res) => {
-        if (!res.ok) {
-          throw new Error("proxy failed");
-        }
-        return res.blob();
-      })
-      .then((blob) => {
-        if (!controller.signal.aborted) {
-          setObjectUrl(URL.createObjectURL(blob));
-        }
-      })
-      .catch(() => {
-        if (!controller.signal.aborted) {
-          setFailed(true);
-        }
-      });
-
-    return () => {
-      controller.abort();
-      if (objectUrl) {
-        URL.revokeObjectURL(objectUrl);
-      }
-    };
-  }, [candidate.url]);
-
-  if (failed) {
+  const isFailed = failed || loadFailed;
+  if (isFailed) {
     return null;
   }
 
   const heightClass = size === "small" ? "h-16" : "h-32";
-  const label = SOURCE_LABELS[candidate.source] || candidate.source;
+  const sourceLabel = SOURCE_LABELS[candidate.source];
+  const label = sourceLabel ? sourceLabel : candidate.source;
 
   return (
     <button
@@ -127,6 +112,7 @@ function CandidateThumbnail({
 function BrandingTab() {
   const { showToast } = useToast();
   const { branding, setBranding, resetBranding, colors } = useAuRubberBranding();
+  const scrapeBrandingMutation = useAuRubberScrapeBranding();
 
   const [websiteUrl, setWebsiteUrl] = useState("https://auind.co.za/");
   const [brandingAuthorized, setBrandingAuthorized] = useState(false);
@@ -202,7 +188,7 @@ function BrandingTab() {
         ? websiteUrl.trim()
         : `https://${websiteUrl.trim()}`;
 
-      const result = await auRubberApiClient.scrapeBranding(normalizedUrl);
+      const result = await scrapeBrandingMutation.mutateAsync(normalizedUrl);
 
       if (
         result.logoCandidates.length === 0 &&
@@ -463,10 +449,26 @@ function BrandingTab() {
 function AccessControlTab() {
   const { showToast } = useToast();
   const { confirm, ConfirmDialog } = useConfirm();
-  const [users, setUsers] = useState<AuRubberUserAccessDto[]>([]);
-  const [roles, setRoles] = useState<AuRubberRoleDto[]>([]);
-  const [permissions, setPermissions] = useState<AuRubberPermissionDto[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const usersQuery = useAuRubberAccessUsers();
+  const rolesQuery = useAuRubberAccessRoles();
+  const permissionsQuery = useAuRubberAccessPermissions();
+  const setRolePermissionsMutation = useAuRubberSetRolePermissions();
+  const deleteRoleMutation = useAuRubberDeleteRole();
+  const createRoleMutation = useAuRubberCreateRole();
+  const inviteUserMutation = useAuRubberInviteUser();
+  const updateUserAccessMutation = useAuRubberUpdateUserAccess();
+  const revokeUserAccessMutation = useAuRubberRevokeUserAccess();
+
+  const usersData = usersQuery.data;
+  const users = usersData ? usersData : [];
+  const rolesData = rolesQuery.data;
+  const roles = rolesData ? rolesData : [];
+  const permissionsData = permissionsQuery.data;
+  const permissions = permissionsData ? permissionsData : [];
+  const usersLoading = usersQuery.isLoading;
+  const rolesLoading = rolesQuery.isLoading;
+  const permissionsLoading = permissionsQuery.isLoading;
+  const isLoading = usersLoading || rolesLoading || permissionsLoading;
 
   const [editingRole, setEditingRole] = useState<AuRubberRoleDto | null>(null);
   const [editingRolePermissions, setEditingRolePermissions] = useState<string[]>([]);
@@ -485,34 +487,13 @@ function AccessControlTab() {
   const [editingUserAccess, setEditingUserAccess] = useState<AuRubberUserAccessDto | null>(null);
   const [editUserRole, setEditUserRole] = useState("");
 
-  const loadData = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      const [usersData, rolesData, permissionsData] = await Promise.all([
-        auRubberApiClient.accessUsers(),
-        auRubberApiClient.accessRoles(),
-        auRubberApiClient.accessPermissions(),
-      ]);
-      setUsers(usersData);
-      setRoles(rolesData);
-      setPermissions(permissionsData);
-    } catch (err) {
-      showToast("Failed to load access control data", "error");
-    } finally {
-      setIsLoading(false);
-    }
-  }, [showToast]);
-
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
-
   const permissionsByCategory = permissions.reduce(
     (acc, perm) => {
       const category = perm.category || "Other";
+      const bucket = acc[category] ? acc[category] : [];
       return {
         ...acc,
-        [category]: [...(acc[category] || []), perm],
+        [category]: [...bucket, perm],
       };
     },
     {} as Record<string, AuRubberPermissionDto[]>,
@@ -527,10 +508,12 @@ function AccessControlTab() {
     if (!editingRole) return;
 
     try {
-      await auRubberApiClient.setRolePermissions(editingRole.id, editingRolePermissions);
+      await setRolePermissionsMutation.mutateAsync({
+        roleId: editingRole.id,
+        permissions: editingRolePermissions,
+      });
       showToast("Role permissions updated", "success");
       setEditingRole(null);
-      loadData();
     } catch (err) {
       showToast("Failed to update role permissions", "error");
     }
@@ -546,9 +529,8 @@ function AccessControlTab() {
     if (!confirmed) return;
 
     try {
-      await auRubberApiClient.deleteRole(roleId);
+      await deleteRoleMutation.mutateAsync(roleId);
       showToast("Role deleted", "success");
-      loadData();
     } catch (err) {
       showToast("Failed to delete role", "error");
     }
@@ -561,7 +543,7 @@ function AccessControlTab() {
     }
 
     try {
-      await auRubberApiClient.createRole({
+      await createRoleMutation.mutateAsync({
         code: newRoleCode.toLowerCase().replace(/\s+/g, "-"),
         name: newRoleName,
         description: newRoleDescription || undefined,
@@ -571,7 +553,6 @@ function AccessControlTab() {
       setNewRoleCode("");
       setNewRoleName("");
       setNewRoleDescription("");
-      loadData();
     } catch (err) {
       showToast("Failed to create role", "error");
     }
@@ -584,7 +565,7 @@ function AccessControlTab() {
     }
 
     try {
-      await auRubberApiClient.inviteUser({
+      await inviteUserMutation.mutateAsync({
         email: inviteEmail,
         firstName: inviteFirstName || undefined,
         lastName: inviteLastName || undefined,
@@ -596,7 +577,6 @@ function AccessControlTab() {
       setInviteFirstName("");
       setInviteLastName("");
       setInviteRole("");
-      loadData();
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to invite user";
       showToast(message, "error");
@@ -612,10 +592,12 @@ function AccessControlTab() {
     if (!editingUserAccess || !editUserRole) return;
 
     try {
-      await auRubberApiClient.updateUserAccess(editingUserAccess.id, editUserRole);
+      await updateUserAccessMutation.mutateAsync({
+        accessId: editingUserAccess.id,
+        roleCode: editUserRole,
+      });
       showToast("User role updated", "success");
       setEditingUserAccess(null);
-      loadData();
     } catch (err) {
       showToast("Failed to update user role", "error");
     }
@@ -631,9 +613,8 @@ function AccessControlTab() {
     if (!confirmed) return;
 
     try {
-      await auRubberApiClient.revokeUserAccess(accessId);
+      await revokeUserAccessMutation.mutateAsync(accessId);
       showToast("Access revoked", "success");
-      loadData();
     } catch (err) {
       showToast("Failed to revoke access", "error");
     }
@@ -1143,37 +1124,31 @@ const FEATURE_LABELS: Record<string, { label: string; description: string }> = {
 
 function FeaturesTab() {
   const { showToast } = useToast();
-  const [flags, setFlags] = useState<
-    Array<{ flagKey: string; enabled: boolean; description: string | null; category: string }>
-  >([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const featureFlagsQuery = useAuRubberFeatureFlagsDetailed();
+  const updateFeatureFlagMutation = useAuRubberUpdateFeatureFlag();
   const [togglingKey, setTogglingKey] = useState<string | null>(null);
 
-  useEffect(() => {
-    auRubberApiClient
-      .featureFlagsDetailed()
-      .then((data) => {
-        setFlags(data.flags);
-        setLoading(false);
-      })
-      .catch((err) => {
-        setError(err instanceof Error ? err.message : "Failed to load feature flags");
-        setLoading(false);
-      });
-  }, []);
+  const featureFlagsData = featureFlagsQuery.data;
+  const flags = featureFlagsData ? featureFlagsData.flags : [];
+  const loading = featureFlagsQuery.isLoading;
+  const error = featureFlagsQuery.error
+    ? featureFlagsQuery.error instanceof Error
+      ? featureFlagsQuery.error.message
+      : "Failed to load feature flags"
+    : null;
 
   const addonFlags = useMemo(() => flags.filter((f) => f.category === "addons"), [flags]);
 
   const handleToggle = async (flagKey: string, currentEnabled: boolean) => {
     setTogglingKey(flagKey);
     try {
-      const updated = await auRubberApiClient.updateFeatureFlag(flagKey, !currentEnabled);
-      setFlags((prev) =>
-        prev.map((f) => (f.flagKey === updated.flagKey ? { ...f, enabled: updated.enabled } : f)),
-      );
+      const updated = await updateFeatureFlagMutation.mutateAsync({
+        flagKey,
+        enabled: !currentEnabled,
+      });
       const meta = FEATURE_LABELS[flagKey];
-      showToast(`${meta?.label || flagKey} ${updated.enabled ? "enabled" : "disabled"}`, "success");
+      const metaLabel = meta ? meta.label : flagKey;
+      showToast(`${metaLabel} ${updated.enabled ? "enabled" : "disabled"}`, "success");
     } catch (err) {
       showToast(err instanceof Error ? err.message : "Failed to update feature", "error");
     } finally {
@@ -1223,6 +1198,10 @@ function FeaturesTab() {
       <div className="space-y-3">
         {addonFlags.map((flag) => {
           const meta = FEATURE_LABELS[flag.flagKey];
+          const metaLabel = meta?.label;
+          const metaDescription = meta?.description;
+          const displayLabel = metaLabel ? metaLabel : flag.flagKey;
+          const displayDescription = metaDescription ? metaDescription : flag.description;
           const isToggling = togglingKey === flag.flagKey;
 
           return (
@@ -1232,9 +1211,7 @@ function FeaturesTab() {
             >
               <div className="flex-1 mr-4">
                 <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium text-gray-900">
-                    {meta?.label || flag.flagKey}
-                  </span>
+                  <span className="text-sm font-medium text-gray-900">{displayLabel}</span>
                   <span
                     className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium ${
                       flag.enabled ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"
@@ -1243,15 +1220,13 @@ function FeaturesTab() {
                     {flag.enabled ? "On" : "Off"}
                   </span>
                 </div>
-                <p className="text-xs text-gray-500 mt-0.5">
-                  {meta?.description || flag.description}
-                </p>
+                <p className="text-xs text-gray-500 mt-0.5">{displayDescription}</p>
               </div>
               <button
                 type="button"
                 role="switch"
                 aria-checked={flag.enabled}
-                aria-label={`Toggle ${meta?.label || flag.flagKey}`}
+                aria-label={`Toggle ${displayLabel}`}
                 onClick={() => handleToggle(flag.flagKey, flag.enabled)}
                 disabled={isToggling}
                 className={`relative inline-flex h-6 w-11 flex-shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2 ${

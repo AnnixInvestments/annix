@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Breadcrumb } from "@/app/au-rubber/components/Breadcrumb";
 import {
   ImageViewerToolbar,
@@ -10,17 +10,26 @@ import {
   useImageViewer,
 } from "@/app/components/ImageViewerToolbar";
 import { useToast } from "@/app/components/Toast";
-import {
-  auRubberApiClient,
-  type DeliveryNoteStatus,
-  type DeliveryNoteType,
-  type ExtractedDeliveryNoteData,
-  type ExtractedDeliveryNoteRoll,
-  type RubberDeliveryNoteDto,
-  type RubberDeliveryNoteItemDto,
-  type RubberSupplierCocDto,
+import type {
+  DeliveryNoteStatus,
+  DeliveryNoteType,
+  ExtractedDeliveryNoteData,
+  ExtractedDeliveryNoteRoll,
+  RubberDeliveryNoteItemDto,
 } from "@/app/lib/api/auRubberApi";
 import { formatDateTimeZA, formatDateZA } from "@/app/lib/datetime";
+import {
+  useAuRubberCompanies,
+  useAuRubberDeleteDeliveryNote,
+  useAuRubberDeliveryNoteDetail,
+  useAuRubberDeliveryNoteItems,
+  useAuRubberDeliveryNotePageUrl,
+  useAuRubberExtractDeliveryNote,
+  useAuRubberFinalizeDeliveryNote,
+  useAuRubberLinkDeliveryNoteToCoc,
+  useAuRubberSaveDeliveryNoteCorrections,
+  useAuRubberSupplierCocs,
+} from "@/app/lib/query/hooks";
 
 interface EditableRoll extends ExtractedDeliveryNoteRoll {
   isEdited?: boolean;
@@ -54,11 +63,55 @@ export default function DeliveryNoteDetailPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { showToast } = useToast();
-  const [note, setNote] = useState<RubberDeliveryNoteDto | null>(null);
-  const [items, setItems] = useState<RubberDeliveryNoteItemDto[]>([]);
-  const [availableCocs, setAvailableCocs] = useState<RubberSupplierCocDto[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
+  const noteId = Number(params.id);
+
+  const noteQuery = useAuRubberDeliveryNoteDetail(noteId);
+  const itemsQuery = useAuRubberDeliveryNoteItems(noteId);
+  const cocsQuery = useAuRubberSupplierCocs({ processingStatus: "APPROVED" });
+  const companiesQuery = useAuRubberCompanies();
+  const saveDeliveryNoteCorrectionsMutation = useAuRubberSaveDeliveryNoteCorrections();
+  const extractDeliveryNoteMutation = useAuRubberExtractDeliveryNote();
+  const deliveryNotePageUrlMutation = useAuRubberDeliveryNotePageUrl();
+  const deleteDeliveryNoteMutation = useAuRubberDeleteDeliveryNote();
+  const linkDeliveryNoteToCocMutation = useAuRubberLinkDeliveryNoteToCoc();
+  const finalizeDeliveryNoteMutation = useAuRubberFinalizeDeliveryNote();
+
+  const noteData = noteQuery.data;
+  const note = noteData ? noteData : null;
+  const items: RubberDeliveryNoteItemDto[] = useMemo(() => {
+    const data = itemsQuery.data;
+    return Array.isArray(data) ? data : [];
+  }, [itemsQuery.data]);
+  const availableCocs = useMemo(() => {
+    const data = cocsQuery.data;
+    return Array.isArray(data) ? data : [];
+  }, [cocsQuery.data]);
+  const companies = useMemo(() => {
+    const data = companiesQuery.data;
+    return Array.isArray(data) ? data : [];
+  }, [companiesQuery.data]);
+
+  const noteLoading = noteQuery.isLoading;
+  const itemsLoading = itemsQuery.isLoading;
+  const cocsLoading = cocsQuery.isLoading;
+  const companiesLoading = companiesQuery.isLoading;
+  const isLoading = noteLoading || itemsLoading || cocsLoading || companiesLoading;
+
+  const queryError = noteQuery.error instanceof Error ? noteQuery.error : null;
+  const notFoundError =
+    !isLoading && noteQuery.isFetched && !note ? new Error("Delivery note not found") : null;
+  const error = queryError || notFoundError;
+
+  const fetchData = () => {
+    noteQuery.refetch();
+    itemsQuery.refetch();
+    cocsQuery.refetch();
+    companiesQuery.refetch();
+  };
+
+  const noteCompany = note ? companies.find((c) => c.id === note.supplierCompanyId) : null;
+  const isCustomerDn = noteCompany ? noteCompany.companyType === "CUSTOMER" : false;
+
   const [showLinkModal, setShowLinkModal] = useState(false);
   const [selectedCocId, setSelectedCocId] = useState<number | null>(null);
   const [isLinking, setIsLinking] = useState(false);
@@ -75,7 +128,6 @@ export default function DeliveryNoteDetailPage() {
   const podViewer = useImageViewer();
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [isCustomerDn, setIsCustomerDn] = useState(false);
 
   const [showDocViewer, setShowDocViewer] = useState(false);
   const [docPageNumber, setDocPageNumber] = useState(1);
@@ -84,41 +136,13 @@ export default function DeliveryNoteDetailPage() {
   const [isLoadingDoc, setIsLoadingDoc] = useState(false);
   const docViewer = useImageViewer();
 
-  const noteId = Number(params.id);
-
-  const fetchData = async () => {
-    try {
-      setIsLoading(true);
-      const [noteData, itemsData, cocsData, companiesData] = await Promise.all([
-        auRubberApiClient.deliveryNoteById(noteId),
-        auRubberApiClient.deliveryNoteItems(noteId),
-        auRubberApiClient.supplierCocs({ processingStatus: "APPROVED" }),
-        auRubberApiClient.companies(),
-      ]);
-      if (!noteData?.id) {
-        throw new Error("Delivery note not found");
-      }
-      setNote(noteData);
-      setItems(Array.isArray(itemsData) ? itemsData : []);
-      setAvailableCocs(Array.isArray(cocsData) ? cocsData : []);
-      const companies = Array.isArray(companiesData) ? companiesData : [];
-      const noteCompany = companies.find((c) => c.id === noteData.supplierCompanyId);
-      setIsCustomerDn(noteCompany?.companyType === "CUSTOMER");
-      setError(null);
-      setEditedData(null);
-      setHasUnsavedChanges(false);
-    } catch (err) {
-      setError(err instanceof Error ? err : new Error("Failed to load data"));
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
+  const noteFetching = noteQuery.isFetching;
+  const itemsFetching = itemsQuery.isFetching;
   useEffect(() => {
-    if (noteId) {
-      fetchData();
-    }
-  }, [noteId]);
+    if (noteFetching || itemsFetching) return;
+    setEditedData(null);
+    setHasUnsavedChanges(false);
+  }, [noteFetching, itemsFetching]);
 
   const initializeEditableData = (): EditableExtractedData[] => {
     if (!note?.extractedData) return [];
@@ -194,16 +218,25 @@ export default function DeliveryNoteDetailPage() {
     const newData = [...editedData];
     const existing = newData[dnIdx];
     const lastRoll = existing.rolls?.length ? existing.rolls[existing.rolls.length - 1] : null;
+    const lastThickness = lastRoll?.thicknessMm;
+    const lastWidth = lastRoll?.widthMm;
+    const lastLength = lastRoll?.lengthM;
+    const lastDnNumber = lastRoll?.deliveryNoteNumber;
+    const noteDnNumber = note?.deliveryNoteNumber;
+    const lastDate = lastRoll?.deliveryDate;
+    const noteDate = note?.deliveryDate;
+    const lastCustomerName = lastRoll?.customerName;
+    const lastCustomerRef = lastRoll?.customerReference;
     const newRoll: EditableRoll = {
       rollNumber: "",
-      thicknessMm: lastRoll?.thicknessMm || undefined,
-      widthMm: lastRoll?.widthMm || undefined,
-      lengthM: lastRoll?.lengthM || undefined,
+      thicknessMm: lastThickness ? lastThickness : undefined,
+      widthMm: lastWidth ? lastWidth : undefined,
+      lengthM: lastLength ? lastLength : undefined,
       weightKg: undefined,
-      deliveryNoteNumber: lastRoll?.deliveryNoteNumber || note?.deliveryNoteNumber || undefined,
-      deliveryDate: lastRoll?.deliveryDate || note?.deliveryDate || undefined,
-      customerName: lastRoll?.customerName || existing.customerName || undefined,
-      customerReference: lastRoll?.customerReference || existing.customerReference || undefined,
+      deliveryNoteNumber: lastDnNumber ? lastDnNumber : noteDnNumber ? noteDnNumber : undefined,
+      deliveryDate: lastDate ? lastDate : noteDate ? noteDate : undefined,
+      customerName: lastCustomerName ? lastCustomerName : existing.customerName,
+      customerReference: lastCustomerRef ? lastCustomerRef : existing.customerReference,
       isEdited: true,
     };
     newData[dnIdx] = {
@@ -267,7 +300,10 @@ export default function DeliveryNoteDetailPage() {
         rolls: allRolls,
       };
 
-      await auRubberApiClient.saveExtractedDataCorrections(noteId, correctionData);
+      await saveDeliveryNoteCorrectionsMutation.mutateAsync({
+        id: noteId,
+        data: correctionData,
+      });
       showToast("Corrections saved successfully - Nix will learn from these changes", "success");
       setHasUnsavedChanges(false);
       fetchData();
@@ -281,7 +317,7 @@ export default function DeliveryNoteDetailPage() {
   const handleExtract = async () => {
     try {
       setIsExtracting(true);
-      await auRubberApiClient.extractDeliveryNote(noteId);
+      await extractDeliveryNoteMutation.mutateAsync(noteId);
       showToast("Data extracted successfully", "success");
       fetchData();
     } catch (err) {
@@ -296,7 +332,10 @@ export default function DeliveryNoteDetailPage() {
       setIsLoadingDoc(true);
       setDocPageNumber(pageNumber);
       docViewer.reset();
-      const result = await auRubberApiClient.deliveryNotePageUrl(noteId, pageNumber);
+      const result = await deliveryNotePageUrlMutation.mutateAsync({
+        id: noteId,
+        pageNumber,
+      });
       setDocPageUrl(result.url);
       setDocTotalPages(result.totalPages);
     } catch (err) {
@@ -330,7 +369,10 @@ export default function DeliveryNoteDetailPage() {
       setIsLoadingPod(true);
       setPodPageNumber(pageNumber);
       setShowPodModal(true);
-      const result = await auRubberApiClient.deliveryNotePageUrl(noteId, pageNumber);
+      const result = await deliveryNotePageUrlMutation.mutateAsync({
+        id: noteId,
+        pageNumber,
+      });
       setPodPageUrl(result.url);
     } catch (err) {
       showToast(err instanceof Error ? err.message : "Failed to load POD page", "error");
@@ -350,7 +392,7 @@ export default function DeliveryNoteDetailPage() {
   const handleDelete = async () => {
     try {
       setIsDeleting(true);
-      await auRubberApiClient.deleteDeliveryNote(noteId);
+      await deleteDeliveryNoteMutation.mutateAsync(noteId);
       showToast("Delivery note deleted successfully", "success");
       router.back();
     } catch (err) {
@@ -367,7 +409,7 @@ export default function DeliveryNoteDetailPage() {
     }
     try {
       setIsLinking(true);
-      await auRubberApiClient.linkDeliveryNoteToCoc(noteId, selectedCocId);
+      await linkDeliveryNoteToCocMutation.mutateAsync({ id: noteId, cocId: selectedCocId });
       showToast("CoC linked successfully", "success");
       setShowLinkModal(false);
       setSelectedCocId(null);
@@ -382,7 +424,7 @@ export default function DeliveryNoteDetailPage() {
   const handleFinalize = async () => {
     try {
       setIsFinalizing(true);
-      await auRubberApiClient.finalizeDeliveryNote(noteId);
+      await finalizeDeliveryNoteMutation.mutateAsync(noteId);
       showToast("Delivery note finalized and stock created", "success");
       fetchData();
     } catch (err) {
@@ -439,11 +481,12 @@ export default function DeliveryNoteDetailPage() {
   }
 
   if (error || !note) {
+    const errorMessage = error?.message;
     return (
       <div className="flex items-center justify-center min-h-96">
         <div className="text-center">
           <div className="text-red-500 text-lg font-semibold mb-2">Error Loading Data</div>
-          <p className="text-gray-600">{error?.message || "Delivery note not found"}</p>
+          <p className="text-gray-600">{errorMessage ? errorMessage : "Delivery note not found"}</p>
           <button
             onClick={() => router.back()}
             className="mt-4 px-4 py-2 bg-yellow-600 text-white rounded-md hover:bg-yellow-700"
@@ -758,49 +801,60 @@ export default function DeliveryNoteDetailPage() {
             </div>
           </div>
 
-          {displayData.length > 0 && displayData[0]?.customerReference !== undefined && (
-            <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
-              <div className="flex items-center space-x-4">
-                <div>
-                  <span className="text-sm font-medium text-gray-500">
-                    Customer Ref / PO Number:
-                  </span>
-                  {isEditing ? (
+          {(() => {
+            const firstCustomerRef = displayData[0]?.customerReference;
+            const firstCustomerRefValue = firstCustomerRef ? firstCustomerRef : "";
+            const firstCustomerRefDisplay = firstCustomerRef ? firstCustomerRef : "-";
+            return displayData.length > 0 && firstCustomerRef !== undefined ? (
+              <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
+                <div className="flex items-center space-x-4">
+                  <div>
+                    <span className="text-sm font-medium text-gray-500">
+                      Customer Ref / PO Number:
+                    </span>
+                    {isEditing ? (
+                      <input
+                        type="text"
+                        value={firstCustomerRefValue}
+                        onChange={(e) =>
+                          handleDnFieldChange(0, "customerReference", e.target.value)
+                        }
+                        className="ml-2 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-yellow-500 focus:border-yellow-500"
+                        placeholder="e.g. PL7894/PO6797"
+                      />
+                    ) : (
+                      <span className="ml-2 text-sm font-semibold text-gray-900">
+                        {firstCustomerRefDisplay}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ) : null;
+          })()}
+
+          {(() => {
+            const firstCustomerRef = displayData[0]?.customerReference;
+            const firstCustomerRefValue = firstCustomerRef ? firstCustomerRef : "";
+            return displayData.length > 0 && !firstCustomerRef && isEditing ? (
+              <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
+                <div className="flex items-center space-x-4">
+                  <div>
+                    <span className="text-sm font-medium text-gray-500">
+                      Customer Ref / PO Number:
+                    </span>
                     <input
                       type="text"
-                      value={displayData[0]?.customerReference || ""}
+                      value={firstCustomerRefValue}
                       onChange={(e) => handleDnFieldChange(0, "customerReference", e.target.value)}
                       className="ml-2 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-yellow-500 focus:border-yellow-500"
                       placeholder="e.g. PL7894/PO6797"
                     />
-                  ) : (
-                    <span className="ml-2 text-sm font-semibold text-gray-900">
-                      {displayData[0]?.customerReference || "-"}
-                    </span>
-                  )}
+                  </div>
                 </div>
               </div>
-            </div>
-          )}
-
-          {displayData.length > 0 && !displayData[0]?.customerReference && isEditing && (
-            <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
-              <div className="flex items-center space-x-4">
-                <div>
-                  <span className="text-sm font-medium text-gray-500">
-                    Customer Ref / PO Number:
-                  </span>
-                  <input
-                    type="text"
-                    value={displayData[0]?.customerReference || ""}
-                    onChange={(e) => handleDnFieldChange(0, "customerReference", e.target.value)}
-                    className="ml-2 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-yellow-500 focus:border-yellow-500"
-                    placeholder="e.g. PL7894/PO6797"
-                  />
-                </div>
-              </div>
-            </div>
-          )}
+            ) : null;
+          })()}
 
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
@@ -1253,6 +1307,8 @@ export default function DeliveryNoteDetailPage() {
               {items.map((item) => {
                 const itemAreaSqM =
                   item.widthMm && item.lengthM ? (item.widthMm * item.lengthM) / 1000 : null;
+                const linkedBatchIds = item.linkedBatchIds;
+                const linkedBatchCount = linkedBatchIds ? linkedBatchIds.length : 0;
                 return (
                   <tr
                     key={item.id}
@@ -1270,7 +1326,7 @@ export default function DeliveryNoteDetailPage() {
                           {safeFixed(item.weightKg, 2) || "-"}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {item.linkedBatchIds?.length || 0}
+                          {linkedBatchCount}
                         </td>
                       </>
                     ) : (
@@ -1322,7 +1378,7 @@ export default function DeliveryNoteDetailPage() {
                           )}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {item.linkedBatchIds?.length || 0}
+                          {linkedBatchCount}
                         </td>
                       </>
                     )}

@@ -12,14 +12,27 @@ import {
 import { useToast } from "@/app/components/Toast";
 import { useAuRubberAuth } from "@/app/context/AuRubberAuthContext";
 import { useAuRubberBranding } from "@/app/context/AuRubberBrandingContext";
-import {
-  auRubberApiClient,
-  type CocProcessingStatus,
-  type RubberSupplierCocDto,
-  type SupplierCocType,
+import type {
+  CocProcessingStatus,
+  RubberSupplierCocDto,
+  SupplierCocType,
 } from "@/app/lib/api/auRubberApi";
 import { formatDateZA } from "@/app/lib/datetime";
-import { useAuRubberCompanies, useAuRubberSupplierCocs } from "@/app/lib/query/hooks";
+import {
+  useAuRubberAnalyzeSupplierCocs,
+  useAuRubberApproveSupplierCoc,
+  useAuRubberAuthorizeVersion,
+  useAuRubberCompanies,
+  useAuRubberCreateCocsFromAnalysis,
+  useAuRubberDeleteSupplierCoc,
+  useAuRubberDocumentUrl,
+  useAuRubberExtractSupplierCoc,
+  useAuRubberProxyImageBlob,
+  useAuRubberRejectVersion,
+  useAuRubberSupplierCocs,
+  useAuRubberUploadSupplierCoc,
+  useAuRubberUploadSupplierCocWithFiles,
+} from "@/app/lib/query/hooks";
 import { Breadcrumb } from "../../components/Breadcrumb";
 import { FileDropZone } from "../../components/FileDropZone";
 
@@ -54,7 +67,8 @@ export default function SupplierCocsPage() {
   const { showToast } = useToast();
   const { isAdmin } = useAuRubberAuth();
   const { colors, branding } = useAuRubberBranding();
-  const [logoObjectUrl, setLogoObjectUrl] = useState<string | null>(null);
+  const logoProxy = useAuRubberProxyImageBlob(branding.logoUrl);
+  const logoObjectUrl = logoProxy.objectUrl;
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState<CocProcessingStatus | "">("");
   const [showAllVersions, setShowAllVersions] = useState(false);
@@ -63,6 +77,16 @@ export default function SupplierCocsPage() {
     includeAllVersions: showAllVersions || undefined,
   });
   const companiesQuery = useAuRubberCompanies();
+  const analyzeSupplierCocsMutation = useAuRubberAnalyzeSupplierCocs();
+  const createCocsFromAnalysisMutation = useAuRubberCreateCocsFromAnalysis();
+  const uploadSupplierCocWithFilesMutation = useAuRubberUploadSupplierCocWithFiles();
+  const uploadSupplierCocMutation = useAuRubberUploadSupplierCoc();
+  const deleteSupplierCocMutation = useAuRubberDeleteSupplierCoc();
+  const extractSupplierCocMutation = useAuRubberExtractSupplierCoc();
+  const approveSupplierCocMutation = useAuRubberApproveSupplierCoc();
+  const authorizeVersionMutation = useAuRubberAuthorizeVersion();
+  const rejectVersionMutation = useAuRubberRejectVersion();
+  const documentUrlMutation = useAuRubberDocumentUrl();
   const cocs = cocsQuery.data || [];
   const companies = companiesQuery.data || [];
   const isLoading = cocsQuery.isLoading;
@@ -104,30 +128,6 @@ export default function SupplierCocsPage() {
   const [reextractingId, setReextractingId] = useState<number | null>(null);
   const [selectedForApproval, setSelectedForApproval] = useState<Set<number>>(new Set());
   const [isBulkApproving, setIsBulkApproving] = useState(false);
-
-  useEffect(() => {
-    const controller = new AbortController();
-    if (branding.logoUrl) {
-      const proxyUrl = auRubberApiClient.proxyImageUrl(branding.logoUrl);
-      const headers = auRubberApiClient.authHeaders();
-      fetch(proxyUrl, { headers, signal: controller.signal })
-        .then((res) => (res.ok ? res.blob() : null))
-        .then((blob) => {
-          if (!controller.signal.aborted && blob) {
-            setLogoObjectUrl(URL.createObjectURL(blob));
-          }
-        })
-        .catch(() => {
-          if (!controller.signal.aborted) setLogoObjectUrl(null);
-        });
-    } else {
-      setLogoObjectUrl(null);
-    }
-    return () => {
-      controller.abort();
-      if (logoObjectUrl) URL.revokeObjectURL(logoObjectUrl);
-    };
-  }, [branding.logoUrl]);
 
   const supplierForType = (type: SupplierCocType): number | null => {
     const supplierNames: Record<SupplierCocType, string[]> = {
@@ -278,7 +278,7 @@ export default function SupplierCocsPage() {
       setAnalysisProgress(30);
       setAnalysisStatus("Extracting text and identifying document types...");
 
-      const result = await auRubberApiClient.analyzeSupplierCocs(files);
+      const result = await analyzeSupplierCocsMutation.mutateAsync(files);
 
       setAnalysisProgress(80);
       setAnalysisStatus("Matching graphs to batch certificates...");
@@ -302,7 +302,10 @@ export default function SupplierCocsPage() {
 
     try {
       setIsUploading(true);
-      const result = await auRubberApiClient.createCocsFromAnalysis(uploadFiles, analysisResult);
+      const result = await createCocsFromAnalysisMutation.mutateAsync({
+        files: uploadFiles,
+        analysis: analysisResult,
+      });
 
       showToast(
         `Created ${result.cocIds.length} CoC${result.cocIds.length > 1 ? "s" : ""} successfully`,
@@ -328,18 +331,21 @@ export default function SupplierCocsPage() {
     try {
       setIsUploading(true);
       if (uploadFiles.length > 0) {
-        await auRubberApiClient.uploadSupplierCocWithFiles(uploadFiles, {
-          cocType: uploadType,
-          supplierCompanyId: uploadSupplierId || undefined,
-          cocNumber: uploadCocNumber || undefined,
-          compoundCode: uploadCompoundCode || undefined,
+        await uploadSupplierCocWithFilesMutation.mutateAsync({
+          files: uploadFiles,
+          data: {
+            cocType: uploadType,
+            supplierCompanyId: uploadSupplierId || undefined,
+            cocNumber: uploadCocNumber || undefined,
+            compoundCode: uploadCompoundCode || undefined,
+          },
         });
         showToast(
           `${uploadFiles.length} CoC${uploadFiles.length > 1 ? "s" : ""} uploaded`,
           "success",
         );
       } else {
-        await auRubberApiClient.uploadSupplierCoc({
+        await uploadSupplierCocMutation.mutateAsync({
           cocType: uploadType,
           supplierCompanyId: uploadSupplierId || undefined,
           cocNumber: uploadCocNumber || undefined,
@@ -401,7 +407,7 @@ export default function SupplierCocsPage() {
     if (!deletingId) return;
     try {
       setIsDeleting(true);
-      await auRubberApiClient.deleteSupplierCoc(deletingId);
+      await deleteSupplierCocMutation.mutateAsync(deletingId);
       showToast("Supplier CoC deleted successfully", "success");
       setShowDeleteModal(false);
       setDeletingId(null);
@@ -416,7 +422,7 @@ export default function SupplierCocsPage() {
   const handleReextract = async (id: number) => {
     try {
       setReextractingId(id);
-      await auRubberApiClient.extractSupplierCoc(id);
+      await extractSupplierCocMutation.mutateAsync(id);
       showToast("Data re-extracted successfully", "success");
       cocsQuery.refetch();
     } catch (err) {
@@ -466,7 +472,7 @@ export default function SupplierCocsPage() {
       const ids = Array.from(selectedForApproval);
       await ids.reduce(
         (chain, id) =>
-          chain.then(() => auRubberApiClient.approveSupplierCoc(id).then(() => undefined)),
+          chain.then(() => approveSupplierCocMutation.mutateAsync(id).then(() => undefined)),
         Promise.resolve() as Promise<void>,
       );
       showToast(`Approved ${ids.length} CoC${ids.length > 1 ? "s" : ""} successfully`, "success");
@@ -481,7 +487,7 @@ export default function SupplierCocsPage() {
 
   const handleAuthorizeVersion = async (id: number) => {
     try {
-      await auRubberApiClient.authorizeVersion("supplier-cocs", id);
+      await authorizeVersionMutation.mutateAsync({ kind: "supplier-cocs", id });
       showToast("Version authorized successfully", "success");
       cocsQuery.refetch();
     } catch (err) {
@@ -491,7 +497,7 @@ export default function SupplierCocsPage() {
 
   const handleRejectVersion = async (id: number) => {
     try {
-      await auRubberApiClient.rejectVersion("supplier-cocs", id);
+      await rejectVersionMutation.mutateAsync({ kind: "supplier-cocs", id });
       showToast("Version rejected", "success");
       cocsQuery.refetch();
     } catch (err) {
@@ -844,9 +850,9 @@ export default function SupplierCocsPage() {
                             {coc.graphPdfPath && (
                               <button
                                 onClick={async () => {
-                                  const url = await auRubberApiClient.documentUrl(
-                                    coc.graphPdfPath!,
-                                  );
+                                  const graphPath = coc.graphPdfPath;
+                                  if (!graphPath) return;
+                                  const url = await documentUrlMutation.mutateAsync(graphPath);
                                   window.open(url, "_blank");
                                 }}
                                 className="text-blue-600 hover:text-blue-800 inline-flex items-center"

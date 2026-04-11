@@ -1,12 +1,18 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  type CalendererConversionRates,
+  type CostRateDto,
+  type CostRateType,
+  type CreateCostRateInput,
   type CreateRubberProductDto,
+  type RollCosDto,
   type RubberCompanyDto,
   type RubberOrderDto,
   type RubberPricingTierDto,
   type RubberProductCodingDto,
   type RubberProductDto,
   rubberPortalApi,
+  type UpdateCostRateInput,
 } from "@/app/lib/api/rubberPortalApi";
 import { rubberKeys } from "../../keys";
 
@@ -209,6 +215,64 @@ export function useDeleteRubberPricingTier() {
     mutationFn: (id: number) => rubberPortalApi.deletePricingTier(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: rubberKeys.pricingTiers.all });
+    },
+  });
+}
+
+export function useRubberCostRates(rateType?: CostRateType) {
+  return useQuery<CostRateDto[]>({
+    queryKey: rubberKeys.costRates.list(rateType),
+    queryFn: () => rubberPortalApi.costRates(rateType),
+  });
+}
+
+export function useCalendererConversionRates() {
+  return useQuery<CalendererConversionRates>({
+    queryKey: rubberKeys.calendererRates.list(),
+    queryFn: () => rubberPortalApi.calendererConversionRates(),
+  });
+}
+
+export function useAllRollCos(status?: string, options?: { enabled?: boolean }) {
+  return useQuery<RollCosDto[]>({
+    queryKey: rubberKeys.rollCos.list(status),
+    queryFn: () => rubberPortalApi.allRollCos(status),
+    enabled: options?.enabled !== false,
+  });
+}
+
+export function useCreateCostRate() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: CreateCostRateInput) => rubberPortalApi.createCostRate(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: rubberKeys.costRates.all });
+      queryClient.invalidateQueries({ queryKey: rubberKeys.calendererRates.all });
+      queryClient.invalidateQueries({ queryKey: rubberKeys.rollCos.all });
+    },
+  });
+}
+
+export function useUpdateCostRate() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: number; data: UpdateCostRateInput }) =>
+      rubberPortalApi.updateCostRate(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: rubberKeys.costRates.all });
+      queryClient.invalidateQueries({ queryKey: rubberKeys.calendererRates.all });
+      queryClient.invalidateQueries({ queryKey: rubberKeys.rollCos.all });
+    },
+  });
+}
+
+export function useDeleteCostRate() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => rubberPortalApi.deleteCostRate(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: rubberKeys.costRates.all });
+      queryClient.invalidateQueries({ queryKey: rubberKeys.rollCos.all });
     },
   });
 }
