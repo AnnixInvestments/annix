@@ -36,11 +36,9 @@ import {
 import { FlangeSpecData, fetchFlangeSpecsStatic } from "@/app/lib/hooks/useFlangeSpecs";
 import { log } from "@/app/lib/logger";
 import {
-  blankFlangeWeight,
   flangeTypesForStandardCode,
   flangeWeight,
   retainingRingWeightLookup,
-  sansBlankFlangeWeight,
   useAllFlangeTypes,
   useAllFlangeTypeWeights,
   useAllRetainingRingWeights,
@@ -64,7 +62,10 @@ import {
   getMinWallThicknessForNB,
 } from "@/app/lib/utils/pipeCalculations";
 import { validatePressureClass } from "@/app/lib/utils/pressureClassValidation";
-import { scheduleToFittingClass } from "@/app/lib/utils/rfqFlangeCalculations";
+import {
+  calculateBlankFlangeWeight,
+  scheduleToFittingClass,
+} from "@/app/lib/utils/rfqFlangeCalculations";
 import {
   getLateralDimensionsForAngle,
   LateralAngleRange,
@@ -4588,15 +4589,12 @@ function FittingFormComponent({
 
                     const blankPositions = specs.blankFlangePositions || [];
                     const blankFlangeCount = blankPositions.length;
-                    const isSans1123 =
-                      flangeStandardCode.includes("SABS 1123") ||
-                      flangeStandardCode.includes("SANS 1123");
-                    const blankWeightPerUnit =
-                      nominalBore && pressureClassDesignation
-                        ? isSans1123
-                          ? sansBlankFlangeWeight(allWeights, nominalBore, pressureClassDesignation)
-                          : blankFlangeWeight(allWeights, nominalBore, pressureClassDesignation)
-                        : 0;
+                    const blankWeightPerUnit = calculateBlankFlangeWeight(
+                      allWeights,
+                      nominalBore,
+                      pressureClassDesignation,
+                      flangeStandardCode,
+                    );
                     const totalBlankFlangeWeight = blankFlangeCount * blankWeightPerUnit;
 
                     const fittingEndOption = FITTING_END_OPTIONS.find(
@@ -4649,9 +4647,12 @@ function FittingFormComponent({
                         : 0;
                       const stubBlankWeight =
                         stubHasFlange && stub.hasBlankFlange
-                          ? isSans1123
-                            ? sansBlankFlangeWeight(allWeights, stubNB, pressureClassDesignation)
-                            : blankFlangeWeight(allWeights, stubNB, pressureClassDesignation)
+                          ? calculateBlankFlangeWeight(
+                              allWeights,
+                              stubNB,
+                              pressureClassDesignation,
+                              flangeStandardCode,
+                            )
                           : 0;
                       const stubCircMm = Math.PI * stubOdMm;
                       const STEINMETZ_FACTOR = 2.7;

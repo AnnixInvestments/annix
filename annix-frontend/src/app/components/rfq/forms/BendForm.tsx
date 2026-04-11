@@ -45,10 +45,8 @@ import {
 import { FlangeSpecData, fetchFlangeSpecsStatic } from "@/app/lib/hooks/useFlangeSpecs";
 import { log } from "@/app/lib/logger";
 import {
-  blankFlangeWeight,
   flangeTypesForStandardCode,
   flangeWeight,
-  sansBlankFlangeWeight,
   useAllFlangeTypes,
   useAllFlangeTypeWeights,
   useNbToOdMap,
@@ -61,7 +59,10 @@ import {
   recommendDuckfootGussetThickness,
 } from "@/app/lib/utils/pipeCalculations";
 import { validatePressureClass } from "@/app/lib/utils/pressureClassValidation";
-import { scheduleToFittingClass } from "@/app/lib/utils/rfqFlangeCalculations";
+import {
+  calculateBlankFlangeWeight,
+  scheduleToFittingClass,
+} from "@/app/lib/utils/rfqFlangeCalculations";
 import {
   SABS62_BEND_RADIUS,
   SABS62BendType,
@@ -5003,15 +5004,12 @@ function BendFormComponent(props: BendFormProps) {
                   const bendQuantity = specs.quantityValue || 1;
                   const blankPositions = specs.blankFlangePositions || [];
                   const blankFlangeCount = blankPositions.length * bendQuantity;
-                  const isSans1123 =
-                    flangeStandardCode.includes("SABS 1123") ||
-                    flangeStandardCode.includes("SANS 1123");
-                  const blankWeightPerUnit =
-                    dn && pressureClassDesignation
-                      ? isSans1123
-                        ? sansBlankFlangeWeight(allWeights, dn, pressureClassDesignation)
-                        : blankFlangeWeight(allWeights, dn, pressureClassDesignation)
-                      : 0;
+                  const blankWeightPerUnit = calculateBlankFlangeWeight(
+                    allWeights,
+                    dn,
+                    pressureClassDesignation,
+                    flangeStandardCode,
+                  );
                   const totalBlankFlangeWeight = blankFlangeCount * blankWeightPerUnit;
 
                   const tackWeldEnds = tackWeldEndsPerBend(specs.bendEndConfiguration || "PE");

@@ -1,5 +1,25 @@
+import type { FlangeTypeWeightRecord } from "@annix/product-data/rfq";
 import { describe, expect, it } from "vitest";
-import { scheduleToFittingClass } from "./rfqFlangeCalculations";
+import { calculateBlankFlangeWeight, scheduleToFittingClass } from "./rfqFlangeCalculations";
+
+const mockWeights: FlangeTypeWeightRecord[] = [
+  {
+    id: 1,
+    flange_standard_id: 1,
+    pressure_class: "PN16",
+    flange_type_code: "BL",
+    nominal_bore_mm: 100,
+    weight_kg: 7.5,
+  },
+  {
+    id: 2,
+    flange_standard_id: 1,
+    pressure_class: "1000/8",
+    flange_type_code: "BL",
+    nominal_bore_mm: 100,
+    weight_kg: 9.25,
+  },
+];
 
 describe("rfqFlangeCalculations", () => {
   describe("scheduleToFittingClass", () => {
@@ -46,6 +66,42 @@ describe("rfqFlangeCalculations", () => {
       // XS-LITE is NOT recognized as XH because the check is exact-match `=== "XS"`,
       // not substring-includes — only literal "XS"/"XH" or "80"-containing schedules count
       expect(scheduleToFittingClass("XS-LITE")).toBe("");
+    });
+  });
+
+  describe("calculateBlankFlangeWeight", () => {
+    it("returns 0 when nominalBoreMm is missing", () => {
+      expect(calculateBlankFlangeWeight(mockWeights, null, "PN16", "ASME B16.5")).toBe(0);
+      expect(calculateBlankFlangeWeight(mockWeights, undefined, "PN16", "ASME B16.5")).toBe(0);
+      expect(calculateBlankFlangeWeight(mockWeights, 0, "PN16", "ASME B16.5")).toBe(0);
+    });
+
+    it("returns 0 when pressureClassDesignation is missing", () => {
+      expect(calculateBlankFlangeWeight(mockWeights, 100, null, "ASME B16.5")).toBe(0);
+      expect(calculateBlankFlangeWeight(mockWeights, 100, undefined, "ASME B16.5")).toBe(0);
+      expect(calculateBlankFlangeWeight(mockWeights, 100, "", "ASME B16.5")).toBe(0);
+    });
+
+    it("uses regular blankFlangeWeight for non-SABS standards", () => {
+      // PN16 / 100mm matches mockWeights[0] with weight 7.5
+      expect(calculateBlankFlangeWeight(mockWeights, 100, "PN16", "ASME B16.5")).toBe(7.5);
+      expect(calculateBlankFlangeWeight(mockWeights, 100, "PN16", "EN 1092-1")).toBe(7.5);
+    });
+
+    it("uses sansBlankFlangeWeight when standard contains SABS 1123", () => {
+      // SANS path resolves "1000/8" → matches mockWeights[1] with weight 9.25
+      expect(calculateBlankFlangeWeight(mockWeights, 100, "1000kPa", "SABS 1123")).toBe(9.25);
+    });
+
+    it("uses sansBlankFlangeWeight when standard contains SANS 1123", () => {
+      expect(calculateBlankFlangeWeight(mockWeights, 100, "1000kPa", "SANS 1123")).toBe(9.25);
+    });
+
+    it("is case-sensitive on the SABS/SANS literal — lowercase is treated as non-SABS", () => {
+      // "sans 1123" does NOT match the strict .includes("SANS 1123") check, so it
+      // routes through the regular blankFlangeWeight path. The mock has no PN16 +
+      // "1000kPa" entry, so the function falls back to nominalBoreMm * 0.15 = 15
+      expect(calculateBlankFlangeWeight(mockWeights, 100, "1000kPa", "sans 1123")).toBe(15);
     });
   });
 });

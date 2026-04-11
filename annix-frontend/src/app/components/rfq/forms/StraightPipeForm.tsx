@@ -63,7 +63,10 @@ import {
   findRecommendedSchedule,
 } from "@/app/lib/utils/pipeCalculations";
 import { validatePressureClass } from "@/app/lib/utils/pressureClassValidation";
-import { scheduleToFittingClass } from "@/app/lib/utils/rfqFlangeCalculations";
+import {
+  calculateBlankFlangeWeight,
+  scheduleToFittingClass,
+} from "@/app/lib/utils/rfqFlangeCalculations";
 import { isApi5LSpec } from "@/app/lib/utils/steelSpecGroups";
 import { getPipeEndConfigurationDetails } from "@/app/lib/utils/systemUtils";
 import { roundToWeldIncrement } from "@/app/lib/utils/weldThicknessLookup";
@@ -3044,15 +3047,12 @@ function StraightPipeFormComponent({
                     const blankPositions = specs.blankFlangePositions || [];
                     const blankFlangeCount =
                       blankPositions.length * (entry.calculation?.calculatedPipeCount || 0);
-                    const isSans1123 =
-                      flangeStandardCode.includes("SABS 1123") ||
-                      flangeStandardCode.includes("SANS 1123");
-                    const blankWeightPerUnit =
-                      nominalBore && pressureClassDesignation
-                        ? isSans1123
-                          ? sansBlankFlangeWeight(allWeights, nominalBore, pressureClassDesignation)
-                          : blankFlangeWeight(allWeights, nominalBore, pressureClassDesignation)
-                        : 0;
+                    const blankWeightPerUnit = calculateBlankFlangeWeight(
+                      allWeights,
+                      nominalBore,
+                      pressureClassDesignation,
+                      flangeStandardCode,
+                    );
                     const totalBlankFlangeWeight = blankFlangeCount * blankWeightPerUnit;
 
                     const tackWeldEnds = getTackWeldEndsPerPipe(specs.pipeEndConfiguration || "PE");
@@ -3295,15 +3295,12 @@ function StraightPipeFormComponent({
                     const blankPositions = specs.blankFlangePositions || [];
                     const blankFlangeCount =
                       blankPositions.length * (entry.calculation?.calculatedPipeCount || 0);
-                    const isSans1123 =
-                      flangeStandardCode.includes("SABS 1123") ||
-                      flangeStandardCode.includes("SANS 1123");
-                    const blankWeightPerUnit =
-                      nominalBore && pressureClassDesignation
-                        ? isSans1123
-                          ? sansBlankFlangeWeight(allWeights, nominalBore, pressureClassDesignation)
-                          : blankFlangeWeight(allWeights, nominalBore, pressureClassDesignation)
-                        : 0;
+                    const blankWeightPerUnit = calculateBlankFlangeWeight(
+                      allWeights,
+                      nominalBore,
+                      pressureClassDesignation,
+                      flangeStandardCode,
+                    );
                     const totalBlankFlangeWeight = blankFlangeCount * blankWeightPerUnit;
 
                     // Puddle flange calculations
