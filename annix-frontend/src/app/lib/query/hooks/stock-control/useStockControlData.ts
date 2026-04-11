@@ -12,6 +12,7 @@ import type {
   DeliveryNote,
   DispatchProgress,
   DispatchScan,
+  InspectionBooking,
   JobCard,
   JobCardActionCompletion,
   JobCardApproval,
@@ -190,6 +191,22 @@ export const useUpdateStockItem = createMutationHook(
     stockControlApiClient.updateStockItem(id, data),
   (_data, vars) => [stockControlKeys.inventory.detail(vars.id), stockControlKeys.inventory.all],
 );
+
+export const useCreateStockItem = createMutationHook(
+  (data: Partial<StockItem>) => stockControlApiClient.createStockItem(data),
+  [stockControlKeys.inventory.all],
+);
+
+export function useInspectionBookingsForRange(startDate: string, endDate: string) {
+  return useQuery<InspectionBooking[]>({
+    queryKey: stockControlKeys.inspections.forRange(startDate, endDate),
+    queryFn: async () => {
+      const data = await stockControlApiClient.inspectionBookingsForRange(startDate, endDate);
+      return Array.isArray(data) ? data : [];
+    },
+    enabled: startDate.length > 0 && endDate.length > 0,
+  });
+}
 
 export const useCreateManualAdjustment = createMutationHook(
   (data: { stockItemId: number; movementType: string; quantity: number; notes?: string }) =>

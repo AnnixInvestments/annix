@@ -1,33 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
-import type { Requisition } from "@/app/lib/api/stockControlApi";
-import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { formatDateZA } from "@/app/lib/datetime";
+import { useRequisitions } from "@/app/lib/query/hooks";
 import { StatusBadge } from "../../components/StatusBadge";
 
 export default function RequisitionsPage() {
-  const [requisitions, setRequisitions] = useState<Requisition[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
-
-  const fetchRequisitions = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      const data = await stockControlApiClient.requisitions();
-      setRequisitions(Array.isArray(data) ? data : []);
-      setError(null);
-    } catch (err) {
-      setError(err instanceof Error ? err : new Error("Failed to load requisitions"));
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchRequisitions();
-  }, [fetchRequisitions]);
+  const { data: requisitionsData, isLoading, error } = useRequisitions();
+  const requisitions = requisitionsData ? requisitionsData : [];
 
   if (isLoading && requisitions.length === 0) {
     return (

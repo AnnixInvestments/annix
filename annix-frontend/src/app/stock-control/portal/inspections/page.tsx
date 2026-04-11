@@ -1,36 +1,21 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import type { InspectionBooking } from "@/app/lib/api/stockControlApi";
-import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { DateTime, formatDateZA } from "@/app/lib/datetime";
+import { useInspectionBookingsForRange } from "@/app/lib/query/hooks";
 
 const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 export default function InspectionCalendarPage() {
   const [currentMonth, setCurrentMonth] = useState(DateTime.now().startOf("month"));
-  const [bookings, setBookings] = useState<InspectionBooking[]>([]);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
 
-  const loadBookings = useCallback(async (month: DateTime) => {
-    try {
-      setIsLoading(true);
-      const startDate = month.startOf("month").toISODate() || "";
-      const endDate = month.endOf("month").toISODate() || "";
-      const result = await stockControlApiClient.inspectionBookingsForRange(startDate, endDate);
-      setBookings(result);
-    } catch {
-      setBookings([]);
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    loadBookings(currentMonth);
-  }, [currentMonth, loadBookings]);
+  const startDate = currentMonth.startOf("month").toISODate() || "";
+  const endDate = currentMonth.endOf("month").toISODate() || "";
+  const { data: bookingsData, isLoading } = useInspectionBookingsForRange(startDate, endDate);
+  const bookings = bookingsData ? bookingsData : [];
 
   const calendarDays = useMemo(() => {
     const firstDay = currentMonth.startOf("month");
@@ -202,41 +187,46 @@ export default function InspectionCalendarPage() {
                 No inspections booked for this date.
               </div>
             ) : (
-              selectedBookings.map((booking) => (
-                <div key={booking.id} className="px-6 py-3 flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    <div className="text-sm font-medium text-gray-900">
-                      {booking.startTime} - {booking.endTime}
+              selectedBookings.map((booking) => {
+                const jobNumber = (booking as { jobCard?: { jobNumber?: string } }).jobCard
+                  ?.jobNumber;
+                const jobLabel = jobNumber ? jobNumber : `JC #${booking.jobCardId}`;
+                return (
+                  <div key={booking.id} className="px-6 py-3 flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <div className="text-sm font-medium text-gray-900">
+                        {booking.startTime} - {booking.endTime}
+                      </div>
+                      <div>
+                        <Link
+                          href={`/stock-control/portal/job-cards/${booking.jobCardId}`}
+                          className="text-sm font-medium text-teal-600 hover:text-teal-700"
+                        >
+                          {jobLabel}
+                        </Link>
+                        <p className="text-xs text-gray-500">
+                          {booking.inspectorEmail}
+                          {booking.inspectorName ? ` (${booking.inspectorName})` : ""}
+                        </p>
+                        {booking.notes && (
+                          <p className="text-xs text-gray-400 mt-0.5">{booking.notes}</p>
+                        )}
+                      </div>
                     </div>
-                    <div>
-                      <Link
-                        href={`/stock-control/portal/job-cards/${booking.jobCardId}`}
-                        className="text-sm font-medium text-teal-600 hover:text-teal-700"
-                      >
-                        {(booking as any).jobCard?.jobNumber || `JC #${booking.jobCardId}`}
-                      </Link>
-                      <p className="text-xs text-gray-500">
-                        {booking.inspectorEmail}
-                        {booking.inspectorName ? ` (${booking.inspectorName})` : ""}
-                      </p>
-                      {booking.notes && (
-                        <p className="text-xs text-gray-400 mt-0.5">{booking.notes}</p>
-                      )}
-                    </div>
+                    <span
+                      className={`px-2 py-0.5 text-xs font-semibold rounded-full ${
+                        booking.status === "completed"
+                          ? "bg-green-100 text-green-800"
+                          : booking.status === "cancelled"
+                            ? "bg-red-100 text-red-800"
+                            : "bg-blue-100 text-blue-800"
+                      }`}
+                    >
+                      {booking.status}
+                    </span>
                   </div>
-                  <span
-                    className={`px-2 py-0.5 text-xs font-semibold rounded-full ${
-                      booking.status === "completed"
-                        ? "bg-green-100 text-green-800"
-                        : booking.status === "cancelled"
-                          ? "bg-red-100 text-red-800"
-                          : "bg-blue-100 text-blue-800"
-                    }`}
-                  >
-                    {booking.status}
-                  </span>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
         </div>

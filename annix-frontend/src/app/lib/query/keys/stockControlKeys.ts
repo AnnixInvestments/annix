@@ -135,6 +135,27 @@ export const stockControlKeys = {
     all: ["stock-control", "positector"] as const,
     devices: () => [...stockControlKeys.positector.all, "devices"] as const,
   },
+  shoreHardness: {
+    all: ["stock-control", "shore-hardness"] as const,
+    list: () => [...stockControlKeys.shoreHardness.all, "list"] as const,
+  },
+  environmentalRecords: {
+    all: ["stock-control", "environmental-records"] as const,
+    list: () => [...stockControlKeys.environmentalRecords.all, "list"] as const,
+  },
+  blastProfiles: {
+    all: ["stock-control", "blast-profiles"] as const,
+    list: () => [...stockControlKeys.blastProfiles.all, "list"] as const,
+  },
+  dftReadings: {
+    all: ["stock-control", "dft-readings"] as const,
+    list: () => [...stockControlKeys.dftReadings.all, "list"] as const,
+  },
+  inspections: {
+    all: ["stock-control", "inspections"] as const,
+    forRange: (startDate: string, endDate: string) =>
+      [...stockControlKeys.inspections.all, "range", startDate, endDate] as const,
+  },
   staff: {
     all: ["stock-control", "staff"] as const,
     list: (params: { search?: string; active?: string }) =>

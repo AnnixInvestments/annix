@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { type StockItem, stockControlApiClient } from "@/app/lib/api/stockControlApi";
+import type { StockItem } from "@/app/lib/api/stockControlApi";
+import { useCreateStockItem } from "@/app/lib/query/hooks";
 import { ItemIdentifier } from "@/app/stock-control/components/ItemIdentifier";
 import { StockItemModal } from "@/app/stock-control/components/StockItemModal";
 
@@ -25,6 +26,7 @@ interface MatchingStockItem {
 
 export default function IdentifyItemPage() {
   const router = useRouter();
+  const { mutateAsync: createStockItem } = useCreateStockItem();
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [prefillItem, setPrefillItem] = useState<Partial<StockItem> | null>(null);
 
@@ -63,7 +65,7 @@ export default function IdentifyItemPage() {
     location?: string;
   }) => {
     try {
-      const item = await stockControlApiClient.createStockItem({
+      const item = await createStockItem({
         sku: data.sku,
         name: data.name,
         description: data.description || null,

@@ -1,39 +1,23 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
-import type { ShoreHardnessWithJobCard } from "@/app/lib/api/stockControlApi";
-import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
+import { useState } from "react";
 import { formatDateZA } from "@/app/lib/datetime";
+import { useAllShoreHardnessRecords, useDeleteShoreHardness } from "@/app/lib/query/hooks";
 import { UnlinkedUploadsSection } from "@/app/stock-control/components/UnlinkedUploadsSection";
 
 export default function ShoreHardnessPage() {
-  const [records, setRecords] = useState<ShoreHardnessWithJobCard[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const { data: recordsData, isLoading, error: queryError } = useAllShoreHardnessRecords();
+  const { mutateAsync: deleteShoreHardness } = useDeleteShoreHardness();
+  const records = recordsData ? recordsData : [];
   const [error, setError] = useState<string | null>(null);
 
-  const fetchRecords = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      setError(null);
-      const data = await stockControlApiClient.allShoreHardnessRecords();
-      setRecords(Array.isArray(data) ? data : []);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load shore hardness records");
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchRecords();
-  }, [fetchRecords]);
+  const displayError = error ? error : queryError instanceof Error ? queryError.message : null;
 
   const handleDelete = async (id: number) => {
     try {
       setError(null);
-      await stockControlApiClient.deleteShoreHardnessById(id);
-      fetchRecords();
+      await deleteShoreHardness(id);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to delete record");
     }
@@ -48,9 +32,9 @@ export default function ShoreHardnessPage() {
         </p>
       </div>
 
-      {error && (
+      {displayError && (
         <div className="rounded-md bg-red-50 p-3 text-sm text-red-700">
-          {error}
+          {displayError}
           <button onClick={() => setError(null)} className="ml-2 font-medium underline">
             Dismiss
           </button>

@@ -1,10 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
-import type { DftReadingWithJobCard } from "@/app/lib/api/stockControlApi";
-import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
+import { useState } from "react";
 import { formatDateZA } from "@/app/lib/datetime";
+import { useAllDftReadings, useDeleteDftReading } from "@/app/lib/query/hooks";
 import { UnlinkedUploadsSection } from "@/app/stock-control/components/UnlinkedUploadsSection";
 
 const COAT_LABELS: Record<string, string> = {
@@ -14,32 +13,17 @@ const COAT_LABELS: Record<string, string> = {
 };
 
 export default function PaintDftsPage() {
-  const [records, setRecords] = useState<DftReadingWithJobCard[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const { data: recordsData, isLoading, error: queryError } = useAllDftReadings();
+  const { mutateAsync: deleteDftReading } = useDeleteDftReading();
+  const records = recordsData ? recordsData : [];
   const [error, setError] = useState<string | null>(null);
 
-  const fetchRecords = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      setError(null);
-      const data = await stockControlApiClient.allDftReadings();
-      setRecords(Array.isArray(data) ? data : []);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load DFT readings");
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchRecords();
-  }, [fetchRecords]);
+  const displayError = error ? error : queryError instanceof Error ? queryError.message : null;
 
   const handleDelete = async (id: number) => {
     try {
       setError(null);
-      await stockControlApiClient.deleteDftReadingById(id);
-      fetchRecords();
+      await deleteDftReading(id);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to delete record");
     }
@@ -54,9 +38,9 @@ export default function PaintDftsPage() {
         </p>
       </div>
 
-      {error && (
+      {displayError && (
         <div className="rounded-md bg-red-50 p-3 text-sm text-red-700">
-          {error}
+          {displayError}
           <button onClick={() => setError(null)} className="ml-2 font-medium underline">
             Dismiss
           </button>
@@ -129,7 +113,8 @@ export default function PaintDftsPage() {
             <tbody className="divide-y divide-gray-200">
               {records.map((rec) => {
                 const jcLabel = [rec.jobNumber, rec.jcNumber].filter(Boolean).join(" / ");
-                const coatLabel = COAT_LABELS[rec.coatType] || rec.coatType;
+                const coatLabelRaw = COAT_LABELS[rec.coatType];
+                const coatLabel = coatLabelRaw ? coatLabelRaw : rec.coatType;
                 const avg = rec.averageMicrons;
                 const avgStr = avg != null ? Number(avg).toFixed(1) : "-";
                 const specStr = `${rec.specMinMicrons}-${rec.specMaxMicrons}`;
