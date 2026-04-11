@@ -54,16 +54,20 @@ echo -e "${CYAN}Running inter-app duplication checks...${NC}"
 for f in $FILTERED_FILES; do
   [ -f "$f" ] || continue
 
-  # Rule 1: cross-app relative imports (hard error)
-  if grep -qE "from ['\"]\\.\\./(\\.\\./)+(stock-control|au-rubber|cv-assistant|annix-rep|comply-sa|fieldflow)/" "$f" 2>/dev/null; then
-    echo -e "${RED}ERROR${NC} $f"
-    echo "  Cross-app relative import detected. Apps must never reach into each other."
-    echo "  Move the shared code to one of the canonical locations in docs/shared-registry.md:"
-    echo "    - packages/product-data/<domain>/    (shared reference data)"
-    echo "    - annix-backend/src/lib/             (backend utilities)"
-    echo "    - annix-frontend/src/app/components/ (shared components)"
-    echo "    - annix-frontend/src/app/lib/        (frontend utilities)"
-    ERRORS=$((ERRORS + 1))
+  # Rule 1: cross-app relative imports (hard error) — only applies to frontend app
+  # trees, where apps must never reach into each other. Backend modules under
+  # annix-backend/src/ legitimately share services via relative imports.
+  if echo "$f" | grep -qE "$APP_PATTERN/"; then
+    if grep -qE "from ['\"]\\.\\./(\\.\\./)+(stock-control|au-rubber|cv-assistant|annix-rep|comply-sa|fieldflow)/" "$f" 2>/dev/null; then
+      echo -e "${RED}ERROR${NC} $f"
+      echo "  Cross-app relative import detected. Apps must never reach into each other."
+      echo "  Move the shared code to one of the canonical locations in docs/shared-registry.md:"
+      echo "    - packages/product-data/<domain>/    (shared reference data)"
+      echo "    - annix-backend/src/lib/             (backend utilities)"
+      echo "    - annix-frontend/src/app/components/ (shared components)"
+      echo "    - annix-frontend/src/app/lib/        (frontend utilities)"
+      ERRORS=$((ERRORS + 1))
+    fi
   fi
 
   # Rule 2: hardcoded lookup table with 5+ entries inside an app-specific folder (warning)
