@@ -3,6 +3,7 @@
 import { PUMP_SPECIFICATIONS, PUMP_TYPES, PUMPS_MODULE } from "@annix/product-data/pumps";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
+import { formatCurrency } from "@/app/lib/utils/currency";
 import { Breadcrumb } from "../../components/Breadcrumb";
 
 interface MockPumpOrderDetail {
@@ -118,10 +119,6 @@ function InfoRow({ label, value }: { label: string; value: string | number | nul
       </dd>
     </div>
   );
-}
-
-function formatCurrency(value: number): string {
-  return `R ${value.toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 export default function PumpOrderDetailPage() {
@@ -321,7 +318,7 @@ export default function PumpOrderDetailPage() {
                 <div className="flex justify-between">
                   <dt className="text-sm text-gray-500">Unit Price</dt>
                   <dd className="text-sm text-gray-900">
-                    {formatCurrency(order.pricing.unitPrice)}
+                    {formatCurrency(order.pricing.unitPrice, { decimals: 2 })}
                   </dd>
                 </div>
                 <div className="flex justify-between">
@@ -332,14 +329,14 @@ export default function PumpOrderDetailPage() {
                   <div className="flex justify-between">
                     <dt className="text-sm text-gray-500">Discount</dt>
                     <dd className="text-sm text-green-600">
-                      -{formatCurrency(order.pricing.discount)}
+                      -{formatCurrency(order.pricing.discount, { decimals: 2 })}
                     </dd>
                   </div>
                 )}
                 <div className="flex justify-between pt-3 border-t border-gray-200">
                   <dt className="text-sm font-medium text-gray-900">Total</dt>
                   <dd className="text-lg font-bold text-gray-900">
-                    {formatCurrency(order.pricing.totalPrice)}
+                    {formatCurrency(order.pricing.totalPrice, { decimals: 2 })}
                   </dd>
                 </div>
               </dl>

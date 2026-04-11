@@ -9,6 +9,7 @@ import {
 } from "@annix/product-data/pumps";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
+import { formatCurrency } from "@/app/lib/utils/currency";
 import { Breadcrumb } from "../../components/Breadcrumb";
 
 function InfoRow({ label, value }: { label: string; value: string | null | undefined }) {
@@ -22,10 +23,6 @@ function InfoRow({ label, value }: { label: string; value: string | null | undef
 
 function PropertyBadge({ label, color }: { label: string; color: string }) {
   return <span className={`px-3 py-1 text-sm font-medium rounded-full ${color}`}>{label}</span>;
-}
-
-function formatCurrency(value: number): string {
-  return `R ${value.toLocaleString("en-ZA")}`;
 }
 
 export default function PumpProductDetailPage() {

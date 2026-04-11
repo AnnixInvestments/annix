@@ -3,6 +3,7 @@
 import { PUMPS_MODULE } from "@annix/product-data/pumps";
 import Link from "next/link";
 import { useMemo, useState } from "react";
+import { formatCurrency } from "@/app/lib/utils/currency";
 import { Breadcrumb } from "../components/Breadcrumb";
 
 type SortColumn = "orderNumber" | "customer" | "serviceType" | "status" | "createdAt";
@@ -122,10 +123,6 @@ function SortIcon({ active, direction }: { active: boolean; direction: SortDirec
       )}
     </span>
   );
-}
-
-function formatCurrency(value: number): string {
-  return `R ${value.toLocaleString("en-ZA")}`;
 }
 
 export default function PumpOrdersPage() {
