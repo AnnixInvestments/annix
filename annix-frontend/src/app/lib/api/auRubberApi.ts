@@ -1,4 +1,6 @@
 import { throwIfNotOk } from "@/app/lib/api/apiError";
+import { type ApiClient, createApiClient } from "@/app/lib/api/createApiClient";
+import { auRubberTokenStore } from "@/app/lib/api/portalTokenStores";
 import type { RubberAppProfileDto } from "@/app/lib/api/rubberPortalApi";
 import { API_BASE_URL } from "@/lib/api-config";
 import type {
@@ -1270,151 +1272,45 @@ export interface SageContactMappingStatus {
   };
 }
 
-const TOKEN_KEYS = {
-  accessToken: "auRubberAccessToken",
-  refreshToken: "auRubberRefreshToken",
-} as const;
+const apiClient: ApiClient = createApiClient({
+  baseURL: API_BASE_URL,
+  tokenStore: auRubberTokenStore,
+  refreshUrl: `${API_BASE_URL}/admin/auth/refresh`,
+});
 
 class AuRubberApiClient {
-  private baseURL: string;
-  private accessToken: string | null = null;
-  private refreshToken: string | null = null;
-  private rememberMe: boolean = true;
+  baseURL = API_BASE_URL;
 
-  constructor(baseURL: string = API_BASE_URL) {
-    this.baseURL = baseURL;
-
-    if (typeof window !== "undefined") {
-      this.accessToken =
-        localStorage.getItem(TOKEN_KEYS.accessToken) ??
-        sessionStorage.getItem(TOKEN_KEYS.accessToken);
-      this.refreshToken =
-        localStorage.getItem(TOKEN_KEYS.refreshToken) ??
-        sessionStorage.getItem(TOKEN_KEYS.refreshToken);
-    }
+  get accessToken(): string | null {
+    return auRubberTokenStore.accessToken();
   }
 
-  setRememberMe(remember: boolean) {
-    this.rememberMe = remember;
+  protected headers(): Record<string, string> {
+    return auRubberTokenStore.authHeaders();
   }
 
-  private headers(): Record<string, string> {
-    if (!this.accessToken && typeof window !== "undefined") {
-      this.accessToken =
-        localStorage.getItem(TOKEN_KEYS.accessToken) ??
-        sessionStorage.getItem(TOKEN_KEYS.accessToken);
-      this.refreshToken =
-        localStorage.getItem(TOKEN_KEYS.refreshToken) ??
-        sessionStorage.getItem(TOKEN_KEYS.refreshToken);
-    }
-
-    const headers: Record<string, string> = {
-      "Content-Type": "application/json",
-    };
-
-    if (this.accessToken) {
-      headers["Authorization"] = `Bearer ${this.accessToken}`;
-    }
-
-    return headers;
+  setRememberMe(_remember: boolean) {
+    // PortalTokenStore tracks rememberMe via setTokens
   }
 
   private setTokens(accessToken: string, refreshToken: string) {
-    this.accessToken = accessToken;
-    this.refreshToken = refreshToken;
-    if (typeof window !== "undefined") {
-      const storage = this.rememberMe ? localStorage : sessionStorage;
-      storage.setItem(TOKEN_KEYS.accessToken, accessToken);
-      storage.setItem(TOKEN_KEYS.refreshToken, refreshToken);
-    }
+    auRubberTokenStore.setTokens(accessToken, refreshToken, auRubberTokenStore.rememberMe());
   }
 
   clearTokens() {
-    this.accessToken = null;
-    this.refreshToken = null;
-    if (typeof window !== "undefined") {
-      localStorage.removeItem(TOKEN_KEYS.accessToken);
-      localStorage.removeItem(TOKEN_KEYS.refreshToken);
-      sessionStorage.removeItem(TOKEN_KEYS.accessToken);
-      sessionStorage.removeItem(TOKEN_KEYS.refreshToken);
-    }
+    auRubberTokenStore.clear();
   }
 
   isAuthenticated(): boolean {
-    if (!this.accessToken && typeof window !== "undefined") {
-      this.accessToken =
-        localStorage.getItem(TOKEN_KEYS.accessToken) ??
-        sessionStorage.getItem(TOKEN_KEYS.accessToken);
-      this.refreshToken =
-        localStorage.getItem(TOKEN_KEYS.refreshToken) ??
-        sessionStorage.getItem(TOKEN_KEYS.refreshToken);
-    }
-    return !!this.accessToken;
+    return auRubberTokenStore.isAuthenticated();
   }
 
-  private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-    const url = `${this.baseURL}${endpoint}`;
-
-    const config: RequestInit = {
-      ...options,
-      headers: {
-        ...this.headers(),
-        ...(options.headers as Record<string, string>),
-      },
-    };
-
-    const response = await fetch(url, config);
-
-    if (response.status === 401 && this.refreshToken) {
-      const refreshed = await this.refreshAccessToken();
-      if (refreshed) {
-        config.headers = {
-          ...this.headers(),
-          ...(options.headers as Record<string, string>),
-        };
-        const retryResponse = await fetch(url, config);
-        await throwIfNotOk(retryResponse);
-        return retryResponse.json();
-      }
-    }
-
-    await throwIfNotOk(response);
-
-    const text = await response.text();
-    if (!text || text.trim() === "") {
-      return {} as T;
-    }
-
-    return JSON.parse(text) as T;
+  private request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+    return apiClient.request<T>(endpoint, options);
   }
 
-  async requestBlob(endpoint: string, options: RequestInit = {}): Promise<Blob> {
-    const url = `${this.baseURL}${endpoint}`;
-    const config: RequestInit = {
-      ...options,
-      headers: {
-        ...this.headers(),
-        ...(options.headers as Record<string, string>),
-      },
-    };
-
-    const response = await fetch(url, config);
-
-    if (response.status === 401 && this.refreshToken) {
-      const refreshed = await this.refreshAccessToken();
-      if (refreshed) {
-        config.headers = {
-          ...this.headers(),
-          ...(options.headers as Record<string, string>),
-        };
-        const retryResponse = await fetch(url, config);
-        await throwIfNotOk(retryResponse);
-        return retryResponse.blob();
-      }
-    }
-
-    await throwIfNotOk(response);
-    return response.blob();
+  requestBlob(endpoint: string, options: RequestInit = {}): Promise<Blob> {
+    return apiClient.requestBlob(endpoint, options);
   }
 
   private async requestWithFiles<T>(
@@ -1423,7 +1319,6 @@ class AuRubberApiClient {
     data?: Record<string, string | number | undefined>,
     fieldName: string = "files",
   ): Promise<T> {
-    const url = `${this.baseURL}${endpoint}`;
     const formData = new FormData();
 
     files.forEach((file) => {
@@ -1438,70 +1333,37 @@ class AuRubberApiClient {
       });
     }
 
+    const accessToken = auRubberTokenStore.accessToken();
     const headers: Record<string, string> = {};
-    if (this.accessToken) {
-      headers["Authorization"] = `Bearer ${this.accessToken}`;
-    }
+    if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
 
-    const response = await fetch(url, {
-      method: "POST",
-      headers,
-      body: formData,
-    });
+    const url = `${API_BASE_URL}${endpoint}`;
+    const response = await fetch(url, { method: "POST", headers, body: formData });
 
-    if (response.status === 401 && this.refreshToken) {
-      const refreshed = await this.refreshAccessToken();
+    if (response.status === 401 && auRubberTokenStore.refreshToken()) {
+      const refreshed = await apiClient.refreshAccessToken();
       if (refreshed) {
-        headers["Authorization"] = `Bearer ${this.accessToken}`;
+        const newToken = auRubberTokenStore.accessToken();
+        const retryHeaders: Record<string, string> = {};
+        if (newToken) retryHeaders.Authorization = `Bearer ${newToken}`;
         const retryResponse = await fetch(url, {
           method: "POST",
-          headers,
+          headers: retryHeaders,
           body: formData,
         });
         await throwIfNotOk(retryResponse);
-        return retryResponse.json();
+        const text = await retryResponse.text();
+        return text && text.trim() !== "" ? (JSON.parse(text) as T) : ({} as T);
       }
     }
 
     await throwIfNotOk(response);
-
     const text = await response.text();
-    if (!text || text.trim() === "") {
-      return {} as T;
-    }
-
-    return JSON.parse(text) as T;
+    return text && text.trim() !== "" ? (JSON.parse(text) as T) : ({} as T);
   }
 
-  private async refreshAccessToken(): Promise<boolean> {
-    if (!this.refreshToken) return false;
-
-    try {
-      const response = await fetch(`${this.baseURL}/admin/auth/refresh`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ refreshToken: this.refreshToken }),
-      });
-
-      if (!response.ok) {
-        this.clearTokens();
-        return false;
-      }
-
-      const data = await response.json();
-      this.accessToken = data.accessToken;
-      if (typeof window !== "undefined") {
-        if (localStorage.getItem(TOKEN_KEYS.refreshToken)) {
-          localStorage.setItem(TOKEN_KEYS.accessToken, data.accessToken);
-        } else {
-          sessionStorage.setItem(TOKEN_KEYS.accessToken, data.accessToken);
-        }
-      }
-      return true;
-    } catch {
-      this.clearTokens();
-      return false;
-    }
+  refreshAccessToken(): Promise<boolean> {
+    return apiClient.refreshAccessToken();
   }
 
   async login(dto: AuRubberLoginDto): Promise<AuRubberLoginResponse> {

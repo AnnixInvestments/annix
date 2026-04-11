@@ -1,4 +1,5 @@
-import { throwIfNotOk } from "@/app/lib/api/apiError";
+import { type ApiClient, createApiClient } from "@/app/lib/api/createApiClient";
+import { adminTokenStore } from "@/app/lib/api/portalTokenStores";
 import { API_BASE_URL } from "@/lib/api-config";
 
 // Types for admin portal - must match backend DTOs
@@ -438,142 +439,44 @@ export interface AdminRfqQueryDto {
   limit?: number;
 }
 
+const apiClient: ApiClient = createApiClient({
+  baseURL: API_BASE_URL,
+  tokenStore: adminTokenStore,
+  refreshUrl: `${API_BASE_URL}/admin/auth/refresh`,
+});
+
 class AdminApiClient {
-  private baseURL: string;
-  private accessToken: string | null = null;
-  private refreshToken: string | null = null;
-  private rememberMe: boolean = true;
+  baseURL = API_BASE_URL;
 
-  constructor(baseURL: string = API_BASE_URL) {
-    this.baseURL = baseURL;
-
-    if (typeof window !== "undefined") {
-      this.accessToken =
-        localStorage.getItem("adminAccessToken") ?? sessionStorage.getItem("adminAccessToken");
-      this.refreshToken =
-        localStorage.getItem("adminRefreshToken") ?? sessionStorage.getItem("adminRefreshToken");
-    }
-  }
-
-  setRememberMe(remember: boolean) {
-    this.rememberMe = remember;
-  }
-
-  private getHeaders(): Record<string, string> {
-    if (!this.accessToken && typeof window !== "undefined") {
-      this.accessToken =
-        localStorage.getItem("adminAccessToken") ?? sessionStorage.getItem("adminAccessToken");
-      this.refreshToken =
-        localStorage.getItem("adminRefreshToken") ?? sessionStorage.getItem("adminRefreshToken");
-    }
-
-    const headers: Record<string, string> = {
-      "Content-Type": "application/json",
-    };
-
-    if (this.accessToken) {
-      headers["Authorization"] = `Bearer ${this.accessToken}`;
-    }
-
-    return headers;
+  setRememberMe(_remember: boolean) {
+    // PortalTokenStore tracks rememberMe via setTokens
   }
 
   private setTokens(accessToken: string, refreshToken: string) {
-    this.accessToken = accessToken;
-    this.refreshToken = refreshToken;
-    if (typeof window !== "undefined") {
-      const storage = this.rememberMe ? localStorage : sessionStorage;
-      storage.setItem("adminAccessToken", accessToken);
-      storage.setItem("adminRefreshToken", refreshToken);
-    }
+    adminTokenStore.setTokens(accessToken, refreshToken, adminTokenStore.rememberMe());
   }
 
   clearTokens() {
-    this.accessToken = null;
-    this.refreshToken = null;
-    if (typeof window !== "undefined") {
-      localStorage.removeItem("adminAccessToken");
-      localStorage.removeItem("adminRefreshToken");
-      sessionStorage.removeItem("adminAccessToken");
-      sessionStorage.removeItem("adminRefreshToken");
-    }
+    adminTokenStore.clear();
   }
 
   isAuthenticated(): boolean {
-    if (!this.accessToken && typeof window !== "undefined") {
-      this.accessToken =
-        localStorage.getItem("adminAccessToken") ?? sessionStorage.getItem("adminAccessToken");
-      this.refreshToken =
-        localStorage.getItem("adminRefreshToken") ?? sessionStorage.getItem("adminRefreshToken");
-    }
-    return !!this.accessToken;
+    return adminTokenStore.isAuthenticated();
   }
 
   private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-    const url = `${this.baseURL}${endpoint}`;
-
-    const config: RequestInit = {
-      ...options,
-      headers: {
-        ...this.getHeaders(),
-        ...(options.headers as Record<string, string>),
-      },
-    };
-
-    const response = await fetch(url, config);
-
-    if (response.status === 401 && this.refreshToken) {
-      const refreshed = await this.refreshAccessToken();
-      if (refreshed) {
-        config.headers = {
-          ...this.getHeaders(),
-          ...(options.headers as Record<string, string>),
-        };
-        const retryResponse = await fetch(url, config);
-        await throwIfNotOk(retryResponse);
-        return retryResponse.json();
+    try {
+      return await apiClient.request<T>(endpoint, options);
+    } catch (error) {
+      if (error instanceof Error && error.message.includes("unexpected response")) {
+        return undefined as T;
       }
+      throw error;
     }
-
-    await throwIfNotOk(response);
-
-    const contentType = response.headers.get("content-type");
-    if (contentType?.includes("application/json")) {
-      return response.json();
-    }
-
-    return undefined as T;
   }
 
-  private async refreshAccessToken(): Promise<boolean> {
-    if (!this.refreshToken) return false;
-
-    try {
-      const response = await fetch(`${this.baseURL}/admin/auth/refresh`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ refreshToken: this.refreshToken }),
-      });
-
-      if (!response.ok) {
-        this.clearTokens();
-        return false;
-      }
-
-      const data = await response.json();
-      this.accessToken = data.accessToken;
-      if (typeof window !== "undefined") {
-        if (localStorage.getItem("adminRefreshToken")) {
-          localStorage.setItem("adminAccessToken", data.accessToken);
-        } else {
-          sessionStorage.setItem("adminAccessToken", data.accessToken);
-        }
-      }
-      return true;
-    } catch {
-      this.clearTokens();
-      return false;
-    }
+  refreshAccessToken(): Promise<boolean> {
+    return apiClient.refreshAccessToken();
   }
 
   // Authentication endpoints
@@ -977,17 +880,11 @@ class AdminApiClient {
     if (description) formData.append("description", description);
     formData.append("processWithNix", processWithNix.toString());
 
-    const response = await fetch(`${this.baseURL}/nix/admin/upload-document`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${this.accessToken}`,
-      },
-      body: formData,
+    return apiClient.uploadFile<NixUploadResponse>("/nix/admin/upload-document", file, {
+      ...(title ? { title } : {}),
+      ...(description ? { description } : {}),
+      processWithNix: processWithNix.toString(),
     });
-
-    await throwIfNotOk(response);
-
-    return response.json();
   }
 
   async listNixDocuments(): Promise<NixDocumentListResponse> {
