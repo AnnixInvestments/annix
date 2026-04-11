@@ -330,6 +330,43 @@ export class StockManagementApiClient {
     return this.request("POST", `/returns/wastage-bins/${id}/empty`);
   }
 
+  async identifyPhoto(file: File): Promise<{
+    kind: "paint" | "consumable" | "rubber_roll" | "other";
+    extracted: {
+      productName: string | null;
+      sku: string | null;
+      batchNumber: string | null;
+      rollNumber: string | null;
+      weightKg: number | null;
+      widthMm: number | null;
+      thicknessMm: number | null;
+      lengthM: number | null;
+      compoundCode: string | null;
+      colour: string | null;
+    };
+    confidence: number;
+    matches: Array<{
+      productId: number;
+      sku: string;
+      name: string;
+      productType: string;
+      similarity: number;
+    }>;
+    reasoning: string;
+  }> {
+    const formData = new FormData();
+    formData.append("file", file);
+    const response = await fetch(`${this.options.baseUrl}/issuance/identify-photo`, {
+      method: "POST",
+      body: formData,
+      credentials: "include",
+    });
+    if (!response.ok) {
+      throw new Error(`Photo identification failed: ${response.status}`);
+    }
+    return response.json();
+  }
+
   private async request<T>(method: string, path: string, body?: unknown): Promise<T> {
     const url = `${this.options.baseUrl}${path}`;
     const headers: Record<string, string> = {
