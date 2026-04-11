@@ -1,5 +1,10 @@
 export { StockManagementApiClient } from "./api/stockManagementApi";
 export {
+  useCreateIssuanceSession,
+  useIssuableProducts,
+  useIssuanceSessions,
+} from "./hooks/useIssuanceQueries";
+export {
   DEFAULT_STOCK_MANAGEMENT_LABELS,
   type StockManagementLabelKey,
   type StockManagementLabelOverrides,
@@ -8,6 +13,7 @@ export {
   STOCK_MANAGEMENT_NAV_ITEMS,
   type StockManagementNavItem,
 } from "./manifest";
+export { IssueStockPage } from "./pages/IssueStockPage";
 export {
   StockManagementContext,
   StockManagementProvider,
@@ -28,6 +34,21 @@ export type {
   StockManagementHostConfig,
   StockManagementResolvedConfig,
 } from "./types/config";
+export type {
+  ConsumableRowInputDto,
+  CreateIssuanceSessionDto,
+  IssuanceRowDto,
+  IssuanceRowInputDto,
+  IssuanceRowType,
+  IssuanceSessionDto,
+  IssuanceSessionFiltersDto,
+  IssuanceSessionKind,
+  IssuanceSessionListResultDto,
+  IssuanceSessionStatus,
+  PaintRowInputDto,
+  RubberRollRowInputDto,
+  SolutionRowInputDto,
+} from "./types/issuance";
 export {
   STOCK_MANAGEMENT_FEATURE_KEYS,
   STOCK_MANAGEMENT_TIER_RANK,
@@ -35,3 +56,14 @@ export {
   type StockManagementLicenseSnapshot,
   type StockManagementTier,
 } from "./types/license";
+export type {
+  ConsumableProductDetailDto,
+  IssuableProductDto,
+  IssuableProductListResultDto,
+  IssuableProductType,
+  PaintProductDetailDto,
+  ProductCategoryDto,
+  RubberOffcutDetailDto,
+  RubberRollDetailDto,
+  SolutionProductDetailDto,
+} from "./types/products";
