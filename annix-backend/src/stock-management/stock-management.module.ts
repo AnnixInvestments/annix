@@ -16,6 +16,7 @@ import { RubberCompoundController } from "./controllers/rubber-compound.controll
 import { StockHoldController } from "./controllers/stock-hold.controller";
 import { StockManagementLicenseController } from "./controllers/stock-management-license.controller";
 import { StockTakeController } from "./controllers/stock-take.controller";
+import { VarianceCategoryController } from "./controllers/variance-category.controller";
 import { CompanyModuleLicense } from "./entities/company-module-license.entity";
 import { ConsumableIssuanceRow } from "./entities/consumable-issuance-row.entity";
 import { ConsumableProduct } from "./entities/consumable-product.entity";
@@ -59,6 +60,7 @@ import { StockHoldService } from "./services/stock-hold.service";
 import { StockManagementLicenseService } from "./services/stock-management-license.service";
 import { StockTakeService } from "./services/stock-take.service";
 import { StockTakeCronService } from "./services/stock-take-cron.service";
+import { VarianceCategoryService } from "./services/variance-category.service";
 
 @Module({
   imports: [
@@ -109,6 +111,7 @@ import { StockTakeCronService } from "./services/stock-take-cron.service";
     StockTakeController,
     LocationMigrationController,
     StockHoldController,
+    VarianceCategoryController,
   ],
   providers: [
     StockManagementLicenseService,
@@ -127,6 +130,7 @@ import { StockTakeCronService } from "./services/stock-take-cron.service";
     StockTakeCronService,
     LocationClassificationService,
     StockHoldService,
+    VarianceCategoryService,
   ],
   exports: [
     StockManagementLicenseService,
@@ -144,6 +148,7 @@ import { StockTakeCronService } from "./services/stock-take-cron.service";
     StockTakeService,
     LocationClassificationService,
     StockHoldService,
+    VarianceCategoryService,
   ],
 })
 export class StockManagementModule {}
