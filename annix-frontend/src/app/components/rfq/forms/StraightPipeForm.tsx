@@ -63,6 +63,7 @@ import {
   findRecommendedSchedule,
 } from "@/app/lib/utils/pipeCalculations";
 import { validatePressureClass } from "@/app/lib/utils/pressureClassValidation";
+import { scheduleToFittingClass } from "@/app/lib/utils/rfqFlangeCalculations";
 import { isApi5LSpec } from "@/app/lib/utils/steelSpecGroups";
 import { getPipeEndConfigurationDetails } from "@/app/lib/utils/systemUtils";
 import { roundToWeldIncrement } from "@/app/lib/utils/weldThicknessLookup";
@@ -1560,26 +1561,7 @@ function StraightPipeFormComponent({
                         ? roundToWeldIncrement(pipeWallThickness)
                         : pipeWallThickness;
                     } else {
-                      const scheduleUpper = schedule.toUpperCase();
-                      const isStdSchedule = scheduleUpper.includes("40") || scheduleUpper === "STD";
-                      const isXhSchedule =
-                        scheduleUpper.includes("80") ||
-                        scheduleUpper === "XS" ||
-                        scheduleUpper === "XH";
-                      const isXxhSchedule =
-                        scheduleUpper.includes("160") ||
-                        scheduleUpper === "XXS" ||
-                        scheduleUpper === "XXH";
-
-                      if (isXxhSchedule) {
-                        fittingClass = "XXH";
-                      } else if (isXhSchedule) {
-                        fittingClass = "XH";
-                      } else if (isStdSchedule) {
-                        fittingClass = "STD";
-                      } else {
-                        fittingClass = "";
-                      }
+                      fittingClass = scheduleToFittingClass(schedule);
 
                       const rawThickness =
                         fittingClass && FITTING_CLASS_WALL_THICKNESS[fittingClass]?.[dn]

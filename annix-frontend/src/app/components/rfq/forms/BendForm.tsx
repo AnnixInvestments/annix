@@ -61,6 +61,7 @@ import {
   recommendDuckfootGussetThickness,
 } from "@/app/lib/utils/pipeCalculations";
 import { validatePressureClass } from "@/app/lib/utils/pressureClassValidation";
+import { scheduleToFittingClass } from "@/app/lib/utils/rfqFlangeCalculations";
 import {
   SABS62_BEND_RADIUS,
   SABS62BendType,
@@ -4856,20 +4857,7 @@ function BendFormComponent(props: BendFormProps) {
                   const steelSpecId =
                     specs.steelSpecificationId || globalSpecs?.steelSpecificationId;
                   const isSABS719 = steelSpecId === 8;
-                  const scheduleUpper = schedule.toUpperCase();
-                  const isStdSchedule = scheduleUpper.includes("40") || scheduleUpper === "STD";
-                  const isXhSchedule =
-                    scheduleUpper.includes("80") ||
-                    scheduleUpper === "XS" ||
-                    scheduleUpper === "XH";
-                  const isXxhSchedule =
-                    scheduleUpper.includes("160") ||
-                    scheduleUpper === "XXS" ||
-                    scheduleUpper === "XXH";
-                  let fittingClass: "STD" | "XH" | "XXH" | "" = "";
-                  if (isXxhSchedule) fittingClass = "XXH";
-                  else if (isXhSchedule) fittingClass = "XH";
-                  else if (isStdSchedule) fittingClass = "STD";
+                  const fittingClass = scheduleToFittingClass(schedule);
                   const fittingWt =
                     isSABS719 || !fittingClass
                       ? null
