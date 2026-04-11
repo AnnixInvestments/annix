@@ -11,7 +11,7 @@ import {
   TableLoadingState,
 } from "@/app/components/shared/TableComponents";
 import { useToast } from "@/app/components/Toast";
-import { RubberOrderDto, rubberPortalApi } from "@/app/lib/api/rubberPortalApi";
+import type { RubberOrderDto } from "@/app/lib/api/rubberPortalApi";
 import { fromISO, now } from "@/app/lib/datetime";
 import {
   useCreateRubberOrder,
@@ -156,7 +156,7 @@ export default function RubberOrdersPage() {
 
     for (const id of ids) {
       try {
-        await rubberPortalApi.deleteOrder(id);
+        await deleteMutation.mutateAsync(id);
         successCount++;
       } catch {
         failCount++;

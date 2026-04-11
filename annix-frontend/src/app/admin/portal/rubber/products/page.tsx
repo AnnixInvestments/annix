@@ -11,7 +11,7 @@ import {
   TableLoadingState,
 } from "@/app/components/shared/TableComponents";
 import { useToast } from "@/app/components/Toast";
-import { RubberProductDto, rubberPortalApi } from "@/app/lib/api/rubberPortalApi";
+import type { RubberProductDto } from "@/app/lib/api/rubberPortalApi";
 import { now } from "@/app/lib/datetime";
 import { useDeleteRubberProduct, useRubberProducts } from "@/app/lib/query/hooks";
 import { Breadcrumb } from "../components/Breadcrumb";
@@ -146,7 +146,7 @@ export default function RubberProductsPage() {
 
     for (const id of ids) {
       try {
-        await rubberPortalApi.deleteProduct(id);
+        await deleteMutation.mutateAsync(id);
         successCount++;
       } catch {
         failCount++;
