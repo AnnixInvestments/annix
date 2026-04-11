@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { StockManagementApiClient } from "../api/stockManagementApi";
 import { useStockManagementConfig } from "../provider/useStockManagementConfig";
 import type {
@@ -19,10 +19,14 @@ interface AsyncState<T> {
 
 function useApiClient(): StockManagementApiClient {
   const config = useStockManagementConfig();
-  return new StockManagementApiClient({
-    baseUrl: config.apiBaseUrl,
-    headers: config.authHeaders,
-  });
+  return useMemo(
+    () =>
+      new StockManagementApiClient({
+        baseUrl: config.apiBaseUrl,
+        headers: config.authHeaders,
+      }),
+    [config.apiBaseUrl, config.authHeaders],
+  );
 }
 
 export function useIssuableProducts(
