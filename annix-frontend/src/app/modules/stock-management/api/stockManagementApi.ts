@@ -330,6 +330,27 @@ export class StockManagementApiClient {
     return this.request("POST", `/returns/wastage-bins/${id}/empty`);
   }
 
+  async fifoCompanyValuation(): Promise<{
+    totalValueR: number;
+    legacyValueR: number;
+    activeBatchCount: number;
+  }> {
+    return this.request("GET", "/fifo-batches/valuation/company");
+  }
+
+  async fifoProductValuation(productId: number): Promise<{
+    productId: number;
+    totalQuantity: number;
+    totalValueR: number;
+    legacyQuantity: number;
+    legacyValueR: number;
+    realFifoQuantity: number;
+    realFifoValueR: number;
+    activeBatchCount: number;
+  }> {
+    return this.request("GET", `/fifo-batches/valuation/by-product/${productId}`);
+  }
+
   async stockTakeVarianceArchive(sinceMonths?: number): Promise<
     Array<{
       productId: number;

@@ -64,6 +64,7 @@ import { StockManagementNotificationsService } from "./services/stock-management
 import { StockTakeService } from "./services/stock-take.service";
 import { StockTakeCronService } from "./services/stock-take-cron.service";
 import { StockTakeExportService } from "./services/stock-take-export.service";
+import { SupplierInvoiceFifoBridgeService } from "./services/supplier-invoice-fifo-bridge.service";
 import { VarianceCategoryService } from "./services/variance-category.service";
 
 @Module({
@@ -139,6 +140,7 @@ import { VarianceCategoryService } from "./services/variance-category.service";
     VarianceCategoryService,
     StockManagementNotificationsService,
     PhotoIdentificationService,
+    SupplierInvoiceFifoBridgeService,
   ],
   exports: [
     StockManagementLicenseService,
@@ -160,6 +162,7 @@ import { VarianceCategoryService } from "./services/variance-category.service";
     VarianceCategoryService,
     StockManagementNotificationsService,
     PhotoIdentificationService,
+    SupplierInvoiceFifoBridgeService,
   ],
 })
 export class StockManagementModule {}
