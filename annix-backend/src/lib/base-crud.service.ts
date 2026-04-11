@@ -31,15 +31,17 @@ export abstract class BaseCrudService<
   }
 
   async findAll(relations?: string[]): Promise<Entity[]> {
-    return this.repo.find({ relations: relations ?? this.defaultRelations });
+    const effectiveRelations = relations ?? this.defaultRelations;
+    return this.repo.find(effectiveRelations.length > 0 ? { relations: effectiveRelations } : {});
   }
 
   async findOne(id: number, relations?: string[]): Promise<Entity> {
+    const effectiveRelations = relations ?? this.defaultRelations;
     return findOneOrFail(
       this.repo,
       {
         where: { id } as FindOptionsWhere<Entity>,
-        relations: relations ?? this.defaultRelations,
+        ...(effectiveRelations.length > 0 ? { relations: effectiveRelations } : {}),
       },
       this.entityName,
     );
