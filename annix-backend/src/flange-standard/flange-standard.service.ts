@@ -1,44 +1,26 @@
-import { BadRequestException, Injectable } from "@nestjs/common";
+import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
-import { findOneOrFail } from "../lib/entity-helpers";
+import { BaseCrudService } from "../lib/base-crud.service";
 import { CreateFlangeStandardDto } from "./dto/create-flange-standard.dto";
 import { UpdateFlangeStandardDto } from "./dto/update-flange-standard.dto";
 import { FlangeStandard } from "./entities/flange-standard.entity";
 
 @Injectable()
-export class FlangeStandardService {
+export class FlangeStandardService extends BaseCrudService<
+  FlangeStandard,
+  CreateFlangeStandardDto,
+  UpdateFlangeStandardDto
+> {
   constructor(
     @InjectRepository(FlangeStandard)
-    private readonly standardRepo: Repository<FlangeStandard>,
-  ) {}
+    standardRepo: Repository<FlangeStandard>,
+  ) {
+    super(standardRepo, { entityName: "Flange standard" });
+  }
 
   async create(dto: CreateFlangeStandardDto): Promise<FlangeStandard> {
-    const exists = await this.standardRepo.findOne({
-      where: { code: dto.code },
-    });
-    if (exists) throw new BadRequestException(`Flange standard ${dto.code} already exists`);
-
-    const standard = this.standardRepo.create(dto);
-    return this.standardRepo.save(standard);
-  }
-
-  async findAll(): Promise<FlangeStandard[]> {
-    return this.standardRepo.find();
-  }
-
-  async findOne(id: number): Promise<FlangeStandard> {
-    return findOneOrFail(this.standardRepo, { where: { id } }, "Flange standard");
-  }
-
-  async update(id: number, dto: UpdateFlangeStandardDto): Promise<FlangeStandard> {
-    const standard = await this.findOne(id);
-    if (dto.code) standard.code = dto.code;
-    return this.standardRepo.save(standard);
-  }
-
-  async remove(id: number): Promise<void> {
-    const standard = await this.findOne(id);
-    await this.standardRepo.remove(standard);
+    await this.checkUnique({ code: dto.code }, `Flange standard ${dto.code} already exists`);
+    return super.create(dto);
   }
 }

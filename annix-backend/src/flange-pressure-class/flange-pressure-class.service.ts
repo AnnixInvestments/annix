@@ -1,20 +1,30 @@
-import { BadRequestException, Injectable } from "@nestjs/common";
+import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { FlangeStandard } from "src/flange-standard/entities/flange-standard.entity";
 import { Repository } from "typeorm";
+import { BaseCrudService } from "../lib/base-crud.service";
 import { findOneOrFail } from "../lib/entity-helpers";
 import { CreateFlangePressureClassDto } from "./dto/create-flange-pressure-class.dto";
 import { UpdateFlangePressureClassDto } from "./dto/update-flange-pressure-class.dto";
 import { FlangePressureClass } from "./entities/flange-pressure-class.entity";
 
 @Injectable()
-export class FlangePressureClassService {
+export class FlangePressureClassService extends BaseCrudService<
+  FlangePressureClass,
+  CreateFlangePressureClassDto,
+  UpdateFlangePressureClassDto
+> {
   constructor(
     @InjectRepository(FlangePressureClass)
-    private readonly pressureRepo: Repository<FlangePressureClass>,
+    pressureRepo: Repository<FlangePressureClass>,
     @InjectRepository(FlangeStandard)
     private readonly standardRepo: Repository<FlangeStandard>,
-  ) {}
+  ) {
+    super(pressureRepo, {
+      entityName: "Flange pressure class",
+      defaultRelations: ["standard"],
+    });
+  }
 
   async create(dto: CreateFlangePressureClassDto): Promise<FlangePressureClass> {
     const standard = await findOneOrFail(
@@ -23,56 +33,30 @@ export class FlangePressureClassService {
       "Flange standard",
     );
 
-    const exists = await this.pressureRepo.findOne({
-      where: { designation: dto.designation, standard: { id: dto.standardId } },
-    });
-    if (exists) throw new BadRequestException("Pressure class already exists for this standard");
+    await this.checkUnique(
+      { designation: dto.designation, standard: { id: dto.standardId } },
+      "Pressure class already exists for this standard",
+    );
 
-    const pressure = this.pressureRepo.create({
+    const pressure = this.repo.create({
       designation: dto.designation,
       standard,
     });
-    return this.pressureRepo.save(pressure);
-  }
-
-  async findAll(): Promise<FlangePressureClass[]> {
-    return this.pressureRepo.find({ relations: ["standard"] });
-  }
-
-  async findOne(id: number): Promise<FlangePressureClass> {
-    return findOneOrFail(
-      this.pressureRepo,
-      { where: { id }, relations: ["standard"] },
-      "Flange pressure class",
-    );
-  }
-
-  async update(id: number, dto: UpdateFlangePressureClassDto): Promise<FlangePressureClass> {
-    const pressure = await this.findOne(id);
-    if (dto.designation) pressure.designation = dto.designation;
-    return this.pressureRepo.save(pressure);
-  }
-
-  async remove(id: number): Promise<void> {
-    const pressure = await this.findOne(id);
-    await this.pressureRepo.remove(pressure);
+    return this.repo.save(pressure);
   }
 
   async getAllByStandard(standardId: number): Promise<FlangePressureClass[]> {
     await findOneOrFail(this.standardRepo, { where: { id: standardId } }, "Flange standard");
-    const classes = await this.pressureRepo.find({
+    const classes = await this.repo.find({
       where: { standard: { id: standardId } },
     });
 
-    // Sort by numeric value extracted from designation
-    // Handles formats like: "600/3", "1000/3", "PN10", "150", "Class 150", etc.
     return classes.sort((a, b) => {
-      const getNumericValue = (designation: string): number => {
-        // Extract first number from designation
+      const numericValue = (designation: string): number => {
         const match = designation?.match(/(\d+)/);
         return match ? parseInt(match[1], 10) : 0;
       };
-      return getNumericValue(a.designation) - getNumericValue(b.designation);
+      return numericValue(a.designation) - numericValue(b.designation);
     });
   }
 }

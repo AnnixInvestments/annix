@@ -43,6 +43,11 @@ Shared workspace package (pnpm workspace). Both `annix-backend` and `annix-front
 | Steel constants | `lib/steel-constants.ts` | Re-exports from `@annix/product-data/steel` + `steelDensity` helper. |
 | Pipe constants | `lib/pipe-constants.ts` | Re-exports from `@annix/product-data/pipe`. |
 | Entity helpers | `lib/entity-helpers.ts` | `findOneOrFail`, base entity utilities. |
+| Base CRUD service | `lib/base-crud.service.ts` | Generic `BaseCrudService<Entity, CreateDto, UpdateDto>`. Pure-CRUD reference-data services should `extends BaseCrudService<...>` to inherit `create / findAll / findOne / update / remove` + `checkUnique`/`checkUniqueExceptId` helpers. |
+| Pagination DTO | `lib/dto/pagination-query.dto.ts` | Shared `PaginationQueryDto`, `PaginatedResult<T>`, `buildPaginatedResult` helper. Use in any service that returns paginated lists. |
+| Common Address DTO | `lib/dto/common-address.dto.ts` | `CommonAddressDto` (streetAddress, city, provinceState, postalCode, countryCode). Extend instead of redeclaring per app. |
+| Common Contact DTO | `lib/dto/common-contact.dto.ts` | `CommonContactDto` (firstName, lastName, fullName, email, phone, jobTitle). |
+| Common Company DTO | `lib/dto/common-company.dto.ts` | `CommonCompanyDto` (companyName, registrationNumber, vatNumber, companySize enum, beeLevel, currencyCode). |
 
 ### Shared services (standalone NestJS modules)
 
