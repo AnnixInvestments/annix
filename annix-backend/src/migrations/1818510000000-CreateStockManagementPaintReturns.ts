@@ -9,7 +9,7 @@ export class CreateStockManagementPaintReturns1818510000000 implements Migration
         id SERIAL PRIMARY KEY,
         return_session_id INTEGER NOT NULL REFERENCES sm_return_session(id) ON DELETE CASCADE,
         company_id INTEGER NOT NULL,
-        source_issuance_row_id INTEGER NULL REFERENCES sm_paint_issuance_row(id) ON DELETE SET NULL,
+        source_issuance_row_id INTEGER NULL REFERENCES sm_issuance_row(id) ON DELETE SET NULL,
         source_product_id INTEGER NULL REFERENCES sm_issuable_product(id) ON DELETE SET NULL,
         litres_returned NUMERIC(10,3) NOT NULL,
         condition VARCHAR(32) NOT NULL,
