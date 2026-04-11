@@ -64,6 +64,7 @@ import {
 import { validatePressureClass } from "@/app/lib/utils/pressureClassValidation";
 import {
   calculateBlankFlangeWeight,
+  flangeWeightOr,
   resolveFlangeConfig,
   scheduleToFittingClass,
 } from "@/app/lib/utils/rfqFlangeCalculations";
@@ -4549,26 +4550,20 @@ function FittingFormComponent({
                     const { flangeStandardCode, pressureClassDesignation, flangeTypeCode } =
                       resolveFlangeConfig(specs, globalSpecs, masterData);
 
-                    const mainFlangeWeightPerUnit =
-                      nominalBore && pressureClassDesignation
-                        ? flangeWeight(
-                            allWeights,
-                            nominalBore,
-                            pressureClassDesignation,
-                            flangeStandardCode,
-                            flangeTypeCode,
-                          )
-                        : 0;
-                    const branchFlangeWeightPerUnit =
-                      branchNB && pressureClassDesignation
-                        ? flangeWeight(
-                            allWeights,
-                            branchNB,
-                            pressureClassDesignation,
-                            flangeStandardCode,
-                            flangeTypeCode,
-                          )
-                        : 0;
+                    const mainFlangeWeightPerUnit = flangeWeightOr(
+                      allWeights,
+                      nominalBore,
+                      pressureClassDesignation,
+                      flangeStandardCode,
+                      flangeTypeCode,
+                    );
+                    const branchFlangeWeightPerUnit = flangeWeightOr(
+                      allWeights,
+                      branchNB,
+                      pressureClassDesignation,
+                      flangeStandardCode,
+                      flangeTypeCode,
+                    );
 
                     const mainFlangeCount =
                       (flangeConfig.hasInlet ? 1 : 0) + (flangeConfig.hasOutlet ? 1 : 0);

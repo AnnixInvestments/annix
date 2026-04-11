@@ -1,4 +1,4 @@
-import { blankFlangeWeight, sansBlankFlangeWeight } from "@/app/lib/query/hooks";
+import { blankFlangeWeight, flangeWeight, sansBlankFlangeWeight } from "@/app/lib/query/hooks";
 
 export type FittingClass = "STD" | "XH" | "XXH" | "";
 
@@ -79,6 +79,35 @@ export function scheduleToFittingClass(schedule: string): FittingClass {
   if (isXh) return "XH";
   if (isStd) return "STD";
   return "";
+}
+
+/**
+ * Calculate the per-unit flange weight, returning a fallback if either the
+ * nominal bore or pressure class designation is missing.
+ *
+ * Extracted from BendForm / FittingForm / StraightPipeForm where this 8-line
+ * `bore && pressureClass ? flangeWeight(...) : 0` pattern appeared 6+ times.
+ *
+ * The optional `fallback` parameter exists because BendForm and StraightPipeForm
+ * fall back to `entry.calculation.flangeWeightPerUnit` for the main flange,
+ * not 0.
+ */
+export function flangeWeightOr(
+  allWeights: Parameters<typeof flangeWeight>[0],
+  nominalBoreMm: number | null | undefined,
+  pressureClassDesignation: string,
+  flangeStandardCode: string,
+  flangeTypeCode: string,
+  fallback = 0,
+): number {
+  if (!nominalBoreMm || !pressureClassDesignation) return fallback;
+  return flangeWeight(
+    allWeights,
+    nominalBoreMm,
+    pressureClassDesignation,
+    flangeStandardCode,
+    flangeTypeCode,
+  );
 }
 
 /**

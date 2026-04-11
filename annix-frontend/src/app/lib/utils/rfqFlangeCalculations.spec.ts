@@ -2,6 +2,7 @@ import type { FlangeTypeWeightRecord } from "@annix/product-data/rfq";
 import { describe, expect, it } from "vitest";
 import {
   calculateBlankFlangeWeight,
+  flangeWeightOr,
   resolveFlangeConfig,
   scheduleToFittingClass,
 } from "./rfqFlangeCalculations";
@@ -33,6 +34,14 @@ const mockWeights: FlangeTypeWeightRecord[] = [
     flange_type_code: "BL",
     nominal_bore_mm: 100,
     weight_kg: 9.25,
+  },
+  {
+    id: 3,
+    flange_standard_id: 1,
+    pressure_class: "PN16",
+    flange_type_code: "WN",
+    nominal_bore_mm: 50,
+    weight_kg: 3.2,
   },
 ];
 
@@ -176,6 +185,32 @@ describe("rfqFlangeCalculations", () => {
       );
       expect(result.flangeStandardCode).toBe("");
       expect(result.pressureClassDesignation).toBe("");
+    });
+  });
+
+  describe("flangeWeightOr", () => {
+    it("returns 0 fallback when nominalBore is missing", () => {
+      expect(flangeWeightOr(mockWeights, null, "PN16", "ASME B16.5", "WN")).toBe(0);
+      expect(flangeWeightOr(mockWeights, undefined, "PN16", "ASME B16.5", "WN")).toBe(0);
+      expect(flangeWeightOr(mockWeights, 0, "PN16", "ASME B16.5", "WN")).toBe(0);
+    });
+
+    it("returns 0 fallback when pressureClassDesignation is empty", () => {
+      expect(flangeWeightOr(mockWeights, 50, "", "ASME B16.5", "WN")).toBe(0);
+    });
+
+    it("returns the looked-up weight on a successful match", () => {
+      // 50mm / PN16 / WN matches mockWeights[2] with weight 3.2
+      expect(flangeWeightOr(mockWeights, 50, "PN16", "ASME B16.5", "WN")).toBe(3.2);
+    });
+
+    it("respects a custom non-zero fallback when inputs are missing", () => {
+      expect(flangeWeightOr(mockWeights, null, "PN16", "ASME B16.5", "WN", 99.9)).toBe(99.9);
+      expect(flangeWeightOr(mockWeights, 50, "", "ASME B16.5", "WN", 12.5)).toBe(12.5);
+    });
+
+    it("ignores the fallback when the lookup succeeds", () => {
+      expect(flangeWeightOr(mockWeights, 50, "PN16", "ASME B16.5", "WN", 99.9)).toBe(3.2);
     });
   });
 });

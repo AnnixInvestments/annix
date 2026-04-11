@@ -65,6 +65,7 @@ import {
 import { validatePressureClass } from "@/app/lib/utils/pressureClassValidation";
 import {
   calculateBlankFlangeWeight,
+  flangeWeightOr,
   resolveFlangeConfig,
   scheduleToFittingClass,
 } from "@/app/lib/utils/rfqFlangeCalculations";
@@ -3021,16 +3022,14 @@ function StraightPipeFormComponent({
                     const { flangeStandardCode, pressureClassDesignation, flangeTypeCode } =
                       resolveFlangeConfig(specs, globalSpecs, masterData);
 
-                    const flangeWeightPerUnit =
-                      nominalBore && pressureClassDesignation
-                        ? flangeWeight(
-                            allWeights,
-                            nominalBore,
-                            pressureClassDesignation,
-                            flangeStandardCode,
-                            flangeTypeCode,
-                          )
-                        : entry.calculation?.flangeWeightPerUnit || 0;
+                    const flangeWeightPerUnit = flangeWeightOr(
+                      allWeights,
+                      nominalBore,
+                      pressureClassDesignation,
+                      flangeStandardCode,
+                      flangeTypeCode,
+                      entry.calculation?.flangeWeightPerUnit || 0,
+                    );
                     const dynamicTotalFlangeWeight = totalFlanges * flangeWeightPerUnit;
 
                     const blankPositions = specs.blankFlangePositions || [];
@@ -3257,16 +3256,14 @@ function StraightPipeFormComponent({
                     const { flangeStandardCode, pressureClassDesignation, flangeTypeCode } =
                       resolveFlangeConfig(specs, globalSpecs, masterData);
 
-                    const flangeWeightPerUnit =
-                      nominalBore && pressureClassDesignation
-                        ? flangeWeight(
-                            allWeights,
-                            nominalBore,
-                            pressureClassDesignation,
-                            flangeStandardCode,
-                            flangeTypeCode,
-                          )
-                        : entry.calculation?.flangeWeightPerUnit || 0;
+                    const flangeWeightPerUnit = flangeWeightOr(
+                      allWeights,
+                      nominalBore,
+                      pressureClassDesignation,
+                      flangeStandardCode,
+                      flangeTypeCode,
+                      entry.calculation?.flangeWeightPerUnit || 0,
+                    );
                     const regularFlangeWeight = totalFlanges * flangeWeightPerUnit;
 
                     const blankPositions = specs.blankFlangePositions || [];

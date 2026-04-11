@@ -46,7 +46,6 @@ import { FlangeSpecData, fetchFlangeSpecsStatic } from "@/app/lib/hooks/useFlang
 import { log } from "@/app/lib/logger";
 import {
   flangeTypesForStandardCode,
-  flangeWeight,
   useAllFlangeTypes,
   useAllFlangeTypeWeights,
   useNbToOdMap,
@@ -61,6 +60,7 @@ import {
 import { validatePressureClass } from "@/app/lib/utils/pressureClassValidation";
 import {
   calculateBlankFlangeWeight,
+  flangeWeightOr,
   resolveFlangeConfig,
   scheduleToFittingClass,
 } from "@/app/lib/utils/rfqFlangeCalculations";
@@ -4953,40 +4953,32 @@ function BendFormComponent(props: BendFormProps) {
                   const { flangeStandardCode, pressureClassDesignation, flangeTypeCode } =
                     resolveFlangeConfig(specs, globalSpecs, masterData);
 
-                  const mainFlangeWeightPerUnit =
-                    dn && pressureClassDesignation
-                      ? flangeWeight(
-                          allWeights,
-                          dn,
-                          pressureClassDesignation,
-                          flangeStandardCode,
-                          flangeTypeCode,
-                        )
-                      : entry.calculation?.flangeWeightPerUnit || 0;
+                  const mainFlangeWeightPerUnit = flangeWeightOr(
+                    allWeights,
+                    dn,
+                    pressureClassDesignation,
+                    flangeStandardCode,
+                    flangeTypeCode,
+                    entry.calculation?.flangeWeightPerUnit || 0,
+                  );
                   const mainFlangesWeight = bendFlangeCount * mainFlangeWeightPerUnit;
 
-                  const stub1FlangeWeightPerUnit =
-                    stub1NB && pressureClassDesignation
-                      ? flangeWeight(
-                          allWeights,
-                          stub1NB,
-                          pressureClassDesignation,
-                          flangeStandardCode,
-                          flangeTypeCode,
-                        )
-                      : 0;
+                  const stub1FlangeWeightPerUnit = flangeWeightOr(
+                    allWeights,
+                    stub1NB,
+                    pressureClassDesignation,
+                    flangeStandardCode,
+                    flangeTypeCode,
+                  );
                   const stub1FlangesWeight = stub1FlangeCount * stub1FlangeWeightPerUnit;
 
-                  const stub2FlangeWeightPerUnit =
-                    stub2NB && pressureClassDesignation
-                      ? flangeWeight(
-                          allWeights,
-                          stub2NB,
-                          pressureClassDesignation,
-                          flangeStandardCode,
-                          flangeTypeCode,
-                        )
-                      : 0;
+                  const stub2FlangeWeightPerUnit = flangeWeightOr(
+                    allWeights,
+                    stub2NB,
+                    pressureClassDesignation,
+                    flangeStandardCode,
+                    flangeTypeCode,
+                  );
                   const stub2FlangesWeight = stub2FlangeCount * stub2FlangeWeightPerUnit;
 
                   const dynamicTotalFlangeWeight =
