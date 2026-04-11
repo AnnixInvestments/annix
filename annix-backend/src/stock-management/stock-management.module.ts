@@ -58,8 +58,10 @@ import { ReturnsService } from "./services/returns.service";
 import { RubberCompoundService } from "./services/rubber-compound.service";
 import { StockHoldService } from "./services/stock-hold.service";
 import { StockManagementLicenseService } from "./services/stock-management-license.service";
+import { StockManagementNotificationsService } from "./services/stock-management-notifications.service";
 import { StockTakeService } from "./services/stock-take.service";
 import { StockTakeCronService } from "./services/stock-take-cron.service";
+import { StockTakeExportService } from "./services/stock-take-export.service";
 import { VarianceCategoryService } from "./services/variance-category.service";
 
 @Module({
@@ -128,9 +130,11 @@ import { VarianceCategoryService } from "./services/variance-category.service";
     ReturnsService,
     StockTakeService,
     StockTakeCronService,
+    StockTakeExportService,
     LocationClassificationService,
     StockHoldService,
     VarianceCategoryService,
+    StockManagementNotificationsService,
   ],
   exports: [
     StockManagementLicenseService,
@@ -146,9 +150,11 @@ import { VarianceCategoryService } from "./services/variance-category.service";
     IssuanceService,
     ReturnsService,
     StockTakeService,
+    StockTakeExportService,
     LocationClassificationService,
     StockHoldService,
     VarianceCategoryService,
+    StockManagementNotificationsService,
   ],
 })
 export class StockManagementModule {}

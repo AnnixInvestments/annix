@@ -2,14 +2,17 @@ import {
   Body,
   Controller,
   Get,
+  Header,
   Param,
   ParseIntPipe,
   Post,
   Query,
   Req,
+  Res,
   UseGuards,
 } from "@nestjs/common";
 import { ApiOperation, ApiTags } from "@nestjs/swagger";
+import type { Response } from "express";
 import { JwtAuthGuard } from "../../auth/jwt-auth.guard";
 import type { StockTakeStatus } from "../entities/stock-take.entity";
 import { StockManagementFeature } from "../guards/stock-management-feature.decorator";
@@ -19,6 +22,7 @@ import {
   type RecordCountInput,
   StockTakeService,
 } from "../services/stock-take.service";
+import { StockTakeExportService } from "../services/stock-take-export.service";
 
 interface RejectBody {
   reason: string;
@@ -28,7 +32,10 @@ interface RejectBody {
 @Controller("stock-management/stock-take")
 @UseGuards(JwtAuthGuard, StockManagementFeatureGuard)
 export class StockTakeController {
-  constructor(private readonly stockTakeService: StockTakeService) {}
+  constructor(
+    private readonly stockTakeService: StockTakeService,
+    private readonly exportService: StockTakeExportService,
+  ) {}
 
   @Get()
   @StockManagementFeature("STOCK_TAKE")
@@ -110,5 +117,28 @@ export class StockTakeController {
   async post(@Req() req: any, @Param("id", ParseIntPipe) id: number) {
     const staffId = req.user.linkedStaffId ?? req.user.id ?? 0;
     return this.stockTakeService.post(Number(req.user.companyId), id, staffId);
+  }
+
+  @Get(":id/export.pdf")
+  @StockManagementFeature("VALUATION_EXPORTS")
+  @Header("Content-Type", "application/pdf")
+  @ApiOperation({ summary: "Export a stock take as a PDF report" })
+  async exportPdf(@Req() req: any, @Param("id", ParseIntPipe) id: number, @Res() res: Response) {
+    const buffer = await this.exportService.exportPdf(Number(req.user.companyId), id);
+    res.setHeader("Content-Disposition", `attachment; filename="stock-take-${id}.pdf"`);
+    res.setHeader("Content-Length", String(buffer.length));
+    res.end(buffer);
+  }
+
+  @Get(":id/export.csv")
+  @StockManagementFeature("VALUATION_EXPORTS")
+  @Header("Content-Type", "text/csv")
+  @ApiOperation({
+    summary: "Export a stock take as a CSV file (opens in Excel / Numbers / Sheets)",
+  })
+  async exportCsv(@Req() req: any, @Param("id", ParseIntPipe) id: number, @Res() res: Response) {
+    const csv = await this.exportService.exportCsv(Number(req.user.companyId), id);
+    res.setHeader("Content-Disposition", `attachment; filename="stock-take-${id}.csv"`);
+    res.send(csv);
   }
 }
