@@ -22,7 +22,13 @@ interface VarianceArchiveRow {
 export function VarianceArchivePage() {
   const config = useStockManagementConfig();
   const isEnabled = useStockManagementFeature("VARIANCE_REPORTING");
-  const [client] = useState(() => new StockManagementApiClient({ baseUrl: config.apiBaseUrl }));
+  const [client] = useState(
+    () =>
+      new StockManagementApiClient({
+        baseUrl: config.apiBaseUrl,
+        headers: config.authHeaders,
+      }),
+  );
   const [rows, setRows] = useState<VarianceArchiveRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [sinceMonths, setSinceMonths] = useState(12);

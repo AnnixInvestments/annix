@@ -32,7 +32,13 @@ interface WastageBinDto {
 
 export function ReturnsPage() {
   const config = useStockManagementConfig();
-  const [client] = useState(() => new StockManagementApiClient({ baseUrl: config.apiBaseUrl }));
+  const [client] = useState(
+    () =>
+      new StockManagementApiClient({
+        baseUrl: config.apiBaseUrl,
+        headers: config.authHeaders,
+      }),
+  );
   const [outstanding, setOutstanding] = useState<ReturnSessionDto[]>([]);
   const [bins, setBins] = useState<WastageBinDto[]>([]);
   const [isLoading, setIsLoading] = useState(true);

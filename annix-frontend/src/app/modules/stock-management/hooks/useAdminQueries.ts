@@ -26,7 +26,10 @@ interface AsyncState<T> {
 
 function useApiClient(): StockManagementApiClient {
   const config = useStockManagementConfig();
-  return new StockManagementApiClient({ baseUrl: config.apiBaseUrl });
+  return new StockManagementApiClient({
+    baseUrl: config.apiBaseUrl,
+    headers: config.authHeaders,
+  });
 }
 
 function useAsync<T>(fetcher: () => Promise<T>, deps: ReadonlyArray<unknown>): AsyncState<T> {

@@ -15,7 +15,13 @@ interface FifoValuationState {
 
 export function useFifoCompanyValuation(): FifoValuationState {
   const config = useStockManagementConfig();
-  const [client] = useState(() => new StockManagementApiClient({ baseUrl: config.apiBaseUrl }));
+  const [client] = useState(
+    () =>
+      new StockManagementApiClient({
+        baseUrl: config.apiBaseUrl,
+        headers: config.authHeaders,
+      }),
+  );
   const [data, setData] = useState<{
     totalValueR: number;
     legacyValueR: number;

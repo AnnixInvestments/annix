@@ -22,6 +22,8 @@ const EMPTY_USER: StockManagementCurrentUser = {
   permissions: [],
 };
 
+const EMPTY_HEADERS: () => Record<string, string> = () => ({});
+
 export const StockManagementContext = createContext<StockManagementResolvedConfig | null>(null);
 
 interface StockManagementProviderProps {
@@ -31,8 +33,9 @@ interface StockManagementProviderProps {
 
 export function StockManagementProvider(props: StockManagementProviderProps) {
   const config = props.config;
+  const authHeaders = config.authHeaders ?? EMPTY_HEADERS;
   const apiClientRef = useRef<StockManagementApiClient>(
-    new StockManagementApiClient({ baseUrl: config.apiBaseUrl }),
+    new StockManagementApiClient({ baseUrl: config.apiBaseUrl, headers: authHeaders }),
   );
   const [license, setLicense] = useState<StockManagementLicenseSnapshot | null>(null);
   const [isLoadingLicense, setIsLoadingLicense] = useState(true);
@@ -85,6 +88,7 @@ export function StockManagementProvider(props: StockManagementProviderProps) {
     return {
       hostAppKey: config.hostAppKey,
       apiBaseUrl: config.apiBaseUrl,
+      authHeaders,
       license,
       features,
       theme,
@@ -96,6 +100,7 @@ export function StockManagementProvider(props: StockManagementProviderProps) {
   }, [
     config.hostAppKey,
     config.apiBaseUrl,
+    authHeaders,
     config.currentUser,
     license,
     features,

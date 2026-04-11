@@ -13,6 +13,7 @@ export interface StockManagementCurrentUser {
 export interface StockManagementHostConfig {
   hostAppKey: StockManagementHostAppKey;
   apiBaseUrl: string;
+  authHeaders?: () => Record<string, string>;
   theme?: StockManagementThemeOverrides;
   labels?: StockManagementLabelOverrides;
   currentUser?: StockManagementCurrentUser;
@@ -21,6 +22,7 @@ export interface StockManagementHostConfig {
 export interface StockManagementResolvedConfig {
   hostAppKey: StockManagementHostAppKey;
   apiBaseUrl: string;
+  authHeaders: () => Record<string, string>;
   license: StockManagementLicenseSnapshot | null;
   features: Record<string, boolean>;
   theme: Required<StockManagementThemeOverrides>;

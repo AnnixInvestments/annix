@@ -78,7 +78,10 @@ export function AdminProductDatasheetsPage() {
 
   const handleDownload = async (datasheet: ProductDatasheetDto) => {
     try {
-      const client = new StockManagementApiClient({ baseUrl: config.apiBaseUrl });
+      const client = new StockManagementApiClient({
+        baseUrl: config.apiBaseUrl,
+        headers: config.authHeaders,
+      });
       const { url } = await client.datasheetDownloadUrl(datasheet.id);
       window.open(url, "_blank");
     } catch (err) {

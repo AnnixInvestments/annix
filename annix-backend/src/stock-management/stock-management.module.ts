@@ -5,6 +5,7 @@ import { FeatureFlagsModule } from "../feature-flags/feature-flags.module";
 import { NixModule } from "../nix/nix.module";
 import { NotificationsModule } from "../notifications/notifications.module";
 import { StorageModule } from "../storage/storage.module";
+import { DemoSeedController } from "./controllers/demo-seed.controller";
 import { FifoBatchController } from "./controllers/fifo-batch.controller";
 import { IssuableProductController } from "./controllers/issuable-product.controller";
 import { IssuanceController } from "./controllers/issuance.controller";
@@ -47,6 +48,7 @@ import { StockTakeLine } from "./entities/stock-take-line.entity";
 import { StockTakeVarianceCategory } from "./entities/stock-take-variance-category.entity";
 import { StockManagementFeatureGuard } from "./guards/stock-management-feature.guard";
 import { DatasheetExtractionService } from "./services/datasheet-extraction.service";
+import { DemoSeedService } from "./services/demo-seed.service";
 import { FifoBatchService } from "./services/fifo-batch.service";
 import { FifoBootstrapService } from "./services/fifo-bootstrap.service";
 import { IssuableProductService } from "./services/issuable-product.service";
@@ -118,6 +120,7 @@ import { VarianceCategoryService } from "./services/variance-category.service";
     StockHoldController,
     VarianceCategoryController,
     PhotoIdentificationController,
+    DemoSeedController,
   ],
   providers: [
     StockManagementLicenseService,
@@ -141,6 +144,7 @@ import { VarianceCategoryService } from "./services/variance-category.service";
     StockManagementNotificationsService,
     PhotoIdentificationService,
     SupplierInvoiceFifoBridgeService,
+    DemoSeedService,
   ],
   exports: [
     StockManagementLicenseService,

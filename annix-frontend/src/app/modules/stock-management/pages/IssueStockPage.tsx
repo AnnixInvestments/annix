@@ -77,7 +77,10 @@ export function IssueStockPage() {
     setPhotoCapturing(true);
     setPhotoResult(null);
     try {
-      const client = new StockManagementApiClient({ baseUrl: config.apiBaseUrl });
+      const client = new StockManagementApiClient({
+        baseUrl: config.apiBaseUrl,
+        headers: config.authHeaders,
+      });
       const result = await client.identifyPhoto(file);
       setPhotoResult({ matches: result.matches });
     } catch (err) {
