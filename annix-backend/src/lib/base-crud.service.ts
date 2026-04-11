@@ -1,4 +1,4 @@
-import { ConflictException, Logger, NotFoundException } from "@nestjs/common";
+import { BadRequestException, Logger, NotFoundException } from "@nestjs/common";
 import type { DeepPartial, FindOptionsWhere, Repository } from "typeorm";
 import { findOneOrFail } from "./entity-helpers";
 
@@ -59,7 +59,7 @@ export abstract class BaseCrudService<
   protected async checkUnique(where: FindOptionsWhere<Entity>, message: string): Promise<void> {
     const exists = await this.repo.findOne({ where });
     if (exists) {
-      throw new ConflictException(message);
+      throw new BadRequestException(message);
     }
   }
 
@@ -70,7 +70,7 @@ export abstract class BaseCrudService<
   ): Promise<void> {
     const exists = await this.repo.findOne({ where });
     if (exists && exists.id !== excludeId) {
-      throw new ConflictException(message);
+      throw new BadRequestException(message);
     }
   }
 
