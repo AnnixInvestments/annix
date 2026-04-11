@@ -16,6 +16,7 @@ import {
 import { Rfq, RfqStatus } from "./entities/rfq.entity";
 import { RfqController } from "./rfq.controller";
 import { RfqService } from "./rfq.service";
+import { RfqDraftService } from "./rfq-draft.service";
 import { RfqDocumentService } from "./services/rfq-document.service";
 
 describe("RfqController - Pump Endpoints", () => {
@@ -73,6 +74,7 @@ describe("RfqController - Pump Endpoints", () => {
       controllers: [RfqController],
       providers: [
         { provide: RfqService, useValue: mockRfqService },
+        { provide: RfqDraftService, useValue: {} },
         { provide: RfqDocumentService, useValue: {} },
       ],
     })
