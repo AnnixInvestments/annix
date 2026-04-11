@@ -1,6 +1,6 @@
 import { Body, Controller, Get, Param, ParseIntPipe, Patch, Req, UseGuards } from "@nestjs/common";
 import { ApiOperation, ApiTags } from "@nestjs/swagger";
-import { JwtAuthGuard } from "../../auth/jwt-auth.guard";
+import { StockControlAuthGuard } from "../../stock-control/guards/stock-control-auth.guard";
 import type {
   StockManagementFeatureKey,
   StockManagementTier,
@@ -28,7 +28,7 @@ interface SetActiveBody {
 
 @ApiTags("stock-management/license")
 @Controller("stock-management/license")
-@UseGuards(JwtAuthGuard)
+@UseGuards(StockControlAuthGuard)
 export class StockManagementLicenseController {
   constructor(private readonly licenseService: StockManagementLicenseService) {}
 

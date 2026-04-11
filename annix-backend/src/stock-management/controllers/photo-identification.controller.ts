@@ -9,7 +9,7 @@ import {
 } from "@nestjs/common";
 import { FileInterceptor } from "@nestjs/platform-express";
 import { ApiConsumes, ApiOperation, ApiTags } from "@nestjs/swagger";
-import { JwtAuthGuard } from "../../auth/jwt-auth.guard";
+import { StockControlAuthGuard } from "../../stock-control/guards/stock-control-auth.guard";
 import { StockManagementFeature } from "../guards/stock-management-feature.decorator";
 import { StockManagementFeatureGuard } from "../guards/stock-management-feature.guard";
 import { PhotoIdentificationService } from "../services/photo-identification.service";
@@ -21,7 +21,7 @@ interface IdentifyByBase64Body {
 
 @ApiTags("stock-management/photo-identification")
 @Controller("stock-management/issuance")
-@UseGuards(JwtAuthGuard, StockManagementFeatureGuard)
+@UseGuards(StockControlAuthGuard, StockManagementFeatureGuard)
 export class PhotoIdentificationController {
   constructor(private readonly service: PhotoIdentificationService) {}
 

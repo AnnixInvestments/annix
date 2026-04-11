@@ -1,6 +1,6 @@
 import { Body, Controller, Get, Param, ParseIntPipe, Post, Req, UseGuards } from "@nestjs/common";
 import { ApiOperation, ApiTags } from "@nestjs/swagger";
-import { JwtAuthGuard } from "../../auth/jwt-auth.guard";
+import { StockControlAuthGuard } from "../../stock-control/guards/stock-control-auth.guard";
 import { StockManagementFeature } from "../guards/stock-management-feature.decorator";
 import { StockManagementFeatureGuard } from "../guards/stock-management-feature.guard";
 import {
@@ -15,7 +15,7 @@ interface RejectBody {
 
 @ApiTags("stock-management/returns")
 @Controller("stock-management/returns")
-@UseGuards(JwtAuthGuard, StockManagementFeatureGuard)
+@UseGuards(StockControlAuthGuard, StockManagementFeatureGuard)
 export class ReturnsController {
   constructor(private readonly returnsService: ReturnsService) {}
 

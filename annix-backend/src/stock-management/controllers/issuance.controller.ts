@@ -10,7 +10,7 @@ import {
   UseGuards,
 } from "@nestjs/common";
 import { ApiOperation, ApiTags } from "@nestjs/swagger";
-import { JwtAuthGuard } from "../../auth/jwt-auth.guard";
+import { StockControlAuthGuard } from "../../stock-control/guards/stock-control-auth.guard";
 import type { CreateIssuanceSessionDto, IssuanceSessionFilters } from "../dto/issuance.dto";
 import type {
   IssuanceSessionKind,
@@ -22,7 +22,7 @@ import { IssuanceService } from "../services/issuance.service";
 
 @ApiTags("stock-management/issuance")
 @Controller("stock-management/issuance")
-@UseGuards(JwtAuthGuard, StockManagementFeatureGuard)
+@UseGuards(StockControlAuthGuard, StockManagementFeatureGuard)
 export class IssuanceController {
   constructor(private readonly issuanceService: IssuanceService) {}
 

@@ -12,7 +12,7 @@ import {
   UseGuards,
 } from "@nestjs/common";
 import { ApiOperation, ApiTags } from "@nestjs/swagger";
-import { JwtAuthGuard } from "../../auth/jwt-auth.guard";
+import { StockControlAuthGuard } from "../../stock-control/guards/stock-control-auth.guard";
 import type {
   CreateIssuableProductDto,
   IssuableProductFilters,
@@ -25,7 +25,7 @@ import { IssuableProductService } from "../services/issuable-product.service";
 
 @ApiTags("stock-management/products")
 @Controller("stock-management/products")
-@UseGuards(JwtAuthGuard, StockManagementFeatureGuard)
+@UseGuards(StockControlAuthGuard, StockManagementFeatureGuard)
 export class IssuableProductController {
   constructor(private readonly productService: IssuableProductService) {}
 

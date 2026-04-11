@@ -4,6 +4,8 @@ import { AuthModule } from "../auth/auth.module";
 import { FeatureFlagsModule } from "../feature-flags/feature-flags.module";
 import { NixModule } from "../nix/nix.module";
 import { NotificationsModule } from "../notifications/notifications.module";
+import { StockControlUser } from "../stock-control/entities/stock-control-user.entity";
+import { StockControlAuthGuard } from "../stock-control/guards/stock-control-auth.guard";
 import { StorageModule } from "../storage/storage.module";
 import { DemoSeedController } from "./controllers/demo-seed.controller";
 import { FifoBatchController } from "./controllers/fifo-batch.controller";
@@ -99,6 +101,7 @@ import { VarianceCategoryService } from "./services/variance-category.service";
       StockTakeAdjustment,
       StockTakeVarianceCategory,
       StockHoldItem,
+      StockControlUser,
     ]),
     AuthModule,
     FeatureFlagsModule,
@@ -123,6 +126,7 @@ import { VarianceCategoryService } from "./services/variance-category.service";
     DemoSeedController,
   ],
   providers: [
+    StockControlAuthGuard,
     StockManagementLicenseService,
     StockManagementFeatureGuard,
     ProductCategoryService,

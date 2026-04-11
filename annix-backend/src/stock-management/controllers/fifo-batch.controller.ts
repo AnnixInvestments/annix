@@ -10,7 +10,7 @@ import {
   UseGuards,
 } from "@nestjs/common";
 import { ApiOperation, ApiTags } from "@nestjs/swagger";
-import { JwtAuthGuard } from "../../auth/jwt-auth.guard";
+import { StockControlAuthGuard } from "../../stock-control/guards/stock-control-auth.guard";
 import type {
   StockPurchaseBatchSourceType,
   StockPurchaseBatchStatus,
@@ -38,7 +38,7 @@ interface BootstrapBody {
 
 @ApiTags("stock-management/fifo-batches")
 @Controller("stock-management/fifo-batches")
-@UseGuards(JwtAuthGuard, StockManagementFeatureGuard)
+@UseGuards(StockControlAuthGuard, StockManagementFeatureGuard)
 export class FifoBatchController {
   constructor(
     private readonly fifoBatchService: FifoBatchService,

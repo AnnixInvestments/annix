@@ -10,7 +10,7 @@ import {
   UseGuards,
 } from "@nestjs/common";
 import { ApiOperation, ApiTags } from "@nestjs/swagger";
-import { JwtAuthGuard } from "../../auth/jwt-auth.guard";
+import { StockControlAuthGuard } from "../../stock-control/guards/stock-control-auth.guard";
 import type { StockHoldDispositionStatus } from "../entities/stock-hold-item.entity";
 import { StockManagementFeature } from "../guards/stock-management-feature.decorator";
 import { StockManagementFeatureGuard } from "../guards/stock-management-feature.guard";
@@ -22,7 +22,7 @@ import {
 
 @ApiTags("stock-management/stock-hold")
 @Controller("stock-management/stock-hold")
-@UseGuards(JwtAuthGuard, StockManagementFeatureGuard)
+@UseGuards(StockControlAuthGuard, StockManagementFeatureGuard)
 export class StockHoldController {
   constructor(private readonly stockHoldService: StockHoldService) {}
 

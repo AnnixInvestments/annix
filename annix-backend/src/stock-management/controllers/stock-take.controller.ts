@@ -13,7 +13,7 @@ import {
 } from "@nestjs/common";
 import { ApiOperation, ApiTags } from "@nestjs/swagger";
 import type { Response } from "express";
-import { JwtAuthGuard } from "../../auth/jwt-auth.guard";
+import { StockControlAuthGuard } from "../../stock-control/guards/stock-control-auth.guard";
 import type { StockTakeStatus } from "../entities/stock-take.entity";
 import { StockManagementFeature } from "../guards/stock-management-feature.decorator";
 import { StockManagementFeatureGuard } from "../guards/stock-management-feature.guard";
@@ -30,7 +30,7 @@ interface RejectBody {
 
 @ApiTags("stock-management/stock-take")
 @Controller("stock-management/stock-take")
-@UseGuards(JwtAuthGuard, StockManagementFeatureGuard)
+@UseGuards(StockControlAuthGuard, StockManagementFeatureGuard)
 export class StockTakeController {
   constructor(
     private readonly stockTakeService: StockTakeService,

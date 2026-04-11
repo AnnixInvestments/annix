@@ -1,11 +1,11 @@
 import { Controller, Post, Req, UseGuards } from "@nestjs/common";
 import { ApiOperation, ApiTags } from "@nestjs/swagger";
-import { JwtAuthGuard } from "../../auth/jwt-auth.guard";
+import { StockControlAuthGuard } from "../../stock-control/guards/stock-control-auth.guard";
 import { DemoSeedService } from "../services/demo-seed.service";
 
 @ApiTags("stock-management/demo-seed")
 @Controller("stock-management/demo-seed")
-@UseGuards(JwtAuthGuard)
+@UseGuards(StockControlAuthGuard)
 export class DemoSeedController {
   constructor(private readonly demoSeedService: DemoSeedService) {}
 

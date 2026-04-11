@@ -12,7 +12,7 @@ import {
   UseGuards,
 } from "@nestjs/common";
 import { ApiOperation, ApiTags } from "@nestjs/swagger";
-import { JwtAuthGuard } from "../../auth/jwt-auth.guard";
+import { StockControlAuthGuard } from "../../stock-control/guards/stock-control-auth.guard";
 import type {
   CreateProductCategoryDto,
   UpdateProductCategoryDto,
@@ -24,7 +24,7 @@ import { ProductCategoryService } from "../services/product-category.service";
 
 @ApiTags("stock-management/product-categories")
 @Controller("stock-management/product-categories")
-@UseGuards(JwtAuthGuard, StockManagementFeatureGuard)
+@UseGuards(StockControlAuthGuard, StockManagementFeatureGuard)
 export class ProductCategoryController {
   constructor(private readonly categoryService: ProductCategoryService) {}
 
