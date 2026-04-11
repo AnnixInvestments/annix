@@ -162,6 +162,12 @@ const JOB_METADATA: Record<string, { description: string; module: string; defaul
     module: "Admin",
     defaultCron: "0 * * * *",
   },
+  "stock-management:monthly-snapshot": {
+    description:
+      "Monthly stock take snapshot — captures every product's quantity and cost at midnight on the 1st of the month, then attaches the snapshot to a draft stock take session (or creates a new one)",
+    module: "Stock Management",
+    defaultCron: "0 0 1 * *",
+  },
 };
 
 const NIGHT_SUSPENSION_WINDOWS: Record<number, { start: number; end: number }> = {
