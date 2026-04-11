@@ -261,31 +261,61 @@ if [ -n "$STAGED_FRONTEND_TS" ]; then
     echo "Frontend type-check passed."
 fi
 
-# 4. SWC landmine check — grep staged frontend files for `obj?.prop ?? val`,
-#    `obj?.prop || val`, `arr[x] ?? val`, `arr[x] || val` patterns. These
-#    miscompile under SWC (webpack and Turbopack) into an undeclared
-#    `_ref`/`_obj_prop` temp and crash the page with
+# 4. SWC landmine check — two passes against staged frontend files. SWC
+#    (webpack and Turbopack) miscompiles `obj.prop ?? val`, `obj.prop || val`,
+#    `obj?.prop ?? val`, `obj?.prop || val`, `arr[x] ?? val`, `arr[x] || val`
+#    into an undeclared `_obj_prop` / `_ref` temp and crashes the page with
 #    `ReferenceError: _ref is not defined` at runtime. CLAUDE.md's
 #    "SWC-Safe Patterns" section documents the rule: hoist the access
 #    into a plain local identifier first, then use that. Tsc and build
 #    both PASS because the bug is in SWC's runtime output, not the source.
 #    Only a user clicking the page reveals the crash — hence the pre-commit
 #    check. See feedback_pre_push_failures.md #19 for the fix patterns.
+#
+#    PASS A — full-file scan for the highest-signal variants (optional-chain
+#    and bracket access combined with ?? / ||). These have low false-positive
+#    rates and the codebase has been audited clean of them.
+#
+#    PASS B — added-lines-only scan for plain `obj.prop ?? val` and
+#    `obj.prop || val`. The codebase has thousands of pre-existing instances
+#    of these (4898 `.prop ||` matches alone) so a full-file scan is not
+#    feasible — restricting to lines being added in the current commit
+#    prevents NEW landmines from landing without blocking on legacy code.
 if [ -n "$STAGED_FRONTEND_TS" ]; then
     SWC_LANDMINES=0
     SWC_REPORT=""
+
+    # Pass A: full-file high-signal patterns
     for f in $STAGED_FRONTEND_TS; do
         if [ -f "$f" ]; then
-            # Match:  ?.word ??   or   ?.word ||   or   [word] ??   or   [word] ||
             MATCHES=$(git show ":$f" 2>/dev/null | grep -nE '(\?\.\w+ \?\?|\?\.\w+ \|\||\[[^]]+\] \?\?|\[[^]]+\] \|\|)' || true)
             if [ -n "$MATCHES" ]; then
                 SWC_LANDMINES=1
                 SWC_REPORT="${SWC_REPORT}
-  $f:
+  $f (full-file):
 $(echo "$MATCHES" | sed 's/^/    /')"
             fi
         fi
     done
+
+    # Pass B: added-lines-only check for plain `.prop ?? / .prop ||`
+    for f in $STAGED_FRONTEND_TS; do
+        if [ -f "$f" ]; then
+            ADDED_MATCHES=$(git diff --cached -- "$f" 2>/dev/null \
+                | grep -E '^\+' \
+                | grep -vE '^\+\+\+' \
+                | grep -nE '\.\w+ \?\?|\.\w+ \|\|' \
+                | grep -vE '\?\.\w+ \?\?|\?\.\w+ \|\|' \
+                || true)
+            if [ -n "$ADDED_MATCHES" ]; then
+                SWC_LANDMINES=1
+                SWC_REPORT="${SWC_REPORT}
+  $f (added lines):
+$(echo "$ADDED_MATCHES" | sed 's/^/    /')"
+            fi
+        fi
+    done
+
     if [ $SWC_LANDMINES -eq 1 ]; then
         echo ""
         echo "============================================"
@@ -296,11 +326,12 @@ $(echo "$MATCHES" | sed 's/^/    /')"
         echo "with 'ReferenceError: _ref is not defined':"
         printf "%s\n" "$SWC_REPORT"
         echo ""
-        echo "Fix: hoist the optional-chain or bracket access into a plain"
-        echo "local const first, then use the identifier."
+        echo "Fix: hoist the optional-chain, bracket access, or member access"
+        echo "into a plain local const first, then use the identifier."
         echo "  BAD   const v = obj?.prop ?? fallback"
         echo "  BAD   const v = arr[i] ?? fallback"
-        echo "  GOOD  const p = obj?.prop; const v = p == null ? fallback : p"
+        echo "  BAD   const v = obj.prop || fallback"
+        echo "  GOOD  const p = obj.prop; const v = p == null ? fallback : p"
         echo ""
         echo "See CLAUDE.md 'SWC-Safe Patterns' and feedback_pre_push_failures.md #19."
         echo ""

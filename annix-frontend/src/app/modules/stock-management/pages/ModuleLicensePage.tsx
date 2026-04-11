@@ -40,7 +40,7 @@ interface ModuleLicensePageProps {
 
 export function ModuleLicensePage(props: ModuleLicensePageProps) {
   const config = useStockManagementConfig();
-  const { data: license, isLoading } = useCompanyLicense(props.companyId);
+  const { data: license, isLoading, refetch } = useCompanyLicense(props.companyId);
   const mutations = useLicenseMutations();
   const [editingTier, setEditingTier] = useState<StockManagementTier | null>(null);
 
@@ -56,6 +56,7 @@ export function ModuleLicensePage(props: ModuleLicensePageProps) {
     try {
       await mutations.setTier(props.companyId, editingTier);
       setEditingTier(null);
+      await refetch();
     } catch (err) {
       console.error("Failed to set tier", err);
     }
@@ -65,6 +66,7 @@ export function ModuleLicensePage(props: ModuleLicensePageProps) {
     const current = license.features[feature];
     try {
       await mutations.setFeatureOverride(props.companyId, feature, !current);
+      await refetch();
     } catch (err) {
       console.error("Failed to toggle feature", err);
     }

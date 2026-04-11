@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { StockManagementApiClient } from "../api/stockManagementApi";
 import { useStockManagementConfig } from "../provider/useStockManagementConfig";
 import type {
@@ -13,6 +13,7 @@ interface AsyncState<T> {
   data: T | null;
   isLoading: boolean;
   error: Error | null;
+  refetch: () => Promise<void>;
 }
 
 function useApiClient(): StockManagementApiClient {
@@ -29,37 +30,28 @@ function useApiClient(): StockManagementApiClient {
 
 export function useCompanyLicense(companyId: number): AsyncState<StockManagementLicenseSnapshot> {
   const client = useApiClient();
-  const [state, setState] = useState<AsyncState<StockManagementLicenseSnapshot>>({
-    data: null,
-    isLoading: true,
-    error: null,
-  });
+  const [data, setData] = useState<StockManagementLicenseSnapshot | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
 
-  useEffect(() => {
-    let cancelled = false;
-    setState((prev) => ({ ...prev, isLoading: true }));
-    client
-      .licenseByCompany(companyId)
-      .then((data) => {
-        if (!cancelled) {
-          setState({ data, isLoading: false, error: null });
-        }
-      })
-      .catch((err: unknown) => {
-        if (!cancelled) {
-          setState({
-            data: null,
-            isLoading: false,
-            error: err instanceof Error ? err : new Error(String(err)),
-          });
-        }
-      });
-    return () => {
-      cancelled = true;
-    };
+  const refetch = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const next = await client.licenseByCompany(companyId);
+      setData(next);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e : new Error(String(e)));
+    } finally {
+      setIsLoading(false);
+    }
   }, [client, companyId]);
 
-  return state;
+  useEffect(() => {
+    refetch();
+  }, [refetch]);
+
+  return { data, isLoading, error, refetch };
 }
 
 export interface LicenseMutations {

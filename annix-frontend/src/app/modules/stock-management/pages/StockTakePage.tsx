@@ -1,12 +1,23 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { now } from "@/app/lib/datetime";
 import { useStockTake, useStockTakeMutations, useStockTakes } from "../hooks/useStockTakeQueries";
 import {
   useStockManagementConfig,
   useStockManagementFeature,
 } from "../provider/useStockManagementConfig";
 import type { StockTakeDto, StockTakeLineDto, StockTakeStatus } from "../types/stockTake";
+
+function buildMonthEndOptions(): Array<{ label: string; value: string }> {
+  const current = now();
+  const offsets = [1, 0, -1, -2, -3, -4, -5, -6, -7, -8, -9, -10, -11, -12];
+  return offsets.map((offset) => {
+    const month = current.plus({ months: offset });
+    const label = `${month.toFormat("MMMM yyyy")} Month-End`;
+    return { label, value: label };
+  });
+}
 
 const STATUS_BADGE: Record<StockTakeStatus, string> = {
   draft: "bg-gray-100 text-gray-700",
@@ -25,8 +36,19 @@ export function StockTakePage() {
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const { data: selected, refetch: refetchSelected } = useStockTake(selectedId);
   const mutations = useStockTakeMutations();
-  const [createName, setCreateName] = useState("");
+  const isCreatePending = mutations.isPending;
+  const monthEndOptions = useMemo(() => buildMonthEndOptions(), []);
+  const defaultMonthEnd = monthEndOptions.find((o) => o.value.startsWith(now().toFormat("MMMM")));
+  const initialCreateName =
+    defaultMonthEnd == null ? monthEndOptions[1].value : defaultMonthEnd.value;
+  const [createName, setCreateName] = useState(initialCreateName);
   const [showCreate, setShowCreate] = useState(false);
+
+  useEffect(() => {
+    if (showCreate) {
+      setCreateName(initialCreateName);
+    }
+  }, [showCreate, initialCreateName]);
 
   if (!isEnabled) {
     return (
@@ -80,26 +102,30 @@ export function StockTakePage() {
           {(stockTakes ?? []).length === 0 && !isLoading && (
             <div className="p-4 text-sm text-gray-500">No stock takes yet</div>
           )}
-          {(stockTakes ?? []).map((st) => (
-            <button
-              key={st.id}
-              type="button"
-              onClick={() => setSelectedId(st.id)}
-              className={`w-full text-left p-3 hover:bg-gray-50 ${
-                selectedId === st.id ? "bg-teal-50 border-l-4 border-teal-600" : ""
-              }`}
-            >
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium">{st.name}</span>
-                <span
-                  className={`px-2 py-0.5 text-xs font-semibold rounded ${STATUS_BADGE[st.status]}`}
-                >
-                  {st.status}
-                </span>
-              </div>
-              <div className="text-xs text-gray-500 mt-1">{st.periodLabel ?? "—"}</div>
-            </button>
-          ))}
+          {(stockTakes ?? []).map((st) => {
+            const periodLabel = st.periodLabel;
+            const periodDisplay = periodLabel == null ? "—" : periodLabel;
+            return (
+              <button
+                key={st.id}
+                type="button"
+                onClick={() => setSelectedId(st.id)}
+                className={`w-full text-left p-3 hover:bg-gray-50 ${
+                  selectedId === st.id ? "bg-teal-50 border-l-4 border-teal-600" : ""
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium">{st.name}</span>
+                  <span
+                    className={`px-2 py-0.5 text-xs font-semibold rounded ${STATUS_BADGE[st.status]}`}
+                  >
+                    {st.status}
+                  </span>
+                </div>
+                <div className="text-xs text-gray-500 mt-1">{periodDisplay}</div>
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -120,14 +146,28 @@ export function StockTakePage() {
 
       {showCreate && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6 space-y-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-4 sm:p-6 space-y-4">
             <h2 className="text-lg font-semibold">{config.label("stockTake.startSession")}</h2>
-            <input
-              value={createName}
-              onChange={(e) => setCreateName(e.target.value)}
-              placeholder="e.g. April 2026 Month-End"
-              className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
-            />
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">
+                Month-end period
+              </label>
+              <select
+                value={createName}
+                onChange={(e) => setCreateName(e.target.value)}
+                className="w-full border border-gray-300 rounded px-3 py-2 text-sm bg-white"
+              >
+                {monthEndOptions.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-gray-500 mt-1">
+                Pick the month this stock take will reconcile against. Defaults to the current
+                month.
+              </p>
+            </div>
             <div className="flex justify-end gap-2">
               <button
                 type="button"
@@ -139,7 +179,7 @@ export function StockTakePage() {
               <button
                 type="button"
                 onClick={handleCreate}
-                disabled={mutations.isPending || !createName.trim()}
+                disabled={isCreatePending || !createName.trim()}
                 className="px-4 py-2 text-sm bg-teal-600 text-white rounded font-medium disabled:opacity-50"
               >
                 {config.label("common.save")}
@@ -162,7 +202,10 @@ interface DetailProps {
 function StockTakeDetail(props: DetailProps) {
   const { stockTake, mutations, onAction } = props;
   const config = useStockManagementConfig();
-  const lines = stockTake.lines ?? [];
+  const rawLines = stockTake.lines;
+  const lines = rawLines == null ? [] : rawLines;
+  const rawPeriodLabel = stockTake.periodLabel;
+  const periodDisplay = rawPeriodLabel == null ? "No period label" : rawPeriodLabel;
 
   const linesByLocation = lines.reduce<Map<number | null, StockTakeLineDto[]>>((acc, line) => {
     const key = line.locationId;
@@ -186,7 +229,7 @@ function StockTakeDetail(props: DetailProps) {
           </span>
         </div>
         <div className="mt-2 text-xs text-gray-500 space-x-3">
-          <span>{stockTake.periodLabel ?? "No period label"}</span>
+          <span>{periodDisplay}</span>
           {stockTake.snapshotAt && (
             <span>Snapshot: {new Date(stockTake.snapshotAt).toLocaleString()}</span>
           )}
