@@ -1,4 +1,5 @@
-import { throwIfNotOk } from "@/app/lib/api/apiError";
+import { type ApiClient, createApiClient } from "@/app/lib/api/createApiClient";
+import { stockControlTokenStore } from "@/app/lib/api/portalTokenStores";
 import { API_BASE_URL } from "@/lib/api-config";
 
 export const TOKEN_KEYS = {
@@ -6,59 +7,39 @@ export const TOKEN_KEYS = {
   refreshToken: "stockControlRefreshToken",
 } as const;
 
+const apiClient: ApiClient = createApiClient({
+  baseURL: API_BASE_URL,
+  tokenStore: stockControlTokenStore,
+  refreshUrl: `${API_BASE_URL}/stock-control/auth/refresh`,
+});
+
 export class StockControlApiClient {
-  baseURL: string;
-  accessToken: string | null = null;
-  refreshToken: string | null = null;
-  rememberMe: boolean = true;
-  private refreshPromise: Promise<boolean> | null = null;
+  baseURL = API_BASE_URL;
 
-  constructor(baseURL: string = API_BASE_URL) {
-    this.baseURL = baseURL;
-
-    if (typeof window !== "undefined") {
-      this.accessToken =
-        localStorage.getItem(TOKEN_KEYS.accessToken) ||
-        sessionStorage.getItem(TOKEN_KEYS.accessToken);
-      this.refreshToken =
-        localStorage.getItem(TOKEN_KEYS.refreshToken) ||
-        sessionStorage.getItem(TOKEN_KEYS.refreshToken);
-    }
+  get accessToken(): string | null {
+    return stockControlTokenStore.accessToken();
   }
+
+  get refreshToken(): string | null {
+    return stockControlTokenStore.refreshToken();
+  }
+
+  rememberMe: boolean = true;
 
   setRememberMe(remember: boolean) {
     this.rememberMe = remember;
   }
 
   headers(): Record<string, string> {
-    if (!this.accessToken && typeof window !== "undefined") {
-      this.accessToken =
-        localStorage.getItem(TOKEN_KEYS.accessToken) ||
-        sessionStorage.getItem(TOKEN_KEYS.accessToken);
-      this.refreshToken =
-        localStorage.getItem(TOKEN_KEYS.refreshToken) ||
-        sessionStorage.getItem(TOKEN_KEYS.refreshToken);
-    }
+    return stockControlTokenStore.authHeaders();
+  }
 
-    const h: Record<string, string> = {
-      "Content-Type": "application/json",
-    };
-
-    if (this.accessToken) {
-      h["Authorization"] = `Bearer ${this.accessToken}`;
-    }
-
-    return h;
+  authHeaders(): Record<string, string> {
+    return stockControlTokenStore.authHeaders();
   }
 
   setTokens(accessToken: string, refreshToken: string) {
-    this.accessToken = accessToken;
-    this.refreshToken = refreshToken;
-    if (typeof window !== "undefined") {
-      const storage = this.rememberMe ? localStorage : sessionStorage;
-      storage.setItem(TOKEN_KEYS.accessToken, accessToken);
-      storage.setItem(TOKEN_KEYS.refreshToken, refreshToken);
-    }
+    stockControlTokenStore.setTokens(accessToken, refreshToken, this.rememberMe);
   }
 
   setCompanyCookie(companyId: number) {
@@ -76,253 +57,40 @@ export class StockControlApiClient {
   }
 
   clearTokens() {
-    this.accessToken = null;
-    this.refreshToken = null;
-    if (typeof window !== "undefined") {
-      localStorage.removeItem(TOKEN_KEYS.accessToken);
-      localStorage.removeItem(TOKEN_KEYS.refreshToken);
-      sessionStorage.removeItem(TOKEN_KEYS.accessToken);
-      sessionStorage.removeItem(TOKEN_KEYS.refreshToken);
-    }
+    stockControlTokenStore.clear();
     this.clearCompanyCookie();
   }
 
-  private safeParseJson<T>(text: string): T {
-    try {
-      return JSON.parse(text) as T;
-    } catch {
-      throw new Error("The server returned an unexpected response. Please try again.");
-    }
-  }
-
   isAuthenticated(): boolean {
-    if (!this.accessToken && typeof window !== "undefined") {
-      this.accessToken =
-        localStorage.getItem(TOKEN_KEYS.accessToken) ||
-        sessionStorage.getItem(TOKEN_KEYS.accessToken);
-      this.refreshToken =
-        localStorage.getItem(TOKEN_KEYS.refreshToken) ||
-        sessionStorage.getItem(TOKEN_KEYS.refreshToken);
-    }
-    return !!this.accessToken;
+    return stockControlTokenStore.isAuthenticated();
   }
 
-  async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-    const url = `${this.baseURL}${endpoint}`;
-
-    const config: RequestInit = {
-      ...options,
-      headers: {
-        ...this.headers(),
-        ...(options.headers as Record<string, string>),
-      },
-    };
-
-    const response = await fetch(url, config);
-
-    if (response.status === 401 && this.refreshToken) {
-      const refreshed = await this.refreshAccessToken();
-      if (refreshed) {
-        config.headers = {
-          ...this.headers(),
-          ...(options.headers as Record<string, string>),
-        };
-        const retryResponse = await fetch(url, config);
-        await throwIfNotOk(retryResponse);
-        const retryText = await retryResponse.text();
-        if (!retryText || retryText.trim() === "") {
-          return {} as T;
-        }
-        return this.safeParseJson<T>(retryText);
-      }
-    }
-
-    await throwIfNotOk(response);
-
-    const text = await response.text();
-    if (!text || text.trim() === "") {
-      return {} as T;
-    }
-
-    return this.safeParseJson<T>(text);
+  request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+    return apiClient.request<T>(endpoint, options);
   }
 
-  async requestBlob(endpoint: string, options: RequestInit = {}): Promise<Blob> {
-    const url = `${this.baseURL}${endpoint}`;
-
-    const config: RequestInit = {
-      ...options,
-      headers: {
-        ...this.headers(),
-        ...(options.headers as Record<string, string>),
-      },
-    };
-
-    const response = await fetch(url, config);
-
-    if (response.status === 401 && this.refreshToken) {
-      const refreshed = await this.refreshAccessToken();
-      if (refreshed) {
-        config.headers = {
-          ...this.headers(),
-          ...(options.headers as Record<string, string>),
-        };
-        const retryResponse = await fetch(url, config);
-        await throwIfNotOk(retryResponse);
-        return retryResponse.blob();
-      }
-    }
-
-    await throwIfNotOk(response);
-
-    return response.blob();
+  requestBlob(endpoint: string, options: RequestInit = {}): Promise<Blob> {
+    return apiClient.requestBlob(endpoint, options);
   }
 
-  async uploadFile<T>(
-    endpoint: string,
-    file: File,
-    extraFields?: Record<string, string>,
-  ): Promise<T> {
-    const formData = new FormData();
-    formData.append("file", file);
-    if (extraFields) {
-      Object.entries(extraFields).forEach(([key, value]) => {
-        formData.append(key, value);
-      });
-    }
-
-    const url = `${this.baseURL}${endpoint}`;
-    const authHeader = { Authorization: `Bearer ${this.accessToken}` };
-
-    const response = await fetch(url, {
-      method: "POST",
-      headers: authHeader,
-      body: formData,
-    });
-
-    if (response.status === 401 && this.refreshToken) {
-      const refreshed = await this.refreshAccessToken();
-      if (refreshed) {
-        const retryResponse = await fetch(url, {
-          method: "POST",
-          headers: { Authorization: `Bearer ${this.accessToken}` },
-          body: formData,
-        });
-        await throwIfNotOk(retryResponse);
-        const retryText = await retryResponse.text();
-        if (!retryText || retryText.trim() === "") {
-          return {} as T;
-        }
-        return this.safeParseJson<T>(retryText);
-      }
-    }
-
-    await throwIfNotOk(response);
-
-    const uploadText = await response.text();
-    if (!uploadText || uploadText.trim() === "") {
-      return {} as T;
-    }
-    return this.safeParseJson<T>(uploadText);
+  uploadFile<T>(endpoint: string, file: File, extraFields?: Record<string, string>): Promise<T> {
+    return apiClient.uploadFile<T>(endpoint, file, extraFields);
   }
 
-  async refreshAccessToken(): Promise<boolean> {
-    if (!this.refreshToken) return false;
-
-    if (this.refreshPromise) {
-      return this.refreshPromise;
-    }
-
-    this.refreshPromise = this.executeRefresh();
-    const result = await this.refreshPromise;
-    this.refreshPromise = null;
-    return result;
-  }
-
-  private async executeRefresh(): Promise<boolean> {
-    try {
-      const response = await fetch(`${this.baseURL}/stock-control/auth/refresh`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ refreshToken: this.refreshToken }),
-      });
-
-      if (!response.ok) {
-        this.clearTokens();
-        return false;
-      }
-
-      const data = await response.json();
-      this.accessToken = data.accessToken;
-      if (typeof window !== "undefined") {
-        if (localStorage.getItem(TOKEN_KEYS.refreshToken)) {
-          localStorage.setItem(TOKEN_KEYS.accessToken, data.accessToken);
-        } else {
-          sessionStorage.setItem(TOKEN_KEYS.accessToken, data.accessToken);
-        }
-      }
-      return true;
-    } catch {
-      this.clearTokens();
-      return false;
-    }
+  refreshAccessToken(): Promise<boolean> {
+    return apiClient.refreshAccessToken();
   }
 
   triggerDownload(blob: Blob, filename: string): void {
-    const blobUrl = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = blobUrl;
-    link.download = filename;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
+    apiClient.triggerDownload(blob, filename);
   }
 
   async downloadBlob(endpoint: string, filename: string): Promise<void> {
-    const url = `${this.baseURL}${endpoint}`;
-    const response = await fetch(url, {
-      headers: { ...this.headers() },
-    });
-
-    if (response.status === 401 && this.refreshToken) {
-      const refreshed = await this.refreshAccessToken();
-      if (refreshed) {
-        const retryResponse = await fetch(url, {
-          headers: { ...this.headers() },
-        });
-        await throwIfNotOk(retryResponse);
-        const blob = await retryResponse.blob();
-        this.triggerDownload(blob, filename);
-        return;
-      }
-    }
-
-    await throwIfNotOk(response);
-
-    const blob = await response.blob();
-    this.triggerDownload(blob, filename);
+    return apiClient.downloadBlob(endpoint, filename);
   }
 
   async fetchBlobUrl(endpoint: string): Promise<string> {
-    const url = `${this.baseURL}${endpoint}`;
-    let response = await fetch(url, { headers: { ...this.headers() } });
-
-    if (response.status === 401 && this.refreshToken) {
-      const refreshed = await this.refreshAccessToken();
-      if (refreshed) {
-        response = await fetch(url, { headers: { ...this.headers() } });
-      }
-    }
-
-    await throwIfNotOk(response);
-
-    const blob = await response.blob();
-    return URL.createObjectURL(blob);
-  }
-
-  authHeaders(): Record<string, string> {
-    return this.headers();
+    return apiClient.fetchBlobUrl(endpoint);
   }
 
   companyIdParam(): string {
