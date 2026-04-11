@@ -4,6 +4,7 @@ export {
   useIssuableProducts,
   useIssuanceSessions,
 } from "./hooks/useIssuanceQueries";
+export { useCompanyLicense, useLicenseMutations } from "./hooks/useLicenseQueries";
 export {
   DEFAULT_STOCK_MANAGEMENT_LABELS,
   type StockManagementLabelKey,
@@ -14,6 +15,7 @@ export {
   type StockManagementNavItem,
 } from "./manifest";
 export { IssueStockPage } from "./pages/IssueStockPage";
+export { ModuleLicensePage } from "./pages/ModuleLicensePage";
 export {
   StockManagementContext,
   StockManagementProvider,
