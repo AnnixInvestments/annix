@@ -44,6 +44,18 @@ export class StockTakeController {
     return this.stockTakeService.list(Number(req.user.companyId), status);
   }
 
+  @Get("variance-archive")
+  @StockManagementFeature("VARIANCE_REPORTING")
+  @ApiOperation({
+    summary:
+      "Variance archive query — top products by absolute variance value across recent stock takes",
+  })
+  async varianceArchive(@Req() req: any, @Query("sinceMonths") sinceMonths?: string) {
+    return this.stockTakeService.varianceArchive(Number(req.user.companyId), {
+      sinceMonths: sinceMonths ? Number(sinceMonths) : undefined,
+    });
+  }
+
   @Get(":id")
   @StockManagementFeature("STOCK_TAKE")
   @ApiOperation({ summary: "Get a single stock take with all lines" })

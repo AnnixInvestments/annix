@@ -245,6 +245,70 @@ export class StockTakeService {
     return stockTake;
   }
 
+  async varianceArchive(
+    companyId: number,
+    options: { sinceMonths?: number } = {},
+  ): Promise<
+    Array<{
+      productId: number;
+      productSku: string;
+      productName: string;
+      stockTakeCount: number;
+      shortageCount: number;
+      overageCount: number;
+      totalVarianceQty: number;
+      totalVarianceValueR: number;
+      lastSeenAt: string | null;
+    }>
+  > {
+    const monthsBack = options.sinceMonths ?? 12;
+    const rows = await this.lineRepo
+      .createQueryBuilder("line")
+      .innerJoin("line.stockTake", "st")
+      .innerJoin("line.product", "product")
+      .select("line.product_id", "product_id")
+      .addSelect("product.sku", "product_sku")
+      .addSelect("product.name", "product_name")
+      .addSelect("COUNT(DISTINCT line.stock_take_id)", "stock_take_count")
+      .addSelect("COUNT(CASE WHEN line.variance_qty < 0 THEN 1 END)", "shortage_count")
+      .addSelect("COUNT(CASE WHEN line.variance_qty > 0 THEN 1 END)", "overage_count")
+      .addSelect("SUM(COALESCE(line.variance_qty, 0))", "total_variance_qty")
+      .addSelect("SUM(COALESCE(line.variance_value_r, 0))", "total_variance_value_r")
+      .addSelect("MAX(line.created_at)", "last_seen_at")
+      .where("line.company_id = :companyId", { companyId })
+      .andWhere("line.variance_qty IS NOT NULL")
+      .andWhere("line.variance_qty != 0")
+      .andWhere("st.status IN ('approved', 'posted', 'archived')")
+      .andWhere(`st.created_at > NOW() - (INTERVAL '1 month' * :monthsBack)`, { monthsBack })
+      .groupBy("line.product_id")
+      .addGroupBy("product.sku")
+      .addGroupBy("product.name")
+      .orderBy("ABS(SUM(COALESCE(line.variance_value_r, 0)))", "DESC")
+      .limit(100)
+      .getRawMany<{
+        product_id: number;
+        product_sku: string;
+        product_name: string;
+        stock_take_count: string;
+        shortage_count: string;
+        overage_count: string;
+        total_variance_qty: string;
+        total_variance_value_r: string;
+        last_seen_at: string;
+      }>();
+    return rows.map((row) => ({
+      productId: Number(row.product_id),
+      productSku: row.product_sku,
+      productName: row.product_name,
+      stockTakeCount: Number(row.stock_take_count),
+      shortageCount: Number(row.shortage_count),
+      overageCount: Number(row.overage_count),
+      totalVarianceQty: Number(row.total_variance_qty),
+      totalVarianceValueR: Number(row.total_variance_value_r),
+      lastSeenAt: row.last_seen_at,
+    }));
+  }
+
   private async detectCriticalSeverity(lines: StockTakeLine[]): Promise<boolean> {
     const categoryIds = lines
       .map((line) => line.varianceCategoryId)

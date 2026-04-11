@@ -330,6 +330,25 @@ export class StockManagementApiClient {
     return this.request("POST", `/returns/wastage-bins/${id}/empty`);
   }
 
+  async stockTakeVarianceArchive(sinceMonths?: number): Promise<
+    Array<{
+      productId: number;
+      productSku: string;
+      productName: string;
+      stockTakeCount: number;
+      shortageCount: number;
+      overageCount: number;
+      totalVarianceQty: number;
+      totalVarianceValueR: number;
+      lastSeenAt: string | null;
+    }>
+  > {
+    return this.request(
+      "GET",
+      `/stock-take/variance-archive${sinceMonths ? `?sinceMonths=${sinceMonths}` : ""}`,
+    );
+  }
+
   async identifyPhoto(file: File): Promise<{
     kind: "paint" | "consumable" | "rubber_roll" | "other";
     extracted: {
