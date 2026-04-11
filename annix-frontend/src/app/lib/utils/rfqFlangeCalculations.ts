@@ -2,6 +2,61 @@ import { blankFlangeWeight, sansBlankFlangeWeight } from "@/app/lib/query/hooks"
 
 export type FittingClass = "STD" | "XH" | "XXH" | "";
 
+interface FlangeConfigSpecs {
+  flangeStandardId?: number;
+  flangePressureClassId?: number;
+  flangeTypeCode?: string;
+}
+
+interface FlangeConfigMasterData {
+  flangeStandards?: Array<{ id: number; code: string }>;
+  pressureClasses?: Array<{ id: number; designation: string }>;
+}
+
+export interface ResolvedFlangeConfig {
+  flangeStandardId: number | undefined;
+  flangePressureClassId: number | undefined;
+  flangeStandardCode: string;
+  pressureClassDesignation: string;
+  flangeTypeCode: string;
+}
+
+/**
+ * Resolve the flange standard / pressure class / type configuration for a
+ * single RFQ entry, falling back from item-level `specs` to global `globalSpecs`
+ * and looking up the corresponding code/designation strings from `masterData`.
+ *
+ * All string return fields fall back to "" so callers can safely pass them
+ * straight into `flangeWeight()` and similar APIs that expect non-nullable
+ * strings (the lookup just returns no match for the empty string case).
+ *
+ * Extracted from BendForm / FittingForm / StraightPipeForm where this 10-line
+ * resolution chain appeared at 4 sites. Pure function, no side effects.
+ */
+export function resolveFlangeConfig(
+  specs: FlangeConfigSpecs,
+  globalSpecs: FlangeConfigSpecs | null | undefined,
+  masterData: FlangeConfigMasterData,
+): ResolvedFlangeConfig {
+  const flangeStandardId = specs.flangeStandardId || globalSpecs?.flangeStandardId;
+  const flangePressureClassId = specs.flangePressureClassId || globalSpecs?.flangePressureClassId;
+  const flangeTypeCode = specs.flangeTypeCode || globalSpecs?.flangeTypeCode || "";
+
+  const flangeStandard = masterData.flangeStandards?.find((s) => s.id === flangeStandardId);
+  const flangeStandardCode = flangeStandard?.code || "";
+
+  const pressureClass = masterData.pressureClasses?.find((p) => p.id === flangePressureClassId);
+  const pressureClassDesignation = pressureClass?.designation || "";
+
+  return {
+    flangeStandardId,
+    flangePressureClassId,
+    flangeStandardCode,
+    pressureClassDesignation,
+    flangeTypeCode,
+  };
+}
+
 /**
  * Determine the fitting class (STD / XH / XXH) from a pipe schedule string.
  *

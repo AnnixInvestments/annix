@@ -1,6 +1,21 @@
 import type { FlangeTypeWeightRecord } from "@annix/product-data/rfq";
 import { describe, expect, it } from "vitest";
-import { calculateBlankFlangeWeight, scheduleToFittingClass } from "./rfqFlangeCalculations";
+import {
+  calculateBlankFlangeWeight,
+  resolveFlangeConfig,
+  scheduleToFittingClass,
+} from "./rfqFlangeCalculations";
+
+const mockMasterData = {
+  flangeStandards: [
+    { id: 1, code: "ASME B16.5" },
+    { id: 2, code: "SABS 1123" },
+  ],
+  pressureClasses: [
+    { id: 10, designation: "PN16" },
+    { id: 11, designation: "1000kPa" },
+  ],
+};
 
 const mockWeights: FlangeTypeWeightRecord[] = [
   {
@@ -102,6 +117,65 @@ describe("rfqFlangeCalculations", () => {
       // routes through the regular blankFlangeWeight path. The mock has no PN16 +
       // "1000kPa" entry, so the function falls back to nominalBoreMm * 0.15 = 15
       expect(calculateBlankFlangeWeight(mockWeights, 100, "1000kPa", "sans 1123")).toBe(15);
+    });
+  });
+
+  describe("resolveFlangeConfig", () => {
+    it("uses item-level specs when present", () => {
+      const result = resolveFlangeConfig(
+        { flangeStandardId: 1, flangePressureClassId: 10, flangeTypeCode: "WN" },
+        { flangeStandardId: 2, flangePressureClassId: 11, flangeTypeCode: "BL" },
+        mockMasterData,
+      );
+      expect(result.flangeStandardId).toBe(1);
+      expect(result.flangePressureClassId).toBe(10);
+      expect(result.flangeStandardCode).toBe("ASME B16.5");
+      expect(result.pressureClassDesignation).toBe("PN16");
+      expect(result.flangeTypeCode).toBe("WN");
+    });
+
+    it("falls back to globalSpecs when item-level fields are missing", () => {
+      const result = resolveFlangeConfig(
+        {},
+        { flangeStandardId: 2, flangePressureClassId: 11, flangeTypeCode: "BL" },
+        mockMasterData,
+      );
+      expect(result.flangeStandardId).toBe(2);
+      expect(result.flangePressureClassId).toBe(11);
+      expect(result.flangeStandardCode).toBe("SABS 1123");
+      expect(result.pressureClassDesignation).toBe("1000kPa");
+      expect(result.flangeTypeCode).toBe("BL");
+    });
+
+    it("returns empty strings (not undefined) when nothing resolves", () => {
+      const result = resolveFlangeConfig({}, null, mockMasterData);
+      expect(result.flangeStandardId).toBeUndefined();
+      expect(result.flangePressureClassId).toBeUndefined();
+      expect(result.flangeStandardCode).toBe("");
+      expect(result.pressureClassDesignation).toBe("");
+      expect(result.flangeTypeCode).toBe("");
+    });
+
+    it("returns empty strings when ids are present but masterData has no match", () => {
+      const result = resolveFlangeConfig(
+        { flangeStandardId: 999, flangePressureClassId: 999 },
+        null,
+        mockMasterData,
+      );
+      expect(result.flangeStandardId).toBe(999);
+      expect(result.flangePressureClassId).toBe(999);
+      expect(result.flangeStandardCode).toBe("");
+      expect(result.pressureClassDesignation).toBe("");
+    });
+
+    it("handles missing masterData arrays gracefully", () => {
+      const result = resolveFlangeConfig(
+        { flangeStandardId: 1, flangePressureClassId: 10 },
+        null,
+        {},
+      );
+      expect(result.flangeStandardCode).toBe("");
+      expect(result.pressureClassDesignation).toBe("");
     });
   });
 });

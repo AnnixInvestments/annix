@@ -65,6 +65,7 @@ import {
 import { validatePressureClass } from "@/app/lib/utils/pressureClassValidation";
 import {
   calculateBlankFlangeWeight,
+  resolveFlangeConfig,
   scheduleToFittingClass,
 } from "@/app/lib/utils/rfqFlangeCalculations";
 import { isApi5LSpec } from "@/app/lib/utils/steelSpecGroups";
@@ -3017,20 +3018,8 @@ function StraightPipeFormComponent({
                       physicalFlanges * (entry.calculation?.calculatedPipeCount || 0);
                     const nominalBore = specs.nominalBoreMm;
 
-                    const flangeStandardId =
-                      specs.flangeStandardId || globalSpecs?.flangeStandardId;
-                    const flangePressureClassId =
-                      specs.flangePressureClassId || globalSpecs?.flangePressureClassId;
-
-                    const flangeStandard = masterData.flangeStandards?.find(
-                      (s: FlangeStandardItem) => s.id === flangeStandardId,
-                    );
-                    const flangeStandardCode = flangeStandard?.code || "";
-                    const pressureClass = masterData.pressureClasses?.find(
-                      (p: PressureClassItem) => p.id === flangePressureClassId,
-                    );
-                    const pressureClassDesignation = pressureClass?.designation || "";
-                    const flangeTypeCode = specs.flangeTypeCode || globalSpecs?.flangeTypeCode;
+                    const { flangeStandardCode, pressureClassDesignation, flangeTypeCode } =
+                      resolveFlangeConfig(specs, globalSpecs, masterData);
 
                     const flangeWeightPerUnit =
                       nominalBore && pressureClassDesignation
@@ -3265,20 +3254,8 @@ function StraightPipeFormComponent({
                       physicalFlanges * (entry.calculation?.calculatedPipeCount || 0);
                     const nominalBore = specs.nominalBoreMm;
 
-                    const flangeStandardId =
-                      specs.flangeStandardId || globalSpecs?.flangeStandardId;
-                    const flangePressureClassId =
-                      specs.flangePressureClassId || globalSpecs?.flangePressureClassId;
-
-                    const flangeStandard = masterData.flangeStandards?.find(
-                      (s: FlangeStandardItem) => s.id === flangeStandardId,
-                    );
-                    const flangeStandardCode = flangeStandard?.code || "";
-                    const pressureClass = masterData.pressureClasses?.find(
-                      (p: PressureClassItem) => p.id === flangePressureClassId,
-                    );
-                    const pressureClassDesignation = pressureClass?.designation || "";
-                    const flangeTypeCode = specs.flangeTypeCode || globalSpecs?.flangeTypeCode;
+                    const { flangeStandardCode, pressureClassDesignation, flangeTypeCode } =
+                      resolveFlangeConfig(specs, globalSpecs, masterData);
 
                     const flangeWeightPerUnit =
                       nominalBore && pressureClassDesignation
