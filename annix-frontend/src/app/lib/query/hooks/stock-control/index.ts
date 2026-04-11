@@ -19,6 +19,20 @@ export {
   useUpdateInboundEmailConfig,
 } from "./useInboundEmails";
 export {
+  useCreateBatchIssuance,
+  useIdentifyStockForIssuance,
+  useLoadCertificatesByBatch,
+  useLoadJobCard,
+  useLoadRecentBatches,
+  useLoadStaffMember,
+  useLoadStaffMembers,
+  useLoadStockItem,
+  useLoadStockItems,
+  useScanIssuanceQr,
+  useUndoIssuance,
+  useUpdateLinkedStaff,
+} from "./useIssueStock";
+export {
   useCpoSummary,
   useDashboardPreferences,
   useDashboardStats,
