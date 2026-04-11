@@ -1,5 +1,6 @@
 import { Test, TestingModule } from "@nestjs/testing";
 import { getRepositoryToken } from "@nestjs/typeorm";
+import { DataSource } from "typeorm";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
 import { IssuableProduct } from "../entities/issuable-product.entity";
 import { LocationClassificationService } from "./location-classification.service";
@@ -16,12 +17,17 @@ describe("LocationClassificationService", () => {
     chat: jest.fn(),
   };
 
+  const mockDataSource = {
+    query: jest.fn().mockResolvedValue([]),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         LocationClassificationService,
         { provide: getRepositoryToken(IssuableProduct), useValue: mockProductRepo },
         { provide: AiChatService, useValue: mockAiChatService },
+        { provide: DataSource, useValue: mockDataSource },
       ],
     }).compile();
 

@@ -207,6 +207,26 @@ export class StockManagementApiClient {
     return this.request("POST", `/stock-hold/${id}/resolve`, dto);
   }
 
+  async flagStockHold(input: {
+    productId: number;
+    stockTakeId?: number | null;
+    quantity?: number | null;
+    reason: "damaged" | "expired" | "contaminated" | "recalled" | "wrong_spec" | "other";
+    reasonNotes: string;
+    photoUrl?: string | null;
+    notes?: string | null;
+  }): Promise<StockHoldItemDto> {
+    return this.request("POST", "/stock-hold/flag", input);
+  }
+
+  async ensureUnassignedLocation(): Promise<{ id: number; name: string }> {
+    return this.request("GET", "/location-migration/unassigned-location");
+  }
+
+  async assignToUnassignedLocation(productIds: number[]): Promise<{ updated: number }> {
+    return this.request("POST", "/location-migration/assign-unassigned", { productIds });
+  }
+
   async listProductDatasheets(
     productType?: ProductDatasheetDto["productType"],
   ): Promise<ProductDatasheetDto[]> {

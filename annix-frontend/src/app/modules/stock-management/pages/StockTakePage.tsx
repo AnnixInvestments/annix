@@ -2,12 +2,24 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { now } from "@/app/lib/datetime";
+import { StockManagementApiClient } from "../api/stockManagementApi";
 import { useStockTake, useStockTakeMutations, useStockTakes } from "../hooks/useStockTakeQueries";
 import {
   useStockManagementConfig,
   useStockManagementFeature,
 } from "../provider/useStockManagementConfig";
 import type { StockTakeDto, StockTakeLineDto, StockTakeStatus } from "../types/stockTake";
+
+type StockHoldReason = "damaged" | "expired" | "contaminated" | "recalled" | "wrong_spec" | "other";
+
+const STOCK_HOLD_REASON_OPTIONS: ReadonlyArray<{ value: StockHoldReason; label: string }> = [
+  { value: "damaged", label: "Damaged (photo required)" },
+  { value: "expired", label: "Expired (photo required)" },
+  { value: "contaminated", label: "Contaminated (photo required)" },
+  { value: "recalled", label: "Recalled by supplier" },
+  { value: "wrong_spec", label: "Wrong specification" },
+  { value: "other", label: "Other (notes required)" },
+];
 
 function buildMonthEndOptions(): Array<{ label: string; value: string }> {
   const current = now();
@@ -206,6 +218,49 @@ function StockTakeDetail(props: DetailProps) {
   const lines = rawLines == null ? [] : rawLines;
   const rawPeriodLabel = stockTake.periodLabel;
   const periodDisplay = rawPeriodLabel == null ? "No period label" : rawPeriodLabel;
+  const [holdLineId, setHoldLineId] = useState<number | null>(null);
+  const [holdReason, setHoldReason] = useState<StockHoldReason>("damaged");
+  const [holdNotes, setHoldNotes] = useState("");
+  const [holdSubmitting, setHoldSubmitting] = useState(false);
+  const [holdError, setHoldError] = useState<string | null>(null);
+
+  const apiClient = useMemo(
+    () =>
+      new StockManagementApiClient({
+        baseUrl: config.apiBaseUrl,
+        headers: config.authHeaders,
+      }),
+    [config.apiBaseUrl, config.authHeaders],
+  );
+
+  const handleMoveToHold = async (line: StockTakeLineDto) => {
+    if (holdNotes.trim() === "") {
+      setHoldError("Please enter notes describing the reason");
+      return;
+    }
+    const varianceQty = line.varianceQty;
+    const absVariance = varianceQty == null ? 0 : Math.abs(varianceQty);
+    setHoldSubmitting(true);
+    setHoldError(null);
+    try {
+      await apiClient.flagStockHold({
+        productId: line.productId,
+        stockTakeId: stockTake.id,
+        quantity: absVariance,
+        reason: holdReason,
+        reasonNotes: holdNotes,
+      });
+      setHoldLineId(null);
+      setHoldNotes("");
+      setHoldReason("damaged");
+      alert(`Moved ${line.productId} to hold queue`);
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : String(e);
+      setHoldError(message);
+    } finally {
+      setHoldSubmitting(false);
+    }
+  };
 
   const linesByLocation = lines.reduce<Map<number | null, StockTakeLineDto[]>>((acc, line) => {
     const key = line.locationId;
@@ -306,6 +361,123 @@ function StockTakeDetail(props: DetailProps) {
           </button>
         )}
       </div>
+
+      {variances.length > 0 &&
+        (stockTake.status === "counting" ||
+          stockTake.status === "pending_approval" ||
+          stockTake.status === "approved" ||
+          stockTake.status === "posted") && (
+          <div className="border-t">
+            <h3 className="px-4 py-3 text-sm font-semibold bg-amber-50 border-b border-amber-200">
+              Variance lines ({variances.length})
+            </h3>
+            <div className="divide-y">
+              {variances.map((line) => {
+                const productName = line.product?.name;
+                const displayName =
+                  productName == null ? `Product #${line.productId}` : productName;
+                const countedQty = line.countedQty;
+                const countedDisplay = countedQty == null ? "?" : countedQty;
+                const varianceQty = line.varianceQty;
+                const varianceDisplay = varianceQty == null ? 0 : varianceQty;
+                const isHoldOpen = holdLineId === line.id;
+                return (
+                  <div key={line.id} className="p-3 text-xs">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium text-gray-900 truncate">{displayName}</div>
+                        <div className="text-gray-500 mt-0.5">
+                          Expected: <span className="font-mono">{line.expectedQty}</span> · Counted:{" "}
+                          <span className="font-mono">{countedDisplay}</span> · Variance:{" "}
+                          <span
+                            className={`font-mono font-semibold ${
+                              varianceDisplay < 0 ? "text-red-600" : "text-amber-700"
+                            }`}
+                          >
+                            {varianceDisplay > 0 ? "+" : ""}
+                            {varianceDisplay}
+                          </span>
+                        </div>
+                      </div>
+                      {!isHoldOpen ? (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setHoldLineId(line.id);
+                            setHoldReason("damaged");
+                            setHoldNotes("");
+                            setHoldError(null);
+                          }}
+                          className="shrink-0 px-3 py-1.5 bg-amber-600 text-white rounded text-xs font-medium hover:bg-amber-700"
+                        >
+                          Move to Hold
+                        </button>
+                      ) : null}
+                    </div>
+                    {isHoldOpen ? (
+                      <div className="mt-3 rounded border border-amber-200 bg-amber-50 p-3 space-y-2">
+                        <div>
+                          <label className="block text-[10px] uppercase tracking-wide text-gray-700 mb-0.5">
+                            Hold reason
+                          </label>
+                          <select
+                            value={holdReason}
+                            onChange={(e) => setHoldReason(e.target.value as StockHoldReason)}
+                            className="w-full border border-gray-300 rounded px-2 py-1.5 text-xs bg-white"
+                          >
+                            {STOCK_HOLD_REASON_OPTIONS.map((opt) => (
+                              <option key={opt.value} value={opt.value}>
+                                {opt.label}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-[10px] uppercase tracking-wide text-gray-700 mb-0.5">
+                            Notes
+                          </label>
+                          <textarea
+                            value={holdNotes}
+                            onChange={(e) => setHoldNotes(e.target.value)}
+                            rows={2}
+                            placeholder="What's wrong with this stock?"
+                            className="w-full border border-gray-300 rounded px-2 py-1.5 text-xs"
+                          />
+                        </div>
+                        {holdError != null ? (
+                          <div className="rounded border border-red-200 bg-red-50 px-2 py-1 text-[11px] text-red-800">
+                            {holdError}
+                          </div>
+                        ) : null}
+                        <div className="flex justify-end gap-2">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setHoldLineId(null);
+                              setHoldNotes("");
+                              setHoldError(null);
+                            }}
+                            className="px-3 py-1 text-xs border border-gray-300 rounded"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleMoveToHold(line)}
+                            disabled={holdSubmitting}
+                            className="px-3 py-1 text-xs bg-amber-600 text-white rounded font-medium disabled:opacity-50"
+                          >
+                            {holdSubmitting ? "Moving…" : "Confirm hold"}
+                          </button>
+                        </div>
+                      </div>
+                    ) : null}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
       {(stockTake.status === "counting" ||
         stockTake.status === "pending_approval" ||

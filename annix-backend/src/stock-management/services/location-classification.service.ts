@@ -1,8 +1,10 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { IsNull, Repository } from "typeorm";
+import { DataSource, In, IsNull, Repository } from "typeorm";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
 import { IssuableProduct } from "../entities/issuable-product.entity";
+
+const UNASSIGNED_LOCATION_NAME = "Unassigned";
 
 export interface LocationCandidate {
   id: number;
@@ -32,7 +34,45 @@ export class LocationClassificationService {
     @InjectRepository(IssuableProduct)
     private readonly productRepo: Repository<IssuableProduct>,
     private readonly aiChatService: AiChatService,
+    private readonly dataSource: DataSource,
   ) {}
+
+  async ensureUnassignedLocation(companyId: number): Promise<{ id: number; name: string }> {
+    const existing = await this.dataSource.query(
+      "SELECT id, name FROM stock_control_locations WHERE company_id = $1 AND name = $2 LIMIT 1",
+      [companyId, UNASSIGNED_LOCATION_NAME],
+    );
+    if (existing.length > 0) {
+      return { id: Number(existing[0].id), name: existing[0].name };
+    }
+    const inserted = await this.dataSource.query(
+      `INSERT INTO stock_control_locations (company_id, name, description, active, created_at, updated_at)
+       VALUES ($1, $2, $3, true, now(), now())
+       RETURNING id, name`,
+      [
+        companyId,
+        UNASSIGNED_LOCATION_NAME,
+        "Auto-generated fallback for products with no confident classification",
+      ],
+    );
+    this.logger.log(
+      `Created Unassigned fallback location ${inserted[0].id} for company ${companyId}`,
+    );
+    return { id: Number(inserted[0].id), name: inserted[0].name };
+  }
+
+  async assignToUnassigned(companyId: number, productIds: number[]): Promise<{ updated: number }> {
+    if (productIds.length === 0) {
+      return { updated: 0 };
+    }
+    const fallback = await this.ensureUnassignedLocation(companyId);
+    const result = await this.productRepo.update(
+      { id: In(productIds), companyId },
+      { locationId: fallback.id },
+    );
+    const affected = result.affected;
+    return { updated: affected == null ? 0 : affected };
+  }
 
   async classifyUnassignedProducts(
     companyId: number,

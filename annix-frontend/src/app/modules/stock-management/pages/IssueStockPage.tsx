@@ -1,8 +1,17 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { StockManagementApiClient } from "../api/stockManagementApi";
 import { JobCardOrCpoPicker, type TargetSelection } from "../components/JobCardOrCpoPicker";
+import {
+  PaintProRataSplitEditor,
+  type ProRataJobCard,
+  type ProRataSplit,
+} from "../components/PaintProRataSplitEditor";
+import {
+  type RubberRollIssueDetails,
+  RubberRollSubEditor,
+} from "../components/RubberRollSubEditor";
 import { StaffPicker } from "../components/StaffPicker";
 import { useCreateIssuanceSession, useIssuableProducts } from "../hooks/useIssuanceQueries";
 import {
@@ -26,7 +35,17 @@ interface CartRow {
   product: IssuableProductDto;
   quantity: number;
   batchNumber: string;
+  paintSplits: ProRataSplit[];
+  rubberRollDetails: RubberRollIssueDetails;
 }
+
+const EMPTY_RUBBER_ROLL: RubberRollIssueDetails = {
+  weightKgIssued: 0,
+  issuedWidthMm: null,
+  issuedLengthM: null,
+  issuedThicknessMm: null,
+  expectsOffcutReturn: false,
+};
 
 export function IssueStockPage() {
   const config = useStockManagementConfig();
@@ -40,6 +59,7 @@ export function IssueStockPage() {
   const [target, setTarget] = useState<TargetSelection | null>(null);
   const [search, setSearch] = useState("");
   const [cart, setCart] = useState<CartRow[]>([]);
+  const [cpoJobCards, setCpoJobCards] = useState<ProRataJobCard[]>([]);
   const [photoCapturing, setPhotoCapturing] = useState(false);
   const [photoResult, setPhotoResult] = useState<{
     matches: Array<{ productId: number; sku: string; name: string; productType: string }>;
@@ -54,6 +74,60 @@ export function IssueStockPage() {
   const productItems = productsResult?.items;
   const products = productItems ? productItems : [];
 
+  const targetKind = target == null ? null : target.kind;
+  const targetId = target == null ? null : target.id;
+  const authHeaders = config.authHeaders;
+
+  useEffect(() => {
+    if (targetKind !== "cpo" || targetId == null) {
+      setCpoJobCards([]);
+      return;
+    }
+    let cancelled = false;
+    fetch(`/api/stock-control/issuance/cpo-batch/context/${targetId}`, {
+      headers: authHeaders(),
+      credentials: "include",
+    })
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`${r.status}`))))
+      .then(
+        (data: {
+          jobCards?: Array<{
+            id: number;
+            jobNumber: string;
+            jcNumber: string | null;
+            extM2: number;
+            intM2: number;
+          }>;
+        }) => {
+          if (cancelled) {
+            return;
+          }
+          const rawJcs = data.jobCards;
+          const jcs = rawJcs == null ? [] : rawJcs;
+          setCpoJobCards(
+            jcs.map((jc) => ({
+              id: jc.id,
+              jcNumber: jc.jcNumber,
+              jobNumber: jc.jobNumber,
+              totalAreaM2: jc.extM2 + jc.intM2,
+            })),
+          );
+        },
+      )
+      .catch((e: unknown) => {
+        const message = e instanceof Error ? e.message : String(e);
+        console.error(`Failed to load CPO ${targetId} job cards: ${message}`);
+        setCpoJobCards([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [targetKind, targetId, authHeaders]);
+
+  const showPaintProRata = useMemo(() => {
+    return targetKind === "cpo" && cpoJobCards.length > 1;
+  }, [targetKind, cpoJobCards]);
+
   if (!isBasicEnabled) {
     return (
       <div className="p-6">
@@ -65,7 +139,16 @@ export function IssueStockPage() {
 
   const addToCart = (product: IssuableProductDto) => {
     if (cart.some((c) => c.product.id === product.id)) return;
-    setCart([...cart, { product, quantity: 1, batchNumber: "" }]);
+    setCart([
+      ...cart,
+      {
+        product,
+        quantity: 1,
+        batchNumber: "",
+        paintSplits: [],
+        rubberRollDetails: { ...EMPTY_RUBBER_ROLL },
+      },
+    ]);
   };
 
   const removeFromCart = (productId: number) => {
@@ -105,20 +188,34 @@ export function IssueStockPage() {
     const rowJobCardId = target != null && target.kind === "job_card" ? target.id : null;
     const rows: IssuanceRowInputDto[] = cart.map((row) => {
       if (row.product.productType === "paint") {
+        const splits = row.paintSplits;
+        const hasSplits = splits.length > 0;
+        const proRataMap: Record<string, number> = {};
+        if (hasSplits) {
+          for (const split of splits) {
+            proRataMap[String(split.jobCardId)] = split.litres;
+          }
+        }
         return {
           rowType: "paint",
           productId: row.product.id,
           jobCardId: rowJobCardId,
           litres: row.quantity,
           batchNumber: row.batchNumber || null,
+          cpoProRataSplit: hasSplits ? proRataMap : null,
         };
       }
       if (row.product.productType === "rubber_roll") {
+        const details = row.rubberRollDetails;
+        const weight = details.weightKgIssued > 0 ? details.weightKgIssued : row.quantity;
         return {
           rowType: "rubber_roll",
           productId: row.product.id,
           jobCardId: rowJobCardId,
-          weightKgIssued: row.quantity,
+          weightKgIssued: weight,
+          issuedWidthMm: details.issuedWidthMm,
+          issuedLengthM: details.issuedLengthM,
+          issuedThicknessMm: details.issuedThicknessMm,
         };
       }
       if (row.product.productType === "solution") {
@@ -388,6 +485,25 @@ export function IssueStockPage() {
                           />
                         </div>
                       </div>
+                      {row.product.productType === "paint" && showPaintProRata ? (
+                        <PaintProRataSplitEditor
+                          totalLitres={row.quantity}
+                          jobCards={cpoJobCards}
+                          splits={row.paintSplits}
+                          onChange={(splits) =>
+                            updateCartRow(row.product.id, { paintSplits: splits })
+                          }
+                        />
+                      ) : null}
+                      {row.product.productType === "rubber_roll" ? (
+                        <RubberRollSubEditor
+                          value={row.rubberRollDetails}
+                          productName={row.product.name}
+                          onChange={(details) =>
+                            updateCartRow(row.product.id, { rubberRollDetails: details })
+                          }
+                        />
+                      ) : null}
                     </div>
                   ))}
                 </div>
