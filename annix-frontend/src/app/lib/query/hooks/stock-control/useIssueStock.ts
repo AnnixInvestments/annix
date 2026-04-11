@@ -1,9 +1,11 @@
 import type {
   BatchIssuanceDto,
   BatchIssuanceResult,
+  CoatingAnalysis,
   IssuanceScanResult,
   JobCard,
   StaffMember,
+  StockAllocation,
   StockIssuance,
   StockItem,
   SupplierCertificate,
@@ -73,4 +75,20 @@ export const useLoadStaffMember = createMutationHook<StaffMember, number>((staff
 
 export const useLoadJobCard = createMutationHook<JobCard, number>((jobCardId) =>
   stockControlApiClient.jobCardById(jobCardId),
+);
+
+export const useLoadJobCards = createMutationHook<JobCard[], string | undefined>((status) =>
+  stockControlApiClient.jobCards(status),
+);
+
+export const useLoadJobCardAllocations = createMutationHook<StockAllocation[], number>(
+  (jobCardId) => stockControlApiClient.jobCardAllocations(jobCardId),
+);
+
+export const useLoadJobCardCoatingAnalysis = createMutationHook<CoatingAnalysis | null, number>(
+  (jobCardId) => stockControlApiClient.jobCardCoatingAnalysis(jobCardId),
+);
+
+export const useLoadRecentIssuances = createMutationHook<StockIssuance[], void>(() =>
+  stockControlApiClient.recentIssuances(),
 );

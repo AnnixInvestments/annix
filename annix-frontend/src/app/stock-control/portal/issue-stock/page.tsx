@@ -17,8 +17,27 @@ import type {
   StockItem,
   SupplierCertificate,
 } from "@/app/lib/api/stockControlApi";
-import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { fromISO, nowISO, nowMillis } from "@/app/lib/datetime";
+import {
+  useCreateBatchIssuance,
+  useCreateCpoBatchIssuance,
+  useIdentifyStockForIssuance,
+  useLoadCertificatesByBatch,
+  useLoadJobCard,
+  useLoadJobCardAllocations,
+  useLoadJobCardCoatingAnalysis,
+  useLoadJobCards,
+  useLoadRecentBatches,
+  useLoadRecentIssuances,
+  useLoadStaffMember,
+  useLoadStaffMembers,
+  useLoadStockItem,
+  useLoadStockItems,
+  useScanIssuanceQr,
+  useUndoIssuance,
+  useUndoIssuanceSession,
+  useUpdateLinkedStaff,
+} from "@/app/lib/query/hooks";
 import { CpoBatchPicker } from "../../components/CpoBatchPicker";
 import { PerJcSplitEditor, type SplitLine } from "../../components/PerJcSplitEditor";
 import { QrScanner } from "../../components/QrScanner";
@@ -198,6 +217,25 @@ export default function IssueStockPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const preloadJobCardId = searchParams.get("jobCardId");
+
+  const { mutateAsync: loadRecentBatches } = useLoadRecentBatches();
+  const { mutateAsync: loadStockItems } = useLoadStockItems();
+  const { mutateAsync: identifyStockForIssuance } = useIdentifyStockForIssuance();
+  const { mutateAsync: loadStockItem } = useLoadStockItem();
+  const { mutateAsync: scanIssuanceQr } = useScanIssuanceQr();
+  const { mutateAsync: loadCertificatesByBatch } = useLoadCertificatesByBatch();
+  const { mutateAsync: createBatchIssuance } = useCreateBatchIssuance();
+  const { mutateAsync: createCpoBatchIssuance } = useCreateCpoBatchIssuance();
+  const { mutateAsync: undoIssuance } = useUndoIssuance();
+  const { mutateAsync: undoIssuanceSession } = useUndoIssuanceSession();
+  const { mutateAsync: loadStaffMembers } = useLoadStaffMembers();
+  const { mutateAsync: updateLinkedStaff } = useUpdateLinkedStaff();
+  const { mutateAsync: loadStaffMember } = useLoadStaffMember();
+  const { mutateAsync: loadJobCard } = useLoadJobCard();
+  const { mutateAsync: loadJobCards } = useLoadJobCards();
+  const { mutateAsync: loadJobCardAllocations } = useLoadJobCardAllocations();
+  const { mutateAsync: loadJobCardCoatingAnalysis } = useLoadJobCardCoatingAnalysis();
+  const { mutateAsync: loadRecentIssuances } = useLoadRecentIssuances();
   const [currentStep, setCurrentStep] = useState<Step>("issuer");
   const [scanInput, setScanInput] = useState("");
   const [isScanning, setIsScanning] = useState(false);
@@ -280,8 +318,7 @@ export default function IssueStockPage() {
 
   useEffect(() => {
     if (profile?.linkedStaffId) {
-      stockControlApiClient
-        .staffMemberById(profile.linkedStaffId)
+      loadStaffMember(profile.linkedStaffId)
         .then((staff) => {
           setLinkedStaff(staff);
           if (localStorage.getItem(QUICK_ISSUE_KEY) === "true" && !issuer) {
@@ -294,16 +331,14 @@ export default function IssueStockPage() {
   }, [profile?.linkedStaffId]);
 
   useEffect(() => {
-    stockControlApiClient
-      .recentIssuances()
+    loadRecentIssuances()
       .then(setRecentIssuances)
       .catch(() => setRecentIssuances([]));
-  }, []);
+  }, [loadRecentIssuances]);
 
   useEffect(() => {
     if (preloadJobCardId && !jobCard) {
-      stockControlApiClient
-        .jobCardById(Number(preloadJobCardId))
+      loadJobCard(Number(preloadJobCardId))
         .then((jc) => setJobCard(jc))
         .catch(() => setError("Could not load job card from URL"));
     }
@@ -316,8 +351,7 @@ export default function IssueStockPage() {
       !isLoadingStaff
     ) {
       setIsLoadingStaff(true);
-      stockControlApiClient
-        .staffMembers({ active: "true" })
+      loadStaffMembers({ active: "true" })
         .then(setStaffList)
         .catch(() => setStaffList([]))
         .finally(() => setIsLoadingStaff(false));
@@ -326,12 +360,10 @@ export default function IssueStockPage() {
 
   useEffect(() => {
     if (jobCard) {
-      stockControlApiClient
-        .jobCardAllocations(jobCard.id)
+      loadJobCardAllocations(jobCard.id)
         .then(setJobCardAllocations)
         .catch(() => setJobCardAllocations([]));
-      stockControlApiClient
-        .jobCardCoatingAnalysis(jobCard.id)
+      loadJobCardCoatingAnalysis(jobCard.id)
         .then(setCoatingAnalysis)
         .catch(() => setCoatingAnalysis(null));
     } else {
@@ -347,8 +379,7 @@ export default function IssueStockPage() {
       !isLoadingJobCards
     ) {
       setIsLoadingJobCards(true);
-      stockControlApiClient
-        .jobCards("active")
+      loadJobCards("active")
         .then((data) => {
           setJobCardList(Array.isArray(data) ? data : []);
         })
@@ -379,7 +410,7 @@ export default function IssueStockPage() {
       const entries = await Promise.all(
         uniqueIds.map(async (id) => {
           try {
-            const batches = await stockControlApiClient.recentBatches(id);
+            const batches = await loadRecentBatches(id);
             return [id, batches] as const;
           } catch {
             return [id, []] as const;
@@ -404,7 +435,7 @@ export default function IssueStockPage() {
   const fetchBrowseItems = useCallback(async (search: string) => {
     try {
       setBrowseLoading(true);
-      const result = await stockControlApiClient.stockItems({
+      const result = await loadStockItems({
         search: search || undefined,
       });
       setBrowseItems(result.items);
@@ -449,7 +480,7 @@ export default function IssueStockPage() {
       setPhotoResult(null);
       setError(null);
 
-      const result = await stockControlApiClient.identifyForIssuance(file);
+      const result = await identifyStockForIssuance(file);
       setPhotoResult(result);
       setEditedProductName(result.productName || "");
       setEditedBatchNumber(result.batchNumber || "");
@@ -470,7 +501,7 @@ export default function IssueStockPage() {
     const matchedItem = photoResult.matchingStockItems[0];
     if (matchedItem) {
       try {
-        const stockItem = await stockControlApiClient.stockItemById(matchedItem.id);
+        const stockItem = await loadStockItem(matchedItem.id);
         const alreadyAdded = items.some((i) => i.stockItem.id === stockItem.id);
         if (alreadyAdded) {
           const existingIndex = items.findIndex((i) => i.stockItem.id === stockItem.id);
@@ -527,7 +558,7 @@ export default function IssueStockPage() {
       setIsScanning(true);
       setError(null);
 
-      const result: IssuanceScanResult = await stockControlApiClient.scanIssuanceQr(input.trim());
+      const result: IssuanceScanResult = await scanIssuanceQr(input.trim());
 
       triggerHaptic();
       playSuccessSound();
@@ -644,7 +675,7 @@ export default function IssueStockPage() {
     if (batchNumber.trim().length >= 2) {
       certCheckTimers.current[index] = setTimeout(async () => {
         try {
-          const certs = await stockControlApiClient.certificatesByBatchNumber(batchNumber.trim());
+          const certs = await loadCertificatesByBatch(batchNumber.trim());
           setCertStatusMap((prev) => ({ ...prev, [index]: certs.length > 0 ? certs : null }));
         } catch {
           setCertStatusMap((prev) => ({ ...prev, [index]: null }));
@@ -796,7 +827,7 @@ export default function IssueStockPage() {
           }),
         };
 
-        const cpoResult = await stockControlApiClient.createCpoBatchIssuance(dto);
+        const cpoResult = await createCpoBatchIssuance(dto);
 
         triggerHaptic();
         playSuccessSound();
@@ -830,8 +861,7 @@ export default function IssueStockPage() {
           `Issued ${cpoResult.created} rows across ${cpoBatchJobCardIds.length} JCs for CPO ${cpoBatchContext.cpo.cpoNumber}${warnings}`,
         );
 
-        stockControlApiClient
-          .recentIssuances()
+        loadRecentIssuances()
           .then(setRecentIssuances)
           .catch(() => {});
 
@@ -856,7 +886,7 @@ export default function IssueStockPage() {
         notes: notes.trim() || null,
       };
 
-      const result: BatchIssuanceResult = await stockControlApiClient.createBatchIssuance(dto);
+      const result: BatchIssuanceResult = await createBatchIssuance(dto);
 
       if (result.errors.length > 0) {
         setError(`Some items failed: ${result.errors.map((e) => e.message).join(", ")}`);
@@ -877,6 +907,7 @@ export default function IssueStockPage() {
           .map((item) => `${item.quantity}x ${item.stockItem.name}`)
           .join(", ");
 
+        const sessionJobNumber = jobCard?.jobNumber;
         const sessionEntry: SessionIssuance = {
           id: nowMillis(),
           issuanceIds: result.issuances.map((i) => i.id),
@@ -885,7 +916,7 @@ export default function IssueStockPage() {
           itemSummary,
           itemCount: items.length,
           totalQty: items.reduce((sum, item) => sum + item.quantity, 0),
-          jobNumber: jobCard?.jobNumber || null,
+          jobNumber: sessionJobNumber ? sessionJobNumber : null,
           timestamp: nowISO(),
           canUndo: true,
         };
@@ -900,8 +931,7 @@ export default function IssueStockPage() {
           100,
         );
 
-        stockControlApiClient
-          .recentIssuances()
+        loadRecentIssuances()
           .then(setRecentIssuances)
           .catch(() => {});
 
@@ -935,11 +965,9 @@ export default function IssueStockPage() {
     try {
       setUndoingId(sessionEntry.id);
       if (sessionEntry.cpoBatchSessionId) {
-        await stockControlApiClient.undoIssuanceSession(sessionEntry.cpoBatchSessionId);
+        await undoIssuanceSession(sessionEntry.cpoBatchSessionId);
       } else {
-        const undoPromises = sessionEntry.issuanceIds.map((issuanceId) =>
-          stockControlApiClient.undoIssuance(issuanceId),
-        );
+        const undoPromises = sessionEntry.issuanceIds.map((issuanceId) => undoIssuance(issuanceId));
         await Promise.all(undoPromises);
       }
 
@@ -949,8 +977,7 @@ export default function IssueStockPage() {
 
       setSuccessMessage(`Undone: ${sessionEntry.itemSummary} to ${sessionEntry.recipientName}`);
 
-      stockControlApiClient
-        .recentIssuances()
+      loadRecentIssuances()
         .then(setRecentIssuances)
         .catch(() => {});
     } catch (err) {
@@ -975,7 +1002,7 @@ export default function IssueStockPage() {
   const toggleQuickIssue = async (enabled: boolean) => {
     if (enabled && !profile?.linkedStaffId) {
       try {
-        const staffMembers = await stockControlApiClient.staffMembers({
+        const staffMembers = await loadStaffMembers({
           active: "true",
         });
         setStaffList(staffMembers);
@@ -1000,8 +1027,8 @@ export default function IssueStockPage() {
 
   const handleLinkStaff = async (staffId: number) => {
     try {
-      await stockControlApiClient.updateLinkedStaff(staffId);
-      const staff = await stockControlApiClient.staffMemberById(staffId);
+      await updateLinkedStaff(staffId);
+      const staff = await loadStaffMember(staffId);
       setLinkedStaff(staff);
       setShowLinkStaffModal(false);
       setQuickIssueMode(true);
@@ -1043,7 +1070,8 @@ export default function IssueStockPage() {
 
     const jcRatios = new Map<number, number>();
     selectedJobCards.forEach((jc) => {
-      const selectedIds = selectedLineItemsByJc[jc.id] || [];
+      const rawSelectedIds = selectedLineItemsByJc[jc.id];
+      const selectedIds = rawSelectedIds ? rawSelectedIds : [];
       const totalM2 = jc.lineItems.reduce((sum, li) => sum + (li.m2 || 0), 0);
       if (totalM2 > 0) {
         const selSum = jc.lineItems
@@ -1078,7 +1106,7 @@ export default function IssueStockPage() {
     const suggestedStockItems = await Promise.all(
       scaledAggregates.map(async (coat) => {
         try {
-          const stockItem = await stockControlApiClient.stockItemById(coat.stockItemId!);
+          const stockItem = await loadStockItem(coat.stockItemId!);
           return { stockItem, coat };
         } catch {
           return null;
@@ -1488,7 +1516,7 @@ export default function IssueStockPage() {
                     key={`${fav.recipientId}-${idx}`}
                     onClick={async () => {
                       try {
-                        const staff = await stockControlApiClient.staffMemberById(fav.recipientId);
+                        const staff = await loadStaffMember(fav.recipientId);
                         setRecipient(staff);
                         setCurrentStep("job_card");
                         triggerHaptic();
@@ -1787,17 +1815,24 @@ export default function IssueStockPage() {
                       Allocated to {jobCard.jobNumber} — {jobCard.jobName}
                     </p>
                     <div className="space-y-1">
-                      {jobCardAllocations.map((alloc) => (
-                        <div key={alloc.id} className="flex items-center justify-between text-xs">
-                          <span className="text-blue-800">
-                            {alloc.stockItem?.name || "Unknown Item"}{" "}
-                            <span className="text-blue-500">({alloc.stockItem?.sku || "-"})</span>
-                          </span>
-                          <span className="font-medium text-blue-900">
-                            Allocated: {alloc.quantityUsed} {alloc.stockItem?.unitOfMeasure || ""}
-                          </span>
-                        </div>
-                      ))}
+                      {jobCardAllocations.map((alloc) => {
+                        const stockItemName = alloc.stockItem?.name;
+                        const stockItemSku = alloc.stockItem?.sku;
+                        const stockItemUnit = alloc.stockItem?.unitOfMeasure;
+                        const displayName = stockItemName ? stockItemName : "Unknown Item";
+                        const displaySku = stockItemSku ? stockItemSku : "-";
+                        const displayUnit = stockItemUnit ? stockItemUnit : "";
+                        return (
+                          <div key={alloc.id} className="flex items-center justify-between text-xs">
+                            <span className="text-blue-800">
+                              {displayName} <span className="text-blue-500">({displaySku})</span>
+                            </span>
+                            <span className="font-medium text-blue-900">
+                              Allocated: {alloc.quantityUsed} {displayUnit}
+                            </span>
+                          </div>
+                        );
+                      })}
                     </div>
                     {jobCardAllocations.some(
                       (alloc) =>
@@ -1864,9 +1899,7 @@ export default function IssueStockPage() {
                                     !items.some((i) => i.stockItem.id === item.stockItemId),
                                 )
                                 .map(async (item) => {
-                                  const stockItem = await stockControlApiClient.stockItemById(
-                                    item.stockItemId as number,
-                                  );
+                                  const stockItem = await loadStockItem(item.stockItemId as number);
                                   return {
                                     stockItem,
                                     quantity: item.required,
@@ -1890,8 +1923,7 @@ export default function IssueStockPage() {
 
                 {jobCard &&
                   jobCardAllocations.length === 0 &&
-                  (!coatingAnalysis?.stockAssessment ||
-                    coatingAnalysis.stockAssessment.length === 0) && (
+                  !coatingAnalysis?.stockAssessment?.length && (
                     <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-3">
                       <p className="text-sm font-semibold text-amber-900 mb-2">
                         Job Card {jobCard.jobNumber} — No stock allocations found
@@ -1984,7 +2016,8 @@ export default function IssueStockPage() {
                       Items to issue ({items.length}):
                     </p>
                     {items.map((item, index) => {
-                      const batchSuggestions = recentBatchesMap[item.stockItem.id] ?? [];
+                      const rawBatches = recentBatchesMap[item.stockItem.id];
+                      const batchSuggestions = rawBatches ? rawBatches : [];
                       const allocation = jobCardAllocations.find(
                         (a) => a.stockItem?.id === item.stockItem.id,
                       );
@@ -2556,7 +2589,7 @@ export default function IssueStockPage() {
                                   setShowJobCardDropdown(false);
                                   setJobCardSearch("");
                                   try {
-                                    const fullJc = await stockControlApiClient.jobCardById(jc.id);
+                                    const fullJc = await loadJobCard(jc.id);
                                     setJobCard(fullJc);
                                   } catch {
                                     setJobCard(jc);
