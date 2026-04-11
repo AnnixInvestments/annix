@@ -48,6 +48,7 @@ import {
 } from "./dto/rfq-response.dto";
 import { Rfq, RfqStatus } from "./entities/rfq.entity";
 import { RfqService } from "./rfq.service";
+import { RfqDraftService } from "./rfq-draft.service";
 import { RfqDocumentService } from "./services/rfq-document.service";
 
 @ApiTags("RFQ")
@@ -55,6 +56,7 @@ import { RfqDocumentService } from "./services/rfq-document.service";
 export class RfqController {
   constructor(
     private readonly rfqService: RfqService,
+    private readonly rfqDraftService: RfqDraftService,
     private readonly rfqDocumentService: RfqDocumentService,
   ) {}
 
@@ -691,7 +693,7 @@ export class RfqController {
     @Req() req: CustomerRequest,
   ): Promise<RfqDraftResponseDto> {
     const userId = req.customer.userId;
-    return this.rfqService.saveDraft(dto, userId);
+    return this.rfqDraftService.saveDraft(dto, userId);
   }
 
   @Get("drafts")
@@ -708,7 +710,7 @@ export class RfqController {
   })
   async getDrafts(@Req() req: CustomerRequest): Promise<RfqDraftResponseDto[]> {
     const userId = req.customer.userId;
-    return this.rfqService.drafts(userId);
+    return this.rfqDraftService.drafts(userId);
   }
 
   @Get("drafts/number/:draftNumber")
@@ -737,7 +739,7 @@ export class RfqController {
     @Req() req: CustomerRequest,
   ): Promise<RfqDraftFullResponseDto> {
     const userId = req.customer.userId;
-    return this.rfqService.draftByNumber(draftNumber, userId);
+    return this.rfqDraftService.draftByNumber(draftNumber, userId);
   }
 
   @Get("drafts/:id")
@@ -762,7 +764,7 @@ export class RfqController {
     @Req() req: CustomerRequest,
   ): Promise<RfqDraftFullResponseDto> {
     const userId = req.customer.userId;
-    return this.rfqService.draftById(id, userId);
+    return this.rfqDraftService.draftById(id, userId);
   }
 
   @Delete("drafts/:id")
@@ -790,7 +792,7 @@ export class RfqController {
     @Req() req: CustomerRequest,
   ): Promise<{ message: string }> {
     const userId = req.customer.userId;
-    await this.rfqService.deleteDraft(id, userId);
+    await this.rfqDraftService.deleteDraft(id, userId);
     return { message: "Draft deleted successfully" };
   }
 
@@ -825,7 +827,7 @@ export class RfqController {
     @Req() req: CustomerRequest,
   ): Promise<{ message: string }> {
     const userId = req.customer.userId;
-    await this.rfqService.markDraftAsConverted(id, rfqId, userId);
+    await this.rfqDraftService.markDraftAsConverted(id, rfqId, userId);
     return { message: "Draft marked as converted successfully" };
   }
 

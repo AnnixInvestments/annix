@@ -19,6 +19,7 @@ import { RfqDocument } from "../rfq/entities/rfq-document.entity";
 import { RfqDraft } from "../rfq/entities/rfq-draft.entity";
 import { RfqItem } from "../rfq/entities/rfq-item.entity";
 import { RfqService } from "../rfq/rfq.service";
+import { RfqDraftService } from "../rfq/rfq-draft.service";
 import {
   RfqDetailDto,
   RfqDocumentDto,
@@ -47,6 +48,7 @@ export class AdminRfqService {
     private readonly anonymousDraftRepo: Repository<AnonymousDraft>,
     @Inject(forwardRef(() => RfqService))
     private readonly rfqService: RfqService,
+    private readonly rfqDraftService: RfqDraftService,
   ) {}
 
   /**
@@ -493,7 +495,7 @@ export class AdminRfqService {
         throw new NotFoundException(`RFQ Draft ${dto.draftId} has no associated user`);
       }
 
-      return this.rfqService.saveDraft(dto, userId);
+      return this.rfqDraftService.saveDraft(dto, userId);
     }
 
     throw new NotFoundException("Draft ID is required for admin updates");

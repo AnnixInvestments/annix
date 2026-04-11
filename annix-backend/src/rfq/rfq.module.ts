@@ -34,6 +34,7 @@ import { TankChuteRfq } from "./entities/tank-chute-rfq.entity";
 import { ValveRfq } from "./entities/valve-rfq.entity";
 import { RfqController } from "./rfq.controller";
 import { RfqService } from "./rfq.service";
+import { RfqDraftService } from "./rfq-draft.service";
 import { ReferenceDataCacheService } from "./services/reference-data-cache.service";
 import { RfqDocumentService } from "./services/rfq-document.service";
 
@@ -77,7 +78,19 @@ import { RfqDocumentService } from "./services/rfq-document.service";
     }),
   ],
   controllers: [RfqController, AnonymousDraftController],
-  providers: [RfqService, RfqDocumentService, AnonymousDraftService, ReferenceDataCacheService],
-  exports: [RfqService, RfqDocumentService, AnonymousDraftService, ReferenceDataCacheService],
+  providers: [
+    RfqService,
+    RfqDraftService,
+    RfqDocumentService,
+    AnonymousDraftService,
+    ReferenceDataCacheService,
+  ],
+  exports: [
+    RfqService,
+    RfqDraftService,
+    RfqDocumentService,
+    AnonymousDraftService,
+    ReferenceDataCacheService,
+  ],
 })
 export class RfqModule {}
