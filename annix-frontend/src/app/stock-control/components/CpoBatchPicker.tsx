@@ -422,10 +422,17 @@ function JobCardRow(props: {
   } = props;
   const analysis = jobCard.coatingAnalysis;
   const coats = analysis ? analysis.coats : [];
-  const totalLitres = coats.reduce((sum, coat) => {
+  const dedupedByProduct = coats.reduce((acc, coat) => {
+    const key = normaliseProductKey(coat.product);
     const required = Number(coat.litersRequired);
-    return sum + (Number.isFinite(required) ? required : 0);
-  }, 0);
+    const safe = Number.isFinite(required) ? required : 0;
+    const existing = acc.get(key);
+    if (!existing || safe > existing) {
+      acc.set(key, safe);
+    }
+    return acc;
+  }, new Map<string, number>());
+  const totalLitres = Array.from(dedupedByProduct.values()).reduce((sum, l) => sum + l, 0);
   const coatingStatus = analysis ? analysis.status : "none";
   const totalM2 = jobCard.lineItems.reduce((sum, li) => sum + (li.m2 || 0), 0);
   const selectedM2 = jobCard.lineItems
@@ -526,34 +533,57 @@ function CoatingStatusBadge({ status }: { status: string }) {
   );
 }
 
+function normaliseProductKey(product: string): string {
+  return product
+    .trim()
+    .toUpperCase()
+    .replace(/\s+/g, " ")
+    .replace(/[()[\]]/g, "")
+    .trim();
+}
+
 function aggregateForSelection(
   context: CpoBatchIssueContext | undefined,
   selectedIds: Set<number>,
   ratioForJc: (jc: CpoBatchChildJobCard) => number,
 ): { product: string; litresRequired: number }[] {
   if (!context) return [];
-  const scaledEntries = context.jobCards
+
+  const perJcDedupedEntries = context.jobCards
     .filter((jc) => selectedIds.has(jc.id))
     .flatMap((jc) => {
       const analysis = jc.coatingAnalysis;
       const coats = analysis ? analysis.coats : [];
       const ratio = ratioForJc(jc);
-      return coats.map((coat) => {
-        const base = Number(coat.litersRequired);
-        const safe = Number.isFinite(base) ? base : 0;
-        return { product: coat.product, scaled: safe * ratio };
-      });
+      const dedupedByProduct = coats.reduce((acc, coat) => {
+        const key = normaliseProductKey(coat.product);
+        const required = Number(coat.litersRequired);
+        const safe = Number.isFinite(required) ? required : 0;
+        const existing = acc.get(key);
+        if (!existing || safe > existing.litres) {
+          acc.set(key, { product: coat.product.trim(), litres: safe });
+        }
+        return acc;
+      }, new Map<string, { product: string; litres: number }>());
+      return Array.from(dedupedByProduct.values()).map((entry) => ({
+        product: entry.product,
+        scaled: entry.litres * ratio,
+      }));
     });
 
-  const byProduct = scaledEntries.reduce((acc, entry) => {
-    const key = entry.product.trim();
+  const byProduct = perJcDedupedEntries.reduce((acc, entry) => {
+    const key = normaliseProductKey(entry.product);
     const existing = acc.get(key);
-    const previous = existing === undefined ? 0 : existing;
-    acc.set(key, previous + entry.scaled);
+    if (existing) {
+      acc.set(key, {
+        product: existing.product,
+        litresRequired: existing.litresRequired + entry.scaled,
+      });
+    } else {
+      acc.set(key, { product: entry.product.trim(), litresRequired: entry.scaled });
+    }
     return acc;
-  }, new Map<string, number>());
+  }, new Map<string, { product: string; litresRequired: number }>());
 
-  return Array.from(byProduct.entries())
-    .map(([product, litresRequired]) => ({ product, litresRequired }))
-    .sort((a, b) => a.product.localeCompare(b.product));
+  return Array.from(byProduct.values()).sort((a, b) => a.product.localeCompare(b.product));
 }

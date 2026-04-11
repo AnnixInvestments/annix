@@ -1241,24 +1241,53 @@ export class IssuanceService {
     };
   }
 
+  private normaliseProductKey(product: string): string {
+    return product
+      .trim()
+      .toUpperCase()
+      .replace(/\s+/g, " ")
+      .replace(/[()[\]]/g, "")
+      .trim();
+  }
+
+  private dedupeJcCoats(
+    coats: CoatDetail[],
+  ): Array<{ product: string; litres: number; coatRole: string | null }> {
+    const seen = new Map<string, { product: string; litres: number; coatRole: string | null }>();
+    coats.forEach((coat) => {
+      const key = this.normaliseProductKey(coat.product);
+      const litres = Number(coat.litersRequired ?? 0);
+      const safe = Number.isFinite(litres) ? litres : 0;
+      const existing = seen.get(key);
+      if (!existing || safe > existing.litres) {
+        seen.set(key, {
+          product: coat.product.trim(),
+          litres: safe,
+          coatRole: coat.coatRole ? String(coat.coatRole) : null,
+        });
+      }
+    });
+    return Array.from(seen.values());
+  }
+
   private aggregateCoatsAcrossJobCards(
     analyses: JobCardCoatingAnalysis[],
   ): CpoBatchAggregateCoat[] {
     const byProduct = analyses.reduce((acc, analysis) => {
-      const coats = analysis.coats ?? [];
-      return coats.reduce((innerAcc, coat) => {
-        const key = coat.product.trim().toLowerCase();
+      const dedupedCoats = this.dedupeJcCoats(analysis.coats ?? []);
+      return dedupedCoats.reduce((innerAcc, coat) => {
+        const key = this.normaliseProductKey(coat.product);
         const existing = innerAcc.get(key);
         if (existing) {
           innerAcc.set(key, {
             ...existing,
-            litresRequired: existing.litresRequired + Number(coat.litersRequired ?? 0),
+            litresRequired: existing.litresRequired + coat.litres,
           });
         } else {
           innerAcc.set(key, {
             product: coat.product,
-            coatRole: coat.coatRole ?? null,
-            litresRequired: Number(coat.litersRequired ?? 0),
+            coatRole: coat.coatRole,
+            litresRequired: coat.litres,
             alreadyAllocated: 0,
             litresRemaining: 0,
             stockItemId: null,
