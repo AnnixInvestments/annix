@@ -5,13 +5,12 @@ import { useRouter } from "next/navigation";
 import React, { use, useEffect, useState } from "react";
 import * as XLSX from "xlsx";
 import { useToast } from "@/app/components/Toast";
-import {
+import type {
   BoqSection,
   ConsolidatedItem,
   RfqItemDetail,
   SupplierBoqDetailResponse,
   SupplierBoqStatus,
-  supplierPortalApi,
 } from "@/app/lib/api/supplierApi";
 import {
   weldCountPerBend,
@@ -27,7 +26,13 @@ import {
   flangeWeight as flangeWeightLookup,
   sansBlankFlangeWeight as sansBlankFlangeWeightLookup,
   useAllFlangeTypeWeights,
+  useDeclineBoq,
   useNbToOdMap,
+  useSaveQuoteProgress,
+  useSubmitQuote,
+  useSupplierBoqDetail,
+  useSupplierProfile,
+  useSupplierRfqItems,
 } from "@/app/lib/query/hooks";
 
 interface PricingInputs {
@@ -101,7 +106,8 @@ const flangeCountFromConfig = (config: string | undefined, itemType: string): nu
       "2X_RF": 2,
       "2xLF": 2,
     };
-    return counts[config] || 0;
+    const count = counts[config];
+    return count ? count : 0;
   }
   if (itemType === "fitting") {
     const counts: Record<string, number> = {
@@ -118,7 +124,8 @@ const flangeCountFromConfig = (config: string | undefined, itemType: string): nu
       FPP: 1,
       PFP: 1,
     };
-    return counts[config] || 0;
+    const count = counts[config];
+    return count ? count : 0;
   }
   return 0;
 };
@@ -289,7 +296,8 @@ const nominalToOutsideDiameter = (nominalBoreMm: number | undefined): number => 
   const closest = keys.reduce((prev, curr) =>
     Math.abs(curr - roundedNominal) < Math.abs(prev - roundedNominal) ? curr : prev,
   );
-  return NOMINAL_TO_OD_MM[closest] || roundedNominal * 1.05;
+  const odAtClosest = NOMINAL_TO_OD_MM[closest];
+  return odAtClosest ? odAtClosest : roundedNominal * 1.05;
 };
 
 const calculateWeldCircumference = (diameterMm: number | undefined): number => {
@@ -308,7 +316,8 @@ const countFlangesFromConfig = (config: string | undefined, itemType: string): n
       "2X_RF": 2,
       "2xLF": 4,
     };
-    return counts[config] || 0;
+    const count = counts[config];
+    return count ? count : 0;
   }
   if (itemType === "bend") {
     const counts: Record<string, number> = {
@@ -319,7 +328,8 @@ const countFlangesFromConfig = (config: string | undefined, itemType: string): n
       "2X_RF": 2,
       "2xLF": 4,
     };
-    return counts[config] || 0;
+    const count = counts[config];
+    return count ? count : 0;
   }
   if (itemType === "fitting") {
     const counts: Record<string, number> = {
@@ -336,7 +346,8 @@ const countFlangesFromConfig = (config: string | undefined, itemType: string): n
       FPP: 1,
       PFP: 1,
     };
-    return counts[config] || 0;
+    const count = counts[config];
+    return count ? count : 0;
   }
   return 0;
 };
@@ -604,9 +615,22 @@ export default function SupplierBoqDetailPage(props: PageProps) {
     return {};
   });
 
+  const { data: supplierProfile } = useSupplierProfile();
+  const { mutateAsync: fetchBoqDetails } = useSupplierBoqDetail(boqId);
+  const { mutateAsync: fetchRfqItems } = useSupplierRfqItems(boqId);
+  const { mutateAsync: declineBoqMutation } = useDeclineBoq();
+  const { mutateAsync: saveQuoteProgressMutation } = useSaveQuoteProgress();
+  const { mutateAsync: submitQuoteMutation } = useSubmitQuote();
+
+  useEffect(() => {
+    const profileCurrency = supplierProfile?.company?.currencyCode;
+    if (profileCurrency) {
+      setSupplierCurrency(profileCurrency);
+    }
+  }, [supplierProfile]);
+
   useEffect(() => {
     loadBoqDetails();
-    loadSupplierCurrency();
     loadRfqItems();
   }, [boqId]);
 
@@ -911,17 +935,6 @@ export default function SupplierBoqDetailPage(props: PageProps) {
     }
   }, [boqDetail, rfqItems]);
 
-  const loadSupplierCurrency = async () => {
-    try {
-      const profile = await supplierPortalApi.getProfile();
-      if (profile?.company?.currencyCode) {
-        setSupplierCurrency(profile.company.currencyCode);
-      }
-    } catch (err) {
-      log.error("Failed to load supplier currency:", err);
-    }
-  };
-
   const handleUnitPriceChange = (sectionId: string, itemIndex: number, value: number) => {
     setUnitPrices((prev) => ({
       ...prev,
@@ -935,7 +948,7 @@ export default function SupplierBoqDetailPage(props: PageProps) {
   const loadRfqItems = async () => {
     try {
       setRfqLoading(true);
-      const items = await supplierPortalApi.getRfqItems(boqId);
+      const items = await fetchRfqItems();
       setRfqItems(items);
       const specs = extractUniqueSpecs(items);
       setExtractedSpecs((prev) => ({
@@ -990,7 +1003,7 @@ export default function SupplierBoqDetailPage(props: PageProps) {
     try {
       setLoading(true);
       setError(null);
-      const data = await supplierPortalApi.getBoqDetails(boqId);
+      const data = await fetchBoqDetails();
       setBoqDetail(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load BOQ details");
@@ -1007,7 +1020,7 @@ export default function SupplierBoqDetailPage(props: PageProps) {
 
     try {
       setDecliningLoading(true);
-      await supplierPortalApi.declineBoq(boqId, declineReason);
+      await declineBoqMutation({ boqId, reason: declineReason });
       setShowDeclineModal(false);
       showToast("BOQ declined successfully", "success");
       loadBoqDetails();
@@ -1021,10 +1034,13 @@ export default function SupplierBoqDetailPage(props: PageProps) {
   const handleSaveProgress = async () => {
     try {
       setSavingProgress(true);
-      await supplierPortalApi.saveQuoteProgress(boqId, {
-        pricingInputs,
-        unitPrices,
-        weldUnitPrices,
+      await saveQuoteProgressMutation({
+        boqId,
+        data: {
+          pricingInputs,
+          unitPrices,
+          weldUnitPrices,
+        },
       });
       showToast("Progress saved successfully", "success");
     } catch (err) {
@@ -1037,10 +1053,13 @@ export default function SupplierBoqDetailPage(props: PageProps) {
   const handleSubmitQuote = async () => {
     try {
       setSubmittingQuote(true);
-      await supplierPortalApi.submitQuote(boqId, {
-        pricingInputs,
-        unitPrices,
-        weldUnitPrices,
+      await submitQuoteMutation({
+        boqId,
+        data: {
+          pricingInputs,
+          unitPrices,
+          weldUnitPrices,
+        },
       });
       showToast("Quote submitted successfully", "success");
       loadBoqDetails();
@@ -1072,21 +1091,28 @@ export default function SupplierBoqDetailPage(props: PageProps) {
 
       const rows = rfqItems.map((item) => {
         const details = item.straightPipeDetails || item.bendDetails || item.fittingDetails;
-        const nb =
-          item.straightPipeDetails?.nominalBoreMm ||
-          item.bendDetails?.nominalBoreMm ||
-          item.fittingDetails?.nominalDiameterMm ||
-          "-";
+        const straightNb = item.straightPipeDetails?.nominalBoreMm;
+        const bendNb = item.bendDetails?.nominalBoreMm;
+        const fittingNb = item.fittingDetails?.nominalDiameterMm;
+        const nb = straightNb ? straightNb : bendNb ? bendNb : fittingNb ? fittingNb : "-";
         const wallSch = details?.scheduleNumber
           ? `Sch ${details.scheduleNumber}`
           : details?.wallThicknessMm
             ? `${details.wallThicknessMm}mm`
             : "-";
-        const endConfig =
-          item.straightPipeDetails?.pipeEndConfiguration ||
-          item.bendDetails?.bendEndConfiguration ||
-          item.fittingDetails?.pipeEndConfiguration ||
-          "-";
+        const straightEnd = item.straightPipeDetails?.pipeEndConfiguration;
+        const bendEnd = item.bendDetails?.bendEndConfiguration;
+        const fittingEnd = item.fittingDetails?.pipeEndConfiguration;
+        const endConfig = straightEnd
+          ? straightEnd
+          : bendEnd
+            ? bendEnd
+            : fittingEnd
+              ? fittingEnd
+              : "-";
+        const weightPerUnit = Number(item.weightPerUnitKg || 0);
+        const totalWeightItem = Number(item.totalWeightKg || 0);
+        const notes = item.notes;
 
         return [
           item.lineNumber,
@@ -1096,9 +1122,9 @@ export default function SupplierBoqDetailPage(props: PageProps) {
           nb,
           wallSch,
           endConfig,
-          Number(item.weightPerUnitKg || 0).toFixed(2),
-          Number(item.totalWeightKg || 0).toFixed(2),
-          item.notes || "",
+          weightPerUnit.toFixed(2),
+          totalWeightItem.toFixed(2),
+          notes ? notes : "",
         ];
       });
 
@@ -1125,18 +1151,24 @@ export default function SupplierBoqDetailPage(props: PageProps) {
       XLSX.writeFile(workbook, fileName);
     } else {
       boqDetail.sections.forEach((section) => {
-        const hasWelds = section.items.some(
-          (item) =>
-            item.welds?.flangeWeld ||
-            item.welds?.mitreWeld ||
-            item.welds?.teeWeld ||
-            item.welds?.gussetTeeWeld ||
-            item.welds?.latWeld45Plus ||
-            item.welds?.latWeldUnder45,
-        );
-        const hasAreas = section.items.some(
-          (item) => item.areas?.intAreaM2 || item.areas?.extAreaM2,
-        );
+        const hasWelds = section.items.some((item) => {
+          const welds = item.welds;
+          if (!welds) return false;
+          const flange = welds.flangeWeld;
+          const mitre = welds.mitreWeld;
+          const tee = welds.teeWeld;
+          const gusset = welds.gussetTeeWeld;
+          const lat45 = welds.latWeld45Plus;
+          const latUnder = welds.latWeldUnder45;
+          return flange || mitre || tee || gusset || lat45 || latUnder;
+        });
+        const hasAreas = section.items.some((item) => {
+          const areas = item.areas;
+          if (!areas) return false;
+          const intArea = areas.intAreaM2;
+          const extArea = areas.extAreaM2;
+          return intArea || extArea;
+        });
 
         const headers = ["#", "Description", "Qty", "Unit"];
         if (hasWelds) {
@@ -1172,7 +1204,8 @@ export default function SupplierBoqDetailPage(props: PageProps) {
               item.areas?.extAreaM2 ? Number(item.areas.extAreaM2).toFixed(2) : "-",
             );
           }
-          row.push(Number(item.weightKg || 0).toFixed(2));
+          const weightKg = Number(item.weightKg || 0);
+          row.push(weightKg.toFixed(2));
           return row;
         });
 
@@ -1236,6 +1269,13 @@ export default function SupplierBoqDetailPage(props: PageProps) {
   }
 
   const statusStyle = statusColors[boqDetail.accessStatus];
+  const projectName = boqDetail.projectInfo?.name;
+  const projectDescription = boqDetail.projectInfo?.description;
+  const projectRequiredDate = boqDetail.projectInfo?.requiredDate;
+  const customerCompany = boqDetail.customerInfo?.company;
+  const customerName = boqDetail.customerInfo?.name;
+  const customerEmail = boqDetail.customerInfo?.email;
+  const headerProjectName = projectName ? projectName : boqDetail.boq.title;
 
   return (
     <div className="space-y-6">
@@ -1246,40 +1286,35 @@ export default function SupplierBoqDetailPage(props: PageProps) {
             {/* Row 1 */}
             <div>
               <span className="text-xs font-medium text-gray-500">Project</span>
-              <p className="text-sm text-gray-900">{boqDetail.projectInfo?.name || "-"}</p>
+              <p className="text-sm text-gray-900">{projectName ? projectName : "-"}</p>
             </div>
             <div>
               <span className="text-xs font-medium text-gray-500">Description</span>
               <p className="text-sm text-gray-900 truncate">
-                {boqDetail.projectInfo?.description || "-"}
+                {projectDescription ? projectDescription : "-"}
               </p>
             </div>
             <div>
               <span className="text-xs font-medium text-gray-500">Required Date</span>
               <p className="text-sm text-gray-900">
-                {boqDetail.projectInfo?.requiredDate
-                  ? formatDate(boqDetail.projectInfo.requiredDate)
-                  : "-"}
+                {projectRequiredDate ? formatDate(projectRequiredDate) : "-"}
               </p>
             </div>
             {/* Row 2 */}
             <div>
               <span className="text-xs font-medium text-gray-500">Customer</span>
-              <p className="text-sm text-gray-900">{boqDetail.customerInfo?.company || "-"}</p>
+              <p className="text-sm text-gray-900">{customerCompany ? customerCompany : "-"}</p>
             </div>
             <div>
               <span className="text-xs font-medium text-gray-500">Contact</span>
-              <p className="text-sm text-gray-900">{boqDetail.customerInfo?.name || "-"}</p>
+              <p className="text-sm text-gray-900">{customerName ? customerName : "-"}</p>
             </div>
             <div>
               <span className="text-xs font-medium text-gray-500">Email</span>
               <p className="text-sm text-gray-900">
-                {boqDetail.customerInfo?.email ? (
-                  <a
-                    href={`mailto:${boqDetail.customerInfo.email}`}
-                    className="text-blue-600 hover:underline"
-                  >
-                    {boqDetail.customerInfo.email}
+                {customerEmail ? (
+                  <a href={`mailto:${customerEmail}`} className="text-blue-600 hover:underline">
+                    {customerEmail}
                   </a>
                 ) : (
                   "-"
@@ -1321,9 +1356,7 @@ export default function SupplierBoqDetailPage(props: PageProps) {
                 {statusStyle.label}
               </span>
             </div>
-            <p className="mt-1 text-sm text-gray-500">
-              {boqDetail.projectInfo?.name || boqDetail.boq.title}
-            </p>
+            <p className="mt-1 text-sm text-gray-500">{headerProjectName}</p>
           </div>
           <div className="flex gap-3">
             <button
@@ -1374,19 +1407,22 @@ export default function SupplierBoqDetailPage(props: PageProps) {
           </h2>
 
           <div className="space-y-8">
-            {boqDetail.sections.map((section) => (
-              <SectionTable
-                key={section.id}
-                section={section}
-                currencyCode={supplierCurrency}
-                unitPrices={unitPrices[String(section.id)] || {}}
-                onUnitPriceChange={(itemIndex, value) =>
-                  handleUnitPriceChange(String(section.id), itemIndex, value)
-                }
-                pricingInputs={pricingInputs}
-                rfqItems={rfqItems}
-              />
-            ))}
+            {boqDetail.sections.map((section) => {
+              const sectionUnitPrices = unitPrices[String(section.id)];
+              return (
+                <SectionTable
+                  key={section.id}
+                  section={section}
+                  currencyCode={supplierCurrency}
+                  unitPrices={sectionUnitPrices ? sectionUnitPrices : {}}
+                  onUnitPriceChange={(itemIndex, value) =>
+                    handleUnitPriceChange(String(section.id), itemIndex, value)
+                  }
+                  pricingInputs={pricingInputs}
+                  rfqItems={rfqItems}
+                />
+              );
+            })}
 
             {/* Welding Section */}
             <WeldsSection
@@ -1544,7 +1580,22 @@ function PricingInputsSection({
   currencyCode,
 }: PricingInputsSectionProps) {
   const currency = currencyByCode(currencyCode);
-  const currencySymbol = currency?.symbol || currencyCode;
+  const symbolFromCurrency = currency?.symbol;
+  const currencySymbol = symbolFromCurrency ? symbolFromCurrency : currencyCode;
+
+  const flangeWeldInputValue = pricingInputs.weldTypes["flangeWeld"];
+  const mitreWeldInputValue = pricingInputs.weldTypes["mitreWeld"];
+  const teeWeldInputValue = pricingInputs.weldTypes["teeWeld"];
+  const gussetTeeWeldInputValue = pricingInputs.weldTypes["gussetTeeWeld"];
+  const latWeld45PlusInputValue = pricingInputs.weldTypes["latWeld45Plus"];
+  const latWeldUnder45InputValue = pricingInputs.weldTypes["latWeldUnder45"];
+  const tackWeldInputValue = pricingInputs.weldTypes["tackWeld"];
+  const slipOnFlangeInputValue = pricingInputs.flangeTypes["slipOn"];
+  const rotatingFlangeInputValue = pricingInputs.flangeTypes["rotating"];
+  const blankFlangeInputValue = pricingInputs.flangeTypes["blank"];
+  const boltsInputValue = pricingInputs.bnwTypes["bolts"];
+  const nutsInputValue = pricingInputs.bnwTypes["nuts"];
+  const washersInputValue = pricingInputs.bnwTypes["washers"];
 
   return (
     <div className="bg-white rounded-lg shadow-sm p-6 w-full">
@@ -1560,49 +1611,59 @@ function PricingInputsSection({
           <h3 className="text-sm font-semibold text-gray-700 border-b pb-2">
             Steel Specifications (Price/kg)
           </h3>
-          {extractedSpecs.steelSpecs.length > 0 ? (
-            extractedSpecs.steelSpecs.map((spec) => (
-              <div key={spec} className="flex items-center gap-2">
-                <label className="text-sm text-gray-600 flex-1 min-w-0 truncate" title={spec}>
-                  {spec}
-                </label>
-                <div className="flex items-center flex-shrink-0">
-                  <span className="text-xs text-gray-500 mr-1">{currencySymbol}</span>
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={pricingInputs.steelSpecs[spec] || ""}
-                    onChange={(e) =>
-                      onPricingInputChange("steelSpecs", spec, parseFloat(e.target.value) || 0)
-                    }
-                    placeholder="0.00"
-                    className="w-28 px-2 py-1.5 text-sm text-right border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                  />
-                  <span className="text-xs text-gray-500 ml-1">/Kg</span>
-                </div>
-              </div>
-            ))
-          ) : (
-            <div className="flex items-center gap-2">
-              <label className="text-sm text-gray-600 flex-1">Steel (General)</label>
-              <div className="flex items-center flex-shrink-0">
-                <span className="text-xs text-gray-500 mr-1">{currencySymbol}</span>
-                <input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={pricingInputs.steelSpecs["Steel"] || ""}
-                  onChange={(e) =>
-                    onPricingInputChange("steelSpecs", "Steel", parseFloat(e.target.value) || 0)
-                  }
-                  placeholder="0.00"
-                  className="w-28 px-2 py-1.5 text-sm text-right border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                />
-                <span className="text-xs text-gray-500 ml-1">/Kg</span>
-              </div>
-            </div>
-          )}
+          {extractedSpecs.steelSpecs.length > 0
+            ? extractedSpecs.steelSpecs.map((spec) => {
+                const steelValue = pricingInputs.steelSpecs[spec];
+                return (
+                  <div key={spec} className="flex items-center gap-2">
+                    <label className="text-sm text-gray-600 flex-1 min-w-0 truncate" title={spec}>
+                      {spec}
+                    </label>
+                    <div className="flex items-center flex-shrink-0">
+                      <span className="text-xs text-gray-500 mr-1">{currencySymbol}</span>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={steelValue ? steelValue : ""}
+                        onChange={(e) =>
+                          onPricingInputChange("steelSpecs", spec, parseFloat(e.target.value) || 0)
+                        }
+                        placeholder="0.00"
+                        className="w-28 px-2 py-1.5 text-sm text-right border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                      />
+                      <span className="text-xs text-gray-500 ml-1">/Kg</span>
+                    </div>
+                  </div>
+                );
+              })
+            : (() => {
+                const steelGeneral = pricingInputs.steelSpecs["Steel"];
+                return (
+                  <div className="flex items-center gap-2">
+                    <label className="text-sm text-gray-600 flex-1">Steel (General)</label>
+                    <div className="flex items-center flex-shrink-0">
+                      <span className="text-xs text-gray-500 mr-1">{currencySymbol}</span>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={steelGeneral ? steelGeneral : ""}
+                        onChange={(e) =>
+                          onPricingInputChange(
+                            "steelSpecs",
+                            "Steel",
+                            parseFloat(e.target.value) || 0,
+                          )
+                        }
+                        placeholder="0.00"
+                        className="w-28 px-2 py-1.5 text-sm text-right border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                      />
+                      <span className="text-xs text-gray-500 ml-1">/Kg</span>
+                    </div>
+                  </div>
+                );
+              })()}
         </div>
 
         {/* Weld Types - only show types used in this RFQ */}
@@ -1623,7 +1684,7 @@ function PricingInputsSection({
                     type="number"
                     min="0"
                     step="0.01"
-                    value={pricingInputs.weldTypes["flangeWeld"] || ""}
+                    value={flangeWeldInputValue ? flangeWeldInputValue : ""}
                     onChange={(e) =>
                       onPricingInputChange(
                         "weldTypes",
@@ -1647,7 +1708,7 @@ function PricingInputsSection({
                     type="number"
                     min="0"
                     step="0.01"
-                    value={pricingInputs.weldTypes["mitreWeld"] || ""}
+                    value={mitreWeldInputValue ? mitreWeldInputValue : ""}
                     onChange={(e) =>
                       onPricingInputChange(
                         "weldTypes",
@@ -1671,7 +1732,7 @@ function PricingInputsSection({
                     type="number"
                     min="0"
                     step="0.01"
-                    value={pricingInputs.weldTypes["teeWeld"] || ""}
+                    value={teeWeldInputValue ? teeWeldInputValue : ""}
                     onChange={(e) =>
                       onPricingInputChange("weldTypes", "teeWeld", parseFloat(e.target.value) || 0)
                     }
@@ -1691,7 +1752,7 @@ function PricingInputsSection({
                     type="number"
                     min="0"
                     step="0.01"
-                    value={pricingInputs.weldTypes["gussetTeeWeld"] || ""}
+                    value={gussetTeeWeldInputValue ? gussetTeeWeldInputValue : ""}
                     onChange={(e) =>
                       onPricingInputChange(
                         "weldTypes",
@@ -1715,7 +1776,7 @@ function PricingInputsSection({
                     type="number"
                     min="0"
                     step="0.01"
-                    value={pricingInputs.weldTypes["latWeld45Plus"] || ""}
+                    value={latWeld45PlusInputValue ? latWeld45PlusInputValue : ""}
                     onChange={(e) =>
                       onPricingInputChange(
                         "weldTypes",
@@ -1739,7 +1800,7 @@ function PricingInputsSection({
                     type="number"
                     min="0"
                     step="0.01"
-                    value={pricingInputs.weldTypes["latWeldUnder45"] || ""}
+                    value={latWeldUnder45InputValue ? latWeldUnder45InputValue : ""}
                     onChange={(e) =>
                       onPricingInputChange(
                         "weldTypes",
@@ -1763,7 +1824,7 @@ function PricingInputsSection({
                     type="number"
                     min="0"
                     step="0.01"
-                    value={pricingInputs.weldTypes["tackWeld"] || ""}
+                    value={tackWeldInputValue ? tackWeldInputValue : ""}
                     onChange={(e) =>
                       onPricingInputChange("weldTypes", "tackWeld", parseFloat(e.target.value) || 0)
                     }
@@ -1794,7 +1855,7 @@ function PricingInputsSection({
                     type="number"
                     min="0"
                     step="0.01"
-                    value={pricingInputs.flangeTypes["slipOn"] || ""}
+                    value={slipOnFlangeInputValue ? slipOnFlangeInputValue : ""}
                     onChange={(e) =>
                       onPricingInputChange("flangeTypes", "slipOn", parseFloat(e.target.value) || 0)
                     }
@@ -1814,7 +1875,7 @@ function PricingInputsSection({
                     type="number"
                     min="0"
                     step="0.01"
-                    value={pricingInputs.flangeTypes["rotating"] || ""}
+                    value={rotatingFlangeInputValue ? rotatingFlangeInputValue : ""}
                     onChange={(e) =>
                       onPricingInputChange(
                         "flangeTypes",
@@ -1838,7 +1899,7 @@ function PricingInputsSection({
                     type="number"
                     min="0"
                     step="0.01"
-                    value={pricingInputs.flangeTypes["blank"] || ""}
+                    value={blankFlangeInputValue ? blankFlangeInputValue : ""}
                     onChange={(e) =>
                       onPricingInputChange("flangeTypes", "blank", parseFloat(e.target.value) || 0)
                     }
@@ -1866,7 +1927,7 @@ function PricingInputsSection({
                   type="number"
                   min="0"
                   step="0.01"
-                  value={pricingInputs.bnwTypes["bolts"] || ""}
+                  value={boltsInputValue ? boltsInputValue : ""}
                   onChange={(e) =>
                     onPricingInputChange("bnwTypes", "bolts", parseFloat(e.target.value) || 0)
                   }
@@ -1884,7 +1945,7 @@ function PricingInputsSection({
                   type="number"
                   min="0"
                   step="0.01"
-                  value={pricingInputs.bnwTypes["nuts"] || ""}
+                  value={nutsInputValue ? nutsInputValue : ""}
                   onChange={(e) =>
                     onPricingInputChange("bnwTypes", "nuts", parseFloat(e.target.value) || 0)
                   }
@@ -1902,7 +1963,7 @@ function PricingInputsSection({
                   type="number"
                   min="0"
                   step="0.01"
-                  value={pricingInputs.bnwTypes["washers"] || ""}
+                  value={washersInputValue ? washersInputValue : ""}
                   onChange={(e) =>
                     onPricingInputChange("bnwTypes", "washers", parseFloat(e.target.value) || 0)
                   }
@@ -1935,10 +1996,12 @@ function PricingInputsSection({
                 diaphragm_valve: "Diaphragm Valve",
                 general_valve: "Valve (General)",
               };
+              const valveLabel = labels[valveType];
+              const valveInputValue = pricingInputs.valveTypes[valveType];
               return (
                 <div key={valveType} className="flex items-center gap-2">
                   <label className="text-sm text-gray-600 flex-1">
-                    {labels[valveType] || valveType}
+                    {valveLabel ? valveLabel : valveType}
                   </label>
                   <div className="flex items-center">
                     <span className="text-xs text-gray-500 mr-1">{currencySymbol}</span>
@@ -1946,7 +2009,7 @@ function PricingInputsSection({
                       type="number"
                       min="0"
                       step="0.01"
-                      value={pricingInputs.valveTypes[valveType] || ""}
+                      value={valveInputValue ? valveInputValue : ""}
                       onChange={(e) =>
                         onPricingInputChange(
                           "valveTypes",
@@ -1980,10 +2043,12 @@ function PricingInputsSection({
                 analytical_instrument: "Analytical Instrument",
                 general_instrument: "Instrument (General)",
               };
+              const instLabel = labels[instType];
+              const instInputValue = pricingInputs.instrumentTypes[instType];
               return (
                 <div key={instType} className="flex items-center gap-2">
                   <label className="text-sm text-gray-600 flex-1">
-                    {labels[instType] || instType}
+                    {instLabel ? instLabel : instType}
                   </label>
                   <div className="flex items-center">
                     <span className="text-xs text-gray-500 mr-1">{currencySymbol}</span>
@@ -1991,7 +2056,7 @@ function PricingInputsSection({
                       type="number"
                       min="0"
                       step="0.01"
-                      value={pricingInputs.instrumentTypes[instType] || ""}
+                      value={instInputValue ? instInputValue : ""}
                       onChange={(e) =>
                         onPricingInputChange(
                           "instrumentTypes",
@@ -2087,11 +2152,69 @@ function GrandTotalsSection({
   weldUnitPrices,
 }: GrandTotalsSectionProps) {
   const currency = currencyByCode(currencyCode);
-  const currencySymbol = currency?.symbol || currencyCode;
+  const symbolFromCurrency = currency?.symbol;
+  const currencySymbol = symbolFromCurrency ? symbolFromCurrency : currencyCode;
 
   const formatCurrency = (value: number): string => {
     return value.toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   };
+
+  const bnwBoltsPrice = pricingInputs.bnwTypes["bolts"];
+  const bnwNutsPrice = pricingInputs.bnwTypes["nuts"];
+  const bnwWashersPrice = pricingInputs.bnwTypes["washers"];
+  const flangeBlankPrice = pricingInputs.flangeTypes["blank"];
+  const flangeRotatingPrice = pricingInputs.flangeTypes["rotating"];
+  const flangeSlipOnPrice = pricingInputs.flangeTypes["slipOn"];
+
+  const valveBall = pricingInputs.valveTypes["ball_valve"];
+  const valveGate = pricingInputs.valveTypes["gate_valve"];
+  const valveGlobe = pricingInputs.valveTypes["globe_valve"];
+  const valveButterfly = pricingInputs.valveTypes["butterfly_valve"];
+  const valveCheck = pricingInputs.valveTypes["check_valve"];
+  const valveControl = pricingInputs.valveTypes["control_valve"];
+  const valveSafety = pricingInputs.valveTypes["safety_valve"];
+  const valvePlug = pricingInputs.valveTypes["plug_valve"];
+  const valveNeedle = pricingInputs.valveTypes["needle_valve"];
+  const valveDiaphragm = pricingInputs.valveTypes["diaphragm_valve"];
+  const valveGeneral = pricingInputs.valveTypes["general_valve"];
+
+  const instFlowMeter = pricingInputs.instrumentTypes["flow_meter"];
+  const instPressure = pricingInputs.instrumentTypes["pressure_instrument"];
+  const instLevel = pricingInputs.instrumentTypes["level_instrument"];
+  const instTemperature = pricingInputs.instrumentTypes["temperature_instrument"];
+  const instAnalytical = pricingInputs.instrumentTypes["analytical_instrument"];
+  const instGeneral = pricingInputs.instrumentTypes["general_instrument"];
+
+  const pumpCentrifugal = pricingInputs.pumpTypes["centrifugal_pump"];
+  const pumpSubmersible = pricingInputs.pumpTypes["submersible_pump"];
+  const pumpProgressiveCavity = pricingInputs.pumpTypes["progressive_cavity_pump"];
+  const pumpSlurry = pricingInputs.pumpTypes["slurry_pump"];
+  const pumpDiaphragm = pricingInputs.pumpTypes["diaphragm_pump"];
+  const pumpGear = pricingInputs.pumpTypes["gear_pump"];
+  const pumpNewPump = pricingInputs.pumpTypes["new_pump"];
+  const pumpImpeller = pricingInputs.pumpTypes["impeller"];
+  const pumpMechanicalSeal = pricingInputs.pumpTypes["mechanical_seal"];
+  const pumpBearingKit = pricingInputs.pumpTypes["bearing_kit"];
+  const pumpWearRing = pricingInputs.pumpTypes["wear_ring"];
+  const pumpCoupling = pricingInputs.pumpTypes["coupling"];
+  const pumpShaftSleeve = pricingInputs.pumpTypes["shaft_sleeve"];
+  const pumpPart = pricingInputs.pumpTypes["pump_part"];
+  const pumpSpare = pricingInputs.pumpTypes["pump_spare"];
+  const pumpMajorOverhaul = pricingInputs.pumpTypes["major_overhaul"];
+  const pumpMinorOverhaul = pricingInputs.pumpTypes["minor_overhaul"];
+  const pumpSealReplacement = pricingInputs.pumpTypes["seal_replacement"];
+  const pumpBearingReplacement = pricingInputs.pumpTypes["bearing_replacement"];
+  const pumpInspection = pricingInputs.pumpTypes["inspection"];
+  const pumpRepair = pricingInputs.pumpTypes["pump_repair"];
+  const pumpSlurryRental = pricingInputs.pumpTypes["slurry_rental"];
+  const pumpLargeDewatering = pricingInputs.pumpTypes["large_dewatering"];
+  const pumpMediumDewatering = pricingInputs.pumpTypes["medium_dewatering"];
+  const pumpSmallDewatering = pricingInputs.pumpTypes["small_dewatering"];
+  const pumpRental = pricingInputs.pumpTypes["pump_rental"];
+  const firstValvePrice = Object.values(pricingInputs.valveTypes)[0];
+  const firstInstrumentPrice = Object.values(pricingInputs.instrumentTypes)[0];
+  const firstPumpPrice = Object.values(pricingInputs.pumpTypes)[0];
+  const firstSteelPrice = Object.values(pricingInputs.steelSpecs)[0];
 
   const calculateSuggestedPriceForItem = (item: ConsolidatedItem, sectionType: string): number => {
     const isFabricatedSection = ["straight_pipes", "bends", "fittings", "tees"].includes(
@@ -2109,9 +2232,9 @@ function GrandTotalsSection({
       const nutWeight = totalBnwWeight * 0.3;
       const washerWeight = totalBnwWeight * 0.15;
 
-      const boltPrice = (pricingInputs.bnwTypes["bolts"] || 0) * boltWeight;
-      const nutPrice = (pricingInputs.bnwTypes["nuts"] || 0) * nutWeight;
-      const washerPrice = (pricingInputs.bnwTypes["washers"] || 0) * washerWeight;
+      const boltPrice = (bnwBoltsPrice ? bnwBoltsPrice : 0) * boltWeight;
+      const nutPrice = (bnwNutsPrice ? bnwNutsPrice : 0) * nutWeight;
+      const washerPrice = (bnwWashersPrice ? bnwWashersPrice : 0) * washerWeight;
 
       return boltPrice + nutPrice + washerPrice;
     }
@@ -2119,11 +2242,11 @@ function GrandTotalsSection({
     if (isFlangesSection) {
       let flangePrice = 0;
       if (isBlankFlangesSection || description.includes("BLANK")) {
-        flangePrice = (pricingInputs.flangeTypes["blank"] || 0) * weightPerUnit;
+        flangePrice = (flangeBlankPrice ? flangeBlankPrice : 0) * weightPerUnit;
       } else if (description.includes("ROTATING") || description.includes("R/F")) {
-        flangePrice = (pricingInputs.flangeTypes["rotating"] || 0) * weightPerUnit;
+        flangePrice = (flangeRotatingPrice ? flangeRotatingPrice : 0) * weightPerUnit;
       } else {
-        flangePrice = (pricingInputs.flangeTypes["slipOn"] || 0) * weightPerUnit;
+        flangePrice = (flangeSlipOnPrice ? flangeSlipOnPrice : 0) * weightPerUnit;
       }
       const labourExtras = flangePrice * (pricingInputs.labourExtrasPercent / 100);
       return flangePrice + labourExtras;
@@ -2133,54 +2256,31 @@ function GrandTotalsSection({
     if (isValveSectionFirst) {
       let valvePrice = 0;
       if (description.includes("BALL")) {
-        valvePrice =
-          pricingInputs.valveTypes["ball_valve"] || pricingInputs.valveTypes["general_valve"] || 0;
+        valvePrice = valveBall ? valveBall : valveGeneral ? valveGeneral : 0;
       } else if (description.includes("GATE")) {
-        valvePrice =
-          pricingInputs.valveTypes["gate_valve"] || pricingInputs.valveTypes["general_valve"] || 0;
+        valvePrice = valveGate ? valveGate : valveGeneral ? valveGeneral : 0;
       } else if (description.includes("GLOBE")) {
-        valvePrice =
-          pricingInputs.valveTypes["globe_valve"] || pricingInputs.valveTypes["general_valve"] || 0;
+        valvePrice = valveGlobe ? valveGlobe : valveGeneral ? valveGeneral : 0;
       } else if (description.includes("BUTTERFLY")) {
-        valvePrice =
-          pricingInputs.valveTypes["butterfly_valve"] ||
-          pricingInputs.valveTypes["general_valve"] ||
-          0;
+        valvePrice = valveButterfly ? valveButterfly : valveGeneral ? valveGeneral : 0;
       } else if (description.includes("CHECK")) {
-        valvePrice =
-          pricingInputs.valveTypes["check_valve"] || pricingInputs.valveTypes["general_valve"] || 0;
+        valvePrice = valveCheck ? valveCheck : valveGeneral ? valveGeneral : 0;
       } else if (description.includes("CONTROL") || description.includes("ACTUATOR")) {
-        valvePrice =
-          pricingInputs.valveTypes["control_valve"] ||
-          pricingInputs.valveTypes["general_valve"] ||
-          0;
+        valvePrice = valveControl ? valveControl : valveGeneral ? valveGeneral : 0;
       } else if (
         description.includes("SAFETY") ||
         description.includes("RELIEF") ||
         description.includes("PSV")
       ) {
-        valvePrice =
-          pricingInputs.valveTypes["safety_valve"] ||
-          pricingInputs.valveTypes["general_valve"] ||
-          0;
+        valvePrice = valveSafety ? valveSafety : valveGeneral ? valveGeneral : 0;
       } else if (description.includes("PLUG")) {
-        valvePrice =
-          pricingInputs.valveTypes["plug_valve"] || pricingInputs.valveTypes["general_valve"] || 0;
+        valvePrice = valvePlug ? valvePlug : valveGeneral ? valveGeneral : 0;
       } else if (description.includes("NEEDLE")) {
-        valvePrice =
-          pricingInputs.valveTypes["needle_valve"] ||
-          pricingInputs.valveTypes["general_valve"] ||
-          0;
+        valvePrice = valveNeedle ? valveNeedle : valveGeneral ? valveGeneral : 0;
       } else if (description.includes("DIAPHRAGM")) {
-        valvePrice =
-          pricingInputs.valveTypes["diaphragm_valve"] ||
-          pricingInputs.valveTypes["general_valve"] ||
-          0;
+        valvePrice = valveDiaphragm ? valveDiaphragm : valveGeneral ? valveGeneral : 0;
       } else {
-        valvePrice =
-          pricingInputs.valveTypes["general_valve"] ||
-          Object.values(pricingInputs.valveTypes)[0] ||
-          0;
+        valvePrice = valveGeneral ? valveGeneral : firstValvePrice ? firstValvePrice : 0;
       }
       const labourExtrasValve = valvePrice * (pricingInputs.labourExtrasPercent / 100);
       return valvePrice + labourExtrasValve;
@@ -2200,54 +2300,40 @@ function GrandTotalsSection({
         description.includes("FLOW") ||
         description.includes("METER")
       ) {
-        instrumentPrice =
-          pricingInputs.instrumentTypes["flow_meter"] ||
-          pricingInputs.instrumentTypes["general_instrument"] ||
-          0;
+        instrumentPrice = instFlowMeter ? instFlowMeter : instGeneral ? instGeneral : 0;
       } else if (
         sectionType === "pressure_instruments" ||
         description.includes("PRESSURE") ||
         description.includes("PSI") ||
         description.includes("BAR")
       ) {
-        instrumentPrice =
-          pricingInputs.instrumentTypes["pressure_instrument"] ||
-          pricingInputs.instrumentTypes["general_instrument"] ||
-          0;
+        instrumentPrice = instPressure ? instPressure : instGeneral ? instGeneral : 0;
       } else if (
         sectionType === "level_instruments" ||
         description.includes("LEVEL") ||
         description.includes("RADAR") ||
         description.includes("ULTRASONIC")
       ) {
-        instrumentPrice =
-          pricingInputs.instrumentTypes["level_instrument"] ||
-          pricingInputs.instrumentTypes["general_instrument"] ||
-          0;
+        instrumentPrice = instLevel ? instLevel : instGeneral ? instGeneral : 0;
       } else if (
         sectionType === "temperature_instruments" ||
         description.includes("TEMPERATURE") ||
         description.includes("RTD") ||
         description.includes("THERMOCOUPLE")
       ) {
-        instrumentPrice =
-          pricingInputs.instrumentTypes["temperature_instrument"] ||
-          pricingInputs.instrumentTypes["general_instrument"] ||
-          0;
+        instrumentPrice = instTemperature ? instTemperature : instGeneral ? instGeneral : 0;
       } else if (
         description.includes("PH") ||
         description.includes("CONDUCTIVITY") ||
         description.includes("ANALYZER")
       ) {
-        instrumentPrice =
-          pricingInputs.instrumentTypes["analytical_instrument"] ||
-          pricingInputs.instrumentTypes["general_instrument"] ||
-          0;
+        instrumentPrice = instAnalytical ? instAnalytical : instGeneral ? instGeneral : 0;
       } else {
-        instrumentPrice =
-          pricingInputs.instrumentTypes["general_instrument"] ||
-          Object.values(pricingInputs.instrumentTypes)[0] ||
-          0;
+        instrumentPrice = instGeneral
+          ? instGeneral
+          : firstInstrumentPrice
+            ? firstInstrumentPrice
+            : 0;
       }
       const labourExtrasInst = instrumentPrice * (pricingInputs.labourExtrasPercent / 100);
       return instrumentPrice + labourExtrasInst;
@@ -2264,121 +2350,79 @@ function GrandTotalsSection({
       let pumpPrice = 0;
       if (sectionType === "pumps") {
         if (description.includes("CENTRIFUGAL") || description.includes("END SUCTION")) {
-          pumpPrice =
-            pricingInputs.pumpTypes["centrifugal_pump"] || pricingInputs.pumpTypes["new_pump"] || 0;
+          pumpPrice = pumpCentrifugal ? pumpCentrifugal : pumpNewPump ? pumpNewPump : 0;
         } else if (description.includes("SUBMERSIBLE") || description.includes("BOREHOLE")) {
-          pumpPrice =
-            pricingInputs.pumpTypes["submersible_pump"] || pricingInputs.pumpTypes["new_pump"] || 0;
+          pumpPrice = pumpSubmersible ? pumpSubmersible : pumpNewPump ? pumpNewPump : 0;
         } else if (
           description.includes("PROGRESSIVE") ||
           description.includes("CAVITY") ||
           description.includes("MONO")
         ) {
-          pumpPrice =
-            pricingInputs.pumpTypes["progressive_cavity_pump"] ||
-            pricingInputs.pumpTypes["new_pump"] ||
-            0;
+          pumpPrice = pumpProgressiveCavity ? pumpProgressiveCavity : pumpNewPump ? pumpNewPump : 0;
         } else if (description.includes("SLURRY") || description.includes("WARMAN")) {
-          pumpPrice =
-            pricingInputs.pumpTypes["slurry_pump"] || pricingInputs.pumpTypes["new_pump"] || 0;
+          pumpPrice = pumpSlurry ? pumpSlurry : pumpNewPump ? pumpNewPump : 0;
         } else if (description.includes("DIAPHRAGM")) {
-          pumpPrice =
-            pricingInputs.pumpTypes["diaphragm_pump"] || pricingInputs.pumpTypes["new_pump"] || 0;
+          pumpPrice = pumpDiaphragm ? pumpDiaphragm : pumpNewPump ? pumpNewPump : 0;
         } else if (description.includes("GEAR")) {
-          pumpPrice =
-            pricingInputs.pumpTypes["gear_pump"] || pricingInputs.pumpTypes["new_pump"] || 0;
+          pumpPrice = pumpGear ? pumpGear : pumpNewPump ? pumpNewPump : 0;
         } else {
-          pumpPrice =
-            pricingInputs.pumpTypes["new_pump"] || Object.values(pricingInputs.pumpTypes)[0] || 0;
+          pumpPrice = pumpNewPump ? pumpNewPump : firstPumpPrice ? firstPumpPrice : 0;
         }
       } else if (sectionType === "pump_parts" || sectionType === "pump_spares") {
         if (description.includes("IMPELLER")) {
-          pumpPrice =
-            pricingInputs.pumpTypes["impeller"] || pricingInputs.pumpTypes["pump_part"] || 0;
+          pumpPrice = pumpImpeller ? pumpImpeller : pumpPart ? pumpPart : 0;
         } else if (description.includes("SEAL")) {
-          pumpPrice =
-            pricingInputs.pumpTypes["mechanical_seal"] || pricingInputs.pumpTypes["pump_part"] || 0;
+          pumpPrice = pumpMechanicalSeal ? pumpMechanicalSeal : pumpPart ? pumpPart : 0;
         } else if (description.includes("BEARING")) {
-          pumpPrice =
-            pricingInputs.pumpTypes["bearing_kit"] || pricingInputs.pumpTypes["pump_part"] || 0;
+          pumpPrice = pumpBearingKit ? pumpBearingKit : pumpPart ? pumpPart : 0;
         } else if (description.includes("WEAR RING")) {
-          pumpPrice =
-            pricingInputs.pumpTypes["wear_ring"] || pricingInputs.pumpTypes["pump_part"] || 0;
+          pumpPrice = pumpWearRing ? pumpWearRing : pumpPart ? pumpPart : 0;
         } else if (description.includes("COUPLING")) {
-          pumpPrice =
-            pricingInputs.pumpTypes["coupling"] || pricingInputs.pumpTypes["pump_part"] || 0;
+          pumpPrice = pumpCoupling ? pumpCoupling : pumpPart ? pumpPart : 0;
         } else if (description.includes("SHAFT") || description.includes("SLEEVE")) {
-          pumpPrice =
-            pricingInputs.pumpTypes["shaft_sleeve"] || pricingInputs.pumpTypes["pump_part"] || 0;
+          pumpPrice = pumpShaftSleeve ? pumpShaftSleeve : pumpPart ? pumpPart : 0;
         } else {
-          pumpPrice =
-            pricingInputs.pumpTypes["pump_part"] ||
-            pricingInputs.pumpTypes["pump_spare"] ||
-            Object.values(pricingInputs.pumpTypes)[0] ||
-            0;
+          pumpPrice = pumpPart
+            ? pumpPart
+            : pumpSpare
+              ? pumpSpare
+              : firstPumpPrice
+                ? firstPumpPrice
+                : 0;
         }
       } else if (sectionType === "pump_repairs") {
         if (description.includes("MAJOR") || description.includes("OVERHAUL")) {
-          pumpPrice =
-            pricingInputs.pumpTypes["major_overhaul"] ||
-            pricingInputs.pumpTypes["pump_repair"] ||
-            0;
+          pumpPrice = pumpMajorOverhaul ? pumpMajorOverhaul : pumpRepair ? pumpRepair : 0;
         } else if (description.includes("MINOR")) {
-          pumpPrice =
-            pricingInputs.pumpTypes["minor_overhaul"] ||
-            pricingInputs.pumpTypes["pump_repair"] ||
-            0;
+          pumpPrice = pumpMinorOverhaul ? pumpMinorOverhaul : pumpRepair ? pumpRepair : 0;
         } else if (description.includes("SEAL") && description.includes("REPLACE")) {
-          pumpPrice =
-            pricingInputs.pumpTypes["seal_replacement"] ||
-            pricingInputs.pumpTypes["pump_repair"] ||
-            0;
+          pumpPrice = pumpSealReplacement ? pumpSealReplacement : pumpRepair ? pumpRepair : 0;
         } else if (description.includes("BEARING") && description.includes("REPLACE")) {
-          pumpPrice =
-            pricingInputs.pumpTypes["bearing_replacement"] ||
-            pricingInputs.pumpTypes["pump_repair"] ||
-            0;
+          pumpPrice = pumpBearingReplacement ? pumpBearingReplacement : pumpRepair ? pumpRepair : 0;
         } else if (description.includes("INSPECT")) {
-          pumpPrice =
-            pricingInputs.pumpTypes["inspection"] || pricingInputs.pumpTypes["pump_repair"] || 0;
+          pumpPrice = pumpInspection ? pumpInspection : pumpRepair ? pumpRepair : 0;
         } else {
-          pumpPrice =
-            pricingInputs.pumpTypes["pump_repair"] ||
-            Object.values(pricingInputs.pumpTypes)[0] ||
-            0;
+          pumpPrice = pumpRepair ? pumpRepair : firstPumpPrice ? firstPumpPrice : 0;
         }
       } else if (sectionType === "pump_rental") {
         if (description.includes("SLURRY")) {
-          pumpPrice =
-            pricingInputs.pumpTypes["slurry_rental"] || pricingInputs.pumpTypes["pump_rental"] || 0;
+          pumpPrice = pumpSlurryRental ? pumpSlurryRental : pumpRental ? pumpRental : 0;
         } else if (description.includes("LARGE") || description.includes("200")) {
-          pumpPrice =
-            pricingInputs.pumpTypes["large_dewatering"] ||
-            pricingInputs.pumpTypes["pump_rental"] ||
-            0;
+          pumpPrice = pumpLargeDewatering ? pumpLargeDewatering : pumpRental ? pumpRental : 0;
         } else if (
           description.includes("MEDIUM") ||
           description.includes("100") ||
           description.includes("150")
         ) {
-          pumpPrice =
-            pricingInputs.pumpTypes["medium_dewatering"] ||
-            pricingInputs.pumpTypes["pump_rental"] ||
-            0;
+          pumpPrice = pumpMediumDewatering ? pumpMediumDewatering : pumpRental ? pumpRental : 0;
         } else if (
           description.includes("SMALL") ||
           description.includes("50") ||
           description.includes("75")
         ) {
-          pumpPrice =
-            pricingInputs.pumpTypes["small_dewatering"] ||
-            pricingInputs.pumpTypes["pump_rental"] ||
-            0;
+          pumpPrice = pumpSmallDewatering ? pumpSmallDewatering : pumpRental ? pumpRental : 0;
         } else {
-          pumpPrice =
-            pricingInputs.pumpTypes["pump_rental"] ||
-            Object.values(pricingInputs.pumpTypes)[0] ||
-            0;
+          pumpPrice = pumpRental ? pumpRental : firstPumpPrice ? firstPumpPrice : 0;
         }
       }
       const labourExtrasPump = pumpPrice * (pricingInputs.labourExtrasPercent / 100);
@@ -2389,17 +2433,24 @@ function GrandTotalsSection({
 
     let basePrice = 0;
 
+    const firstEntry = item.entries[0];
     const rfqItem =
       item.entries.length > 0
-        ? rfqItems.find((ri) => ri.lineNumber === item.entries[0] || ri.id === item.entries[0])
+        ? rfqItems.find((ri) => ri.lineNumber === firstEntry || ri.id === firstEntry)
         : null;
 
+    const rfqStraightStandard = rfqItem?.straightPipeDetails?.pipeStandard;
+    const rfqBendStandard = rfqItem?.bendDetails?.pipeStandard;
+    const rfqFittingStandard = rfqItem?.fittingDetails?.fittingStandard;
     const itemSteelSpec = rfqItem
       ? normalizeSteelSpec(
-          rfqItem.straightPipeDetails?.pipeStandard ||
-            rfqItem.bendDetails?.pipeStandard ||
-            rfqItem.fittingDetails?.fittingStandard ||
-            "",
+          rfqStraightStandard
+            ? rfqStraightStandard
+            : rfqBendStandard
+              ? rfqBendStandard
+              : rfqFittingStandard
+                ? rfqFittingStandard
+                : "",
         )
       : "";
 
@@ -2413,7 +2464,7 @@ function GrandTotalsSection({
     });
 
     if (basePrice === 0) {
-      const defaultSteelPrice = Object.values(pricingInputs.steelSpecs)[0] || 0;
+      const defaultSteelPrice = firstSteelPrice ? firstSteelPrice : 0;
       if (defaultSteelPrice > 0) {
         basePrice = weightPerUnit * defaultSteelPrice;
       }
@@ -2421,24 +2472,29 @@ function GrandTotalsSection({
 
     let flangePrice = 0;
     if (rfqItem) {
-      const endConfig =
-        rfqItem.straightPipeDetails?.pipeEndConfiguration ||
-        rfqItem.bendDetails?.bendEndConfiguration ||
-        rfqItem.fittingDetails?.pipeEndConfiguration ||
-        "";
+      const rfqStraightEnd = rfqItem.straightPipeDetails?.pipeEndConfiguration;
+      const rfqBendEnd = rfqItem.bendDetails?.bendEndConfiguration;
+      const rfqFittingEnd = rfqItem.fittingDetails?.pipeEndConfiguration;
+      const endConfig = rfqStraightEnd
+        ? rfqStraightEnd
+        : rfqBendEnd
+          ? rfqBendEnd
+          : rfqFittingEnd
+            ? rfqFittingEnd
+            : "";
 
       if (endConfig && endConfig !== "PE") {
         const flangeCount = flangeCountFromConfig(endConfig, rfqItem.itemType);
         if (isRotatingFlange(endConfig)) {
-          flangePrice += (pricingInputs.flangeTypes["rotating"] || 0) * flangeCount;
+          flangePrice += (flangeRotatingPrice ? flangeRotatingPrice : 0) * flangeCount;
         } else {
-          flangePrice += (pricingInputs.flangeTypes["slipOn"] || 0) * flangeCount;
+          flangePrice += (flangeSlipOnPrice ? flangeSlipOnPrice : 0) * flangeCount;
         }
       }
 
       if (rfqItem.fittingDetails?.addBlankFlange && rfqItem.fittingDetails.blankFlangeCount) {
         flangePrice +=
-          (pricingInputs.flangeTypes["blank"] || 0) * rfqItem.fittingDetails.blankFlangeCount;
+          (flangeBlankPrice ? flangeBlankPrice : 0) * rfqItem.fittingDetails.blankFlangeCount;
       }
     }
 
@@ -2456,7 +2512,8 @@ function GrandTotalsSection({
     return weldTypes.reduce((sum, weldType) => {
       const quantity = weldTotals[weldType as keyof WeldTotals];
       const manualPrice = weldUnitPrices[weldType];
-      const pricePerLm = pricingInputs.weldTypes[weldType] || 0;
+      const weldPricing = pricingInputs.weldTypes[weldType];
+      const pricePerLm = weldPricing ? weldPricing : 0;
       const labourExtras = pricePerLm * (pricingInputs.labourExtrasPercent / 100);
       const suggestedPrice = pricePerLm + labourExtras;
       const effectivePrice =
@@ -2466,7 +2523,8 @@ function GrandTotalsSection({
   };
 
   const sectionsSubtotal = sections.reduce((total, section) => {
-    const sectionPrices = unitPrices[String(section.id)] || {};
+    const sectionPricesRaw = unitPrices[String(section.id)];
+    const sectionPrices = sectionPricesRaw ? sectionPricesRaw : {};
     const sectionTotal = section.items.reduce((sum, item, idx) => {
       const manualPrice = sectionPrices[idx];
       const effectivePrice =
@@ -2555,7 +2613,8 @@ function WeldsSection({
   onWeldUnitPriceChange,
 }: WeldsSectionProps) {
   const currency = currencyByCode(currencyCode);
-  const currencySymbol = currency?.symbol || currencyCode;
+  const symbolFromCurrency = currency?.symbol;
+  const currencySymbol = symbolFromCurrency ? symbolFromCurrency : currencyCode;
 
   const formatCurrency = (value: number): string => {
     return value.toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -2570,7 +2629,8 @@ function WeldsSection({
   }
 
   const calculateSuggestedPrice = (weldType: string): number => {
-    const pricePerLm = pricingInputs.weldTypes[weldType] || 0;
+    const weldPricing = pricingInputs.weldTypes[weldType];
+    const pricePerLm = weldPricing ? weldPricing : 0;
     const labourExtras = pricePerLm * (pricingInputs.labourExtrasPercent / 100);
     return pricePerLm + labourExtras;
   };
@@ -2628,12 +2688,13 @@ function WeldsSection({
               const lineTotalValue = quantity * currentUnitPrice;
               const isAutoCalculated =
                 (manualPrice === undefined || manualPrice === 0) && suggestedPrice > 0;
+              const weldLabel = WELD_TYPE_LABELS[weldType];
 
               return (
                 <tr key={weldType}>
                   <td className="w-12 px-3 py-2 text-sm text-gray-500">{idx + 1}</td>
                   <td className="px-3 py-2 text-sm text-gray-900">
-                    {WELD_TYPE_LABELS[weldType] || weldType}
+                    {weldLabel ? weldLabel : weldType}
                   </td>
                   <td className="w-24 px-3 py-2 text-sm text-gray-900 text-right">
                     {quantity.toFixed(3)}
@@ -2708,19 +2769,28 @@ function SectionTable({
 }: SectionTableProps) {
   const { data: allWeights = [] } = useAllFlangeTypeWeights();
 
-  const hasWelds = section.items.some(
-    (item) =>
-      item.welds?.flangeWeld ||
-      item.welds?.mitreWeld ||
-      item.welds?.teeWeld ||
-      item.welds?.gussetTeeWeld ||
-      item.welds?.latWeld45Plus ||
-      item.welds?.latWeldUnder45,
-  );
-  const hasAreas = section.items.some((item) => item.areas?.intAreaM2 || item.areas?.extAreaM2);
+  const hasWelds = section.items.some((item) => {
+    const welds = item.welds;
+    if (!welds) return false;
+    const flange = welds.flangeWeld;
+    const mitre = welds.mitreWeld;
+    const tee = welds.teeWeld;
+    const gusset = welds.gussetTeeWeld;
+    const lat45 = welds.latWeld45Plus;
+    const latUnder = welds.latWeldUnder45;
+    return flange || mitre || tee || gusset || lat45 || latUnder;
+  });
+  const hasAreas = section.items.some((item) => {
+    const areas = item.areas;
+    if (!areas) return false;
+    const intArea = areas.intAreaM2;
+    const extArea = areas.extAreaM2;
+    return intArea || extArea;
+  });
 
   const currency = currencyByCode(currencyCode);
-  const currencySymbol = currency?.symbol || currencyCode;
+  const symbolFromCurrency = currency?.symbol;
+  const currencySymbol = symbolFromCurrency ? symbolFromCurrency : currencyCode;
 
   const isFabricatedSection = ["straight_pipes", "bends", "fittings", "tees"].includes(
     section.sectionType,
@@ -2729,6 +2799,63 @@ function SectionTable({
     section.sectionType === "flanges" || section.sectionType === "blank_flanges";
   const isBlankFlangesSection = section.sectionType === "blank_flanges";
   const isBnwSection = section.sectionType === "bnw_sets";
+
+  const bnwBoltsPrice = pricingInputs.bnwTypes["bolts"];
+  const bnwNutsPrice = pricingInputs.bnwTypes["nuts"];
+  const bnwWashersPrice = pricingInputs.bnwTypes["washers"];
+  const flangeBlankPrice = pricingInputs.flangeTypes["blank"];
+  const flangeRotatingPrice = pricingInputs.flangeTypes["rotating"];
+  const flangeSlipOnPrice = pricingInputs.flangeTypes["slipOn"];
+
+  const valveBall = pricingInputs.valveTypes["ball_valve"];
+  const valveGate = pricingInputs.valveTypes["gate_valve"];
+  const valveGlobe = pricingInputs.valveTypes["globe_valve"];
+  const valveButterfly = pricingInputs.valveTypes["butterfly_valve"];
+  const valveCheck = pricingInputs.valveTypes["check_valve"];
+  const valveControl = pricingInputs.valveTypes["control_valve"];
+  const valveSafety = pricingInputs.valveTypes["safety_valve"];
+  const valvePlug = pricingInputs.valveTypes["plug_valve"];
+  const valveNeedle = pricingInputs.valveTypes["needle_valve"];
+  const valveDiaphragm = pricingInputs.valveTypes["diaphragm_valve"];
+  const valveGeneral = pricingInputs.valveTypes["general_valve"];
+
+  const instFlowMeter = pricingInputs.instrumentTypes["flow_meter"];
+  const instPressure = pricingInputs.instrumentTypes["pressure_instrument"];
+  const instLevel = pricingInputs.instrumentTypes["level_instrument"];
+  const instTemperature = pricingInputs.instrumentTypes["temperature_instrument"];
+  const instAnalytical = pricingInputs.instrumentTypes["analytical_instrument"];
+  const instGeneral = pricingInputs.instrumentTypes["general_instrument"];
+
+  const pumpCentrifugal = pricingInputs.pumpTypes["centrifugal_pump"];
+  const pumpSubmersible = pricingInputs.pumpTypes["submersible_pump"];
+  const pumpProgressiveCavity = pricingInputs.pumpTypes["progressive_cavity_pump"];
+  const pumpSlurry = pricingInputs.pumpTypes["slurry_pump"];
+  const pumpDiaphragm = pricingInputs.pumpTypes["diaphragm_pump"];
+  const pumpGear = pricingInputs.pumpTypes["gear_pump"];
+  const pumpNewPump = pricingInputs.pumpTypes["new_pump"];
+  const pumpImpeller = pricingInputs.pumpTypes["impeller"];
+  const pumpMechanicalSeal = pricingInputs.pumpTypes["mechanical_seal"];
+  const pumpBearingKit = pricingInputs.pumpTypes["bearing_kit"];
+  const pumpWearRing = pricingInputs.pumpTypes["wear_ring"];
+  const pumpCoupling = pricingInputs.pumpTypes["coupling"];
+  const pumpShaftSleeve = pricingInputs.pumpTypes["shaft_sleeve"];
+  const pumpPart = pricingInputs.pumpTypes["pump_part"];
+  const pumpSpare = pricingInputs.pumpTypes["pump_spare"];
+  const pumpMajorOverhaul = pricingInputs.pumpTypes["major_overhaul"];
+  const pumpMinorOverhaul = pricingInputs.pumpTypes["minor_overhaul"];
+  const pumpSealReplacement = pricingInputs.pumpTypes["seal_replacement"];
+  const pumpBearingReplacement = pricingInputs.pumpTypes["bearing_replacement"];
+  const pumpInspection = pricingInputs.pumpTypes["inspection"];
+  const pumpRepair = pricingInputs.pumpTypes["pump_repair"];
+  const pumpSlurryRental = pricingInputs.pumpTypes["slurry_rental"];
+  const pumpLargeDewatering = pricingInputs.pumpTypes["large_dewatering"];
+  const pumpMediumDewatering = pricingInputs.pumpTypes["medium_dewatering"];
+  const pumpSmallDewatering = pricingInputs.pumpTypes["small_dewatering"];
+  const pumpRental = pricingInputs.pumpTypes["pump_rental"];
+  const firstValvePrice = Object.values(pricingInputs.valveTypes)[0];
+  const firstInstrumentPrice = Object.values(pricingInputs.instrumentTypes)[0];
+  const firstPumpPrice = Object.values(pricingInputs.pumpTypes)[0];
+  const firstSteelPrice = Object.values(pricingInputs.steelSpecs)[0];
 
   const effectiveItemWeight = (item: ConsolidatedItem): number => {
     if (isFlangesSection) {
@@ -2748,9 +2875,9 @@ function SectionTable({
       const nutWeight = totalBnwWeight * 0.3;
       const washerWeight = totalBnwWeight * 0.15;
 
-      const boltPrice = (pricingInputs.bnwTypes["bolts"] || 0) * boltWeight;
-      const nutPrice = (pricingInputs.bnwTypes["nuts"] || 0) * nutWeight;
-      const washerPrice = (pricingInputs.bnwTypes["washers"] || 0) * washerWeight;
+      const boltPrice = (bnwBoltsPrice ? bnwBoltsPrice : 0) * boltWeight;
+      const nutPrice = (bnwNutsPrice ? bnwNutsPrice : 0) * nutWeight;
+      const washerPrice = (bnwWashersPrice ? bnwWashersPrice : 0) * washerWeight;
 
       return boltPrice + nutPrice + washerPrice;
     }
@@ -2758,11 +2885,11 @@ function SectionTable({
     if (isFlangesSection) {
       let flangePrice = 0;
       if (isBlankFlangesSection || description.includes("BLANK")) {
-        flangePrice = (pricingInputs.flangeTypes["blank"] || 0) * weightPerUnit;
+        flangePrice = (flangeBlankPrice ? flangeBlankPrice : 0) * weightPerUnit;
       } else if (description.includes("ROTATING") || description.includes("R/F")) {
-        flangePrice = (pricingInputs.flangeTypes["rotating"] || 0) * weightPerUnit;
+        flangePrice = (flangeRotatingPrice ? flangeRotatingPrice : 0) * weightPerUnit;
       } else {
-        flangePrice = (pricingInputs.flangeTypes["slipOn"] || 0) * weightPerUnit;
+        flangePrice = (flangeSlipOnPrice ? flangeSlipOnPrice : 0) * weightPerUnit;
       }
       const labourExtras = flangePrice * (pricingInputs.labourExtrasPercent / 100);
       return flangePrice + labourExtras;
@@ -2772,54 +2899,31 @@ function SectionTable({
     if (isValveSectionSecond) {
       let valvePrice = 0;
       if (description.includes("BALL")) {
-        valvePrice =
-          pricingInputs.valveTypes["ball_valve"] || pricingInputs.valveTypes["general_valve"] || 0;
+        valvePrice = valveBall ? valveBall : valveGeneral ? valveGeneral : 0;
       } else if (description.includes("GATE")) {
-        valvePrice =
-          pricingInputs.valveTypes["gate_valve"] || pricingInputs.valveTypes["general_valve"] || 0;
+        valvePrice = valveGate ? valveGate : valveGeneral ? valveGeneral : 0;
       } else if (description.includes("GLOBE")) {
-        valvePrice =
-          pricingInputs.valveTypes["globe_valve"] || pricingInputs.valveTypes["general_valve"] || 0;
+        valvePrice = valveGlobe ? valveGlobe : valveGeneral ? valveGeneral : 0;
       } else if (description.includes("BUTTERFLY")) {
-        valvePrice =
-          pricingInputs.valveTypes["butterfly_valve"] ||
-          pricingInputs.valveTypes["general_valve"] ||
-          0;
+        valvePrice = valveButterfly ? valveButterfly : valveGeneral ? valveGeneral : 0;
       } else if (description.includes("CHECK")) {
-        valvePrice =
-          pricingInputs.valveTypes["check_valve"] || pricingInputs.valveTypes["general_valve"] || 0;
+        valvePrice = valveCheck ? valveCheck : valveGeneral ? valveGeneral : 0;
       } else if (description.includes("CONTROL") || description.includes("ACTUATOR")) {
-        valvePrice =
-          pricingInputs.valveTypes["control_valve"] ||
-          pricingInputs.valveTypes["general_valve"] ||
-          0;
+        valvePrice = valveControl ? valveControl : valveGeneral ? valveGeneral : 0;
       } else if (
         description.includes("SAFETY") ||
         description.includes("RELIEF") ||
         description.includes("PSV")
       ) {
-        valvePrice =
-          pricingInputs.valveTypes["safety_valve"] ||
-          pricingInputs.valveTypes["general_valve"] ||
-          0;
+        valvePrice = valveSafety ? valveSafety : valveGeneral ? valveGeneral : 0;
       } else if (description.includes("PLUG")) {
-        valvePrice =
-          pricingInputs.valveTypes["plug_valve"] || pricingInputs.valveTypes["general_valve"] || 0;
+        valvePrice = valvePlug ? valvePlug : valveGeneral ? valveGeneral : 0;
       } else if (description.includes("NEEDLE")) {
-        valvePrice =
-          pricingInputs.valveTypes["needle_valve"] ||
-          pricingInputs.valveTypes["general_valve"] ||
-          0;
+        valvePrice = valveNeedle ? valveNeedle : valveGeneral ? valveGeneral : 0;
       } else if (description.includes("DIAPHRAGM")) {
-        valvePrice =
-          pricingInputs.valveTypes["diaphragm_valve"] ||
-          pricingInputs.valveTypes["general_valve"] ||
-          0;
+        valvePrice = valveDiaphragm ? valveDiaphragm : valveGeneral ? valveGeneral : 0;
       } else {
-        valvePrice =
-          pricingInputs.valveTypes["general_valve"] ||
-          Object.values(pricingInputs.valveTypes)[0] ||
-          0;
+        valvePrice = valveGeneral ? valveGeneral : firstValvePrice ? firstValvePrice : 0;
       }
       const labourExtrasValve = valvePrice * (pricingInputs.labourExtrasPercent / 100);
       return valvePrice + labourExtrasValve;
@@ -2839,54 +2943,40 @@ function SectionTable({
         description.includes("FLOW") ||
         description.includes("METER")
       ) {
-        instrumentPrice =
-          pricingInputs.instrumentTypes["flow_meter"] ||
-          pricingInputs.instrumentTypes["general_instrument"] ||
-          0;
+        instrumentPrice = instFlowMeter ? instFlowMeter : instGeneral ? instGeneral : 0;
       } else if (
         section.sectionType === "pressure_instruments" ||
         description.includes("PRESSURE") ||
         description.includes("PSI") ||
         description.includes("BAR")
       ) {
-        instrumentPrice =
-          pricingInputs.instrumentTypes["pressure_instrument"] ||
-          pricingInputs.instrumentTypes["general_instrument"] ||
-          0;
+        instrumentPrice = instPressure ? instPressure : instGeneral ? instGeneral : 0;
       } else if (
         section.sectionType === "level_instruments" ||
         description.includes("LEVEL") ||
         description.includes("RADAR") ||
         description.includes("ULTRASONIC")
       ) {
-        instrumentPrice =
-          pricingInputs.instrumentTypes["level_instrument"] ||
-          pricingInputs.instrumentTypes["general_instrument"] ||
-          0;
+        instrumentPrice = instLevel ? instLevel : instGeneral ? instGeneral : 0;
       } else if (
         section.sectionType === "temperature_instruments" ||
         description.includes("TEMPERATURE") ||
         description.includes("RTD") ||
         description.includes("THERMOCOUPLE")
       ) {
-        instrumentPrice =
-          pricingInputs.instrumentTypes["temperature_instrument"] ||
-          pricingInputs.instrumentTypes["general_instrument"] ||
-          0;
+        instrumentPrice = instTemperature ? instTemperature : instGeneral ? instGeneral : 0;
       } else if (
         description.includes("PH") ||
         description.includes("CONDUCTIVITY") ||
         description.includes("ANALYZER")
       ) {
-        instrumentPrice =
-          pricingInputs.instrumentTypes["analytical_instrument"] ||
-          pricingInputs.instrumentTypes["general_instrument"] ||
-          0;
+        instrumentPrice = instAnalytical ? instAnalytical : instGeneral ? instGeneral : 0;
       } else {
-        instrumentPrice =
-          pricingInputs.instrumentTypes["general_instrument"] ||
-          Object.values(pricingInputs.instrumentTypes)[0] ||
-          0;
+        instrumentPrice = instGeneral
+          ? instGeneral
+          : firstInstrumentPrice
+            ? firstInstrumentPrice
+            : 0;
       }
       const labourExtrasInst = instrumentPrice * (pricingInputs.labourExtrasPercent / 100);
       return instrumentPrice + labourExtrasInst;
@@ -2903,121 +2993,79 @@ function SectionTable({
       let pumpPrice = 0;
       if (section.sectionType === "pumps") {
         if (description.includes("CENTRIFUGAL") || description.includes("END SUCTION")) {
-          pumpPrice =
-            pricingInputs.pumpTypes["centrifugal_pump"] || pricingInputs.pumpTypes["new_pump"] || 0;
+          pumpPrice = pumpCentrifugal ? pumpCentrifugal : pumpNewPump ? pumpNewPump : 0;
         } else if (description.includes("SUBMERSIBLE") || description.includes("BOREHOLE")) {
-          pumpPrice =
-            pricingInputs.pumpTypes["submersible_pump"] || pricingInputs.pumpTypes["new_pump"] || 0;
+          pumpPrice = pumpSubmersible ? pumpSubmersible : pumpNewPump ? pumpNewPump : 0;
         } else if (
           description.includes("PROGRESSIVE") ||
           description.includes("CAVITY") ||
           description.includes("MONO")
         ) {
-          pumpPrice =
-            pricingInputs.pumpTypes["progressive_cavity_pump"] ||
-            pricingInputs.pumpTypes["new_pump"] ||
-            0;
+          pumpPrice = pumpProgressiveCavity ? pumpProgressiveCavity : pumpNewPump ? pumpNewPump : 0;
         } else if (description.includes("SLURRY") || description.includes("WARMAN")) {
-          pumpPrice =
-            pricingInputs.pumpTypes["slurry_pump"] || pricingInputs.pumpTypes["new_pump"] || 0;
+          pumpPrice = pumpSlurry ? pumpSlurry : pumpNewPump ? pumpNewPump : 0;
         } else if (description.includes("DIAPHRAGM")) {
-          pumpPrice =
-            pricingInputs.pumpTypes["diaphragm_pump"] || pricingInputs.pumpTypes["new_pump"] || 0;
+          pumpPrice = pumpDiaphragm ? pumpDiaphragm : pumpNewPump ? pumpNewPump : 0;
         } else if (description.includes("GEAR")) {
-          pumpPrice =
-            pricingInputs.pumpTypes["gear_pump"] || pricingInputs.pumpTypes["new_pump"] || 0;
+          pumpPrice = pumpGear ? pumpGear : pumpNewPump ? pumpNewPump : 0;
         } else {
-          pumpPrice =
-            pricingInputs.pumpTypes["new_pump"] || Object.values(pricingInputs.pumpTypes)[0] || 0;
+          pumpPrice = pumpNewPump ? pumpNewPump : firstPumpPrice ? firstPumpPrice : 0;
         }
       } else if (section.sectionType === "pump_parts" || section.sectionType === "pump_spares") {
         if (description.includes("IMPELLER")) {
-          pumpPrice =
-            pricingInputs.pumpTypes["impeller"] || pricingInputs.pumpTypes["pump_part"] || 0;
+          pumpPrice = pumpImpeller ? pumpImpeller : pumpPart ? pumpPart : 0;
         } else if (description.includes("SEAL")) {
-          pumpPrice =
-            pricingInputs.pumpTypes["mechanical_seal"] || pricingInputs.pumpTypes["pump_part"] || 0;
+          pumpPrice = pumpMechanicalSeal ? pumpMechanicalSeal : pumpPart ? pumpPart : 0;
         } else if (description.includes("BEARING")) {
-          pumpPrice =
-            pricingInputs.pumpTypes["bearing_kit"] || pricingInputs.pumpTypes["pump_part"] || 0;
+          pumpPrice = pumpBearingKit ? pumpBearingKit : pumpPart ? pumpPart : 0;
         } else if (description.includes("WEAR RING")) {
-          pumpPrice =
-            pricingInputs.pumpTypes["wear_ring"] || pricingInputs.pumpTypes["pump_part"] || 0;
+          pumpPrice = pumpWearRing ? pumpWearRing : pumpPart ? pumpPart : 0;
         } else if (description.includes("COUPLING")) {
-          pumpPrice =
-            pricingInputs.pumpTypes["coupling"] || pricingInputs.pumpTypes["pump_part"] || 0;
+          pumpPrice = pumpCoupling ? pumpCoupling : pumpPart ? pumpPart : 0;
         } else if (description.includes("SHAFT") || description.includes("SLEEVE")) {
-          pumpPrice =
-            pricingInputs.pumpTypes["shaft_sleeve"] || pricingInputs.pumpTypes["pump_part"] || 0;
+          pumpPrice = pumpShaftSleeve ? pumpShaftSleeve : pumpPart ? pumpPart : 0;
         } else {
-          pumpPrice =
-            pricingInputs.pumpTypes["pump_part"] ||
-            pricingInputs.pumpTypes["pump_spare"] ||
-            Object.values(pricingInputs.pumpTypes)[0] ||
-            0;
+          pumpPrice = pumpPart
+            ? pumpPart
+            : pumpSpare
+              ? pumpSpare
+              : firstPumpPrice
+                ? firstPumpPrice
+                : 0;
         }
       } else if (section.sectionType === "pump_repairs") {
         if (description.includes("MAJOR") || description.includes("OVERHAUL")) {
-          pumpPrice =
-            pricingInputs.pumpTypes["major_overhaul"] ||
-            pricingInputs.pumpTypes["pump_repair"] ||
-            0;
+          pumpPrice = pumpMajorOverhaul ? pumpMajorOverhaul : pumpRepair ? pumpRepair : 0;
         } else if (description.includes("MINOR")) {
-          pumpPrice =
-            pricingInputs.pumpTypes["minor_overhaul"] ||
-            pricingInputs.pumpTypes["pump_repair"] ||
-            0;
+          pumpPrice = pumpMinorOverhaul ? pumpMinorOverhaul : pumpRepair ? pumpRepair : 0;
         } else if (description.includes("SEAL") && description.includes("REPLACE")) {
-          pumpPrice =
-            pricingInputs.pumpTypes["seal_replacement"] ||
-            pricingInputs.pumpTypes["pump_repair"] ||
-            0;
+          pumpPrice = pumpSealReplacement ? pumpSealReplacement : pumpRepair ? pumpRepair : 0;
         } else if (description.includes("BEARING") && description.includes("REPLACE")) {
-          pumpPrice =
-            pricingInputs.pumpTypes["bearing_replacement"] ||
-            pricingInputs.pumpTypes["pump_repair"] ||
-            0;
+          pumpPrice = pumpBearingReplacement ? pumpBearingReplacement : pumpRepair ? pumpRepair : 0;
         } else if (description.includes("INSPECT")) {
-          pumpPrice =
-            pricingInputs.pumpTypes["inspection"] || pricingInputs.pumpTypes["pump_repair"] || 0;
+          pumpPrice = pumpInspection ? pumpInspection : pumpRepair ? pumpRepair : 0;
         } else {
-          pumpPrice =
-            pricingInputs.pumpTypes["pump_repair"] ||
-            Object.values(pricingInputs.pumpTypes)[0] ||
-            0;
+          pumpPrice = pumpRepair ? pumpRepair : firstPumpPrice ? firstPumpPrice : 0;
         }
       } else if (section.sectionType === "pump_rental") {
         if (description.includes("SLURRY")) {
-          pumpPrice =
-            pricingInputs.pumpTypes["slurry_rental"] || pricingInputs.pumpTypes["pump_rental"] || 0;
+          pumpPrice = pumpSlurryRental ? pumpSlurryRental : pumpRental ? pumpRental : 0;
         } else if (description.includes("LARGE") || description.includes("200")) {
-          pumpPrice =
-            pricingInputs.pumpTypes["large_dewatering"] ||
-            pricingInputs.pumpTypes["pump_rental"] ||
-            0;
+          pumpPrice = pumpLargeDewatering ? pumpLargeDewatering : pumpRental ? pumpRental : 0;
         } else if (
           description.includes("MEDIUM") ||
           description.includes("100") ||
           description.includes("150")
         ) {
-          pumpPrice =
-            pricingInputs.pumpTypes["medium_dewatering"] ||
-            pricingInputs.pumpTypes["pump_rental"] ||
-            0;
+          pumpPrice = pumpMediumDewatering ? pumpMediumDewatering : pumpRental ? pumpRental : 0;
         } else if (
           description.includes("SMALL") ||
           description.includes("50") ||
           description.includes("75")
         ) {
-          pumpPrice =
-            pricingInputs.pumpTypes["small_dewatering"] ||
-            pricingInputs.pumpTypes["pump_rental"] ||
-            0;
+          pumpPrice = pumpSmallDewatering ? pumpSmallDewatering : pumpRental ? pumpRental : 0;
         } else {
-          pumpPrice =
-            pricingInputs.pumpTypes["pump_rental"] ||
-            Object.values(pricingInputs.pumpTypes)[0] ||
-            0;
+          pumpPrice = pumpRental ? pumpRental : firstPumpPrice ? firstPumpPrice : 0;
         }
       }
       const labourExtrasPump = pumpPrice * (pricingInputs.labourExtrasPercent / 100);
@@ -3028,17 +3076,24 @@ function SectionTable({
 
     let basePrice = 0;
 
+    const firstEntry = item.entries[0];
     const rfqItem =
       item.entries.length > 0
-        ? rfqItems.find((ri) => ri.lineNumber === item.entries[0] || ri.id === item.entries[0])
+        ? rfqItems.find((ri) => ri.lineNumber === firstEntry || ri.id === firstEntry)
         : null;
 
+    const rfqStraightStandard = rfqItem?.straightPipeDetails?.pipeStandard;
+    const rfqBendStandard = rfqItem?.bendDetails?.pipeStandard;
+    const rfqFittingStandard = rfqItem?.fittingDetails?.fittingStandard;
     const itemSteelSpec = rfqItem
       ? normalizeSteelSpec(
-          rfqItem.straightPipeDetails?.pipeStandard ||
-            rfqItem.bendDetails?.pipeStandard ||
-            rfqItem.fittingDetails?.fittingStandard ||
-            "",
+          rfqStraightStandard
+            ? rfqStraightStandard
+            : rfqBendStandard
+              ? rfqBendStandard
+              : rfqFittingStandard
+                ? rfqFittingStandard
+                : "",
         )
       : "";
 
@@ -3052,7 +3107,7 @@ function SectionTable({
     });
 
     if (basePrice === 0) {
-      const defaultSteelPrice = Object.values(pricingInputs.steelSpecs)[0] || 0;
+      const defaultSteelPrice = firstSteelPrice ? firstSteelPrice : 0;
       if (defaultSteelPrice > 0) {
         basePrice = weightPerUnit * defaultSteelPrice;
       }
@@ -3060,24 +3115,29 @@ function SectionTable({
 
     let flangePrice = 0;
     if (rfqItem) {
-      const endConfig =
-        rfqItem.straightPipeDetails?.pipeEndConfiguration ||
-        rfqItem.bendDetails?.bendEndConfiguration ||
-        rfqItem.fittingDetails?.pipeEndConfiguration ||
-        "";
+      const rfqStraightEnd = rfqItem.straightPipeDetails?.pipeEndConfiguration;
+      const rfqBendEnd = rfqItem.bendDetails?.bendEndConfiguration;
+      const rfqFittingEnd = rfqItem.fittingDetails?.pipeEndConfiguration;
+      const endConfig = rfqStraightEnd
+        ? rfqStraightEnd
+        : rfqBendEnd
+          ? rfqBendEnd
+          : rfqFittingEnd
+            ? rfqFittingEnd
+            : "";
 
       if (endConfig && endConfig !== "PE") {
         const flangeCount = flangeCountFromConfig(endConfig, rfqItem.itemType);
         if (isRotatingFlange(endConfig)) {
-          flangePrice += (pricingInputs.flangeTypes["rotating"] || 0) * flangeCount;
+          flangePrice += (flangeRotatingPrice ? flangeRotatingPrice : 0) * flangeCount;
         } else {
-          flangePrice += (pricingInputs.flangeTypes["slipOn"] || 0) * flangeCount;
+          flangePrice += (flangeSlipOnPrice ? flangeSlipOnPrice : 0) * flangeCount;
         }
       }
 
       if (rfqItem.fittingDetails?.addBlankFlange && rfqItem.fittingDetails.blankFlangeCount) {
         flangePrice +=
-          (pricingInputs.flangeTypes["blank"] || 0) * rfqItem.fittingDetails.blankFlangeCount;
+          (flangeBlankPrice ? flangeBlankPrice : 0) * rfqItem.fittingDetails.blankFlangeCount;
       }
     }
 
@@ -3103,14 +3163,38 @@ function SectionTable({
   const totalLineAmount = section.items.reduce((sum, item, idx) => sum + lineTotal(idx, item), 0);
 
   const totals = {
-    flangeWeld: section.items.reduce((sum, item) => sum + (item.welds?.flangeWeld || 0), 0),
-    mitreWeld: section.items.reduce((sum, item) => sum + (item.welds?.mitreWeld || 0), 0),
-    teeWeld: section.items.reduce((sum, item) => sum + (item.welds?.teeWeld || 0), 0),
-    gussetTeeWeld: section.items.reduce((sum, item) => sum + (item.welds?.gussetTeeWeld || 0), 0),
-    latWeld45Plus: section.items.reduce((sum, item) => sum + (item.welds?.latWeld45Plus || 0), 0),
-    latWeldUnder45: section.items.reduce((sum, item) => sum + (item.welds?.latWeldUnder45 || 0), 0),
-    intArea: section.items.reduce((sum, item) => sum + (item.areas?.intAreaM2 || 0), 0),
-    extArea: section.items.reduce((sum, item) => sum + (item.areas?.extAreaM2 || 0), 0),
+    flangeWeld: section.items.reduce((sum, item) => {
+      const weldValue = item.welds?.flangeWeld;
+      return sum + (weldValue ? weldValue : 0);
+    }, 0),
+    mitreWeld: section.items.reduce((sum, item) => {
+      const weldValue = item.welds?.mitreWeld;
+      return sum + (weldValue ? weldValue : 0);
+    }, 0),
+    teeWeld: section.items.reduce((sum, item) => {
+      const weldValue = item.welds?.teeWeld;
+      return sum + (weldValue ? weldValue : 0);
+    }, 0),
+    gussetTeeWeld: section.items.reduce((sum, item) => {
+      const weldValue = item.welds?.gussetTeeWeld;
+      return sum + (weldValue ? weldValue : 0);
+    }, 0),
+    latWeld45Plus: section.items.reduce((sum, item) => {
+      const weldValue = item.welds?.latWeld45Plus;
+      return sum + (weldValue ? weldValue : 0);
+    }, 0),
+    latWeldUnder45: section.items.reduce((sum, item) => {
+      const weldValue = item.welds?.latWeldUnder45;
+      return sum + (weldValue ? weldValue : 0);
+    }, 0),
+    intArea: section.items.reduce((sum, item) => {
+      const areaValue = item.areas?.intAreaM2;
+      return sum + (areaValue ? areaValue : 0);
+    }, 0),
+    extArea: section.items.reduce((sum, item) => {
+      const areaValue = item.areas?.extAreaM2;
+      return sum + (areaValue ? areaValue : 0);
+    }, 0),
     weight: isFlangesSection
       ? section.items.reduce((sum, item) => sum + effectiveItemWeight(item), 0)
       : Number(section.totalWeightKg) || 0,
@@ -3193,13 +3277,19 @@ function SectionTable({
               const lineTotalValue = lineTotal(idx, item);
               const isAutoCalculated =
                 (manualPrice === undefined || manualPrice === 0) && suggestedPrice > 0;
+              const itemFlangeWeld = item.welds?.flangeWeld;
+              const itemMitreWeld = item.welds?.mitreWeld;
+              const itemTeeWeld = item.welds?.teeWeld;
+              const itemGussetTeeWeld = item.welds?.gussetTeeWeld;
+              const itemLatWeld45Plus = item.welds?.latWeld45Plus;
+              const itemLatWeldUnder45 = item.welds?.latWeldUnder45;
               const totalWeldLm =
-                (item.welds?.flangeWeld || 0) +
-                (item.welds?.mitreWeld || 0) +
-                (item.welds?.teeWeld || 0) +
-                (item.welds?.gussetTeeWeld || 0) +
-                (item.welds?.latWeld45Plus || 0) +
-                (item.welds?.latWeldUnder45 || 0);
+                (itemFlangeWeld ? itemFlangeWeld : 0) +
+                (itemMitreWeld ? itemMitreWeld : 0) +
+                (itemTeeWeld ? itemTeeWeld : 0) +
+                (itemGussetTeeWeld ? itemGussetTeeWeld : 0) +
+                (itemLatWeld45Plus ? itemLatWeld45Plus : 0) +
+                (itemLatWeldUnder45 ? itemLatWeldUnder45 : 0);
 
               return (
                 <React.Fragment key={idx}>
@@ -3343,16 +3433,26 @@ function SectionTable({
 }
 
 function RfqSectionTable({ section }: { section: BoqSection }) {
-  const hasAreas = section.items.some((item) => item.areas?.intAreaM2 || item.areas?.extAreaM2);
+  const hasAreas = section.items.some((item) => {
+    const areas = item.areas;
+    if (!areas) return false;
+    const intArea = areas.intAreaM2;
+    const extArea = areas.extAreaM2;
+    return intArea || extArea;
+  });
 
   // Calculate section totals
   const sectionTotals = section.items.reduce(
-    (acc, item) => ({
-      qty: acc.qty + (item.qty || 0),
-      weight: acc.weight + Number(item.weightKg || 0),
-      extArea: acc.extArea + Number(item.areas?.extAreaM2 || 0),
-      intArea: acc.intArea + Number(item.areas?.intAreaM2 || 0),
-    }),
+    (acc, item) => {
+      const extAreaValue = item.areas?.extAreaM2;
+      const intAreaValue = item.areas?.intAreaM2;
+      return {
+        qty: acc.qty + (item.qty || 0),
+        weight: acc.weight + Number(item.weightKg || 0),
+        extArea: acc.extArea + Number(extAreaValue ? extAreaValue : 0),
+        intArea: acc.intArea + Number(intAreaValue ? intAreaValue : 0),
+      };
+    },
     { qty: 0, weight: 0, extArea: 0, intArea: 0 },
   );
 
@@ -3411,7 +3511,18 @@ function RfqSectionTable({ section }: { section: BoqSection }) {
               const wtMatch = item.description.match(
                 /W\/T\s*(\d+(?:\.\d+)?)\s*mm|(\d+(?:\.\d+)?)\s*mm\s*W\/T|Sch\w*\s*\((\d+(?:\.\d+)?)mm\)/i,
               );
-              const weldWt = wtMatch ? wtMatch[1] || wtMatch[2] || wtMatch[3] : null;
+              const wtGroup1 = wtMatch ? wtMatch[1] : undefined;
+              const wtGroup2 = wtMatch ? wtMatch[2] : undefined;
+              const wtGroup3 = wtMatch ? wtMatch[3] : undefined;
+              const weldWt = wtMatch
+                ? wtGroup1
+                  ? wtGroup1
+                  : wtGroup2
+                    ? wtGroup2
+                    : wtGroup3
+                      ? wtGroup3
+                      : null
+                : null;
 
               return (
                 <tr key={idx} className={idx % 2 === 0 ? "bg-white" : "bg-gray-50"}>
@@ -3490,8 +3601,14 @@ function RfqItemsDetailedView({
   const { data: allWeights = [] } = useAllFlangeTypeWeights();
 
   const currency = currencyByCode(currencyCode);
-  const currencySymbol = currency?.symbol || currencyCode;
+  const symbolFromCurrency = currency?.symbol;
+  const currencySymbol = symbolFromCurrency ? symbolFromCurrency : currencyCode;
   const totalWeight = items.reduce((sum, item) => sum + Number(item.totalWeightKg || 0), 0);
+
+  const accessoryBoltsPrice = pricingInputs.bnwTypes["bolts"];
+  const accessoryNutsPrice = pricingInputs.bnwTypes["nuts"];
+  const accessoryWashersPrice = pricingInputs.bnwTypes["washers"];
+  const accessoryBlankFlangePrice = pricingInputs.flangeTypes["blank"];
 
   const formatCurrency = (value: number): string => {
     return value.toLocaleString("en-ZA", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -3524,7 +3641,8 @@ function RfqItemsDetailedView({
       bend: "Bend",
       fitting: "Fitting",
     };
-    return labels[type] || type;
+    const label = labels[type];
+    return label ? label : type;
   };
 
   const formatScheduleDisplay = (scheduleNumber?: string, wallThicknessMm?: number): string => {
@@ -3567,7 +3685,8 @@ function RfqItemsDetailedView({
       const endConfig = details.pipeEndConfiguration || "PE";
       const wt = Number(details.wallThicknessMm) || 6;
       const nb = Number(details.nominalBoreMm) || 0;
-      const od = nbToOdMap[nb] || nb * 1.05;
+      const odLookup = nbToOdMap[nb];
+      const od = odLookup ? odLookup : nb * 1.05;
       const circumferenceMm = Math.PI * od;
 
       let flangeWeldMeters = 0;
@@ -3610,7 +3729,8 @@ function RfqItemsDetailedView({
       const endConfig = details.bendEndConfiguration || "PE";
       const wt = Number(details.wallThicknessMm) || 6;
       const nb = Number(details.nominalBoreMm) || 0;
-      const od = nbToOdMap[nb] || nb * 1.05;
+      const odLookup = nbToOdMap[nb];
+      const od = odLookup ? odLookup : nb * 1.05;
       const circumferenceMm = Math.PI * od;
       const calcData = details.calculationData;
 
@@ -3647,17 +3767,20 @@ function RfqItemsDetailedView({
       }
 
       let teeWeldMeters = 0;
-      const stubs = calcData?.stubs || [];
+      const rawStubs = calcData?.stubs;
+      const stubs = rawStubs ? rawStubs : [];
       if (Array.isArray(stubs) && stubs.length > 0) {
         stubs.forEach((stub: { nominalBoreMm?: number }) => {
           const stubNb = Number(stub.nominalBoreMm) || nb;
-          const stubOd = nbToOdMap[stubNb] || stubNb * 1.05;
+          const stubOdLookup = nbToOdMap[stubNb];
+          const stubOd = stubOdLookup ? stubOdLookup : stubNb * 1.05;
           const stubCirc = Math.PI * stubOd;
           teeWeldMeters += stubCirc / 1000;
         });
       } else if (calcData?.numberOfStubs && Number(calcData.numberOfStubs) > 0) {
         const stubNb = Number(calcData.stubNominalBoreMm) || nb;
-        const stubOd = nbToOdMap[stubNb] || stubNb * 1.05;
+        const stubOdLookup = nbToOdMap[stubNb];
+        const stubOd = stubOdLookup ? stubOdLookup : stubNb * 1.05;
         const stubCirc = Math.PI * stubOd;
         teeWeldMeters = (Number(calcData.numberOfStubs) * stubCirc) / 1000;
       }
@@ -3666,7 +3789,8 @@ function RfqItemsDetailedView({
         stubs.forEach((stub: { flangeSpec?: string; nominalBoreMm?: number }) => {
           if (stub.flangeSpec && stub.flangeSpec !== "PE" && stub.flangeSpec !== "") {
             const stubNb = Number(stub.nominalBoreMm) || nb;
-            const stubOd = nbToOdMap[stubNb] || stubNb * 1.05;
+            const stubOdLookup = nbToOdMap[stubNb];
+            const stubOd = stubOdLookup ? stubOdLookup : stubNb * 1.05;
             const stubCirc = Math.PI * stubOd;
             flangeWeldMeters += (2 * stubCirc) / 1000;
           }
@@ -3698,8 +3822,10 @@ function RfqItemsDetailedView({
       const wt = Number(details.wallThicknessMm) || 6;
       const mainNb = Number(details.nominalDiameterMm) || 0;
       const branchNb = Number(details.branchNominalDiameterMm) || mainNb;
-      const mainOd = nbToOdMap[mainNb] || mainNb * 1.05;
-      const branchOd = nbToOdMap[branchNb] || branchNb * 1.05;
+      const mainOdLookup = nbToOdMap[mainNb];
+      const branchOdLookup = nbToOdMap[branchNb];
+      const mainOd = mainOdLookup ? mainOdLookup : mainNb * 1.05;
+      const branchOd = branchOdLookup ? branchOdLookup : branchNb * 1.05;
       const mainCirc = Math.PI * mainOd;
       const branchCirc = Math.PI * branchOd;
 
@@ -3769,14 +3895,24 @@ function RfqItemsDetailedView({
   const calculateItemUnitPrice = (item: RfqItemDetail): number => {
     const weightPerUnit = Number(item.weightPerUnitKg || 0);
 
-    const itemSteelSpec =
-      item.straightPipeDetails?.pipeStandard ||
-      item.bendDetails?.pipeStandard ||
-      item.fittingDetails?.fittingStandard ||
-      "";
+    const straightSpec = item.straightPipeDetails?.pipeStandard;
+    const bendSpec = item.bendDetails?.pipeStandard;
+    const fittingSpec = item.fittingDetails?.fittingStandard;
+    const itemSteelSpec = straightSpec
+      ? straightSpec
+      : bendSpec
+        ? bendSpec
+        : fittingSpec
+          ? fittingSpec
+          : "";
     const normalizedSpec = normalizeSteelSpec(itemSteelSpec);
-    const steelPricePerKg =
-      pricingInputs.steelSpecs[normalizedSpec] || Object.values(pricingInputs.steelSpecs)[0] || 0;
+    const specSteelPrice = pricingInputs.steelSpecs[normalizedSpec];
+    const firstSteelPriceLocal = Object.values(pricingInputs.steelSpecs)[0];
+    const steelPricePerKg = specSteelPrice
+      ? specSteelPrice
+      : firstSteelPriceLocal
+        ? firstSteelPriceLocal
+        : 0;
 
     const steelPrice = weightPerUnit * steelPricePerKg;
     let flangePrice = 0;
@@ -3784,27 +3920,28 @@ function RfqItemsDetailedView({
 
     const details = item.straightPipeDetails || item.bendDetails || item.fittingDetails;
     if (details) {
-      const endConfig =
-        item.straightPipeDetails?.pipeEndConfiguration ||
-        item.bendDetails?.bendEndConfiguration ||
-        item.fittingDetails?.pipeEndConfiguration;
+      const straightEnd = item.straightPipeDetails?.pipeEndConfiguration;
+      const bendEnd = item.bendDetails?.bendEndConfiguration;
+      const fittingEnd = item.fittingDetails?.pipeEndConfiguration;
+      const endConfig = straightEnd ? straightEnd : bendEnd ? bendEnd : fittingEnd;
 
       if (endConfig && endConfig !== "PE") {
-        const nb =
-          item.straightPipeDetails?.nominalBoreMm ||
-          item.bendDetails?.nominalBoreMm ||
-          item.fittingDetails?.nominalDiameterMm ||
-          0;
+        const straightNb = item.straightPipeDetails?.nominalBoreMm;
+        const bendNb = item.bendDetails?.nominalBoreMm;
+        const fittingNb = item.fittingDetails?.nominalDiameterMm;
+        const nb = straightNb ? straightNb : bendNb ? bendNb : fittingNb ? fittingNb : 0;
         const flangeCount = flangeCountFromConfig(endConfig, item.itemType);
         const flangeStandard = item.flangeStandardCode || "SANS 1123";
         const pressureClass = item.flangePressureClassDesignation || "1000/3";
         const flangeWeightPerUnit =
           flangeCount * flangeWeightLookup(allWeights, nb, pressureClass, flangeStandard, "3");
 
+        const rotatingRate = pricingInputs.flangeTypes["rotating"];
+        const slipOnRate = pricingInputs.flangeTypes["slipOn"];
         if (isRotatingFlange(endConfig)) {
-          flangePrice = flangeWeightPerUnit * (pricingInputs.flangeTypes["rotating"] || 0);
+          flangePrice = flangeWeightPerUnit * (rotatingRate ? rotatingRate : 0);
         } else {
-          flangePrice = flangeWeightPerUnit * (pricingInputs.flangeTypes["slipOn"] || 0);
+          flangePrice = flangeWeightPerUnit * (slipOnRate ? slipOnRate : 0);
         }
       }
 
@@ -3817,15 +3954,20 @@ function RfqItemsDetailedView({
           ? sansBlankFlangeWeightLookup(allWeights, blankNb, pressureClass)
           : blankFlangeWeightLookup(allWeights, blankNb, pressureClass);
         const blankWt = singleBlankWt * item.fittingDetails.blankFlangeCount;
-        flangePrice += blankWt * (pricingInputs.flangeTypes["blank"] || 0);
+        const blankRate = pricingInputs.flangeTypes["blank"];
+        flangePrice += blankWt * (blankRate ? blankRate : 0);
       }
 
       const weldInfo = calculateWeldLinearMeterage(item);
       if (weldInfo) {
-        const flangeWeldRate = pricingInputs.weldTypes["flangeWeld"] || 0;
-        const mitreWeldRate = pricingInputs.weldTypes["mitreWeld"] || 0;
-        const teeWeldRate = pricingInputs.weldTypes["teeWeld"] || 0;
-        const tackWeldRate = pricingInputs.weldTypes["tackWeld"] || 0;
+        const flangeWeldRaw = pricingInputs.weldTypes["flangeWeld"];
+        const mitreWeldRaw = pricingInputs.weldTypes["mitreWeld"];
+        const teeWeldRaw = pricingInputs.weldTypes["teeWeld"];
+        const tackWeldRaw = pricingInputs.weldTypes["tackWeld"];
+        const flangeWeldRate = flangeWeldRaw ? flangeWeldRaw : 0;
+        const mitreWeldRate = mitreWeldRaw ? mitreWeldRaw : 0;
+        const teeWeldRate = teeWeldRaw ? teeWeldRaw : 0;
+        const tackWeldRate = tackWeldRaw ? tackWeldRaw : 0;
         const weldRate = flangeWeldRate || mitreWeldRate || teeWeldRate || tackWeldRate;
         weldPrice = Number(weldInfo.totalLinearMeters) * weldRate;
       }
@@ -3850,7 +3992,8 @@ function RfqItemsDetailedView({
       {/* Items List */}
       <div className="space-y-2">
         {items.map((item, index) => {
-          const colors = itemTypeColors[item.itemType] || itemTypeColors.straight_pipe;
+          const itemTypeColor = itemTypeColors[item.itemType];
+          const colors = itemTypeColor ? itemTypeColor : itemTypeColors.straight_pipe;
           const details = item.straightPipeDetails || item.bendDetails || item.fittingDetails;
           const unitPrice = calculateItemUnitPrice(item);
           const lineTotal = calculateItemLineTotal(item);
@@ -4031,10 +4174,12 @@ function RfqItemsDetailedView({
                         ((Number(item.bendDetails.bendDegrees) || 90) * Math.PI) / 180;
                       const arcLengthMm = bendRadiusMm * bendAngleRad;
                       const calcData = item.bendDetails.calculationData;
-                      const storedTangents = calcData?.tangentLengths || [];
+                      const rawTangents = calcData?.tangentLengths;
+                      const storedTangents = rawTangents ? rawTangents : [];
                       const numberOfTangents =
                         item.bendDetails.numberOfTangents || storedTangents.length || 0;
-                      const numberOfSegments = calcData?.numberOfSegments || 0;
+                      const rawSegments = calcData?.numberOfSegments;
+                      const numberOfSegments = rawSegments ? rawSegments : 0;
                       const centerToFace = Number(item.bendDetails.centerToFaceMm) || 0;
                       const actualTangents = storedTangents.map((t: number) =>
                         Math.max(0, t - centerToFace),
@@ -4103,7 +4248,8 @@ function RfqItemsDetailedView({
                       const flangeStandard = item.flangeStandardCode || "SANS 1123";
                       const pressureClass = item.flangePressureClassDesignation || "1000/3";
                       const calcData = item.bendDetails.calculationData;
-                      const stubs = calcData?.stubs || [];
+                      const rawStubs = calcData?.stubs;
+                      const stubs = rawStubs ? rawStubs : [];
 
                       if (
                         !item.bendDetails.bendEndConfiguration ||
@@ -4247,7 +4393,9 @@ function RfqItemsDetailedView({
                       )}
                     {(() => {
                       const calcData = item.fittingDetails.calculationData;
-                      const teeHeight = calcData?.teeHeightMm || calcData?.branchHeightMm;
+                      const teeHeightMm = calcData?.teeHeightMm;
+                      const branchHeightMm = calcData?.branchHeightMm;
+                      const teeHeight = teeHeightMm ? teeHeightMm : branchHeightMm;
                       return teeHeight ? (
                         <div>
                           <span className="text-gray-500">Tee Height:</span>{" "}
@@ -4295,7 +4443,8 @@ function RfqItemsDetailedView({
                           singleWeight: number;
                         }> = [];
 
-                        const mainFlangeCount = calcData?.mainFlangeCount || 2;
+                        const rawMainFlangeCount = calcData?.mainFlangeCount;
+                        const mainFlangeCount = rawMainFlangeCount ? rawMainFlangeCount : 2;
                         if (mainFlangeCount > 0) {
                           const singleFlangeWt = flangeWeightLookup(
                             allWeights,
@@ -4312,8 +4461,12 @@ function RfqItemsDetailedView({
                           });
                         }
 
-                        const branchFlangeCount =
-                          calcData?.branchFlangeCount || (branchNb !== mainNb ? 1 : 0);
+                        const rawBranchFlangeCount = calcData?.branchFlangeCount;
+                        const branchFlangeCount = rawBranchFlangeCount
+                          ? rawBranchFlangeCount
+                          : branchNb !== mainNb
+                            ? 1
+                            : 0;
                         if (branchFlangeCount > 0 && branchNb !== mainNb) {
                           const singleFlangeWt = flangeWeightLookup(
                             allWeights,
@@ -4437,9 +4590,10 @@ function RfqItemsDetailedView({
                         {Number(item.bendDetails.bendDegrees || 90).toFixed(0)}°
                       </span>
                       {(() => {
-                        const segments =
-                          item.bendDetails?.numberOfSegments ||
+                        const bendSegments = item.bendDetails?.numberOfSegments;
+                        const calcDataSegments =
                           item.bendDetails?.calculationData?.numberOfSegments;
+                        const segments = bendSegments ? bendSegments : calcDataSegments;
                         return segments && segments > 1 ? (
                           <span className="font-medium text-orange-600">
                             {" "}
@@ -4449,12 +4603,17 @@ function RfqItemsDetailedView({
                       })()}
                     </div>
                     {(() => {
-                      const storedTangents =
-                        item.bendDetails?.tangentLengths ||
-                        item.bendDetails?.calculationData?.tangentLengths ||
-                        [];
-                      const numTangents =
-                        item.bendDetails?.numberOfTangents || storedTangents.length || 0;
+                      const bendTangents = item.bendDetails?.tangentLengths;
+                      const calcDataTangents = item.bendDetails?.calculationData?.tangentLengths;
+                      const storedTangents = bendTangents
+                        ? bendTangents
+                        : calcDataTangents
+                          ? calcDataTangents
+                          : [];
+                      const rawNumberOfTangents = item.bendDetails?.numberOfTangents;
+                      const numTangents = rawNumberOfTangents
+                        ? rawNumberOfTangents
+                        : storedTangents.length || 0;
                       if (numTangents === 0 || storedTangents.length === 0) return null;
                       const centerToFace = Number(item.bendDetails?.centerToFaceMm) || 0;
                       const actualTangents = storedTangents.map((t: number) =>
@@ -4473,10 +4632,9 @@ function RfqItemsDetailedView({
                       );
                     })()}
                     {(() => {
-                      const stubs =
-                        item.bendDetails?.stubLengths ||
-                        item.bendDetails?.calculationData?.stubLengths ||
-                        [];
+                      const bendStubs = item.bendDetails?.stubLengths;
+                      const calcDataStubs = item.bendDetails?.calculationData?.stubLengths;
+                      const stubs = bendStubs ? bendStubs : calcDataStubs ? calcDataStubs : [];
                       if (stubs.length === 0) return null;
                       const allSame = stubs.every((s: number) => s === stubs[0]);
                       const formatted =
@@ -4529,22 +4687,30 @@ function RfqItemsDetailedView({
               {/* Pricing Breakdown Section */}
               {(() => {
                 const weightPerUnit = Number(item.weightPerUnitKg || 0);
-                const itemSteelSpec =
-                  item.straightPipeDetails?.pipeStandard ||
-                  item.bendDetails?.pipeStandard ||
-                  item.fittingDetails?.fittingStandard ||
-                  "";
+                const straightStandard = item.straightPipeDetails?.pipeStandard;
+                const bendStandard = item.bendDetails?.pipeStandard;
+                const fittingStandard = item.fittingDetails?.fittingStandard;
+                const itemSteelSpec = straightStandard
+                  ? straightStandard
+                  : bendStandard
+                    ? bendStandard
+                    : fittingStandard
+                      ? fittingStandard
+                      : "";
                 const normalizedSpec = normalizeSteelSpec(itemSteelSpec);
-                const steelPricePerKg =
-                  pricingInputs.steelSpecs[normalizedSpec] ||
-                  Object.values(pricingInputs.steelSpecs)[0] ||
-                  0;
+                const specPrice = pricingInputs.steelSpecs[normalizedSpec];
+                const firstSpecPrice = Object.values(pricingInputs.steelSpecs)[0];
+                const steelPricePerKg = specPrice ? specPrice : firstSpecPrice ? firstSpecPrice : 0;
                 const steelCost = weightPerUnit * steelPricePerKg;
 
-                const endConfig =
-                  item.straightPipeDetails?.pipeEndConfiguration ||
-                  item.bendDetails?.bendEndConfiguration ||
-                  item.fittingDetails?.pipeEndConfiguration;
+                const straightConfig = item.straightPipeDetails?.pipeEndConfiguration;
+                const bendConfig = item.bendDetails?.bendEndConfiguration;
+                const fittingConfigRaw = item.fittingDetails?.pipeEndConfiguration;
+                const endConfig = straightConfig
+                  ? straightConfig
+                  : bendConfig
+                    ? bendConfig
+                    : fittingConfigRaw;
 
                 let flangeWeightKg = 0;
                 let flangePricePerKg = 0;
@@ -4552,14 +4718,21 @@ function RfqItemsDetailedView({
                 if (endConfig && endConfig !== "PE") {
                   const flangeStandard = item.flangeStandardCode || "SANS 1123";
                   const pressureClass = item.flangePressureClassDesignation || "1000/3";
+                  const rotatingRate = pricingInputs.flangeTypes["rotating"];
+                  const slipOnRate = pricingInputs.flangeTypes["slipOn"];
                   flangePricePerKg = isRotatingFlange(endConfig)
-                    ? pricingInputs.flangeTypes["rotating"] || 0
-                    : pricingInputs.flangeTypes["slipOn"] || 0;
+                    ? rotatingRate
+                      ? rotatingRate
+                      : 0
+                    : slipOnRate
+                      ? slipOnRate
+                      : 0;
 
                   if (item.bendDetails) {
                     const mainNb = Math.round(Number(item.bendDetails.nominalBoreMm));
                     const calcData = item.bendDetails.calculationData;
-                    const stubs = calcData?.stubs || [];
+                    const rawStubs = calcData?.stubs;
+                    const stubs = rawStubs ? rawStubs : [];
                     const totalFlangeCount = flangeCountFromConfig(endConfig, "bend");
                     const stubFlangeCount = stubs.filter(
                       (s: { nominalBoreMm?: number }) => s.nominalBoreMm && s.nominalBoreMm > 0,
@@ -4647,14 +4820,19 @@ function RfqItemsDetailedView({
                     ? sansBlankFlangeWeightLookup(allWeights, blankNb, pressureClass)
                     : blankFlangeWeightLookup(allWeights, blankNb, pressureClass);
                   blankFlangeWeightKg = singleBlankWt * item.fittingDetails.blankFlangeCount;
-                  blankFlangeCost = blankFlangeWeightKg * (pricingInputs.flangeTypes["blank"] || 0);
+                  const blankRate = pricingInputs.flangeTypes["blank"];
+                  blankFlangeCost = blankFlangeWeightKg * (blankRate ? blankRate : 0);
                 }
 
                 const weldInfo = calculateWeldLinearMeterage(item);
-                const flangeWeldRate = pricingInputs.weldTypes["flangeWeld"] || 0;
-                const mitreWeldRate = pricingInputs.weldTypes["mitreWeld"] || 0;
-                const teeWeldRate = pricingInputs.weldTypes["teeWeld"] || 0;
-                const tackWeldRate = pricingInputs.weldTypes["tackWeld"] || 0;
+                const flangeWeldRaw = pricingInputs.weldTypes["flangeWeld"];
+                const mitreWeldRaw = pricingInputs.weldTypes["mitreWeld"];
+                const teeWeldRaw = pricingInputs.weldTypes["teeWeld"];
+                const tackWeldRaw = pricingInputs.weldTypes["tackWeld"];
+                const flangeWeldRate = flangeWeldRaw ? flangeWeldRaw : 0;
+                const mitreWeldRate = mitreWeldRaw ? mitreWeldRaw : 0;
+                const teeWeldRate = teeWeldRaw ? teeWeldRaw : 0;
+                const tackWeldRate = tackWeldRaw ? tackWeldRaw : 0;
                 const totalWeldMeters = weldInfo ? Number(weldInfo.totalLinearMeters) : 0;
                 const weldRate = flangeWeldRate || mitreWeldRate || teeWeldRate || tackWeldRate;
                 const weldCost = totalWeldMeters * weldRate;
@@ -4687,19 +4865,25 @@ function RfqItemsDetailedView({
                           </span>
                         </div>
                       )}
-                      {blankFlangeWeightKg > 0 && (
-                        <div>
-                          <span className="text-gray-500">Blank Flanges:</span>{" "}
-                          <span className="font-medium">
-                            {blankFlangeWeightKg.toFixed(0)}kg × R
-                            {(pricingInputs.flangeTypes["blank"] || 0).toFixed(2)} ={" "}
-                          </span>
-                          <span className="font-semibold text-orange-600">
-                            {currencySymbol}
-                            {formatCurrency(blankFlangeCost)}
-                          </span>
-                        </div>
-                      )}
+                      {(() => {
+                        const blankFlangeDisplayRate = pricingInputs.flangeTypes["blank"];
+                        const blankFlangeDisplayValue = blankFlangeDisplayRate
+                          ? blankFlangeDisplayRate
+                          : 0;
+                        return blankFlangeWeightKg > 0 ? (
+                          <div>
+                            <span className="text-gray-500">Blank Flanges:</span>{" "}
+                            <span className="font-medium">
+                              {blankFlangeWeightKg.toFixed(0)}kg × R
+                              {blankFlangeDisplayValue.toFixed(2)} ={" "}
+                            </span>
+                            <span className="font-semibold text-orange-600">
+                              {currencySymbol}
+                              {formatCurrency(blankFlangeCost)}
+                            </span>
+                          </div>
+                        ) : null;
+                      })()}
                       {totalWeldMeters > 0 && (
                         <div>
                           <span className="text-gray-500">Welds:</span>{" "}
@@ -4762,12 +4946,12 @@ function RfqItemsDetailedView({
                 const nutWeight = weight * 0.3;
                 const washerWeight = weight * 0.15;
                 return (
-                  (pricingInputs.bnwTypes["bolts"] || 0) * boltWeight +
-                  (pricingInputs.bnwTypes["nuts"] || 0) * nutWeight +
-                  (pricingInputs.bnwTypes["washers"] || 0) * washerWeight
+                  (accessoryBoltsPrice ? accessoryBoltsPrice : 0) * boltWeight +
+                  (accessoryNutsPrice ? accessoryNutsPrice : 0) * nutWeight +
+                  (accessoryWashersPrice ? accessoryWashersPrice : 0) * washerWeight
                 );
               } else if (section.sectionType === "blank_flanges") {
-                return (pricingInputs.flangeTypes["blank"] || 0) * weight;
+                return (accessoryBlankFlangePrice ? accessoryBlankFlangePrice : 0) * weight;
               }
               return 0;
             };
@@ -4861,12 +5045,14 @@ function RfqItemsDetailedView({
                 const washerWeight = weight * 0.15;
                 return (
                   itemSum +
-                  (pricingInputs.bnwTypes["bolts"] || 0) * boltWeight +
-                  (pricingInputs.bnwTypes["nuts"] || 0) * nutWeight +
-                  (pricingInputs.bnwTypes["washers"] || 0) * washerWeight
+                  (accessoryBoltsPrice ? accessoryBoltsPrice : 0) * boltWeight +
+                  (accessoryNutsPrice ? accessoryNutsPrice : 0) * nutWeight +
+                  (accessoryWashersPrice ? accessoryWashersPrice : 0) * washerWeight
                 );
               } else if (section.sectionType === "blank_flanges") {
-                return itemSum + (pricingInputs.flangeTypes["blank"] || 0) * weight;
+                return (
+                  itemSum + (accessoryBlankFlangePrice ? accessoryBlankFlangePrice : 0) * weight
+                );
               }
               return itemSum;
             }, 0)
