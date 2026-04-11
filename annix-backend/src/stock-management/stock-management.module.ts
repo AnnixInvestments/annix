@@ -10,8 +10,10 @@ import { IssuableProductController } from "./controllers/issuable-product.contro
 import { IssuanceController } from "./controllers/issuance.controller";
 import { ProductCategoryController } from "./controllers/product-category.controller";
 import { ProductDatasheetController } from "./controllers/product-datasheet.controller";
+import { ReturnsController } from "./controllers/returns.controller";
 import { RubberCompoundController } from "./controllers/rubber-compound.controller";
 import { StockManagementLicenseController } from "./controllers/stock-management-license.controller";
+import { StockTakeController } from "./controllers/stock-take.controller";
 import { CompanyModuleLicense } from "./entities/company-module-license.entity";
 import { ConsumableIssuanceRow } from "./entities/consumable-issuance-row.entity";
 import { ConsumableProduct } from "./entities/consumable-product.entity";
@@ -22,14 +24,22 @@ import { PaintIssuanceRow } from "./entities/paint-issuance-row.entity";
 import { PaintProduct } from "./entities/paint-product.entity";
 import { ProductCategory } from "./entities/product-category.entity";
 import { ProductDatasheet } from "./entities/product-datasheet.entity";
+import { ReturnSession } from "./entities/return-session.entity";
 import { RubberCompound } from "./entities/rubber-compound.entity";
+import { RubberOffcutReturn } from "./entities/rubber-offcut-return.entity";
 import { RubberOffcutStock } from "./entities/rubber-offcut-stock.entity";
 import { RubberRoll } from "./entities/rubber-roll.entity";
 import { RubberRollIssuanceRow } from "./entities/rubber-roll-issuance-row.entity";
+import { RubberWastageBin } from "./entities/rubber-wastage-bin.entity";
+import { RubberWastageEntry } from "./entities/rubber-wastage-entry.entity";
 import { SolutionIssuanceRow } from "./entities/solution-issuance-row.entity";
 import { SolutionProduct } from "./entities/solution-product.entity";
 import { StockMovementBatchConsumption } from "./entities/stock-movement-batch-consumption.entity";
 import { StockPurchaseBatch } from "./entities/stock-purchase-batch.entity";
+import { StockTake } from "./entities/stock-take.entity";
+import { StockTakeAdjustment } from "./entities/stock-take-adjustment.entity";
+import { StockTakeLine } from "./entities/stock-take-line.entity";
+import { StockTakeVarianceCategory } from "./entities/stock-take-variance-category.entity";
 import { StockManagementFeatureGuard } from "./guards/stock-management-feature.guard";
 import { DatasheetExtractionService } from "./services/datasheet-extraction.service";
 import { FifoBatchService } from "./services/fifo-batch.service";
@@ -39,8 +49,11 @@ import { IssuanceService } from "./services/issuance.service";
 import { PaintClassificationService } from "./services/paint-classification.service";
 import { ProductCategoryService } from "./services/product-category.service";
 import { ProductDatasheetService } from "./services/product-datasheet.service";
+import { ReturnsService } from "./services/returns.service";
 import { RubberCompoundService } from "./services/rubber-compound.service";
 import { StockManagementLicenseService } from "./services/stock-management-license.service";
+import { StockTakeService } from "./services/stock-take.service";
+import { StockTakeCronService } from "./services/stock-take-cron.service";
 
 @Module({
   imports: [
@@ -63,6 +76,14 @@ import { StockManagementLicenseService } from "./services/stock-management-licen
       PaintIssuanceRow,
       RubberRollIssuanceRow,
       SolutionIssuanceRow,
+      ReturnSession,
+      RubberOffcutReturn,
+      RubberWastageBin,
+      RubberWastageEntry,
+      StockTake,
+      StockTakeLine,
+      StockTakeAdjustment,
+      StockTakeVarianceCategory,
     ]),
     AuthModule,
     FeatureFlagsModule,
@@ -78,6 +99,8 @@ import { StockManagementLicenseService } from "./services/stock-management-licen
     RubberCompoundController,
     ProductDatasheetController,
     IssuanceController,
+    ReturnsController,
+    StockTakeController,
   ],
   providers: [
     StockManagementLicenseService,
@@ -91,6 +114,9 @@ import { StockManagementLicenseService } from "./services/stock-management-licen
     ProductDatasheetService,
     DatasheetExtractionService,
     IssuanceService,
+    ReturnsService,
+    StockTakeService,
+    StockTakeCronService,
   ],
   exports: [
     StockManagementLicenseService,
@@ -104,6 +130,8 @@ import { StockManagementLicenseService } from "./services/stock-management-licen
     ProductDatasheetService,
     DatasheetExtractionService,
     IssuanceService,
+    ReturnsService,
+    StockTakeService,
   ],
 })
 export class StockManagementModule {}
