@@ -13,19 +13,23 @@ interface StockManagementPreviewLayoutProps {
 
 export default function StockManagementPreviewLayout(props: StockManagementPreviewLayoutProps) {
   const { profile } = useStockControlAuth();
+  const linkedStaffId = profile?.linkedStaffId;
+  const role = profile?.role;
 
   const config = useMemo<StockManagementHostConfig>(() => {
+    const staffId = linkedStaffId == null ? null : linkedStaffId;
+    const roles = role ? [role] : [];
     return {
       hostAppKey: "stock-control",
       apiBaseUrl: "/api/stock-management",
       authHeaders: () => stockControlTokenStore.authHeaders(),
       currentUser: {
-        staffId: profile?.linkedStaffId ?? null,
-        roles: profile?.role ? [profile.role] : [],
+        staffId,
+        roles,
         permissions: [],
       },
     };
-  }, [profile?.linkedStaffId, profile?.role]);
+  }, [linkedStaffId, role]);
 
   return (
     <div className="mx-auto w-full max-w-7xl">

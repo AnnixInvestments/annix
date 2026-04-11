@@ -102,17 +102,24 @@ export function useStockTakeMutations(): StockTakeMutations {
     create: (dto) => wrap(() => client.createStockTake(dto) as Promise<StockTakeDto>),
     captureSnapshot: (id) =>
       wrap(() => client.captureStockTakeSnapshot(id) as Promise<StockTakeDto>),
-    recordCount: (id, productId, countedQty, countedByStaffId, options) =>
-      wrap(() =>
+    recordCount: (id, productId, countedQty, countedByStaffId, options) => {
+      const varianceCategoryIdRaw = options?.varianceCategoryId;
+      const varianceReasonRaw = options?.varianceReason;
+      const photoUrlRaw = options?.photoUrl;
+      const varianceCategoryId = varianceCategoryIdRaw == null ? null : varianceCategoryIdRaw;
+      const varianceReason = varianceReasonRaw == null ? null : varianceReasonRaw;
+      const photoUrl = photoUrlRaw == null ? null : photoUrlRaw;
+      return wrap(() =>
         client.recordStockTakeCount(id, {
           productId,
           countedQty,
           countedByStaffId,
-          varianceCategoryId: options?.varianceCategoryId ?? null,
-          varianceReason: options?.varianceReason ?? null,
-          photoUrl: options?.photoUrl ?? null,
+          varianceCategoryId,
+          varianceReason,
+          photoUrl,
         }),
-      ),
+      );
+    },
     submit: (id) => wrap(() => client.submitStockTake(id) as Promise<StockTakeDto>),
     approve: (id) => wrap(() => client.approveStockTake(id) as Promise<StockTakeDto>),
     reject: (id, reason) => wrap(() => client.rejectStockTake(id, reason) as Promise<StockTakeDto>),

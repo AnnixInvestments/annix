@@ -48,10 +48,14 @@ export function useFifoCompanyValuation(): FifoValuationState {
     // biome-ignore lint/correctness/useExhaustiveDependencies: refetch is stable
   }, [client]);
 
+  const totalValueR = data ? data.totalValueR : null;
+  const legacyValueR = data ? data.legacyValueR : null;
+  const activeBatchCount = data ? data.activeBatchCount : null;
+
   return {
-    totalValueR: data?.totalValueR ?? null,
-    legacyValueR: data?.legacyValueR ?? null,
-    activeBatchCount: data?.activeBatchCount ?? null,
+    totalValueR,
+    legacyValueR,
+    activeBatchCount,
     isLoading,
     error,
     refetch,

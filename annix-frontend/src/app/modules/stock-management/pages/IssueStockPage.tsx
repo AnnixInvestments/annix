@@ -47,7 +47,8 @@ export function IssueStockPage() {
     pageSize: 25,
   });
   const createMutation = useCreateIssuanceSession();
-  const products = productsResult?.items ?? [];
+  const productItems = productsResult?.items;
+  const products = productItems ? productItems : [];
 
   if (!isBasicEnabled) {
     return (

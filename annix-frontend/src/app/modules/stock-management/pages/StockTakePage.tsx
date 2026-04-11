@@ -275,26 +275,36 @@ function StockTakeDetail(props: DetailProps) {
           <div className="divide-y">
             {Array.from(linesByLocation.entries()).map(([locationId, locLines]) => {
               const counted = locLines.filter((l) => l.countedQty !== null).length;
-              const variance = locLines.filter((l) => (l.varianceQty ?? 0) !== 0).length;
+              const variance = locLines.filter((l) => {
+                const varianceQty = l.varianceQty;
+                const resolvedVariance = varianceQty == null ? 0 : varianceQty;
+                return resolvedVariance !== 0;
+              }).length;
+              const locationKey = locationId == null ? "unassigned" : locationId;
+              const locationLabel = locationId == null ? "Unassigned" : locationId;
               return (
-                <div key={locationId ?? "unassigned"} className="p-4">
+                <div key={locationKey} className="p-4">
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-medium">
-                      Location #{locationId ?? "Unassigned"}
-                    </span>
+                    <span className="text-sm font-medium">Location #{locationLabel}</span>
                     <span className="text-xs text-gray-500">
                       {counted}/{locLines.length} counted · {variance} variance
                     </span>
                   </div>
                   <div className="text-xs text-gray-600">
-                    {locLines.slice(0, 5).map((l) => (
-                      <div key={l.id} className="flex justify-between py-0.5">
-                        <span>{l.product?.name ?? `Product #${l.productId}`}</span>
-                        <span className="font-mono">
-                          {l.countedQty ?? "?"} / {l.expectedQty}
-                        </span>
-                      </div>
-                    ))}
+                    {locLines.slice(0, 5).map((l) => {
+                      const productName = l.product?.name;
+                      const displayName = productName ? productName : `Product #${l.productId}`;
+                      const countedQty = l.countedQty;
+                      const countedDisplay = countedQty == null ? "?" : countedQty;
+                      return (
+                        <div key={l.id} className="flex justify-between py-0.5">
+                          <span>{displayName}</span>
+                          <span className="font-mono">
+                            {countedDisplay} / {l.expectedQty}
+                          </span>
+                        </div>
+                      );
+                    })}
                     {locLines.length > 5 && (
                       <div className="text-gray-400">…and {locLines.length - 5} more</div>
                     )}
