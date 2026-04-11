@@ -5,6 +5,7 @@ import { FeatureFlagsModule } from "../feature-flags/feature-flags.module";
 import { NixModule } from "../nix/nix.module";
 import { NotificationsModule } from "../notifications/notifications.module";
 import { StorageModule } from "../storage/storage.module";
+import { FifoBatchController } from "./controllers/fifo-batch.controller";
 import { IssuableProductController } from "./controllers/issuable-product.controller";
 import { ProductCategoryController } from "./controllers/product-category.controller";
 import { StockManagementLicenseController } from "./controllers/stock-management-license.controller";
@@ -16,7 +17,11 @@ import { ProductCategory } from "./entities/product-category.entity";
 import { RubberOffcutStock } from "./entities/rubber-offcut-stock.entity";
 import { RubberRoll } from "./entities/rubber-roll.entity";
 import { SolutionProduct } from "./entities/solution-product.entity";
+import { StockMovementBatchConsumption } from "./entities/stock-movement-batch-consumption.entity";
+import { StockPurchaseBatch } from "./entities/stock-purchase-batch.entity";
 import { StockManagementFeatureGuard } from "./guards/stock-management-feature.guard";
+import { FifoBatchService } from "./services/fifo-batch.service";
+import { FifoBootstrapService } from "./services/fifo-bootstrap.service";
 import { IssuableProductService } from "./services/issuable-product.service";
 import { PaintClassificationService } from "./services/paint-classification.service";
 import { ProductCategoryService } from "./services/product-category.service";
@@ -33,6 +38,8 @@ import { StockManagementLicenseService } from "./services/stock-management-licen
       RubberRoll,
       RubberOffcutStock,
       SolutionProduct,
+      StockPurchaseBatch,
+      StockMovementBatchConsumption,
     ]),
     AuthModule,
     FeatureFlagsModule,
@@ -44,6 +51,7 @@ import { StockManagementLicenseService } from "./services/stock-management-licen
     StockManagementLicenseController,
     ProductCategoryController,
     IssuableProductController,
+    FifoBatchController,
   ],
   providers: [
     StockManagementLicenseService,
@@ -51,6 +59,8 @@ import { StockManagementLicenseService } from "./services/stock-management-licen
     ProductCategoryService,
     IssuableProductService,
     PaintClassificationService,
+    FifoBatchService,
+    FifoBootstrapService,
   ],
   exports: [
     StockManagementLicenseService,
@@ -58,6 +68,8 @@ import { StockManagementLicenseService } from "./services/stock-management-licen
     ProductCategoryService,
     IssuableProductService,
     PaintClassificationService,
+    FifoBatchService,
+    FifoBootstrapService,
   ],
 })
 export class StockManagementModule {}
