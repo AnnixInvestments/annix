@@ -50,12 +50,10 @@ export function useAvailableMeetingPlatforms() {
   });
 }
 
-export function useMeetingPlatformOAuthUrl(platform: MeetingPlatform, redirectUri: string) {
-  return useQuery({
-    queryKey: ["annixRep", "meetingPlatforms", "oauth", platform, redirectUri],
-    queryFn: () => annixRepApi.meetingPlatforms.oauthUrl(platform, redirectUri),
-    enabled: Boolean(platform && redirectUri),
-    staleTime: 5 * 60 * 1000,
+export function useMeetingPlatformOAuthUrl() {
+  return useMutation({
+    mutationFn: ({ platform, redirectUri }: { platform: MeetingPlatform; redirectUri: string }) =>
+      annixRepApi.meetingPlatforms.oauthUrl(platform, redirectUri),
   });
 }
 

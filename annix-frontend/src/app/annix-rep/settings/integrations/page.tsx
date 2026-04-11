@@ -7,11 +7,11 @@ import type {
   MeetingPlatformConnection,
   TeamsBotSessionStatus,
 } from "@/app/lib/api/annixRepApi";
-import { annixRepApi } from "@/app/lib/api/annixRepApi";
 import { formatDateLongZA, formatDateTimeZA } from "@/app/lib/datetime";
 import {
   useDisconnectMeetingPlatform,
   useMeetingPlatformConnections,
+  useMeetingPlatformOAuthUrl,
   usePlatformRecordings,
   useSyncMeetingPlatform,
   useTeamsBotActiveSessions,
@@ -85,7 +85,8 @@ function ConnectionStatusBadge({ connection }: { connection: MeetingPlatformConn
     },
   };
 
-  const config = statusConfig[connection.connectionStatus] ?? statusConfig.disconnected;
+  const statusEntry = statusConfig[connection.connectionStatus];
+  const config = statusEntry ?? statusConfig.disconnected;
 
   return (
     <span className={`px-2 py-0.5 text-xs rounded-full ${config.bg} ${config.text}`}>
@@ -108,6 +109,8 @@ function ConnectionCard({
   const [showSettings, setShowSettings] = useState(false);
 
   const platformInfo = MEETING_PLATFORMS.find((p) => p.id === connection.platform);
+  const platformName = platformInfo?.name;
+  const platformDisplayName = platformName || connection.platform;
 
   const handleSync = async () => {
     await syncPlatform.mutateAsync({ id: connection.id, daysBack: 7 });
@@ -116,7 +119,7 @@ function ConnectionCard({
   const handleDisconnect = async () => {
     if (
       confirm(
-        `Are you sure you want to disconnect "${platformInfo?.name || connection.platform}"? This will revoke access.`,
+        `Are you sure you want to disconnect "${platformDisplayName}"? This will revoke access.`,
       )
     ) {
       await disconnectPlatform.mutateAsync(connection.id);
@@ -151,7 +154,7 @@ function ConnectionCard({
           <div>
             <div className="flex items-center gap-2">
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                {platformInfo?.name || connection.platform}
+                {platformDisplayName}
               </h3>
               <ConnectionStatusBadge connection={connection} />
             </div>
@@ -334,6 +337,7 @@ function PlatformConnectCard({
   onConnected: () => void;
 }) {
   const [isConnecting, setIsConnecting] = useState(false);
+  const oauthUrlMutation = useMeetingPlatformOAuthUrl();
 
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
@@ -352,7 +356,10 @@ function PlatformConnectCard({
     setIsConnecting(true);
     try {
       const redirectUri = `${window.location.origin}/annix-rep/settings/integrations/callback`;
-      const { url } = await annixRepApi.meetingPlatforms.oauthUrl(platform.id, redirectUri);
+      const { url } = await oauthUrlMutation.mutateAsync({
+        platform: platform.id,
+        redirectUri,
+      });
 
       const width = 600;
       const height = 700;
