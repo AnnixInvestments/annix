@@ -1,4 +1,5 @@
-import { throwIfNotOk } from "@/app/lib/api/apiError";
+import { createApiClient } from "@/app/lib/api/createApiClient";
+import { adminTokenStore } from "@/app/lib/api/portalTokenStores";
 import { API_BASE_URL } from "@/lib/api-config";
 
 export type FeatureFlagsResponse = Record<string, boolean>;
@@ -23,57 +24,23 @@ export interface FeatureFlagDetailResponse {
   flags: FeatureFlagDetail[];
 }
 
+const apiClient = createApiClient({
+  baseURL: API_BASE_URL,
+  tokenStore: adminTokenStore,
+  refreshUrl: `${API_BASE_URL}/admin/auth/refresh`,
+});
+
 class FeatureFlagsApiClient {
-  private baseURL: string;
-
-  constructor(baseURL: string = API_BASE_URL) {
-    this.baseURL = baseURL;
-  }
-
-  private adminHeaders(): Record<string, string> {
-    const headers: Record<string, string> = {
-      "Content-Type": "application/json",
-    };
-
-    if (typeof window !== "undefined") {
-      const token =
-        localStorage.getItem("adminAccessToken") ?? sessionStorage.getItem("adminAccessToken");
-      if (token) {
-        headers["Authorization"] = `Bearer ${token}`;
-      }
-    }
-
-    return headers;
-  }
-
   async allFlags(): Promise<FeatureFlagsResponse> {
-    const response = await fetch(`${this.baseURL}/feature-flags`);
-
-    await throwIfNotOk(response);
-
-    return response.json();
+    return apiClient.get<FeatureFlagsResponse>("/feature-flags");
   }
 
   async allFlagsDetailed(): Promise<FeatureFlagDetailResponse> {
-    const response = await fetch(`${this.baseURL}/feature-flags/detailed`, {
-      headers: this.adminHeaders(),
-    });
-
-    await throwIfNotOk(response);
-
-    return response.json();
+    return apiClient.get<FeatureFlagDetailResponse>("/feature-flags/detailed");
   }
 
   async updateFlag(flagKey: string, enabled: boolean): Promise<FeatureFlagDetail> {
-    const response = await fetch(`${this.baseURL}/feature-flags`, {
-      method: "PUT",
-      headers: this.adminHeaders(),
-      body: JSON.stringify({ flagKey, enabled }),
-    });
-
-    await throwIfNotOk(response);
-
-    return response.json();
+    return apiClient.put<FeatureFlagDetail>("/feature-flags", { flagKey, enabled });
   }
 }
 

@@ -1,5 +1,6 @@
-import { getStoredFingerprint } from "@/app/hooks/useDeviceFingerprint";
 import { throwIfNotOk } from "@/app/lib/api/apiError";
+import { createApiClient } from "@/app/lib/api/createApiClient";
+import { customerTokenStore } from "@/app/lib/api/portalTokenStores";
 import { API_BASE_URL } from "@/lib/api-config";
 
 export interface SubmitFeedbackDto {
@@ -50,37 +51,15 @@ function resolveToken(authContext: FeedbackAuthContext): string | null {
   return key ? localStorage.getItem(key) || sessionStorage.getItem(key) : null;
 }
 
-function customerAuthHeaders(): Record<string, string> {
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-  };
-
-  if (typeof window !== "undefined") {
-    const token = localStorage.getItem("customerAccessToken");
-    if (token) {
-      headers["Authorization"] = `Bearer ${token}`;
-    }
-
-    const fingerprint = getStoredFingerprint();
-    if (fingerprint) {
-      headers["x-device-fingerprint"] = fingerprint;
-    }
-  }
-
-  return headers;
-}
+const customerClient = createApiClient({
+  baseURL: API_BASE_URL,
+  tokenStore: customerTokenStore,
+  refreshUrl: `${API_BASE_URL}/customer/auth/refresh`,
+});
 
 export const customerFeedbackApi = {
   submitFeedback: async (dto: SubmitFeedbackDto): Promise<SubmitFeedbackResponse> => {
-    const response = await fetch(`${API_BASE_URL}/customer/feedback`, {
-      method: "POST",
-      headers: customerAuthHeaders(),
-      body: JSON.stringify(dto),
-    });
-
-    await throwIfNotOk(response);
-
-    return response.json();
+    return customerClient.post<SubmitFeedbackResponse>("/customer/feedback", dto);
   },
 };
 

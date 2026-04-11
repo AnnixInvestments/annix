@@ -1,6 +1,7 @@
 import { getStoredFingerprint } from "@/app/hooks/useDeviceFingerprint";
 import { throwIfNotOk } from "@/app/lib/api/apiError";
-import { PortalTokenStore } from "@/app/lib/api/portalTokenStore";
+import { type ApiClient, createApiClient } from "@/app/lib/api/createApiClient";
+import { supplierTokenStore } from "@/app/lib/api/portalTokenStores";
 import { API_BASE_URL } from "@/lib/api-config";
 
 // Types for supplier portal - must match backend DTOs
@@ -345,20 +346,45 @@ export interface RfqItemDetail {
   };
 }
 
+const supplierRefreshHandler = async (): Promise<boolean> => {
+  const currentRefreshToken = supplierTokenStore.refreshToken();
+  if (!currentRefreshToken) return false;
+
+  try {
+    const fingerprint = getStoredFingerprint();
+    const result = await fetch(`${API_BASE_URL}/supplier/auth/refresh`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ refreshToken: currentRefreshToken, deviceFingerprint: fingerprint }),
+    });
+
+    if (!result.ok) {
+      supplierTokenStore.clear();
+      return false;
+    }
+
+    const data = await result.json();
+    supplierTokenStore.setTokens(
+      data.accessToken,
+      data.refreshToken,
+      supplierTokenStore.rememberMe(),
+    );
+    return true;
+  } catch {
+    supplierTokenStore.clear();
+    return false;
+  }
+};
+
+const apiClient: ApiClient = createApiClient({
+  baseURL: API_BASE_URL,
+  tokenStore: supplierTokenStore,
+  refreshHandler: supplierRefreshHandler,
+});
+
 class SupplierApiClient {
-  private baseURL: string;
-  private tokens = new PortalTokenStore({
-    accessToken: "supplierAccessToken",
-    refreshToken: "supplierRefreshToken",
-  });
-
-  constructor(baseURL: string = API_BASE_URL) {
-    this.baseURL = baseURL;
-  }
-
-  private getHeaders(): Record<string, string> {
-    return this.tokens.authHeaders();
-  }
+  baseURL = API_BASE_URL;
+  tokens = supplierTokenStore;
 
   private setTokens(accessToken: string, refreshToken: string, rememberMe = false) {
     this.tokens.setTokens(accessToken, refreshToken, rememberMe);
@@ -372,47 +398,16 @@ class SupplierApiClient {
     return this.tokens.isAuthenticated();
   }
 
-  private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-    const url = `${this.baseURL}${endpoint}`;
-
-    const config: RequestInit = {
-      ...options,
-      headers: {
-        ...this.getHeaders(),
-        ...(options.headers as Record<string, string>),
-      },
-    };
-
-    const response = await fetch(url, config);
-
-    if (response.status === 401 && this.tokens.refreshToken()) {
-      const refreshed = await this.refreshAccessToken();
-      if (refreshed) {
-        config.headers = {
-          ...this.getHeaders(),
-          ...(options.headers as Record<string, string>),
-        };
-        const retryResponse = await fetch(url, config);
-        await throwIfNotOk(retryResponse);
-        return retryResponse.json();
-      }
-    }
-
-    await throwIfNotOk(response);
-
-    return response.json();
+  request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+    return apiClient.request<T>(endpoint, options);
   }
 
-  // Authentication endpoints
   async register(data: SupplierRegistrationDto): Promise<{ success: boolean; message: string }> {
-    return this.request("/supplier/auth/register", {
-      method: "POST",
-      body: JSON.stringify(data),
-    });
+    return apiClient.post("/supplier/auth/register", data);
   }
 
   async registerFull(formData: FormData): Promise<SupplierAuthResponse> {
-    const response = await fetch(`${this.baseURL}/supplier/auth/register-full`, {
+    const response = await fetch(`${API_BASE_URL}/supplier/auth/register-full`, {
       method: "POST",
       body: formData,
     });
@@ -425,60 +420,29 @@ class SupplierApiClient {
   }
 
   async verifyEmail(token: string): Promise<{ success: boolean; message: string }> {
-    return this.request(`/supplier/auth/verify-email/${token}`);
+    return apiClient.get(`/supplier/auth/verify-email/${token}`);
   }
 
   async resendVerification(email: string): Promise<{ success: boolean; message: string }> {
-    return this.request("/supplier/auth/resend-verification", {
-      method: "POST",
-      body: JSON.stringify({ email }),
-    });
+    return apiClient.post("/supplier/auth/resend-verification", { email });
   }
 
   async login(data: SupplierLoginDto, rememberMe: boolean = false): Promise<SupplierAuthResponse> {
-    const result = await this.request<SupplierAuthResponse>("/supplier/auth/login", {
-      method: "POST",
-      body: JSON.stringify(data),
-    });
-
+    const result = await apiClient.post<SupplierAuthResponse>("/supplier/auth/login", data);
     this.setTokens(result.accessToken, result.refreshToken, rememberMe);
     return result;
   }
 
   async logout(): Promise<void> {
     try {
-      await this.request("/supplier/auth/logout", {
-        method: "POST",
-      });
+      await apiClient.post("/supplier/auth/logout");
     } finally {
       this.clearTokens();
     }
   }
 
-  async refreshAccessToken(): Promise<boolean> {
-    const currentRefreshToken = this.tokens.refreshToken();
-    if (!currentRefreshToken) return false;
-
-    try {
-      const fingerprint = getStoredFingerprint();
-      const result = await fetch(`${this.baseURL}/supplier/auth/refresh`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ refreshToken: currentRefreshToken, deviceFingerprint: fingerprint }),
-      });
-
-      if (!result.ok) {
-        this.clearTokens();
-        return false;
-      }
-
-      const data = await result.json();
-      this.setTokens(data.accessToken, data.refreshToken);
-      return true;
-    } catch {
-      this.clearTokens();
-      return false;
-    }
+  refreshAccessToken(): Promise<boolean> {
+    return apiClient.refreshAccessToken();
   }
 
   // Profile endpoints

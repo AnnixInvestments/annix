@@ -1,4 +1,5 @@
-import { throwIfNotOk } from "@/app/lib/api/apiError";
+import { type ApiClient, createApiClient } from "@/app/lib/api/createApiClient";
+import { cvAssistantTokenStore } from "@/app/lib/api/portalTokenStores";
 import { API_BASE_URL } from "@/lib/api-config";
 
 export interface CvAssistantLoginDto {
@@ -348,153 +349,31 @@ export interface CandidateJobMatch {
   updatedAt: string;
 }
 
-const TOKEN_KEYS = {
-  accessToken: "cvAssistantAccessToken",
-  refreshToken: "cvAssistantRefreshToken",
-} as const;
+const apiClient: ApiClient = createApiClient({
+  baseURL: API_BASE_URL,
+  tokenStore: cvAssistantTokenStore,
+  refreshUrl: `${API_BASE_URL}/cv-assistant/auth/refresh`,
+});
 
 class CvAssistantApiClient {
-  private baseURL: string;
-  private accessToken: string | null = null;
-  private refreshToken: string | null = null;
-  private rememberMe: boolean = true;
-
-  constructor(baseURL: string = API_BASE_URL) {
-    this.baseURL = baseURL;
-
-    if (typeof window !== "undefined") {
-      this.accessToken =
-        localStorage.getItem(TOKEN_KEYS.accessToken) ??
-        sessionStorage.getItem(TOKEN_KEYS.accessToken);
-      this.refreshToken =
-        localStorage.getItem(TOKEN_KEYS.refreshToken) ??
-        sessionStorage.getItem(TOKEN_KEYS.refreshToken);
-    }
-  }
-
-  setRememberMe(remember: boolean) {
-    this.rememberMe = remember;
-  }
-
-  private headers(): Record<string, string> {
-    if (!this.accessToken && typeof window !== "undefined") {
-      this.accessToken =
-        localStorage.getItem(TOKEN_KEYS.accessToken) ??
-        sessionStorage.getItem(TOKEN_KEYS.accessToken);
-      this.refreshToken =
-        localStorage.getItem(TOKEN_KEYS.refreshToken) ??
-        sessionStorage.getItem(TOKEN_KEYS.refreshToken);
-    }
-
-    const headers: Record<string, string> = {
-      "Content-Type": "application/json",
-    };
-
-    if (this.accessToken) {
-      headers["Authorization"] = `Bearer ${this.accessToken}`;
-    }
-
-    return headers;
+  setRememberMe(_remember: boolean) {
+    // PortalTokenStore tracks rememberMe via setTokens; this no-op preserves the public API
   }
 
   private setTokens(accessToken: string, refreshToken: string) {
-    this.accessToken = accessToken;
-    this.refreshToken = refreshToken;
-    if (typeof window !== "undefined") {
-      const storage = this.rememberMe ? localStorage : sessionStorage;
-      storage.setItem(TOKEN_KEYS.accessToken, accessToken);
-      storage.setItem(TOKEN_KEYS.refreshToken, refreshToken);
-    }
+    cvAssistantTokenStore.setTokens(accessToken, refreshToken, cvAssistantTokenStore.rememberMe());
   }
 
   clearTokens() {
-    this.accessToken = null;
-    this.refreshToken = null;
-    if (typeof window !== "undefined") {
-      localStorage.removeItem(TOKEN_KEYS.accessToken);
-      localStorage.removeItem(TOKEN_KEYS.refreshToken);
-      sessionStorage.removeItem(TOKEN_KEYS.accessToken);
-      sessionStorage.removeItem(TOKEN_KEYS.refreshToken);
-    }
+    cvAssistantTokenStore.clear();
   }
 
   isAuthenticated(): boolean {
-    if (!this.accessToken && typeof window !== "undefined") {
-      this.accessToken =
-        localStorage.getItem(TOKEN_KEYS.accessToken) ??
-        sessionStorage.getItem(TOKEN_KEYS.accessToken);
-      this.refreshToken =
-        localStorage.getItem(TOKEN_KEYS.refreshToken) ??
-        sessionStorage.getItem(TOKEN_KEYS.refreshToken);
-    }
-    return !!this.accessToken;
+    return cvAssistantTokenStore.isAuthenticated();
   }
 
-  private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-    const url = `${this.baseURL}${endpoint}`;
-
-    const config: RequestInit = {
-      ...options,
-      headers: {
-        ...this.headers(),
-        ...(options.headers as Record<string, string>),
-      },
-    };
-
-    const response = await fetch(url, config);
-
-    if (response.status === 401 && this.refreshToken) {
-      const refreshed = await this.refreshAccessToken();
-      if (refreshed) {
-        config.headers = {
-          ...this.headers(),
-          ...(options.headers as Record<string, string>),
-        };
-        const retryResponse = await fetch(url, config);
-        await throwIfNotOk(retryResponse);
-        return retryResponse.json();
-      }
-    }
-
-    await throwIfNotOk(response);
-
-    const text = await response.text();
-    if (!text || text.trim() === "") {
-      return {} as T;
-    }
-
-    return JSON.parse(text) as T;
-  }
-
-  private async refreshAccessToken(): Promise<boolean> {
-    if (!this.refreshToken) return false;
-
-    try {
-      const response = await fetch(`${this.baseURL}/cv-assistant/auth/refresh`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ refreshToken: this.refreshToken }),
-      });
-
-      if (!response.ok) {
-        this.clearTokens();
-        return false;
-      }
-
-      const data = await response.json();
-      this.accessToken = data.accessToken;
-      if (typeof window !== "undefined") {
-        if (localStorage.getItem(TOKEN_KEYS.refreshToken)) {
-          localStorage.setItem(TOKEN_KEYS.accessToken, data.accessToken);
-        } else {
-          sessionStorage.setItem(TOKEN_KEYS.accessToken, data.accessToken);
-        }
-      }
-      return true;
-    } catch {
-      this.clearTokens();
-      return false;
-    }
+  private request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+    return apiClient.request<T>(endpoint, options);
   }
 
   async login(dto: CvAssistantLoginDto): Promise<CvAssistantLoginResponse> {
@@ -669,18 +548,11 @@ class CvAssistantApiClient {
     if (email) formData.append("email", email);
     if (name) formData.append("name", name);
 
-    const url = `${this.baseURL}/cv-assistant/candidates/upload`;
-    const response = await fetch(url, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${this.accessToken}`,
-      },
-      body: formData,
+    return apiClient.uploadFile<Candidate>("/cv-assistant/candidates/upload", file, {
+      jobPostingId: String(jobPostingId),
+      ...(email ? { email } : {}),
+      ...(name ? { name } : {}),
     });
-
-    await throwIfNotOk(response);
-
-    return response.json();
   }
 
   async references(status?: string): Promise<CandidateReference[]> {
@@ -889,18 +761,15 @@ class CvAssistantApiClient {
     if (dateFrom) params.set("dateFrom", dateFrom);
     if (dateTo) params.set("dateTo", dateTo);
     const qs = params.toString();
-    const res = await fetch(
-      `${this.baseURL}/cv-assistant/analytics/export/funnel${qs ? `?${qs}` : ""}`,
-      { headers: this.headers() },
+    const blob = await apiClient.requestBlob(
+      `/cv-assistant/analytics/export/funnel${qs ? `?${qs}` : ""}`,
     );
-    return res.text();
+    return blob.text();
   }
 
   async analyticsExportTimeToFillCsv(): Promise<string> {
-    const res = await fetch(`${this.baseURL}/cv-assistant/analytics/export/time-to-fill`, {
-      headers: this.headers(),
-    });
-    return res.text();
+    const blob = await apiClient.requestBlob("/cv-assistant/analytics/export/time-to-fill");
+    return blob.text();
   }
 
   async notificationVapidKey(): Promise<{ key: string | null }> {

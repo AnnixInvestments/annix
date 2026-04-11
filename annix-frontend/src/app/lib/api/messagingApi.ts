@@ -1,6 +1,11 @@
 "use client";
 
-import { throwIfNotOk } from "@/app/lib/api/apiError";
+import { type ApiClient, createApiClient } from "@/app/lib/api/createApiClient";
+import {
+  adminTokenStore,
+  customerTokenStore,
+  supplierTokenStore,
+} from "@/app/lib/api/portalTokenStores";
 import { browserBaseUrl } from "@/lib/api-config";
 
 export enum ConversationType {
@@ -194,56 +199,25 @@ export interface MetricsFilters {
 
 type PortalType = "customer" | "supplier" | "admin";
 
-function getAuthHeaders(portalType: PortalType): Record<string, string> {
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-  };
+const baseUrl = browserBaseUrl();
 
-  if (typeof window === "undefined") {
-    return headers;
-  }
-
-  const tokenKey =
-    portalType === "admin"
-      ? "adminAccessToken"
-      : portalType === "supplier"
-        ? "supplierAccessToken"
-        : "customerAccessToken";
-
-  const token = localStorage.getItem(tokenKey);
-  if (token) {
-    headers["Authorization"] = `Bearer ${token}`;
-  }
-
-  if (portalType === "customer") {
-    const fingerprint = localStorage.getItem("deviceFingerprint");
-    if (fingerprint) {
-      headers["x-device-fingerprint"] = fingerprint;
-    }
-  }
-
-  return headers;
-}
-
-async function request<T>(
-  portalType: PortalType,
-  endpoint: string,
-  options: RequestInit = {},
-): Promise<T> {
-  const url = `${browserBaseUrl()}/${portalType}/messaging${endpoint}`;
-  const response = await fetch(url, {
-    ...options,
-    headers: {
-      ...getAuthHeaders(portalType),
-      ...options.headers,
-    },
-  });
-
-  await throwIfNotOk(response);
-
-  const text = await response.text();
-  return text ? JSON.parse(text) : ({} as T);
-}
+const portalClients: Record<PortalType, ApiClient> = {
+  customer: createApiClient({
+    baseURL: `${baseUrl}/customer/messaging`,
+    tokenStore: customerTokenStore,
+    refreshUrl: `${baseUrl}/customer/auth/refresh`,
+  }),
+  supplier: createApiClient({
+    baseURL: `${baseUrl}/supplier/messaging`,
+    tokenStore: supplierTokenStore,
+    refreshUrl: `${baseUrl}/supplier/auth/refresh`,
+  }),
+  admin: createApiClient({
+    baseURL: `${baseUrl}/admin/messaging`,
+    tokenStore: adminTokenStore,
+    refreshUrl: `${baseUrl}/admin/auth/refresh`,
+  }),
+};
 
 function buildQueryString(filters: Record<string, any>): string {
   const params = new URLSearchParams();
@@ -257,78 +231,64 @@ function buildQueryString(filters: Record<string, any>): string {
 }
 
 function createMessagingApi(portalType: PortalType) {
+  const client = portalClients[portalType];
   return {
     async conversations(
       filters: ConversationFilters = {},
     ): Promise<{ conversations: ConversationSummary[]; total: number }> {
-      return request(portalType, `/conversations${buildQueryString(filters)}`);
+      return client.get(`/conversations${buildQueryString(filters)}`);
     },
 
     async createConversation(dto: CreateConversationDto): Promise<ConversationDetail> {
-      return request(portalType, "/conversations", {
-        method: "POST",
-        body: JSON.stringify(dto),
-      });
+      return client.post("/conversations", dto);
     },
 
     async conversation(conversationId: number): Promise<ConversationDetail> {
-      return request(portalType, `/conversations/${conversationId}`);
+      return client.get(`/conversations/${conversationId}`);
     },
 
     async messages(
       conversationId: number,
       pagination: { page?: number; limit?: number; beforeId?: number } = {},
     ): Promise<{ messages: Message[]; hasMore: boolean }> {
-      return request(
-        portalType,
-        `/conversations/${conversationId}/messages${buildQueryString(pagination)}`,
-      );
+      return client.get(`/conversations/${conversationId}/messages${buildQueryString(pagination)}`);
     },
 
     async sendMessage(conversationId: number, dto: SendMessageDto): Promise<Message> {
-      return request(portalType, `/conversations/${conversationId}/messages`, {
-        method: "POST",
-        body: JSON.stringify(dto),
-      });
+      return client.post(`/conversations/${conversationId}/messages`, dto);
     },
 
     async markAsRead(conversationId: number): Promise<{ success: boolean }> {
-      return request(portalType, `/conversations/${conversationId}/read`, {
-        method: "POST",
-      });
+      return client.post(`/conversations/${conversationId}/read`);
     },
 
     async archiveConversation(conversationId: number): Promise<{ success: boolean }> {
-      return request(portalType, `/conversations/${conversationId}/archive`, {
-        method: "POST",
-      });
+      return client.post(`/conversations/${conversationId}/archive`);
     },
 
     async broadcasts(
       filters: BroadcastFilters = {},
     ): Promise<{ broadcasts: BroadcastSummary[]; total: number }> {
-      return request(portalType, `/broadcasts${buildQueryString(filters)}`);
+      return client.get(`/broadcasts${buildQueryString(filters)}`);
     },
 
     async markBroadcastRead(broadcastId: number): Promise<{ success: boolean }> {
-      return request(portalType, `/broadcasts/${broadcastId}/read`, {
-        method: "POST",
-      });
+      return client.post(`/broadcasts/${broadcastId}/read`);
     },
 
     async unreadCount(): Promise<{ messages: number; broadcasts: number }> {
-      return request(portalType, "/unread-count");
+      return client.get("/unread-count");
     },
 
     async responseStats(): Promise<UserResponseStats> {
-      return request(portalType, "/response-stats");
+      return client.get("/response-stats");
     },
   };
 }
 
 function createAdminMessagingApi() {
   const baseApi = createMessagingApi("admin");
-  const portalType: PortalType = "admin";
+  const client = portalClients.admin;
 
   return {
     ...baseApi,
@@ -336,40 +296,34 @@ function createAdminMessagingApi() {
     async broadcastsAdmin(
       filters: BroadcastFilters = {},
     ): Promise<{ broadcasts: BroadcastDetail[]; total: number }> {
-      return request(portalType, `/broadcasts${buildQueryString(filters)}`);
+      return client.get(`/broadcasts${buildQueryString(filters)}`);
     },
 
     async createBroadcast(dto: CreateBroadcastDto): Promise<BroadcastDetail> {
-      return request(portalType, "/broadcasts", {
-        method: "POST",
-        body: JSON.stringify(dto),
-      });
+      return client.post("/broadcasts", dto);
     },
 
     async broadcast(broadcastId: number): Promise<BroadcastDetail> {
-      return request(portalType, `/broadcasts/${broadcastId}`);
+      return client.get(`/broadcasts/${broadcastId}`);
     },
 
     async responseMetrics(filters: MetricsFilters = {}): Promise<ResponseMetricsSummary> {
-      return request(portalType, `/response-metrics${buildQueryString(filters)}`);
+      return client.get(`/response-metrics${buildQueryString(filters)}`);
     },
 
     async userResponseMetrics(
       userId: number,
       filters: MetricsFilters = {},
     ): Promise<UserResponseStats> {
-      return request(portalType, `/response-metrics/user/${userId}${buildQueryString(filters)}`);
+      return client.get(`/response-metrics/user/${userId}${buildQueryString(filters)}`);
     },
 
     async slaConfig(): Promise<SlaConfig> {
-      return request(portalType, "/sla-config");
+      return client.get("/sla-config");
     },
 
     async updateSlaConfig(dto: Partial<Omit<SlaConfig, "id" | "updatedAt">>): Promise<SlaConfig> {
-      return request(portalType, "/sla-config", {
-        method: "PUT",
-        body: JSON.stringify(dto),
-      });
+      return client.put("/sla-config", dto);
     },
   };
 }

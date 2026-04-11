@@ -1,5 +1,6 @@
 import { throwIfNotOk } from "@/app/lib/api/apiError";
-import { PortalTokenStore } from "@/app/lib/api/portalTokenStore";
+import { type ApiClient, createApiClient } from "@/app/lib/api/createApiClient";
+import { customerTokenStore } from "@/app/lib/api/portalTokenStores";
 import { API_BASE_URL } from "@/lib/api-config";
 
 // Types for customer portal - must match backend DTOs
@@ -154,24 +155,52 @@ export interface CustomerDashboardResponse {
   };
 }
 
-class CustomerApiClient {
-  private baseURL: string;
-  private rememberMeFlag = true;
-  private tokens = new PortalTokenStore({
-    accessToken: "customerAccessToken",
-    refreshToken: "customerRefreshToken",
-  });
+const customerRefreshHandler = async (): Promise<boolean> => {
+  const currentRefreshToken = customerTokenStore.refreshToken();
+  if (!currentRefreshToken) return false;
 
-  constructor(baseURL: string = API_BASE_URL) {
-    this.baseURL = baseURL;
+  try {
+    const result = await fetch(`${API_BASE_URL}/customer/auth/refresh`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ refreshToken: currentRefreshToken }),
+    });
+
+    if (!result.ok) {
+      customerTokenStore.clear();
+      return false;
+    }
+
+    const data = await result.json();
+    const accessToken = data.access_token || data.accessToken;
+    const newRefreshToken = data.refresh_token || data.refreshToken;
+
+    if (accessToken && newRefreshToken) {
+      customerTokenStore.setTokens(accessToken, newRefreshToken, customerTokenStore.rememberMe());
+      return true;
+    }
+
+    customerTokenStore.clear();
+    return false;
+  } catch {
+    customerTokenStore.clear();
+    return false;
   }
+};
+
+const apiClient: ApiClient = createApiClient({
+  baseURL: API_BASE_URL,
+  tokenStore: customerTokenStore,
+  refreshHandler: customerRefreshHandler,
+});
+
+class CustomerApiClient {
+  baseURL = API_BASE_URL;
+  private rememberMeFlag = true;
+  tokens = customerTokenStore;
 
   setRememberMe(remember: boolean) {
     this.rememberMeFlag = remember;
-  }
-
-  private getHeaders(): Record<string, string> {
-    return this.tokens.authHeaders();
   }
 
   private setTokens(accessToken: string, refreshToken: string) {
@@ -186,50 +215,18 @@ class CustomerApiClient {
     return this.tokens.isAuthenticated();
   }
 
-  private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-    const url = `${this.baseURL}${endpoint}`;
-
-    const config: RequestInit = {
-      ...options,
-      headers: {
-        ...this.getHeaders(),
-        ...(options.headers as Record<string, string>),
-      },
-    };
-
-    const response = await fetch(url, config);
-
-    if (response.status === 401 && this.tokens.refreshToken()) {
-      const refreshed = await this.refreshAccessToken();
-      if (refreshed) {
-        config.headers = {
-          ...this.getHeaders(),
-          ...(options.headers as Record<string, string>),
-        };
-        const retryResponse = await fetch(url, config);
-        await throwIfNotOk(retryResponse);
-        return retryResponse.json();
-      }
-    }
-
-    await throwIfNotOk(response);
-
-    return response.json();
+  request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+    return apiClient.request<T>(endpoint, options);
   }
 
-  // Authentication endpoints
   async register(data: CustomerRegistrationDto): Promise<CustomerAuthResponse> {
-    const result = await this.request<CustomerAuthResponse>("/customer/register", {
-      method: "POST",
-      body: JSON.stringify(data),
-    });
-
+    const result = await apiClient.post<CustomerAuthResponse>("/customer/register", data);
     this.setTokens(result.accessToken, result.refreshToken);
     return result;
   }
 
   async registerWithFormData(formData: FormData): Promise<CustomerAuthResponse> {
-    const response = await fetch(`${this.baseURL}/customer/register`, {
+    const response = await fetch(`${API_BASE_URL}/customer/register`, {
       method: "POST",
       body: formData,
     });
@@ -242,56 +239,21 @@ class CustomerApiClient {
   }
 
   async login(data: CustomerLoginDto): Promise<CustomerAuthResponse> {
-    const result = await this.request<CustomerAuthResponse>("/customer/auth/login", {
-      method: "POST",
-      body: JSON.stringify(data),
-    });
-
+    const result = await apiClient.post<CustomerAuthResponse>("/customer/auth/login", data);
     this.setTokens(result.accessToken, result.refreshToken);
     return result;
   }
 
   async logout(): Promise<void> {
     try {
-      await this.request("/customer/auth/logout", {
-        method: "POST",
-      });
+      await apiClient.post("/customer/auth/logout");
     } finally {
       this.clearTokens();
     }
   }
 
-  async refreshAccessToken(): Promise<boolean> {
-    const currentRefreshToken = this.tokens.refreshToken();
-    if (!currentRefreshToken) return false;
-
-    try {
-      const result = await fetch(`${this.baseURL}/customer/auth/refresh`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ refreshToken: currentRefreshToken }),
-      });
-
-      if (!result.ok) {
-        this.clearTokens();
-        return false;
-      }
-
-      const data = await result.json();
-      const accessToken = data.access_token || data.accessToken;
-      const newRefreshToken = data.refresh_token || data.refreshToken;
-
-      if (accessToken && newRefreshToken) {
-        this.tokens.setTokens(accessToken, newRefreshToken, this.tokens.rememberMe());
-        return true;
-      }
-
-      this.clearTokens();
-      return false;
-    } catch {
-      this.clearTokens();
-      return false;
-    }
+  refreshAccessToken(): Promise<boolean> {
+    return apiClient.refreshAccessToken();
   }
 
   // Profile endpoints

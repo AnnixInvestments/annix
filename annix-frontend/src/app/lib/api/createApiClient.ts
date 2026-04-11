@@ -11,7 +11,8 @@ export interface ApiClientTokenStore {
 export interface ApiClientOptions {
   baseURL: string;
   tokenStore: ApiClientTokenStore;
-  refreshUrl: string;
+  refreshUrl?: string;
+  refreshHandler?: () => Promise<boolean>;
   onUnauthorized?: () => void;
 }
 
@@ -48,37 +49,44 @@ const parseResponse = async <T>(response: Response): Promise<T> => {
 };
 
 export const createApiClient = (options: ApiClientOptions): ApiClient => {
-  const { baseURL, tokenStore, refreshUrl, onUnauthorized } = options;
+  const { baseURL, tokenStore, refreshUrl, refreshHandler, onUnauthorized } = options;
+
+  if (!refreshHandler && !refreshUrl) {
+    throw new Error("createApiClient requires either refreshUrl or refreshHandler");
+  }
+
   let refreshPromise: Promise<boolean> | null = null;
+
+  const defaultRefresh = async (): Promise<boolean> => {
+    try {
+      const response = await fetch(refreshUrl as string, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ refreshToken: tokenStore.refreshToken() }),
+      });
+      if (!response.ok) {
+        tokenStore.clear();
+        onUnauthorized?.();
+        return false;
+      }
+      const data = (await response.json()) as { accessToken?: string };
+      if (data.accessToken) {
+        tokenStore.updateAccessToken(data.accessToken);
+        return true;
+      }
+      return false;
+    } catch {
+      tokenStore.clear();
+      onUnauthorized?.();
+      return false;
+    }
+  };
 
   const refreshAccessToken = async (): Promise<boolean> => {
     if (!tokenStore.refreshToken()) return false;
     if (refreshPromise) return refreshPromise;
 
-    refreshPromise = (async () => {
-      try {
-        const response = await fetch(refreshUrl, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ refreshToken: tokenStore.refreshToken() }),
-        });
-        if (!response.ok) {
-          tokenStore.clear();
-          onUnauthorized?.();
-          return false;
-        }
-        const data = (await response.json()) as { accessToken?: string };
-        if (data.accessToken) {
-          tokenStore.updateAccessToken(data.accessToken);
-          return true;
-        }
-        return false;
-      } catch {
-        tokenStore.clear();
-        onUnauthorized?.();
-        return false;
-      }
-    })();
+    refreshPromise = (refreshHandler ?? defaultRefresh)();
 
     const result = await refreshPromise;
     refreshPromise = null;

@@ -1,6 +1,7 @@
 import type { CalloffStatus } from "@annix/product-data/rubber/calloffStatus";
 import type { StatusHistoryEvent } from "@annix/product-data/rubber/orderStatus";
-import { throwIfNotOk } from "@/app/lib/api/apiError";
+import { createApiClient } from "@/app/lib/api/createApiClient";
+import { adminTokenStore } from "@/app/lib/api/portalTokenStores";
 import { API_BASE_URL } from "@/lib/api-config";
 
 export interface RubberAppProfileDto {
@@ -244,34 +245,14 @@ export interface RollCosDto {
   profitLossZar: number | null;
 }
 
-function adminHeaders(): Record<string, string> {
-  if (typeof window === "undefined") return {};
-  const token = localStorage.getItem("adminAccessToken");
-  return token ? { Authorization: `Bearer ${token}` } : {};
-}
+const apiClient = createApiClient({
+  baseURL: API_BASE_URL,
+  tokenStore: adminTokenStore,
+  refreshUrl: `${API_BASE_URL}/admin/auth/refresh`,
+});
 
-async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-  const url = `${API_BASE_URL}${endpoint}`;
-  const config: RequestInit = {
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...adminHeaders(),
-      ...(options.headers as Record<string, string>),
-    },
-  };
-
-  const response = await fetch(url, config);
-
-  await throwIfNotOk(response);
-
-  const text = await response.text();
-  if (!text || text.trim() === "") {
-    return {} as T;
-  }
-
-  return JSON.parse(text) as T;
-}
+const request = <T>(endpoint: string, options: RequestInit = {}): Promise<T> =>
+  apiClient.request<T>(endpoint, options);
 
 export const rubberPortalApi = {
   productCodings: async (codingType?: string): Promise<RubberProductCodingDto[]> => {

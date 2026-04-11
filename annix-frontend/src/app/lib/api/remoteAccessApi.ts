@@ -1,4 +1,5 @@
-import { throwIfNotOk } from "@/app/lib/api/apiError";
+import { createApiClient } from "@/app/lib/api/createApiClient";
+import { adminTokenStore, customerTokenStore } from "@/app/lib/api/portalTokenStores";
 import { API_BASE_URL } from "@/lib/api-config";
 
 export type RemoteAccessRequestType = "VIEW" | "EDIT";
@@ -61,105 +62,52 @@ export interface FeatureEnabledResponse {
   enabled: boolean;
 }
 
+const adminClient = createApiClient({
+  baseURL: API_BASE_URL,
+  tokenStore: adminTokenStore,
+  refreshUrl: `${API_BASE_URL}/admin/auth/refresh`,
+});
+
+const customerClient = createApiClient({
+  baseURL: API_BASE_URL,
+  tokenStore: customerTokenStore,
+  refreshUrl: `${API_BASE_URL}/customer/auth/refresh`,
+});
+
 class RemoteAccessApiClient {
-  private baseURL: string;
-
-  constructor(baseURL: string = API_BASE_URL) {
-    this.baseURL = baseURL;
-  }
-
-  private adminHeaders(): Record<string, string> {
-    const headers: Record<string, string> = {
-      "Content-Type": "application/json",
-    };
-
-    if (typeof window !== "undefined") {
-      const token = localStorage.getItem("adminAccessToken");
-      if (token) {
-        headers["Authorization"] = `Bearer ${token}`;
-      }
-    }
-
-    return headers;
-  }
-
-  private customerHeaders(): Record<string, string> {
-    const headers: Record<string, string> = {
-      "Content-Type": "application/json",
-    };
-
-    if (typeof window !== "undefined") {
-      const token = localStorage.getItem("customerAccessToken");
-      if (token) {
-        headers["Authorization"] = `Bearer ${token}`;
-      }
-    }
-
-    return headers;
-  }
-
-  private async request<T>(
-    endpoint: string,
-    options: RequestInit = {},
-    useCustomerAuth: boolean = false,
-  ): Promise<T> {
-    const url = `${this.baseURL}${endpoint}`;
-
-    const config: RequestInit = {
-      ...options,
-      headers: {
-        ...(useCustomerAuth ? this.customerHeaders() : this.adminHeaders()),
-        ...(options.headers as Record<string, string>),
-      },
-    };
-
-    const response = await fetch(url, config);
-
-    await throwIfNotOk(response);
-
-    return response.json();
-  }
-
   async isFeatureEnabled(): Promise<boolean> {
-    const result = await this.request<FeatureEnabledResponse>("/remote-access/enabled");
+    const result = await adminClient.get<FeatureEnabledResponse>("/remote-access/enabled");
     return result.enabled;
   }
 
   async requestAccess(dto: CreateRemoteAccessRequestDto): Promise<RemoteAccessRequestResponse> {
-    return this.request<RemoteAccessRequestResponse>("/remote-access/request", {
-      method: "POST",
-      body: JSON.stringify(dto),
-    });
+    return adminClient.post<RemoteAccessRequestResponse>("/remote-access/request", dto);
   }
 
   async checkAccessStatus(
     documentType: RemoteAccessDocumentType,
     documentId: number,
   ): Promise<AccessStatusResponse> {
-    return this.request<AccessStatusResponse>(
+    return adminClient.get<AccessStatusResponse>(
       `/remote-access/status?documentType=${documentType}&documentId=${documentId}`,
     );
   }
 
   async requestStatus(requestId: number): Promise<RemoteAccessRequestResponse> {
-    return this.request<RemoteAccessRequestResponse>(`/remote-access/request/${requestId}`);
+    return adminClient.get<RemoteAccessRequestResponse>(`/remote-access/request/${requestId}`);
   }
 
   async pendingRequests(): Promise<PendingAccessRequestsResponse> {
-    return this.request<PendingAccessRequestsResponse>("/remote-access/pending", {}, true);
+    return customerClient.get<PendingAccessRequestsResponse>("/remote-access/pending");
   }
 
   async respondToRequest(
     requestId: number,
     dto: RespondToAccessRequestDto,
   ): Promise<RemoteAccessRequestResponse> {
-    return this.request<RemoteAccessRequestResponse>(
+    return customerClient.put<RemoteAccessRequestResponse>(
       `/remote-access/${requestId}/respond`,
-      {
-        method: "PUT",
-        body: JSON.stringify(dto),
-      },
-      true,
+      dto,
     );
   }
 }
