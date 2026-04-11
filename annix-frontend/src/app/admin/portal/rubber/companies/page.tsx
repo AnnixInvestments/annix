@@ -10,7 +10,7 @@ import {
   TableLoadingState,
 } from "@/app/components/shared/TableComponents";
 import { useToast } from "@/app/components/Toast";
-import { RubberCompanyDto, rubberPortalApi } from "@/app/lib/api/rubberPortalApi";
+import type { RubberCompanyDto } from "@/app/lib/api/rubberPortalApi";
 import {
   useDeleteRubberCompany,
   useRubberCompanies,
@@ -126,7 +126,7 @@ export default function RubberCompaniesPage() {
 
     for (const id of ids) {
       try {
-        await rubberPortalApi.deleteCompany(id);
+        await deleteMutation.mutateAsync(id);
         successCount++;
       } catch {
         failCount++;
@@ -186,6 +186,11 @@ export default function RubberCompaniesPage() {
 
   const openEditModal = (company: RubberCompanyDto) => {
     setEditingCompany(company);
+    const address = company.address;
+    const street = address?.street;
+    const city = address?.city;
+    const province = address?.province;
+    const postalCode = address?.postalCode;
     setFormData({
       name: company.name,
       code: company.code || "",
@@ -195,10 +200,10 @@ export default function RubberCompaniesPage() {
       isCompoundOwner: company.isCompoundOwner,
       notes: company.notes || "",
       address: {
-        street: company.address?.street || "",
-        city: company.address?.city || "",
-        province: company.address?.province || "",
-        postalCode: company.address?.postalCode || "",
+        street: street ? street : "",
+        city: city ? city : "",
+        province: province ? province : "",
+        postalCode: postalCode ? postalCode : "",
       },
       availableProducts: company.availableProducts || [],
     });
