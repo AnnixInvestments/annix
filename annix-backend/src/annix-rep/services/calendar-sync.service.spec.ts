@@ -19,6 +19,19 @@ describe("CalendarSyncService", () => {
   let mockCalendarEventRepo: Partial<Repository<CalendarEvent>>;
   let mockConflictRepo: Partial<Repository<SyncConflict>>;
   let mockCalendarService: Partial<CalendarService>;
+  const originalCronFlag = process.env.ANNIX_REP_CRON_ENABLED;
+
+  beforeAll(() => {
+    process.env.ANNIX_REP_CRON_ENABLED = "true";
+  });
+
+  afterAll(() => {
+    if (originalCronFlag === undefined) {
+      delete process.env.ANNIX_REP_CRON_ENABLED;
+    } else {
+      process.env.ANNIX_REP_CRON_ENABLED = originalCronFlag;
+    }
+  });
 
   beforeEach(async () => {
     mockConnectionRepo = {

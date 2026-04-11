@@ -13,6 +13,7 @@ import {
   SalesforceAdapter,
 } from "../adapters";
 import type { CrmAdapterConfig, CrmContactData } from "../adapters/crm-adapter.interface";
+import { isAnnixRepCronEnabled } from "../annix-rep-cron.config";
 import {
   ConflictResolutionStrategy,
   CrmConfig,
@@ -71,6 +72,8 @@ export class CrmSyncService {
 
   @Cron(CronExpression.EVERY_30_MINUTES, { name: "fieldflow:crm-sync" })
   async runScheduledSync(): Promise<void> {
+    if (!isAnnixRepCronEnabled()) return;
+
     this.logger.log("Running scheduled CRM sync");
 
     const activeConfigs = await this.crmConfigRepo.find({

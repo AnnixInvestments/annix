@@ -1,29 +1,28 @@
 import { Injectable, Logger } from "@nestjs/common";
-import { ConfigService } from "@nestjs/config";
 import { Cron, CronExpression } from "@nestjs/schedule";
 import { now } from "../../lib/datetime";
+import { isAnnixRepCronEnabled } from "../annix-rep-cron.config";
 import { MeetingPlatformService } from "./meeting-platform.service";
 import { PlatformRecordingService } from "./platform-recording.service";
 
 @Injectable()
 export class MeetingSchedulerService {
   private readonly logger = new Logger(MeetingSchedulerService.name);
-  private readonly enabled: boolean;
 
   constructor(
     private readonly platformService: MeetingPlatformService,
     private readonly recordingService: PlatformRecordingService,
-    private readonly configService: ConfigService,
   ) {
-    this.enabled = this.configService.get<string>("MEETING_SCHEDULER_ENABLED") !== "false";
-    if (!this.enabled) {
-      this.logger.warn("Meeting scheduler is disabled");
+    if (!isAnnixRepCronEnabled()) {
+      this.logger.warn(
+        "AnnixRep cron jobs suspended (ANNIX_REP_CRON_ENABLED !== 'true'): dormant app, preserving Neon compute",
+      );
     }
   }
 
   @Cron(CronExpression.EVERY_30_MINUTES, { name: "fieldflow:sync-meetings" })
   async syncCompletedMeetings(): Promise<void> {
-    if (!this.enabled) return;
+    if (!isAnnixRepCronEnabled()) return;
 
     this.logger.debug("Starting completed meetings sync...");
 
@@ -47,7 +46,7 @@ export class MeetingSchedulerService {
 
   @Cron(CronExpression.EVERY_30_MINUTES, { name: "fieldflow:download-recordings" })
   async downloadPendingRecordings(): Promise<void> {
-    if (!this.enabled) return;
+    if (!isAnnixRepCronEnabled()) return;
 
     this.logger.debug("Starting pending recordings download...");
 
@@ -69,7 +68,7 @@ export class MeetingSchedulerService {
 
   @Cron(CronExpression.EVERY_HOUR, { name: "fieldflow:refresh-tokens" })
   async refreshExpiringTokens(): Promise<void> {
-    if (!this.enabled) return;
+    if (!isAnnixRepCronEnabled()) return;
 
     this.logger.debug("Starting token refresh check...");
 
@@ -99,7 +98,7 @@ export class MeetingSchedulerService {
 
   @Cron(CronExpression.EVERY_DAY_AT_2AM, { name: "fieldflow:weekly-full-sync" })
   async weeklyFullSync(): Promise<void> {
-    if (!this.enabled) return;
+    if (!isAnnixRepCronEnabled()) return;
 
     const dayOfWeek = now().weekday % 7;
     if (dayOfWeek !== 0) {
@@ -129,7 +128,7 @@ export class MeetingSchedulerService {
 
   @Cron(CronExpression.EVERY_DAY_AT_3AM, { name: "fieldflow:cleanup-old-records" })
   async cleanupOldRecords(): Promise<void> {
-    if (!this.enabled) return;
+    if (!isAnnixRepCronEnabled()) return;
 
     this.logger.debug("Cleanup job - placeholder for future implementation");
   }

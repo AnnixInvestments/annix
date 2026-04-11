@@ -3,6 +3,7 @@ import { Cron, CronExpression } from "@nestjs/schedule";
 import { InjectRepository } from "@nestjs/typeorm";
 import { In, LessThanOrEqual, MoreThanOrEqual, Repository } from "typeorm";
 import { fromJSDate, now } from "../../lib/datetime";
+import { isAnnixRepCronEnabled } from "../annix-rep-cron.config";
 import {
   CalendarConnection,
   CalendarEvent,
@@ -48,6 +49,8 @@ export class CalendarSyncService {
 
   @Cron(CronExpression.EVERY_30_MINUTES, { name: "fieldflow:calendar-sync" })
   async syncActiveConnections(): Promise<void> {
+    if (!isAnnixRepCronEnabled()) return;
+
     if (this.isSyncing) {
       this.logger.debug("Sync already in progress, skipping");
       return;

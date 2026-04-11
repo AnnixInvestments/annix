@@ -6,6 +6,7 @@ import { LessThanOrEqual, Repository } from "typeorm";
 import { EmailService } from "../../email/email.service";
 import { now } from "../../lib/datetime";
 import { User } from "../../user/entities/user.entity";
+import { isAnnixRepCronEnabled } from "../annix-rep-cron.config";
 import { Prospect, ProspectStatus } from "../entities";
 
 @Injectable()
@@ -22,6 +23,8 @@ export class FollowUpReminderService {
 
   @Cron(CronExpression.EVERY_DAY_AT_8AM, { name: "fieldflow:daily-reminders" })
   async sendDailyReminders(): Promise<void> {
+    if (!isAnnixRepCronEnabled()) return;
+
     this.logger.log("Starting daily follow-up reminder job");
 
     const overdueProspects = await this.prospectRepo.find({
