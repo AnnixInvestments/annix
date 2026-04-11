@@ -2,6 +2,7 @@ import { BadRequestException, Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { sageRateLimiter } from "../lib/sage-rate-limiter";
 
+// eslint-disable-next-line no-restricted-syntax -- canonical Sage One SA REST client per CLAUDE.md DLA compliance
 const SAGE_BASE_URL = "https://accounting.sageone.co.za/api/2.0.0";
 
 export interface SageCompany {

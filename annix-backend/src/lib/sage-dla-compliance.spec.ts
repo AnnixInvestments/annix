@@ -5,9 +5,13 @@ import { SAGE_HEAVY_ENDPOINTS, SAGE_RATE_LIMITS } from "./sage-rate-limiter";
 const SRC_DIR = path.resolve(__dirname, "..");
 
 const SAGE_API_HOSTS = [
+  // eslint-disable-next-line no-restricted-syntax -- canonical compliance test asserting no other files contain these hosts
   "accounting.sageone.co.za",
+  // eslint-disable-next-line no-restricted-syntax -- canonical compliance test
   "api.accounting.sage.com",
+  // eslint-disable-next-line no-restricted-syntax -- canonical compliance test
   "oauth.accounting.sage.com",
+  // eslint-disable-next-line no-restricted-syntax -- canonical compliance test
   "sageone.com",
 ];
 

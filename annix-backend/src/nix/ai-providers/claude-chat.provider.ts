@@ -56,6 +56,7 @@ export class ClaudeChatProvider {
   private readonly logger = new Logger(ClaudeChatProvider.name);
   private readonly apiKey: string;
   private readonly model: string;
+  // eslint-disable-next-line no-restricted-syntax -- canonical Claude fallback chat provider per CLAUDE.md AI Provider Policy
   private readonly baseUrl = "https://api.anthropic.com/v1";
   private readonly temperature: number;
   private readonly maxTokens: number;

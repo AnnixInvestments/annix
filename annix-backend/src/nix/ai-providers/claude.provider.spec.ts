@@ -130,6 +130,7 @@ describe("ClaudeProvider", () => {
       await provider.extractItems(mockRequest);
 
       expect(mockFetch).toHaveBeenCalledWith(
+        // eslint-disable-next-line no-restricted-syntax -- canonical Claude provider test
         "https://api.anthropic.com/v1/messages",
         expect.objectContaining({
           method: "POST",

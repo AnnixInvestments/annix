@@ -13,6 +13,7 @@ export class ClaudeProvider implements AiProvider {
   private readonly logger = new Logger(ClaudeProvider.name);
   private readonly apiKey: string;
   private readonly model: string;
+  // eslint-disable-next-line no-restricted-syntax -- canonical Claude fallback provider per CLAUDE.md AI Provider Policy
   private readonly baseUrl = "https://api.anthropic.com/v1";
 
   constructor(config?: AiProviderConfig) {

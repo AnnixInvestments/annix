@@ -140,6 +140,17 @@ export default tseslint.config(
           message:
             "Use !isUndefined() from es-toolkit/compat instead of typeof checks. Note: prefer null over undefined for absence of value.",
         },
+        {
+          selector: "Literal[value=/api\\.anthropic\\.com/]",
+          message:
+            "Direct calls to api.anthropic.com are forbidden. Use AiChatService (Gemini-first) per CLAUDE.md AI Provider Policy. Only the canonical Claude provider files inside src/nix/ai-providers/ may reference this URL.",
+        },
+        {
+          selector:
+            "Literal[value=/(sageone\\.com|sageone\\.co\\.za|accounting\\.sage\\.com|api\\.sage|sagecloud)/i]",
+          message:
+            "Direct calls to Sage API endpoints are forbidden — use SageApiService or SageService via sageRateLimiter (CLAUDE.md Sage DLA compliance). Only files inside src/sage-export/ and src/comply-sa/comply-integrations/sage/ may reference Sage URLs.",
+        },
       ],
       "no-restricted-imports": [
         "error",
@@ -148,6 +159,11 @@ export default tseslint.config(
             {
               name: "luxon",
               message: "Import from 'src/lib/datetime' instead of 'luxon' directly",
+            },
+            {
+              name: "@anthropic-ai/sdk",
+              message:
+                "Direct imports of @anthropic-ai/sdk are forbidden. Inject AiChatService (which uses Gemini by default per CLAUDE.md AI Provider Policy).",
             },
           ],
         },

@@ -1,6 +1,7 @@
 import * as fs from "node:fs/promises";
 import { Injectable, Logger } from "@nestjs/common";
 import { createWorker } from "tesseract.js";
+import { AiChatService } from "../ai-providers/ai-chat.service";
 import { AiExtractionService } from "../ai-providers/ai-extraction.service";
 import { DocumentAnnotationService } from "./document-annotation.service";
 
@@ -115,6 +116,7 @@ export class RegistrationDocumentVerifierService {
   constructor(
     private readonly aiExtractor: AiExtractionService,
     private readonly documentAnnotationService: DocumentAnnotationService,
+    private readonly aiChatService: AiChatService,
   ) {}
 
   async verifyDocument(
@@ -436,58 +438,20 @@ export class RegistrationDocumentVerifierService {
   }
 
   private async callAiForExtraction(prompt: string): Promise<string | null> {
-    const availableProviders = await this.aiExtractor.getAvailableProviders();
-    if (availableProviders.length === 0) return null;
-
-    const provider = availableProviders.includes("gemini") ? "gemini" : "claude";
+    if (!(await this.aiChatService.isAvailable())) {
+      this.logger.warn("AI chat service not available for registration extraction");
+      return null;
+    }
 
     try {
-      if (provider === "gemini") {
-        const apiKey = process.env.GEMINI_API_KEY;
-        if (!apiKey) return null;
-
-        const response = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              contents: [{ parts: [{ text: prompt }] }],
-              generationConfig: {
-                temperature: 0.1,
-                maxOutputTokens: 2048,
-                responseMimeType: "application/json",
-              },
-            }),
-          },
-        );
-
-        const data = await response.json();
-        return data.candidates?.[0]?.content?.parts?.[0]?.text || null;
-      } else {
-        const apiKey = process.env.ANTHROPIC_API_KEY;
-        if (!apiKey) return null;
-
-        const response = await fetch("https://api.anthropic.com/v1/messages", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "x-api-key": apiKey,
-            "anthropic-version": "2023-06-01",
-          },
-          body: JSON.stringify({
-            model: "claude-3-haiku-20240307",
-            max_tokens: 2048,
-            temperature: 0.1,
-            messages: [{ role: "user", content: prompt }],
-          }),
-        });
-
-        const data = await response.json();
-        return data.content?.[0]?.text || null;
-      }
+      const { content } = await this.aiChatService.chat(
+        [{ role: "user", content: prompt }],
+        undefined,
+        "gemini",
+      );
+      return content || null;
     } catch (error) {
-      this.logger.error(`AI API call failed: ${error.message}`);
+      this.logger.error(`AI extraction call failed: ${error.message}`);
       return null;
     }
   }

@@ -32,8 +32,11 @@ interface SageTokenResponse {
   resource_owner_id?: string;
 }
 
+// eslint-disable-next-line no-restricted-syntax -- canonical Sage Cloud OAuth client per CLAUDE.md DLA compliance
 const SAGE_AUTH_URL = "https://www.sageone.com/oauth2/auth/central";
+// eslint-disable-next-line no-restricted-syntax -- canonical Sage Cloud OAuth client per CLAUDE.md DLA compliance
 const SAGE_TOKEN_URL = "https://oauth.accounting.sage.com/token";
+// eslint-disable-next-line no-restricted-syntax -- canonical Sage Cloud REST client per CLAUDE.md DLA compliance
 const SAGE_API_BASE = "https://api.accounting.sage.com/v3.1";
 const ENCRYPTION_ALGORITHM = "aes-256-gcm";
 const IV_LENGTH = 16;
