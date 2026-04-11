@@ -9,7 +9,7 @@ import {
 import { GeminiChatProvider } from "./gemini-chat.provider";
 import { withRetry } from "./retry";
 
-export type AiChatProviderType = "gemini" | "claude" | "auto";
+export type AiChatProviderType = "gemini" | "auto";
 
 interface ChatProvider {
   readonly name: string;
@@ -32,7 +32,7 @@ export class AiChatService implements OnModuleInit {
     this.providers.set("claude", new ClaudeChatProvider());
 
     const envProvider = process.env.AI_CHAT_PROVIDER?.toLowerCase();
-    if (envProvider === "claude" || envProvider === "gemini" || envProvider === "auto") {
+    if (envProvider === "gemini" || envProvider === "auto") {
       this.preferredProvider = envProvider;
     } else {
       this.preferredProvider = "auto";

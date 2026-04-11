@@ -7,7 +7,7 @@ import { ClaudeProvider } from "./claude.provider";
 import { GeminiProvider } from "./gemini.provider";
 import { withRetry } from "./retry";
 
-export type AiProviderType = "gemini" | "claude" | "auto";
+export type AiProviderType = "gemini" | "auto";
 
 @Injectable()
 export class AiExtractionService implements OnModuleInit {
@@ -20,7 +20,7 @@ export class AiExtractionService implements OnModuleInit {
     this.providers.set("claude", new ClaudeProvider());
 
     const envProvider = process.env.AI_EXTRACTION_PROVIDER?.toLowerCase();
-    if (envProvider === "claude" || envProvider === "gemini" || envProvider === "auto") {
+    if (envProvider === "gemini" || envProvider === "auto") {
       this.preferredProvider = envProvider;
     } else {
       this.preferredProvider = "auto";
