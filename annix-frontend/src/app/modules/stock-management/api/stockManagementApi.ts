@@ -283,6 +283,53 @@ export class StockManagementApiClient {
     return this.request("POST", `/stock-take/${id}/post`);
   }
 
+  async listOutstandingReturns(): Promise<unknown[]> {
+    return this.request("GET", "/returns/outstanding");
+  }
+
+  async createOffcutReturn(input: {
+    targetIssuanceRowId?: number | null;
+    sourceRubberRollId?: number | null;
+    offcutNumber?: string | null;
+    widthMm: number;
+    lengthM: number;
+    thicknessMm: number;
+    compoundCode?: string | null;
+    colour?: string | null;
+    photoUrl?: string | null;
+    notes?: string | null;
+  }): Promise<unknown> {
+    return this.request("POST", "/returns/rubber-offcut", input);
+  }
+
+  async confirmReturnSession(id: number): Promise<unknown> {
+    return this.request("POST", `/returns/sessions/${id}/confirm`);
+  }
+
+  async rejectReturnSession(id: number, reason: string): Promise<unknown> {
+    return this.request("POST", `/returns/sessions/${id}/reject`, { reason });
+  }
+
+  async listWastageBins(): Promise<unknown[]> {
+    return this.request("GET", "/returns/wastage-bins");
+  }
+
+  async addWastageEntry(input: {
+    colour: string;
+    weightKgAdded: number;
+    sourceOffcutProductId?: number | null;
+    sourceIssuanceRowId?: number | null;
+    sourcePurchaseBatchId?: number | null;
+    costPerKgAtEntry: number;
+    notes?: string | null;
+  }): Promise<unknown> {
+    return this.request("POST", "/returns/wastage-entries", input);
+  }
+
+  async emptyWastageBin(id: number): Promise<unknown> {
+    return this.request("POST", `/returns/wastage-bins/${id}/empty`);
+  }
+
   private async request<T>(method: string, path: string, body?: unknown): Promise<T> {
     const url = `${this.options.baseUrl}${path}`;
     const headers: Record<string, string> = {

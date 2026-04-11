@@ -37,6 +37,7 @@ export { AdminStockHoldPage } from "./pages/AdminStockHoldPage";
 export { AdminVarianceCategoriesPage } from "./pages/AdminVarianceCategoriesPage";
 export { IssueStockPage } from "./pages/IssueStockPage";
 export { ModuleLicensePage } from "./pages/ModuleLicensePage";
+export { ReturnsPage } from "./pages/ReturnsPage";
 export { StockTakePage } from "./pages/StockTakePage";
 export {
   StockManagementContext,
