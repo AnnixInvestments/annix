@@ -37,6 +37,28 @@ export {
   useUpdateLinkedStaff,
 } from "./useIssueStock";
 export {
+  useCompleteBackgroundStepWithOutcome,
+  useConfirmIssuance,
+  useDownloadJobCardQrPdf,
+  useDownloadSignedJobCardPdf,
+  useLoadApprovalHistory,
+  useLoadBackgroundStepsForJobCard,
+  useLoadControlPlansForJobCard,
+  useLoadDeliveryJobCards,
+  useLoadJobCardAdjacentIds,
+  useLoadJobCardPdfPreview,
+  useLoadReconciliationGateStatus,
+  useLoadRequisitions,
+  useLoadSourceFileUrl,
+  useLoadWorkflowStatus,
+  usePlaceRequisitionDecision,
+  useReExtractJobCardNotes,
+  useSaveJobCardCorrection,
+  useUpdateJobCard,
+  useUploadReadyPhoto,
+  useUseCurrentStockDecision,
+} from "./useJobCardDetail";
+export {
   useCpoSummary,
   useDashboardPreferences,
   useDashboardStats,

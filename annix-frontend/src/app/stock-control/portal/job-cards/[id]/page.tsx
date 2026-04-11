@@ -17,9 +17,40 @@ import type {
   StockItem,
   WorkflowStatus as WorkflowStatusData,
 } from "@/app/lib/api/stockControlApi";
-import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { formatDateZA, nowMillis } from "@/app/lib/datetime";
-import { useInvalidateJobCards } from "@/app/lib/query/hooks";
+import {
+  useAllocateStock,
+  useApproveOverAllocation,
+  useApproveWorkflowStep,
+  useCompleteAction,
+  useCompleteBackgroundStepWithOutcome,
+  useConfirmIssuance,
+  useDownloadJobCardQrPdf,
+  useDownloadSignedJobCardPdf,
+  useInvalidateJobCards,
+  useLoadApprovalHistory,
+  useLoadBackgroundStepsForJobCard,
+  useLoadControlPlansForJobCard,
+  useLoadDeliveryJobCards,
+  useLoadJobCard,
+  useLoadJobCardAdjacentIds,
+  useLoadJobCardAllocations,
+  useLoadJobCardPdfPreview,
+  useLoadReconciliationGateStatus,
+  useLoadRequisitions,
+  useLoadSourceFileUrl,
+  useLoadStaffMembers,
+  useLoadStockItems,
+  useLoadWorkflowStatus,
+  usePlaceRequisitionDecision,
+  useReExtractJobCardNotes,
+  useRejectOverAllocation,
+  useRejectWorkflowStep,
+  useSaveJobCardCorrection,
+  useUpdateJobCard,
+  useUploadReadyPhoto,
+  useUseCurrentStockDecision,
+} from "@/app/lib/query/hooks";
 import { ApprovalModal } from "@/app/stock-control/components/ApprovalModal";
 import { CpoBatchSessionList } from "@/app/stock-control/components/CpoBatchSessionList";
 import { JobCardNextAction } from "@/app/stock-control/components/NextActionBanner";
@@ -60,6 +91,40 @@ export default function JobCardDetailPage() {
   const invalidateJobCardsList = useInvalidateJobCards();
   const jobId = Number(params.id);
 
+  const { mutateAsync: loadJobCard } = useLoadJobCard();
+  const { mutateAsync: loadJobCardAllocations } = useLoadJobCardAllocations();
+  const { mutateAsync: loadRequisitions } = useLoadRequisitions();
+  const { mutateAsync: loadDeliveryJobCards } = useLoadDeliveryJobCards();
+  const { mutateAsync: loadWorkflowStatus } = useLoadWorkflowStatus();
+  const { mutateAsync: loadApprovalHistory } = useLoadApprovalHistory();
+  const { mutateAsync: loadBackgroundSteps } = useLoadBackgroundStepsForJobCard();
+  const { mutateAsync: loadJobCardAdjacentIds } = useLoadJobCardAdjacentIds();
+  const { mutateAsync: loadControlPlans } = useLoadControlPlansForJobCard();
+  const { mutateAsync: loadStockItems } = useLoadStockItems();
+  const { mutateAsync: loadStaffMembers } = useLoadStaffMembers();
+  const { mutateAsync: allocateStockMutation } = useAllocateStock();
+  const { mutateAsync: approveOverAllocation } = useApproveOverAllocation();
+  const { mutateAsync: rejectOverAllocation } = useRejectOverAllocation();
+  const { mutateAsync: loadJobCardPdfPreview } = useLoadJobCardPdfPreview();
+  const { mutateAsync: downloadJobCardQrPdf } = useDownloadJobCardQrPdf();
+  const { mutateAsync: downloadSignedJobCardPdf } = useDownloadSignedJobCardPdf();
+  const { mutateAsync: updateJobCard } = useUpdateJobCard();
+  const { mutateAsync: approveWorkflowStep } = useApproveWorkflowStep();
+  const { mutateAsync: rejectWorkflowStep } = useRejectWorkflowStep();
+  const { mutateAsync: completeBackgroundStepWithOutcome } = useCompleteBackgroundStepWithOutcome();
+  const { mutateAsync: completeAction } = useCompleteAction();
+  const { mutateAsync: reExtractJobCardNotes } = useReExtractJobCardNotes();
+  const { mutateAsync: saveJobCardCorrection } = useSaveJobCardCorrection();
+  const { mutateAsync: uploadReadyPhoto } = useUploadReadyPhoto();
+  const { mutateAsync: confirmIssuance } = useConfirmIssuance();
+  const { mutateAsync: placeRequisitionDecision } = usePlaceRequisitionDecision();
+  const { mutateAsync: useCurrentStockDecisionMutation } = useUseCurrentStockDecision();
+  const { mutateAsync: loadSourceFileUrl } = useLoadSourceFileUrl();
+  const { mutateAsync: loadReconciliationGateStatus } = useLoadReconciliationGateStatus();
+
+  const authUserName = user?.name ? user.name : null;
+  const authUserId = user?.id ? user.id : null;
+
   const [jobCard, setJobCard] = useState<JobCard | null>(null);
   const [workflowStatus, setWorkflowStatus] = useState<WorkflowStatusData | null>(null);
   const [approvals, setApprovals] = useState<JobCardApproval[]>([]);
@@ -98,48 +163,41 @@ export default function JobCardDetailPage() {
     try {
       setIsLoading(true);
       const [jobData, allocationsData] = await Promise.all([
-        stockControlApiClient.jobCardById(jobId),
-        stockControlApiClient.jobCardAllocations(jobId),
+        loadJobCard(jobId),
+        loadJobCardAllocations(jobId),
       ]);
       setJobCard(jobData);
       setAllocations(Array.isArray(allocationsData) ? allocationsData : []);
       setError(null);
 
-      stockControlApiClient
-        .requisitions()
+      loadRequisitions()
         .then((reqs) => {
           const match = reqs.find((r) => r.jobCardId === jobId && r.status !== "cancelled");
-          setRequisition(match || null);
+          setRequisition(match ? match : null);
         })
         .catch(() => setRequisition(null));
 
-      stockControlApiClient
-        .deliveryJobCards(jobId)
+      loadDeliveryJobCards(jobId)
         .then((data) => setDeliveryJobCards(data))
         .catch(() => setDeliveryJobCards([]));
 
-      stockControlApiClient
-        .workflowStatus(jobId)
+      loadWorkflowStatus(jobId)
         .then((data) => setWorkflowStatus(data))
         .catch(() => setWorkflowStatus(null));
 
-      stockControlApiClient
-        .approvalHistory(jobId)
+      loadApprovalHistory(jobId)
         .then((data) => setApprovals(data))
         .catch(() => setApprovals([]));
 
-      stockControlApiClient
-        .backgroundStepsForJobCard(jobId)
+      loadBackgroundSteps(jobId)
         .then((data) => setBackgroundSteps(data))
         .catch(() => setBackgroundSteps([]));
 
-      stockControlApiClient
-        .jobCardAdjacentIds(jobId)
+      loadJobCardAdjacentIds(jobId)
         .then((data) => setAdjacentIds(data))
         .catch(() => setAdjacentIds({ previousId: null, nextId: null }));
 
-      stockControlApiClient
-        .controlPlansForJobCard(jobId)
+      loadControlPlans(jobId)
         .then((data) => setControlPlans(data))
         .catch(() => setControlPlans([]));
     } catch (err) {
@@ -147,21 +205,30 @@ export default function JobCardDetailPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [jobId]);
+  }, [
+    jobId,
+    loadJobCard,
+    loadJobCardAllocations,
+    loadRequisitions,
+    loadDeliveryJobCards,
+    loadWorkflowStatus,
+    loadApprovalHistory,
+    loadBackgroundSteps,
+    loadJobCardAdjacentIds,
+    loadControlPlans,
+  ]);
 
   const refreshWorkflowState = useCallback(() => {
     if (document.hidden) return;
     Promise.all([
-      stockControlApiClient.jobCardById(jobId).then((data) => setJobCard(data)),
-      stockControlApiClient.workflowStatus(jobId).then((data) => setWorkflowStatus(data)),
-      stockControlApiClient.approvalHistory(jobId).then((data) => setApprovals(data)),
-      stockControlApiClient
-        .backgroundStepsForJobCard(jobId)
-        .then((data) => setBackgroundSteps(data)),
+      loadJobCard(jobId).then((data) => setJobCard(data)),
+      loadWorkflowStatus(jobId).then((data) => setWorkflowStatus(data)),
+      loadApprovalHistory(jobId).then((data) => setApprovals(data)),
+      loadBackgroundSteps(jobId).then((data) => setBackgroundSteps(data)),
     ]).catch((err) => {
       console.error("Failed to refresh workflow state:", err);
     });
-  }, [jobId]);
+  }, [jobId, loadJobCard, loadWorkflowStatus, loadApprovalHistory, loadBackgroundSteps]);
 
   const documents = useJobCardDocuments(jobId, fetchData, confirm);
   const coating = useJobCardCoating(jobId);
@@ -181,7 +248,7 @@ export default function JobCardDetailPage() {
 
   const fetchStockItems = async () => {
     try {
-      const result = await stockControlApiClient.stockItems({ limit: "1000" });
+      const result = await loadStockItems({ limit: "1000" });
       setStockItems(Array.isArray(result.items) ? result.items : []);
     } catch (err) {
       setError(err instanceof Error ? err : new Error("Failed to load stock items"));
@@ -191,7 +258,7 @@ export default function JobCardDetailPage() {
   const openAllocateModal = async () => {
     await fetchStockItems();
     try {
-      const staff = await stockControlApiClient.staffMembers({ active: "true" });
+      const staff = await loadStaffMembers({ active: "true" });
       setActiveStaff(Array.isArray(staff) ? staff : []);
     } catch {
       setActiveStaff([]);
@@ -205,15 +272,16 @@ export default function JobCardDetailPage() {
     if (!allocateForm.stockItemId) return;
     try {
       setIsAllocating(true);
-      const allocation = await stockControlApiClient.allocateStock(jobId, {
-        stockItemId: allocateForm.stockItemId,
-        quantityUsed: allocateForm.quantityUsed,
-        notes: allocateForm.notes || undefined,
-        staffMemberId: allocateForm.staffMemberId || undefined,
+      await allocateStockMutation({
+        jobId,
+        data: {
+          stockItemId: allocateForm.stockItemId,
+          quantityUsed: allocateForm.quantityUsed,
+          notes: allocateForm.notes ? allocateForm.notes : undefined,
+          staffMemberId: allocateForm.staffMemberId ? allocateForm.staffMemberId : undefined,
+        },
+        photoFile: capturedFile ? capturedFile : undefined,
       });
-      if (capturedFile) {
-        await stockControlApiClient.uploadAllocationPhoto(jobId, allocation.id, capturedFile);
-      }
       setShowAllocateModal(false);
       setCapturedFile(null);
       fetchData();
@@ -227,7 +295,7 @@ export default function JobCardDetailPage() {
   const handleApproveAllocation = async (allocationId: number) => {
     try {
       setApprovingAllocationId(allocationId);
-      await stockControlApiClient.approveOverAllocation(jobId, allocationId);
+      await approveOverAllocation({ jobId, allocationId });
       fetchData();
     } catch (err) {
       setError(err instanceof Error ? err : new Error("Failed to approve allocation"));
@@ -240,7 +308,7 @@ export default function JobCardDetailPage() {
     if (!reason.trim()) return;
     try {
       setRejectingAllocationId(allocationId);
-      await stockControlApiClient.rejectOverAllocation(jobId, allocationId, reason);
+      await rejectOverAllocation({ jobId, allocationId, reason });
       fetchData();
     } catch (err) {
       setError(err instanceof Error ? err : new Error("Failed to reject allocation"));
@@ -256,7 +324,7 @@ export default function JobCardDetailPage() {
     try {
       setIsDownloadingQr(true);
       setDownloadError(null);
-      const blobUrl = await stockControlApiClient.previewJobCardPdf(jobId);
+      const blobUrl = await loadJobCardPdfPreview(jobId);
       setPdfPreviewUrl(blobUrl);
     } catch (err) {
       setDownloadError(err instanceof Error ? err.message : "Failed to generate job card PDF");
@@ -268,7 +336,7 @@ export default function JobCardDetailPage() {
   const handleExportPdf = async () => {
     try {
       setIsDownloadingQr(true);
-      await stockControlApiClient.downloadJobCardQrPdf(jobId);
+      await downloadJobCardQrPdf(jobId);
     } catch (err) {
       setDownloadError(err instanceof Error ? err.message : "Failed to download job card PDF");
     } finally {
@@ -281,7 +349,7 @@ export default function JobCardDetailPage() {
       const activateWithStatus = async () => {
         try {
           setIsUpdatingStatus(true);
-          await stockControlApiClient.updateJobCard(jobId, { status: "active" });
+          await updateJobCard({ jobCardId: jobId, data: { status: "active" } });
           invalidateJobCardsList();
           fetchData();
         } catch (err) {
@@ -298,7 +366,7 @@ export default function JobCardDetailPage() {
 
     try {
       setIsUpdatingStatus(true);
-      await stockControlApiClient.updateJobCard(jobId, { status: newStatus });
+      await updateJobCard({ jobCardId: jobId, data: { status: newStatus } });
       invalidateJobCardsList();
       fetchData();
     } catch (err) {
@@ -311,9 +379,12 @@ export default function JobCardDetailPage() {
   const activateJobCard = async (skipTdsCheck?: boolean) => {
     try {
       setIsUpdatingStatus(true);
-      await stockControlApiClient.updateJobCard(jobId, {
-        status: "active",
-        ...(skipTdsCheck ? { skipTdsCheck: true } : {}),
+      await updateJobCard({
+        jobCardId: jobId,
+        data: {
+          status: "active",
+          ...(skipTdsCheck ? { skipTdsCheck: true } : {}),
+        },
       });
       invalidateJobCardsList();
       fetchData();
@@ -345,7 +416,8 @@ export default function JobCardDetailPage() {
     comments?: string,
     outcomeKey?: string,
   ) => {
-    await stockControlApiClient.approveWorkflowStep(jobId, {
+    await approveWorkflowStep({
+      jobId,
       signatureDataUrl,
       comments,
       outcomeKey,
@@ -355,7 +427,7 @@ export default function JobCardDetailPage() {
   };
 
   const handleReject = async (reason: string) => {
-    await stockControlApiClient.rejectWorkflowStep(jobId, reason);
+    await rejectWorkflowStep({ jobId, reason });
     invalidateJobCardsList();
     fetchData();
   };
@@ -365,7 +437,7 @@ export default function JobCardDetailPage() {
     try {
       setCompletingStepKey(stepKey);
       setBgStepError(null);
-      await stockControlApiClient.completeBackgroundStep(jobId, stepKey, undefined, outcomeKey);
+      await completeBackgroundStepWithOutcome({ jobCardId: jobId, stepKey, outcomeKey });
       fetchData();
     } catch (err) {
       setBgStepError(err instanceof Error ? err.message : "Failed to complete background step");
@@ -379,7 +451,7 @@ export default function JobCardDetailPage() {
     if (!currentStep) return;
     try {
       setIsCompletingFgAction(true);
-      await stockControlApiClient.completeAction(jobId, currentStep, "primary");
+      await completeAction({ jobCardId: jobId, stepKey: currentStep, actionType: "primary" });
       fetchData();
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Failed to complete action";
@@ -390,16 +462,19 @@ export default function JobCardDetailPage() {
   };
 
   const handleSaveNotes = async (editedNotes: string) => {
-    const originalNotes = jobCard?.notes || null;
-    await stockControlApiClient.updateJobCard(jobId, { notes: editedNotes });
-    if (editedNotes !== (originalNotes || "")) {
-      await stockControlApiClient
-        .saveJobCardCorrection(jobId, {
+    const jobCardNotes = jobCard?.notes;
+    const originalNotes = jobCardNotes ? jobCardNotes : null;
+    await updateJobCard({ jobCardId: jobId, data: { notes: editedNotes } });
+    const fallbackOriginal = originalNotes ? originalNotes : "";
+    if (editedNotes !== fallbackOriginal) {
+      await saveJobCardCorrection({
+        jobCardId: jobId,
+        data: {
           fieldName: "notes",
           originalValue: originalNotes,
           correctedValue: editedNotes,
-        })
-        .catch(() => null);
+        },
+      }).catch(() => null);
     }
     fetchData();
   };
@@ -408,7 +483,7 @@ export default function JobCardDetailPage() {
   const handleReExtractNotes = async () => {
     try {
       setIsReExtractingNotes(true);
-      await stockControlApiClient.reExtractJobCardNotes(jobId);
+      await reExtractJobCardNotes(jobId);
       fetchData();
     } catch (err) {
       setError(err instanceof Error ? err : new Error("Failed to re-extract notes"));
@@ -424,14 +499,11 @@ export default function JobCardDetailPage() {
 
   const handlePrintSignedPdf = () => {
     setDownloadError(null);
-    pdfPreview.openWithFetch(
-      () => stockControlApiClient.downloadSignedJobCardPdf(jobId),
-      `job-card-signed-${jobId}.pdf`,
-    );
+    pdfPreview.openWithFetch(() => downloadSignedJobCardPdf(jobId), `job-card-signed-${jobId}.pdf`);
   };
 
-  const currentStatus = workflowStatus?.currentStatus || null;
-  const currentStep = workflowStatus?.currentStep || null;
+  const currentStatus = workflowStatus?.currentStatus ? workflowStatus.currentStatus : null;
+  const currentStep = workflowStatus?.currentStep ? workflowStatus.currentStep : null;
   const userRole = effectiveRole;
   const isAdminView = userRole === "admin" && !isPreviewActive;
 
@@ -499,7 +571,7 @@ export default function JobCardDetailPage() {
     setTimeout(() => tryScroll(20), 100);
   }, []);
 
-  const pipingLossPct = profile?.pipingLossFactorPct || 45;
+  const pipingLossPct = profile?.pipingLossFactorPct ? profile.pipingLossFactorPct : 45;
 
   const validLineItemCount = useMemo(
     () => (jobCard?.lineItems ? jobCard.lineItems.filter(isValidLineItem).length : 0),
@@ -509,8 +581,8 @@ export default function JobCardDetailPage() {
   const tabDefinitions: TabDefinition[] = useMemo(() => {
     const status = jobCard?.status?.toLowerCase() || "draft";
     const allLineItemText = [
-      jobCard?.notes || "",
-      ...(jobCard?.lineItems || []).map(
+      jobCard?.notes ? jobCard.notes : "",
+      ...(jobCard?.lineItems ? jobCard.lineItems : []).map(
         (li) => `${li.itemCode || ""} ${li.itemDescription || ""} ${li.notes || ""}`,
       ),
     ]
@@ -522,7 +594,7 @@ export default function JobCardDetailPage() {
       allLineItemText.includes("lining") ||
       allLineItemText.includes("liner") ||
       allLineItemText.includes("lagging");
-    const hasM2Items = (jobCard?.lineItems || [])
+    const hasM2Items = (jobCard?.lineItems ? jobCard.lineItems : [])
       .filter(isValidLineItem)
       .some((li) => li.m2 !== null && Number(li.m2) > 0);
     return [
@@ -574,7 +646,7 @@ export default function JobCardDetailPage() {
     const triggerGroups = backgroundSteps.reduce<Record<string, BackgroundStepStatus[]>>(
       (acc, bg) => {
         const trigger = bg.triggerAfterStep || "__root__";
-        return { ...acc, [trigger]: [...(acc[trigger] || []), bg] };
+        return { ...acc, [trigger]: [...(acc[trigger] ? acc[trigger] : []), bg] };
       },
       {},
     );
@@ -641,7 +713,7 @@ export default function JobCardDetailPage() {
 
       const isNonBlockingBranch = bg.rejoinAtStep !== null;
       if (!isNonBlockingBranch) {
-        const allSiblings = triggerGroups[trigger] || [];
+        const allSiblings = triggerGroups[trigger] ? triggerGroups[trigger] : [];
         const sameBranchSiblings = allSiblings.filter(
           (s) => (s.branchColor || null) === (bg.branchColor || null),
         );
@@ -707,7 +779,7 @@ export default function JobCardDetailPage() {
 
     const fgSteps = workflowStatus.foregroundSteps || [];
     const stepConfig = fgSteps.find((s) => s.key === currentStep);
-    const actionLabel = stepConfig?.actionLabel || null;
+    const actionLabel = stepConfig?.actionLabel ? stepConfig.actionLabel : null;
 
     const phaseEntry = workflowStatus.phaseInfo?.[currentStep];
     if (!phaseEntry || phaseEntry.phases.length <= 1) {
@@ -778,11 +850,13 @@ export default function JobCardDetailPage() {
       const raw = bg.triggerAfterStep;
       const isFgTrigger = raw !== null && fgKeySet.has(raw);
       const isBgChain = raw !== null && bgKeySet.has(raw);
-      const trigger = isFgTrigger || isBgChain ? raw : fgSteps[0]?.key || "";
-      return { ...acc, [trigger]: [...(acc[trigger] || []), bg] };
+      const firstFgKey = fgSteps[0]?.key;
+      const fallbackTrigger = firstFgKey ? firstFgKey : "";
+      const trigger = isFgTrigger || isBgChain ? raw : fallbackTrigger;
+      return { ...acc, [trigger]: [...(acc[trigger] ? acc[trigger] : []), bg] };
     }, {});
     const resolveChain = (trigger: string): BackgroundStepStatus[] => {
-      const direct = bgByTrigger[trigger] || [];
+      const direct = bgByTrigger[trigger] ? bgByTrigger[trigger] : [];
       return direct.reduce<BackgroundStepStatus[]>((chain, bg) => {
         const rest = bgKeySet.has(bg.stepKey) ? resolveChain(bg.stepKey) : [];
         return [...chain, bg, ...rest];
@@ -926,16 +1000,14 @@ export default function JobCardDetailPage() {
       (bg) => bg.stepKey === "job_file_review" && bg.completedAt === null,
     );
     if (!pendingFileReview) return;
-    stockControlApiClient
-      .reconciliationGateStatus(jobId)
+    loadReconciliationGateStatus(jobId)
       .then((gate) => setJobFileGateSatisfied(gate.satisfied))
       .catch(() => setJobFileGateSatisfied(false));
   }, [backgroundSteps, jobId]);
 
   useEffect(() => {
     if (!docUploadStepActive) return;
-    stockControlApiClient
-      .reconciliationGateStatus(jobId)
+    loadReconciliationGateStatus(jobId)
       .then((gate) => setDocUploadGateSatisfied(gate.satisfied))
       .catch(() => setDocUploadGateSatisfied(false));
   }, [docUploadStepActive, jobId]);
@@ -1011,7 +1083,7 @@ export default function JobCardDetailPage() {
     const file = new File([blob], `ready-photo-${nowMillis()}.jpg`, { type: "image/jpeg" });
     try {
       setIsUploadingReadyPhoto(true);
-      await stockControlApiClient.uploadReadyPhoto(jobId, file);
+      await uploadReadyPhoto({ jobCardId: jobId, file });
       await jobFilesHook.loadJobFiles();
       closeReadyPhotoModal();
     } catch (err) {
@@ -1028,7 +1100,7 @@ export default function JobCardDetailPage() {
       if (!file) return;
       try {
         setIsUploadingReadyPhoto(true);
-        await stockControlApiClient.uploadReadyPhoto(jobId, file);
+        await uploadReadyPhoto({ jobCardId: jobId, file });
         await jobFilesHook.loadJobFiles();
         closeReadyPhotoModal();
       } catch (err) {
@@ -1062,10 +1134,10 @@ export default function JobCardDetailPage() {
 
     try {
       setIsConfirmingIssuance(true);
-      await stockControlApiClient.confirmIssuance(
-        jobId,
-        unissued.map((a) => a.id),
-      );
+      await confirmIssuance({
+        jobCardId: jobId,
+        allocationIds: unissued.map((a) => a.id),
+      });
       fetchData();
     } catch (err) {
       setError(err instanceof Error ? err : new Error("Failed to confirm issuance"));
@@ -1107,7 +1179,7 @@ export default function JobCardDetailPage() {
     try {
       setIsProcessingDecision(true);
       setDecisionError(null);
-      const result = await stockControlApiClient.placeRequisitionDecision(jobId);
+      const result = await placeRequisitionDecision(jobId);
       fetchData();
       if (result.requisitionId) {
         router.push(
@@ -1128,7 +1200,7 @@ export default function JobCardDetailPage() {
     try {
       setIsProcessingDecision(true);
       setDecisionError(null);
-      await stockControlApiClient.useCurrentStockDecision(jobId);
+      await useCurrentStockDecisionMutation(jobId);
       fetchData();
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to use current stock";
@@ -1156,7 +1228,7 @@ export default function JobCardDetailPage() {
       <div className="flex items-center justify-center min-h-96">
         <div className="text-center">
           <div className="text-red-500 text-lg font-semibold mb-2">Error Loading Data</div>
-          <p className="text-gray-600">{error?.message || "Job card not found"}</p>
+          <p className="text-gray-600">{error?.message ? error.message : "Job card not found"}</p>
           <Link
             href="/stock-control/portal/job-cards"
             className="mt-4 inline-block text-teal-600 hover:text-teal-800"
@@ -1168,7 +1240,8 @@ export default function JobCardDetailPage() {
     );
   }
 
-  const transitions = STATUS_TRANSITIONS[jobCard.status.toLowerCase()] || [];
+  const statusTransitions = STATUS_TRANSITIONS[jobCard.status.toLowerCase()];
+  const transitions = statusTransitions ? statusTransitions : [];
 
   return (
     <div className="space-y-6">
@@ -1364,7 +1437,7 @@ export default function JobCardDetailPage() {
                   onClick={async () => {
                     setSourceFileLoading(true);
                     try {
-                      const result = await stockControlApiClient.sourceFileUrl(jobCard.id);
+                      const result = await loadSourceFileUrl(jobCard.id);
                       setSourceFileUrl(result.url);
                       setShowSourceFileModal(true);
                     } catch {
@@ -1479,11 +1552,15 @@ export default function JobCardDetailPage() {
                       handleCompleteBackgroundStep(receptionStep.stepKey);
                     }
                   }}
-                  disabled={
-                    isDownloadingQr ||
-                    completingStepKey === userPendingBgSteps.find(isReceptionStep)?.stepKey ||
-                    adminBlockedFromStep(userPendingBgSteps.find(isReceptionStep)?.stepKey)
-                  }
+                  disabled={(() => {
+                    const receptionStep = userPendingBgSteps.find(isReceptionStep);
+                    const receptionStepKey = receptionStep?.stepKey;
+                    return (
+                      isDownloadingQr ||
+                      completingStepKey === receptionStepKey ||
+                      adminBlockedFromStep(receptionStepKey)
+                    );
+                  })()}
                   className="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-md bg-amber-600 text-white hover:bg-amber-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
                 >
                   <svg
@@ -1781,8 +1858,10 @@ export default function JobCardDetailPage() {
                           amber: "bg-amber-600 hover:bg-amber-700",
                           blue: "bg-blue-600 hover:bg-blue-700",
                         };
-                        const btnClass =
-                          styleMap[outcome.style] || "bg-amber-600 hover:bg-amber-700";
+                        const mappedStyle = styleMap[outcome.style];
+                        const btnClass = mappedStyle
+                          ? mappedStyle
+                          : "bg-amber-600 hover:bg-amber-700";
                         return (
                           <button
                             key={`${bg.stepKey}-${outcome.key}`}
@@ -1995,7 +2074,7 @@ export default function JobCardDetailPage() {
           stepAssignments={workflowStatus.stepAssignments || {}}
           foregroundSteps={workflowStatus.foregroundSteps || []}
           backgroundSteps={backgroundSteps}
-          currentUserName={effectiveName || user?.name || null}
+          currentUserName={effectiveName || authUserName}
         />
       )}
 
@@ -2222,7 +2301,7 @@ export default function JobCardDetailPage() {
               isUploading={jobFilesHook.isUploading}
               isDragging={jobFilesHook.isDragging}
               viewingFile={jobFilesHook.viewingFile}
-              currentUserId={user?.id || null}
+              currentUserId={authUserId}
               onDrop={jobFilesHook.handleDrop}
               onDragOver={jobFilesHook.handleDragOver}
               onDragLeave={jobFilesHook.handleDragLeave}
@@ -2238,7 +2317,7 @@ export default function JobCardDetailPage() {
           <TabPanel tabId="coating" activeTab={activeTab} visited={visitedTabs.has("coating")}>
             <CoatingAnalysisTab
               jobId={jobId}
-              jobNumber={jobCard?.jobNumber || ""}
+              jobNumber={jobCard?.jobNumber ? jobCard.jobNumber : ""}
               coatingAnalysis={coating.coatingAnalysis}
               isAnalysing={coating.isAnalysing}
               onRunAnalysis={coating.handleRunAnalysis}
@@ -2255,8 +2334,8 @@ export default function JobCardDetailPage() {
               tdsUploadError={coating.tdsUploadError}
               onSkipTds={handleSkipTdsAndActivate}
               isAdmin={userRole === "admin"}
-              sourceFileUrl={jobCard?.sourceFilePath || null}
-              lineItems={jobCard?.lineItems || []}
+              sourceFileUrl={jobCard?.sourceFilePath ? jobCard.sourceFilePath : null}
+              lineItems={jobCard?.lineItems ? jobCard.lineItems : []}
               showStockDecision={requisitionIsPending}
               onPlaceRequisition={handlePlaceRequisition}
               onUseCurrentStock={handleUseCurrentStock}
@@ -2287,12 +2366,14 @@ export default function JobCardDetailPage() {
             <div id="quality-tab-content">
               <QualityTab
                 jobCardId={jobId}
-                cpoId={jobCard?.cpoId || null}
+                cpoId={jobCard?.cpoId ? jobCard.cpoId : null}
                 backgroundSteps={backgroundSteps}
                 activeBgStepKeys={activeBgStepKeys}
-                stepAssignments={workflowStatus?.stepAssignments || {}}
-                currentUserName={effectiveName || user?.name || null}
-                rubberPlanOverride={jobCard?.rubberPlanOverride || null}
+                stepAssignments={
+                  workflowStatus?.stepAssignments ? workflowStatus.stepAssignments : {}
+                }
+                currentUserName={effectiveName || authUserName}
+                rubberPlanOverride={jobCard?.rubberPlanOverride ? jobCard.rubberPlanOverride : null}
                 onBatchComplete={
                   userPendingBgSteps.some((bg) => bg.branchColor && bg.stepKey === "qc_batch_certs")
                     ? () => {
@@ -2320,7 +2401,7 @@ export default function JobCardDetailPage() {
                 onFinalPhotosSaved={() => {
                   setFinalPhotosSaved(true);
                 }}
-                lineItems={(jobCard?.lineItems || []).map((li) => ({
+                lineItems={(jobCard?.lineItems ? jobCard.lineItems : []).map((li) => ({
                   id: li.id,
                   itemCode: li.itemCode || "",
                   description: li.itemDescription || "",
@@ -2364,10 +2445,13 @@ export default function JobCardDetailPage() {
         onReject={handleReject}
         jobNumber={jobCard.jobNumber}
         stepName={currentApprovalStep.replace(/_/g, " ")}
-        stepOutcomes={
-          workflowStatus?.foregroundSteps?.find((s) => s.key === currentApprovalStep)
-            ?.stepOutcomes || null
-        }
+        stepOutcomes={(() => {
+          const activeStep = workflowStatus?.foregroundSteps?.find(
+            (s) => s.key === currentApprovalStep,
+          );
+          const outcomes = activeStep?.stepOutcomes;
+          return outcomes ? outcomes : null;
+        })()}
       />
 
       {showSourceFileModal && sourceFileUrl && (

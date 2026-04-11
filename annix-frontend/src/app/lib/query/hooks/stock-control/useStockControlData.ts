@@ -589,10 +589,11 @@ export const useActionCompletions = createArrayQueryHook<JobCardActionCompletion
 );
 
 export const useApproveWorkflowStep = createMutationHook(
-  (params: { jobId: number; signatureDataUrl?: string; comments?: string }) =>
+  (params: { jobId: number; signatureDataUrl?: string; comments?: string; outcomeKey?: string }) =>
     stockControlApiClient.approveWorkflowStep(params.jobId, {
       signatureDataUrl: params.signatureDataUrl,
       comments: params.comments,
+      outcomeKey: params.outcomeKey,
     }),
   [stockControlKeys.jobCardDetail.all],
 );
