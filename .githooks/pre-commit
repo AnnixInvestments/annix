@@ -163,26 +163,57 @@ if [ -n "$STAGED_TS_FILES" ]; then
     echo "Biome check passed."
 fi
 
-# 2. Backend spec dependency check — if a service constructor changed,
-#    verify its spec file can still resolve all providers.
+# 2. Backend spec dependency check — if a service OR controller constructor
+#    changed, verify its spec file can still resolve all providers. Uses
+#    import-graph grep to find spec files since naming is not always
+#    ${basename}.spec.ts (e.g. rfq.controller.ts is tested by
+#    rfq-pump.controller.spec.ts).
 STAGED_BACKEND_SERVICES=$(echo "$STAGED_TS_FILES" | grep -E '^annix-backend/src/.*\.service\.ts$' | grep -v '\.spec\.ts$' || true)
+STAGED_BACKEND_CONTROLLERS=$(echo "$STAGED_TS_FILES" | grep -E '^annix-backend/src/.*\.controller\.ts$' | grep -v '\.spec\.ts$' || true)
 
-if [ -n "$STAGED_BACKEND_SERVICES" ]; then
+if [ -n "$STAGED_BACKEND_SERVICES" ] || [ -n "$STAGED_BACKEND_CONTROLLERS" ]; then
     echo ""
-    echo "Checking backend spec dependencies for changed services..."
+    echo "Checking backend spec dependencies for changed services and controllers..."
     SPEC_FAIL=0
-    for svc_file in $STAGED_BACKEND_SERVICES; do
-        spec_file="${svc_file%.ts}.spec.ts"
-        if [ -f "$spec_file" ]; then
-            # Quick dry-run: run only the "should be defined" test for this spec
-            spec_rel="${spec_file#annix-backend/}"
-            if ! (cd "$ROOT_DIR/annix-backend" && npx jest "$spec_rel" --no-coverage -t "should be defined" --silent 2>/dev/null); then
-                echo "  FAIL: $spec_file — spec cannot resolve service dependencies"
-                echo "        A new dependency was likely added to $(basename "$svc_file") without updating the spec."
-                SPEC_FAIL=1
+    SPECS_TO_RUN=""
+
+    # Build a deduplicated list of spec files to run. For each changed source
+    # file, collect (a) the same-name spec if it exists, and (b) any spec file
+    # in the same directory that imports the source file by its basename.
+    for src_file in $STAGED_BACKEND_SERVICES $STAGED_BACKEND_CONTROLLERS; do
+        src_dir=$(dirname "$src_file")
+        src_base=$(basename "$src_file" .ts)
+
+        # (a) Same-name spec (standard convention: foo.service.ts → foo.service.spec.ts)
+        same_name_spec="${src_file%.ts}.spec.ts"
+        if [ -f "$same_name_spec" ]; then
+            SPECS_TO_RUN="${SPECS_TO_RUN}${same_name_spec}
+"
+        fi
+
+        # (b) Any spec in the same directory that imports this file by basename.
+        #     Matches `from "./foo.service"` or `from "./foo.controller"`.
+        if [ -d "$src_dir" ]; then
+            related_specs=$(grep -l "from [\"']\./${src_base}[\"']" "$src_dir"/*.spec.ts 2>/dev/null || true)
+            if [ -n "$related_specs" ]; then
+                SPECS_TO_RUN="${SPECS_TO_RUN}${related_specs}
+"
             fi
         fi
     done
+
+    # Deduplicate
+    SPECS_TO_RUN=$(echo "$SPECS_TO_RUN" | sort -u | grep -v '^$' || true)
+
+    for spec_file in $SPECS_TO_RUN; do
+        spec_rel="${spec_file#annix-backend/}"
+        if ! (cd "$ROOT_DIR/annix-backend" && npx jest "$spec_rel" --no-coverage -t "should be defined" --silent 2>/dev/null); then
+            echo "  FAIL: $spec_file — spec cannot resolve dependencies"
+            echo "        A new dependency was likely added to a service/controller imported by this spec without updating the mock providers."
+            SPEC_FAIL=1
+        fi
+    done
+
     if [ $SPEC_FAIL -eq 1 ]; then
         echo ""
         echo "============================================"
@@ -201,6 +232,23 @@ STAGED_FRONTEND_TS=$(echo "$STAGED_TS_FILES" | grep -E '^annix-frontend/src/.*\.
 if [ -n "$STAGED_FRONTEND_TS" ]; then
     echo ""
     echo "Running frontend type-check..."
+
+    # Sync the stale prod typed-route cache with the current dev cache before tsc.
+    # Next.js maintains .next/types/routes.d.ts (updated by `next build`) and
+    # .next/dev/types/routes.d.ts (updated by the dev server on hot reload). When
+    # a new route is added during a dev session, only the dev cache updates, and
+    # tsc blows up with a "Type 'Route' does not satisfy the constraint 'LayoutRoutes'"
+    # error. Copying dev → prod is safe because both files have identical structure
+    # and `next build` will regenerate the prod cache on the next pre-push run.
+    DEV_ROUTES="$ROOT_DIR/annix-frontend/.next/dev/types/routes.d.ts"
+    PROD_ROUTES="$ROOT_DIR/annix-frontend/.next/types/routes.d.ts"
+    if [ -f "$DEV_ROUTES" ] && [ -f "$PROD_ROUTES" ]; then
+        if ! cmp -s "$DEV_ROUTES" "$PROD_ROUTES"; then
+            cp "$DEV_ROUTES" "$PROD_ROUTES"
+            echo "  (synced .next/types/routes.d.ts ← .next/dev/types/routes.d.ts)"
+        fi
+    fi
+
     if ! (cd "$ROOT_DIR/annix-frontend" && npx tsc --noEmit 2>/dev/null); then
         echo ""
         echo "============================================"
@@ -213,7 +261,54 @@ if [ -n "$STAGED_FRONTEND_TS" ]; then
     echo "Frontend type-check passed."
 fi
 
-# 4. Backend type-check if any backend TS files changed
+# 4. SWC landmine check — grep staged frontend files for `obj?.prop ?? val`,
+#    `obj?.prop || val`, `arr[x] ?? val`, `arr[x] || val` patterns. These
+#    miscompile under SWC (webpack and Turbopack) into an undeclared
+#    `_ref`/`_obj_prop` temp and crash the page with
+#    `ReferenceError: _ref is not defined` at runtime. CLAUDE.md's
+#    "SWC-Safe Patterns" section documents the rule: hoist the access
+#    into a plain local identifier first, then use that. Tsc and build
+#    both PASS because the bug is in SWC's runtime output, not the source.
+#    Only a user clicking the page reveals the crash — hence the pre-commit
+#    check. See feedback_pre_push_failures.md #19 for the fix patterns.
+if [ -n "$STAGED_FRONTEND_TS" ]; then
+    SWC_LANDMINES=0
+    SWC_REPORT=""
+    for f in $STAGED_FRONTEND_TS; do
+        if [ -f "$f" ]; then
+            # Match:  ?.word ??   or   ?.word ||   or   [word] ??   or   [word] ||
+            MATCHES=$(git show ":$f" 2>/dev/null | grep -nE '(\?\.\w+ \?\?|\?\.\w+ \|\||\[[^]]+\] \?\?|\[[^]]+\] \|\|)' || true)
+            if [ -n "$MATCHES" ]; then
+                SWC_LANDMINES=1
+                SWC_REPORT="${SWC_REPORT}
+  $f:
+$(echo "$MATCHES" | sed 's/^/    /')"
+            fi
+        fi
+    done
+    if [ $SWC_LANDMINES -eq 1 ]; then
+        echo ""
+        echo "============================================"
+        echo "COMMIT BLOCKED: SWC landmine pattern detected"
+        echo "============================================"
+        echo ""
+        echo "The following patterns miscompile under SWC and crash at runtime"
+        echo "with 'ReferenceError: _ref is not defined':"
+        printf "%s\n" "$SWC_REPORT"
+        echo ""
+        echo "Fix: hoist the optional-chain or bracket access into a plain"
+        echo "local const first, then use the identifier."
+        echo "  BAD   const v = obj?.prop ?? fallback"
+        echo "  BAD   const v = arr[i] ?? fallback"
+        echo "  GOOD  const p = obj?.prop; const v = p == null ? fallback : p"
+        echo ""
+        echo "See CLAUDE.md 'SWC-Safe Patterns' and feedback_pre_push_failures.md #19."
+        echo ""
+        exit 1
+    fi
+fi
+
+# 5. Backend type-check if any backend TS files changed
 STAGED_BACKEND_TS=$(echo "$STAGED_TS_FILES" | grep -E '^annix-backend/src/.*\.ts$' | grep -v '\.spec\.ts$' || true)
 
 if [ -n "$STAGED_BACKEND_TS" ]; then
