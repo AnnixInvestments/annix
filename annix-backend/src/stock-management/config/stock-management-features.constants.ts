@@ -1,0 +1,93 @@
+export const STOCK_MANAGEMENT_FEATURES = {
+  BASIC_ISSUING: "BASIC_ISSUING",
+  PRODUCT_CATEGORIES: "PRODUCT_CATEGORIES",
+  PHOTO_IDENTIFICATION: "PHOTO_IDENTIFICATION",
+  CPO_BATCH_ISSUING: "CPO_BATCH_ISSUING",
+  RUBBER_ROLL_TRACKING: "RUBBER_ROLL_TRACKING",
+  RUBBER_OFFCUT_TRACKING: "RUBBER_OFFCUT_TRACKING",
+  RUBBER_WASTAGE_BINS: "RUBBER_WASTAGE_BINS",
+  PAINT_CATALOGUE: "PAINT_CATALOGUE",
+  PRODUCT_DATASHEETS: "PRODUCT_DATASHEETS",
+  FIFO_BATCH_TRACKING: "FIFO_BATCH_TRACKING",
+  STOCK_TAKE: "STOCK_TAKE",
+  STOCK_HOLD_QUEUE: "STOCK_HOLD_QUEUE",
+  VARIANCE_REPORTING: "VARIANCE_REPORTING",
+  VALUATION_EXPORTS: "VALUATION_EXPORTS",
+} as const;
+
+export type StockManagementFeatureKey =
+  (typeof STOCK_MANAGEMENT_FEATURES)[keyof typeof STOCK_MANAGEMENT_FEATURES];
+
+export type StockManagementTier = "basic" | "standard" | "premium" | "enterprise";
+
+export const STOCK_MANAGEMENT_TIER_RANK: Record<StockManagementTier, number> = {
+  basic: 0,
+  standard: 1,
+  premium: 2,
+  enterprise: 3,
+};
+
+export const STOCK_MANAGEMENT_TIER_FEATURES: Record<
+  StockManagementTier,
+  ReadonlyArray<StockManagementFeatureKey>
+> = {
+  basic: [STOCK_MANAGEMENT_FEATURES.BASIC_ISSUING],
+  standard: [
+    STOCK_MANAGEMENT_FEATURES.BASIC_ISSUING,
+    STOCK_MANAGEMENT_FEATURES.PRODUCT_CATEGORIES,
+    STOCK_MANAGEMENT_FEATURES.PHOTO_IDENTIFICATION,
+    STOCK_MANAGEMENT_FEATURES.CPO_BATCH_ISSUING,
+  ],
+  premium: [
+    STOCK_MANAGEMENT_FEATURES.BASIC_ISSUING,
+    STOCK_MANAGEMENT_FEATURES.PRODUCT_CATEGORIES,
+    STOCK_MANAGEMENT_FEATURES.PHOTO_IDENTIFICATION,
+    STOCK_MANAGEMENT_FEATURES.CPO_BATCH_ISSUING,
+    STOCK_MANAGEMENT_FEATURES.RUBBER_ROLL_TRACKING,
+    STOCK_MANAGEMENT_FEATURES.RUBBER_OFFCUT_TRACKING,
+    STOCK_MANAGEMENT_FEATURES.RUBBER_WASTAGE_BINS,
+    STOCK_MANAGEMENT_FEATURES.PAINT_CATALOGUE,
+    STOCK_MANAGEMENT_FEATURES.PRODUCT_DATASHEETS,
+    STOCK_MANAGEMENT_FEATURES.FIFO_BATCH_TRACKING,
+  ],
+  enterprise: [
+    STOCK_MANAGEMENT_FEATURES.BASIC_ISSUING,
+    STOCK_MANAGEMENT_FEATURES.PRODUCT_CATEGORIES,
+    STOCK_MANAGEMENT_FEATURES.PHOTO_IDENTIFICATION,
+    STOCK_MANAGEMENT_FEATURES.CPO_BATCH_ISSUING,
+    STOCK_MANAGEMENT_FEATURES.RUBBER_ROLL_TRACKING,
+    STOCK_MANAGEMENT_FEATURES.RUBBER_OFFCUT_TRACKING,
+    STOCK_MANAGEMENT_FEATURES.RUBBER_WASTAGE_BINS,
+    STOCK_MANAGEMENT_FEATURES.PAINT_CATALOGUE,
+    STOCK_MANAGEMENT_FEATURES.PRODUCT_DATASHEETS,
+    STOCK_MANAGEMENT_FEATURES.FIFO_BATCH_TRACKING,
+    STOCK_MANAGEMENT_FEATURES.STOCK_TAKE,
+    STOCK_MANAGEMENT_FEATURES.STOCK_HOLD_QUEUE,
+    STOCK_MANAGEMENT_FEATURES.VARIANCE_REPORTING,
+    STOCK_MANAGEMENT_FEATURES.VALUATION_EXPORTS,
+  ],
+};
+
+export const STOCK_MANAGEMENT_FEATURE_DESCRIPTIONS: Record<StockManagementFeatureKey, string> = {
+  BASIC_ISSUING: "Single-JC stock issuing flow",
+  PRODUCT_CATEGORIES: "Admin-managed product categories per row type",
+  PHOTO_IDENTIFICATION: "AI photo identification for paint, consumables, and rubber rolls",
+  CPO_BATCH_ISSUING: "Multi-JC batch issuing under a CPO with paint pro-rata splits",
+  RUBBER_ROLL_TRACKING: "Rubber roll inventory by roll number, dimensions, and weight",
+  RUBBER_OFFCUT_TRACKING: "Allocatable rubber offcuts created from returns",
+  RUBBER_WASTAGE_BINS: "Colour-bucketed rubber wastage tracking with FIFO cost",
+  PAINT_CATALOGUE: "Rich paint product catalogue with quality and spec fields",
+  PRODUCT_DATASHEETS: "Datasheet upload and AI extraction for paint, rubber, and solutions",
+  FIFO_BATCH_TRACKING: "FIFO purchase batches with stock movement consumption audit",
+  STOCK_TAKE: "Month-end stock take with snapshot, count, approval, and posting",
+  STOCK_HOLD_QUEUE: "Damaged and expired stock hold queue with admin disposition",
+  VARIANCE_REPORTING: "Variance archive and trend analysis across stock takes",
+  VALUATION_EXPORTS: "PDF, Excel, and Word exports of approved stock takes",
+};
+
+export function tierIncludesFeature(
+  tier: StockManagementTier,
+  feature: StockManagementFeatureKey,
+): boolean {
+  return STOCK_MANAGEMENT_TIER_FEATURES[tier].includes(feature);
+}

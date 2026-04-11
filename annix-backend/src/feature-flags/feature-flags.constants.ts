@@ -61,6 +61,20 @@ export const FEATURE_FLAGS = {
   ANNIX_COMPANIES: "ANNIX_COMPANIES",
   ANNIX_RBAC: "ANNIX_RBAC",
   ANNIX_ACCOUNTING: "ANNIX_ACCOUNTING",
+  STOCK_MGMT_BASIC_ISSUING: "STOCK_MGMT_BASIC_ISSUING",
+  STOCK_MGMT_PRODUCT_CATEGORIES: "STOCK_MGMT_PRODUCT_CATEGORIES",
+  STOCK_MGMT_PHOTO_IDENTIFICATION: "STOCK_MGMT_PHOTO_IDENTIFICATION",
+  STOCK_MGMT_CPO_BATCH_ISSUING: "STOCK_MGMT_CPO_BATCH_ISSUING",
+  STOCK_MGMT_RUBBER_ROLL_TRACKING: "STOCK_MGMT_RUBBER_ROLL_TRACKING",
+  STOCK_MGMT_RUBBER_OFFCUT_TRACKING: "STOCK_MGMT_RUBBER_OFFCUT_TRACKING",
+  STOCK_MGMT_RUBBER_WASTAGE_BINS: "STOCK_MGMT_RUBBER_WASTAGE_BINS",
+  STOCK_MGMT_PAINT_CATALOGUE: "STOCK_MGMT_PAINT_CATALOGUE",
+  STOCK_MGMT_PRODUCT_DATASHEETS: "STOCK_MGMT_PRODUCT_DATASHEETS",
+  STOCK_MGMT_FIFO_BATCH_TRACKING: "STOCK_MGMT_FIFO_BATCH_TRACKING",
+  STOCK_MGMT_STOCK_TAKE: "STOCK_MGMT_STOCK_TAKE",
+  STOCK_MGMT_STOCK_HOLD_QUEUE: "STOCK_MGMT_STOCK_HOLD_QUEUE",
+  STOCK_MGMT_VARIANCE_REPORTING: "STOCK_MGMT_VARIANCE_REPORTING",
+  STOCK_MGMT_VALUATION_EXPORTS: "STOCK_MGMT_VALUATION_EXPORTS",
 } as const;
 
 export type FeatureFlagKey = (typeof FEATURE_FLAGS)[keyof typeof FEATURE_FLAGS];
@@ -129,6 +143,23 @@ export const FEATURE_FLAG_DESCRIPTIONS: Record<FeatureFlagKey, string> = {
   ANNIX_RBAC: "Role-based access control with granular permissions per user",
   ANNIX_ACCOUNTING:
     "Monthly accounts payable/receivable with director sign-off and statement reconciliation",
+  STOCK_MGMT_BASIC_ISSUING: "Stock management module — basic single-JC issuing",
+  STOCK_MGMT_PRODUCT_CATEGORIES: "Stock management module — admin-managed product categories",
+  STOCK_MGMT_PHOTO_IDENTIFICATION:
+    "Stock management module — AI photo identification across product types",
+  STOCK_MGMT_CPO_BATCH_ISSUING: "Stock management module — multi-JC CPO batch issuing",
+  STOCK_MGMT_RUBBER_ROLL_TRACKING: "Stock management module — rubber roll inventory tracking",
+  STOCK_MGMT_RUBBER_OFFCUT_TRACKING: "Stock management module — rubber offcut allocatable stock",
+  STOCK_MGMT_RUBBER_WASTAGE_BINS: "Stock management module — colour-bucketed rubber wastage bins",
+  STOCK_MGMT_PAINT_CATALOGUE: "Stock management module — rich paint product catalogue",
+  STOCK_MGMT_PRODUCT_DATASHEETS:
+    "Stock management module — datasheet upload and AI extraction (paint, rubber, solutions)",
+  STOCK_MGMT_FIFO_BATCH_TRACKING: "Stock management module — FIFO purchase batch tracking",
+  STOCK_MGMT_STOCK_TAKE: "Stock management module — month-end stock take feature",
+  STOCK_MGMT_STOCK_HOLD_QUEUE:
+    "Stock management module — damaged/expired stock hold queue with disposition workflow",
+  STOCK_MGMT_VARIANCE_REPORTING: "Stock management module — variance archive and trend reporting",
+  STOCK_MGMT_VALUATION_EXPORTS: "Stock management module — PDF/Excel/Word valuation exports",
 };
 
 export const FEATURE_FLAG_DEFAULTS: Record<FeatureFlagKey, boolean> = {
@@ -194,6 +225,20 @@ export const FEATURE_FLAG_DEFAULTS: Record<FeatureFlagKey, boolean> = {
   ANNIX_COMPANIES: false,
   ANNIX_RBAC: false,
   ANNIX_ACCOUNTING: false,
+  STOCK_MGMT_BASIC_ISSUING: true,
+  STOCK_MGMT_PRODUCT_CATEGORIES: true,
+  STOCK_MGMT_PHOTO_IDENTIFICATION: true,
+  STOCK_MGMT_CPO_BATCH_ISSUING: true,
+  STOCK_MGMT_RUBBER_ROLL_TRACKING: true,
+  STOCK_MGMT_RUBBER_OFFCUT_TRACKING: true,
+  STOCK_MGMT_RUBBER_WASTAGE_BINS: true,
+  STOCK_MGMT_PAINT_CATALOGUE: true,
+  STOCK_MGMT_PRODUCT_DATASHEETS: true,
+  STOCK_MGMT_FIFO_BATCH_TRACKING: true,
+  STOCK_MGMT_STOCK_TAKE: true,
+  STOCK_MGMT_STOCK_HOLD_QUEUE: true,
+  STOCK_MGMT_VARIANCE_REPORTING: true,
+  STOCK_MGMT_VALUATION_EXPORTS: true,
 };
 
 export type FeatureFlagCategory =
@@ -203,7 +248,8 @@ export type FeatureFlagCategory =
   | "system"
   | "registration"
   | "rfq"
-  | "addons";
+  | "addons"
+  | "stock-management";
 
 export const FEATURE_FLAG_CATEGORIES: Record<FeatureFlagKey, FeatureFlagCategory> = {
   REMOTE_ACCESS: "system",
@@ -268,4 +314,18 @@ export const FEATURE_FLAG_CATEGORIES: Record<FeatureFlagKey, FeatureFlagCategory
   ANNIX_COMPANIES: "addons",
   ANNIX_RBAC: "addons",
   ANNIX_ACCOUNTING: "addons",
+  STOCK_MGMT_BASIC_ISSUING: "stock-management",
+  STOCK_MGMT_PRODUCT_CATEGORIES: "stock-management",
+  STOCK_MGMT_PHOTO_IDENTIFICATION: "stock-management",
+  STOCK_MGMT_CPO_BATCH_ISSUING: "stock-management",
+  STOCK_MGMT_RUBBER_ROLL_TRACKING: "stock-management",
+  STOCK_MGMT_RUBBER_OFFCUT_TRACKING: "stock-management",
+  STOCK_MGMT_RUBBER_WASTAGE_BINS: "stock-management",
+  STOCK_MGMT_PAINT_CATALOGUE: "stock-management",
+  STOCK_MGMT_PRODUCT_DATASHEETS: "stock-management",
+  STOCK_MGMT_FIFO_BATCH_TRACKING: "stock-management",
+  STOCK_MGMT_STOCK_TAKE: "stock-management",
+  STOCK_MGMT_STOCK_HOLD_QUEUE: "stock-management",
+  STOCK_MGMT_VARIANCE_REPORTING: "stock-management",
+  STOCK_MGMT_VALUATION_EXPORTS: "stock-management",
 };

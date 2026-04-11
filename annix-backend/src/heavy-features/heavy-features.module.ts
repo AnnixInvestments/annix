@@ -9,6 +9,7 @@ import { PumpProductModule } from "../pump-product/pump-product.module";
 import { RubberLiningModule } from "../rubber-lining/rubber-lining.module";
 import { SecureDocumentsModule } from "../secure-documents/secure-documents.module";
 import { StockControlModule } from "../stock-control/stock-control.module";
+import { StockManagementModule } from "../stock-management/stock-management.module";
 import { SurfaceProtectionModule } from "../surface-protection/surface-protection.module";
 import { ThermalModule } from "../thermal/thermal.module";
 
@@ -16,6 +17,7 @@ import { ThermalModule } from "../thermal/thermal.module";
   imports: [
     RubberLiningModule,
     StockControlModule,
+    StockManagementModule,
     ...(process.env.DISABLE_ANNIX_REP === "true" ? [] : [AnnixRepModule]),
     ...(process.env.DISABLE_CV_ASSISTANT === "true" ? [] : [CvAssistantModule]),
     AdminModule,
@@ -30,6 +32,7 @@ import { ThermalModule } from "../thermal/thermal.module";
   exports: [
     RubberLiningModule,
     StockControlModule,
+    StockManagementModule,
     ...(process.env.DISABLE_ANNIX_REP === "true" ? [] : [AnnixRepModule]),
     ...(process.env.DISABLE_CV_ASSISTANT === "true" ? [] : [CvAssistantModule]),
     AdminModule,
