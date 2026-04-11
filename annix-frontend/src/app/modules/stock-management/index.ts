@@ -15,6 +15,11 @@ export {
 } from "./hooks/useIssuanceQueries";
 export { useCompanyLicense, useLicenseMutations } from "./hooks/useLicenseQueries";
 export {
+  useStockTake,
+  useStockTakeMutations,
+  useStockTakes,
+} from "./hooks/useStockTakeQueries";
+export {
   DEFAULT_STOCK_MANAGEMENT_LABELS,
   type StockManagementLabelKey,
   type StockManagementLabelOverrides,
@@ -32,6 +37,7 @@ export { AdminStockHoldPage } from "./pages/AdminStockHoldPage";
 export { AdminVarianceCategoriesPage } from "./pages/AdminVarianceCategoriesPage";
 export { IssueStockPage } from "./pages/IssueStockPage";
 export { ModuleLicensePage } from "./pages/ModuleLicensePage";
+export { StockTakePage } from "./pages/StockTakePage";
 export {
   StockManagementContext,
   StockManagementProvider,
@@ -97,3 +103,8 @@ export type {
   RubberRollDetailDto,
   SolutionProductDetailDto,
 } from "./types/products";
+export type {
+  StockTakeDto,
+  StockTakeLineDto,
+  StockTakeStatus,
+} from "./types/stockTake";

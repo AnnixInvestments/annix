@@ -233,6 +233,56 @@ export class StockManagementApiClient {
     return this.request("POST", "/location-migration/apply", { decisions });
   }
 
+  async listStockTakes(status?: string): Promise<unknown[]> {
+    return this.request("GET", `/stock-take${status ? `?status=${status}` : ""}`);
+  }
+
+  async stockTakeById(id: number): Promise<unknown> {
+    return this.request("GET", `/stock-take/${id}`);
+  }
+
+  async createStockTake(dto: {
+    name: string;
+    periodLabel?: string | null;
+    notes?: string | null;
+  }): Promise<unknown> {
+    return this.request("POST", "/stock-take", dto);
+  }
+
+  async captureStockTakeSnapshot(id: number): Promise<unknown> {
+    return this.request("POST", `/stock-take/${id}/snapshot`);
+  }
+
+  async recordStockTakeCount(
+    id: number,
+    dto: {
+      productId: number;
+      countedQty: number;
+      countedByStaffId: number;
+      varianceCategoryId?: number | null;
+      varianceReason?: string | null;
+      photoUrl?: string | null;
+    },
+  ): Promise<unknown> {
+    return this.request("POST", `/stock-take/${id}/count`, dto);
+  }
+
+  async submitStockTake(id: number): Promise<unknown> {
+    return this.request("POST", `/stock-take/${id}/submit`);
+  }
+
+  async approveStockTake(id: number): Promise<unknown> {
+    return this.request("POST", `/stock-take/${id}/approve`);
+  }
+
+  async rejectStockTake(id: number, reason: string): Promise<unknown> {
+    return this.request("POST", `/stock-take/${id}/reject`, { reason });
+  }
+
+  async postStockTake(id: number): Promise<unknown> {
+    return this.request("POST", `/stock-take/${id}/post`);
+  }
+
   private async request<T>(method: string, path: string, body?: unknown): Promise<T> {
     const url = `${this.options.baseUrl}${path}`;
     const headers: Record<string, string> = {
