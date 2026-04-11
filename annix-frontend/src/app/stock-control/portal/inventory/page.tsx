@@ -1,9 +1,9 @@
 "use client";
 
+import { ConfirmModal } from "@/app/components/modals/ConfirmModal";
 import { PdfPreviewModal, usePdfPreview } from "@/app/components/PdfPreviewModal";
 import type { StockItem } from "@/app/lib/api/stockControlApi";
 import { formatDateLongZA, nowISO } from "@/app/lib/datetime";
-import { ConfirmDialog } from "../../components/ConfirmDialog";
 import { InventoryCardView } from "../../components/InventoryCardView";
 import { InventoryFilterBar } from "../../components/inventory/InventoryFilterBar";
 import { InventoryGroupedView } from "../../components/inventory/InventoryGroupedView";
@@ -438,8 +438,8 @@ export default function InventoryPage() {
         </div>
       )}
 
-      <ConfirmDialog
-        open={state.confirmDeleteId !== null}
+      <ConfirmModal
+        isOpen={state.confirmDeleteId !== null}
         title="Delete Item"
         message="Are you sure you want to delete this item?"
         confirmLabel="Delete"

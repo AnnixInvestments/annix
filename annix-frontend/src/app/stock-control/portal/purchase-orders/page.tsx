@@ -3,10 +3,10 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { ConfirmModal } from "@/app/components/modals/ConfirmModal";
 import type { CustomerPurchaseOrder } from "@/app/lib/api/stockControlApi";
 import { formatDateZA } from "@/app/lib/datetime";
 import { useCpos, useDeleteCpo } from "@/app/lib/query/hooks";
-import { ConfirmDialog } from "../../components/ConfirmDialog";
 import { HelpTooltip } from "../../components/HelpTooltip";
 import { StatusBadge } from "../../components/StatusBadge";
 import { setPendingCpoImportFile } from "./import/pending-file";
@@ -306,8 +306,8 @@ export default function PurchaseOrdersPage() {
         )}
       </div>
 
-      <ConfirmDialog
-        open={confirmDelete !== null}
+      <ConfirmModal
+        isOpen={confirmDelete !== null}
         title="Delete Purchase Order"
         message={`Delete CPO ${confirmDelete?.cpoNumber || ""}? This cannot be undone.`}
         confirmLabel="Delete"

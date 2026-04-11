@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { ConfirmModal } from "@/app/components/modals/ConfirmModal";
 import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { formatDateZA } from "@/app/lib/datetime";
@@ -15,7 +16,6 @@ import {
   useJobCards,
 } from "@/app/lib/query/hooks";
 import { stockControlKeys } from "@/app/lib/query/keys";
-import { ConfirmDialog } from "../../components/ConfirmDialog";
 import { HelpTooltip } from "../../components/HelpTooltip";
 import { StatusBadge } from "../../components/StatusBadge";
 import { CompactWorkflowStepper } from "../../components/WorkflowStatus";
@@ -904,8 +904,8 @@ export default function JobCardsPage() {
         )}
       </div>
 
-      <ConfirmDialog
-        open={confirmDelete !== null}
+      <ConfirmModal
+        isOpen={confirmDelete !== null}
         title="Delete Job Card"
         message={`Delete job card ${confirmDelete?.jobNumber || ""}? This cannot be undone.`}
         confirmLabel="Delete"
