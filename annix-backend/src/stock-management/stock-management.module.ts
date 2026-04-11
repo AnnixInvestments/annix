@@ -8,6 +8,7 @@ import { StorageModule } from "../storage/storage.module";
 import { FifoBatchController } from "./controllers/fifo-batch.controller";
 import { IssuableProductController } from "./controllers/issuable-product.controller";
 import { IssuanceController } from "./controllers/issuance.controller";
+import { LocationMigrationController } from "./controllers/location-migration.controller";
 import { ProductCategoryController } from "./controllers/product-category.controller";
 import { ProductDatasheetController } from "./controllers/product-datasheet.controller";
 import { ReturnsController } from "./controllers/returns.controller";
@@ -46,6 +47,7 @@ import { FifoBatchService } from "./services/fifo-batch.service";
 import { FifoBootstrapService } from "./services/fifo-bootstrap.service";
 import { IssuableProductService } from "./services/issuable-product.service";
 import { IssuanceService } from "./services/issuance.service";
+import { LocationClassificationService } from "./services/location-classification.service";
 import { PaintClassificationService } from "./services/paint-classification.service";
 import { ProductCategoryService } from "./services/product-category.service";
 import { ProductDatasheetService } from "./services/product-datasheet.service";
@@ -101,6 +103,7 @@ import { StockTakeCronService } from "./services/stock-take-cron.service";
     IssuanceController,
     ReturnsController,
     StockTakeController,
+    LocationMigrationController,
   ],
   providers: [
     StockManagementLicenseService,
@@ -117,6 +120,7 @@ import { StockTakeCronService } from "./services/stock-take-cron.service";
     ReturnsService,
     StockTakeService,
     StockTakeCronService,
+    LocationClassificationService,
   ],
   exports: [
     StockManagementLicenseService,
@@ -132,6 +136,7 @@ import { StockTakeCronService } from "./services/stock-take-cron.service";
     IssuanceService,
     ReturnsService,
     StockTakeService,
+    LocationClassificationService,
   ],
 })
 export class StockManagementModule {}
