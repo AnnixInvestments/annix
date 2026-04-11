@@ -5,7 +5,7 @@ category: Admin
 roles: [admin]
 order: 4
 tags: [rbac, permissions, security]
-lastUpdated: 2026-04-05
+lastUpdated: 2026-04-11
 summary: What each role can see and do, and how to tailor access per module.
 readingMinutes: 4
 relatedPaths: [annix-frontend/src/app/stock-control/config/navItems.tsx, annix-backend/src/auth]

@@ -5,7 +5,7 @@ category: Quality
 roles: [quality, manager, admin]
 order: 2
 tags: [positector, dft, blast profile, shore hardness, environmental, quality, measurements]
-lastUpdated: 2026-04-08
+lastUpdated: 2026-04-11
 summary: Upload PosiTector batch files — data is permanently stored, deduplicated by fingerprint, and auto-imported to job cards when batch numbers match.
 readingMinutes: 5
 relatedPaths: [annix-frontend/src/app/stock-control/portal/quality/positector/upload, annix-backend/src/stock-control/qc/controllers/positector.controller.ts, annix-backend/src/stock-control/qc/services/positector-import.service.ts, annix-backend/src/stock-control/qc/services/positector-upload.service.ts, annix-frontend/src/app/stock-control/components/UnlinkedUploadsSection.tsx]

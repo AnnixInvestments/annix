@@ -5,7 +5,7 @@ category: Admin
 roles: [admin]
 order: 6
 tags: [locations, warehouse, settings]
-lastUpdated: 2026-04-05
+lastUpdated: 2026-04-11
 summary: Define the physical bins, racks, and zones where stock can be stored.
 readingMinutes: 3
 relatedPaths: [annix-frontend/src/app/stock-control/portal/settings, annix-backend/src/stock-control/locations]

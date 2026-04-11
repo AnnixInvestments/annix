@@ -5,7 +5,7 @@ category: Quality
 roles: [quality, manager, admin]
 order: 3
 tags: [positector, batch, defelsko, dft, blast profile, shore hardness, quality, measurements, items, cpo]
-lastUpdated: 2026-04-08
+lastUpdated: 2026-04-11
 summary: Assign PosiTector batch numbers to specific items on a job card or CPO, with duplicate prevention and automatic PDF linking.
 readingMinutes: 5
 relatedPaths: [annix-frontend/src/app/stock-control/portal/job-cards/[id]/components/BatchAssignmentSection.tsx, annix-frontend/src/app/stock-control/portal/job-cards/[id]/components/QualityTab.tsx, annix-backend/src/stock-control/qc/services/qc-batch-assignment.service.ts, annix-backend/src/stock-control/qc/controllers/qc-measurement.controller.ts, annix-frontend/src/app/stock-control/portal/purchase-orders/[id]/components/CpoBatchAssignmentSection.tsx]
@@ -32,7 +32,7 @@ Environmental readings are handled separately (auto-pulled by date).
 2. Scroll to the **Item-Level Batch Assignments** section
 3. Click **+ Add Batch** next to the measurement type (e.g. Blast Profile Paint)
 4. Enter the **batch number** (e.g. B241)
-5. **Tick the items** that were processed in this batch
+5. All items start **unticked** — tick the ones that were processed in this batch
 6. Click **Save**
 
 Items already assigned to another batch for the same measurement type will not appear in the list.

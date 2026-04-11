@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { formatDateTimeZA, formatDateZA } from "@/app/lib/datetime";
 import { StockManagementApiClient } from "../api/stockManagementApi";
 import { ComboBox, type ComboBoxOption } from "../components/ComboBox";
 import { PhotoExtractButton, type PhotoExtractedFields } from "../components/PhotoExtractButton";
@@ -392,7 +393,7 @@ export function ReturnsPage() {
           <div>
             <div className="font-medium text-sm">Return #{session.id}</div>
             <div className="text-xs text-gray-500 mt-1">
-              {new Date(session.createdAt).toLocaleString()} · status: {session.status}
+              {formatDateTimeZA(session.createdAt)} · status: {session.status}
             </div>
             {session.offcutReturns && session.offcutReturns.length > 0 && (
               <div className="mt-2 text-xs text-gray-700">
@@ -549,7 +550,7 @@ export function ReturnsPage() {
               <div className="text-xs text-gray-600">R {bin.currentValueR.toFixed(2)}</div>
               {bin.lastEmptiedAt && (
                 <div className="text-xs text-gray-400 mt-1">
-                  Emptied: {new Date(bin.lastEmptiedAt).toLocaleDateString()}
+                  Emptied: {formatDateZA(bin.lastEmptiedAt)}
                 </div>
               )}
             </div>

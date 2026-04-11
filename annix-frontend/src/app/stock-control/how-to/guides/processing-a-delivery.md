@@ -5,7 +5,7 @@ category: Warehouse
 roles: [storeman, manager, admin]
 order: 1
 tags: [receiving, delivery-note]
-lastUpdated: 2026-04-05
+lastUpdated: 2026-04-11
 summary: Book stock into the warehouse and link it to the right job card.
 readingMinutes: 4
 relatedPaths: [annix-frontend/src/app/stock-control/portal/deliveries, annix-backend/src/stock-control/delivery-notes]

@@ -5,7 +5,7 @@ category: Admin
 roles: [admin]
 order: 5
 tags: [email, inbound, automation]
-lastUpdated: 2026-04-05
+lastUpdated: 2026-04-11
 summary: Route supplier emails into the portal so delivery notes auto-extract.
 readingMinutes: 4
 relatedPaths: [annix-backend/src/inbound-email, annix-backend/src/email]

@@ -5,7 +5,7 @@ category: Admin
 roles: [admin]
 order: 10
 tags: [backup, export, data]
-lastUpdated: 2026-04-05
+lastUpdated: 2026-04-11
 summary: Download snapshots of your data for offline archival or compliance.
 readingMinutes: 3
 relatedPaths: [annix-backend/src/stock-control, annix-frontend/src/app/stock-control/portal/settings]

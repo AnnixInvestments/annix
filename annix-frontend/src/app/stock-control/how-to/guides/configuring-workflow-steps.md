@@ -5,7 +5,7 @@ category: Admin
 roles: [admin]
 order: 1
 tags: [workflow, settings, templates]
-lastUpdated: 2026-04-05
+lastUpdated: 2026-04-11
 summary: Design the foreground and background workflow steps that jobs move through.
 readingMinutes: 5
 relatedPaths: [annix-frontend/src/app/stock-control/portal/settings, annix-backend/src/stock-control/workflow]

@@ -5,7 +5,7 @@ category: Inventory
 roles: [storeman, manager, admin]
 order: 6
 tags: [issue stock, cpo, batch, paint, lining, blasting, multi-jc, storeman]
-lastUpdated: 2026-04-10
+lastUpdated: 2026-04-11
 summary: Issue paint, blasting, and lining stock for several Job Cards under the same CPO in one go, with aggregated paint limits and per-JC splits.
 readingMinutes: 4
 relatedPaths: [annix-frontend/src/app/stock-control/portal/issue-stock/page.tsx, annix-frontend/src/app/stock-control/components/CpoBatchPicker.tsx, annix-frontend/src/app/stock-control/components/PerJcSplitEditor.tsx, annix-frontend/src/app/stock-control/portal/cpo-batch-approvals/page.tsx, annix-backend/src/stock-control/services/issuance.service.ts, annix-backend/src/stock-control/controllers/issuance.controller.ts, annix-backend/src/stock-control/entities/issuance-session.entity.ts]

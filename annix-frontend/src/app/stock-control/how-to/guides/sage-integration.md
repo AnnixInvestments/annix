@@ -5,7 +5,7 @@ category: Admin
 roles: [admin]
 order: 9
 tags: [sage, accounting, integration]
-lastUpdated: 2026-04-05
+lastUpdated: 2026-04-11
 summary: Link your Sage Accounting company so invoices and contacts stay in sync.
 readingMinutes: 4
 relatedPaths: [annix-backend/src/sage-export, annix-backend/src/comply-sa/comply-integrations/sage]

@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { DataSource, Repository } from "typeorm";
-import { now } from "../../lib/datetime";
+import { now, nowMillis } from "../../lib/datetime";
 import {
   ConsumableReturn,
   type ConsumableReturnCondition,
@@ -229,7 +229,7 @@ export class ReturnsService {
       });
       const savedSession = await sessionRepo.save(session);
 
-      const offcutNumber = input.offcutNumber ?? `OFF-${Date.now()}`;
+      const offcutNumber = input.offcutNumber ?? `OFF-${nowMillis()}`;
       const productSku = `OFFCUT-${offcutNumber}`;
       const computedWeightKg = this.computeWeight(input.widthMm, input.lengthM, input.thicknessMm);
 

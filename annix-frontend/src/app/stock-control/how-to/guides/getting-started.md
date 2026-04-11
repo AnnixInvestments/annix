@@ -5,7 +5,7 @@ category: Getting Started
 roles: [viewer, quality, storeman, accounts, manager, admin]
 order: 1
 tags: [basics, onboarding]
-lastUpdated: 2026-04-05
+lastUpdated: 2026-04-11
 summary: Orientation to the portal layout, navigation, and where to find your daily tools.
 readingMinutes: 3
 relatedPaths: [annix-frontend/src/app/stock-control/portal, annix-frontend/src/app/stock-control/config/navItems.tsx]

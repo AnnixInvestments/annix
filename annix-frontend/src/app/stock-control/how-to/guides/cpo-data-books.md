@@ -5,7 +5,7 @@ category: Quality
 roles: [quality, manager, admin]
 order: 5
 tags: [cpo, data book, quality, pdf, traceability, compilation]
-lastUpdated: 2026-04-08
+lastUpdated: 2026-04-11
 summary: Compile a combined data book for CPOs that includes all QC documents from child job cards with a traceability matrix.
 readingMinutes: 3
 relatedPaths: [annix-frontend/src/app/stock-control/portal/purchase-orders/[id]/components/CpoDataBookSection.tsx, annix-frontend/src/app/stock-control/portal/purchase-orders/[id]/components/CpoBatchAssignmentSection.tsx, annix-backend/src/stock-control/services/certificate.service.ts, annix-backend/src/stock-control/services/data-book-pdf.service.ts]

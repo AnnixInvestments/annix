@@ -5,7 +5,7 @@ category: Admin
 roles: [admin]
 order: 2
 tags: [branding, settings, pdf]
-lastUpdated: 2026-04-05
+lastUpdated: 2026-04-11
 summary: Upload your logo, set colours, and control how your company appears on PDFs.
 readingMinutes: 3
 relatedPaths: [annix-frontend/src/app/stock-control/portal/settings, annix-backend/src/admin/company-profile]

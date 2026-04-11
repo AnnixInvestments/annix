@@ -5,7 +5,7 @@ category: Admin
 roles: [admin]
 order: 8
 tags: [cron, automation, monitoring]
-lastUpdated: 2026-04-05
+lastUpdated: 2026-04-11
 summary: See which background jobs are running, when they last ran, and override their schedules.
 readingMinutes: 3
 relatedPaths: [annix-backend/src/scheduled-jobs, annix-frontend/src/app/admin]

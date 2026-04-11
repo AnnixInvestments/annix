@@ -5,7 +5,7 @@ category: Accounts
 roles: [accounts, manager, admin]
 order: 1
 tags: [invoices, suppliers, ai-extraction]
-lastUpdated: 2026-04-05
+lastUpdated: 2026-04-11
 summary: Upload a supplier invoice PDF and let the AI extract line items automatically.
 readingMinutes: 3
 relatedPaths: [annix-frontend/src/app/stock-control/portal/invoices, annix-backend/src/stock-control/invoices]
