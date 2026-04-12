@@ -20,6 +20,13 @@ export interface ConsumableRowInputDto {
   notes?: string | null;
 }
 
+export interface ItemCoatAllocationDto {
+  lineItemId: number;
+  jobCardId: number;
+  coatType: "primer" | "intermediate" | "final" | "rubber_lining";
+  quantityIssued: number;
+}
+
 export interface PaintRowInputDto {
   rowType: "paint";
   productId: number;
@@ -30,6 +37,7 @@ export interface PaintRowInputDto {
   coatingAnalysisId?: number | null;
   batchNumber?: string | null;
   cpoProRataSplit?: Record<string, number> | null;
+  itemCoatAllocations?: ItemCoatAllocationDto[] | null;
   notes?: string | null;
 }
 
@@ -46,6 +54,7 @@ export interface RubberRollRowInputDto {
     lengthM?: number;
     thicknessMm?: number;
   } | null;
+  itemCoatAllocations?: ItemCoatAllocationDto[] | null;
   notes?: string | null;
 }
 

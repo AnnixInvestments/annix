@@ -3,6 +3,13 @@ import type {
   IssuanceSessionStatus,
 } from "../entities/issuance-session.entity";
 
+export interface ItemCoatAllocationInput {
+  lineItemId: number;
+  jobCardId: number;
+  coatType: "primer" | "intermediate" | "final" | "rubber_lining";
+  quantityIssued: number;
+}
+
 export interface ConsumableRowInput {
   rowType: "consumable";
   productId: number;
@@ -22,6 +29,7 @@ export interface PaintRowInput {
   coatingAnalysisId?: number | null;
   batchNumber?: string | null;
   cpoProRataSplit?: Record<string, number> | null;
+  itemCoatAllocations?: ItemCoatAllocationInput[] | null;
   notes?: string | null;
 }
 
@@ -38,6 +46,7 @@ export interface RubberRollRowInput {
     lengthM?: number;
     thicknessMm?: number;
   } | null;
+  itemCoatAllocations?: ItemCoatAllocationInput[] | null;
   notes?: string | null;
 }
 

@@ -38,7 +38,9 @@ function extractedLineItems(delivery: DeliveryNote): ExtractedLineItem[] {
   const data = delivery.extractedData as {
     lineItems?: ExtractedLineItem[];
   } | null;
-  return data?.lineItems || [];
+  if (data == null) return [];
+  const items = data.lineItems;
+  return items == null ? [] : items;
 }
 
 export default function DeliveryDetailPage() {
@@ -354,7 +356,19 @@ export default function DeliveryDetailPage() {
                   scope="col"
                   className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
                 >
+                  Roll #
+                </th>
+                <th
+                  scope="col"
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
                   SKU
+                </th>
+                <th
+                  scope="col"
+                  className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
+                  Weight
                 </th>
                 <th
                   scope="col"
@@ -365,28 +379,40 @@ export default function DeliveryDetailPage() {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {delivery.items.map((item) => (
-                <tr key={item.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                    {item.stockItem ? (
-                      <Link
-                        href={`/stock-control/portal/inventory/${item.stockItem.id}`}
-                        className="text-teal-700 hover:text-teal-900"
-                      >
-                        {item.stockItem.name}
-                      </Link>
-                    ) : (
-                      "-"
-                    )}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-mono">
-                    {item.stockItem?.sku || "-"}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-semibold text-gray-900">
-                    {item.quantityReceived}
-                  </td>
-                </tr>
-              ))}
+              {delivery.items.map((item) => {
+                const stockName = item.stockItem ? item.stockItem.name : "-";
+                const stockSku = item.stockItem ? item.stockItem.sku : null;
+                const rollNum = item.rollNumber;
+                const weightVal = item.weightKg;
+                return (
+                  <tr key={item.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 text-sm font-medium text-gray-900">
+                      {item.stockItem ? (
+                        <Link
+                          href={`/stock-control/portal/inventory/${item.stockItem.id}`}
+                          className="text-teal-700 hover:text-teal-900"
+                        >
+                          {stockName}
+                        </Link>
+                      ) : (
+                        "-"
+                      )}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 font-mono">
+                      {rollNum || "-"}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-mono">
+                      {stockSku || "-"}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-600">
+                      {weightVal ? `${weightVal} kg` : "-"}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-semibold text-gray-900">
+                      {item.quantityReceived}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         ) : extractedLineItems(delivery).length > 0 ? (

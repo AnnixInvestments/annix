@@ -19,7 +19,7 @@ import {
   useStockManagementConfig,
   useStockManagementFeature,
 } from "../provider/useStockManagementConfig";
-import type { IssuanceRowInputDto } from "../types/issuance";
+import type { IssuanceRowInputDto, ItemCoatAllocationDto } from "../types/issuance";
 import type { IssuableProductDto } from "../types/products";
 
 type StepKey = "issuer" | "recipient" | "target" | "items" | "confirm";
@@ -70,6 +70,7 @@ interface CartRow {
   quantity: number;
   batchNumber: string;
   tinBatchNumbers: string[];
+  coatType: "primer" | "intermediate" | "final" | "rubber_lining" | null;
   paintSplits: ProRataSplit[];
   rubberRollDetails: RubberRollIssueDetails;
 }
@@ -90,6 +91,31 @@ function kitSizeForProduct(product: IssuableProductDto): number | null {
   const rC = rawC == null || Number.isNaN(rawC) ? 0 : rawC;
   const totalRatio = rA + rB + rC;
   return packA * (totalRatio / rA);
+}
+
+function buildCoatAllocations(
+  coatType: ItemCoatAllocationDto["coatType"],
+  selectedLineItemIds: number[],
+  cpoChildJcs: Array<{ id: number; lineItems: Array<{ id: number; quantity: number | null }> }>,
+  lineItemIssueQty: Record<number, number>,
+): ItemCoatAllocationDto[] {
+  const allocations: ItemCoatAllocationDto[] = [];
+  for (const jc of cpoChildJcs) {
+    for (const li of jc.lineItems) {
+      if (!selectedLineItemIds.includes(li.id)) continue;
+      const fullQty = li.quantity == null ? 1 : li.quantity;
+      const rawIssueQty = lineItemIssueQty[li.id];
+      const issueQty = rawIssueQty == null ? fullQty : rawIssueQty;
+      if (issueQty <= 0) continue;
+      allocations.push({
+        lineItemId: li.id,
+        jobCardId: jc.id,
+        coatType,
+        quantityIssued: issueQty,
+      });
+    }
+  }
+  return allocations;
 }
 
 function snapToKit(litres: number, kitSize: number): { down: number; up: number } {
@@ -149,6 +175,7 @@ export function IssueStockPage() {
   const [cpoPerJcIssued, setCpoPerJcIssued] = useState<Record<string, Record<number, number>>>({});
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitSuccess, setSubmitSuccess] = useState(false);
+  const [coatStatusMap, setCoatStatusMap] = useState<Record<number, Record<string, number>>>({});
 
   const { data: productsResult, isLoading } = useIssuableProducts({
     search: search || undefined,
@@ -169,12 +196,12 @@ export function IssueStockPage() {
     if (targetKind !== "cpo" || targetId == null) {
       setCpoIssuedTotals([]);
       setCpoPerJcIssued({});
+      setCoatStatusMap({});
       return;
     }
-    fetch(`/api/stock-management/issuance/sessions/cpo-issued-totals/${targetId}`, {
-      headers: authHeadersRef.current(),
-      credentials: "include",
-    })
+    const hdrs = authHeadersRef.current();
+    const opts: RequestInit = { headers: hdrs, credentials: "include" };
+    fetch(`/api/stock-management/issuance/sessions/cpo-issued-totals/${targetId}`, opts)
       .then((res) => (res.ok ? res.json() : { totals: [], perJc: {} }))
       .then((data) => {
         const rawTotals = data.totals;
@@ -187,6 +214,28 @@ export function IssueStockPage() {
         setCpoIssuedTotals([]);
         setCpoPerJcIssued({});
       });
+    fetch(`/api/stock-management/issuance/sessions/cpo-coat-status/${targetId}`, opts)
+      .then((res) => (res.ok ? res.json() : []))
+      .then(
+        (
+          items: Array<{
+            lineItemId: number;
+            jobCardId: number;
+            coatType: string;
+            totalQuantityIssued: number;
+          }>,
+        ) => {
+          const map: Record<number, Record<string, number>> = {};
+          for (const item of items) {
+            if (!map[item.lineItemId]) map[item.lineItemId] = {};
+            const existing = map[item.lineItemId][item.coatType];
+            map[item.lineItemId][item.coatType] =
+              (existing == null ? 0 : existing) + item.totalQuantityIssued;
+          }
+          setCoatStatusMap(map);
+        },
+      )
+      .catch(() => setCoatStatusMap({}));
   }, [targetKind, targetId]);
 
   useEffect(() => {
@@ -524,6 +573,14 @@ export function IssueStockPage() {
         quantity: qty,
         batchNumber: "",
         tinBatchNumbers: [],
+        coatType: (() => {
+          if (product.productType === "rubber_roll") return "rubber_lining" as const;
+          const paintDetail = product.paint;
+          const ct = paintDetail == null ? null : paintDetail.coatType;
+          if (ct === "primer") return "primer" as const;
+          if (ct === "finish" || ct === "intermediate") return "final" as const;
+          return null;
+        })(),
         paintSplits: [],
         rubberRollDetails: { ...EMPTY_RUBBER_ROLL },
       },
@@ -592,6 +649,7 @@ export function IssueStockPage() {
     setLinkedPartsMap({});
     setCpoIssuedTotals([]);
     setCpoPerJcIssued({});
+    setCoatStatusMap({});
     setSubmitError(null);
     setSubmitSuccess(false);
   };
@@ -614,6 +672,10 @@ export function IssueStockPage() {
             proRataMap[String(split.jobCardId)] = split.litres;
           }
         }
+        const paintCoatAllocs =
+          row.coatType != null
+            ? buildCoatAllocations(row.coatType, selectedLineItemIds, cpoChildJcs, lineItemIssueQty)
+            : null;
         return {
           rowType: "paint",
           productId: row.product.id,
@@ -621,11 +683,16 @@ export function IssueStockPage() {
           litres: row.quantity,
           batchNumber: row.batchNumber || null,
           cpoProRataSplit: hasSplits ? proRataMap : null,
+          itemCoatAllocations: paintCoatAllocs,
         };
       }
       if (row.product.productType === "rubber_roll") {
         const details = row.rubberRollDetails;
         const weight = details.weightKgIssued > 0 ? details.weightKgIssued : row.quantity;
+        const rubberCoatAllocs =
+          row.coatType != null
+            ? buildCoatAllocations(row.coatType, selectedLineItemIds, cpoChildJcs, lineItemIssueQty)
+            : null;
         return {
           rowType: "rubber_roll",
           productId: row.product.id,
@@ -634,6 +701,7 @@ export function IssueStockPage() {
           issuedWidthMm: details.issuedWidthMm,
           issuedLengthM: details.issuedLengthM,
           issuedThicknessMm: details.issuedThicknessMm,
+          itemCoatAllocations: rubberCoatAllocs,
         };
       }
       if (row.product.productType === "solution") {
@@ -1084,6 +1152,45 @@ export function IssueStockPage() {
                                     />
                                     <span className="text-gray-400">/ {fullQty}</span>
                                   </div>
+                                  {(() => {
+                                    const liCoats = coatStatusMap[li.id];
+                                    if (!liCoats) return null;
+                                    const hasIntermediate = jc.coats.some(
+                                      (ct) => ct.coatRole === "intermediate",
+                                    );
+                                    const coatTypes: Array<{ key: string; label: string }> = [
+                                      { key: "primer", label: "Primer" },
+                                    ];
+                                    if (hasIntermediate)
+                                      coatTypes.push({
+                                        key: "intermediate",
+                                        label: "Intermediate",
+                                      });
+                                    coatTypes.push({ key: "final", label: "Final" });
+                                    coatTypes.push({ key: "rubber_lining", label: "Rubber" });
+                                    return (
+                                      <div className="flex gap-1.5 shrink-0">
+                                        {coatTypes.map((ct) => {
+                                          const issued = liCoats[ct.key];
+                                          if (issued == null || issued === 0) return null;
+                                          const done = issued >= fullQty;
+                                          return (
+                                            <span
+                                              key={ct.key}
+                                              className={`text-[9px] px-1 py-0.5 rounded ${
+                                                done
+                                                  ? "bg-green-100 text-green-700"
+                                                  : "bg-amber-100 text-amber-700"
+                                              }`}
+                                            >
+                                              {ct.label}: {issued}/{fullQty}
+                                              {done ? " \u2713" : ""}
+                                            </span>
+                                          );
+                                        })}
+                                      </div>
+                                    );
+                                  })()}
                                 </div>
                               );
                             })}

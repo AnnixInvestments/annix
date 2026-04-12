@@ -57,6 +57,13 @@ export class IssuanceController {
     return this.issuanceService.issuedTotalsForCpo(Number(req.user.companyId), cpoId);
   }
 
+  @Get("sessions/cpo-coat-status/:cpoId")
+  @StockManagementFeature("BASIC_ISSUING")
+  @ApiOperation({ summary: "Get per-item per-coat issued quantities for a CPO" })
+  async cpoCoatStatus(@Req() req: any, @Param("cpoId", ParseIntPipe) cpoId: number) {
+    return this.issuanceService.coatStatusForCpo(Number(req.user.companyId), cpoId);
+  }
+
   @Get("sessions/:id")
   @StockManagementFeature("BASIC_ISSUING")
   @ApiOperation({ summary: "Get a single issuance session by ID" })

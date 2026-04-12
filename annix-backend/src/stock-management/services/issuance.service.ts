@@ -6,11 +6,13 @@ import type {
   CreateIssuanceSessionDto,
   IssuanceRowInput,
   IssuanceSessionFilters,
+  ItemCoatAllocationInput,
   PaintRowInput,
   RubberRollRowInput,
 } from "../dto/issuance.dto";
 import { ConsumableIssuanceRow } from "../entities/consumable-issuance-row.entity";
 import { IssuableProduct } from "../entities/issuable-product.entity";
+import { IssuanceItemCoatTracking } from "../entities/issuance-item-coat-tracking.entity";
 import { IssuanceRow, type IssuanceRowType } from "../entities/issuance-row.entity";
 import { IssuanceSession, type IssuanceSessionKind } from "../entities/issuance-session.entity";
 import { PaintIssuanceRow } from "../entities/paint-issuance-row.entity";
@@ -112,8 +114,24 @@ export class IssuanceService {
           );
         } else if (rowInput.rowType === "paint") {
           await paintRepo.save(this.buildPaintChild(savedRow.id, rowInput));
+          if (rowInput.itemCoatAllocations) {
+            await this.saveCoatAllocations(
+              manager,
+              companyId,
+              savedRow.id,
+              rowInput.itemCoatAllocations,
+            );
+          }
         } else if (rowInput.rowType === "rubber_roll") {
           await rubberRepo.save(this.buildRubberRollChild(savedRow.id, rowInput));
+          if (rowInput.itemCoatAllocations) {
+            await this.saveCoatAllocations(
+              manager,
+              companyId,
+              savedRow.id,
+              rowInput.itemCoatAllocations,
+            );
+          }
         } else if (rowInput.rowType === "solution") {
           await solutionRepo.save(
             solutionRepo.create({
@@ -315,6 +333,60 @@ export class IssuanceService {
     }
 
     return { totals, perJc };
+  }
+
+  private async saveCoatAllocations(
+    manager: any,
+    companyId: number,
+    issuanceRowId: number,
+    allocations: ItemCoatAllocationInput[],
+  ): Promise<void> {
+    const trackingRepo = manager.getRepository(IssuanceItemCoatTracking);
+    for (const alloc of allocations) {
+      if (alloc.quantityIssued <= 0) continue;
+      await trackingRepo.save(
+        trackingRepo.create({
+          companyId,
+          issuanceRowId,
+          jobCardId: alloc.jobCardId,
+          lineItemId: alloc.lineItemId,
+          coatType: alloc.coatType,
+          quantityIssued: alloc.quantityIssued,
+        }),
+      );
+    }
+  }
+
+  async coatStatusForCpo(
+    companyId: number,
+    cpoId: number,
+  ): Promise<
+    Array<{
+      lineItemId: number;
+      jobCardId: number;
+      coatType: string;
+      totalQuantityIssued: number;
+    }>
+  > {
+    const rows = await this.dataSource.query(
+      `SELECT ict.line_item_id, ict.job_card_id, ict.coat_type,
+              SUM(ict.quantity_issued)::integer AS total_quantity_issued
+       FROM sm_issuance_item_coat_tracking ict
+       JOIN sm_issuance_row ir ON ir.id = ict.issuance_row_id
+       JOIN sm_issuance_session s ON s.id = ir.session_id
+       WHERE ict.company_id = $1
+         AND s.cpo_id = $2
+         AND s.status != 'undone'
+         AND ir.undone = false
+       GROUP BY ict.line_item_id, ict.job_card_id, ict.coat_type`,
+      [companyId, cpoId],
+    );
+    return rows.map((r: any) => ({
+      lineItemId: r.line_item_id,
+      jobCardId: r.job_card_id,
+      coatType: r.coat_type,
+      totalQuantityIssued: Number(r.total_quantity_issued),
+    }));
   }
 
   private fullSessionRelations() {

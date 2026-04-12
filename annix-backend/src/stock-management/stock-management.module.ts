@@ -26,6 +26,7 @@ import { ConsumableIssuanceRow } from "./entities/consumable-issuance-row.entity
 import { ConsumableProduct } from "./entities/consumable-product.entity";
 import { ConsumableReturn } from "./entities/consumable-return.entity";
 import { IssuableProduct } from "./entities/issuable-product.entity";
+import { IssuanceItemCoatTracking } from "./entities/issuance-item-coat-tracking.entity";
 import { IssuanceRow } from "./entities/issuance-row.entity";
 import { IssuanceSession } from "./entities/issuance-session.entity";
 import { PaintIssuanceRow } from "./entities/paint-issuance-row.entity";
@@ -90,6 +91,7 @@ import { VarianceCategoryService } from "./services/variance-category.service";
       ProductDatasheet,
       IssuanceSession,
       IssuanceRow,
+      IssuanceItemCoatTracking,
       ConsumableIssuanceRow,
       PaintIssuanceRow,
       RubberRollIssuanceRow,
