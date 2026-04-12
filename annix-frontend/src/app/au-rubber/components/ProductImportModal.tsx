@@ -1,9 +1,9 @@
 "use client";
 
-import { Loader2, Upload, X } from "lucide-react";
-import { useCallback, useState } from "react";
-import { createPortal } from "react-dom";
+import { Loader2 } from "lucide-react";
+import { useState } from "react";
 import * as XLSX from "xlsx";
+import { FileImportModal } from "@/app/components/modals/FileImportModal";
 import {
   type AnalyzedProductData,
   type AnalyzedProductLine,
@@ -14,7 +14,7 @@ import type {
   ImportProductsResultDto,
   RubberProductCodingDto,
 } from "@/app/lib/api/rubberPortalApi";
-import { FileDropZone } from "./FileDropZone";
+import { useFileUpload } from "@/app/lib/hooks/useFileUpload";
 import { type CostSettings, ProductCostBuilder } from "./ProductCostBuilder";
 import {
   type EditableProductLine,
@@ -45,7 +45,8 @@ function parseExcelClientSide(file: File): Promise<AnalyzedProductLine[]> {
         const worksheet = workbook.Sheets[firstSheetName];
         const rows: Record<string, unknown>[] = XLSX.utils.sheet_to_json(worksheet);
 
-        const headerMapping = detectHeaders(rows[0] || {});
+        const firstRow = rows[0];
+        const headerMapping = detectHeaders(firstRow ? firstRow : {});
         const lines = rows
           .map((row, index) => {
             const title = extractString(row, headerMapping.title);
@@ -149,7 +150,6 @@ function extractNumber(row: Record<string, unknown>, possibleKeys: string[]): nu
 export function ProductImportModal(props: ProductImportModalProps) {
   const { isOpen, onClose, onImportComplete, codings } = props;
   const [step, setStep] = useState<ImportStep>("upload");
-  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [analysisResult, setAnalysisResult] = useState<AnalyzeProductFilesResult | null>(null);
   const [editableProducts, setEditableProducts] = useState<EditableProductLine[]>([]);
   const [costSettings, setCostSettings] = useState<CostSettings | null>(null);
@@ -159,23 +159,16 @@ export function ProductImportModal(props: ProductImportModalProps) {
   const [error, setError] = useState<string | null>(null);
   const [updateExisting, setUpdateExisting] = useState(false);
 
-  const handleFilesSelected = useCallback((files: File[]) => {
-    setSelectedFiles(files);
-    setError(null);
-  }, []);
-
-  const handleRemoveFile = useCallback((index: number) => {
-    setSelectedFiles((prev) => prev.filter((_, i) => i !== index));
-  }, []);
+  const fileUpload = useFileUpload({ accept: ACCEPTED_FILE_TYPES, multiple: true });
 
   const handleAnalyze = async () => {
-    if (selectedFiles.length === 0) return;
+    if (fileUpload.files.length === 0) return;
 
     setIsAnalyzing(true);
     setError(null);
 
     try {
-      const { allLines, analyzedFiles } = await selectedFiles.reduce(
+      const { allLines, analyzedFiles } = await fileUpload.files.reduce(
         async (accPromise, file) => {
           const acc = await accPromise;
           const isExcel =
@@ -284,22 +277,37 @@ export function ProductImportModal(props: ProductImportModalProps) {
     setError(null);
 
     try {
-      const rows = productsToImport.map((p) => ({
-        title: p.title || undefined,
-        type: p.type || undefined,
-        compound: p.compound || undefined,
-        colour: p.colour || undefined,
-        hardness: p.hardness || undefined,
-        grade: p.grade || undefined,
-        curingMethod: p.curingMethod || undefined,
-        specificGravity: p.specificGravity ?? undefined,
-        costPerKg: p.baseCostPerKg ?? undefined,
-        markup: costSettings
+      const rows = productsToImport.map((p) => {
+        const pTitle = p.title;
+        const pType = p.type;
+        const pCompound = p.compound;
+        const pColour = p.colour;
+        const pHardness = p.hardness;
+        const pGrade = p.grade;
+        const pCuringMethod = p.curingMethod;
+        const pSpecificGravity = p.specificGravity;
+        const pBaseCostPerKg = p.baseCostPerKg;
+        const matchedMarkup = costSettings
           ? costSettings.categoryMarkups.find(
-              (m) => m.compoundType.toLowerCase() === p.compound?.toLowerCase(),
-            )?.markupPercent || costSettings.defaultMarginPercent
-          : undefined,
-      }));
+              (m) => m.compoundType.toLowerCase() === pCompound?.toLowerCase(),
+            )
+          : null;
+        const markupPercent = matchedMarkup?.markupPercent;
+        const defaultMargin = costSettings?.defaultMarginPercent;
+        const markup = costSettings ? (markupPercent ? markupPercent : defaultMargin) : undefined;
+        return {
+          title: pTitle ? pTitle : undefined,
+          type: pType ? pType : undefined,
+          compound: pCompound ? pCompound : undefined,
+          colour: pColour ? pColour : undefined,
+          hardness: pHardness ? pHardness : undefined,
+          grade: pGrade ? pGrade : undefined,
+          curingMethod: pCuringMethod ? pCuringMethod : undefined,
+          specificGravity: pSpecificGravity != null ? pSpecificGravity : undefined,
+          costPerKg: pBaseCostPerKg != null ? pBaseCostPerKg : undefined,
+          markup,
+        };
+      });
 
       const result = await auRubberApiClient.importProducts({ rows, updateExisting });
       setImportResult(result);
@@ -316,7 +324,7 @@ export function ProductImportModal(props: ProductImportModalProps) {
 
   const handleClose = () => {
     setStep("upload");
-    setSelectedFiles([]);
+    fileUpload.clearFiles();
     setAnalysisResult(null);
     setEditableProducts([]);
     setCostSettings(null);
@@ -338,8 +346,6 @@ export function ProductImportModal(props: ProductImportModalProps) {
     analysisResult?.files.flatMap((f) => f.lines.map((l) => l.compound).filter(Boolean)) || [];
   const uniqueCompounds = [...new Set(detectedCompounds)] as string[];
 
-  if (!isOpen) return null;
-
   const stepNumber = step === "upload" ? 1 : step === "cost-builder" ? 2 : 3;
   const stepTitles = {
     upload: "Upload Files",
@@ -347,261 +353,218 @@ export function ProductImportModal(props: ProductImportModalProps) {
     review: "Review & Import",
   };
 
-  return createPortal(
-    <div className="fixed inset-0 z-[9999] overflow-y-auto">
-      <div className="flex min-h-screen items-center justify-center p-4">
-        <div className="fixed inset-0 bg-black/10 backdrop-blur-md" onClick={handleClose} />
+  const selectedCount = editableProducts.filter((p) => p.selected).length;
+  const combinedError = error || fileUpload.error;
 
-        <div className="relative bg-white rounded-lg shadow-xl max-w-6xl w-full max-h-[90vh] overflow-hidden flex flex-col">
-          <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
-            <div>
-              <h2 className="text-lg font-semibold text-gray-900">Import Products</h2>
-              <div className="flex items-center gap-2 mt-1">
-                {[1, 2, 3].map((n) => (
-                  <div key={n} className="flex items-center">
-                    <div
-                      className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium ${
-                        n === stepNumber
-                          ? "bg-yellow-600 text-white"
-                          : n < stepNumber
-                            ? "bg-green-500 text-white"
-                            : "bg-gray-200 text-gray-500"
-                      }`}
-                    >
-                      {n}
-                    </div>
-                    {n < 3 && (
-                      <div
-                        className={`w-8 h-0.5 ${n < stepNumber ? "bg-green-500" : "bg-gray-200"}`}
-                      />
-                    )}
-                  </div>
-                ))}
-                <span className="ml-2 text-sm text-gray-600">{stepTitles[step]}</span>
-              </div>
-            </div>
-            <button onClick={handleClose} className="text-gray-400 hover:text-gray-600">
-              <X className="w-5 h-5" />
-            </button>
+  const stepIndicator = (
+    <div className="flex items-center gap-2 mt-1">
+      {[1, 2, 3].map((n) => (
+        <div key={n} className="flex items-center">
+          <div
+            className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium ${
+              n === stepNumber
+                ? "bg-yellow-600 text-white"
+                : n < stepNumber
+                  ? "bg-green-500 text-white"
+                  : "bg-gray-200 text-gray-500"
+            }`}
+          >
+            {n}
           </div>
-
-          <div className="flex-1 overflow-y-auto p-6">
-            {error && (
-              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md text-sm text-red-700">
-                {error}
-              </div>
-            )}
-
-            {step === "upload" && !importResult && (
-              <div className="space-y-6">
-                <FileDropZone
-                  onFilesSelected={handleFilesSelected}
-                  accept={ACCEPTED_FILE_TYPES}
-                  multiple={true}
-                  disabled={isAnalyzing}
-                  className="border-2 border-dashed rounded-lg min-h-[200px]"
-                >
-                  <div className="flex flex-col items-center justify-center py-12 px-4">
-                    <Upload className="w-16 h-16 mb-4 text-gray-400" />
-                    <p className="text-lg font-medium text-gray-700">
-                      Drag & drop price list files here
-                    </p>
-                    <p className="text-sm text-gray-500 mt-1">or click to browse</p>
-                    <p className="text-xs text-gray-400 mt-3">
-                      Excel (.xlsx, .xls), PDF, or Word (.docx) files
-                    </p>
-                  </div>
-                </FileDropZone>
-
-                {selectedFiles.length > 0 && (
-                  <div>
-                    <h4 className="text-sm font-medium text-gray-700 mb-2">
-                      Selected Files ({selectedFiles.length})
-                    </h4>
-                    <ul className="divide-y divide-gray-200 border rounded-md">
-                      {selectedFiles.map((file, index) => (
-                        <li key={index} className="flex items-center justify-between px-4 py-3">
-                          <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded bg-gray-100 flex items-center justify-center text-xs font-medium text-gray-500">
-                              {file.name.split(".").pop()?.toUpperCase()}
-                            </div>
-                            <div>
-                              <p className="text-sm font-medium text-gray-900">{file.name}</p>
-                              <p className="text-xs text-gray-500">
-                                {(file.size / 1024).toFixed(1)} KB
-                              </p>
-                            </div>
-                          </div>
-                          <button
-                            onClick={() => handleRemoveFile(index)}
-                            className="text-gray-400 hover:text-red-500"
-                          >
-                            <X className="w-4 h-4" />
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {step === "cost-builder" && costSettings && (
-              <ProductCostBuilder
-                detectedCompounds={uniqueCompounds}
-                onApply={handleApplyCostSettings}
-              />
-            )}
-
-            {step === "review" && !importResult && costSettings && (
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <p className="text-sm text-gray-600">
-                    {editableProducts.length} product{editableProducts.length !== 1 ? "s" : ""}{" "}
-                    ready to import
-                  </p>
-                  <label className="flex items-center">
-                    <input
-                      type="checkbox"
-                      checked={updateExisting}
-                      onChange={(e) => setUpdateExisting(e.target.checked)}
-                      className="h-4 w-4 text-yellow-600 focus:ring-yellow-500 border-gray-300 rounded"
-                    />
-                    <span className="ml-2 text-sm text-gray-700">Update existing products</span>
-                  </label>
-                </div>
-
-                <ProductPreviewTable
-                  products={editableProducts}
-                  costSettings={costSettings}
-                  codings={codings}
-                  onUpdate={handleUpdateProduct}
-                  onDelete={handleDeleteProduct}
-                  onToggleSelect={handleToggleSelect}
-                  onSelectAll={handleSelectAll}
-                />
-              </div>
-            )}
-
-            {importResult && (
-              <div className="space-y-4">
-                <div className="grid grid-cols-5 gap-4 text-center">
-                  <div className="bg-gray-50 rounded-lg p-4">
-                    <div className="text-2xl font-bold text-gray-900">{importResult.totalRows}</div>
-                    <div className="text-sm text-gray-500">Total</div>
-                  </div>
-                  <div className="bg-green-50 rounded-lg p-4">
-                    <div className="text-2xl font-bold text-green-600">{importResult.created}</div>
-                    <div className="text-sm text-green-600">Created</div>
-                  </div>
-                  <div className="bg-blue-50 rounded-lg p-4">
-                    <div className="text-2xl font-bold text-blue-600">{importResult.updated}</div>
-                    <div className="text-sm text-blue-600">Updated</div>
-                  </div>
-                  <div className="bg-red-50 rounded-lg p-4">
-                    <div className="text-2xl font-bold text-red-600">{importResult.failed}</div>
-                    <div className="text-sm text-red-600">Failed</div>
-                  </div>
-                  <div className="bg-gray-50 rounded-lg p-4">
-                    <div className="text-2xl font-bold text-gray-500">{importResult.skipped}</div>
-                    <div className="text-sm text-gray-500">Skipped</div>
-                  </div>
-                </div>
-
-                {importResult.results.some((r) => r.status === "failed") && (
-                  <div className="border rounded-lg overflow-hidden">
-                    <div className="px-4 py-2 bg-red-50 border-b border-red-200">
-                      <h3 className="font-medium text-red-800">Failed Rows</h3>
-                    </div>
-                    <div className="overflow-x-auto max-h-60">
-                      <table className="min-w-full divide-y divide-gray-200 text-sm">
-                        <thead className="bg-gray-50">
-                          <tr>
-                            <th className="px-3 py-2 text-left font-medium text-gray-500">Row</th>
-                            <th className="px-3 py-2 text-left font-medium text-gray-500">Title</th>
-                            <th className="px-3 py-2 text-left font-medium text-gray-500">
-                              Errors
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
-                          {importResult.results
-                            .filter((r) => r.status === "failed")
-                            .map((result) => (
-                              <tr key={result.rowIndex}>
-                                <td className="px-3 py-2 text-gray-500">{result.rowIndex + 1}</td>
-                                <td className="px-3 py-2">{result.title || "-"}</td>
-                                <td className="px-3 py-2 text-red-600">
-                                  {result.errors.join("; ")}
-                                </td>
-                              </tr>
-                            ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-
-          <div className="px-6 py-4 border-t border-gray-200 flex justify-between bg-gray-50">
-            <div>
-              {step !== "upload" && !importResult && (
-                <button
-                  onClick={handleBack}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
-                >
-                  Back
-                </button>
-              )}
-            </div>
-            <div className="flex gap-3">
-              <button
-                onClick={handleClose}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
-              >
-                {importResult ? "Close" : "Cancel"}
-              </button>
-
-              {step === "upload" && !importResult && (
-                <button
-                  onClick={handleAnalyze}
-                  disabled={selectedFiles.length === 0 || isAnalyzing}
-                  className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-yellow-600 rounded-md hover:bg-yellow-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isAnalyzing ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Analyzing...
-                    </>
-                  ) : (
-                    "Analyze Files"
-                  )}
-                </button>
-              )}
-
-              {step === "review" && !importResult && (
-                <button
-                  onClick={handleImport}
-                  disabled={isImporting || editableProducts.filter((p) => p.selected).length === 0}
-                  className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-yellow-600 rounded-md hover:bg-yellow-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isImporting ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Importing...
-                    </>
-                  ) : (
-                    `Import ${editableProducts.filter((p) => p.selected).length} Products`
-                  )}
-                </button>
-              )}
-            </div>
-          </div>
+          {n < 3 && (
+            <div className={`w-8 h-0.5 ${n < stepNumber ? "bg-green-500" : "bg-gray-200"}`} />
+          )}
         </div>
-      </div>
-    </div>,
-    document.body,
+      ))}
+      <span className="ml-2 text-sm text-gray-600">{stepTitles[step]}</span>
+    </div>
+  );
+
+  const footerLeft = (
+    <div>
+      {step !== "upload" && !importResult && (
+        <button
+          onClick={handleBack}
+          className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+        >
+          Back
+        </button>
+      )}
+    </div>
+  );
+
+  const footerRight = (
+    <div className="flex gap-3">
+      <button
+        onClick={handleClose}
+        className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+      >
+        {importResult ? "Close" : "Cancel"}
+      </button>
+
+      {step === "upload" && !importResult && (
+        <button
+          onClick={handleAnalyze}
+          disabled={fileUpload.files.length === 0 || isAnalyzing}
+          className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-yellow-600 rounded-md hover:bg-yellow-700 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {isAnalyzing ? (
+            <>
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              Analyzing...
+            </>
+          ) : (
+            "Analyze Files"
+          )}
+        </button>
+      )}
+
+      {step === "review" && !importResult && (
+        <button
+          onClick={handleImport}
+          disabled={isImporting || selectedCount === 0}
+          className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-yellow-600 rounded-md hover:bg-yellow-700 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {isImporting ? (
+            <>
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              Importing...
+            </>
+          ) : (
+            `Import ${selectedCount} Products`
+          )}
+        </button>
+      )}
+    </div>
+  );
+
+  return (
+    <FileImportModal
+      isOpen={isOpen}
+      onClose={handleClose}
+      title="Import Products"
+      accept={ACCEPTED_FILE_TYPES}
+      multiple={true}
+      error={combinedError}
+      hideDropzone={step !== "upload" || !!importResult}
+      hideFooter={false}
+      maxWidth="max-w-6xl"
+      files={fileUpload.files}
+      onFilesSelected={fileUpload.addFiles}
+      onRemoveFile={fileUpload.removeFile}
+      isDragging={fileUpload.isDragging}
+      dragProps={fileUpload.dragProps}
+      dropzoneLabel="Drag & drop price list files here"
+      dropzoneSubLabel="or click to browse"
+      dropzoneHint="Excel (.xlsx, .xls), PDF, or Word (.docx) files"
+      footerLeft={footerLeft}
+      footerRight={footerRight}
+    >
+      {step === "upload" && !importResult && stepIndicator}
+
+      {step === "cost-builder" && costSettings && (
+        <>
+          {stepIndicator}
+          <ProductCostBuilder
+            detectedCompounds={uniqueCompounds}
+            onApply={handleApplyCostSettings}
+          />
+        </>
+      )}
+
+      {step === "review" && !importResult && costSettings && (
+        <>
+          {stepIndicator}
+          <div className="space-y-4 mt-4">
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-gray-600">
+                {editableProducts.length} product{editableProducts.length !== 1 ? "s" : ""} ready to
+                import
+              </p>
+              <label className="flex items-center">
+                <input
+                  type="checkbox"
+                  checked={updateExisting}
+                  onChange={(e) => setUpdateExisting(e.target.checked)}
+                  className="h-4 w-4 text-yellow-600 focus:ring-yellow-500 border-gray-300 rounded"
+                />
+                <span className="ml-2 text-sm text-gray-700">Update existing products</span>
+              </label>
+            </div>
+
+            <ProductPreviewTable
+              products={editableProducts}
+              costSettings={costSettings}
+              codings={codings}
+              onUpdate={handleUpdateProduct}
+              onDelete={handleDeleteProduct}
+              onToggleSelect={handleToggleSelect}
+              onSelectAll={handleSelectAll}
+            />
+          </div>
+        </>
+      )}
+
+      {importResult && (
+        <div className="space-y-4">
+          <div className="grid grid-cols-5 gap-4 text-center">
+            <div className="bg-gray-50 rounded-lg p-4">
+              <div className="text-2xl font-bold text-gray-900">{importResult.totalRows}</div>
+              <div className="text-sm text-gray-500">Total</div>
+            </div>
+            <div className="bg-green-50 rounded-lg p-4">
+              <div className="text-2xl font-bold text-green-600">{importResult.created}</div>
+              <div className="text-sm text-green-600">Created</div>
+            </div>
+            <div className="bg-blue-50 rounded-lg p-4">
+              <div className="text-2xl font-bold text-blue-600">{importResult.updated}</div>
+              <div className="text-sm text-blue-600">Updated</div>
+            </div>
+            <div className="bg-red-50 rounded-lg p-4">
+              <div className="text-2xl font-bold text-red-600">{importResult.failed}</div>
+              <div className="text-sm text-red-600">Failed</div>
+            </div>
+            <div className="bg-gray-50 rounded-lg p-4">
+              <div className="text-2xl font-bold text-gray-500">{importResult.skipped}</div>
+              <div className="text-sm text-gray-500">Skipped</div>
+            </div>
+          </div>
+
+          {importResult.results.some((r) => r.status === "failed") && (
+            <div className="border rounded-lg overflow-hidden">
+              <div className="px-4 py-2 bg-red-50 border-b border-red-200">
+                <h3 className="font-medium text-red-800">Failed Rows</h3>
+              </div>
+              <div className="overflow-x-auto max-h-60">
+                <table className="min-w-full divide-y divide-gray-200 text-sm">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-3 py-2 text-left font-medium text-gray-500">Row</th>
+                      <th className="px-3 py-2 text-left font-medium text-gray-500">Title</th>
+                      <th className="px-3 py-2 text-left font-medium text-gray-500">Errors</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {importResult.results
+                      .filter((r) => r.status === "failed")
+                      .map((result) => {
+                        const resultTitle = result.title;
+                        const titleDisplay = resultTitle ? resultTitle : "-";
+                        return (
+                          <tr key={result.rowIndex}>
+                            <td className="px-3 py-2 text-gray-500">{result.rowIndex + 1}</td>
+                            <td className="px-3 py-2">{titleDisplay}</td>
+                            <td className="px-3 py-2 text-red-600">{result.errors.join("; ")}</td>
+                          </tr>
+                        );
+                      })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </FileImportModal>
   );
 }

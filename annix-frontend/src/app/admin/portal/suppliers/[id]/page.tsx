@@ -8,6 +8,7 @@ import {
   initialPreviewState,
   PreviewModalState,
 } from "@/app/components/DocumentPreviewModal";
+import { AdminActionModal } from "@/app/components/modals/AdminActionModal";
 import { useToast } from "@/app/components/Toast";
 import { adminApiClient, DocumentReviewData } from "@/app/lib/api/adminApi";
 import { formatDateTimeZA } from "@/app/lib/datetime";
@@ -26,29 +27,24 @@ export default function SupplierDetailPage() {
 
   const [activeTab, setActiveTab] = useState<TabType>("overview");
 
-  const [suspendDialogOpen, setSuspendDialogOpen] = useState(false);
-  const [suspendReason, setSuspendReason] = useState("");
-  const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
-  const [rejectReason, setRejectReason] = useState("");
-  const [remediationSteps, setRemediationSteps] = useState("");
-  const [approveDialogOpen, setApproveDialogOpen] = useState(false);
+  const [adminAction, setAdminAction] = useState<"approve" | "suspend" | "reject" | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [previewState, setPreviewState] = useState<PreviewModalState>(initialPreviewState);
   const [reviewModalOpen, setReviewModalOpen] = useState(false);
   const [reviewData, setReviewData] = useState<DocumentReviewData | null>(null);
   const [reviewLoading, setReviewLoading] = useState(false);
 
-  const handleSuspend = async () => {
-    if (!suspendReason.trim()) {
+  const handleSuspend = async (reason?: string) => {
+    const trimmed = reason || "";
+    if (!trimmed.trim()) {
       showToast("Please provide a reason for suspension", "warning");
       return;
     }
 
     try {
       setIsSubmitting(true);
-      await adminApiClient.suspendSupplier(supplierId, suspendReason);
-      setSuspendDialogOpen(false);
-      setSuspendReason("");
+      await adminApiClient.suspendSupplier(supplierId, trimmed);
+      setAdminAction(null);
       showToast("Supplier account suspended", "success");
       supplierQuery.refetch();
     } catch (err: any) {
@@ -79,7 +75,7 @@ export default function SupplierDetailPage() {
     try {
       setIsSubmitting(true);
       await adminApiClient.approveSupplierOnboarding(supplierId);
-      setApproveDialogOpen(false);
+      setAdminAction(null);
       showToast("Supplier onboarding approved", "success");
       supplierQuery.refetch();
     } catch (err: any) {
@@ -89,18 +85,18 @@ export default function SupplierDetailPage() {
     }
   };
 
-  const handleReject = async () => {
-    if (!rejectReason.trim() || !remediationSteps.trim()) {
+  const handleReject = async (reason?: string, remediation?: string) => {
+    const trimmedReason = reason || "";
+    const trimmedRemediation = remediation || "";
+    if (!trimmedReason.trim() || !trimmedRemediation.trim()) {
       showToast("Please provide both rejection reason and remediation steps", "warning");
       return;
     }
 
     try {
       setIsSubmitting(true);
-      await adminApiClient.rejectSupplierOnboarding(supplierId, rejectReason, remediationSteps);
-      setRejectDialogOpen(false);
-      setRejectReason("");
-      setRemediationSteps("");
+      await adminApiClient.rejectSupplierOnboarding(supplierId, trimmedReason, trimmedRemediation);
+      setAdminAction(null);
       showToast("Supplier onboarding rejected", "success");
       supplierQuery.refetch();
     } catch (err: any) {
@@ -119,11 +115,13 @@ export default function SupplierDetailPage() {
     });
     try {
       const result = await adminApiClient.getSupplierDocumentReviewData(supplierId, doc.id);
+      const mimeType = result.mimeType;
+      const fileName = result.fileName;
       setPreviewState({
         isOpen: true,
         url: result.presignedUrl,
-        mimeType: result.mimeType || "application/pdf",
-        filename: result.fileName || doc.fileName,
+        mimeType: mimeType ? mimeType : "application/pdf",
+        filename: fileName ? fileName : doc.fileName,
         isLoading: false,
       });
     } catch (err: any) {
@@ -204,7 +202,8 @@ export default function SupplierDetailPage() {
         setReviewData(updatedData);
         supplierQuery.refetch();
       } else {
-        showToast(result.errorMessage || "Re-verification failed", "error");
+        const errorMsg = result.errorMessage;
+        showToast(errorMsg ? errorMsg : "Re-verification failed", "error");
       }
     } catch (err: any) {
       showToast(`Failed to re-verify document: ${err.message}`, "error");
@@ -254,7 +253,12 @@ export default function SupplierDetailPage() {
       <div className="flex items-center justify-center min-h-96">
         <div className="text-center">
           <div className="text-red-500 text-lg font-semibold mb-2">Error Loading Supplier</div>
-          <p className="text-gray-600">{supplierQuery.error?.message || "Supplier not found"}</p>
+          <p className="text-gray-600">
+            {(() => {
+              const msg = supplierQuery.error?.message;
+              return msg ? msg : "Supplier not found";
+            })()}
+          </p>
           <button
             onClick={() => router.push("/admin/portal/suppliers")}
             className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
@@ -278,9 +282,12 @@ export default function SupplierDetailPage() {
     suspendedAt: supplier.suspendedAt,
     suspensionReason: supplier.suspensionReason,
   };
-  const company = supplier.company || {};
-  const onboarding = supplier.onboarding || {};
-  const documents = supplier.documents || [];
+  const supplierCompany = supplier.company;
+  const company = supplierCompany ? supplierCompany : {};
+  const supplierOnboarding = supplier.onboarding;
+  const onboarding = supplierOnboarding ? supplierOnboarding : {};
+  const supplierDocuments = supplier.documents;
+  const documents = supplierDocuments ? supplierDocuments : [];
 
   return (
     <div className="space-y-6">
@@ -309,12 +316,20 @@ export default function SupplierDetailPage() {
             <h1 className="text-2xl font-bold text-gray-900">
               {profile.firstName} {profile.lastName}
             </h1>
-            <p className="text-sm text-gray-600">{supplier.email || profile.email}</p>
+            <p className="text-sm text-gray-600">
+              {(() => {
+                const email = supplier.email;
+                return email ? email : profile.email;
+              })()}
+            </p>
           </div>
           <span
             className={`px-3 py-1 inline-flex text-sm leading-5 font-semibold rounded-full ${statusBadgeClass(profile.accountStatus)}`}
           >
-            {profile.accountStatus || "Unknown"}
+            {(() => {
+              const status = profile.accountStatus;
+              return status ? status : "Unknown";
+            })()}
           </span>
           {onboarding.status && (
             <span
@@ -330,7 +345,7 @@ export default function SupplierDetailPage() {
           {onboarding.status === "submitted" || onboarding.status === "under_review" ? (
             <>
               <button
-                onClick={() => setApproveDialogOpen(true)}
+                onClick={() => setAdminAction("approve")}
                 disabled={isSubmitting}
                 className="inline-flex items-center px-4 py-2 border border-green-300 rounded-md shadow-sm text-sm font-medium text-green-700 bg-white hover:bg-green-50 disabled:opacity-50"
               >
@@ -345,7 +360,7 @@ export default function SupplierDetailPage() {
                 Approve Onboarding
               </button>
               <button
-                onClick={() => setRejectDialogOpen(true)}
+                onClick={() => setAdminAction("reject")}
                 disabled={isSubmitting}
                 className="inline-flex items-center px-4 py-2 border border-red-300 rounded-md shadow-sm text-sm font-medium text-red-700 bg-white hover:bg-red-50 disabled:opacity-50"
               >
@@ -363,7 +378,7 @@ export default function SupplierDetailPage() {
           ) : null}
           {profile.accountStatus === "active" && (
             <button
-              onClick={() => setSuspendDialogOpen(true)}
+              onClick={() => setAdminAction("suspend")}
               disabled={isSubmitting}
               className="inline-flex items-center px-4 py-2 border border-red-300 rounded-md shadow-sm text-sm font-medium text-red-700 bg-white hover:bg-red-50 disabled:opacity-50"
             >
@@ -449,7 +464,12 @@ export default function SupplierDetailPage() {
               </div>
               <div>
                 <dt className="text-sm font-medium text-gray-500">Email</dt>
-                <dd className="mt-1 text-sm text-gray-900">{supplier.email || profile.email}</dd>
+                <dd className="mt-1 text-sm text-gray-900">
+                  {(() => {
+                    const email = supplier.email;
+                    return email ? email : profile.email;
+                  })()}
+                </dd>
               </div>
               {profile.jobTitle && (
                 <div>
@@ -519,7 +539,10 @@ export default function SupplierDetailPage() {
                   <span
                     className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusBadgeClass(profile.accountStatus)}`}
                   >
-                    {profile.accountStatus || "Unknown"}
+                    {(() => {
+                      const status = profile.accountStatus;
+                      return status ? status : "Unknown";
+                    })()}
                   </span>
                 </dd>
               </div>
@@ -547,21 +570,23 @@ export default function SupplierDetailPage() {
             <div className="bg-white shadow rounded-lg p-6">
               <h2 className="text-lg font-medium text-gray-900 mb-4">Capabilities</h2>
               <div className="space-y-2">
-                {supplier.capabilities.map((cap: any, idx: number) => (
-                  <div
-                    key={idx}
-                    className="flex items-center justify-between py-2 border-b border-gray-100 last:border-0"
-                  >
-                    <span className="text-sm text-gray-900">
-                      {cap.productCategory || cap.category}
-                    </span>
-                    {cap.capabilityScore && (
-                      <span className="text-sm font-medium text-gray-600">
-                        Score: {cap.capabilityScore}/100
-                      </span>
-                    )}
-                  </div>
-                ))}
+                {supplier.capabilities.map((cap: any, idx: number) => {
+                  const capCategory = cap.productCategory;
+                  const categoryDisplay = capCategory ? capCategory : cap.category;
+                  return (
+                    <div
+                      key={idx}
+                      className="flex items-center justify-between py-2 border-b border-gray-100 last:border-0"
+                    >
+                      <span className="text-sm text-gray-900">{categoryDisplay}</span>
+                      {cap.capabilityScore && (
+                        <span className="text-sm font-medium text-gray-600">
+                          Score: {cap.capabilityScore}/100
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}
@@ -578,7 +603,10 @@ export default function SupplierDetailPage() {
                 <span
                   className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusBadgeClass(onboarding.status)}`}
                 >
-                  {onboarding.status || "Not Started"}
+                  {(() => {
+                    const obStatus = onboarding.status;
+                    return obStatus ? obStatus : "Not Started";
+                  })()}
                 </span>
               </dd>
             </div>
@@ -662,269 +690,77 @@ export default function SupplierDetailPage() {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {documents.map((doc: any) => (
-                  <tr
-                    key={doc.id}
-                    className={doc.validationStatus === "manual_review" ? "bg-yellow-50" : ""}
-                  >
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                      {doc.documentType}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {doc.fileName}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {formatDate(doc.uploadedAt)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span
-                        className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusBadgeClass(doc.validationStatus)}`}
-                      >
-                        {doc.validationStatus || "pending"}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
-                      <button
-                        onClick={() => handleViewDocument(doc)}
-                        className="text-blue-600 hover:text-blue-900"
-                      >
-                        View
-                      </button>
-                      <button
-                        onClick={() => handleReviewDocument(doc)}
-                        className="text-purple-600 hover:text-purple-900"
-                      >
-                        Review
-                      </button>
-                    </td>
-                  </tr>
-                ))}
+                {documents.map((doc: any) => {
+                  const docStatus = doc.validationStatus;
+                  const statusDisplay = docStatus ? docStatus : "pending";
+                  return (
+                    <tr
+                      key={doc.id}
+                      className={docStatus === "manual_review" ? "bg-yellow-50" : ""}
+                    >
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                        {doc.documentType}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {doc.fileName}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {formatDate(doc.uploadedAt)}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span
+                          className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusBadgeClass(docStatus)}`}
+                        >
+                          {statusDisplay}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
+                        <button
+                          onClick={() => handleViewDocument(doc)}
+                          className="text-blue-600 hover:text-blue-900"
+                        >
+                          View
+                        </button>
+                        <button
+                          onClick={() => handleReviewDocument(doc)}
+                          className="text-purple-600 hover:text-purple-900"
+                        >
+                          Review
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           )}
         </div>
       )}
 
-      {/* Suspend Dialog */}
-      {suspendDialogOpen && (
-        <div className="fixed inset-0 bg-black/10 backdrop-blur-md flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full">
-            <h3 className="text-lg font-medium text-gray-900 mb-4">Suspend Supplier Account</h3>
-            <p className="text-sm text-gray-500 mb-4">
-              Please provide a reason for suspending this supplier account. The supplier will be
-              notified.
-            </p>
-            <textarea
-              value={suspendReason}
-              onChange={(e) => setSuspendReason(e.target.value)}
-              rows={4}
-              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="Enter reason for suspension..."
+      {adminAction !== null &&
+        (() => {
+          const compName = company.name;
+          const entityName = `${profile.firstName} ${profile.lastName} from ${compName ? compName : ""}`;
+          return (
+            <AdminActionModal
+              action={adminAction}
+              entityType="supplier"
+              entityName={entityName}
+              isOpen
+              onClose={() => setAdminAction(null)}
+              onConfirm={(reason, remediationSteps) => {
+                if (adminAction === "suspend") {
+                  handleSuspend(reason);
+                } else if (adminAction === "reject") {
+                  handleReject(reason, remediationSteps);
+                } else {
+                  handleApprove();
+                }
+              }}
+              loading={isSubmitting}
             />
-            <div className="mt-4 flex justify-end space-x-3">
-              <button
-                onClick={() => {
-                  setSuspendDialogOpen(false);
-                  setSuspendReason("");
-                }}
-                disabled={isSubmitting}
-                className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleSuspend}
-                disabled={isSubmitting}
-                className="px-4 py-2 bg-red-600 text-white rounded-md text-sm font-medium hover:bg-red-700 disabled:opacity-50"
-              >
-                {isSubmitting ? "Suspending..." : "Suspend Account"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Reject Dialog */}
-      {rejectDialogOpen && (
-        <div className="fixed inset-0 bg-black/10 backdrop-blur-md flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full">
-            <h3 className="text-lg font-medium text-gray-900 mb-4">Reject Supplier Onboarding</h3>
-            <p className="text-sm text-gray-500 mb-4">
-              Please provide a reason for rejection and steps the supplier should take to remediate.
-            </p>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Rejection Reason
-                </label>
-                <textarea
-                  value={rejectReason}
-                  onChange={(e) => setRejectReason(e.target.value)}
-                  rows={3}
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Why is the onboarding being rejected?"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Remediation Steps
-                </label>
-                <textarea
-                  value={remediationSteps}
-                  onChange={(e) => setRemediationSteps(e.target.value)}
-                  rows={3}
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="What should the supplier do to address this?"
-                />
-              </div>
-            </div>
-            <div className="mt-4 flex justify-end space-x-3">
-              <button
-                onClick={() => {
-                  setRejectDialogOpen(false);
-                  setRejectReason("");
-                  setRemediationSteps("");
-                }}
-                disabled={isSubmitting}
-                className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleReject}
-                disabled={isSubmitting}
-                className="px-4 py-2 bg-red-600 text-white rounded-md text-sm font-medium hover:bg-red-700 disabled:opacity-50"
-              >
-                {isSubmitting ? "Rejecting..." : "Reject Onboarding"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Approve Onboarding Dialog */}
-      {approveDialogOpen && (
-        <div className="fixed inset-0 bg-black/10 backdrop-blur-md flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4 overflow-hidden">
-            <div className="bg-gradient-to-r from-green-600 to-emerald-600 px-6 py-4">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-white/20 rounded-lg">
-                  <svg
-                    className="w-6 h-6 text-white"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                    />
-                  </svg>
-                </div>
-                <h3 className="text-lg font-semibold text-white">Approve Supplier Onboarding</h3>
-              </div>
-            </div>
-            <div className="p-6">
-              <p className="text-gray-700 mb-4">
-                You are about to approve{" "}
-                <strong>
-                  {profile.firstName} {profile.lastName}
-                </strong>{" "}
-                from <strong>{company.name}</strong>.
-              </p>
-              <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
-                <h4 className="text-sm font-medium text-green-800 mb-2">This action will:</h4>
-                <ul className="text-sm text-green-700 space-y-1">
-                  <li className="flex items-center gap-2">
-                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                      <path
-                        fillRule="evenodd"
-                        d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                        clipRule="evenodd"
-                      />
-                    </svg>
-                    Activate the supplier account
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                      <path
-                        fillRule="evenodd"
-                        d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                        clipRule="evenodd"
-                      />
-                    </svg>
-                    Send a confirmation email
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                      <path
-                        fillRule="evenodd"
-                        d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                        clipRule="evenodd"
-                      />
-                    </svg>
-                    Record your approval with timestamp
-                  </li>
-                </ul>
-              </div>
-              <div className="flex justify-end gap-3">
-                <button
-                  onClick={() => setApproveDialogOpen(false)}
-                  disabled={isSubmitting}
-                  className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleApprove}
-                  disabled={isSubmitting}
-                  className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 disabled:opacity-50 transition-colors flex items-center gap-2"
-                >
-                  {isSubmitting ? (
-                    <>
-                      <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                        <circle
-                          className="opacity-25"
-                          cx="12"
-                          cy="12"
-                          r="10"
-                          stroke="currentColor"
-                          strokeWidth="4"
-                        ></circle>
-                        <path
-                          className="opacity-75"
-                          fill="currentColor"
-                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                        ></path>
-                      </svg>
-                      Approving...
-                    </>
-                  ) : (
-                    <>
-                      <svg
-                        className="w-4 h-4"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M5 13l4 4L19 7"
-                        />
-                      </svg>
-                      Approve Supplier
-                    </>
-                  )}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+          );
+        })()}
 
       {/* Document Preview Modal */}
       <DocumentPreviewModal

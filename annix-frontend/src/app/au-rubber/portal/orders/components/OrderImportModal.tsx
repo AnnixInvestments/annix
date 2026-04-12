@@ -1,8 +1,8 @@
 "use client";
 
-import { Loader2, Sparkles, Upload, X } from "lucide-react";
+import { Loader2, Sparkles } from "lucide-react";
 import { useEffect, useState } from "react";
-import { createPortal } from "react-dom";
+import { FileImportModal } from "@/app/components/modals/FileImportModal";
 import {
   type AnalyzedOrderData,
   type AnalyzeOrderFilesResult,
@@ -10,11 +10,14 @@ import {
   type NewCompanyFromAnalysis,
 } from "@/app/lib/api/auRubberApi";
 import type { RubberCompanyDto, RubberProductDto } from "@/app/lib/api/rubberPortalApi";
-import { FileDropZone } from "../../../components/FileDropZone";
+import { useFileUpload } from "@/app/lib/hooks/useFileUpload";
 import { type NewCompanyDetails, OrderAnalysisReview } from "./OrderAnalysisReview";
 import { PoTrainingModal } from "./PoTrainingModal";
 
 type ImportStep = "upload" | "review" | "train";
+
+const ORDER_ACCEPTED_TYPES =
+  ".pdf,application/pdf,.png,.jpg,.jpeg,.gif,.bmp,.webp,.heic,.tiff,image/*,.xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,.eml,message/rfc822";
 
 interface OrderImportModalProps {
   isOpen: boolean;
@@ -30,7 +33,6 @@ export function OrderImportModal(props: OrderImportModalProps) {
   const { isOpen, onClose, onOrderCreated, companies, products, initialAnalysis, initialFiles } =
     props;
   const [step, setStep] = useState<ImportStep>("upload");
-  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [analysisResult, setAnalysisResult] = useState<AnalyzeOrderFilesResult | null>(null);
   const [editedAnalyses, setEditedAnalyses] = useState<AnalyzedOrderData[]>([]);
   const [selectedFileIndex, setSelectedFileIndex] = useState(0);
@@ -41,6 +43,8 @@ export function OrderImportModal(props: OrderImportModalProps) {
   const [trainingFile, setTrainingFile] = useState<File | null>(null);
   const [newCompanyDetails, setNewCompanyDetails] = useState<NewCompanyDetails | null>(null);
 
+  const fileUpload = useFileUpload({ accept: ORDER_ACCEPTED_TYPES, multiple: true });
+
   useEffect(() => {
     if (isOpen && initialAnalysis) {
       setStep("review");
@@ -48,22 +52,13 @@ export function OrderImportModal(props: OrderImportModalProps) {
       setEditedAnalyses(initialAnalysis.files);
       setSelectedFileIndex(0);
       if (initialFiles && initialFiles.length > 0) {
-        setSelectedFiles(initialFiles);
+        fileUpload.addFiles(initialFiles);
       }
     }
   }, [isOpen, initialAnalysis, initialFiles]);
 
-  const handleFilesSelected = (files: File[]) => {
-    setSelectedFiles(files);
-    setError(null);
-  };
-
-  const handleRemoveFile = (index: number) => {
-    setSelectedFiles((prev) => prev.filter((_, i) => i !== index));
-  };
-
   const handleAnalyze = async () => {
-    if (selectedFiles.length === 0) {
+    if (fileUpload.files.length === 0) {
       return;
     }
 
@@ -71,7 +66,7 @@ export function OrderImportModal(props: OrderImportModalProps) {
     setError(null);
 
     try {
-      const result = await auRubberApiClient.analyzeOrderFiles(selectedFiles);
+      const result = await auRubberApiClient.analyzeOrderFiles(fileUpload.files);
       setAnalysisResult(result);
       setEditedAnalyses(result.files);
       setSelectedFileIndex(0);
@@ -139,7 +134,7 @@ export function OrderImportModal(props: OrderImportModalProps) {
 
   const handleClose = () => {
     setStep("upload");
-    setSelectedFiles([]);
+    fileUpload.clearFiles();
     setAnalysisResult(null);
     setEditedAnalyses([]);
     setSelectedFileIndex(0);
@@ -158,7 +153,7 @@ export function OrderImportModal(props: OrderImportModalProps) {
   };
 
   const handleTrainNix = () => {
-    const file = selectedFiles[selectedFileIndex];
+    const file = fileUpload.files[selectedFileIndex];
     if (file) {
       setTrainingFile(file);
       setShowTrainingModal(true);
@@ -169,10 +164,10 @@ export function OrderImportModal(props: OrderImportModalProps) {
     setShowTrainingModal(false);
     setTrainingFile(null);
 
-    if (selectedFiles.length > 0) {
+    if (fileUpload.files.length > 0) {
       setIsAnalyzing(true);
       try {
-        const result = await auRubberApiClient.analyzeOrderFiles(selectedFiles);
+        const result = await auRubberApiClient.analyzeOrderFiles(fileUpload.files);
         setAnalysisResult(result);
         setEditedAnalyses(result.files);
         setSelectedFileIndex(0);
@@ -193,210 +188,157 @@ export function OrderImportModal(props: OrderImportModalProps) {
     return false;
   };
 
-  if (!isOpen) {
-    return null;
-  }
-
   const currentAnalysis = editedAnalyses[selectedFileIndex];
+  const combinedError = error || fileUpload.error;
 
-  return createPortal(
-    <div className="fixed inset-0 z-[9999] overflow-y-auto">
-      <div className="flex min-h-screen items-center justify-center p-4">
-        <div className="fixed inset-0 bg-black/10 backdrop-blur-md" onClick={handleClose} />
-        <div className="relative bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
-          <div className="flex items-center justify-between p-4 border-b">
-            <h3 className="text-lg font-medium text-gray-900">
-              {step === "upload" ? "Import Order" : "Review Extracted Data"}
-            </h3>
-            <button onClick={handleClose} className="text-gray-400 hover:text-gray-500">
-              <X className="w-5 h-5" />
-            </button>
-          </div>
+  const footerLeft = (
+    <div>
+      {step === "review" && (
+        <button
+          onClick={handleBack}
+          className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+        >
+          Back
+        </button>
+      )}
+    </div>
+  );
 
-          <div className="flex-1 overflow-y-auto p-4">
-            {error && (
-              <div className="mb-4 bg-red-50 border border-red-200 rounded-md p-3">
-                <p className="text-sm text-red-700">{error}</p>
+  const footerRight = (
+    <div className="flex space-x-3">
+      <button
+        onClick={handleClose}
+        className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+      >
+        Cancel
+      </button>
+      {step === "upload" && (
+        <button
+          onClick={handleAnalyze}
+          disabled={fileUpload.files.length === 0 || isAnalyzing}
+          className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-yellow-600 rounded-md hover:bg-yellow-700 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {isAnalyzing ? (
+            <>
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              Analyzing...
+            </>
+          ) : (
+            "Analyze Files"
+          )}
+        </button>
+      )}
+      {step === "review" && (
+        <button
+          onClick={handleCreateOrder}
+          disabled={
+            isCreating ||
+            !currentAnalysis ||
+            currentAnalysis.lines.length === 0 ||
+            (!currentAnalysis.companyId && !newCompanyDetails?.name)
+          }
+          className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-yellow-600 rounded-md hover:bg-yellow-700 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {isCreating ? (
+            <>
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              Creating...
+            </>
+          ) : (
+            "Create Order"
+          )}
+        </button>
+      )}
+    </div>
+  );
+
+  return (
+    <>
+      <FileImportModal
+        isOpen={isOpen}
+        onClose={handleClose}
+        title={step === "upload" ? "Import Order" : "Review Extracted Data"}
+        accept={ORDER_ACCEPTED_TYPES}
+        multiple={true}
+        error={combinedError}
+        hideDropzone={step !== "upload"}
+        files={fileUpload.files}
+        onFilesSelected={fileUpload.addFiles}
+        onRemoveFile={fileUpload.removeFile}
+        isDragging={fileUpload.isDragging}
+        dragProps={fileUpload.dragProps}
+        dropzoneLabel="Drag & drop order files here"
+        dropzoneSubLabel="or click to browse"
+        dropzoneHint="PDF, Excel (.xlsx, .xls), or Email (.eml) files"
+        footerLeft={footerLeft}
+        footerRight={footerRight}
+      >
+        {step === "review" && currentAnalysis && (
+          <div className="space-y-4">
+            {editedAnalyses.length > 1 && (
+              <div className="flex space-x-2 overflow-x-auto pb-2">
+                {editedAnalyses.map((analysis, index) => (
+                  <button
+                    key={index}
+                    onClick={() => setSelectedFileIndex(index)}
+                    className={`px-3 py-1 text-sm rounded-md whitespace-nowrap ${
+                      index === selectedFileIndex
+                        ? "bg-yellow-100 text-yellow-800 border border-yellow-300"
+                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                    }`}
+                  >
+                    {analysis.filename}
+                    {analysis.lines.length > 0 && (
+                      <span className="ml-1 text-xs">({analysis.lines.length})</span>
+                    )}
+                  </button>
+                ))}
               </div>
             )}
 
-            {step === "upload" && (
-              <div className="space-y-4">
-                <FileDropZone
-                  onFilesSelected={handleFilesSelected}
-                  accept=".pdf,application/pdf,.png,.jpg,.jpeg,.gif,.bmp,.webp,.heic,.tiff,image/*,.xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,.eml,message/rfc822"
-                  multiple={true}
-                  disabled={isAnalyzing}
-                  className="border-2 border-dashed rounded-lg"
-                >
-                  <div className="flex flex-col items-center justify-center py-8 px-4">
-                    <Upload className="w-12 h-12 mb-3 text-gray-400" />
-                    <p className="text-sm font-medium text-gray-700">
-                      Drag & drop order files here
+            {shouldShowTrainButton(currentAnalysis) && (
+              <div className="bg-gradient-to-r from-amber-50 to-yellow-50 border border-amber-200 rounded-lg p-4">
+                <div className="flex items-start gap-3">
+                  <div className="p-2 bg-amber-100 rounded-lg">
+                    <Sparkles className="w-5 h-5 text-amber-600" />
+                  </div>
+                  <div className="flex-1">
+                    <h4 className="font-medium text-amber-900">Train Nix for Better Extraction</h4>
+                    <p className="text-sm text-amber-700 mt-1">
+                      {currentAnalysis.isNewCustomer
+                        ? "This appears to be from a new customer. Train Nix to recognize their PO format."
+                        : currentAnalysis.isNewFormat
+                          ? "This is a new document format from this customer. Train Nix on this layout."
+                          : "Extraction confidence is low. Training Nix can improve future results."}
                     </p>
-                    <p className="text-xs text-gray-500 mt-1">or click to browse</p>
-                    <p className="text-xs text-gray-400 mt-2">
-                      PDF, Excel (.xlsx, .xls), or Email (.eml) files
-                    </p>
+                    <button
+                      onClick={handleTrainNix}
+                      disabled={!currentAnalysis.companyId}
+                      className="mt-3 inline-flex items-center px-3 py-1.5 text-sm font-medium text-amber-700 bg-amber-100 border border-amber-300 rounded-md hover:bg-amber-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <Sparkles className="w-4 h-4 mr-1.5" />
+                      Train Nix
+                    </button>
+                    {!currentAnalysis.companyId && (
+                      <p className="text-xs text-amber-600 mt-2">
+                        Select a company above before training
+                      </p>
+                    )}
                   </div>
-                </FileDropZone>
-
-                {selectedFiles.length > 0 && (
-                  <div>
-                    <h4 className="text-sm font-medium text-gray-700 mb-2">
-                      Selected Files ({selectedFiles.length})
-                    </h4>
-                    <ul className="divide-y divide-gray-200 border rounded-md">
-                      {selectedFiles.map((file, index) => (
-                        <li key={index} className="flex items-center justify-between px-3 py-2">
-                          <div className="flex items-center space-x-2">
-                            <span className="text-sm text-gray-900">{file.name}</span>
-                            <span className="text-xs text-gray-500">
-                              ({(file.size / 1024).toFixed(1)} KB)
-                            </span>
-                          </div>
-                          <button
-                            onClick={() => handleRemoveFile(index)}
-                            className="text-gray-400 hover:text-red-500"
-                          >
-                            <X className="w-4 h-4" />
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
+                </div>
               </div>
             )}
 
-            {step === "review" && currentAnalysis && (
-              <div className="space-y-4">
-                {editedAnalyses.length > 1 && (
-                  <div className="flex space-x-2 overflow-x-auto pb-2">
-                    {editedAnalyses.map((analysis, index) => (
-                      <button
-                        key={index}
-                        onClick={() => setSelectedFileIndex(index)}
-                        className={`px-3 py-1 text-sm rounded-md whitespace-nowrap ${
-                          index === selectedFileIndex
-                            ? "bg-yellow-100 text-yellow-800 border border-yellow-300"
-                            : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                        }`}
-                      >
-                        {analysis.filename}
-                        {analysis.lines.length > 0 && (
-                          <span className="ml-1 text-xs">({analysis.lines.length})</span>
-                        )}
-                      </button>
-                    ))}
-                  </div>
-                )}
-
-                {shouldShowTrainButton(currentAnalysis) && (
-                  <div className="bg-gradient-to-r from-amber-50 to-yellow-50 border border-amber-200 rounded-lg p-4">
-                    <div className="flex items-start gap-3">
-                      <div className="p-2 bg-amber-100 rounded-lg">
-                        <Sparkles className="w-5 h-5 text-amber-600" />
-                      </div>
-                      <div className="flex-1">
-                        <h4 className="font-medium text-amber-900">
-                          Train Nix for Better Extraction
-                        </h4>
-                        <p className="text-sm text-amber-700 mt-1">
-                          {currentAnalysis.isNewCustomer
-                            ? "This appears to be from a new customer. Train Nix to recognize their PO format."
-                            : currentAnalysis.isNewFormat
-                              ? "This is a new document format from this customer. Train Nix on this layout."
-                              : "Extraction confidence is low. Training Nix can improve future results."}
-                        </p>
-                        <button
-                          onClick={handleTrainNix}
-                          disabled={!currentAnalysis.companyId}
-                          className="mt-3 inline-flex items-center px-3 py-1.5 text-sm font-medium text-amber-700 bg-amber-100 border border-amber-300 rounded-md hover:bg-amber-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          <Sparkles className="w-4 h-4 mr-1.5" />
-                          Train Nix
-                        </button>
-                        {!currentAnalysis.companyId && (
-                          <p className="text-xs text-amber-600 mt-2">
-                            Select a company above before training
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                <OrderAnalysisReview
-                  analysis={currentAnalysis}
-                  companies={companies}
-                  products={products}
-                  onUpdate={(updated) => handleUpdateAnalysis(selectedFileIndex, updated)}
-                  onNewCompanyChange={setNewCompanyDetails}
-                />
-              </div>
-            )}
+            <OrderAnalysisReview
+              analysis={currentAnalysis}
+              companies={companies}
+              products={products}
+              onUpdate={(updated) => handleUpdateAnalysis(selectedFileIndex, updated)}
+              onNewCompanyChange={setNewCompanyDetails}
+            />
           </div>
-
-          <div className="flex items-center justify-between p-4 border-t bg-gray-50">
-            <div>
-              {step === "review" && (
-                <button
-                  onClick={handleBack}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
-                >
-                  Back
-                </button>
-              )}
-            </div>
-            <div className="flex space-x-3">
-              <button
-                onClick={handleClose}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
-              >
-                Cancel
-              </button>
-              {step === "upload" && (
-                <button
-                  onClick={handleAnalyze}
-                  disabled={selectedFiles.length === 0 || isAnalyzing}
-                  className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-yellow-600 rounded-md hover:bg-yellow-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isAnalyzing ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Analyzing...
-                    </>
-                  ) : (
-                    "Analyze Files"
-                  )}
-                </button>
-              )}
-              {step === "review" && (
-                <button
-                  onClick={handleCreateOrder}
-                  disabled={
-                    isCreating ||
-                    !currentAnalysis ||
-                    currentAnalysis.lines.length === 0 ||
-                    (!currentAnalysis.companyId && !newCompanyDetails?.name)
-                  }
-                  className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-yellow-600 rounded-md hover:bg-yellow-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isCreating ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Creating...
-                    </>
-                  ) : (
-                    "Create Order"
-                  )}
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
+        )}
+      </FileImportModal>
 
       {showTrainingModal &&
         trainingFile &&
@@ -414,7 +356,6 @@ export function OrderImportModal(props: OrderImportModalProps) {
             onTrainingComplete={handleTrainingComplete}
           />
         )}
-    </div>,
-    document.body,
+    </>
   );
 }

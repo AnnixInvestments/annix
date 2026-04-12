@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { createPortal } from "react-dom";
+import { FormModal } from "@/app/components/modals/FormModal";
 import { auRubberApiClient } from "@/app/lib/api/auRubberApi";
 import type { CreateRubberProductDto, RubberProductDto } from "@/app/lib/api/rubberPortalApi";
 import { formDataFromProduct, INITIAL_FORM_DATA, ProductForm } from "./ProductForm";
@@ -39,29 +39,24 @@ export function ProductFormModal(props: ProductFormModalProps) {
     }
   };
 
-  if (!isOpen) return null;
+  const title = isEditing ? "Edit Product" : "Create New Product";
 
-  return createPortal(
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center">
-      <div className="fixed inset-0 bg-black/10 backdrop-blur-md" onClick={onCancel} />
-      <div className="relative bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-hidden flex flex-col">
-        <div className="px-6 py-4 border-b border-gray-200">
-          <h2 className="text-lg font-semibold text-gray-900">
-            {isEditing ? "Edit Product" : "Create New Product"}
-          </h2>
-        </div>
-
-        <div className="flex-1 overflow-y-auto p-6">
-          <ProductForm
-            initialData={initialData}
-            onSubmit={handleSubmit}
-            onCancel={onCancel}
-            submitLabel={isEditing ? "Update Product" : "Create Product"}
-            isSaving={isSaving}
-          />
-        </div>
-      </div>
-    </div>,
-    document.body,
+  return (
+    <FormModal
+      isOpen={isOpen}
+      onClose={onCancel}
+      onSubmit={() => {}}
+      title={title}
+      maxWidth="max-w-2xl"
+      hideFooter
+    >
+      <ProductForm
+        initialData={initialData}
+        onSubmit={handleSubmit}
+        onCancel={onCancel}
+        submitLabel={isEditing ? "Update Product" : "Create Product"}
+        isSaving={isSaving}
+      />
+    </FormModal>
   );
 }

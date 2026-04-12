@@ -9,6 +9,7 @@ import {
   initialPreviewState,
   PreviewModalState,
 } from "@/app/components/DocumentPreviewModal";
+import { AdminActionModal } from "@/app/components/modals/AdminActionModal";
 import { useToast } from "@/app/components/Toast";
 import { adminApiClient, CustomerDocument, DocumentReviewData } from "@/app/lib/api/adminApi";
 import { formatDateTimeZA, formatDateZA } from "@/app/lib/datetime";
@@ -34,16 +35,20 @@ export default function CustomerDetailPage() {
   const rfqsQuery = useAdminCustomerRfqs(customerId);
   const customFieldsQuery = useAdminCustomerCustomFields(customerId);
 
-  const customer = customerQuery.data ?? null;
-  const loginHistory = loginHistoryQuery.data ?? [];
-  const documents = documentsQuery.data ?? [];
-  const customerRfqs = rfqsQuery.data ?? [];
-  const customFields = customFieldsQuery.data?.fields || [];
+  const customerData = customerQuery.data;
+  const customer = customerData ? customerData : null;
+  const loginHistoryData = loginHistoryQuery.data;
+  const loginHistory = loginHistoryData ? loginHistoryData : [];
+  const documentsData = documentsQuery.data;
+  const documents = documentsData ? documentsData : [];
+  const rfqsData = rfqsQuery.data;
+  const customerRfqs = rfqsData ? rfqsData : [];
+  const customFieldsData = customFieldsQuery.data;
+  const customFieldsFields = customFieldsData?.fields;
+  const customFields = customFieldsFields ? customFieldsFields : [];
 
   const [activeTab, setActiveTab] = useState<TabType>("overview");
-  const [suspendDialogOpen, setSuspendDialogOpen] = useState(false);
-  const [suspendReason, setSuspendReason] = useState("");
-  const [approveDialogOpen, setApproveDialogOpen] = useState(false);
+  const [adminAction, setAdminAction] = useState<"approve" | "suspend" | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [previewState, setPreviewState] = useState<PreviewModalState>(initialPreviewState);
   const [reviewModalOpen, setReviewModalOpen] = useState(false);
@@ -58,17 +63,17 @@ export default function CustomerDetailPage() {
     customFieldsQuery.refetch();
   };
 
-  const handleSuspend = async () => {
-    if (!suspendReason.trim()) {
+  const handleSuspend = async (reason?: string) => {
+    const trimmed = reason || "";
+    if (!trimmed.trim()) {
       showToast("Please provide a reason for suspension", "warning");
       return;
     }
 
     try {
       setIsSubmitting(true);
-      await adminApiClient.suspendCustomer(customerId, { reason: suspendReason });
-      setSuspendDialogOpen(false);
-      setSuspendReason("");
+      await adminApiClient.suspendCustomer(customerId, { reason: trimmed });
+      setAdminAction(null);
       showToast("Customer account suspended", "success");
       refetchAll();
     } catch (err: any) {
@@ -195,7 +200,8 @@ export default function CustomerDetailPage() {
         setReviewData(updatedData);
         refetchAll();
       } else {
-        showToast(result.errorMessage || "Re-verification failed", "error");
+        const errorMsg = result.errorMessage;
+        showToast(errorMsg ? errorMsg : "Re-verification failed", "error");
       }
     } catch (err: any) {
       showToast(`Failed to re-verify document: ${err.message}`, "error");
@@ -213,7 +219,7 @@ export default function CustomerDetailPage() {
     try {
       setIsSubmitting(true);
       await adminApiClient.approveCustomerOnboarding(customer.onboarding.id);
-      setApproveDialogOpen(false);
+      setAdminAction(null);
       showToast("Customer approved successfully", "success");
       refetchAll();
     } catch (err: any) {
@@ -268,7 +274,12 @@ export default function CustomerDetailPage() {
       <div className="flex items-center justify-center min-h-96">
         <div className="text-center">
           <div className="text-red-500 text-lg font-semibold mb-2">Error Loading Customer</div>
-          <p className="text-gray-600">{customerQuery.error?.message || "Customer not found"}</p>
+          <p className="text-gray-600">
+            {(() => {
+              const msg = customerQuery.error?.message;
+              return msg ? msg : "Customer not found";
+            })()}
+          </p>
           <button
             onClick={() => customerQuery.refetch()}
             className="mt-4 mr-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
@@ -326,7 +337,7 @@ export default function CustomerDetailPage() {
         <div className="flex space-x-3">
           {customer.accountStatus === "active" && (
             <button
-              onClick={() => setSuspendDialogOpen(true)}
+              onClick={() => setAdminAction("suspend")}
               disabled={isSubmitting}
               className="inline-flex items-center px-4 py-2 border border-red-300 rounded-md shadow-sm text-sm font-medium text-red-700 bg-white hover:bg-red-50 disabled:opacity-50"
             >
@@ -360,7 +371,7 @@ export default function CustomerDetailPage() {
           )}
           {canApproveCustomer() && (
             <button
-              onClick={() => setApproveDialogOpen(true)}
+              onClick={() => setAdminAction("approve")}
               disabled={isSubmitting}
               className="inline-flex items-center px-4 py-2 border border-green-300 rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 disabled:opacity-50"
             >
@@ -641,35 +652,39 @@ export default function CustomerDetailPage() {
                 <span className="ml-2 text-xs font-normal text-indigo-600">(Nix Extracted)</span>
               </h2>
               <dl className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {customFields.map((field) => (
-                  <div key={field.id} className="bg-gray-50 rounded-lg p-3">
-                    <dt className="text-sm font-medium text-gray-500 capitalize">
-                      {field.fieldName.replace(/([A-Z])/g, " $1").trim()}
-                    </dt>
-                    <dd className="mt-1 text-sm text-gray-900 flex items-center gap-2">
-                      {field.fieldValue || "-"}
-                      {field.isVerified ? (
-                        <span className="text-green-600" title="Verified">
-                          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                            <path
-                              fillRule="evenodd"
-                              d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                              clipRule="evenodd"
-                            />
-                          </svg>
-                        </span>
-                      ) : field.confidence !== null ? (
-                        <span
-                          className="text-xs text-gray-400"
-                          title={`Confidence: ${Math.round(field.confidence * 100)}%`}
-                        >
-                          ({Math.round(field.confidence * 100)}%)
-                        </span>
-                      ) : null}
-                    </dd>
-                    <dd className="text-xs text-gray-400 mt-1">From: {field.documentCategory}</dd>
-                  </div>
-                ))}
+                {customFields.map((field) => {
+                  const fieldVal = field.fieldValue;
+                  const displayValue = fieldVal ? fieldVal : "-";
+                  return (
+                    <div key={field.id} className="bg-gray-50 rounded-lg p-3">
+                      <dt className="text-sm font-medium text-gray-500 capitalize">
+                        {field.fieldName.replace(/([A-Z])/g, " $1").trim()}
+                      </dt>
+                      <dd className="mt-1 text-sm text-gray-900 flex items-center gap-2">
+                        {displayValue}
+                        {field.isVerified ? (
+                          <span className="text-green-600" title="Verified">
+                            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                              <path
+                                fillRule="evenodd"
+                                d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                clipRule="evenodd"
+                              />
+                            </svg>
+                          </span>
+                        ) : field.confidence !== null ? (
+                          <span
+                            className="text-xs text-gray-400"
+                            title={`Confidence: ${Math.round(field.confidence * 100)}%`}
+                          >
+                            ({Math.round(field.confidence * 100)}%)
+                          </span>
+                        ) : null}
+                      </dd>
+                      <dd className="text-xs text-gray-400 mt-1">From: {field.documentCategory}</dd>
+                    </div>
+                  );
+                })}
               </dl>
             </div>
           )}
@@ -723,58 +738,62 @@ export default function CustomerDetailPage() {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {documents.map((doc) => (
-                  <tr
-                    key={doc.id}
-                    className={doc.validationStatus === "manual_review" ? "bg-yellow-50" : ""}
-                  >
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                      {doc.documentType}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {doc.fileName}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {formatDate(doc.uploadedAt)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span
-                        className={`px-2 py-1 text-xs font-medium rounded-full ${
-                          doc.validationStatus === "valid"
-                            ? "bg-green-100 text-green-800"
-                            : doc.validationStatus === "manual_review"
-                              ? "bg-yellow-100 text-yellow-800"
-                              : doc.validationStatus === "invalid"
-                                ? "bg-red-100 text-red-800"
-                                : doc.validationStatus === "failed"
+                {documents.map((doc) => {
+                  const docStatus = doc.validationStatus;
+                  const statusDisplay = docStatus ? docStatus : "pending";
+                  return (
+                    <tr
+                      key={doc.id}
+                      className={docStatus === "manual_review" ? "bg-yellow-50" : ""}
+                    >
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                        {doc.documentType}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {doc.fileName}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {formatDate(doc.uploadedAt)}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span
+                          className={`px-2 py-1 text-xs font-medium rounded-full ${
+                            docStatus === "valid"
+                              ? "bg-green-100 text-green-800"
+                              : docStatus === "manual_review"
+                                ? "bg-yellow-100 text-yellow-800"
+                                : docStatus === "invalid"
                                   ? "bg-red-100 text-red-800"
-                                  : "bg-gray-100 text-gray-800"
-                        }`}
-                      >
-                        {doc.validationStatus || "pending"}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {doc.verificationConfidence != null
-                        ? `${Math.round(doc.verificationConfidence * 100)}%`
-                        : "-"}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
-                      <button
-                        onClick={() => handleViewDocument(doc)}
-                        className="text-blue-600 hover:text-blue-900"
-                      >
-                        View
-                      </button>
-                      <button
-                        onClick={() => handleReviewDocument(doc)}
-                        className="text-purple-600 hover:text-purple-900"
-                      >
-                        Review
-                      </button>
-                    </td>
-                  </tr>
-                ))}
+                                  : docStatus === "failed"
+                                    ? "bg-red-100 text-red-800"
+                                    : "bg-gray-100 text-gray-800"
+                          }`}
+                        >
+                          {statusDisplay}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {doc.verificationConfidence != null
+                          ? `${Math.round(doc.verificationConfidence * 100)}%`
+                          : "-"}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
+                        <button
+                          onClick={() => handleViewDocument(doc)}
+                          className="text-blue-600 hover:text-blue-900"
+                        >
+                          View
+                        </button>
+                        <button
+                          onClick={() => handleReviewDocument(doc)}
+                          className="text-purple-600 hover:text-purple-900"
+                        >
+                          Review
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           )}
@@ -823,44 +842,48 @@ export default function CustomerDetailPage() {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {loginHistory.map((log) => (
-                  <tr key={log.id}>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {formatDate(log.timestamp)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {log.ipAddress}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-500 max-w-xs truncate">
-                      {log.userAgent}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm">
-                      {log.success ? (
-                        <span className="text-green-600 flex items-center">
-                          <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                            <path
-                              fillRule="evenodd"
-                              d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                              clipRule="evenodd"
-                            />
-                          </svg>
-                          Success
-                        </span>
-                      ) : (
-                        <span className="text-red-600 flex items-center">
-                          <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                            <path
-                              fillRule="evenodd"
-                              d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
-                              clipRule="evenodd"
-                            />
-                          </svg>
-                          {log.failureReason || "Failed"}
-                        </span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
+                {loginHistory.map((log) => {
+                  const failReason = log.failureReason;
+                  const failDisplay = failReason ? failReason : "Failed";
+                  return (
+                    <tr key={log.id}>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {formatDate(log.timestamp)}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {log.ipAddress}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-500 max-w-xs truncate">
+                        {log.userAgent}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm">
+                        {log.success ? (
+                          <span className="text-green-600 flex items-center">
+                            <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                              <path
+                                fillRule="evenodd"
+                                d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                                clipRule="evenodd"
+                              />
+                            </svg>
+                            Success
+                          </span>
+                        ) : (
+                          <span className="text-red-600 flex items-center">
+                            <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                              <path
+                                fillRule="evenodd"
+                                d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                                clipRule="evenodd"
+                              />
+                            </svg>
+                            {failDisplay}
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           )}
@@ -999,167 +1022,30 @@ export default function CustomerDetailPage() {
         </div>
       )}
 
-      {/* Suspend Dialog */}
-      {suspendDialogOpen && (
-        <div className="fixed inset-0 bg-black/10 backdrop-blur-md flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full">
-            <h3 className="text-lg font-medium text-gray-900 mb-4">Suspend Customer Account</h3>
-            <p className="text-sm text-gray-500 mb-4">
-              Please provide a reason for suspending this customer account. The customer will be
-              notified.
-            </p>
-            <textarea
-              value={suspendReason}
-              onChange={(e) => setSuspendReason(e.target.value)}
-              rows={4}
-              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="Enter reason for suspension..."
+      {adminAction !== null &&
+        (() => {
+          const firstName = customer?.firstName;
+          const lastName = customer?.lastName;
+          const companyName = customer?.company?.name;
+          const entityName = `${firstName ? firstName : ""} ${lastName ? lastName : ""} from ${companyName ? companyName : ""}`;
+          return (
+            <AdminActionModal
+              action={adminAction}
+              entityType="customer"
+              entityName={entityName}
+              isOpen
+              onClose={() => setAdminAction(null)}
+              onConfirm={(reason) => {
+                if (adminAction === "suspend") {
+                  handleSuspend(reason);
+                } else {
+                  handleApproveCustomer();
+                }
+              }}
+              loading={isSubmitting}
             />
-            <div className="mt-4 flex justify-end space-x-3">
-              <button
-                onClick={() => {
-                  setSuspendDialogOpen(false);
-                  setSuspendReason("");
-                }}
-                disabled={isSubmitting}
-                className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleSuspend}
-                disabled={isSubmitting}
-                className="px-4 py-2 bg-red-600 text-white rounded-md text-sm font-medium hover:bg-red-700 disabled:opacity-50"
-              >
-                {isSubmitting ? "Suspending..." : "Suspend Account"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {approveDialogOpen && (
-        <div className="fixed inset-0 bg-black/10 backdrop-blur-md flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4 overflow-hidden">
-            <div className="bg-gradient-to-r from-green-600 to-emerald-600 px-6 py-4">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-white/20 rounded-lg">
-                  <svg
-                    className="w-6 h-6 text-white"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                    />
-                  </svg>
-                </div>
-                <h3 className="text-lg font-semibold text-white">Approve Customer</h3>
-              </div>
-            </div>
-            <div className="p-6">
-              <p className="text-gray-700 mb-4">
-                You are about to approve{" "}
-                <strong>
-                  {customer?.firstName} {customer?.lastName}
-                </strong>{" "}
-                from <strong>{customer?.company?.name}</strong>.
-              </p>
-              <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
-                <h4 className="text-sm font-medium text-green-800 mb-2">This action will:</h4>
-                <ul className="text-sm text-green-700 space-y-1">
-                  <li className="flex items-center gap-2">
-                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                      <path
-                        fillRule="evenodd"
-                        d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                        clipRule="evenodd"
-                      />
-                    </svg>
-                    Activate the customer account
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                      <path
-                        fillRule="evenodd"
-                        d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                        clipRule="evenodd"
-                      />
-                    </svg>
-                    Send a confirmation email
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                      <path
-                        fillRule="evenodd"
-                        d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                        clipRule="evenodd"
-                      />
-                    </svg>
-                    Record your approval with timestamp
-                  </li>
-                </ul>
-              </div>
-              <div className="flex justify-end gap-3">
-                <button
-                  onClick={() => setApproveDialogOpen(false)}
-                  disabled={isSubmitting}
-                  className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleApproveCustomer}
-                  disabled={isSubmitting}
-                  className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 disabled:opacity-50 transition-colors flex items-center gap-2"
-                >
-                  {isSubmitting ? (
-                    <>
-                      <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                        <circle
-                          className="opacity-25"
-                          cx="12"
-                          cy="12"
-                          r="10"
-                          stroke="currentColor"
-                          strokeWidth="4"
-                        ></circle>
-                        <path
-                          className="opacity-75"
-                          fill="currentColor"
-                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                        ></path>
-                      </svg>
-                      Approving...
-                    </>
-                  ) : (
-                    <>
-                      <svg
-                        className="w-4 h-4"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M5 13l4 4L19 7"
-                        />
-                      </svg>
-                      Approve Customer
-                    </>
-                  )}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+          );
+        })()}
 
       {/* Document Preview Modal */}
       <DocumentPreviewModal
