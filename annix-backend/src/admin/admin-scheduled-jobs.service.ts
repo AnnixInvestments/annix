@@ -182,7 +182,7 @@ export class AdminScheduledJobsService implements OnApplicationBootstrap {
   private readonly syncSource: string | null;
   private readonly syncToken: string | null;
   private lastSyncTimestamp: string | null = null;
-  private suspendOnSundaysAndHolidays = false;
+  private suspendOnSundaysAndHolidays = true;
   private nightSuspensionByJob = new Map<string, NightSuspensionHours>();
 
   constructor(
@@ -204,6 +204,9 @@ export class AdminScheduledJobsService implements OnApplicationBootstrap {
     if (globalSettings) {
       this.suspendOnSundaysAndHolidays = globalSettings.suspendOnSundaysAndHolidays;
     }
+    this.logger.log(
+      `Sunday/holiday suspension: ${this.suspendOnSundaysAndHolidays ? "ENABLED" : "DISABLED"}${!globalSettings ? " (default — no global settings row found)" : ""}`,
+    );
 
     if (this.syncSource) {
       try {
