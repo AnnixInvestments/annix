@@ -1182,65 +1182,95 @@ export function IssueStockPage() {
                                       />
                                       <span className="text-gray-400">/ {fullQty}</span>
                                     </div>
-                                    {(() => {
-                                      const liCoats = coatStatusMap[li.id];
-                                      if (!liCoats) return null;
-                                      const hasIntermediate = jc.coats.some(
-                                        (ct) => ct.coatRole === "intermediate",
-                                      );
-                                      const coatTypes: Array<{ key: string; label: string }> = [
-                                        { key: "primer", label: "Primer" },
-                                      ];
-                                      if (hasIntermediate)
-                                        coatTypes.push({
-                                          key: "intermediate",
-                                          label: "Intermediate",
-                                        });
-                                      coatTypes.push({ key: "final", label: "Final" });
-                                      coatTypes.push({ key: "rubber_lining", label: "Rubber" });
-                                      return (
-                                        <div className="flex gap-1.5 shrink-0">
-                                          {coatTypes.map((ct) => {
-                                            const issued = liCoats[ct.key];
-                                            if (issued == null || issued === 0) return null;
-                                            const done = issued >= fullQty;
-                                            return (
-                                              <span
-                                                key={ct.key}
-                                                className={`text-[9px] px-1 py-0.5 rounded ${
-                                                  done
-                                                    ? "bg-green-100 text-green-700"
-                                                    : "bg-amber-100 text-amber-700"
-                                                }`}
-                                              >
-                                                {ct.label}: {issued}/{fullQty}
-                                                {done ? " \u2713" : ""}
-                                              </span>
-                                            );
-                                          })}
-                                        </div>
-                                      );
-                                    })()}
                                   </div>
                                   {extCoats.length > 0 || hasRubber ? (
-                                    <div className="flex flex-wrap gap-1 mt-0.5 ml-6">
+                                    <div className="ml-6 mt-1 space-y-0.5">
                                       {extCoats.map((ct) => {
                                         const roleLabel =
-                                          ct.coatRole == null ? "Coat" : ct.coatRole;
+                                          ct.coatRole == null ? "coat" : ct.coatRole;
+                                        const totalM2 = jc.totalAreaM2;
+                                        const itemM2 = liM2 == null ? 0 : liM2;
+                                        const coverage = ct.coverageM2PerLiter;
+                                        const coatLitres =
+                                          coverage > 0 && itemM2 > 0
+                                            ? (itemM2 * currentIssueQty) /
+                                              (fullQty > 0 ? fullQty : 1) /
+                                              coverage
+                                            : 0;
+                                        const liCoats = coatStatusMap[li.id];
+                                        const issuedQty =
+                                          liCoats == null
+                                            ? 0
+                                            : liCoats[roleLabel] == null
+                                              ? 0
+                                              : liCoats[roleLabel];
+                                        const remaining = Math.max(fullQty - issuedQty, 0);
+                                        const done = issuedQty >= fullQty && fullQty > 0;
                                         return (
-                                          <span
+                                          <div
                                             key={ct.product + roleLabel}
-                                            className="text-[9px] px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200"
+                                            className={`flex items-center gap-2 text-[10px] px-2 py-0.5 rounded ${
+                                              done
+                                                ? "bg-green-50 text-green-700"
+                                                : "bg-blue-50 text-blue-700"
+                                            }`}
                                           >
-                                            EXT {roleLabel}: {ct.product}
-                                          </span>
+                                            <span className="uppercase font-semibold w-10 shrink-0">
+                                              EXT
+                                            </span>
+                                            <span className="w-14 shrink-0 font-medium">
+                                              {roleLabel}
+                                            </span>
+                                            <span className="flex-1 truncate">{ct.product}</span>
+                                            {coatLitres > 0 ? (
+                                              <span className="font-mono shrink-0">
+                                                {coatLitres.toFixed(1)}L
+                                              </span>
+                                            ) : null}
+                                            <span
+                                              className={`shrink-0 font-medium ${done ? "text-green-700" : ""}`}
+                                            >
+                                              {issuedQty}/{fullQty}
+                                              {done ? " \u2713" : ""}
+                                            </span>
+                                          </div>
                                         );
                                       })}
-                                      {hasRubber ? (
-                                        <span className="text-[9px] px-1.5 py-0.5 rounded bg-purple-50 text-purple-700 border border-purple-200">
-                                          INT: Rubber Lining
-                                        </span>
-                                      ) : null}
+                                      {hasRubber
+                                        ? (() => {
+                                            const liCoats = coatStatusMap[li.id];
+                                            const issuedQty =
+                                              liCoats == null
+                                                ? 0
+                                                : liCoats.rubber_lining == null
+                                                  ? 0
+                                                  : liCoats.rubber_lining;
+                                            const done = issuedQty >= fullQty && fullQty > 0;
+                                            return (
+                                              <div
+                                                className={`flex items-center gap-2 text-[10px] px-2 py-0.5 rounded ${
+                                                  done
+                                                    ? "bg-green-50 text-green-700"
+                                                    : "bg-purple-50 text-purple-700"
+                                                }`}
+                                              >
+                                                <span className="uppercase font-semibold w-10 shrink-0">
+                                                  INT
+                                                </span>
+                                                <span className="w-14 shrink-0 font-medium">
+                                                  rubber
+                                                </span>
+                                                <span className="flex-1">Rubber Lining</span>
+                                                <span
+                                                  className={`shrink-0 font-medium ${done ? "text-green-700" : ""}`}
+                                                >
+                                                  {issuedQty}/{fullQty}
+                                                  {done ? " \u2713" : ""}
+                                                </span>
+                                              </div>
+                                            );
+                                          })()
+                                        : null}
                                     </div>
                                   ) : null}
                                 </div>
