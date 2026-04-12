@@ -508,12 +508,14 @@ export default function JobCardDetailPage() {
 
   const canApprove = useMemo(() => {
     if (!currentStep || !workflowStatus) return false;
-    if (workflowStatus.jobCardStatus !== "active") return false;
+    const jcStatus = workflowStatus.jobCardStatus;
+    if (jcStatus !== "active") return false;
 
     if (isPreviewActive) {
       const checkName = effectiveName;
       if (!checkName) return false;
-      const assigned = workflowStatus.stepAssignments[currentStep];
+      const allAssignments = workflowStatus.stepAssignments;
+      const assigned = allAssignments ? allAssignments[currentStep] : null;
       if (!assigned || assigned.length === 0) return false;
       return assigned.some((u) => u.name === checkName);
     }
@@ -871,25 +873,29 @@ export default function JobCardDetailPage() {
   const hasBlueLineTasks = currentStepPhaseInfo.isMultiPhase;
 
   const fgActionAssignedToOther = useMemo(() => {
+    if (!currentStepPhaseInfo.isMultiPhase) return false;
     if (userRole === "admin" && !isPreviewActive) return false;
     const checkName = effectiveName || user?.name;
     if (!workflowStatus || !currentStep || !checkName) return false;
     if (!currentStepActionLabel) return false;
-    const assignments = workflowStatus.stepAssignments || {};
-    const bgSteps: BackgroundStepStatus[] = workflowStatus.backgroundSteps || [];
+    const rawFgaAssignments = workflowStatus.stepAssignments;
+    const assignments = rawFgaAssignments || {};
+    const rawFgaBgSteps = workflowStatus.backgroundSteps;
+    const bgSteps: BackgroundStepStatus[] = rawFgaBgSteps || [];
     const currentStepBgTasks = bgSteps.filter(
       (bg) => bg.triggerAfterStep === currentStep && bg.completedAt === null,
     );
     if (currentStepBgTasks.length === 0) return false;
     return currentStepBgTasks.some((bg) => {
-      const assigned = assignments[bg.stepKey];
-      if (!assigned || assigned.length === 0) return true;
-      return !assigned.some((u) => u.name === checkName);
+      const stepAssigned = assignments[bg.stepKey];
+      if (!stepAssigned || stepAssigned.length === 0) return true;
+      return !stepAssigned.some((u) => u.name === checkName);
     });
   }, [
     workflowStatus,
     currentStep,
     currentStepActionLabel,
+    currentStepPhaseInfo.isMultiPhase,
     user?.name,
     effectiveName,
     userRole,
