@@ -2,6 +2,7 @@ import { Inject, Injectable, Logger } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { generateUniqueId, nowMillis } from "../lib/datetime";
+import { SharedDocumentType } from "../lib/document-classification/document-types";
 import {
   extractTextByMime,
   extractTextFromExcel,
@@ -195,7 +196,7 @@ export class RubberInboundEmailService {
 
     const documentType = this.determineDocumentType(emailData.subject);
 
-    if (documentType === "coc") {
+    if (documentType === SharedDocumentType.COC) {
       await this.processCocAttachments(supportedAttachments, emailData, result);
     } else {
       await this.processNonCocAttachments(supportedAttachments, emailData, documentType, result);
@@ -276,7 +277,7 @@ export class RubberInboundEmailService {
               cert.pdfText,
               cert.attachment.filename,
             );
-            if (actualType !== "coc") {
+            if (actualType !== SharedDocumentType.COC) {
               this.logger.log(
                 `Rerouting ${cert.attachment.filename} from CoC to ${actualType} (supplier: ${cert.supplierMapping.company.name})`,
               );
@@ -296,7 +297,7 @@ export class RubberInboundEmailService {
           const storageResult = await this.saveAttachment(
             cert.attachment,
             cert.supplierMapping.company.id,
-            "coc",
+            SharedDocumentType.COC,
           );
 
           const coc = await this.cocService.createSupplierCoc(
@@ -393,7 +394,7 @@ export class RubberInboundEmailService {
   private async processNonCocAttachments(
     attachments: InboundEmailAttachment[],
     emailData: InboundEmailData,
-    documentType: "delivery_note" | "tax_invoice",
+    documentType: SharedDocumentType,
     result: ProcessedEmailResult,
   ): Promise<void> {
     await attachments.reduce(async (accPromise, attachment) => {
@@ -421,7 +422,7 @@ export class RubberInboundEmailService {
 
         try {
           const actualType = await this.classifyDocumentType(documentText, attachment.filename);
-          if (actualType === "coc") {
+          if (actualType === SharedDocumentType.COC) {
             this.logger.log(
               `Rerouting ${attachment.filename} from ${documentType} to CoC based on content (supplier: ${supplierMapping.company.name})`,
             );
@@ -445,7 +446,7 @@ export class RubberInboundEmailService {
           documentType,
         );
 
-        if (documentType === "tax_invoice") {
+        if (documentType === SharedDocumentType.TAX_INVOICE) {
           const invoiceNumber = `INV-${nowMillis()}`;
           const invoice = await this.taxInvoiceService.createTaxInvoice(
             {
@@ -703,15 +704,15 @@ export class RubberInboundEmailService {
     return null;
   }
 
-  private determineDocumentType(subject: string): "coc" | "delivery_note" | "tax_invoice" {
+  private determineDocumentType(subject: string): SharedDocumentType {
     const subjectLower = subject.toLowerCase();
 
     if (subjectLower.includes("invoice") && !subjectLower.includes("proforma")) {
-      return "tax_invoice";
+      return SharedDocumentType.TAX_INVOICE;
     }
 
     if (subjectLower.includes("tax inv")) {
-      return "tax_invoice";
+      return SharedDocumentType.TAX_INVOICE;
     }
 
     if (
@@ -722,16 +723,16 @@ export class RubberInboundEmailService {
       subjectLower.includes("packing slip") ||
       subjectLower.includes("packing list")
     ) {
-      return "delivery_note";
+      return SharedDocumentType.DELIVERY_NOTE;
     }
 
-    return "coc";
+    return SharedDocumentType.COC;
   }
 
   private async classifyDocumentType(
     pdfText: string,
     filename: string,
-  ): Promise<"coc" | "delivery_note" | "tax_invoice"> {
+  ): Promise<SharedDocumentType> {
     const textLower = pdfText.toLowerCase();
     const filenameLower = filename.toLowerCase();
 
@@ -785,7 +786,7 @@ export class RubberInboundEmailService {
       cocFilenameKeywords.some((kw) => filenameLower.includes(kw))
     ) {
       this.logger.log(`Rule-based classification: coc (file: ${filename})`);
-      return "coc";
+      return SharedDocumentType.COC;
     }
 
     if (
@@ -793,7 +794,7 @@ export class RubberInboundEmailService {
       taxInvoiceFilenameKeywords.some((kw) => filenameLower.includes(kw))
     ) {
       this.logger.log(`Rule-based classification: tax_invoice (file: ${filename})`);
-      return "tax_invoice";
+      return SharedDocumentType.TAX_INVOICE;
     }
 
     if (
@@ -801,12 +802,12 @@ export class RubberInboundEmailService {
       deliveryNoteFilenameKeywords.some((kw) => filenameLower.includes(kw))
     ) {
       this.logger.log(`Rule-based classification: delivery_note (file: ${filename})`);
-      return "delivery_note";
+      return SharedDocumentType.DELIVERY_NOTE;
     }
 
     const isAvailable = await this.aiChatService.isAvailable();
     if (!isAvailable) {
-      return "coc";
+      return SharedDocumentType.COC;
     }
 
     const truncatedText = pdfText.length > 3000 ? pdfText.substring(0, 3000) : pdfText;
@@ -831,25 +832,29 @@ ${truncatedText}`;
       const jsonMatch = response.content.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
         const parsed = JSON.parse(jsonMatch[0]);
-        const validTypes = ["coc", "delivery_note", "tax_invoice"];
+        const validTypes: string[] = [
+          SharedDocumentType.COC,
+          SharedDocumentType.DELIVERY_NOTE,
+          SharedDocumentType.TAX_INVOICE,
+        ];
         if (parsed.documentType && validTypes.includes(parsed.documentType)) {
           this.logger.log(
             `AI classification: ${parsed.documentType} (file: ${filename}, reason: ${parsed.reason})`,
           );
-          return parsed.documentType;
+          return parsed.documentType as SharedDocumentType;
         }
       }
     } catch (error) {
       this.logger.warn(`AI classification failed for ${filename}: ${error.message}`);
     }
 
-    return "coc";
+    return SharedDocumentType.COC;
   }
 
   private async saveAttachment(
     attachment: InboundEmailAttachment,
     companyId: number,
-    documentType: "coc" | "delivery_note" | "tax_invoice",
+    documentType: SharedDocumentType,
   ): Promise<StorageResult> {
     const storageFolder: Record<string, string> = {
       coc: "cocs",
@@ -942,7 +947,7 @@ ${truncatedText}`;
         },
         Promise.resolve([] as number[]),
       );
-    } else if (documentType === "tax_invoice") {
+    } else if (documentType === SharedDocumentType.TAX_INVOICE) {
       const companyId = metadata.companyId as number;
       const company = companyId
         ? await this.companyRepository.findOne({ where: { id: companyId } })
