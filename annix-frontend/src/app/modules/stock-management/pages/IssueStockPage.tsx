@@ -1094,7 +1094,14 @@ export function IssueStockPage() {
                               const rawIssueQty = lineItemIssueQty[li.id];
                               const currentIssueQty = rawIssueQty == null ? fullQty : rawIssueQty;
                               const extCoats = jc.coats.filter((ct) => ct.area === "external");
-                              const hasRubber = jc.hasInternalLining;
+                              const descUpper = itemLabel.toUpperCase();
+                              const jcRubber = jc.hasInternalLining;
+                              const hasRubber =
+                                jcRubber === true ||
+                                descUpper.includes("R/L") ||
+                                descUpper.includes("R/FLG") ||
+                                descUpper.includes("RUBBER") ||
+                                descUpper.includes("+ R");
                               return (
                                 <div
                                   key={li.id}
