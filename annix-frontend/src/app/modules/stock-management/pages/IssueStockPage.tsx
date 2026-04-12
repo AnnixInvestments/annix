@@ -1351,35 +1351,36 @@ export function IssueStockPage() {
                                   Kit size: {kit}L (mix {ratioStr}) — {partAPerKit}L Part A +{" "}
                                   {partBPerKit}L Part B
                                 </div>
-                                {!isExactKit ? (
-                                  <div className="flex items-center gap-2">
-                                    <span className="text-amber-700 font-medium">
-                                      {row.quantity}L is not a full kit. Select:
+                                <div className="flex items-center gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const newKits = Math.max(numKits - 1, 1);
+                                      updateCartRow(row.product.id, { quantity: newKits * kit });
+                                    }}
+                                    className="w-7 h-7 rounded bg-blue-200 text-blue-900 font-bold hover:bg-blue-300 text-sm"
+                                  >
+                                    -
+                                  </button>
+                                  <span className="font-mono text-blue-900 font-semibold min-w-[80px] text-center">
+                                    {numKits} kit{numKits !== 1 ? "s" : ""} = {grandTotal}L
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const newKits = numKits + 1;
+                                      updateCartRow(row.product.id, { quantity: newKits * kit });
+                                    }}
+                                    className="w-7 h-7 rounded bg-blue-200 text-blue-900 font-bold hover:bg-blue-300 text-sm"
+                                  >
+                                    +
+                                  </button>
+                                  {!isExactKit ? (
+                                    <span className="text-amber-700 text-[10px]">
+                                      (was {rowQty}L — snapped to nearest kit)
                                     </span>
-                                    <button
-                                      type="button"
-                                      onClick={() =>
-                                        updateCartRow(row.product.id, { quantity: snapDown })
-                                      }
-                                      className="px-2 py-0.5 rounded bg-blue-100 text-blue-800 hover:bg-blue-200 font-mono"
-                                    >
-                                      {snapDown}L ({kitsDown} kit{kitsDown !== 1 ? "s" : ""})
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={() =>
-                                        updateCartRow(row.product.id, { quantity: snapUp })
-                                      }
-                                      className="px-2 py-0.5 rounded bg-blue-100 text-blue-800 hover:bg-blue-200 font-mono"
-                                    >
-                                      {snapUp}L ({kitsUp} kit{kitsUp !== 1 ? "s" : ""})
-                                    </button>
-                                  </div>
-                                ) : (
-                                  <div className="text-blue-800">
-                                    {numKits} kit{numKits !== 1 ? "s" : ""} = {grandTotal}L total
-                                  </div>
-                                )}
+                                  ) : null}
+                                </div>
                                 <div className="border-t border-blue-200 pt-1 space-y-0.5">
                                   <div className="flex justify-between text-blue-800">
                                     <span>
