@@ -1488,6 +1488,7 @@ export function IssueStockPage() {
                       const jcLabel = jc.jcNumber == null ? jc.jobNumber : jc.jcNumber;
                       const isSelected = selectedCpoJcIds.includes(jc.id);
                       if (!isSelected) return null;
+                      if (jc.lineItems.length === 0) return null;
                       const jcHasRubber = jc.hasInternalLining === true;
                       const rubberItems = jcHasRubber
                         ? jc.lineItems
