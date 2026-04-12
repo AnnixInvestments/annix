@@ -23,7 +23,6 @@ permissions:
   issues: write
 
 env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
   FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
   APP_IMAGE: ghcr.io/annixinvestments/annix/app
 
@@ -49,13 +48,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v5
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: '22'
           cache: 'pnpm'
@@ -84,7 +83,7 @@ jobs:
     needs: test
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
@@ -135,7 +134,7 @@ jobs:
             app_name: annix-app-staging
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
