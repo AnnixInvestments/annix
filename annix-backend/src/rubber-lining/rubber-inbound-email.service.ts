@@ -2,6 +2,14 @@ import { Inject, Injectable, Logger } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { generateUniqueId, nowMillis } from "../lib/datetime";
+import {
+  extractTextByMime,
+  extractTextFromExcel,
+  extractTextFromPdf,
+  extractTextFromWord,
+  isExcelFile,
+  isWordFile,
+} from "../lib/document-extraction";
 import { AiChatService } from "../nix/ai-providers/ai-chat.service";
 import { IStorageService, STORAGE_SERVICE, StorageResult } from "../storage/storage.interface";
 import { CompanyType, RubberCompany } from "./entities/rubber-company.entity";
@@ -44,14 +52,6 @@ const CURING_MAP: Record<string, string> = {
   PC: "Press Cured",
   RC: "Rotocure",
 };
-
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const pdfParseModule = require("pdf-parse");
-const pdfParse = pdfParseModule.default ?? pdfParseModule;
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const XLSX = require("xlsx");
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const mammoth = require("mammoth");
 
 export interface InboundEmailAttachment {
   filename: string;
@@ -183,8 +183,8 @@ export class RubberInboundEmailService {
       (att) =>
         att.contentType === "application/pdf" ||
         att.filename?.toLowerCase().endsWith(".pdf") ||
-        this.isExcelFile(att.filename, att.contentType) ||
-        this.isWordFile(att.filename, att.contentType),
+        isExcelFile(att.filename, att.contentType) ||
+        isWordFile(att.filename, att.contentType),
     );
 
     if (supportedAttachments.length === 0) {
@@ -468,7 +468,7 @@ export class RubberInboundEmailService {
               attachment.filename?.toLowerCase().endsWith(".pdf");
 
             if (isPdf) {
-              const pdfText = await this.extractTextFromPdf(attachment.content);
+              const pdfText = await extractTextFromPdf(attachment.content);
               if (pdfText.length >= 50) {
                 const extractionResult = await this.cocExtractionService.extractTaxInvoice(
                   pdfText,
@@ -535,61 +535,15 @@ export class RubberInboundEmailService {
     }, Promise.resolve());
   }
 
-  private isExcelFile(filename: string | undefined, contentType: string): boolean {
-    const excelMimeTypes = [
-      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      "application/vnd.ms-excel",
-      "application/x-excel",
-    ];
-    const filenameLower = filename?.toLowerCase() ?? "";
-    return (
-      excelMimeTypes.includes(contentType) ||
-      filenameLower.endsWith(".xlsx") ||
-      filenameLower.endsWith(".xls")
-    );
-  }
-
-  private isWordFile(filename: string | undefined, contentType: string): boolean {
-    const wordMimeTypes = [
-      "application/msword",
-      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-    ];
-    const filenameLower = filename?.toLowerCase() ?? "";
-    return (
-      wordMimeTypes.includes(contentType) ||
-      filenameLower.endsWith(".doc") ||
-      filenameLower.endsWith(".docx")
-    );
-  }
-
-  private async extractTextFromWord(buffer: Buffer): Promise<string> {
-    const result = await mammoth.extractRawText({ buffer });
-    return result.value || "";
-  }
-
   private async extractTextFromAttachment(attachment: InboundEmailAttachment): Promise<string> {
-    if (this.isExcelFile(attachment.filename, attachment.contentType)) {
-      return this.extractTextFromExcel(attachment.content);
-    } else if (this.isWordFile(attachment.filename, attachment.contentType)) {
-      return this.extractTextFromWord(attachment.content);
-    } else {
-      return this.extractTextFromPdf(attachment.content);
-    }
+    return extractTextByMime(attachment.content, attachment.filename, attachment.contentType);
   }
 
-  private extractTextFromExcel(buffer: Buffer): string {
-    const workbook = XLSX.read(buffer, { type: "buffer" });
-    const sheets = workbook.SheetNames.map((name: string) => {
-      const sheet = workbook.Sheets[name];
-      const csv = XLSX.utils.sheet_to_csv(sheet, { FS: "\t", blankrows: false });
-      return `--- SHEET: ${name} ---\n${csv}`;
-    });
-    return sheets.join("\n\n");
-  }
-
-  private async extractTextFromPdf(buffer: Buffer): Promise<string> {
+  private async extractTextFromPdfWithPageHint(buffer: Buffer): Promise<string> {
     try {
-      const pdfData = await pdfParse(buffer);
+      const pdfParseModule = require("pdf-parse");
+      const pdfParseFn = pdfParseModule.default ?? pdfParseModule;
+      const pdfData = await pdfParseFn(buffer);
       const numPages = pdfData.numpages || 1;
       const text = pdfData.text || "";
 
@@ -601,7 +555,7 @@ export class RubberInboundEmailService {
       return text;
     } catch {
       try {
-        const text = this.extractTextFromExcel(buffer);
+        const text = extractTextFromExcel(buffer);
         this.logger.log(`Extracted text from Excel file (${text.length} chars)`);
         return text;
       } catch {
@@ -944,7 +898,7 @@ ${truncatedText}`;
       result.cocIds = await files.reduce(
         async (accPromise, file) => {
           const acc = await accPromise;
-          const pdfText = await this.extractTextFromPdf(file.buffer);
+          const pdfText = await extractTextFromPdf(file.buffer);
 
           const graphInfo = this.detectIfGraph(pdfText, file.originalname);
           if (graphInfo.isGraph) {
@@ -1068,7 +1022,7 @@ ${truncatedText}`;
           : null;
 
         if (isPdf) {
-          const pdfText = await this.extractTextFromPdf(file.buffer);
+          const pdfText = await extractTextFromPdf(file.buffer);
           if (pdfText.length >= 50) {
             const extractionResult = await this.cocExtractionService.extractTaxInvoice(
               pdfText,
@@ -1089,9 +1043,7 @@ ${truncatedText}`;
             );
           }
         } else {
-          const mammoth = await import("mammoth");
-          const textResult = await mammoth.extractRawText({ buffer: file.buffer });
-          const docText = textResult.value || "";
+          const docText = await extractTextFromWord(file.buffer);
           if (docText.length >= 20) {
             const extractionResult = await this.cocExtractionService.extractTaxInvoice(
               docText,
@@ -1180,7 +1132,7 @@ ${truncatedText}`;
               rolls: allRolls,
             };
           } else {
-            const pdfText = await this.extractTextFromPdf(pdfBuffer);
+            const pdfText = await this.extractTextFromPdfWithPageHint(pdfBuffer);
             const useOcr = pdfText.length < 50;
             const extractionResult = useOcr
               ? await this.cocExtractionService.extractDeliveryNoteFromImages(pdfBuffer)
@@ -1214,7 +1166,7 @@ ${truncatedText}`;
       files.map(async (file, i) => {
         this.logger.log(`Analyzing file ${i + 1}/${files.length}: ${file.originalname}`);
 
-        const pdfText = await this.extractTextFromPdf(file.buffer);
+        const pdfText = await extractTextFromPdf(file.buffer);
         this.logger.log(`Extracted ${pdfText.length} characters from ${file.originalname}`);
 
         const graphInfo = this.detectIfGraph(pdfText, file.originalname);
@@ -1463,7 +1415,7 @@ ${truncatedText}`;
   }
 
   private async detectSupplierFromPdf(pdfBuffer: Buffer, filename: string): Promise<number> {
-    const pdfText = await this.extractTextFromPdf(pdfBuffer);
+    const pdfText = await extractTextFromPdf(pdfBuffer);
     const pdfTextLower = pdfText.toLowerCase();
 
     const companies = await this.companyRepository.find();

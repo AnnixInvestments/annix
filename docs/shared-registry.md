@@ -43,6 +43,7 @@ Shared workspace package (pnpm workspace). Both `annix-backend` and `annix-front
 | Steel constants | `lib/steel-constants.ts` | Re-exports from `@annix/product-data/steel` + `steelDensity` helper. |
 | Pipe constants | `lib/pipe-constants.ts` | Re-exports from `@annix/product-data/pipe`. |
 | S3 storage helpers | `lib/app-storage-helper.ts` | `documentPath` (canonical S3 prefix builder), `bufferToMulterFile` (buffer→Multer shim), `uploadDocument` (build path + create Multer file + upload in one call). Use instead of manual S3 path strings + inline Multer object construction. |
+| Document text extraction | `lib/document-extraction.ts` | `extractTextFromPdf`, `extractTextFromExcel`, `extractTextFromWord`, `extractTextByMime` (auto-routes by MIME/extension), `isExcelFile`, `isWordFile`. Use instead of inline pdf-parse/xlsx/mammoth calls. |
 | Entity helpers | `lib/entity-helpers.ts` | `findOneOrFail`, base entity utilities. |
 | Base CRUD service | `lib/base-crud.service.ts` | Generic `BaseCrudService<Entity, CreateDto, UpdateDto>`. Pure-CRUD reference-data services should `extends BaseCrudService<...>` to inherit `create / findAll / findOne / update / remove` + `checkUnique`/`checkUniqueExceptId` helpers. |
 | Pagination DTO | `lib/dto/pagination-query.dto.ts` | Shared `PaginationQueryDto`, `PaginatedResult<T>`, `buildPaginatedResult` helper. Use in any service that returns paginated lists. |

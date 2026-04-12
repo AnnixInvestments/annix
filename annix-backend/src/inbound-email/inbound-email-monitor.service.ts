@@ -4,6 +4,7 @@ import * as Imap from "imap-simple";
 import { simpleParser } from "mailparser";
 import { bufferToMulterFile, documentPath } from "../lib/app-storage-helper";
 import { nowMillis } from "../lib/datetime";
+import { extractTextFromPdf } from "../lib/document-extraction";
 import { IStorageService, STORAGE_SERVICE } from "../storage/storage.interface";
 import { InboundEmailStatus } from "./entities/inbound-email.entity";
 import { InboundEmailAttachment } from "./entities/inbound-email-attachment.entity";
@@ -23,10 +24,6 @@ const SUPPORTED_MIME_TYPES = new Set([
 ]);
 
 const IMAGE_MIME_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
-
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const pdfParseModule = require("pdf-parse");
-const pdfParse = pdfParseModule.default ?? pdfParseModule;
 
 @Injectable()
 export class InboundEmailMonitorService {
@@ -274,8 +271,7 @@ export class InboundEmailMonitorService {
   ): Promise<string | Buffer> {
     if (mimeType === "application/pdf") {
       try {
-        const pdfData = await pdfParse(buffer);
-        return pdfData.text || "";
+        return await extractTextFromPdf(buffer);
       } catch {
         return "";
       }
