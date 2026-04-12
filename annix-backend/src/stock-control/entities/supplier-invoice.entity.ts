@@ -46,6 +46,7 @@ export interface ExtractedLineItem {
   discountPercent?: number;
   isPaintPartA?: boolean;
   isPaintPartB?: boolean;
+  volumeLitresPerPack?: number | null;
 }
 
 @Entity("supplier_invoices")

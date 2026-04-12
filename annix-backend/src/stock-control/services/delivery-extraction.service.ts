@@ -428,6 +428,16 @@ export class DeliveryExtractionService {
     costPerUnit: number,
     unitOfMeasure: string,
   ): Promise<StockItem> {
+    if (!item.volumeLitersPerPack && item.description) {
+      const volMatch = item.description.match(/(\d+(?:\.\d+)?)\s*(?:l(?:tr?s?)?|litre?s?)\b/i);
+      if (volMatch) {
+        const parsed = parseFloat(volMatch[1]);
+        if (!Number.isNaN(parsed) && parsed > 0 && parsed <= 1000) {
+          item.volumeLitersPerPack = parsed;
+        }
+      }
+    }
+
     if (this.overrideMap && item.description) {
       const overrideItemId = this.overrideMap.get(item.description);
       if (overrideItemId !== undefined && overrideItemId !== null) {

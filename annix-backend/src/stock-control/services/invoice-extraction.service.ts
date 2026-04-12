@@ -47,7 +47,8 @@ Return JSON only:
       "unitType": "each",
       "discountPercent": 0,
       "isPaintPartA": false,
-      "isPaintPartB": false
+      "isPaintPartB": false,
+      "volumeLitresPerPack": 20
     }
   ]
 }
@@ -73,6 +74,13 @@ For paint products, detect "Part A" or "Part B" in description. Common patterns:
 - "Part A", "Comp A", "Component A" -> isPaintPartA: true
 - "Part B", "Comp B", "Component B", "Hardener", "Activator" -> isPaintPartB: true
 
+PACK SIZE (critical for paint and liquid products):
+- Extract the volume per individual container from the description. Look for patterns like "20L", "20 Ltr", "5 Litre", "1L", "20Lt", "5 liter", "2.5L" in the product name or description.
+- Set volumeLitresPerPack to the number of litres per single container (e.g. "20L" = 20, "5 Ltr" = 5, "2.5L" = 2.5).
+- If the invoice line says "PENGUARD EXPRESS 20L" with quantity 5, that means 5 tins of 20L each — volumeLitresPerPack is 20, NOT 100.
+- If no volume is visible in the description, set volumeLitresPerPack to null.
+- Also check for "kg" volumes for non-liquid products — these should NOT be set as volumeLitresPerPack.
+
 Parse all monetary values as numbers without currency symbols.
 Return valid JSON only, no additional text.`;
 
@@ -89,7 +97,10 @@ Return JSON only:
       "quantity": 5,
       "sku": "PEM-001",
       "itemCode": "ABC-123",
-      "productCode": "PROD-456"
+      "productCode": "PROD-456",
+      "isPaint": true,
+      "volumeLitresPerPack": 20,
+      "componentRole": "base"
     }
   ]
 }
@@ -100,6 +111,12 @@ IMPORTANT extraction rules:
 - "sku" is any short reference or part number shown for the line item
 - For rubber rolls, extract the compound/product code separately from the roll number. The roll number usually appears as "Roll #41553" or "186-41553" in the description — do NOT use the roll number as the itemCode or productCode.
 - Always capture all codes/references shown on each line item — do not leave itemCode or productCode blank if any code is visible on the document.
+
+PAINT PRODUCT DETECTION:
+- Set isPaint to true for any paint, coating, primer, topcoat, hardener, activator, or thinner product.
+- Extract volumeLitresPerPack from the description. Look for patterns: "20L", "20 Ltr", "5 Litre", "2.5L", "1L", "20Lt". This is the volume of ONE container, not the total.
+- Set componentRole to "base" for Part A / main component, "hardener" for Part B / hardener / activator / curing agent, or null if not applicable.
+- If no volume is visible, set volumeLitresPerPack to null.
 
 Return valid JSON only, no additional text.`;
 
@@ -865,6 +882,20 @@ export class InvoiceExtractionService {
           await this.priceHistoryRepo.save(priceHistory);
 
           stockItem.costPerUnit = newPrice;
+
+          if (stockItem.packSizeLitres == null) {
+            const extractedVolume = this.extractVolumeFromDescription(
+              item.extractedDescription || "",
+            );
+            if (extractedVolume != null) {
+              stockItem.packSizeLitres = extractedVolume;
+            }
+          }
+
+          if (stockItem.componentRole == null && (item.isPartA || item.isPartB)) {
+            stockItem.componentRole = item.isPartA ? "base" : "hardener";
+          }
+
           await this.stockItemRepo.save(stockItem);
 
           item.priceUpdated = true;
@@ -885,6 +916,14 @@ export class InvoiceExtractionService {
       relations: ["invoiceItem"],
       order: { createdAt: "ASC" },
     });
+  }
+
+  extractVolumeFromDescription(description: string): number | null {
+    const match = description.match(/(\d+(?:\.\d+)?)\s*(?:l(?:tr?s?)?|litre?s?)\b/i);
+    if (!match) return null;
+    const value = parseFloat(match[1]);
+    if (Number.isNaN(value) || value <= 0 || value > 1000) return null;
+    return value;
   }
 
   detectPartAB(description: string): { isPartA: boolean; isPartB: boolean } {
