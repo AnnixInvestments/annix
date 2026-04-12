@@ -1488,33 +1488,50 @@ export function IssueStockPage() {
                       const jcLabel = jc.jcNumber == null ? jc.jobNumber : jc.jcNumber;
                       const isSelected = selectedCpoJcIds.includes(jc.id);
                       if (!isSelected) return null;
-                      const rubberItems = jc.lineItems.filter((li) => {
-                        const desc = li.itemDescription == null ? "" : li.itemDescription;
-                        const upper = desc.toUpperCase();
-                        return (
-                          upper.includes("R/L") ||
-                          upper.includes("R/FLG") ||
-                          upper.includes("RUBBER") ||
-                          upper.includes("+ R")
-                        );
-                      });
+                      const jcHasRubber = jc.hasInternalLining === true;
+                      const rubberItems = jcHasRubber
+                        ? jc.lineItems
+                        : jc.lineItems.filter((li) => {
+                            const desc = li.itemDescription == null ? "" : li.itemDescription;
+                            const upper = desc.toUpperCase();
+                            return (
+                              upper.includes("R/L") ||
+                              upper.includes("R/FLG") ||
+                              upper.includes("RUBBER") ||
+                              upper.includes("+ R")
+                            );
+                          });
                       const totalQty = rubberItems.reduce((sum, li) => {
                         const qty = li.quantity == null ? 1 : li.quantity;
                         return sum + qty;
                       }, 0);
+                      const alreadyInCart = cart.some(
+                        (c) => c.product.productType === "rubber_roll",
+                      );
                       return (
                         <div
                           key={jc.id}
-                          className="rounded bg-white px-3 py-2 border border-purple-100 text-xs"
+                          className="flex items-center gap-2 rounded bg-white px-3 py-2 border border-purple-100 text-xs"
                         >
-                          <div className="font-medium text-purple-900">
-                            {jcLabel} — {rubberItems.length} item
-                            {rubberItems.length !== 1 ? "s" : ""} ({totalQty} pcs) need rubber
-                            lining
+                          <div className="flex-1 min-w-0">
+                            <div className="font-medium text-purple-900">
+                              {jcLabel} — {rubberItems.length} item
+                              {rubberItems.length !== 1 ? "s" : ""} ({totalQty} pcs)
+                            </div>
+                            <div className="text-purple-700">{jc.intM2.toFixed(1)} m² internal</div>
                           </div>
-                          <div className="text-purple-700">
-                            Total area: {jc.intM2.toFixed(1)} m² internal
-                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setSearch("rubber")}
+                            disabled={alreadyInCart}
+                            className={`shrink-0 text-xs font-medium px-3 py-1.5 rounded ${
+                              alreadyInCart
+                                ? "bg-green-100 text-green-700"
+                                : "bg-purple-600 text-white hover:bg-purple-700"
+                            }`}
+                          >
+                            {alreadyInCart ? "In cart" : "Find rubber"}
+                          </button>
                         </div>
                       );
                     })}
