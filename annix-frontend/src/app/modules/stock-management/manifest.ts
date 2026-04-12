@@ -78,6 +78,16 @@ export const STOCK_MANAGEMENT_NAV_ITEMS: ReadonlyArray<StockManagementNavItem> =
     order: 120,
   },
   {
+    key: "paint-pack-sizes",
+    label: "Paint Pack Sizes",
+    href: "/admin/paint-pack-sizes",
+    icon: "droplet",
+    requiredFeature: "BASIC_ISSUING",
+    requiredPermission: "stockManagement.productCategory.manage",
+    group: "Admin",
+    order: 125,
+  },
+  {
     key: "product-datasheets",
     label: "Product Datasheets",
     href: "/admin/product-datasheets",

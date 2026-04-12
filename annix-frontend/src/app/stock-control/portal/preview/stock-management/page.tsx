@@ -70,6 +70,12 @@ const PREVIEW_LINKS: PreviewLink[] = [
     group: "admin",
   },
   {
+    title: "Admin · Paint Pack Sizes",
+    description: "Manage pack sizes and component grouping for paint products.",
+    href: "/stock-control/portal/preview/stock-management/admin/paint-pack-sizes",
+    group: "admin",
+  },
+  {
     title: "Admin · Product Datasheets",
     description: "Upload / view / extract technical datasheets for products.",
     href: "/stock-control/portal/preview/stock-management/admin/product-datasheets",

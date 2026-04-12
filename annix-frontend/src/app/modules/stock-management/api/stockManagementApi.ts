@@ -96,6 +96,10 @@ export class StockManagementApiClient {
     return this.request("GET", `/products/${id}`);
   }
 
+  async updateProduct(id: number, dto: Record<string, unknown>): Promise<IssuableProductDto> {
+    return this.request("PATCH", `/products/${id}`, dto);
+  }
+
   async listProductCategories(productType?: IssuableProductType): Promise<ProductCategoryDto[]> {
     const path = productType
       ? `/product-categories?productType=${productType}`

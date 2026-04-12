@@ -30,6 +30,7 @@ export {
 } from "./manifest";
 export { AdminLocationMigrationPage } from "./pages/AdminLocationMigrationPage";
 export { AdminPaintMigrationPage } from "./pages/AdminPaintMigrationPage";
+export { AdminPaintPackSizesPage } from "./pages/AdminPaintPackSizesPage";
 export { AdminProductCategoriesPage } from "./pages/AdminProductCategoriesPage";
 export { AdminProductDatasheetsPage } from "./pages/AdminProductDatasheetsPage";
 export { AdminRubberCompoundsPage } from "./pages/AdminRubberCompoundsPage";
