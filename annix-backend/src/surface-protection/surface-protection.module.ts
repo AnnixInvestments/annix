@@ -6,7 +6,6 @@ import { RfqSurfaceProtection } from "./entities/rfq-surface-protection.entity";
 import { SpCoatingRate } from "./entities/sp-coating-rate.entity";
 import { SpLiningRate } from "./entities/sp-lining-rate.entity";
 import { SpSurfacePrepRate } from "./entities/sp-surface-prep-rate.entity";
-import { SpDocumentGenerationService } from "./sp-document-generation.service";
 import { SurfaceProtectionService } from "./surface-protection.service";
 
 @Module({
@@ -20,7 +19,7 @@ import { SurfaceProtectionService } from "./surface-protection.service";
       SpSurfacePrepRate,
     ]),
   ],
-  providers: [SurfaceProtectionService, SpDocumentGenerationService],
-  exports: [SurfaceProtectionService, SpDocumentGenerationService],
+  providers: [SurfaceProtectionService],
+  exports: [SurfaceProtectionService],
 })
 export class SurfaceProtectionModule {}

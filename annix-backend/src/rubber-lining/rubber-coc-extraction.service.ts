@@ -17,12 +17,10 @@ import {
   COMPOUNDER_COC_SYSTEM_PROMPT,
   CREDIT_NOTE_SYSTEM_PROMPT,
   CUSTOMER_DELIVERY_NOTE_OCR_PROMPT,
-  CUSTOMER_DELIVERY_NOTE_SYSTEM_PROMPT,
   calendererCocExtractionPrompt,
   calenderRollCocExtractionPrompt,
   compounderCocExtractionPrompt,
   creditNoteExtractionPrompt,
-  customerDeliveryNoteExtractionPrompt,
   DELIVERY_NOTE_SYSTEM_PROMPT,
   deliveryNoteExtractionPrompt,
   TAX_INVOICE_SYSTEM_PROMPT,
@@ -414,50 +412,6 @@ export class RubberCocExtractionService {
 
     return {
       data: response.data as ExtractedDeliveryNoteData,
-      tokensUsed: response.tokensUsed,
-      processingTimeMs,
-    };
-  }
-
-  async extractCustomerDeliveryNote(pdfText: string): Promise<{
-    data: ExtractedCustomerDeliveryNoteData;
-    deliveryNotes: ExtractedCustomerDeliveryNoteData[];
-    podPages: ExtractedCustomerDeliveryNotePodPage[];
-    tokensUsed?: number;
-    processingTimeMs: number;
-  }> {
-    const startTime = nowMillis();
-    this.logger.log("Extracting customer delivery note data...");
-
-    if (!this.apiKey) {
-      throw new Error("GEMINI_API_KEY not configured");
-    }
-
-    const response = await this.callGemini(
-      CUSTOMER_DELIVERY_NOTE_SYSTEM_PROMPT,
-      customerDeliveryNoteExtractionPrompt(pdfText),
-      "customer-dn-extraction",
-    );
-
-    const processingTimeMs = nowMillis() - startTime;
-    this.logger.log(`Customer delivery note extracted in ${processingTimeMs}ms`);
-
-    const rawData = response.data as unknown as ExtractedCustomerDeliveryNotesResult;
-    const deliveryNotes = (rawData?.deliveryNotes || []).map((dn) =>
-      this.sanitizeSnRubberColumnConfusion(dn),
-    );
-    const podPages = rawData?.podPages || [];
-
-    this.logger.log(
-      `Found ${deliveryNotes.length} delivery notes and ${podPages.length} POD pages in document`,
-    );
-
-    const firstNote = deliveryNotes[0] || {};
-
-    return {
-      data: firstNote as ExtractedCustomerDeliveryNoteData,
-      deliveryNotes,
-      podPages,
       tokensUsed: response.tokensUsed,
       processingTimeMs,
     };
@@ -937,27 +891,6 @@ export class RubberCocExtractionService {
     });
     this.logger.log(`Converted PDF to ${pages.length} image(s)`);
     return pages.filter((page) => page.content !== undefined).map((page) => page.content as Buffer);
-  }
-
-  async convertSinglePdfPage(pdfBuffer: Buffer, pageNumber: number): Promise<Buffer> {
-    this.logger.log(`Converting PDF page ${pageNumber} to image...`);
-    const pdfInput = pdfBuffer.buffer.slice(
-      pdfBuffer.byteOffset,
-      pdfBuffer.byteOffset + pdfBuffer.byteLength,
-    );
-    const pages = await pdfToPng(pdfInput, {
-      disableFontFace: true,
-      useSystemFonts: true,
-      viewportScale: 1.0,
-      pagesToProcess: [pageNumber],
-    });
-
-    if (pages.length === 0 || !pages[0].content) {
-      throw new Error(`Failed to convert page ${pageNumber}`);
-    }
-
-    this.logger.log(`Page ${pageNumber} converted, size: ${pages[0].width}x${pages[0].height}`);
-    return pages[0].content;
   }
 
   private async callGeminiWithImages(

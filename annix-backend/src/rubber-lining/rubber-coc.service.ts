@@ -3,7 +3,6 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { fromISO, generateUniqueId, now } from "../lib/datetime";
 import {
-  CreateCompoundBatchDto,
   CreateSupplierCocDto,
   ReviewExtractionDto,
   RubberCompoundBatchDto,
@@ -728,52 +727,6 @@ export class RubberCocService {
     return batches.map((batch) => this.mapCompoundBatchToDto(batch));
   }
 
-  async createCompoundBatch(dto: CreateCompoundBatchDto): Promise<RubberCompoundBatchDto> {
-    const coc = await this.supplierCocRepository.findOne({
-      where: { id: dto.supplierCocId },
-    });
-    if (!coc) {
-      throw new BadRequestException("Supplier CoC not found");
-    }
-
-    if (dto.compoundStockId) {
-      const stock = await this.compoundStockRepository.findOne({
-        where: { id: dto.compoundStockId },
-      });
-      if (!stock) {
-        throw new BadRequestException("Compound stock not found");
-      }
-    }
-
-    const batch = this.compoundBatchRepository.create({
-      firebaseUid: `pg_${generateUniqueId()}`,
-      supplierCocId: dto.supplierCocId,
-      batchNumber: dto.batchNumber,
-      compoundStockId: dto.compoundStockId ?? null,
-      shoreAHardness: dto.shoreAHardness ?? null,
-      specificGravity: dto.specificGravity ?? null,
-      reboundPercent: dto.reboundPercent ?? null,
-      tearStrengthKnM: dto.tearStrengthKnM ?? null,
-      tensileStrengthMpa: dto.tensileStrengthMpa ?? null,
-      elongationPercent: dto.elongationPercent ?? null,
-      rheometerSMin: dto.rheometerSMin ?? null,
-      rheometerSMax: dto.rheometerSMax ?? null,
-      rheometerTs2: dto.rheometerTs2 ?? null,
-      rheometerTc90: dto.rheometerTc90 ?? null,
-      passFailStatus: dto.passFailStatus ?? null,
-    });
-
-    const saved = await this.compoundBatchRepository.save(batch);
-    const result = await this.compoundBatchRepository.findOne({
-      where: { id: saved.id },
-      relations: ["compoundStock", "compoundStock.compoundCoding"],
-    });
-    if (!result) {
-      throw new BadRequestException("Failed to retrieve created compound batch");
-    }
-    return this.mapCompoundBatchToDto(result);
-  }
-
   async updateCompoundBatch(
     id: number,
     dto: import("./dto/rubber-coc.dto").UpdateCompoundBatchDto,
@@ -941,23 +894,6 @@ export class RubberCocService {
       throw new BadRequestException("Compound batch not found");
     }
     await this.compoundBatchRepository.remove(batch);
-  }
-
-  async batchById(id: number): Promise<RubberCompoundBatchDto | null> {
-    const batch = await this.compoundBatchRepository.findOne({
-      where: { id },
-      relations: ["compoundStock", "compoundStock.compoundCoding"],
-    });
-    return batch ? this.mapCompoundBatchToDto(batch) : null;
-  }
-
-  async batchesByBatchNumber(batchNumber: string): Promise<RubberCompoundBatchDto[]> {
-    const batches = await this.compoundBatchRepository.find({
-      where: { batchNumber },
-      relations: ["supplierCoc", "compoundStock", "compoundStock.compoundCoding"],
-      order: { createdAt: "DESC" },
-    });
-    return batches.map((batch) => this.mapCompoundBatchToDto(batch));
   }
 
   private async resolveOrCreateSupplierForType(cocType: SupplierCocType): Promise<RubberCompany> {
@@ -1380,84 +1316,5 @@ export class RubberCocService {
     });
 
     return matchingCocs.map((coc) => this.mapSupplierCocToDto(coc));
-  }
-
-  async findMatchingSupplierCocByRollNumber(rollNumber: string): Promise<{
-    calendererCoc: RubberSupplierCocDto | null;
-    compounderCocs: RubberSupplierCocDto[];
-    batches: RubberCompoundBatchDto[];
-    testData: ExtractedCocData["batches"];
-  }> {
-    const normalizedRoll = rollNumber.trim().toUpperCase();
-
-    const calendererCocs = await this.supplierCocRepository
-      .createQueryBuilder("coc")
-      .leftJoinAndSelect("coc.supplierCompany", "company")
-      .where("coc.coc_type = :type", { type: SupplierCocType.CALENDARER })
-      .getMany();
-
-    const matchingCalendererCoc = calendererCocs.find((coc) => {
-      const rollNumbers = coc.extractedData?.rollNumbers || [];
-      const orderNumber = coc.orderNumber?.trim().toUpperCase() || "";
-      const extractedOrder = coc.extractedData?.orderNumber?.trim().toUpperCase() || "";
-
-      const rollMatch = rollNumbers.some((rn) => {
-        const normalizedCocRoll = rn.trim().toUpperCase();
-        return normalizedCocRoll === normalizedRoll || normalizedRoll.includes(normalizedCocRoll);
-      });
-
-      const orderMatch =
-        orderNumber === normalizedRoll ||
-        extractedOrder === normalizedRoll ||
-        normalizedRoll.includes(orderNumber) ||
-        normalizedRoll.includes(extractedOrder);
-
-      return rollMatch || orderMatch;
-    });
-
-    if (!matchingCalendererCoc) {
-      return {
-        calendererCoc: null,
-        compounderCocs: [],
-        batches: [],
-        testData: [],
-      };
-    }
-
-    const linkedCompounderIds = matchingCalendererCoc.extractedData?.linkedCompounderCocIds || [];
-    const compounderCocs =
-      linkedCompounderIds.length > 0
-        ? await this.supplierCocRepository.find({
-            where: linkedCompounderIds.map((id) => ({ id })),
-            relations: ["supplierCompany"],
-          })
-        : [];
-
-    const batchNumbers = matchingCalendererCoc.extractedData?.batchNumbers || [];
-    const batches =
-      batchNumbers.length > 0
-        ? await this.compoundBatchRepository
-            .createQueryBuilder("batch")
-            .leftJoinAndSelect("batch.supplierCoc", "coc")
-            .leftJoinAndSelect("batch.compoundStock", "stock")
-            .leftJoinAndSelect("stock.compoundCoding", "coding")
-            .where("batch.batch_number IN (:...batchNumbers)", { batchNumbers })
-            .getMany()
-        : [];
-
-    const testData = matchingCalendererCoc.extractedData?.batches || [];
-
-    return {
-      calendererCoc: this.mapSupplierCocToDto(matchingCalendererCoc),
-      compounderCocs: compounderCocs.map((coc) => this.mapSupplierCocToDto(coc)),
-      batches: batches.map((batch) => this.mapCompoundBatchToDto(batch)),
-      testData,
-    };
-  }
-
-  extractedTestDataForCoc(cocId: number): Promise<ExtractedCocData["batches"]> {
-    return this.supplierCocRepository
-      .findOne({ where: { id: cocId } })
-      .then((coc) => coc?.extractedData?.batches || []);
   }
 }

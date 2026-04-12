@@ -297,49 +297,6 @@ export class WorkflowNotificationService {
     );
   }
 
-  async notifyDispatchReady(companyId: number, jobCardId: number): Promise<void> {
-    const jobCard = await this.jobCardRepo.findOne({
-      where: { id: jobCardId, companyId },
-    });
-
-    if (!jobCard) {
-      return;
-    }
-
-    const frontendUrl = this.configService.get<string>("FRONTEND_URL") || "http://localhost:3000";
-    const actionUrl = `${frontendUrl}/stock-control/portal/job-cards/${jobCardId}/dispatch`;
-
-    const storemen = await this.userRepo.find({
-      where: { companyId, role: StockControlRole.STOREMAN },
-    });
-
-    const notifications = storemen.map((user) =>
-      this.notificationRepo.create({
-        companyId,
-        userId: user.id,
-        jobCardId,
-        title: `Ready for Dispatch: ${jobCard.jobName}`,
-        message: `Job card ${jobCard.jobNumber} is ready for physical dispatch.`,
-        actionType: NotificationActionType.DISPATCH_READY,
-        actionUrl,
-      }),
-    );
-
-    await this.notificationRepo.save(notifications);
-    const pushStoremen = storemen.filter((u) => u.pushNotificationsEnabled !== false);
-    this.webPushService
-      .sendToUsers(
-        pushStoremen.map((u) => u.id),
-        {
-          title: `Ready for Dispatch: ${jobCard.jobName}`,
-          body: `Job card ${jobCard.jobNumber} is ready for physical dispatch.`,
-          tag: `dispatch-${jobCardId}`,
-          data: { url: actionUrl },
-        },
-      )
-      .catch((err) => this.logger.warn(`Push notification failed: ${err.message}`));
-  }
-
   async notifyJobCardsImported(
     companyId: number,
     jobCardIds: number[],

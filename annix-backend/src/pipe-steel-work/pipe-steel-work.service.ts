@@ -152,15 +152,6 @@ export class PipeSteelWorkService {
     return defaultValue || null;
   }
 
-  async configNumber(key: string, defaultValue: number): Promise<number> {
-    const value = await this.configValue(key);
-    if (value !== null) {
-      const parsed = parseFloat(value);
-      return Number.isNaN(parsed) ? defaultValue : parsed;
-    }
-    return defaultValue;
-  }
-
   async allConfigs(category?: string): Promise<PipeSteelWorkConfigEntity[]> {
     if (category) {
       return this.configRepo.find({

@@ -995,13 +995,6 @@ export class SupplierAuthService {
     return this.sessionService.validateSession(this.sessionRepo, sessionToken, ["supplierProfile"]);
   }
 
-  async profileById(supplierId: number): Promise<SupplierProfile | null> {
-    return this.profileRepo.findOne({
-      where: { id: supplierId },
-      relations: ["company", "onboarding", "documents", "user"],
-    });
-  }
-
   private async logLoginAttempt(
     supplierProfileId: number | null,
     email: string,
