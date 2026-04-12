@@ -143,6 +143,9 @@ export function IssueStockPage() {
   const [linkedPartsMap, setLinkedPartsMap] = useState<Record<number, IssuableProductDto[]>>({});
   const [showConfirmWarning, setShowConfirmWarning] = useState(false);
   const [dontShowAgainChecked, setDontShowAgainChecked] = useState(false);
+  const [cpoIssuedTotals, setCpoIssuedTotals] = useState<
+    Array<{ productId: number; productName: string; rowType: string; totalIssued: number }>
+  >([]);
 
   const { data: productsResult, isLoading } = useIssuableProducts({
     search: search || undefined,
@@ -158,6 +161,20 @@ export function IssueStockPage() {
   const authHeaders = config.authHeaders;
   const authHeadersRef = useRef(authHeaders);
   authHeadersRef.current = authHeaders;
+
+  useEffect(() => {
+    if (targetKind !== "cpo" || targetId == null) {
+      setCpoIssuedTotals([]);
+      return;
+    }
+    fetch(`/api/stock-management/issuance/sessions/cpo-issued-totals/${targetId}`, {
+      headers: authHeadersRef.current(),
+      credentials: "include",
+    })
+      .then((res) => (res.ok ? res.json() : []))
+      .then((data) => setCpoIssuedTotals(data))
+      .catch(() => setCpoIssuedTotals([]));
+  }, [targetKind, targetId]);
 
   useEffect(() => {
     if (targetKind !== "cpo" || targetId == null) {
@@ -563,6 +580,7 @@ export function IssueStockPage() {
     setPendingAllocQty(null);
     setPhotoResult(null);
     setLinkedPartsMap({});
+    setCpoIssuedTotals([]);
     setSubmitError(null);
     setSubmitSuccess(false);
   };
@@ -1153,12 +1171,24 @@ export function IssueStockPage() {
                         paintName.includes(productName.slice(0, 15))
                       );
                     });
+                    const priorIssued = cpoIssuedTotals.reduce((sum, t) => {
+                      const issuedName = t.productName.toUpperCase();
+                      const paintName = p.product.toUpperCase();
+                      const matches =
+                        issuedName.includes(paintName.slice(0, 15)) ||
+                        paintName.includes(issuedName.slice(0, 15));
+                      return matches ? sum + t.totalIssued : sum;
+                    }, 0);
+                    const remaining = Math.max(p.litres - priorIssued, 0);
+                    const fullyIssued = priorIssued >= p.litres && priorIssued > 0;
                     const rawAllocQty = allocPaintQty[p.product];
-                    const issueQty = rawAllocQty == null ? Math.ceil(p.litres) : rawAllocQty;
+                    const issueQty = rawAllocQty == null ? Math.ceil(remaining) : rawAllocQty;
                     return (
                       <div
                         key={p.product}
-                        className="flex items-center gap-2 rounded bg-white px-3 py-2 border border-blue-100"
+                        className={`flex items-center gap-2 rounded px-3 py-2 border ${
+                          fullyIssued ? "bg-green-50 border-green-200" : "bg-white border-blue-100"
+                        }`}
                       >
                         <div className="flex-1 min-w-0">
                           <div className="text-sm font-medium text-blue-900 truncate">
@@ -1167,6 +1197,15 @@ export function IssueStockPage() {
                           </div>
                           <div className="text-xs text-blue-700">
                             {p.litres.toFixed(1)} L required
+                            {priorIssued > 0 ? (
+                              <span className="ml-1 text-green-700 font-medium">
+                                ({Math.round(priorIssued * 100) / 100}L already issued
+                                {fullyIssued
+                                  ? " - COMPLETE"
+                                  : `, ${remaining.toFixed(1)}L remaining`}
+                                )
+                              </span>
+                            ) : null}
                           </div>
                         </div>
                         <div className="flex items-center gap-1 shrink-0">
@@ -1182,7 +1221,7 @@ export function IssueStockPage() {
                               setAllocPaintQty({ ...allocPaintQty, [p.product]: val });
                             }}
                             className="w-16 border border-gray-300 rounded px-1.5 py-1 text-sm text-center"
-                            disabled={alreadyInCart}
+                            disabled={alreadyInCart || fullyIssued}
                           />
                         </div>
                         <button
@@ -1192,13 +1231,15 @@ export function IssueStockPage() {
                             setSearch(p.product.split(" ").slice(0, 3).join(" "));
                           }}
                           className={`shrink-0 text-xs font-medium px-3 py-1.5 rounded ${
-                            alreadyInCart
+                            fullyIssued
                               ? "bg-green-100 text-green-700"
-                              : "bg-blue-600 text-white hover:bg-blue-700"
+                              : alreadyInCart
+                                ? "bg-green-100 text-green-700"
+                                : "bg-blue-600 text-white hover:bg-blue-700"
                           }`}
-                          disabled={alreadyInCart}
+                          disabled={alreadyInCart || fullyIssued}
                         >
-                          {alreadyInCart ? "In cart" : "Find & add"}
+                          {fullyIssued ? "Issued" : alreadyInCart ? "In cart" : "Find & add"}
                         </button>
                       </div>
                     );

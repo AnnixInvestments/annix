@@ -257,6 +257,36 @@ export class IssuanceService {
     } as RubberRollIssuanceRow;
   }
 
+  async issuedTotalsForCpo(
+    companyId: number,
+    cpoId: number,
+  ): Promise<
+    Array<{ productId: number; productName: string; rowType: string; totalIssued: number }>
+  > {
+    const rows = await this.dataSource.query(
+      `SELECT ir.product_id, ip.name AS product_name, ir.row_type,
+              COALESCE(SUM(pir.litres), 0) + COALESCE(SUM(cir.quantity), 0)
+              + COALESCE(SUM(rr.weight_kg_issued), 0) + COALESCE(SUM(sol.volume_l), 0)
+              AS total_issued
+       FROM sm_issuance_row ir
+       JOIN sm_issuance_session s ON s.id = ir.session_id
+       JOIN sm_issuable_product ip ON ip.id = ir.product_id
+       LEFT JOIN sm_paint_issuance_row pir ON pir.row_id = ir.id
+       LEFT JOIN sm_consumable_issuance_row cir ON cir.row_id = ir.id
+       LEFT JOIN sm_rubber_roll_issuance_row rr ON rr.row_id = ir.id
+       LEFT JOIN sm_solution_issuance_row sol ON sol.row_id = ir.id
+       WHERE s.company_id = $1 AND s.cpo_id = $2 AND s.status != 'undone'
+       GROUP BY ir.product_id, ip.name, ir.row_type`,
+      [companyId, cpoId],
+    );
+    return rows.map((r: any) => ({
+      productId: r.product_id,
+      productName: r.product_name,
+      rowType: r.row_type,
+      totalIssued: Number(r.total_issued),
+    }));
+  }
+
   private fullSessionRelations() {
     return {
       rows: {

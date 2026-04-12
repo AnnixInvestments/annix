@@ -50,6 +50,13 @@ export class IssuanceController {
     return this.issuanceService.list(Number(req.user.companyId), filters);
   }
 
+  @Get("sessions/cpo-issued-totals/:cpoId")
+  @StockManagementFeature("BASIC_ISSUING")
+  @ApiOperation({ summary: "Get total issued quantities per product for a CPO" })
+  async cpoIssuedTotals(@Req() req: any, @Param("cpoId", ParseIntPipe) cpoId: number) {
+    return this.issuanceService.issuedTotalsForCpo(Number(req.user.companyId), cpoId);
+  }
+
   @Get("sessions/:id")
   @StockManagementFeature("BASIC_ISSUING")
   @ApiOperation({ summary: "Get a single issuance session by ID" })
