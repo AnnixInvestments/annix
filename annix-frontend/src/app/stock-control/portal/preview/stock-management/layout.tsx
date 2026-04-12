@@ -33,15 +33,6 @@ export default function StockManagementPreviewLayout(props: StockManagementPrevi
 
   return (
     <div className="mx-auto w-full max-w-7xl">
-      <div className="mb-4 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
-        <div className="font-semibold">Stock Management Module — Preview</div>
-        <div className="mt-1">
-          This is a standalone preview of the new unified Stock Management module (issue #192). It
-          runs in parallel to the existing Stock Control pages. None of these routes appear in the
-          main nav and the entire <code className="rounded bg-amber-100 px-1">preview/</code> folder
-          can be deleted when we cut over.
-        </div>
-      </div>
       <StockManagementProvider config={config}>{props.children}</StockManagementProvider>
     </div>
   );

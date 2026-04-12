@@ -1,6 +1,6 @@
 # Shared Module Registry
 
-**Last updated:** 2026-04-05
+**Last updated:** 2026-04-12
 
 This is the canonical index of shared modules across the Annix monorepo. Every Claude session MUST consult this file before writing new constants, components, services, or utilities (see `CLAUDE.md` §"Discovery-first protocol").
 
@@ -68,6 +68,26 @@ Shared workspace package (pnpm workspace). Both `annix-backend` and `annix-front
 
 **When to put new backend code here:** any service or utility that is consumed by more than one app module, or that represents a concept any future app might need.
 
+### Stock Management module (`src/stock-management/`)
+
+Host-app-agnostic inventory management module. Currently consumed by Stock Control and AU Rubber. All tables use the `sm_` prefix.
+
+| Concept | Path | Use for |
+|---|---|---|
+| Module entry | `stock-management/stock-management.module.ts` | NestJS module registration. Imports: AuthModule, FeatureFlagsModule, StorageModule, NotificationsModule, NixModule. |
+| Entities (products) | `stock-management/entities/issuable-product.entity.ts` + children | Base `sm_issuable_product` + child tables: `sm_consumable_product`, `sm_paint_product`, `sm_rubber_roll`, `sm_rubber_offcut_stock`, `sm_solution_product` |
+| Entities (issuance) | `stock-management/entities/issuance-session.entity.ts` + children | Base `sm_issuance_session` + `sm_issuance_row` + per-type child rows |
+| Entities (returns) | `stock-management/entities/return-session.entity.ts` + children | Base `sm_return_session` + `sm_rubber_offcut_return` + `sm_paint_return` + `sm_consumable_return` |
+| Entities (stock take) | `stock-management/entities/stock-take.entity.ts` + children | `sm_stock_take` + `sm_stock_take_line` + `sm_stock_take_adjustment` + `sm_stock_take_variance_category` |
+| Entities (FIFO) | `stock-management/entities/stock-purchase-batch.entity.ts` | `sm_stock_purchase_batch` + `sm_stock_movement_batch_consumption` |
+| Entities (hold) | `stock-management/entities/stock-hold-item.entity.ts` | `sm_stock_hold_item` — quarantine queue |
+| Entities (compounds) | `stock-management/entities/rubber-compound.entity.ts` | `sm_rubber_compound` + `sm_product_datasheet` |
+| Entities (license) | `stock-management/entities/company-module-license.entity.ts` | `sm_company_module_license` — tier-based per-company gating |
+| Services | `stock-management/services/*.ts` | IssuanceService, ReturnsService, StockTakeService, StockHoldService, FifoBatchService, RubberCompoundService, PhotoIdentificationService, LocationClassificationService, etc. |
+| Controllers | `stock-management/controllers/*.ts` | All under `/api/stock-management/` prefix. 14 controllers. |
+| Feature guard | `stock-management/guards/stock-management-feature.guard.ts` | `@StockManagementFeature("FEATURE_KEY")` decorator per-endpoint |
+| Config | `stock-management/config/stock-management-features.constants.ts` | Tier definitions (basic/standard/premium/enterprise) + feature keys |
+
 ---
 
 ## Frontend shared modules — `annix-frontend/src/app/`
@@ -77,6 +97,21 @@ Shared workspace package (pnpm workspace). Both `annix-backend` and `annix-front
 The canonical frontend components directory. **App-specific components live in `app/<app>/components/` only if they're truly unique to that app** — if there's any chance another app might use it, put it here.
 
 Existing shared components include: `DataTable`, `TableComponents`, `ConfirmModal`, `ImportModal`, `MonthYearPicker`, `FileDropzone`, `SurfaceAreaDisplay`, `WeldSummaryCard`, `CalloffInput`, `SageExportModal`, `PortalToolbar`, `PdfPreviewModal` (+ `usePdfPreview` hook — mandatory for all generated PDF documents).
+
+### Stock Management frontend module (`app/modules/stock-management/`)
+
+Host-app-agnostic React module. Consumed by Stock Control (via `app/stock-control/portal/preview/stock-management/`) and AU Rubber (via `app/au-rubber/portal/stock-management/`).
+
+| Concept | Path | Use for |
+|---|---|---|
+| Provider | `modules/stock-management/provider/StockManagementProvider.tsx` | Context provider — host app wraps its layout with this and passes `StockManagementHostConfig` (apiBaseUrl, authHeaders, currentUser, theme, labels) |
+| API client | `modules/stock-management/api/stockManagementApi.ts` | `StockManagementApiClient` class — all API calls to `/api/stock-management/*` |
+| Pages | `modules/stock-management/pages/` | `IssueStockPage`, `ReturnsPage`, `StockTakePage`, `ModuleLicensePage` + 6 admin pages |
+| Components | `modules/stock-management/components/` | `StaffPicker`, `JobCardOrCpoPicker`, `ComboBox`, `PhotoExtractButton`, `PaintProRataSplitEditor`, `RubberRollSubEditor` |
+| Hooks | `modules/stock-management/hooks/` | `useIssuanceQueries`, `useAdminQueries`, `useLicenseQueries`, `useStockTakeQueries`, `useFifoValuation` |
+| Types | `modules/stock-management/types/` | `config`, `license`, `products`, `issuance`, `admin`, `stockTake` |
+| Theme | `modules/stock-management/theme/` | Default tokens + `StockManagementThemeTokens` type |
+| i18n | `modules/stock-management/i18n/` | Default English labels + override mechanism |
 
 ### Frontend utilities (`app/lib/`)
 

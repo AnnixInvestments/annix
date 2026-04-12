@@ -283,7 +283,7 @@ export const ALL_NAV_ITEMS: NavItemDef[] = [
   },
   {
     key: "issue-stock",
-    href: "/stock-control/portal/issue-stock",
+    href: "/stock-control/portal/preview/stock-management/issue-stock",
     label: "Issue Stock",
     defaultRoles: ["storeman", "manager", "admin"],
     icon: (
@@ -314,10 +314,43 @@ export const ALL_NAV_ITEMS: NavItemDef[] = [
     ),
   },
   {
+    key: "returns",
+    href: "/stock-control/portal/preview/stock-management/returns",
+    label: "Returns",
+    defaultRoles: ["storeman", "manager", "admin"],
+    icon: (
+      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"
+        />
+      </svg>
+    ),
+  },
+  {
+    key: "stock-take",
+    href: "/stock-control/portal/preview/stock-management/stock-take",
+    label: "Stock Take",
+    defaultRoles: ["storeman", "accounts", "manager", "admin"],
+    icon: (
+      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"
+        />
+      </svg>
+    ),
+  },
+  {
     key: "rubber-issuing",
     href: "/stock-control/portal/rubber-issuing",
     label: "Rubber Issuing",
     defaultRoles: ["storeman", "manager", "admin"],
+    group: "hidden",
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path
@@ -786,7 +819,8 @@ export const isNavItemAllowedForRole = (
   rbacConfig: Record<string, string[]>,
 ): boolean => {
   if (!role) return false;
-  const configured = rbacConfig[item.key] ?? item.defaultRoles;
+  const rbacOverride = rbacConfig[item.key];
+  const configured = rbacOverride == null ? item.defaultRoles : rbacOverride;
   if (configured.includes(NAV_ROLE_WILDCARD)) return true;
   return configured.includes(role);
 };
@@ -796,7 +830,8 @@ export const resolveNavItemRoles = (
   rbacConfig: Record<string, string[]>,
   availableRoles: readonly string[],
 ): string[] => {
-  const configured = rbacConfig[item.key] ?? item.defaultRoles;
+  const rbacOverride = rbacConfig[item.key];
+  const configured = rbacOverride == null ? item.defaultRoles : rbacOverride;
   if (configured.includes(NAV_ROLE_WILDCARD)) return [...availableRoles];
   return [...configured];
 };
