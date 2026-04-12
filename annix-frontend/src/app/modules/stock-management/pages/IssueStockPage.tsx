@@ -68,8 +68,36 @@ interface CartRow {
   product: IssuableProductDto;
   quantity: number;
   batchNumber: string;
+  tinBatchNumbers: string[];
   paintSplits: ProRataSplit[];
   rubberRollDetails: RubberRollIssueDetails;
+}
+
+function kitSizeForProduct(product: IssuableProductDto): number | null {
+  const paint = product.paint;
+  if (!paint) return null;
+  const numParts = paint.numberOfParts;
+  const ratioStr = paint.mixingRatio;
+  const packA = paint.packSizeLitres;
+  if (numParts == null || numParts <= 1 || !ratioStr || !packA) return null;
+  const ratioParts = ratioStr.split(":").map(Number);
+  const rawA = ratioParts[0];
+  const rawB = ratioParts[1];
+  const rawC = ratioParts[2];
+  const rA = rawA == null || Number.isNaN(rawA) ? 1 : rawA;
+  const rB = rawB == null || Number.isNaN(rawB) ? 0 : rawB;
+  const rC = rawC == null || Number.isNaN(rawC) ? 0 : rawC;
+  const totalRatio = rA + rB + rC;
+  return packA * (totalRatio / rA);
+}
+
+function snapToKit(litres: number, kitSize: number): { down: number; up: number } {
+  const kitsDown = Math.floor(litres / kitSize);
+  const kitsUp = Math.ceil(litres / kitSize);
+  return {
+    down: Math.max(kitsDown, 1) * kitSize,
+    up: Math.max(kitsUp, 1) * kitSize,
+  };
 }
 
 const EMPTY_RUBBER_ROLL: RubberRollIssueDetails = {
@@ -453,13 +481,16 @@ export function IssueStockPage() {
 
   const addToCart = (product: IssuableProductDto) => {
     if (cart.some((c) => c.product.id === product.id)) return;
-    const qty = pendingAllocQty != null ? pendingAllocQty : 1;
+    const rawQty = pendingAllocQty != null ? pendingAllocQty : 1;
+    const kit = kitSizeForProduct(product);
+    const qty = kit != null ? snapToKit(rawQty, kit).up : rawQty;
     setCart([
       ...cart,
       {
         product,
         quantity: qty,
         batchNumber: "",
+        tinBatchNumbers: [],
         paintSplits: [],
         rubberRollDetails: { ...EMPTY_RUBBER_ROLL },
       },
@@ -1264,147 +1295,263 @@ export function IssueStockPage() {
                           Remove
                         </button>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <div className="flex-1">
-                          <label className="block text-[10px] uppercase tracking-wide text-gray-500 mb-0.5">
-                            Qty
-                          </label>
-                          <input
-                            type="number"
-                            inputMode="decimal"
-                            value={row.quantity}
-                            onChange={(e) =>
-                              updateCartRow(row.product.id, { quantity: Number(e.target.value) })
-                            }
-                            className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm"
-                          />
-                        </div>
-                        <div className="flex-1">
-                          <label className="block text-[10px] uppercase tracking-wide text-gray-500 mb-0.5">
-                            Batch #
-                          </label>
-                          <input
-                            type="text"
-                            value={row.batchNumber}
-                            onChange={(e) =>
-                              updateCartRow(row.product.id, { batchNumber: e.target.value })
-                            }
-                            placeholder="optional"
-                            className="w-full border border-gray-300 rounded px-2 py-1.5 text-xs"
-                          />
-                        </div>
-                      </div>
-                      {row.product.productType === "paint" &&
-                        (() => {
-                          const paintDetail = row.product.paint;
-                          const numParts = paintDetail == null ? null : paintDetail.numberOfParts;
-                          const ratioStr = paintDetail == null ? null : paintDetail.mixingRatio;
-                          const packSizeA = paintDetail == null ? null : paintDetail.packSizeLitres;
-                          const productId = row.product.id;
-                          const rawLinked = linkedPartsMap[productId];
-                          const linkedParts = rawLinked || [];
-                          if (numParts == null || numParts <= 1 || ratioStr == null) {
-                            if (packSizeA != null) {
-                              const tinsNeeded = Math.ceil(row.quantity / packSizeA);
-                              return (
-                                <div className="rounded border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-700">
-                                  {packSizeA}L per tin × {tinsNeeded} tins ={" "}
-                                  {(tinsNeeded * packSizeA).toFixed(1)}L (single pack)
-                                </div>
-                              );
-                            }
-                            return null;
-                          }
-                          const ratioParts = ratioStr.split(":").map(Number);
-                          const ratioA =
-                            ratioParts[0] == null || Number.isNaN(ratioParts[0])
-                              ? 1
-                              : ratioParts[0];
-                          const ratioB =
-                            ratioParts[1] == null || Number.isNaN(ratioParts[1])
-                              ? 0
-                              : ratioParts[1];
-                          const ratioC =
-                            ratioParts[2] == null || Number.isNaN(ratioParts[2])
-                              ? 0
-                              : ratioParts[2];
-                          const partALitres = row.quantity;
-                          const partBLitres = ratioB > 0 ? partALitres * (ratioB / ratioA) : 0;
-                          const partCLitres = ratioC > 0 ? partALitres * (ratioC / ratioA) : 0;
-                          const grandTotal = partALitres + partBLitres + partCLitres;
-                          const partBProduct = linkedParts.find((lp) => {
-                            const lpPaint = lp.paint;
-                            const role = lpPaint == null ? null : lpPaint.componentRole;
-                            return role === "hardener" || role === "Hardener" || role === "Part B";
-                          });
-                          const partCProduct =
-                            linkedParts.length > 1
-                              ? linkedParts.find((lp) => {
-                                  const lpPaint = lp.paint;
-                                  const role = lpPaint == null ? null : lpPaint.componentRole;
-                                  return (
-                                    role !== "hardener" && role !== "Hardener" && role !== "Part B"
-                                  );
-                                })
-                              : null;
-                          const partBName =
-                            partBProduct == null ? "Part B (Hardener)" : partBProduct.name;
-                          const partBPaint = partBProduct == null ? null : partBProduct.paint;
-                          const partBPackSize =
-                            partBPaint == null ? null : partBPaint.packSizeLitres;
-                          const partBStock = partBProduct == null ? null : partBProduct.quantity;
-                          const partCName = partCProduct == null ? "Part C" : partCProduct.name;
-                          const partCPaint = partCProduct == null ? null : partCProduct.paint;
-                          const partCPackSize =
-                            partCPaint == null ? null : partCPaint.packSizeLitres;
-                          const partCStock = partCProduct == null ? null : partCProduct.quantity;
+                      {(() => {
+                        const paintDetail = row.product.paint;
+                        const numParts = paintDetail == null ? null : paintDetail.numberOfParts;
+                        const ratioStr = paintDetail == null ? null : paintDetail.mixingRatio;
+                        const packSizeA = paintDetail == null ? null : paintDetail.packSizeLitres;
+                        const kit = kitSizeForProduct(row.product);
+                        const isMultiPart =
+                          numParts != null && numParts > 1 && ratioStr != null && kit != null;
+                        const productId = row.product.id;
+                        const rawLinked = linkedPartsMap[productId];
+                        const linkedParts = rawLinked || [];
+
+                        const ratioParts = isMultiPart ? ratioStr.split(":").map(Number) : [];
+                        const rawRatioA = ratioParts[0];
+                        const rawRatioB = ratioParts[1];
+                        const ratioA = rawRatioA == null || Number.isNaN(rawRatioA) ? 1 : rawRatioA;
+                        const ratioB = rawRatioB == null || Number.isNaN(rawRatioB) ? 0 : rawRatioB;
+                        const totalRatio = ratioA + ratioB;
+
+                        const numKits = isMultiPart
+                          ? Math.round(row.quantity / ((kit * ratioA) / totalRatio))
+                          : 0;
+                        const partAPerKit = packSizeA || 0;
+                        const partBPerKit = isMultiPart ? partAPerKit * (ratioB / ratioA) : 0;
+                        const tinsA = numKits;
+                        const tinsB = numKits;
+                        const totalPartA = tinsA * partAPerKit;
+                        const totalPartB = tinsB * partBPerKit;
+                        const grandTotal = totalPartA + totalPartB;
+
+                        const partBProduct = linkedParts.find((lp) => {
+                          const lpPaint = lp.paint;
+                          const role = lpPaint == null ? null : lpPaint.componentRole;
+                          return role === "hardener" || role === "Hardener" || role === "Part B";
+                        });
+                        const partBName =
+                          partBProduct == null ? "Part B (Hardener)" : partBProduct.name;
+                        const partBPaint = partBProduct == null ? null : partBProduct.paint;
+                        const partBPackSize = partBPaint == null ? null : partBPaint.packSizeLitres;
+                        const partBStock = partBProduct == null ? null : partBProduct.quantity;
+
+                        if (isMultiPart) {
+                          const rowQty = row.quantity;
+                          const snapped = snapToKit(rowQty, kit);
+                          const snapDown = snapped.down;
+                          const snapUp = snapped.up;
+                          const kitsDown = Math.round(snapDown / kit);
+                          const kitsUp = Math.round(snapUp / kit);
+                          const isExactKit = rowQty === snapDown || rowQty === snapUp;
                           return (
-                            <div className="rounded border border-blue-200 bg-blue-50 px-3 py-2 text-xs space-y-1">
-                              <div className="font-semibold text-blue-900">
-                                Mix ratio {ratioStr} ({numParts}-pack)
-                              </div>
-                              <div className="flex justify-between text-blue-800">
-                                <span>
-                                  Part A: {row.product.name}
-                                  {packSizeA != null ? ` (${packSizeA}L/tin)` : ""}
-                                </span>
-                                <span className="font-mono">{partALitres.toFixed(1)} L</span>
-                              </div>
-                              {partBLitres > 0 ? (
-                                <div className="flex justify-between text-blue-800">
-                                  <span>
-                                    Part B: {partBName}
-                                    {partBPackSize != null ? ` (${partBPackSize}L/tin)` : ""}
-                                    {partBStock != null ? (
-                                      <span className="text-gray-500 ml-1">
-                                        [{partBStock} in stock]
-                                      </span>
-                                    ) : null}
-                                  </span>
-                                  <span className="font-mono">{partBLitres.toFixed(1)} L</span>
+                            <div className="space-y-2">
+                              <div className="rounded border border-blue-200 bg-blue-50 px-3 py-2 text-xs space-y-2">
+                                <div className="font-semibold text-blue-900">
+                                  Kit size: {kit}L (mix {ratioStr}) — {partAPerKit}L Part A +{" "}
+                                  {partBPerKit}L Part B
                                 </div>
-                              ) : null}
-                              {partCLitres > 0 ? (
-                                <div className="flex justify-between text-blue-800">
-                                  <span>
-                                    Part C: {partCName}
-                                    {partCPackSize != null ? ` (${partCPackSize}L/tin)` : ""}
-                                    {partCStock != null ? (
-                                      <span className="text-gray-500 ml-1">
-                                        [{partCStock} in stock]
-                                      </span>
-                                    ) : null}
-                                  </span>
-                                  <span className="font-mono">{partCLitres.toFixed(1)} L</span>
+                                {!isExactKit ? (
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-amber-700 font-medium">
+                                      {row.quantity}L is not a full kit. Select:
+                                    </span>
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        updateCartRow(row.product.id, { quantity: snapDown })
+                                      }
+                                      className="px-2 py-0.5 rounded bg-blue-100 text-blue-800 hover:bg-blue-200 font-mono"
+                                    >
+                                      {snapDown}L ({kitsDown} kit{kitsDown !== 1 ? "s" : ""})
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        updateCartRow(row.product.id, { quantity: snapUp })
+                                      }
+                                      className="px-2 py-0.5 rounded bg-blue-100 text-blue-800 hover:bg-blue-200 font-mono"
+                                    >
+                                      {snapUp}L ({kitsUp} kit{kitsUp !== 1 ? "s" : ""})
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <div className="text-blue-800">
+                                    {numKits} kit{numKits !== 1 ? "s" : ""} = {grandTotal}L total
+                                  </div>
+                                )}
+                                <div className="border-t border-blue-200 pt-1 space-y-0.5">
+                                  <div className="flex justify-between text-blue-800">
+                                    <span>
+                                      Part A: {row.product.name} ({partAPerKit}L/tin)
+                                    </span>
+                                    <span className="font-mono">
+                                      {tinsA} tin{tinsA !== 1 ? "s" : ""} = {totalPartA}L
+                                    </span>
+                                  </div>
+                                  <div className="flex justify-between text-blue-800">
+                                    <span>
+                                      Part B: {partBName}
+                                      {partBPackSize != null ? ` (${partBPackSize}L/tin)` : ""}
+                                      {partBStock != null ? (
+                                        <span className="text-gray-500 ml-1">
+                                          [{partBStock} in stock]
+                                        </span>
+                                      ) : null}
+                                    </span>
+                                    <span className="font-mono">
+                                      {tinsB} tin{tinsB !== 1 ? "s" : ""} = {totalPartB}L
+                                    </span>
+                                  </div>
+                                  <div className="flex justify-between text-blue-900 font-semibold border-t border-blue-200 pt-1">
+                                    <span>Total mixed</span>
+                                    <span className="font-mono">{grandTotal}L</span>
+                                  </div>
                                 </div>
-                              ) : null}
-                              <div className="flex justify-between text-blue-900 font-semibold border-t border-blue-200 pt-1">
-                                <span>Total mixed</span>
-                                <span className="font-mono">{grandTotal.toFixed(1)} L</span>
+                              </div>
+                              <div className="rounded border border-gray-200 bg-gray-50 px-3 py-2 text-xs space-y-1">
+                                <div className="font-semibold text-gray-700">
+                                  Batch numbers per tin
+                                </div>
+                                <div className="text-[10px] text-gray-500 mb-1">
+                                  Part A tins ({partAPerKit}L each)
+                                </div>
+                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-1">
+                                  {Array.from({ length: tinsA }).map((_, i) => {
+                                    const rawBatch = row.tinBatchNumbers[i];
+                                    const batchVal = rawBatch == null ? "" : rawBatch;
+                                    return (
+                                      <input
+                                        key={`a-${i}`}
+                                        type="text"
+                                        value={batchVal}
+                                        onChange={(e) => {
+                                          const updated = [...row.tinBatchNumbers];
+                                          updated[i] = e.target.value;
+                                          updateCartRow(row.product.id, {
+                                            tinBatchNumbers: updated,
+                                          });
+                                        }}
+                                        placeholder={`A${i + 1} batch`}
+                                        className="border border-gray-300 rounded px-1.5 py-1 text-xs"
+                                      />
+                                    );
+                                  })}
+                                </div>
+                                {tinsB > 0 ? (
+                                  <>
+                                    <div className="text-[10px] text-gray-500 mt-1">
+                                      Part B tins ({partBPerKit}L each)
+                                    </div>
+                                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-1">
+                                      {Array.from({ length: tinsB }).map((_, i) => {
+                                        const idx = tinsA + i;
+                                        const rawBatchB = row.tinBatchNumbers[idx];
+                                        const batchVal = rawBatchB == null ? "" : rawBatchB;
+                                        return (
+                                          <input
+                                            key={`b-${i}`}
+                                            type="text"
+                                            value={batchVal}
+                                            onChange={(e) => {
+                                              const updated = [...row.tinBatchNumbers];
+                                              updated[idx] = e.target.value;
+                                              updateCartRow(row.product.id, {
+                                                tinBatchNumbers: updated,
+                                              });
+                                            }}
+                                            placeholder={`B${i + 1} batch`}
+                                            className="border border-gray-300 rounded px-1.5 py-1 text-xs"
+                                          />
+                                        );
+                                      })}
+                                    </div>
+                                  </>
+                                ) : null}
                               </div>
                             </div>
                           );
-                        })()}
+                        }
+
+                        if (packSizeA != null && row.product.productType === "paint") {
+                          const tinsNeeded = Math.ceil(row.quantity / packSizeA);
+                          return (
+                            <div className="space-y-2">
+                              <div className="rounded border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-700">
+                                {packSizeA}L per tin x {tinsNeeded} tins ={" "}
+                                {(tinsNeeded * packSizeA).toFixed(1)}L (single pack)
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <div className="flex-1">
+                                  <label className="block text-[10px] uppercase tracking-wide text-gray-500 mb-0.5">
+                                    Qty (L)
+                                  </label>
+                                  <input
+                                    type="number"
+                                    inputMode="decimal"
+                                    value={row.quantity}
+                                    onChange={(e) =>
+                                      updateCartRow(row.product.id, {
+                                        quantity: Number(e.target.value),
+                                      })
+                                    }
+                                    className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm"
+                                  />
+                                </div>
+                                <div className="flex-1">
+                                  <label className="block text-[10px] uppercase tracking-wide text-gray-500 mb-0.5">
+                                    Batch #
+                                  </label>
+                                  <input
+                                    type="text"
+                                    value={row.batchNumber}
+                                    onChange={(e) =>
+                                      updateCartRow(row.product.id, { batchNumber: e.target.value })
+                                    }
+                                    placeholder="optional"
+                                    className="w-full border border-gray-300 rounded px-2 py-1.5 text-xs"
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        }
+
+                        return (
+                          <div className="flex items-center gap-2">
+                            <div className="flex-1">
+                              <label className="block text-[10px] uppercase tracking-wide text-gray-500 mb-0.5">
+                                Qty
+                              </label>
+                              <input
+                                type="number"
+                                inputMode="decimal"
+                                value={row.quantity}
+                                onChange={(e) =>
+                                  updateCartRow(row.product.id, {
+                                    quantity: Number(e.target.value),
+                                  })
+                                }
+                                className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm"
+                              />
+                            </div>
+                            <div className="flex-1">
+                              <label className="block text-[10px] uppercase tracking-wide text-gray-500 mb-0.5">
+                                Batch #
+                              </label>
+                              <input
+                                type="text"
+                                value={row.batchNumber}
+                                onChange={(e) =>
+                                  updateCartRow(row.product.id, { batchNumber: e.target.value })
+                                }
+                                placeholder="optional"
+                                className="w-full border border-gray-300 rounded px-2 py-1.5 text-xs"
+                              />
+                            </div>
+                          </div>
+                        );
+                      })()}
                       {row.product.productType === "paint" && showPaintProRata ? (
                         <PaintProRataSplitEditor
                           totalLitres={row.quantity}
