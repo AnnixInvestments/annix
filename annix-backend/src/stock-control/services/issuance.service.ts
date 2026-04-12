@@ -154,6 +154,7 @@ export interface CpoBatchIssueContext {
     cpoNumber: string;
     jobName: string | null;
     customerName: string | null;
+    coatingSpecs: string | null;
   };
   jobCards: CpoBatchChildJobCard[];
   aggregatedCoats: CpoBatchAggregateCoat[];
@@ -1164,6 +1165,7 @@ export class IssuanceService {
           cpoNumber: cpo.cpoNumber,
           jobName: cpo.jobName,
           customerName: cpo.customerName,
+          coatingSpecs: cpo.coatingSpecs ?? null,
         },
         jobCards: [],
         aggregatedCoats: [],
@@ -1236,6 +1238,7 @@ export class IssuanceService {
         cpoNumber: cpo.cpoNumber,
         jobName: cpo.jobName,
         customerName: cpo.customerName,
+        coatingSpecs: cpo.coatingSpecs ?? null,
       },
       jobCards: childJobCards,
       aggregatedCoats: aggregatedWithStock,

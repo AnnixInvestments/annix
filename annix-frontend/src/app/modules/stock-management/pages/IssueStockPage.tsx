@@ -177,6 +177,7 @@ export function IssueStockPage() {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitSuccess, setSubmitSuccess] = useState(false);
   const [coatStatusMap, setCoatStatusMap] = useState<Record<number, Record<string, number>>>({});
+  const [cpoCoatingSpecs, setCpoCoatingSpecs] = useState<string | null>(null);
 
   const { data: productsResult, isLoading } = useIssuableProducts({
     search: search || undefined,
@@ -273,6 +274,7 @@ export function IssueStockPage() {
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`${r.status}`))))
       .then(
         (data: {
+          cpo?: { coatingSpecs?: string | null };
           jobCards?: Array<{
             id: number;
             jobNumber: string;
@@ -309,6 +311,9 @@ export function IssueStockPage() {
             };
           });
           cpoContextCache.set(targetId, mapped);
+          const cpoObj = data.cpo;
+          const specs = cpoObj == null ? null : cpoObj.coatingSpecs;
+          setCpoCoatingSpecs(specs == null ? null : specs);
           setCpoChildJcs(mapped);
           setSelectedCpoJcIds(mapped.map((jc) => jc.id));
           const allLineIds = mapped.flatMap((jc) => jc.lineItems.map((li) => li.id));
@@ -654,6 +659,7 @@ export function IssueStockPage() {
     setCpoIssuedTotals([]);
     setCpoPerJcIssued({});
     setCoatStatusMap({});
+    setCpoCoatingSpecs(null);
     setSubmitError(null);
     setSubmitSuccess(false);
   };
@@ -1460,85 +1466,122 @@ export function IssueStockPage() {
               </div>
             ) : null}
 
-            {targetKind === "cpo" && cpoChildJcs.some((jc) => jc.hasInternalLining) ? (
-              <div className="rounded border border-purple-200 bg-purple-50 p-3 space-y-2">
-                <h3 className="text-sm font-semibold text-purple-900">CPO Rubber Allocation</h3>
-                <p className="text-xs text-purple-700">
-                  Job cards requiring internal rubber lining. Search for rubber rolls below.
-                </p>
-                <div className="space-y-1">
-                  {cpoChildJcs
-                    .filter((jc) => {
-                      const rubberFlag = jc.hasInternalLining;
-                      return (
-                        rubberFlag === true ||
-                        jc.lineItems.some((li) => {
-                          const desc = li.itemDescription == null ? "" : li.itemDescription;
-                          const upper = desc.toUpperCase();
-                          return (
-                            upper.includes("R/L") ||
-                            upper.includes("R/FLG") ||
-                            upper.includes("RUBBER") ||
-                            upper.includes("+ R")
-                          );
-                        })
-                      );
-                    })
-                    .map((jc) => {
-                      const jcLabel = jc.jcNumber == null ? jc.jobNumber : jc.jcNumber;
-                      const isSelected = selectedCpoJcIds.includes(jc.id);
-                      if (!isSelected) return null;
-                      if (jc.lineItems.length === 0) return null;
-                      const jcHasRubber = jc.hasInternalLining === true;
-                      const rubberItems = jcHasRubber
-                        ? jc.lineItems
-                        : jc.lineItems.filter((li) => {
-                            const desc = li.itemDescription == null ? "" : li.itemDescription;
-                            const upper = desc.toUpperCase();
-                            return (
-                              upper.includes("R/L") ||
-                              upper.includes("R/FLG") ||
-                              upper.includes("RUBBER") ||
-                              upper.includes("+ R")
-                            );
-                          });
-                      const totalQty = rubberItems.reduce((sum, li) => {
-                        const qty = li.quantity == null ? 1 : li.quantity;
-                        return sum + qty;
-                      }, 0);
-                      const alreadyInCart = cart.some(
-                        (c) => c.product.productType === "rubber_roll",
-                      );
-                      return (
-                        <div
-                          key={jc.id}
-                          className="flex items-center gap-2 rounded bg-white px-3 py-2 border border-purple-100 text-xs"
-                        >
-                          <div className="flex-1 min-w-0">
-                            <div className="font-medium text-purple-900">
-                              {jcLabel} — {rubberItems.length} item
-                              {rubberItems.length !== 1 ? "s" : ""} ({totalQty} pcs)
-                            </div>
-                            <div className="text-purple-700">{jc.intM2.toFixed(1)} m² internal</div>
+            {targetKind === "cpo" && cpoChildJcs.some((jc) => jc.hasInternalLining)
+              ? (() => {
+                  const rubberLines: string[] = [];
+                  if (cpoCoatingSpecs != null) {
+                    const lines = cpoCoatingSpecs.split("\n");
+                    for (const line of lines) {
+                      const trimmed = line.trim();
+                      const upper = trimmed.toUpperCase();
+                      if (
+                        upper.includes("R/L") ||
+                        upper.includes("RUBBER") ||
+                        upper.includes("FOLD") ||
+                        upper.includes("LOOSE RUBBER")
+                      ) {
+                        rubberLines.push(trimmed);
+                      }
+                    }
+                  }
+                  const allSpecs = rubberLines.join(" | ");
+                  const uniqueSpecs = [...new Set(rubberLines)];
+                  return (
+                    <div className="rounded border border-purple-200 bg-purple-50 p-3 space-y-2">
+                      <h3 className="text-sm font-semibold text-purple-900">
+                        CPO Rubber Allocation
+                      </h3>
+                      {uniqueSpecs.length > 0 ? (
+                        <div className="rounded bg-purple-100 px-3 py-2 text-xs text-purple-900 space-y-0.5">
+                          <div className="font-semibold text-[10px] uppercase tracking-wide text-purple-700">
+                            Rubber Specification
                           </div>
-                          <button
-                            type="button"
-                            onClick={() => setSearch("rubber")}
-                            disabled={alreadyInCart}
-                            className={`shrink-0 text-xs font-medium px-3 py-1.5 rounded ${
-                              alreadyInCart
-                                ? "bg-green-100 text-green-700"
-                                : "bg-purple-600 text-white hover:bg-purple-700"
-                            }`}
-                          >
-                            {alreadyInCart ? "In cart" : "Find rubber"}
-                          </button>
+                          {uniqueSpecs.map((spec) => (
+                            <div key={spec}>{spec}</div>
+                          ))}
                         </div>
-                      );
-                    })}
-                </div>
-              </div>
-            ) : null}
+                      ) : (
+                        <p className="text-xs text-purple-700">
+                          Job cards requiring internal rubber lining. Search for rubber rolls below.
+                        </p>
+                      )}
+                      <div className="space-y-1">
+                        {cpoChildJcs
+                          .filter((jc) => {
+                            const rubberFlag = jc.hasInternalLining;
+                            return (
+                              rubberFlag === true ||
+                              jc.lineItems.some((li) => {
+                                const desc = li.itemDescription == null ? "" : li.itemDescription;
+                                const upper = desc.toUpperCase();
+                                return (
+                                  upper.includes("R/L") ||
+                                  upper.includes("R/FLG") ||
+                                  upper.includes("RUBBER") ||
+                                  upper.includes("+ R")
+                                );
+                              })
+                            );
+                          })
+                          .map((jc) => {
+                            const jcLabel = jc.jcNumber == null ? jc.jobNumber : jc.jcNumber;
+                            const isSelected = selectedCpoJcIds.includes(jc.id);
+                            if (!isSelected) return null;
+                            if (jc.lineItems.length === 0) return null;
+                            const jcHasRubber = jc.hasInternalLining === true;
+                            const rubberItems = jcHasRubber
+                              ? jc.lineItems
+                              : jc.lineItems.filter((li) => {
+                                  const desc = li.itemDescription == null ? "" : li.itemDescription;
+                                  const upper = desc.toUpperCase();
+                                  return (
+                                    upper.includes("R/L") ||
+                                    upper.includes("R/FLG") ||
+                                    upper.includes("RUBBER") ||
+                                    upper.includes("+ R")
+                                  );
+                                });
+                            const totalQty = rubberItems.reduce((sum, li) => {
+                              const qty = li.quantity == null ? 1 : li.quantity;
+                              return sum + qty;
+                            }, 0);
+                            const alreadyInCart = cart.some(
+                              (c) => c.product.productType === "rubber_roll",
+                            );
+                            return (
+                              <div
+                                key={jc.id}
+                                className="flex items-center gap-2 rounded bg-white px-3 py-2 border border-purple-100 text-xs"
+                              >
+                                <div className="flex-1 min-w-0">
+                                  <div className="font-medium text-purple-900">
+                                    {jcLabel} — {rubberItems.length} item
+                                    {rubberItems.length !== 1 ? "s" : ""} ({totalQty} pcs)
+                                  </div>
+                                  <div className="text-purple-700">
+                                    {jc.intM2.toFixed(1)} m² internal
+                                  </div>
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => setSearch("rubber")}
+                                  disabled={alreadyInCart}
+                                  className={`shrink-0 text-xs font-medium px-3 py-1.5 rounded ${
+                                    alreadyInCart
+                                      ? "bg-green-100 text-green-700"
+                                      : "bg-purple-600 text-white hover:bg-purple-700"
+                                  }`}
+                                >
+                                  {alreadyInCart ? "In cart" : "Find rubber"}
+                                </button>
+                              </div>
+                            );
+                          })}
+                      </div>
+                    </div>
+                  );
+                })()
+              : null}
 
             <div className="flex gap-2">
               <input
