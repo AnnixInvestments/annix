@@ -542,11 +542,33 @@ export function IssueStockPage() {
     }
   };
 
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [submitSuccess, setSubmitSuccess] = useState(false);
+
+  const resetForm = () => {
+    setCurrentStep("issuer");
+    setRecipientStaffId("");
+    setTarget(null);
+    setSearch("");
+    setCart([]);
+    setCpoChildJcs([]);
+    setSelectedCpoJcIds([]);
+    setSelectedLineItemIds([]);
+    setLineItemIssueQty({});
+    setExpandedJcIds([]);
+    setSingleJcData(null);
+    setSingleJcExpanded(false);
+    setSingleJcSelectedItems([]);
+    setAllocPaintQty({});
+    setPendingAllocQty(null);
+    setPhotoResult(null);
+    setLinkedPartsMap({});
+    setSubmitError(null);
+    setSubmitSuccess(false);
+  };
+
   const handleSubmit = async () => {
-    if (cart.length === 0) {
-      alert("Cart is empty");
-      return;
-    }
+    if (cart.length === 0) return;
     const rowJobCardId =
       target != null && target.kind === "job_card"
         ? target.id
@@ -617,12 +639,12 @@ export function IssueStockPage() {
         jobCardIds: sessionJobCardIds,
         rows,
       });
-      alert("Session created successfully");
-      setCart([]);
-      setCurrentStep("issuer");
+      setSubmitSuccess(true);
+      setTimeout(resetForm, 3000);
     } catch (err) {
       console.error("Submit failed", err);
-      alert(err instanceof Error ? err.message : "Submit failed");
+      const msg = err instanceof Error ? err.message : "Submit failed";
+      setSubmitError(msg);
     }
   };
 
@@ -1685,23 +1707,42 @@ export function IssueStockPage() {
                 </div>
               ))}
             </div>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => setCurrentStep("items")}
-                className="px-4 py-2 border border-gray-300 rounded text-sm"
-              >
-                ← Back
-              </button>
-              <button
-                type="button"
-                onClick={handleSubmit}
-                disabled={createMutation.isPending}
-                className="px-4 py-2 bg-teal-600 text-white rounded text-sm font-medium disabled:opacity-50"
-              >
-                {createMutation.isPending ? "Creating…" : "Create Issuance"}
-              </button>
-            </div>
+            {submitSuccess ? (
+              <div className="rounded-lg border border-green-200 bg-green-50 p-4 text-sm text-green-800">
+                Issuance created successfully. Returning to start...
+              </div>
+            ) : null}
+            {submitError != null ? (
+              <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+                Error: {submitError}
+                <button
+                  type="button"
+                  onClick={() => setSubmitError(null)}
+                  className="ml-2 text-red-600 hover:underline font-medium"
+                >
+                  Dismiss
+                </button>
+              </div>
+            ) : null}
+            {!submitSuccess ? (
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setCurrentStep("items")}
+                  className="px-4 py-2 border border-gray-300 rounded text-sm"
+                >
+                  ← Back
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSubmit}
+                  disabled={createMutation.isPending}
+                  className="px-4 py-2 bg-teal-600 text-white rounded text-sm font-medium disabled:opacity-50"
+                >
+                  {createMutation.isPending ? "Creating..." : "Create Issuance"}
+                </button>
+              </div>
+            ) : null}
           </div>
         )}
       </div>
