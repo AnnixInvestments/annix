@@ -114,7 +114,10 @@ export default function InventoryPage() {
       <InventoryImportOverlay
         isDragging={state.isDragging}
         importStep={state.importStep}
-        importFileName={state.importFile?.name || null}
+        importFileName={(() => {
+          const f = state.importFile;
+          return f == null ? null : f.name;
+        })()}
         importFormat={state.importFormat}
         importHeaders={state.importHeaders}
         importRawRows={state.importRawRows}
@@ -337,6 +340,9 @@ export default function InventoryPage() {
                           SKU
                         </th>
                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider print:px-2 print:py-1">
+                          Roll #
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider print:px-2 print:py-1">
                           Name
                         </th>
                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider print:px-2 print:py-1">
@@ -375,6 +381,9 @@ export default function InventoryPage() {
                           >
                             <td className="px-4 py-2 whitespace-nowrap text-sm font-mono text-gray-900 print:px-2 print:py-1">
                               {item.sku}
+                            </td>
+                            <td className="px-4 py-2 whitespace-nowrap text-sm font-mono text-gray-500 print:px-2 print:py-1">
+                              {item.rollNumber == null ? "" : item.rollNumber}
                             </td>
                             <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900 print:px-2 print:py-1">
                               {item.name}

@@ -145,6 +145,12 @@ export function InventoryListView(props: InventoryListViewProps) {
                 </th>
                 <th
                   scope="col"
+                  className="hidden lg:table-cell px-3 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
+                  Roll #
+                </th>
+                <th
+                  scope="col"
                   className="px-3 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
                 >
                   Name
@@ -424,6 +430,9 @@ function ListTableRow({
       </td>
       <td className="hidden sm:table-cell px-3 lg:px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-900">
         {item.sku}
+      </td>
+      <td className="hidden lg:table-cell px-3 lg:px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-500">
+        {item.rollNumber == null ? "" : item.rollNumber}
       </td>
       <td className="px-3 lg:px-6 py-4">
         <div className="flex items-center space-x-2">
