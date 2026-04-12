@@ -16,7 +16,13 @@ export interface ExtractedDeliveryData {
   deliveryNumber?: string;
   supplierName?: string;
   receivedDate?: string;
-  lineItems?: { description: string; quantity: number; sku?: string }[];
+  lineItems?: {
+    description: string;
+    quantity: number;
+    sku?: string;
+    rollNumber?: string;
+    weightKg?: number;
+  }[];
   rawText?: string;
 }
 

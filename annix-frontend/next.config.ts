@@ -24,7 +24,6 @@ const nextConfig: NextConfig = {
     optimizePackageImports: [
       "es-toolkit",
       "luxon",
-      "@tanstack/react-query",
       "immer",
       "zod",
       "zustand",

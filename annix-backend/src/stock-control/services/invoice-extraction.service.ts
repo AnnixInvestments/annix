@@ -100,7 +100,9 @@ Return JSON only:
       "productCode": "PROD-456",
       "isPaint": true,
       "volumeLitresPerPack": 20,
-      "componentRole": "base"
+      "componentRole": "base",
+      "rollNumber": null,
+      "weightKg": null
     }
   ]
 }
@@ -109,8 +111,17 @@ IMPORTANT extraction rules:
 - "itemCode" is the supplier's item/stock/material code (often in the first column or a "Code" / "Item No" / "Stock Code" column)
 - "productCode" is the product code, compound code, or product reference number
 - "sku" is any short reference or part number shown for the line item
-- For rubber rolls, extract the compound/product code separately from the roll number. The roll number usually appears as "Roll #41553" or "186-41553" in the description — do NOT use the roll number as the itemCode or productCode.
 - Always capture all codes/references shown on each line item — do not leave itemCode or productCode blank if any code is visible on the document.
+
+RUBBER ROLL EXTRACTION (CRITICAL):
+- When a delivery note has ONE stock code / product description followed by multiple "Roll #XXXXX" lines each with a weight (e.g. "108 kg"), each roll is a SEPARATE line item.
+- Every roll line MUST have the FULL parent product description (e.g. "Steam Cure 50° B NR 1250x6mm Blk 12.5Mtr"), NOT just "Roll # 42170".
+- Set "rollNumber" to the numeric roll ID (e.g. "42170").
+- Set "weightKg" to the weight in kilograms if shown (e.g. 108).
+- Set "quantity" to 1 for each individual roll.
+- The itemCode/productCode/sku should be the stock code from the header row (e.g. "0102508NR1250608K12.5"), the SAME for every roll line.
+- Do NOT use the roll number as the itemCode, productCode, or sku.
+- Example: A delivery note with stock code "0102508NR1250608K12.5", description "Steam Cure 50° B NR 1250x6mm Blk 12.5Mtr", and rolls 42170 (108kg), 42167 (107kg) should produce TWO line items, each with the full description, rollNumber "42170"/"42167", weightKg 108/107, and quantity 1.
 
 PAINT PRODUCT DETECTION:
 - Set isPaint to true for any paint, coating, primer, topcoat, hardener, activator, or thinner product.

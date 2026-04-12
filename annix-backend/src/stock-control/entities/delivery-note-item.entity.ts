@@ -25,6 +25,12 @@ export class DeliveryNoteItem {
   @Column({ name: "quantity_received", type: "numeric", precision: 12, scale: 2 })
   quantityReceived: number;
 
+  @Column({ name: "roll_number", type: "varchar", length: 50, nullable: true })
+  rollNumber: string | null;
+
+  @Column({ name: "weight_kg", type: "numeric", precision: 10, scale: 2, nullable: true })
+  weightKg: number | null;
+
   @Column({ name: "photo_url", type: "text", nullable: true })
   photoUrl: string | null;
 

@@ -1,0 +1,117 @@
+diff --git a/build/legacy/mutation.cjs b/build/legacy/mutation.cjs
+index 145965ca8bbdca1a621f525b9e080c768d15c846..fa090af0d9270a600d92108b428390fe0730ecf7 100644
+--- a/build/legacy/mutation.cjs
++++ b/build/legacy/mutation.cjs
+@@ -117,7 +117,7 @@ var Mutation = class extends import_removable.Removable {
+         __privateMethod(this, _Mutation_instances, dispatch_fn).call(this, { type: "pause" });
+       },
+       onContinue,
+-      retry: this.options.retry ?? 0,
++      retry: this.options.retry != null ? this.options.retry : 0,
+       retryDelay: this.options.retryDelay,
+       networkMode: this.options.networkMode,
+       canRun: () => __privateGet(this, _mutationCache).canRun(this)
+diff --git a/build/legacy/mutation.js b/build/legacy/mutation.js
+index c686ebd93dfc0383aa7d6a89aa22adf9714322d7..858929be8fa9783415b15c4ebbb15b57749008e7 100644
+--- a/build/legacy/mutation.js
++++ b/build/legacy/mutation.js
+@@ -91,7 +91,7 @@ var Mutation = class extends Removable {
+         __privateMethod(this, _Mutation_instances, dispatch_fn).call(this, { type: "pause" });
+       },
+       onContinue,
+-      retry: this.options.retry ?? 0,
++      retry: this.options.retry != null ? this.options.retry : 0,
+       retryDelay: this.options.retryDelay,
+       networkMode: this.options.networkMode,
+       canRun: () => __privateGet(this, _mutationCache).canRun(this)
+diff --git a/build/legacy/queryObserver.cjs b/build/legacy/queryObserver.cjs
+index ac652b751712d333b54027818c24d56c59b4f289..d8c488b58a9bf6cc4aecc71f3375e6ee50711edc 100644
+--- a/build/legacy/queryObserver.cjs
++++ b/build/legacy/queryObserver.cjs
+@@ -427,7 +427,7 @@ updateStaleTimeout_fn = function() {
+   }, timeout));
+ };
+ computeRefetchInterval_fn = function() {
+-  return (typeof this.options.refetchInterval === "function" ? this.options.refetchInterval(__privateGet(this, _currentQuery)) : this.options.refetchInterval) ?? false;
++  return (typeof this.options.refetchInterval === "function" ? this.options.refetchInterval(__privateGet(this, _currentQuery)) : this.options.refetchInterval) != null ? (typeof this.options.refetchInterval === "function" ? this.options.refetchInterval(__privateGet(this, _currentQuery)) : this.options.refetchInterval) : false;
+ };
+ updateRefetchInterval_fn = function(nextInterval) {
+   __privateMethod(this, _QueryObserver_instances, clearRefetchInterval_fn).call(this);
+diff --git a/build/legacy/queryObserver.js b/build/legacy/queryObserver.js
+index b6a9574396d2ad734702b65866307141bb8d815f..dbb2811b17b10ce8e05f194bc145b982f124750a 100644
+--- a/build/legacy/queryObserver.js
++++ b/build/legacy/queryObserver.js
+@@ -411,7 +411,7 @@ updateStaleTimeout_fn = function() {
+   }, timeout));
+ };
+ computeRefetchInterval_fn = function() {
+-  return (typeof this.options.refetchInterval === "function" ? this.options.refetchInterval(__privateGet(this, _currentQuery)) : this.options.refetchInterval) ?? false;
++  return (typeof this.options.refetchInterval === "function" ? this.options.refetchInterval(__privateGet(this, _currentQuery)) : this.options.refetchInterval) != null ? (typeof this.options.refetchInterval === "function" ? this.options.refetchInterval(__privateGet(this, _currentQuery)) : this.options.refetchInterval) : false;
+ };
+ updateRefetchInterval_fn = function(nextInterval) {
+   __privateMethod(this, _QueryObserver_instances, clearRefetchInterval_fn).call(this);
+diff --git a/build/modern/mutation.cjs b/build/modern/mutation.cjs
+index 36b96e6bcf6303f923ce4dfd904b3b3c9d2f9134..15dc373a1da0cd2e059fc17c91ec96012cdbf4b6 100644
+--- a/build/modern/mutation.cjs
++++ b/build/modern/mutation.cjs
+@@ -105,7 +105,7 @@ var Mutation = class extends import_removable.Removable {
+         this.#dispatch({ type: "pause" });
+       },
+       onContinue,
+-      retry: this.options.retry ?? 0,
++      retry: this.options.retry != null ? this.options.retry : 0,
+       retryDelay: this.options.retryDelay,
+       networkMode: this.options.networkMode,
+       canRun: () => this.#mutationCache.canRun(this)
+diff --git a/build/modern/mutation.js b/build/modern/mutation.js
+index c710461e0ce6b940672e927d66982d57cdbd0b3c..916ab56c7e830020d97cc3b9956c785e11d8d12c 100644
+--- a/build/modern/mutation.js
++++ b/build/modern/mutation.js
+@@ -80,7 +80,7 @@ var Mutation = class extends Removable {
+         this.#dispatch({ type: "pause" });
+       },
+       onContinue,
+-      retry: this.options.retry ?? 0,
++      retry: this.options.retry != null ? this.options.retry : 0,
+       retryDelay: this.options.retryDelay,
+       networkMode: this.options.networkMode,
+       canRun: () => this.#mutationCache.canRun(this)
+diff --git a/build/modern/queryObserver.cjs b/build/modern/queryObserver.cjs
+index 17db8270b9228011d5b3ce591f5ed3ad905ba2a0..c9c40143ca2ae212d52a5af6a03fd172cd93a017 100644
+--- a/build/modern/queryObserver.cjs
++++ b/build/modern/queryObserver.cjs
+@@ -218,7 +218,7 @@ var QueryObserver = class extends import_subscribable.Subscribable {
+     }, timeout);
+   }
+   #computeRefetchInterval() {
+-    return (typeof this.options.refetchInterval === "function" ? this.options.refetchInterval(this.#currentQuery) : this.options.refetchInterval) ?? false;
++    return (typeof this.options.refetchInterval === "function" ? this.options.refetchInterval(this.#currentQuery) : this.options.refetchInterval) != null ? (typeof this.options.refetchInterval === "function" ? this.options.refetchInterval(this.#currentQuery || __privateGet(this, _currentQuery)) : this.options.refetchInterval) : false;
+   }
+   #updateRefetchInterval(nextInterval) {
+     this.#clearRefetchInterval();
+diff --git a/build/modern/queryObserver.js b/build/modern/queryObserver.js
+index 279baf4369b8197972b6ae3fcd021a2b53d15dc1..0d37186898c188df2e999497abd7bd7f92330e42 100644
+--- a/build/modern/queryObserver.js
++++ b/build/modern/queryObserver.js
+@@ -203,7 +203,7 @@ var QueryObserver = class extends Subscribable {
+     }, timeout);
+   }
+   #computeRefetchInterval() {
+-    return (typeof this.options.refetchInterval === "function" ? this.options.refetchInterval(this.#currentQuery) : this.options.refetchInterval) ?? false;
++    return (typeof this.options.refetchInterval === "function" ? this.options.refetchInterval(this.#currentQuery) : this.options.refetchInterval) != null ? (typeof this.options.refetchInterval === "function" ? this.options.refetchInterval(this.#currentQuery || __privateGet(this, _currentQuery)) : this.options.refetchInterval) : false;
+   }
+   #updateRefetchInterval(nextInterval) {
+     this.#clearRefetchInterval();
+diff --git a/src/mutation.ts b/src/mutation.ts
+index 2483b5633662e892f8ff32fe121b07fd2207d697..c7125382c5073122f0e553d0bc55214b1bbc2fcd 100644
+--- a/src/mutation.ts
++++ b/src/mutation.ts
+@@ -196,7 +196,7 @@ export class Mutation<
+         this.#dispatch({ type: 'pause' })
+       },
+       onContinue,
+-      retry: this.options.retry ?? 0,
++      retry: this.options.retry != null ? this.options.retry : 0,
+       retryDelay: this.options.retryDelay,
+       networkMode: this.options.networkMode,
+       canRun: () => this.#mutationCache.canRun(this),

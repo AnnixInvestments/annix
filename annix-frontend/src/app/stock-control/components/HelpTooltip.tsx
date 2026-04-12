@@ -16,7 +16,7 @@ export function HelpTooltip(props: HelpTooltipProps) {
   const { isOpen, open, close, toggle } = useDisclosure();
   const [position, setPosition] = useState<"above" | "below">("below");
   const triggerRef = useRef<HTMLButtonElement>(null);
-  const tooltipRef = useRef<HTMLDivElement>(null);
+  const tooltipRef = useRef<HTMLSpanElement>(null);
 
   const glossaryTerm = termsByAbbreviation.get(term.toUpperCase());
 
@@ -95,16 +95,18 @@ export function HelpTooltip(props: HelpTooltipProps) {
         ?
       </button>
       {isOpen && (
-        <div
+        <span
           ref={tooltipRef}
           role="tooltip"
           className={`absolute z-[9999] ${positionClasses} left-1/2 -translate-x-1/2 w-72 max-w-[calc(100vw-2rem)]`}
         >
-          <div className="bg-gray-900 text-white rounded-lg shadow-xl p-3 text-sm">
-            <div className="font-semibold text-teal-300 mb-1">
+          <span className="block bg-gray-900 text-white rounded-lg shadow-xl p-3 text-sm">
+            <span className="block font-semibold text-teal-300 mb-1">
               {glossaryTerm.abbreviation} — {glossaryTerm.term}
-            </div>
-            <p className="text-gray-200 text-xs leading-relaxed">{glossaryTerm.definition}</p>
+            </span>
+            <span className="block text-gray-200 text-xs leading-relaxed">
+              {glossaryTerm.definition}
+            </span>
             <a
               href="/stock-control/portal/glossary"
               className="inline-block mt-2 text-xs text-teal-400 hover:text-teal-300 underline"
@@ -112,8 +114,8 @@ export function HelpTooltip(props: HelpTooltipProps) {
             >
               View full glossary
             </a>
-          </div>
-        </div>
+          </span>
+        </span>
       )}
     </span>
   );

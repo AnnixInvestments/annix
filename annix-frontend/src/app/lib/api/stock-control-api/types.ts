@@ -1397,6 +1397,8 @@ export interface DeliveryNote {
 export interface DeliveryNoteItem {
   id: number;
   quantityReceived: number;
+  rollNumber: string | null;
+  weightKg: number | null;
   photoUrl: string | null;
   stockItem?: StockItem;
 }

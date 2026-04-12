@@ -28,6 +28,8 @@ interface ExtractedLineItem {
   volumeLitersPerPack?: number;
   totalLiters?: number;
   costPerLiter?: number;
+  rollNumber?: string;
+  weightKg?: number;
 }
 
 type MediaType = "image/jpeg" | "image/png" | "image/gif" | "image/webp" | "application/pdf";
@@ -318,17 +320,22 @@ export class DeliveryExtractionService {
         unitOfMeasure,
       );
 
+      const itemRollNumber = item.rollNumber || rollNumber;
+      const itemWeightKg = item.weightKg || null;
+
       const noteItem = this.deliveryNoteItemRepo.create({
         deliveryNote,
         stockItem,
         quantityReceived: quantity,
+        rollNumber: itemRollNumber || null,
+        weightKg: itemWeightKg,
         photoUrl: null,
         companyId,
       });
       await this.deliveryNoteItemRepo.save(noteItem);
 
-      const movementNotes = rollNumber
-        ? `Received via delivery ${deliveryNote.deliveryNumber} (Roll #${rollNumber})`
+      const movementNotes = itemRollNumber
+        ? `Received via delivery ${deliveryNote.deliveryNumber} (Roll #${itemRollNumber})`
         : `Received via delivery ${deliveryNote.deliveryNumber}`;
       const movement = this.movementRepo.create({
         stockItem,
@@ -854,43 +861,26 @@ export class DeliveryExtractionService {
         return;
       }
 
+      const rollNumber = item.rollNumber || this.extractRollNumber(item, "");
+      if (rollNumber) {
+        const cleanDesc = item.description
+          .replace(/ROLL[\s#-]*\d{4,6}/gi, "")
+          .replace(/\s+/g, " ")
+          .trim();
+        const uniqueKey = `roll:${rollNumber}`;
+        groups.set(uniqueKey, {
+          ...item,
+          rollNumber,
+          description: cleanDesc || item.description,
+          quantity: item.quantity ?? 1,
+        });
+        return;
+      }
+
       const normalised = item.description
         .toLowerCase()
         .replace(/[^a-z0-9]/g, "")
         .trim();
-
-      const rollNumber = this.extractRollNumber(item, "");
-      if (rollNumber) {
-        const baseDesc = item.description
-          .replace(/ROLL[\s#-]*\d{4,6}/gi, "")
-          .replace(/\s+/g, " ")
-          .trim()
-          .toLowerCase()
-          .replace(/[^a-z0-9]/g, "");
-        const rollGroupKey = `roll:${baseDesc}`;
-
-        const existing = groups.get(rollGroupKey);
-        if (existing) {
-          const existingQty = existing.quantity ?? 1;
-          const newQty = item.quantity ?? 1;
-          groups.set(rollGroupKey, {
-            ...existing,
-            quantity: existingQty + newQty,
-            lineTotal: (existing.lineTotal ?? 0) + (item.lineTotal ?? 0) || undefined,
-          });
-        } else {
-          const cleanDesc = item.description
-            .replace(/ROLL[\s#-]*\d{4,6}/gi, "")
-            .replace(/\s+/g, " ")
-            .trim();
-          groups.set(rollGroupKey, {
-            ...item,
-            description: cleanDesc || item.description,
-          });
-        }
-        return;
-      }
-
       const uom = (item.unitOfMeasure || "each").toLowerCase();
       const key = `${normalised}:${uom}`;
 

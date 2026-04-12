@@ -3,10 +3,6 @@ packages:
   - annix-frontend
   - packages/*
 
-onlyBuiltDependencies:
-  - '@annix/claude-swarm'
-  - puppeteer
-
 ignoredBuiltDependencies:
   - '@nestjs/core'
   - '@openapitools/openapi-generator-cli'
@@ -16,3 +12,9 @@ ignoredBuiltDependencies:
   - sharp
   - tesseract.js
   - unrs-resolver
+
+onlyBuiltDependencies:
+  - '@annix/claude-swarm'
+  - puppeteer
+patchedDependencies:
+  '@tanstack/query-core@5.90.20': patches/@tanstack__query-core@5.90.20.patch
