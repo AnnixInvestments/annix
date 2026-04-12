@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { StockManagementApiClient } from "../api/stockManagementApi";
 import { JobCardOrCpoPicker, type TargetSelection } from "../components/JobCardOrCpoPicker";
 import {
@@ -140,6 +141,8 @@ export function IssueStockPage() {
     matches: Array<{ productId: number; sku: string; name: string; productType: string }>;
   } | null>(null);
   const [linkedPartsMap, setLinkedPartsMap] = useState<Record<number, IssuableProductDto[]>>({});
+  const [showConfirmWarning, setShowConfirmWarning] = useState(false);
+  const [dontShowAgainChecked, setDontShowAgainChecked] = useState(false);
 
   const { data: productsResult, isLoading } = useIssuableProducts({
     search: search || undefined,
@@ -1578,12 +1581,76 @@ export function IssueStockPage() {
 
             <button
               type="button"
-              onClick={() => setCurrentStep("confirm")}
+              onClick={() => {
+                const dismissed = localStorage.getItem("sm_skip_confirm_warning");
+                if (dismissed === "true") {
+                  setCurrentStep("confirm");
+                } else {
+                  setShowConfirmWarning(true);
+                }
+              }}
               disabled={cart.length === 0}
               className="px-4 py-2 bg-teal-600 text-white rounded text-sm font-medium disabled:opacity-50"
             >
               Next → Confirm
             </button>
+
+            {showConfirmWarning
+              ? createPortal(
+                  <div
+                    className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
+                    role="dialog"
+                    aria-modal="true"
+                  >
+                    <div
+                      className="fixed inset-0 bg-black/10 backdrop-blur-md"
+                      onClick={() => setShowConfirmWarning(false)}
+                      aria-hidden="true"
+                    />
+                    <div className="relative bg-white rounded-lg shadow-xl max-w-md w-full p-6 space-y-4">
+                      <h3 className="text-lg font-semibold text-gray-900">
+                        Add all items before proceeding
+                      </h3>
+                      <p className="text-sm text-gray-600">
+                        Make sure you have added all products for this dispatch before confirming.
+                        Once submitted, you cannot add more items to this issuance session.
+                      </p>
+                      <label className="flex items-center gap-2 text-sm text-gray-500">
+                        <input
+                          type="checkbox"
+                          checked={dontShowAgainChecked}
+                          onChange={(e) => setDontShowAgainChecked(e.target.checked)}
+                          className="rounded border-gray-300"
+                        />
+                        Do not show this again
+                      </label>
+                      <div className="flex justify-end gap-2 pt-2 border-t">
+                        <button
+                          type="button"
+                          onClick={() => setShowConfirmWarning(false)}
+                          className="px-4 py-2 text-sm border border-gray-300 rounded hover:bg-gray-50"
+                        >
+                          Go back
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (dontShowAgainChecked) {
+                              localStorage.setItem("sm_skip_confirm_warning", "true");
+                            }
+                            setShowConfirmWarning(false);
+                            setCurrentStep("confirm");
+                          }}
+                          className="px-4 py-2 text-sm bg-teal-600 text-white rounded font-medium hover:bg-teal-700"
+                        >
+                          Proceed to confirm
+                        </button>
+                      </div>
+                    </div>
+                  </div>,
+                  document.body,
+                )
+              : null}
           </div>
         )}
 
