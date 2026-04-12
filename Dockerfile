@@ -4,6 +4,7 @@
 FROM node:22-slim AS deps
 WORKDIR /app
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY patches/ ./patches/
 COPY packages/product-data/package.json ./packages/product-data/
 COPY annix-backend/package.json ./annix-backend/
 COPY annix-frontend/package.json ./annix-frontend/
@@ -78,6 +79,7 @@ ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
 WORKDIR /app
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY patches/ ./patches/
 COPY packages/product-data/package.json ./packages/product-data/
 COPY annix-backend/package.json ./annix-backend/
 COPY annix-frontend/package.json ./annix-frontend/
