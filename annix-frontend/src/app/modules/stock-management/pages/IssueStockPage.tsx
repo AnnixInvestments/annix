@@ -63,6 +63,7 @@ interface CpoChildJc {
   lineItems: CpoLineItem[];
   lineItemCount: number;
   coats: CoatDetail[];
+  hasInternalLining: boolean;
 }
 
 interface CartRow {
@@ -282,7 +283,7 @@ export function IssueStockPage() {
             intM2: number;
             lineItems?: CpoLineItem[];
             lineItemCount?: number;
-            coatingAnalysis?: { coats?: CoatDetail[] } | null;
+            coatingAnalysis?: { coats?: CoatDetail[]; hasInternalLining?: boolean } | null;
           }>;
         }) => {
           if (cancelled) return;
@@ -304,6 +305,7 @@ export function IssueStockPage() {
               lineItems: items,
               lineItemCount: jc.lineItemCount == null ? items.length : jc.lineItemCount,
               coats: rawCoats,
+              hasInternalLining: ca == null ? false : ca.hasInternalLining === true,
             };
           });
           cpoContextCache.set(targetId, mapped);
@@ -354,7 +356,7 @@ export function IssueStockPage() {
         intM2: number;
         lineItems?: CpoLineItem[];
         lineItemCount?: number;
-        coatingAnalysis?: { coats?: CoatDetail[] } | null;
+        coatingAnalysis?: { coats?: CoatDetail[]; hasInternalLining?: boolean } | null;
       }>;
     }): CpoChildJc[] => {
       const rawJcs = data.jobCards;
@@ -375,6 +377,7 @@ export function IssueStockPage() {
           lineItems: items,
           lineItemCount: jc.lineItemCount == null ? items.length : jc.lineItemCount,
           coats: rawCoats,
+          hasInternalLining: ca == null ? false : ca.hasInternalLining === true,
         };
       });
     };
@@ -448,6 +451,7 @@ export function IssueStockPage() {
             lineItems: items,
             lineItemCount: items.length,
             coats: [],
+            hasInternalLining: false,
           };
           jcDetailCache.set(targetId, jc);
           setSingleJcData(jc);
@@ -1089,108 +1093,138 @@ export function IssueStockPage() {
                               const fullQty = li.quantity == null ? 1 : li.quantity;
                               const rawIssueQty = lineItemIssueQty[li.id];
                               const currentIssueQty = rawIssueQty == null ? fullQty : rawIssueQty;
+                              const extCoats = jc.coats.filter((ct) => ct.area === "external");
+                              const hasRubber = jc.hasInternalLining;
                               return (
                                 <div
                                   key={li.id}
-                                  className={`flex items-center gap-2 rounded px-2 py-1 text-xs ${liSelected ? "bg-white" : "opacity-50"}`}
+                                  className={`rounded px-2 py-1.5 text-xs ${liSelected ? "bg-white" : "opacity-50"}`}
                                 >
-                                  <input
-                                    type="checkbox"
-                                    checked={liSelected}
-                                    onChange={() => {
-                                      if (liSelected) {
-                                        setSelectedLineItemIds(
-                                          selectedLineItemIds.filter((id) => id !== li.id),
-                                        );
-                                      } else {
-                                        setSelectedLineItemIds([...selectedLineItemIds, li.id]);
-                                        if (!isSelected) {
-                                          setSelectedCpoJcIds([...selectedCpoJcIds, jc.id]);
+                                  <div className="flex items-center gap-2">
+                                    <input
+                                      type="checkbox"
+                                      checked={liSelected}
+                                      onChange={() => {
+                                        if (liSelected) {
+                                          setSelectedLineItemIds(
+                                            selectedLineItemIds.filter((id) => id !== li.id),
+                                          );
+                                        } else {
+                                          setSelectedLineItemIds([...selectedLineItemIds, li.id]);
+                                          if (!isSelected) {
+                                            setSelectedCpoJcIds([...selectedCpoJcIds, jc.id]);
+                                          }
+                                          if (lineItemIssueQty[li.id] == null) {
+                                            setLineItemIssueQty({
+                                              ...lineItemIssueQty,
+                                              [li.id]: fullQty,
+                                            });
+                                          }
                                         }
-                                        if (lineItemIssueQty[li.id] == null) {
+                                      }}
+                                      className="rounded border-gray-300 text-teal-600 focus:ring-teal-500 shrink-0"
+                                    />
+                                    {itemNo != null ? (
+                                      <span className="font-mono text-gray-500 shrink-0">
+                                        {itemNo}
+                                      </span>
+                                    ) : null}
+                                    <span className="text-gray-800 truncate flex-1">
+                                      {itemLabel}
+                                    </span>
+                                    {jtNo != null ? (
+                                      <span className="text-gray-400 shrink-0">JT {jtNo}</span>
+                                    ) : null}
+                                    {liM2 != null && liM2 > 0 ? (
+                                      <span className="text-teal-700 shrink-0">
+                                        {liM2.toFixed(1)} m²
+                                      </span>
+                                    ) : null}
+                                    <div className="flex items-center gap-1 shrink-0">
+                                      <input
+                                        type="text"
+                                        inputMode="numeric"
+                                        value={
+                                          liSelected && currentIssueQty > 0
+                                            ? String(currentIssueQty)
+                                            : ""
+                                        }
+                                        disabled={!liSelected}
+                                        placeholder="0"
+                                        onChange={(e) => {
+                                          const raw = e.target.value.replace(/\D/g, "");
+                                          const parsed = raw === "" ? 0 : parseInt(raw, 10);
+                                          const val = Math.min(parsed, fullQty);
                                           setLineItemIssueQty({
                                             ...lineItemIssueQty,
-                                            [li.id]: fullQty,
+                                            [li.id]: val,
                                           });
-                                        }
-                                      }
-                                    }}
-                                    className="rounded border-gray-300 text-teal-600 focus:ring-teal-500 shrink-0"
-                                  />
-                                  {itemNo != null ? (
-                                    <span className="font-mono text-gray-500 shrink-0">
-                                      {itemNo}
-                                    </span>
-                                  ) : null}
-                                  <span className="text-gray-800 truncate flex-1">{itemLabel}</span>
-                                  {jtNo != null ? (
-                                    <span className="text-gray-400 shrink-0">JT {jtNo}</span>
-                                  ) : null}
-                                  {liM2 != null && liM2 > 0 ? (
-                                    <span className="text-teal-700 shrink-0">
-                                      {liM2.toFixed(1)} m²
-                                    </span>
-                                  ) : null}
-                                  <div className="flex items-center gap-1 shrink-0">
-                                    <input
-                                      type="text"
-                                      inputMode="numeric"
-                                      value={
-                                        liSelected && currentIssueQty > 0
-                                          ? String(currentIssueQty)
-                                          : ""
-                                      }
-                                      disabled={!liSelected}
-                                      placeholder="0"
-                                      onChange={(e) => {
-                                        const raw = e.target.value.replace(/\D/g, "");
-                                        const parsed = raw === "" ? 0 : parseInt(raw, 10);
-                                        const val = Math.min(parsed, fullQty);
-                                        setLineItemIssueQty({ ...lineItemIssueQty, [li.id]: val });
-                                      }}
-                                      className="w-14 border border-gray-300 rounded px-1.5 py-0.5 text-xs text-center disabled:opacity-40"
-                                    />
-                                    <span className="text-gray-400">/ {fullQty}</span>
+                                        }}
+                                        className="w-14 border border-gray-300 rounded px-1.5 py-0.5 text-xs text-center disabled:opacity-40"
+                                      />
+                                      <span className="text-gray-400">/ {fullQty}</span>
+                                    </div>
+                                    {(() => {
+                                      const liCoats = coatStatusMap[li.id];
+                                      if (!liCoats) return null;
+                                      const hasIntermediate = jc.coats.some(
+                                        (ct) => ct.coatRole === "intermediate",
+                                      );
+                                      const coatTypes: Array<{ key: string; label: string }> = [
+                                        { key: "primer", label: "Primer" },
+                                      ];
+                                      if (hasIntermediate)
+                                        coatTypes.push({
+                                          key: "intermediate",
+                                          label: "Intermediate",
+                                        });
+                                      coatTypes.push({ key: "final", label: "Final" });
+                                      coatTypes.push({ key: "rubber_lining", label: "Rubber" });
+                                      return (
+                                        <div className="flex gap-1.5 shrink-0">
+                                          {coatTypes.map((ct) => {
+                                            const issued = liCoats[ct.key];
+                                            if (issued == null || issued === 0) return null;
+                                            const done = issued >= fullQty;
+                                            return (
+                                              <span
+                                                key={ct.key}
+                                                className={`text-[9px] px-1 py-0.5 rounded ${
+                                                  done
+                                                    ? "bg-green-100 text-green-700"
+                                                    : "bg-amber-100 text-amber-700"
+                                                }`}
+                                              >
+                                                {ct.label}: {issued}/{fullQty}
+                                                {done ? " \u2713" : ""}
+                                              </span>
+                                            );
+                                          })}
+                                        </div>
+                                      );
+                                    })()}
                                   </div>
-                                  {(() => {
-                                    const liCoats = coatStatusMap[li.id];
-                                    if (!liCoats) return null;
-                                    const hasIntermediate = jc.coats.some(
-                                      (ct) => ct.coatRole === "intermediate",
-                                    );
-                                    const coatTypes: Array<{ key: string; label: string }> = [
-                                      { key: "primer", label: "Primer" },
-                                    ];
-                                    if (hasIntermediate)
-                                      coatTypes.push({
-                                        key: "intermediate",
-                                        label: "Intermediate",
-                                      });
-                                    coatTypes.push({ key: "final", label: "Final" });
-                                    coatTypes.push({ key: "rubber_lining", label: "Rubber" });
-                                    return (
-                                      <div className="flex gap-1.5 shrink-0">
-                                        {coatTypes.map((ct) => {
-                                          const issued = liCoats[ct.key];
-                                          if (issued == null || issued === 0) return null;
-                                          const done = issued >= fullQty;
-                                          return (
-                                            <span
-                                              key={ct.key}
-                                              className={`text-[9px] px-1 py-0.5 rounded ${
-                                                done
-                                                  ? "bg-green-100 text-green-700"
-                                                  : "bg-amber-100 text-amber-700"
-                                              }`}
-                                            >
-                                              {ct.label}: {issued}/{fullQty}
-                                              {done ? " \u2713" : ""}
-                                            </span>
-                                          );
-                                        })}
-                                      </div>
-                                    );
-                                  })()}
+                                  {extCoats.length > 0 || hasRubber ? (
+                                    <div className="flex flex-wrap gap-1 mt-0.5 ml-6">
+                                      {extCoats.map((ct) => {
+                                        const roleLabel =
+                                          ct.coatRole == null ? "Coat" : ct.coatRole;
+                                        return (
+                                          <span
+                                            key={ct.product + roleLabel}
+                                            className="text-[9px] px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200"
+                                          >
+                                            EXT {roleLabel}: {ct.product}
+                                          </span>
+                                        );
+                                      })}
+                                      {hasRubber ? (
+                                        <span className="text-[9px] px-1.5 py-0.5 rounded bg-purple-50 text-purple-700 border border-purple-200">
+                                          INT: Rubber Lining
+                                        </span>
+                                      ) : null}
+                                    </div>
+                                  ) : null}
                                 </div>
                               );
                             })}

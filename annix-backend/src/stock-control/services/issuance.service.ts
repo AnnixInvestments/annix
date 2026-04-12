@@ -1203,6 +1203,7 @@ export class IssuanceService {
               id: analysis.id,
               status: analysis.status,
               coats: analysis.coats ?? [],
+              hasInternalLining: analysis.hasInternalLining === true,
             }
           : null,
         lineItems,
