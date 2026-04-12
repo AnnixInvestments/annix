@@ -1505,20 +1505,28 @@ export default function JobCardDetailPage() {
                     {isCompletingFgAction ? "..." : currentStepActionLabel}
                   </button>
                 )}
-              {canApprove &&
-                currentStep &&
-                currentStepActionCompleted &&
-                hasBlueLineTasks &&
-                !currentStepBlueBgPending &&
-                !prevStepBgPending && (
-                  <button
-                    onClick={() => openApprovalModal(currentStep)}
-                    disabled={adminBlockedFromStep(currentStep)}
-                    className="px-3 py-1.5 bg-green-600 text-white rounded-md hover:bg-green-700 font-medium text-xs disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
-                  >
-                    {currentStepPhaseInfo.phase2ActionLabel || "Release"}
-                  </button>
-                )}
+              {(() => {
+                const phase2Label = currentStepPhaseInfo.phase2ActionLabel;
+                const approveLabel = hasBlueLineTasks ? phase2Label || "Release" : "Approve & Sign";
+                if (
+                  canApprove &&
+                  currentStep &&
+                  currentStepActionCompleted &&
+                  !prevStepBgPending &&
+                  (!hasBlueLineTasks || !currentStepBlueBgPending)
+                ) {
+                  return (
+                    <button
+                      onClick={() => openApprovalModal(currentStep)}
+                      disabled={adminBlockedFromStep(currentStep)}
+                      className="px-3 py-1.5 bg-green-600 text-white rounded-md hover:bg-green-700 font-medium text-xs disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+                    >
+                      {approveLabel}
+                    </button>
+                  );
+                }
+                return null;
+              })()}
               {(isQualityUser || isAdminView) &&
                 qcpsNeedApproval &&
                 currentStep &&
