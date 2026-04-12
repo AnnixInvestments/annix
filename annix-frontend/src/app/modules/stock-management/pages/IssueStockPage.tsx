@@ -146,6 +146,8 @@ export function IssueStockPage() {
   const [cpoIssuedTotals, setCpoIssuedTotals] = useState<
     Array<{ productId: number; productName: string; rowType: string; totalIssued: number }>
   >([]);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [submitSuccess, setSubmitSuccess] = useState(false);
 
   const { data: productsResult, isLoading } = useIssuableProducts({
     search: search || undefined,
@@ -558,9 +560,6 @@ export function IssueStockPage() {
       e.target.value = "";
     }
   };
-
-  const [submitError, setSubmitError] = useState<string | null>(null);
-  const [submitSuccess, setSubmitSuccess] = useState(false);
 
   const resetForm = () => {
     setCurrentStep("issuer");
