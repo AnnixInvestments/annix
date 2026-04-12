@@ -342,11 +342,23 @@ export function JobCardOrCpoPicker(props: JobCardOrCpoPickerProps) {
       ) : null}
       {currentValue != null ? (
         <div className="rounded border border-teal-200 bg-teal-50 px-3 py-2 text-xs text-teal-900">
-          <div className="font-semibold">
-            {selectedKind === "cpo" ? "CPO selected" : "Job card selected"}: {currentValue.label}
+          <div className="flex items-start justify-between gap-2">
+            <div>
+              <div className="font-semibold">
+                {selectedKind === "cpo" ? "CPO selected" : "Job card selected"}:{" "}
+                {currentValue.label}
+              </div>
+              {selectedCustomer != null ? <div>Customer: {selectedCustomer}</div> : null}
+              {selectedStatus != null ? <div>Status: {selectedStatus}</div> : null}
+            </div>
+            <button
+              type="button"
+              onClick={() => onChangeProp(null)}
+              className="shrink-0 text-teal-700 hover:text-teal-900 text-xs font-medium hover:underline"
+            >
+              Change
+            </button>
           </div>
-          {selectedCustomer != null ? <div>Customer: {selectedCustomer}</div> : null}
-          {selectedStatus != null ? <div>Status: {selectedStatus}</div> : null}
         </div>
       ) : null}
       {scanError != null ? (
