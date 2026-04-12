@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 
 export interface ProRataJobCard {
   id: number;
@@ -77,6 +77,16 @@ export function PaintProRataSplitEditor(props: PaintProRataSplitEditorProps) {
 
   const remainder = round2(totalLitres - splitSum);
   const isBalanced = Math.abs(remainder) < 0.01;
+
+  const autoApplied = useRef(false);
+  useEffect(() => {
+    if (autoApplied.current) return;
+    if (jobCards.length === 0) return;
+    if (splits.length > 0) return;
+    autoApplied.current = true;
+    const next = computeProRataByM2(totalLitres, jobCards);
+    onChangeProp(next);
+  }, [jobCards, splits, totalLitres, onChangeProp]);
 
   const updateSplit = (jobCardId: number, raw: number) => {
     const safeRaw = Number.isFinite(raw) && raw >= 0 ? raw : 0;
