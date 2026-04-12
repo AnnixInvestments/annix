@@ -1460,6 +1460,68 @@ export function IssueStockPage() {
               </div>
             ) : null}
 
+            {targetKind === "cpo" && cpoChildJcs.some((jc) => jc.hasInternalLining) ? (
+              <div className="rounded border border-purple-200 bg-purple-50 p-3 space-y-2">
+                <h3 className="text-sm font-semibold text-purple-900">CPO Rubber Allocation</h3>
+                <p className="text-xs text-purple-700">
+                  Job cards requiring internal rubber lining. Search for rubber rolls below.
+                </p>
+                <div className="space-y-1">
+                  {cpoChildJcs
+                    .filter((jc) => {
+                      const rubberFlag = jc.hasInternalLining;
+                      return (
+                        rubberFlag === true ||
+                        jc.lineItems.some((li) => {
+                          const desc = li.itemDescription == null ? "" : li.itemDescription;
+                          const upper = desc.toUpperCase();
+                          return (
+                            upper.includes("R/L") ||
+                            upper.includes("R/FLG") ||
+                            upper.includes("RUBBER") ||
+                            upper.includes("+ R")
+                          );
+                        })
+                      );
+                    })
+                    .map((jc) => {
+                      const jcLabel = jc.jcNumber == null ? jc.jobNumber : jc.jcNumber;
+                      const isSelected = selectedCpoJcIds.includes(jc.id);
+                      if (!isSelected) return null;
+                      const rubberItems = jc.lineItems.filter((li) => {
+                        const desc = li.itemDescription == null ? "" : li.itemDescription;
+                        const upper = desc.toUpperCase();
+                        return (
+                          upper.includes("R/L") ||
+                          upper.includes("R/FLG") ||
+                          upper.includes("RUBBER") ||
+                          upper.includes("+ R")
+                        );
+                      });
+                      const totalQty = rubberItems.reduce((sum, li) => {
+                        const qty = li.quantity == null ? 1 : li.quantity;
+                        return sum + qty;
+                      }, 0);
+                      return (
+                        <div
+                          key={jc.id}
+                          className="rounded bg-white px-3 py-2 border border-purple-100 text-xs"
+                        >
+                          <div className="font-medium text-purple-900">
+                            {jcLabel} — {rubberItems.length} item
+                            {rubberItems.length !== 1 ? "s" : ""} ({totalQty} pcs) need rubber
+                            lining
+                          </div>
+                          <div className="text-purple-700">
+                            Total area: {jc.intM2.toFixed(1)} m² internal
+                          </div>
+                        </div>
+                      );
+                    })}
+                </div>
+              </div>
+            ) : null}
+
             <div className="flex gap-2">
               <input
                 type="text"
