@@ -4,6 +4,7 @@ import { DataSource, Repository } from "typeorm";
 import { now } from "../../lib/datetime";
 import { StockItem } from "../../stock-control/entities/stock-item.entity";
 import { IssuableProduct } from "../entities/issuable-product.entity";
+import { PaintProduct } from "../entities/paint-product.entity";
 import { ProductCategory } from "../entities/product-category.entity";
 import { RubberCompound } from "../entities/rubber-compound.entity";
 import { FifoBatchService } from "./fifo-batch.service";
@@ -28,6 +29,8 @@ export class DemoSeedService {
     private readonly productRepo: Repository<IssuableProduct>,
     @InjectRepository(ProductCategory)
     private readonly categoryRepo: Repository<ProductCategory>,
+    @InjectRepository(PaintProduct)
+    private readonly paintRepo: Repository<PaintProduct>,
     @InjectRepository(RubberCompound)
     private readonly compoundRepo: Repository<RubberCompound>,
     private readonly categoryService: ProductCategoryService,
@@ -390,8 +393,31 @@ export class DemoSeedService {
     for (const si of stockItems) {
       const existing = await this.productRepo.findOne({
         where: { companyId, legacyStockItemId: si.id },
+        relations: { paint: true },
       });
       if (existing) {
+        const paintChild = existing.paint;
+        if (
+          paintChild &&
+          (paintChild.packSizeLitres == null || paintChild.componentGroupKey == null)
+        ) {
+          let updated = false;
+          if (paintChild.packSizeLitres == null && si.packSizeLitres) {
+            paintChild.packSizeLitres = Number(si.packSizeLitres);
+            updated = true;
+          }
+          if (paintChild.componentGroupKey == null && si.componentGroup) {
+            paintChild.componentGroupKey = si.componentGroup;
+            updated = true;
+          }
+          if (paintChild.componentRole == null && si.componentRole) {
+            paintChild.componentRole = si.componentRole;
+            updated = true;
+          }
+          if (updated) {
+            await this.paintRepo.save(paintChild);
+          }
+        }
         skipped++;
         continue;
       }
@@ -449,6 +475,9 @@ export class DemoSeedService {
             paintSystem,
             colourCode: si.color || null,
             isBanding: false,
+            packSizeLitres: si.packSizeLitres ? Number(si.packSizeLitres) : null,
+            componentGroupKey: si.componentGroup || null,
+            componentRole: si.componentRole || null,
           };
         } else if (productType === "rubber_roll") {
           createDto.rubberRoll = {

@@ -39,6 +39,9 @@ export interface PaintProductExtraDto {
   minApplicationTempC?: number | null;
   maxApplicationTempC?: number | null;
   substrateCompatibility?: string[] | null;
+  packSizeLitres?: number | null;
+  componentGroupKey?: string | null;
+  componentRole?: string | null;
 }
 
 export interface RubberRollExtraDto {

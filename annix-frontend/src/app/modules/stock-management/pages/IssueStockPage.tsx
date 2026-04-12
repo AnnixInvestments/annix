@@ -111,6 +111,7 @@ export function IssueStockPage() {
   const [photoResult, setPhotoResult] = useState<{
     matches: Array<{ productId: number; sku: string; name: string; productType: string }>;
   } | null>(null);
+  const [linkedPartsMap, setLinkedPartsMap] = useState<Record<number, IssuableProductDto[]>>({});
 
   const { data: productsResult, isLoading } = useIssuableProducts({
     search: search || undefined,
@@ -464,6 +465,18 @@ export function IssueStockPage() {
       },
     ]);
     setPendingAllocQty(null);
+    const groupKey = product.paint?.componentGroupKey;
+    if (product.productType === "paint" && groupKey) {
+      fetch(`/api/stock-management/products/${product.id}/linked-parts`, {
+        headers: authHeadersRef.current(),
+        credentials: "include",
+      })
+        .then((res) => (res.ok ? res.json() : []))
+        .then((parts: IssuableProductDto[]) => {
+          setLinkedPartsMap((prev) => ({ ...prev, [product.id]: parts }));
+        })
+        .catch(() => {});
+    }
   };
 
   const removeFromCart = (productId: number) => {
@@ -1196,6 +1209,13 @@ export function IssueStockPage() {
                 )}
                 {products.map((p) => {
                   const inCart = cart.some((c) => c.product.id === p.id);
+                  const rawUom = p.unitOfMeasure;
+                  const uom = rawUom == null ? "each" : rawUom;
+                  const paintDetail = p.paint;
+                  const packSize = paintDetail == null ? null : paintDetail.packSizeLitres;
+                  const packLabel = packSize != null ? ` (${packSize}L per tin)` : "";
+                  const compRole = paintDetail == null ? null : paintDetail.componentRole;
+                  const roleLabel = compRole != null ? ` · ${compRole}` : "";
                   return (
                     <button
                       key={p.id}
@@ -1208,7 +1228,9 @@ export function IssueStockPage() {
                         <div>
                           <div className="text-sm font-medium">{p.name}</div>
                           <div className="text-xs text-gray-500">
-                            {p.sku} · {p.productType} · Qty: {p.quantity}
+                            {p.sku} · {p.productType}
+                            {roleLabel} · Qty: {p.quantity} {uom}
+                            {packLabel}
                           </div>
                         </div>
                         <span className="text-xs text-teal-700">
@@ -1277,7 +1299,22 @@ export function IssueStockPage() {
                           const paintDetail = row.product.paint;
                           const numParts = paintDetail == null ? null : paintDetail.numberOfParts;
                           const ratioStr = paintDetail == null ? null : paintDetail.mixingRatio;
-                          if (numParts == null || numParts <= 1 || ratioStr == null) return null;
+                          const packSizeA = paintDetail == null ? null : paintDetail.packSizeLitres;
+                          const productId = row.product.id;
+                          const rawLinked = linkedPartsMap[productId];
+                          const linkedParts = rawLinked || [];
+                          if (numParts == null || numParts <= 1 || ratioStr == null) {
+                            if (packSizeA != null) {
+                              const tinsNeeded = Math.ceil(row.quantity / packSizeA);
+                              return (
+                                <div className="rounded border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-700">
+                                  {packSizeA}L per tin × {tinsNeeded} tins ={" "}
+                                  {(tinsNeeded * packSizeA).toFixed(1)}L (single pack)
+                                </div>
+                              );
+                            }
+                            return null;
+                          }
                           const ratioParts = ratioStr.split(":").map(Number);
                           const ratioA =
                             ratioParts[0] == null || Number.isNaN(ratioParts[0])
@@ -1291,29 +1328,73 @@ export function IssueStockPage() {
                             ratioParts[2] == null || Number.isNaN(ratioParts[2])
                               ? 0
                               : ratioParts[2];
-                          const totalRatio = ratioA + ratioB + ratioC;
                           const partALitres = row.quantity;
                           const partBLitres = ratioB > 0 ? partALitres * (ratioB / ratioA) : 0;
                           const partCLitres = ratioC > 0 ? partALitres * (ratioC / ratioA) : 0;
                           const grandTotal = partALitres + partBLitres + partCLitres;
+                          const partBProduct = linkedParts.find((lp) => {
+                            const lpPaint = lp.paint;
+                            const role = lpPaint == null ? null : lpPaint.componentRole;
+                            return role === "hardener" || role === "Hardener" || role === "Part B";
+                          });
+                          const partCProduct =
+                            linkedParts.length > 1
+                              ? linkedParts.find((lp) => {
+                                  const lpPaint = lp.paint;
+                                  const role = lpPaint == null ? null : lpPaint.componentRole;
+                                  return (
+                                    role !== "hardener" && role !== "Hardener" && role !== "Part B"
+                                  );
+                                })
+                              : null;
+                          const partBName =
+                            partBProduct == null ? "Part B (Hardener)" : partBProduct.name;
+                          const partBPaint = partBProduct == null ? null : partBProduct.paint;
+                          const partBPackSize =
+                            partBPaint == null ? null : partBPaint.packSizeLitres;
+                          const partBStock = partBProduct == null ? null : partBProduct.quantity;
+                          const partCName = partCProduct == null ? "Part C" : partCProduct.name;
+                          const partCPaint = partCProduct == null ? null : partCProduct.paint;
+                          const partCPackSize =
+                            partCPaint == null ? null : partCPaint.packSizeLitres;
+                          const partCStock = partCProduct == null ? null : partCProduct.quantity;
                           return (
                             <div className="rounded border border-blue-200 bg-blue-50 px-3 py-2 text-xs space-y-1">
                               <div className="font-semibold text-blue-900">
                                 Mix ratio {ratioStr} ({numParts}-pack)
                               </div>
                               <div className="flex justify-between text-blue-800">
-                                <span>Part A (Base)</span>
+                                <span>
+                                  Part A: {row.product.name}
+                                  {packSizeA != null ? ` (${packSizeA}L/tin)` : ""}
+                                </span>
                                 <span className="font-mono">{partALitres.toFixed(1)} L</span>
                               </div>
                               {partBLitres > 0 ? (
                                 <div className="flex justify-between text-blue-800">
-                                  <span>Part B (Hardener)</span>
+                                  <span>
+                                    Part B: {partBName}
+                                    {partBPackSize != null ? ` (${partBPackSize}L/tin)` : ""}
+                                    {partBStock != null ? (
+                                      <span className="text-gray-500 ml-1">
+                                        [{partBStock} in stock]
+                                      </span>
+                                    ) : null}
+                                  </span>
                                   <span className="font-mono">{partBLitres.toFixed(1)} L</span>
                                 </div>
                               ) : null}
                               {partCLitres > 0 ? (
                                 <div className="flex justify-between text-blue-800">
-                                  <span>Part C</span>
+                                  <span>
+                                    Part C: {partCName}
+                                    {partCPackSize != null ? ` (${partCPackSize}L/tin)` : ""}
+                                    {partCStock != null ? (
+                                      <span className="text-gray-500 ml-1">
+                                        [{partCStock} in stock]
+                                      </span>
+                                    ) : null}
+                                  </span>
                                   <span className="font-mono">{partCLitres.toFixed(1)} L</span>
                                 </div>
                               ) : null}

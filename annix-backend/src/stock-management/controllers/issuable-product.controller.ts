@@ -65,6 +65,13 @@ export class IssuableProductController {
     return this.productService.byId(Number(req.user.companyId), id);
   }
 
+  @Get(":id/linked-parts")
+  @StockManagementFeature("BASIC_ISSUING")
+  @ApiOperation({ summary: "Get linked paint parts (Part B, C) for a product" })
+  async linkedParts(@Req() req: any, @Param("id", ParseIntPipe) id: number) {
+    return this.productService.linkedParts(Number(req.user.companyId), id);
+  }
+
   @Post()
   @StockManagementFeature("BASIC_ISSUING")
   @ApiOperation({ summary: "Create a new issuable product" })

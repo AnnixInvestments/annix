@@ -102,6 +102,22 @@ export class IssuableProductService {
     return product;
   }
 
+  async linkedParts(companyId: number, productId: number): Promise<IssuableProduct[]> {
+    const product = await this.byId(companyId, productId);
+    const groupKey = product.paint?.componentGroupKey;
+    if (!groupKey) {
+      return [];
+    }
+    const allInGroup = await this.productRepo.find({
+      where: { companyId, productType: "paint" as IssuableProductType },
+      relations: { paint: true },
+    });
+    return allInGroup.filter((p) => {
+      const key = p.paint?.componentGroupKey;
+      return key === groupKey && p.id !== productId;
+    });
+  }
+
   async create(companyId: number, dto: CreateIssuableProductDto): Promise<IssuableProduct> {
     const existing = await this.productRepo.findOne({
       where: { companyId, sku: dto.sku },
@@ -279,6 +295,9 @@ export class IssuableProductService {
     if (dto.substrateCompatibility !== undefined) {
       child.substrateCompatibility = dto.substrateCompatibility;
     }
+    if (dto.packSizeLitres !== undefined) child.packSizeLitres = dto.packSizeLitres;
+    if (dto.componentGroupKey !== undefined) child.componentGroupKey = dto.componentGroupKey;
+    if (dto.componentRole !== undefined) child.componentRole = dto.componentRole;
   }
 
   private buildRubberRollChild(productId: number, dto: RubberRollExtraDto): RubberRoll {

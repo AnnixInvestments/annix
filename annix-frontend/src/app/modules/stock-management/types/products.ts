@@ -52,6 +52,9 @@ export interface PaintProductDetailDto {
   densityKgPerL: number | null;
   datasheetUrl: string | null;
   msdsUrl: string | null;
+  packSizeLitres: number | null;
+  componentGroupKey: string | null;
+  componentRole: string | null;
 }
 
 export interface RubberRollDetailDto {

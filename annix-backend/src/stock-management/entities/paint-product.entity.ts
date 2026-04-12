@@ -122,4 +122,20 @@ export class PaintProduct {
 
   @Column({ name: "substrate_compatibility", type: "text", array: true, nullable: true })
   substrateCompatibility: string[] | null;
+
+  @Column({
+    name: "pack_size_litres",
+    type: "numeric",
+    precision: 10,
+    scale: 2,
+    nullable: true,
+    transformer: numericTransformer,
+  })
+  packSizeLitres: number | null;
+
+  @Column({ name: "component_group_key", type: "varchar", length: 100, nullable: true })
+  componentGroupKey: string | null;
+
+  @Column({ name: "component_role", type: "varchar", length: 50, nullable: true })
+  componentRole: string | null;
 }
