@@ -235,8 +235,8 @@ export const ALL_NAV_ITEMS: NavItemDef[] = [
   },
   {
     key: "staff",
-    href: "/stock-control/portal/staff",
-    label: "Staff",
+    href: "/stock-control/portal/staff/members",
+    label: "Staff Members",
     defaultRoles: ["viewer", "quality", "storeman", "accounts", "manager", "admin"],
     group: "Staff",
     icon: (

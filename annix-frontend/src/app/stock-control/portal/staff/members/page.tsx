@@ -1,0 +1,581 @@
+"use client";
+
+import { useMemo, useState } from "react";
+import { PdfPreviewModal, usePdfPreview } from "@/app/components/PdfPreviewModal";
+import type { StaffMember } from "@/app/lib/api/stockControlApi";
+import { formatDateZA } from "@/app/lib/datetime";
+import {
+  useCreateStaffMember,
+  useDeleteStaffMember,
+  useDownloadBatchStaffIdCards,
+  useDownloadStaffIdCardPdf,
+  useInvalidateStaff,
+  useStaffDepartments,
+  useStaffMembers,
+  useUpdateStaffMember,
+  useUploadStaffPhoto,
+} from "@/app/lib/query/hooks";
+import { PhotoCapture } from "@/app/stock-control/components/PhotoCapture";
+
+export default function StaffPage() {
+  const [search, setSearch] = useState("");
+  const [showActiveOnly, setShowActiveOnly] = useState(true);
+  const [showModal, setShowModal] = useState(false);
+  const [editingMember, setEditingMember] = useState<StaffMember | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [capturedFile, setCapturedFile] = useState<File | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [form, setForm] = useState({
+    name: "",
+    employeeNumber: "",
+    departmentId: null as number | null,
+  });
+  const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
+  const pdfPreview = usePdfPreview();
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [showLimitWarning, setShowLimitWarning] = useState(false);
+
+  const staffParams = useMemo(
+    () => ({
+      ...(search ? { search } : {}),
+      ...(showActiveOnly ? { active: "true" } : {}),
+    }),
+    [search, showActiveOnly],
+  );
+
+  const { data: staffMembers = [], isLoading } = useStaffMembers(staffParams);
+  const { data: departments = [] } = useStaffDepartments();
+  const invalidateStaff = useInvalidateStaff();
+  const updateStaffMutation = useUpdateStaffMember();
+  const createStaffMutation = useCreateStaffMember();
+  const uploadPhotoMutation = useUploadStaffPhoto();
+  const deleteStaffMutation = useDeleteStaffMember();
+  const downloadIdCardMutation = useDownloadStaffIdCardPdf();
+  const downloadBatchIdCardsMutation = useDownloadBatchStaffIdCards();
+
+  const openCreateModal = () => {
+    setEditingMember(null);
+    setForm({ name: "", employeeNumber: "", departmentId: null });
+    setCapturedFile(null);
+    setShowModal(true);
+  };
+
+  const openEditModal = (member: StaffMember) => {
+    setEditingMember(member);
+    setForm({
+      name: member.name,
+      employeeNumber: member.employeeNumber ? member.employeeNumber : "",
+      departmentId: member.departmentId,
+    });
+    setCapturedFile(null);
+    setShowModal(true);
+  };
+
+  const handleSave = async () => {
+    if (!form.name.trim()) {
+      setError("Staff member name is required.");
+      return;
+    }
+    try {
+      setIsSaving(true);
+      const payload = {
+        name: form.name.trim(),
+        employeeNumber: form.employeeNumber.trim() || null,
+        departmentId: form.departmentId,
+      };
+
+      if (editingMember) {
+        const updated = await updateStaffMutation.mutateAsync({
+          id: editingMember.id,
+          data: payload,
+        });
+        if (capturedFile) {
+          await uploadPhotoMutation.mutateAsync({ staffId: updated.id, file: capturedFile });
+        }
+      } else {
+        const created = await createStaffMutation.mutateAsync(payload);
+        if (capturedFile) {
+          await uploadPhotoMutation.mutateAsync({ staffId: created.id, file: capturedFile });
+        }
+      }
+
+      setShowModal(false);
+      setCapturedFile(null);
+      invalidateStaff();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to save staff member");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleToggleActive = async (member: StaffMember) => {
+    try {
+      if (member.active) {
+        await deleteStaffMutation.mutateAsync(member.id);
+      } else {
+        await updateStaffMutation.mutateAsync({
+          id: member.id,
+          data: { active: true } as Partial<StaffMember>,
+        });
+      }
+      invalidateStaff();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to update staff member");
+    }
+  };
+
+  const handlePrintIdCard = (staffId: number) => {
+    pdfPreview.openWithFetch(
+      () => downloadIdCardMutation.mutateAsync(staffId),
+      `staff-id-${staffId}.pdf`,
+    );
+  };
+
+  const handlePrintBatchIdCards = () => {
+    if (selectedIds.size === 0) {
+      setError("Please select at least one staff member to print ID cards");
+      return;
+    }
+    if (selectedIds.size > 8) {
+      setShowLimitWarning(true);
+      return;
+    }
+    setIsDownloadingPdf(true);
+    pdfPreview.openWithFetch(
+      () => downloadBatchIdCardsMutation.mutateAsync(Array.from(selectedIds)),
+      "staff-id-cards-batch.pdf",
+    );
+    setIsDownloadingPdf(false);
+  };
+
+  const toggleSelectAll = () => {
+    const activeMembers = staffMembers.filter((m) => m.active);
+    if (selectedIds.size === activeMembers.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(activeMembers.map((m) => m.id)));
+    }
+  };
+
+  const toggleSelectMember = (id: number) => {
+    const newSelected = new Set(selectedIds);
+    if (newSelected.has(id)) {
+      newSelected.delete(id);
+    } else {
+      newSelected.add(id);
+    }
+    setSelectedIds(newSelected);
+  };
+
+  const activeStaffCount = staffMembers.filter((m) => m.active).length;
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <h1 className="text-2xl font-bold text-gray-900">Staff Members</h1>
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+          {selectedIds.size > 0 && (
+            <span
+              className={`text-sm ${selectedIds.size > 8 ? "text-red-600 font-medium" : "text-gray-600"}`}
+            >
+              {selectedIds.size} selected (max 8){selectedIds.size > 8 && " - too many!"}
+            </span>
+          )}
+          <button
+            onClick={handlePrintBatchIdCards}
+            disabled={isDownloadingPdf || selectedIds.size === 0}
+            className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:bg-gray-100 disabled:cursor-not-allowed"
+          >
+            {isDownloadingPdf ? (
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-700 mr-2"></div>
+            ) : (
+              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"
+                />
+              </svg>
+            )}
+            {isDownloadingPdf ? "Generating..." : "Print ID Cards"}
+          </button>
+          <button
+            onClick={openCreateModal}
+            className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-teal-600 hover:bg-teal-700"
+          >
+            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 4v16m8-8H4"
+              />
+            </svg>
+            Add Staff Member
+          </button>
+        </div>
+      </div>
+
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md text-sm">
+          {error}
+          <button
+            onClick={() => setError(null)}
+            className="ml-2 text-red-500 hover:text-red-700 font-medium"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
+
+      <div className="flex items-center space-x-4">
+        <div className="flex-1">
+          <input
+            type="text"
+            placeholder="Search by name, employee number, or department..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm"
+          />
+        </div>
+        <div className="flex items-center space-x-2">
+          <button
+            onClick={() => setShowActiveOnly(true)}
+            className={`px-3 py-2 text-sm font-medium rounded-md ${
+              showActiveOnly
+                ? "bg-teal-100 text-teal-800"
+                : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+            }`}
+          >
+            Active
+          </button>
+          <button
+            onClick={() => setShowActiveOnly(false)}
+            className={`px-3 py-2 text-sm font-medium rounded-md ${
+              !showActiveOnly
+                ? "bg-teal-100 text-teal-800"
+                : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+            }`}
+          >
+            All
+          </button>
+        </div>
+      </div>
+
+      <div className="bg-white shadow rounded-lg overflow-x-auto">
+        {isLoading ? (
+          <div className="flex items-center justify-center py-12">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-teal-600"></div>
+          </div>
+        ) : staffMembers.length === 0 ? (
+          <div className="text-center py-12">
+            <svg
+              className="mx-auto h-12 w-12 text-gray-400"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"
+              />
+            </svg>
+            <h3 className="mt-2 text-sm font-medium text-gray-900">No staff members</h3>
+            <p className="mt-1 text-sm text-gray-500">
+              Add staff members to track stock allocations.
+            </p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th scope="col" className="px-3 py-3 w-10 sm:px-4">
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.size === activeStaffCount && activeStaffCount > 0}
+                      onChange={toggleSelectAll}
+                      className="h-4 w-4 text-teal-600 focus:ring-teal-500 border-gray-300 rounded"
+                    />
+                  </th>
+                  <th
+                    scope="col"
+                    className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sm:px-6"
+                  >
+                    Staff Member
+                  </th>
+                  <th
+                    scope="col"
+                    className="hidden px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sm:table-cell sm:px-6"
+                  >
+                    Employee #
+                  </th>
+                  <th
+                    scope="col"
+                    className="hidden px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider md:table-cell sm:px-6"
+                  >
+                    Department
+                  </th>
+                  <th
+                    scope="col"
+                    className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sm:px-6"
+                  >
+                    Status
+                  </th>
+                  <th
+                    scope="col"
+                    className="hidden px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider lg:table-cell sm:px-6"
+                  >
+                    Added
+                  </th>
+                  <th scope="col" className="relative px-3 py-3 sm:px-6">
+                    <span className="sr-only">Actions</span>
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {staffMembers.map((member) => (
+                  <tr key={member.id} className="hover:bg-gray-50">
+                    <td className="px-3 py-4 whitespace-nowrap sm:px-4">
+                      {member.active && (
+                        <input
+                          type="checkbox"
+                          checked={selectedIds.has(member.id)}
+                          onChange={() => toggleSelectMember(member.id)}
+                          className="h-4 w-4 text-teal-600 focus:ring-teal-500 border-gray-300 rounded"
+                        />
+                      )}
+                    </td>
+                    <td className="px-3 py-4 whitespace-nowrap sm:px-6">
+                      <div className="flex items-center">
+                        <div className="h-10 w-10 flex-shrink-0">
+                          {member.photoUrl ? (
+                            <img
+                              className="h-10 w-10 rounded-full object-cover"
+                              src={member.photoUrl}
+                              alt={member.name}
+                            />
+                          ) : (
+                            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-200">
+                              <span className="text-sm font-medium text-gray-500">
+                                {member.name
+                                  .split(" ")
+                                  .map((n) => n[0])
+                                  .join("")
+                                  .toUpperCase()
+                                  .slice(0, 2)}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                        <div className="ml-4">
+                          <div className="text-sm font-medium text-gray-900">{member.name}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="hidden px-3 py-4 whitespace-nowrap text-sm font-mono text-gray-500 sm:table-cell sm:px-6">
+                      {member.employeeNumber ? member.employeeNumber : "-"}
+                    </td>
+                    <td className="hidden px-3 py-4 whitespace-nowrap text-sm text-gray-500 md:table-cell sm:px-6">
+                      {member.departmentId
+                        ? (() => {
+                            const dept = departments.find((d) => d.id === member.departmentId);
+                            return dept ? dept.name : "-";
+                          })()
+                        : "-"}
+                    </td>
+                    <td className="px-3 py-4 whitespace-nowrap sm:px-6">
+                      <span
+                        className={`inline-flex rounded-full px-2 text-xs font-semibold leading-5 ${
+                          member.active
+                            ? "bg-green-100 text-green-800"
+                            : "bg-gray-100 text-gray-800"
+                        }`}
+                      >
+                        {member.active ? "Active" : "Inactive"}
+                      </span>
+                    </td>
+                    <td className="hidden px-3 py-4 whitespace-nowrap text-sm text-gray-500 lg:table-cell sm:px-6">
+                      {formatDateZA(member.createdAt)}
+                    </td>
+                    <td className="space-x-1 px-3 py-4 whitespace-nowrap text-right text-sm font-medium sm:space-x-2 sm:px-6">
+                      <button
+                        onClick={() => openEditModal(member)}
+                        className="text-teal-600 hover:text-teal-900"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => handleToggleActive(member)}
+                        className={
+                          member.active
+                            ? "text-red-600 hover:text-red-900"
+                            : "text-green-600 hover:text-green-900"
+                        }
+                      >
+                        <span className="hidden sm:inline">
+                          {member.active ? "Deactivate" : "Reactivate"}
+                        </span>
+                        <span className="sm:hidden">{member.active ? "Off" : "On"}</span>
+                      </button>
+                      <button
+                        onClick={() => handlePrintIdCard(member.id)}
+                        className="text-gray-600 hover:text-gray-900"
+                      >
+                        <span className="hidden sm:inline">ID Card</span>
+                        <span className="sm:hidden">ID</span>
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {isDownloadingPdf && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/10 backdrop-blur-md">
+          <div className="bg-white rounded-lg shadow-xl p-6 max-w-sm w-full mx-4">
+            <div className="flex flex-col items-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-600 mb-4"></div>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Generating ID Cards</h3>
+              <p className="text-sm text-gray-500 text-center">
+                Please wait while we prepare your PDF. This may take a moment...
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showLimitWarning && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/10 backdrop-blur-md">
+          <div className="bg-white rounded-lg shadow-xl p-6 max-w-sm w-full mx-4">
+            <div className="flex flex-col items-center">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-yellow-100 mb-4">
+                <svg
+                  className="h-6 w-6 text-yellow-600"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                  />
+                </svg>
+              </div>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Too Many Selected</h3>
+              <p className="text-sm text-gray-500 text-center mb-4">
+                You have selected {selectedIds.size} staff members. Please select a maximum of 8 at
+                a time (1 page).
+              </p>
+              <button
+                onClick={() => setShowLimitWarning(false)}
+                className="px-4 py-2 text-sm font-medium text-white bg-teal-600 border border-transparent rounded-md hover:bg-teal-700"
+              >
+                OK
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showModal && (
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+          <div className="flex items-center justify-center min-h-screen px-4">
+            <div
+              className="fixed inset-0 bg-black/10 backdrop-blur-md transition-opacity"
+              onClick={() => setShowModal(false)}
+            ></div>
+            <div className="relative bg-white rounded-lg shadow-xl max-w-lg w-full p-6">
+              <h3 className="text-lg font-medium text-gray-900 mb-4">
+                {editingMember ? "Edit Staff Member" : "Add Staff Member"}
+              </h3>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Name *</label>
+                  <input
+                    type="text"
+                    value={form.name}
+                    onChange={(e) => setForm({ ...form, name: e.target.value })}
+                    required
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm"
+                    placeholder="Full name"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Employee Number</label>
+                  <input
+                    type="text"
+                    value={form.employeeNumber}
+                    onChange={(e) => setForm({ ...form, employeeNumber: e.target.value })}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm"
+                    placeholder="Optional"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Department</label>
+                  <select
+                    value={form.departmentId ? form.departmentId : ""}
+                    onChange={(e) =>
+                      setForm({
+                        ...form,
+                        departmentId: e.target.value ? parseInt(e.target.value, 10) : null,
+                      })
+                    }
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm"
+                  >
+                    <option value="">No department</option>
+                    {departments.map((dept) => (
+                      <option key={dept.id} value={dept.id}>
+                        {dept.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Photo</label>
+                  <PhotoCapture
+                    onCapture={(file) => setCapturedFile(file)}
+                    currentPhotoUrl={
+                      capturedFile
+                        ? URL.createObjectURL(capturedFile)
+                        : editingMember
+                          ? editingMember.photoUrl
+                            ? editingMember.photoUrl
+                            : undefined
+                          : undefined
+                    }
+                  />
+                </div>
+              </div>
+              <div className="mt-6 flex justify-end space-x-3">
+                <button
+                  onClick={() => setShowModal(false)}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSave}
+                  disabled={isSaving || !form.name.trim()}
+                  className="px-4 py-2 text-sm font-medium text-white bg-teal-600 border border-transparent rounded-md hover:bg-teal-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                >
+                  {isSaving ? "Saving..." : editingMember ? "Update" : "Create"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      <PdfPreviewModal state={pdfPreview.state} onClose={pdfPreview.close} />
+    </div>
+  );
+}
