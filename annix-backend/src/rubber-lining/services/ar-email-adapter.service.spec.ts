@@ -4,9 +4,10 @@ import { InboundEmailAttachment } from "../../inbound-email/entities/inbound-ema
 import { InboundEmailRegistry } from "../../inbound-email/inbound-email-registry.service";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
 import { RubberCompany } from "../entities/rubber-company.entity";
-import { RubberDeliveryNote } from "../entities/rubber-delivery-note.entity";
+import { DeliveryNoteType, RubberDeliveryNote } from "../entities/rubber-delivery-note.entity";
 import { RubberTaxInvoice } from "../entities/rubber-tax-invoice.entity";
 import { ArDocumentType, ArEmailAdapterService } from "./ar-email-adapter.service";
+import { RubberExtractionOrchestratorService } from "./rubber-extraction-orchestrator.service";
 
 describe("ArEmailAdapterService", () => {
   let service: ArEmailAdapterService;
@@ -31,6 +32,14 @@ describe("ArEmailAdapterService", () => {
 
   const registry = { registerAdapter: jest.fn() };
 
+  const orchestratorMock = {
+    triggerCocExtraction: jest.fn(),
+    triggerTaxInvoiceExtraction: jest.fn(),
+    triggerDeliveryNoteExtraction: jest.fn(),
+    triggerReadinessCheckForCoc: jest.fn(),
+    triggerReadinessCheckForDeliveryNote: jest.fn(),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -40,6 +49,7 @@ describe("ArEmailAdapterService", () => {
         { provide: getRepositoryToken(RubberDeliveryNote), useValue: deliveryNoteRepo },
         { provide: getRepositoryToken(RubberTaxInvoice), useValue: taxInvoiceRepo },
         { provide: getRepositoryToken(RubberCompany), useValue: companyRepo },
+        { provide: RubberExtractionOrchestratorService, useValue: orchestratorMock },
       ],
     }).compile();
 
@@ -228,19 +238,25 @@ describe("ArEmailAdapterService", () => {
   });
 
   describe("route - tax invoice", () => {
-    it("creates RubberTaxInvoice and returns linked entity", async () => {
+    it("creates RubberTaxInvoice and triggers extraction", async () => {
       companyRepo.find.mockResolvedValue([
-        { id: 10, emailConfig: { primary: "supplier@example.com" } } as unknown as RubberCompany,
+        {
+          id: 10,
+          name: "Test Supplier",
+          emailConfig: { primary: "supplier@example.com" },
+        } as unknown as RubberCompany,
       ]);
 
+      const fileBuffer = Buffer.from("fake pdf content");
       const attachment = {
         documentType: ArDocumentType.TAX_INVOICE,
         s3Path: "au-rubber/inbound/10/inv.pdf",
+        originalFilename: "invoice.pdf",
       } as InboundEmailAttachment;
 
       const result = await service.route(
         attachment,
-        Buffer.from(""),
+        fileBuffer,
         null,
         "supplier@example.com",
         "Tax Invoice INV-123",
@@ -248,10 +264,17 @@ describe("ArEmailAdapterService", () => {
 
       expect(result.linkedEntityType).toBe("RubberTaxInvoice");
       expect(result.linkedEntityId).toBe(202);
+      expect(result.extractionTriggered).toBe(true);
       expect(taxInvoiceRepo.save).toHaveBeenCalled();
       const savedInvoice = taxInvoiceRepo.save.mock.calls[0][0];
       expect(savedInvoice.companyId).toBe(10);
       expect(savedInvoice.documentPath).toBe("au-rubber/inbound/10/inv.pdf");
+      expect(orchestratorMock.triggerTaxInvoiceExtraction).toHaveBeenCalledWith(
+        202,
+        fileBuffer,
+        "invoice.pdf",
+        "Test Supplier",
+      );
     });
 
     it("extracts invoice number from subject", async () => {
@@ -260,6 +283,7 @@ describe("ArEmailAdapterService", () => {
       const attachment = {
         documentType: ArDocumentType.TAX_INVOICE,
         s3Path: "path",
+        originalFilename: "inv.pdf",
       } as InboundEmailAttachment;
 
       await service.route(
@@ -276,9 +300,10 @@ describe("ArEmailAdapterService", () => {
   });
 
   describe("route - delivery note", () => {
-    it("creates RubberDeliveryNote", async () => {
+    it("creates RubberDeliveryNote and triggers extraction", async () => {
       companyRepo.find.mockResolvedValue([]);
 
+      const fileBuffer = Buffer.from("dn pdf content");
       const attachment = {
         documentType: ArDocumentType.DELIVERY_NOTE,
         s3Path: "au-rubber/inbound/dn.pdf",
@@ -286,7 +311,7 @@ describe("ArEmailAdapterService", () => {
 
       const result = await service.route(
         attachment,
-        Buffer.from(""),
+        fileBuffer,
         null,
         "supplier@example.com",
         "DN attached",
@@ -294,7 +319,13 @@ describe("ArEmailAdapterService", () => {
 
       expect(result.linkedEntityType).toBe("RubberDeliveryNote");
       expect(result.linkedEntityId).toBe(101);
+      expect(result.extractionTriggered).toBe(true);
       expect(deliveryNoteRepo.save).toHaveBeenCalled();
+      expect(orchestratorMock.triggerDeliveryNoteExtraction).toHaveBeenCalledWith(
+        101,
+        fileBuffer,
+        DeliveryNoteType.COMPOUND,
+      );
     });
   });
 
