@@ -1266,7 +1266,23 @@ export function IssueStockPage() {
                                                 <span className="w-14 shrink-0 font-medium">
                                                   rubber
                                                 </span>
-                                                <span className="flex-1">Rubber Lining</span>
+                                                <span className="flex-1">
+                                                  {(() => {
+                                                    if (cpoCoatingSpecs == null)
+                                                      return "Rubber Lining";
+                                                    const specLines = cpoCoatingSpecs.split("\n");
+                                                    const rlLine = specLines.find((ln) => {
+                                                      const u = ln.trim().toUpperCase();
+                                                      return (
+                                                        u.includes("R/L") &&
+                                                        (u.includes("MM") || u.includes("SHORE"))
+                                                      );
+                                                    });
+                                                    return rlLine == null
+                                                      ? "Rubber Lining"
+                                                      : rlLine.trim();
+                                                  })()}
+                                                </span>
                                                 <span
                                                   className={`shrink-0 font-medium ${done ? "text-green-700" : ""}`}
                                                 >
