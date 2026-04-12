@@ -20,17 +20,21 @@ export function createQueryHook<TData, TArgs extends unknown[] = []>(
     enabled?: (...args: TArgs) => boolean;
   } & QueryOptions,
 ): (...args: TArgs) => UseQueryResult<TData, Error> {
-  return (...args: TArgs) =>
-    useQuery<TData>({
+  const enabledFn = options ? options.enabled : undefined;
+  const staleTime = options ? options.staleTime : undefined;
+  const gcTime = options ? options.gcTime : undefined;
+  const refetchInterval = options ? options.refetchInterval : undefined;
+  return (...args: TArgs) => {
+    const queryOptions = {
       queryKey: keyFn(...args),
       queryFn: () => queryFn(...args),
-      ...(options?.enabled ? { enabled: options.enabled(...args) } : {}),
-      ...(options?.staleTime !== undefined ? { staleTime: options.staleTime } : {}),
-      ...(options?.gcTime !== undefined ? { gcTime: options.gcTime } : {}),
-      ...(options?.refetchInterval !== undefined
-        ? { refetchInterval: options.refetchInterval }
-        : {}),
-    });
+      ...(enabledFn ? { enabled: enabledFn(...args) } : {}),
+      ...(staleTime !== undefined ? { staleTime } : {}),
+      ...(gcTime !== undefined ? { gcTime } : {}),
+      ...(refetchInterval !== undefined ? { refetchInterval } : {}),
+    };
+    return useQuery<TData>(queryOptions);
+  };
 }
 
 export function createArrayQueryHook<TItem, TArgs extends unknown[] = []>(
@@ -40,20 +44,24 @@ export function createArrayQueryHook<TItem, TArgs extends unknown[] = []>(
     enabled?: (...args: TArgs) => boolean;
   } & QueryOptions,
 ): (...args: TArgs) => UseQueryResult<TItem[], Error> {
-  return (...args: TArgs) =>
-    useQuery<TItem[]>({
+  const enabledFn = options ? options.enabled : undefined;
+  const staleTime = options ? options.staleTime : undefined;
+  const gcTime = options ? options.gcTime : undefined;
+  const refetchInterval = options ? options.refetchInterval : undefined;
+  return (...args: TArgs) => {
+    const queryOptions = {
       queryKey: keyFn(...args),
       queryFn: async () => {
         const data = await queryFn(...args);
         return Array.isArray(data) ? data : [];
       },
-      ...(options?.enabled ? { enabled: options.enabled(...args) } : {}),
-      ...(options?.staleTime !== undefined ? { staleTime: options.staleTime } : {}),
-      ...(options?.gcTime !== undefined ? { gcTime: options.gcTime } : {}),
-      ...(options?.refetchInterval !== undefined
-        ? { refetchInterval: options.refetchInterval }
-        : {}),
-    });
+      ...(enabledFn ? { enabled: enabledFn(...args) } : {}),
+      ...(staleTime !== undefined ? { staleTime } : {}),
+      ...(gcTime !== undefined ? { gcTime } : {}),
+      ...(refetchInterval !== undefined ? { refetchInterval } : {}),
+    };
+    return useQuery<TItem[]>(queryOptions);
+  };
 }
 
 export function createMutationHook<TData, TVariables>(
@@ -64,21 +72,20 @@ export function createMutationHook<TData, TVariables>(
 ): () => UseMutationResult<TData, Error, TVariables> {
   return () => {
     const queryClient = useQueryClient();
-    return useMutation<TData, Error, TVariables>({
+    const retryOption = false;
+    const onSuccessHandler = invalidateKeys
+      ? (data: TData, variables: TVariables) => {
+          const keys =
+            typeof invalidateKeys === "function" ? invalidateKeys(data, variables) : invalidateKeys;
+          keys.forEach((key) => queryClient.invalidateQueries({ queryKey: key }));
+        }
+      : undefined;
+    const mutationOptions = {
       mutationFn,
-      retry: false,
-      ...(invalidateKeys
-        ? {
-            onSuccess: (data: TData, variables: TVariables) => {
-              const keys =
-                typeof invalidateKeys === "function"
-                  ? invalidateKeys(data, variables)
-                  : invalidateKeys;
-              keys.forEach((key) => queryClient.invalidateQueries({ queryKey: key }));
-            },
-          }
-        : {}),
-    });
+      retry: retryOption,
+      onSuccess: onSuccessHandler,
+    };
+    return useMutation<TData, Error, TVariables>(mutationOptions);
   };
 }
 
