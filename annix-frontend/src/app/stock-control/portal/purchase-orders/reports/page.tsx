@@ -2,10 +2,10 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { formatDateZA } from "@/app/lib/datetime";
 import {
   useCpoCalloffBreakdown,
+  useCpoExportCsv,
   useCpoFulfillmentReport,
   useCpoOverdueInvoices,
 } from "@/app/lib/query/hooks";
@@ -18,21 +18,25 @@ function calloffTypeLabel(type: string): string {
     paint: "Paint",
     solution: "Solution",
   };
-  return labels[type] || type;
+  const label = labels[type];
+  return label ? label : type;
 }
 
 export default function CpoReportsPage() {
   const [activeTab, setActiveTab] = useState<ReportTab>("fulfillment");
-  const [isExporting, setIsExporting] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
 
   const fulfillmentQuery = useCpoFulfillmentReport();
   const calloffQuery = useCpoCalloffBreakdown();
   const overdueQuery = useCpoOverdueInvoices();
+  const exportCsv = useCpoExportCsv();
 
-  const fulfillment = fulfillmentQuery.data ?? [];
-  const calloffBreakdown = calloffQuery.data ?? null;
-  const overdueItems = overdueQuery.data ?? [];
+  const fulfillmentData = fulfillmentQuery.data;
+  const fulfillment = fulfillmentData ? fulfillmentData : [];
+  const calloffData = calloffQuery.data;
+  const calloffBreakdown = calloffData ? calloffData : null;
+  const overdueData = overdueQuery.data;
+  const overdueItems = overdueData ? overdueData : [];
 
   const activeQuery =
     activeTab === "fulfillment"
@@ -42,24 +46,24 @@ export default function CpoReportsPage() {
         : overdueQuery;
 
   const isLoading = activeQuery.isLoading;
-  const error = activeQuery.error?.message || exportError;
+  const queryErrorMsg = activeQuery.error?.message;
+  const error = queryErrorMsg ? queryErrorMsg : exportError;
 
-  const handleExportCsv = async () => {
-    try {
-      setIsExporting(true);
-      setExportError(null);
-      const blob = await stockControlApiClient.cpoExportCsv();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = "cpo-tracking-export.csv";
-      a.click();
-      URL.revokeObjectURL(url);
-    } catch (err) {
-      setExportError(err instanceof Error ? err.message : "Failed to export CSV");
-    } finally {
-      setIsExporting(false);
-    }
+  const handleExportCsv = () => {
+    setExportError(null);
+    exportCsv.mutate(undefined, {
+      onSuccess: (blob) => {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "cpo-tracking-export.csv";
+        a.click();
+        URL.revokeObjectURL(url);
+      },
+      onError: (err) => {
+        setExportError(err instanceof Error ? err.message : "Failed to export CSV");
+      },
+    });
   };
 
   return (
@@ -77,7 +81,7 @@ export default function CpoReportsPage() {
         </div>
         <button
           onClick={handleExportCsv}
-          disabled={isExporting}
+          disabled={exportCsv.isPending}
           className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-teal-600 hover:bg-teal-700 disabled:opacity-50"
         >
           <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -88,7 +92,7 @@ export default function CpoReportsPage() {
               d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
             />
           </svg>
-          {isExporting ? "Exporting..." : "Export CSV"}
+          {exportCsv.isPending ? "Exporting..." : "Export CSV"}
         </button>
       </div>
 

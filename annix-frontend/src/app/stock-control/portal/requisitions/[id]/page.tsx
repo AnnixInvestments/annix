@@ -4,10 +4,14 @@ import { useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { formatDateZA } from "@/app/lib/datetime";
 import { exportToExcel, exportToPDF, exportToWord } from "@/app/lib/export/exportTable";
-import { useRequisitionDetail, useUpdateRequisitionItem } from "@/app/lib/query/hooks";
+import {
+  useCompleteBackgroundStep,
+  useCompleteRequisitionStep,
+  useRequisitionDetail,
+  useUpdateRequisitionItem,
+} from "@/app/lib/query/hooks";
 import { stockControlKeys } from "@/app/lib/query/keys";
 
 function statusBadgeColor(status: string): string {
@@ -18,7 +22,8 @@ function statusBadgeColor(status: string): string {
     received: "bg-green-100 text-green-800",
     cancelled: "bg-red-100 text-red-800",
   };
-  return colors[status.toLowerCase()] || "bg-gray-100 text-gray-800";
+  const color = colors[status.toLowerCase()];
+  return color ? color : "bg-gray-100 text-gray-800";
 }
 
 export default function RequisitionDetailPage() {
@@ -45,6 +50,8 @@ export default function RequisitionDetailPage() {
 
   const { data: requisition, isLoading, error: fetchError } = useRequisitionDetail(reqId);
   const updateItem = useUpdateRequisitionItem(reqId);
+  const completeBackgroundStepMutation = useCompleteBackgroundStep();
+  const completeRequisitionStepMutation = useCompleteRequisitionStep();
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -112,7 +119,8 @@ export default function RequisitionDetailPage() {
     if (value === undefined) return;
 
     const item = requisition?.items.find((i) => i.id === itemId);
-    const currentValue = item ? item.reqNumber || "" : "";
+    const rawReqNum = item ? item.reqNumber : "";
+    const currentValue = rawReqNum ? rawReqNum : "";
     if (value === currentValue) return;
 
     const reqNumber = value === "" ? null : value;
@@ -171,7 +179,7 @@ export default function RequisitionDetailPage() {
     }
 
     try {
-      await stockControlApiClient.updateRequisitionItem(reqId, itemId, payload as any);
+      await updateItem.mutateAsync({ itemId, data: payload });
       await queryClient.invalidateQueries({
         queryKey: stockControlKeys.requisitions.detail(reqId),
       });
@@ -211,22 +219,35 @@ export default function RequisitionDetailPage() {
     { header: "Stock Match", accessorKey: "stockMatch" },
   ];
 
-  const exportData = () =>
-    (requisition?.items || []).map((item) => ({
-      productName: item.productName,
-      area: item.area === "external" ? "Ext" : item.area === "internal" ? "Int" : item.area || "-",
-      litresRequired: Number(item.litresRequired).toFixed(1),
-      packSizeLitres: `${Number(item.packSizeLitres).toFixed(0)}L`,
-      packsToOrder: item.packsToOrder,
-      reorderQty: item.reorderQty != null ? item.reorderQty : "-",
-      reqNumber: item.reqNumber || "-",
-      stockMatch: item.stockItem ? item.stockItem.name : "Not in inventory",
-    }));
+  const exportData = () => {
+    const items = requisition ? requisition.items : [];
+    return items.map((item) => {
+      const itemArea = item.area;
+      const areaDisplay =
+        itemArea === "external"
+          ? "Ext"
+          : itemArea === "internal"
+            ? "Int"
+            : itemArea
+              ? itemArea
+              : "-";
+      return {
+        productName: item.productName,
+        area: areaDisplay,
+        litresRequired: Number(item.litresRequired).toFixed(1),
+        packSizeLitres: `${Number(item.packSizeLitres).toFixed(0)}L`,
+        packsToOrder: item.packsToOrder,
+        reorderQty: item.reorderQty != null ? item.reorderQty : "-",
+        reqNumber: item.reqNumber ? item.reqNumber : "-",
+        stockMatch: item.stockItem ? item.stockItem.name : "Not in inventory",
+      };
+    });
+  };
 
   const exportMetadata = () => ({
     Requisition: requisition ? requisition.requisitionNumber : "",
     Status: requisition ? requisition.status : "",
-    "Created By": requisition ? requisition.createdBy || "-" : "-",
+    "Created By": requisition ? (requisition.createdBy ? requisition.createdBy : "-") : "-",
     Created: requisition ? formatDateZA(requisition.createdAt) : "",
     ...(requisition?.jobCard
       ? { "Job Card": `${requisition.jobCard.jobNumber} - ${requisition.jobCard.jobName}` }
@@ -256,13 +277,13 @@ export default function RequisitionDetailPage() {
       setIsAccepting(true);
       setError(null);
       if (completeStep) {
-        await stockControlApiClient.completeBackgroundStep(
-          Number(fromJobCard),
-          completeStep,
-          "Requisition reviewed and accepted",
-        );
+        await completeBackgroundStepMutation.mutateAsync({
+          jobCardId: Number(fromJobCard),
+          stepKey: completeStep,
+          notes: "Requisition reviewed and accepted",
+        });
       } else {
-        await stockControlApiClient.completeRequisitionStep(Number(fromJobCard));
+        await completeRequisitionStepMutation.mutateAsync(Number(fromJobCard));
       }
       router.push(`/stock-control/portal/job-cards/${fromJobCard}`);
     } catch (err) {
@@ -505,7 +526,9 @@ export default function RequisitionDetailPage() {
           <dl className="grid grid-cols-2 gap-x-4 gap-y-6 print-compact-details">
             <div>
               <dt className="text-sm font-medium text-gray-500">Created By</dt>
-              <dd className="mt-1 text-sm text-gray-900">{requisition.createdBy || "-"}</dd>
+              <dd className="mt-1 text-sm text-gray-900">
+                {requisition.createdBy ? requisition.createdBy : "-"}
+              </dd>
             </div>
             <div>
               <dt className="text-sm font-medium text-gray-500">Created</dt>
@@ -622,7 +645,9 @@ export default function RequisitionDetailPage() {
                           ? "Ext"
                           : item.area === "internal"
                             ? "Int"
-                            : item.area || "-"}
+                            : item.area
+                              ? item.area
+                              : "-"}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-semibold text-gray-900">
                         {Number(item.litresRequired).toFixed(1)}
@@ -719,7 +744,7 @@ export default function RequisitionDetailPage() {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm">
                     {readOnly ? (
-                      <span className="text-gray-900">{item.reqNumber || "-"}</span>
+                      <span className="text-gray-900">{item.reqNumber ? item.reqNumber : "-"}</span>
                     ) : (
                       <input
                         type="text"

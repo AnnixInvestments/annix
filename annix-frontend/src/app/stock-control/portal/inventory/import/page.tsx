@@ -8,7 +8,7 @@ import type {
   InventoryColumnMapping,
   ReviewedImportResult,
 } from "@/app/lib/api/stockControlApi";
-import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
+import { useMatchImportRows, useUploadImportFile } from "@/app/lib/query/hooks";
 import { ImportReviewStep } from "./ImportReviewStep";
 
 type ImportStep = "upload" | "preview" | "review" | "result";
@@ -30,6 +30,8 @@ export default function ImportPage() {
   const [isStockTake, setIsStockTake] = useState(false);
   const [stockTakeDate, setStockTakeDate] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const uploadMutation = useUploadImportFile();
+  const matchMutation = useMatchImportRows();
 
   const handleFileSelect = async (selectedFile: File) => {
     setFile(selectedFile);
@@ -37,8 +39,7 @@ export default function ImportPage() {
 
     try {
       setIsUploading(true);
-      const response: ImportUploadResponse =
-        await stockControlApiClient.uploadImportFile(selectedFile);
+      const response: ImportUploadResponse = await uploadMutation.mutateAsync(selectedFile);
       setImportFormat(response.format);
 
       if (response.format === "excel" && response.headers && response.rawRows) {
@@ -126,7 +127,7 @@ export default function ImportPage() {
       setError(null);
 
       const rowsToMatch = buildImportRows();
-      const matched = await stockControlApiClient.matchImportRows(rowsToMatch);
+      const matched = await matchMutation.mutateAsync(rowsToMatch);
       setMatchedRows(matched);
       setStep("review");
     } catch (err) {
@@ -367,14 +368,18 @@ export default function ImportPage() {
                         <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
                           {rowIdx + 1}
                         </td>
-                        {importHeaders.map((_, colIdx) => (
-                          <td
-                            key={colIdx}
-                            className="px-4 py-3 whitespace-nowrap text-sm text-gray-900"
-                          >
-                            {row[colIdx] ?? ""}
-                          </td>
-                        ))}
+                        {importHeaders.map((_, colIdx) => {
+                          const cellVal = row[colIdx];
+                          const cellDisplay = cellVal != null ? cellVal : "";
+                          return (
+                            <td
+                              key={colIdx}
+                              className="px-4 py-3 whitespace-nowrap text-sm text-gray-900"
+                            >
+                              {cellDisplay}
+                            </td>
+                          );
+                        })}
                       </tr>
                     ))}
                   </tbody>
@@ -408,14 +413,18 @@ export default function ImportPage() {
                         <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
                           {index + 1}
                         </td>
-                        {columnHeaders.map((header) => (
-                          <td
-                            key={header}
-                            className="px-4 py-3 whitespace-nowrap text-sm text-gray-900"
-                          >
-                            {String(row[header] ?? "")}
-                          </td>
-                        ))}
+                        {columnHeaders.map((header) => {
+                          const headerVal = row[header];
+                          const headerDisplay = headerVal != null ? String(headerVal) : "";
+                          return (
+                            <td
+                              key={header}
+                              className="px-4 py-3 whitespace-nowrap text-sm text-gray-900"
+                            >
+                              {headerDisplay}
+                            </td>
+                          );
+                        })}
                       </tr>
                     ))}
                   </tbody>

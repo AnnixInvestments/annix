@@ -2,18 +2,17 @@
 
 import { useEffect, useState } from "react";
 import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
-import type {
-  CostByJob,
-  StaffMember,
-  StaffStockFilters,
-  StaffStockReportResult,
-  StockControlDepartment,
-  StockItem,
-  StockMovement,
-  StockValuation,
-} from "@/app/lib/api/stockControlApi";
-import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
+import type { StaffStockFilters } from "@/app/lib/api/stockControlApi";
 import { formatDateZA, now } from "@/app/lib/datetime";
+import {
+  useCostByJobReport,
+  useMovementHistoryReport,
+  useReportDepartments,
+  useReportStaffMembers,
+  useReportStockItems,
+  useStaffStockReport,
+  useStockValuationReport,
+} from "@/app/lib/query/hooks";
 import { formatZAR } from "../../lib/currency";
 
 function movementTypeBadge(type: string): string {
@@ -23,7 +22,8 @@ function movementTypeBadge(type: string): string {
     adjustment: "bg-amber-100 text-amber-800",
     return: "bg-purple-100 text-purple-800",
   };
-  return colors[type.toLowerCase()] || "bg-gray-100 text-gray-800";
+  const typeColor = colors[type.toLowerCase()];
+  return typeColor ? typeColor : "bg-gray-100 text-gray-800";
 }
 
 function escapeCSVField(field: string): string {
@@ -61,12 +61,6 @@ const TAB_LABELS: Record<ReportTab, string> = {
 export default function ReportsPage() {
   const { profile } = useStockControlAuth();
   const [activeTab, setActiveTab] = useState<ReportTab>("cost-by-job");
-  const [costByJob, setCostByJob] = useState<CostByJob[]>([]);
-  const [valuation, setValuation] = useState<StockValuation | null>(null);
-  const [movements, setMovements] = useState<StockMovement[]>([]);
-  const [stockItems, setStockItems] = useState<StockItem[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
   const [showNoMovementsPopup, setShowNoMovementsPopup] = useState(false);
 
   const todayISO = now().toFormat("yyyy-MM-dd");
@@ -78,9 +72,6 @@ export default function ReportsPage() {
     stockItemId: 0,
   });
 
-  const [staffStockReport, setStaffStockReport] = useState<StaffStockReportResult | null>(null);
-  const [staffMembers, setStaffMembers] = useState<StaffMember[]>([]);
-  const [departments, setDepartments] = useState<StockControlDepartment[]>([]);
   const [expandedStaffIds, setExpandedStaffIds] = useState<Set<number>>(new Set());
   const [staffFilters, setStaffFilters] = useState<StaffStockFilters>({
     startDate: "",
@@ -91,95 +82,69 @@ export default function ReportsPage() {
     anomalyThreshold: 2.0,
   });
 
-  useEffect(() => {
-    const fetchReport = async () => {
-      try {
-        setIsLoading(true);
-        setError(null);
+  const movementParams = (() => {
+    const params: {
+      startDate?: string;
+      endDate?: string;
+      movementType?: string;
+      stockItemId?: number;
+    } = {};
+    if (movementFilters.startDate) params.startDate = movementFilters.startDate;
+    if (movementFilters.endDate) params.endDate = movementFilters.endDate;
+    if (movementFilters.movementType) params.movementType = movementFilters.movementType;
+    if (movementFilters.stockItemId > 0) params.stockItemId = movementFilters.stockItemId;
+    return params;
+  })();
 
-        if (activeTab === "cost-by-job") {
-          const data = await stockControlApiClient.costByJob();
-          setCostByJob(Array.isArray(data) ? data : []);
-        } else if (activeTab === "stock-valuation") {
-          const data = await stockControlApiClient.stockValuation();
-          setValuation(data);
-        } else if (activeTab === "movement-history") {
-          const params: Record<string, string | number | undefined> = {};
-          if (movementFilters.startDate) params.startDate = movementFilters.startDate;
-          if (movementFilters.endDate) params.endDate = movementFilters.endDate;
-          if (movementFilters.movementType) params.movementType = movementFilters.movementType;
-          if (movementFilters.stockItemId > 0) params.stockItemId = movementFilters.stockItemId;
+  const staffApiFilters = (() => {
+    const apiFilters: StaffStockFilters = {};
+    if (staffFilters.startDate) apiFilters.startDate = staffFilters.startDate;
+    if (staffFilters.endDate) apiFilters.endDate = staffFilters.endDate;
+    if (staffFilters.staffMemberId) apiFilters.staffMemberId = staffFilters.staffMemberId;
+    if (staffFilters.departmentId) apiFilters.departmentId = staffFilters.departmentId;
+    if (staffFilters.stockItemId) apiFilters.stockItemId = staffFilters.stockItemId;
+    if (staffFilters.anomalyThreshold) apiFilters.anomalyThreshold = staffFilters.anomalyThreshold;
+    return apiFilters;
+  })();
 
-          const [movementsData, itemsResult] = await Promise.all([
-            stockControlApiClient.movementHistory(
-              params as {
-                startDate?: string;
-                endDate?: string;
-                movementType?: string;
-                stockItemId?: number;
-              },
-            ),
-            stockItems.length === 0
-              ? stockControlApiClient.stockItems({ limit: "1000" })
-              : Promise.resolve({ items: stockItems, total: stockItems.length }),
-          ]);
-          setMovements(Array.isArray(movementsData) ? movementsData : []);
-          if (stockItems.length === 0) {
-            setStockItems(Array.isArray(itemsResult.items) ? itemsResult.items : []);
-          }
-        } else if (activeTab === "staff-stock") {
-          const apiFilters: StaffStockFilters = {};
-          if (staffFilters.startDate) apiFilters.startDate = staffFilters.startDate;
-          if (staffFilters.endDate) apiFilters.endDate = staffFilters.endDate;
-          if (staffFilters.staffMemberId) apiFilters.staffMemberId = staffFilters.staffMemberId;
-          if (staffFilters.departmentId) apiFilters.departmentId = staffFilters.departmentId;
-          if (staffFilters.stockItemId) apiFilters.stockItemId = staffFilters.stockItemId;
-          if (staffFilters.anomalyThreshold)
-            apiFilters.anomalyThreshold = staffFilters.anomalyThreshold;
+  const costByJobQuery = useCostByJobReport();
+  const valuationQuery = useStockValuationReport();
+  const movementsQuery = useMovementHistoryReport(movementParams);
+  const staffStockQuery = useStaffStockReport(staffApiFilters);
+  const stockItemsQuery = useReportStockItems();
+  const staffMembersQuery = useReportStaffMembers();
+  const departmentsQuery = useReportDepartments();
 
-          const [reportData, staffData, deptData, itemsResult] = await Promise.all([
-            stockControlApiClient.staffStockReport(apiFilters),
-            staffMembers.length === 0
-              ? stockControlApiClient.staffMembers({ active: "true" })
-              : Promise.resolve(staffMembers),
-            departments.length === 0
-              ? stockControlApiClient.departments()
-              : Promise.resolve(departments),
-            stockItems.length === 0
-              ? stockControlApiClient.stockItems({ limit: "1000" })
-              : Promise.resolve({ items: stockItems, total: stockItems.length }),
-          ]);
-          setStaffStockReport(reportData);
-          if (staffMembers.length === 0) {
-            setStaffMembers(Array.isArray(staffData) ? staffData : []);
-          }
-          if (departments.length === 0) {
-            setDepartments(Array.isArray(deptData) ? deptData : []);
-          }
-          if (stockItems.length === 0) {
-            setStockItems(Array.isArray(itemsResult.items) ? itemsResult.items : []);
-          }
-        }
-      } catch (err) {
-        setError(err instanceof Error ? err : new Error("Failed to load report"));
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetchReport();
-  }, [
-    activeTab,
-    movementFilters.startDate,
-    movementFilters.endDate,
-    movementFilters.movementType,
-    movementFilters.stockItemId,
-    staffFilters.startDate,
-    staffFilters.endDate,
-    staffFilters.staffMemberId,
-    staffFilters.departmentId,
-    staffFilters.stockItemId,
-    staffFilters.anomalyThreshold,
-  ]);
+  const costByJobData = costByJobQuery.data;
+  const costByJob = costByJobData ? costByJobData : [];
+  const valuationData = valuationQuery.data;
+  const valuation = valuationData ? valuationData : null;
+  const movementsData = movementsQuery.data;
+  const movements = movementsData ? movementsData : [];
+  const staffStockData = staffStockQuery.data;
+  const staffStockReport = staffStockData ? staffStockData : null;
+  const stockItemsData = stockItemsQuery.data;
+  const stockItems = stockItemsData ? stockItemsData : [];
+  const staffMembersData = staffMembersQuery.data;
+  const staffMembers = staffMembersData ? staffMembersData : [];
+  const departmentsData = departmentsQuery.data;
+  const departments = departmentsData ? departmentsData : [];
+
+  const costByJobLoading = costByJobQuery.isLoading;
+  const valuationLoading = valuationQuery.isLoading;
+  const movementsLoading = movementsQuery.isLoading;
+  const staffStockLoading = staffStockQuery.isLoading;
+  const isLoading =
+    (activeTab === "cost-by-job" && costByJobLoading) ||
+    (activeTab === "stock-valuation" && valuationLoading) ||
+    (activeTab === "movement-history" && movementsLoading) ||
+    (activeTab === "staff-stock" && staffStockLoading);
+
+  const costByJobError = costByJobQuery.error;
+  const valuationError = valuationQuery.error;
+  const movementsError = movementsQuery.error;
+  const staffStockError = staffStockQuery.error;
+  const error = costByJobError || valuationError || movementsError || staffStockError || null;
 
   useEffect(() => {
     if (activeTab === "movement-history" && !isLoading && !error && movements.length === 0) {
@@ -559,10 +524,16 @@ export default function ReportsPage() {
                   </td>
                   <td className="px-3 py-4 sm:px-6">
                     <div className="text-sm font-medium text-gray-900 break-words">
-                      {movement.stockItem?.name || "-"}
+                      {(() => {
+                        const msn = movement.stockItem ? movement.stockItem.name : null;
+                        return msn ? msn : "-";
+                      })()}
                     </div>
                     <div className="font-mono text-xs text-gray-500">
-                      {movement.stockItem?.sku || ""}
+                      {(() => {
+                        const msku = movement.stockItem ? movement.stockItem.sku : "";
+                        return msku ? msku : "";
+                      })()}
                     </div>
                   </td>
                   <td className="whitespace-nowrap px-3 py-4 sm:px-6">
@@ -999,8 +970,14 @@ export default function ReportsPage() {
       const headers = ["Date", "Item", "SKU", "Type", "Qty", "Reference", "Notes", "By"];
       const rows = movements.map((m) => [
         formatDateZA(m.createdAt),
-        m.stockItem?.name || "",
-        m.stockItem?.sku || "",
+        (() => {
+          const csn = m.stockItem ? m.stockItem.name : "";
+          return csn;
+        })(),
+        (() => {
+          const csku = m.stockItem ? m.stockItem.sku : "";
+          return csku;
+        })(),
         m.movementType,
         String(m.quantity),
         m.referenceType ? `${m.referenceType} #${m.referenceId}` : "",
@@ -1112,7 +1089,12 @@ export default function ReportsPage() {
             <div className="p-6 pt-4 text-center">
               <svg
                 className="mx-auto h-10 w-10 mb-3"
-                style={{ color: profile?.primaryColor || "#0d9488" }}
+                style={{
+                  color: (() => {
+                    const pc = profile ? profile.primaryColor : null;
+                    return pc ? pc : "#0d9488";
+                  })(),
+                }}
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -1133,7 +1115,12 @@ export default function ReportsPage() {
                 type="button"
                 onClick={() => setShowNoMovementsPopup(false)}
                 className="w-full rounded-lg px-4 py-2.5 text-sm font-medium text-white transition-colors"
-                style={{ backgroundColor: profile?.primaryColor || "#0d9488" }}
+                style={{
+                  backgroundColor: (() => {
+                    const bgc = profile ? profile.primaryColor : null;
+                    return bgc ? bgc : "#0d9488";
+                  })(),
+                }}
               >
                 Select Another Date
               </button>

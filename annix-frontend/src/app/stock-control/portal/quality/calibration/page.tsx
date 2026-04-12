@@ -1,9 +1,14 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import type { CalibrationCertificate } from "@/app/lib/api/stockControlApi";
-import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
+import { useState } from "react";
 import { fromISO, now } from "@/app/lib/datetime";
+import {
+  useCalibrationCertificates,
+  useCalibrationCertificateUrl,
+  useDeactivateCalibrationCertificate,
+  useDeleteCalibrationCertificate,
+  useUploadCalibrationCertificate,
+} from "@/app/lib/query/hooks";
 
 function expiryStatus(expiryDate: string): { label: string; className: string } {
   const expiry = fromISO(expiryDate);
@@ -22,60 +27,43 @@ function expiryStatus(expiryDate: string): { label: string; className: string } 
 }
 
 export default function CalibrationPage() {
-  const [certificates, setCertificates] = useState<CalibrationCertificate[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [filterActive, setFilterActive] = useState("true");
 
-  const fetchCertificates = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      const filters: { active?: boolean } = {};
-      if (filterActive === "true") filters.active = true;
-      if (filterActive === "false") filters.active = false;
+  const { data: certificates = [], isLoading } = useCalibrationCertificates(filterActive);
+  const viewCert = useCalibrationCertificateUrl();
+  const deactivateCert = useDeactivateCalibrationCertificate();
+  const deleteCert = useDeleteCalibrationCertificate();
 
-      const data = await stockControlApiClient.calibrationCertificates(filters);
-      setCertificates(Array.isArray(data) ? data : []);
-      setError(null);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load calibration certificates");
-    } finally {
-      setIsLoading(false);
-    }
-  }, [filterActive]);
-
-  useEffect(() => {
-    fetchCertificates();
-  }, [fetchCertificates]);
-
-  const handleView = async (id: number) => {
-    try {
-      const cert = await stockControlApiClient.calibrationCertificateById(id);
-      if (cert.downloadUrl) {
-        window.open(cert.downloadUrl, "_blank");
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to get download URL");
-    }
+  const handleView = (id: number) => {
+    viewCert.mutate(id, {
+      onSuccess: (cert) => {
+        const url = cert.downloadUrl;
+        if (url) {
+          window.open(url, "_blank");
+        }
+      },
+      onError: (err) => {
+        setError(err instanceof Error ? err.message : "Failed to get download URL");
+      },
+    });
   };
 
-  const handleDeactivate = async (id: number) => {
-    try {
-      await stockControlApiClient.deactivateCalibrationCertificate(id);
-      fetchCertificates();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to deactivate certificate");
-    }
+  const handleDeactivate = (id: number) => {
+    deactivateCert.mutate(id, {
+      onError: (err) => {
+        setError(err instanceof Error ? err.message : "Failed to deactivate certificate");
+      },
+    });
   };
 
-  const handleDelete = async (id: number) => {
-    try {
-      await stockControlApiClient.deleteCalibrationCertificate(id);
-      setCertificates((prev) => prev.filter((c) => c.id !== id));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to delete certificate");
-    }
+  const handleDelete = (id: number) => {
+    deleteCert.mutate(id, {
+      onError: (err) => {
+        setError(err instanceof Error ? err.message : "Failed to delete certificate");
+      },
+    });
   };
 
   return (
@@ -165,10 +153,16 @@ export default function CalibrationPage() {
                         {cert.equipmentName}
                       </td>
                       <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-600">
-                        {cert.equipmentIdentifier ?? "-"}
+                        {(() => {
+                          const eqId = cert.equipmentIdentifier;
+                          return eqId ? eqId : "-";
+                        })()}
                       </td>
                       <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-600">
-                        {cert.certificateNumber ?? "-"}
+                        {(() => {
+                          const certNum = cert.certificateNumber;
+                          return certNum ? certNum : "-";
+                        })()}
                       </td>
                       <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-600">
                         {cert.expiryDate}
@@ -225,7 +219,6 @@ export default function CalibrationPage() {
             onClose={() => setShowUploadModal(false)}
             onUploaded={() => {
               setShowUploadModal(false);
-              fetchCertificates();
             }}
           />
         )}
@@ -247,31 +240,34 @@ function UploadCalibrationCertificateModal({
   const [certificateNumber, setCertificateNumber] = useState("");
   const [expiryDate, setExpiryDate] = useState("");
   const [description, setDescription] = useState("");
-  const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const uploadMutation = useUploadCalibrationCertificate();
 
-  const handleSubmit = async () => {
+  const handleSubmit = () => {
     if (!file || !equipmentName.trim() || !expiryDate) {
       setError("Equipment name, expiry date, and file are required");
       return;
     }
 
-    try {
-      setIsUploading(true);
-      setError(null);
-      await stockControlApiClient.uploadCalibrationCertificate(file, {
-        equipmentName: equipmentName.trim(),
-        equipmentIdentifier: equipmentIdentifier.trim() || null,
-        certificateNumber: certificateNumber.trim() || null,
-        description: description.trim() || null,
-        expiryDate,
-      });
-      onUploaded();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Upload failed");
-    } finally {
-      setIsUploading(false);
-    }
+    setError(null);
+    uploadMutation.mutate(
+      {
+        file,
+        data: {
+          equipmentName: equipmentName.trim(),
+          equipmentIdentifier: equipmentIdentifier.trim() || null,
+          certificateNumber: certificateNumber.trim() || null,
+          description: description.trim() || null,
+          expiryDate,
+        },
+      },
+      {
+        onSuccess: () => onUploaded(),
+        onError: (err) => {
+          setError(err instanceof Error ? err.message : "Upload failed");
+        },
+      },
+    );
   };
 
   return (
@@ -356,7 +352,11 @@ function UploadCalibrationCertificateModal({
             <input
               type="file"
               accept=".pdf,.jpg,.jpeg,.png"
-              onChange={(e) => setFile(e.target.files?.[0] || null)}
+              onChange={(e) => {
+                const files = e.target.files;
+                const first = files ? files[0] : null;
+                setFile(first);
+              }}
               className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:rounded-md file:border-0 file:bg-teal-50 file:px-4 file:py-2 file:text-sm file:font-medium file:text-teal-700 hover:file:bg-teal-100"
             />
           </div>
@@ -371,10 +371,13 @@ function UploadCalibrationCertificateModal({
           </button>
           <button
             onClick={handleSubmit}
-            disabled={isUploading || !file || !equipmentName.trim() || !expiryDate}
+            disabled={(() => {
+              const uip = uploadMutation.isPending;
+              return uip || !file || !equipmentName.trim() || !expiryDate;
+            })()}
             className="rounded-md bg-teal-600 px-4 py-2 text-sm font-medium text-white hover:bg-teal-700 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {isUploading ? "Uploading..." : "Upload"}
+            {uploadMutation.isPending ? "Uploading..." : "Upload"}
           </button>
         </div>
       </div>

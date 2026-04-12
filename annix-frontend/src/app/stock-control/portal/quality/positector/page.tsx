@@ -8,8 +8,16 @@ import type {
   PositectorDevice,
   PositectorImportResult,
 } from "@/app/lib/api/stockControlApi";
-import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
-import { useInvalidatePositectorDevices, usePositectorDevices } from "@/app/lib/query/hooks";
+import {
+  useCheckPositectorConnection,
+  useDeletePositectorDevice,
+  useImportPositectorBatch,
+  useInvalidatePositectorDevices,
+  usePositectorBatchDetail,
+  usePositectorBatches,
+  usePositectorDevices,
+  useRegisterPositectorDevice,
+} from "@/app/lib/query/hooks";
 
 const PROBE_TYPE_LABELS: Record<string, string> = {
   "6000": "DFT (Coating Thickness)",
@@ -32,13 +40,20 @@ const ENTITY_TYPE_LABELS: Record<string, string> = {
 
 function probeTypeLabel(probeType: string | null): string {
   if (!probeType) return "Unknown";
-  return PROBE_TYPE_LABELS[probeType] ?? probeType;
+  const ptLabel = PROBE_TYPE_LABELS[probeType];
+  return ptLabel ? ptLabel : probeType;
 }
 
 export default function PositectorPage() {
   const { data: devices = [], isLoading, error: devicesError } = usePositectorDevices();
   const invalidateDevices = useInvalidatePositectorDevices();
-  const [error, setError] = useState<string | null>(devicesError?.message || null);
+  const checkConnectionMutation = useCheckPositectorConnection();
+  const deleteDeviceMutation = useDeletePositectorDevice();
+  const batchesMutation = usePositectorBatches();
+  const batchDetailMutation = usePositectorBatchDetail();
+  const importBatchMutation = useImportPositectorBatch();
+  const devErrMsg = devicesError ? devicesError.message : null;
+  const [error, setError] = useState<string | null>(devErrMsg ? devErrMsg : null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [connectionStatuses, setConnectionStatuses] = useState<
     Record<number, PositectorConnectionStatus>
@@ -55,7 +70,7 @@ export default function PositectorPage() {
   const handleCheckConnection = async (deviceId: number) => {
     try {
       setCheckingConnection(deviceId);
-      const status = await stockControlApiClient.checkPositectorConnection(deviceId);
+      const status = await checkConnectionMutation.mutateAsync(deviceId);
       setConnectionStatuses((prev) => ({ ...prev, [deviceId]: status }));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Connection check failed");
@@ -69,7 +84,7 @@ export default function PositectorPage() {
       setSelectedDevice(device);
       setLoadingBatches(true);
       setSelectedBatch(null);
-      const data = await stockControlApiClient.positectorBatches(device.id);
+      const data = await batchesMutation.mutateAsync(device.id);
       setBatches(Array.isArray(data) ? data : []);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load batches");
@@ -83,7 +98,7 @@ export default function PositectorPage() {
     if (!selectedDevice) return;
     try {
       setLoadingBatch(true);
-      const data = await stockControlApiClient.positectorBatch(selectedDevice.id, buid);
+      const data = await batchDetailMutation.mutateAsync({ deviceId: selectedDevice.id, buid });
       setSelectedBatch(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load batch data");
@@ -94,7 +109,7 @@ export default function PositectorPage() {
 
   const handleDelete = async (id: number) => {
     try {
-      await stockControlApiClient.deletePositectorDevice(id);
+      await deleteDeviceMutation.mutateAsync(id);
       invalidateDevices();
       if (selectedDevice?.id === id) {
         setSelectedDevice(null);
@@ -186,10 +201,19 @@ export default function PositectorPage() {
                       {device.ipAddress}:{device.port}
                     </td>
                     <td className="px-4 py-3 text-sm text-gray-500">
-                      {probeTypeLabel(status?.probeType || device.probeType)}
+                      {probeTypeLabel(
+                        (() => {
+                          const spt = status ? status.probeType : null;
+                          return spt ? spt : device.probeType;
+                        })(),
+                      )}
                     </td>
                     <td className="px-4 py-3 text-sm text-gray-500">
-                      {status?.serialNumber || device.serialNumber || "-"}
+                      {(() => {
+                        const ssn = status ? status.serialNumber : null;
+                        if (ssn) return ssn;
+                        return device.serialNumber ? device.serialNumber : "-";
+                      })()}
                     </td>
                     <td className="px-4 py-3 text-sm">
                       {status ? (
@@ -328,7 +352,10 @@ export default function PositectorPage() {
                       : "bg-gray-100 text-gray-800"
                   }`}
                 >
-                  Maps to: {ENTITY_TYPE_LABELS[selectedBatch.suggestedEntityType] ?? "Unknown"}
+                  Maps to: {(() => {
+                    const etl = ENTITY_TYPE_LABELS[selectedBatch.suggestedEntityType];
+                    return etl ? etl : "Unknown";
+                  })()}
                 </span>
               </div>
             </div>
@@ -402,8 +429,10 @@ export default function PositectorPage() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-green-800">
-                Imported {lastImportResult.readingsImported} readings as{" "}
-                {ENTITY_TYPE_LABELS[lastImportResult.entityType] ?? lastImportResult.entityType}
+                Imported {lastImportResult.readingsImported} readings as {(() => {
+                  const etl2 = ENTITY_TYPE_LABELS[lastImportResult.entityType];
+                  return etl2 ? etl2 : lastImportResult.entityType;
+                })()}
                 {lastImportResult.average !== null &&
                   ` (avg: ${lastImportResult.average.toFixed(1)})`}
               </p>
@@ -493,6 +522,7 @@ async function scanSubnet(
 }
 
 function AddDeviceModal({ onClose, onAdded }: { onClose: () => void; onAdded: () => void }) {
+  const registerDeviceMutation = useRegisterPositectorDevice();
   const [deviceName, setDeviceName] = useState("");
   const [ipAddress, setIpAddress] = useState("");
   const [port, setPort] = useState("8080");
@@ -586,7 +616,7 @@ function AddDeviceModal({ onClose, onAdded }: { onClose: () => void; onAdded: ()
 
     try {
       setIsSaving(true);
-      await stockControlApiClient.registerPositectorDevice({
+      await registerDeviceMutation.mutateAsync({
         deviceName: deviceName.trim(),
         ipAddress: ipAddress.trim(),
         port: parseInt(port, 10) || 8080,
@@ -819,9 +849,11 @@ function ImportWizardModal({
   onClose: () => void;
   onImported: (result: PositectorImportResult) => void;
 }) {
+  const importBatchMut = useImportPositectorBatch();
   const [jobCardId, setJobCardId] = useState("");
   const [entityType, setEntityType] = useState(batch.suggestedEntityType);
-  const [coatType, setCoatType] = useState(batch.suggestedCoatType ?? "primer");
+  const suggestedCoat = batch.suggestedCoatType;
+  const [coatType, setCoatType] = useState(suggestedCoat || "primer");
   const [paintProduct, setPaintProduct] = useState("");
   const [batchNumber, setBatchNumber] = useState("");
   const [specMin, setSpecMin] = useState("");
@@ -847,22 +879,27 @@ function ImportWizardModal({
       setIsImporting(true);
       setError(null);
 
-      const result = await stockControlApiClient.importPositectorBatch(device.id, batch.buid, {
-        jobCardId: parseInt(jobCardId, 10),
-        entityType,
-        coatType: entityType === "dft" ? coatType : undefined,
-        paintProduct: entityType === "dft" ? paintProduct || "Unknown" : undefined,
-        batchNumber: entityType === "dft" && batchNumber ? batchNumber : null,
-        specMinMicrons: entityType === "dft" ? parseFloat(specMin) || 0 : undefined,
-        specMaxMicrons: entityType === "dft" ? parseFloat(specMax) || 0 : undefined,
-        specMicrons: entityType === "blast_profile" ? parseFloat(specMicrons) || 0 : undefined,
-        temperature: entityType === "blast_profile" && temperature ? parseFloat(temperature) : null,
-        humidity: entityType === "blast_profile" && humidity ? parseFloat(humidity) : null,
-        rubberSpec: entityType === "shore_hardness" ? rubberSpec || "Unknown" : undefined,
-        rubberBatchNumber:
-          entityType === "shore_hardness" && rubberBatchNumber ? rubberBatchNumber : null,
-        requiredShore:
-          entityType === "shore_hardness" ? parseInt(requiredShore, 10) || 0 : undefined,
+      const result = await importBatchMut.mutateAsync({
+        deviceId: device.id,
+        buid: batch.buid,
+        data: {
+          jobCardId: parseInt(jobCardId, 10),
+          entityType,
+          coatType: entityType === "dft" ? coatType : undefined,
+          paintProduct: entityType === "dft" ? paintProduct || "Unknown" : undefined,
+          batchNumber: entityType === "dft" && batchNumber ? batchNumber : null,
+          specMinMicrons: entityType === "dft" ? parseFloat(specMin) || 0 : undefined,
+          specMaxMicrons: entityType === "dft" ? parseFloat(specMax) || 0 : undefined,
+          specMicrons: entityType === "blast_profile" ? parseFloat(specMicrons) || 0 : undefined,
+          temperature:
+            entityType === "blast_profile" && temperature ? parseFloat(temperature) : null,
+          humidity: entityType === "blast_profile" && humidity ? parseFloat(humidity) : null,
+          rubberSpec: entityType === "shore_hardness" ? rubberSpec || "Unknown" : undefined,
+          rubberBatchNumber:
+            entityType === "shore_hardness" && rubberBatchNumber ? rubberBatchNumber : null,
+          requiredShore:
+            entityType === "shore_hardness" ? parseInt(requiredShore, 10) || 0 : undefined,
+        },
       });
 
       onImported(result);

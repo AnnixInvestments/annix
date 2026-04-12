@@ -1,17 +1,33 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { PdfPreviewModal, usePdfPreview } from "@/app/components/PdfPreviewModal";
 import type {
-  CalibrationCertificate,
   IssuanceBatchRecord,
-  JobCard,
   StockControlSupplierDto,
   StockItem,
   SupplierCertificate,
 } from "@/app/lib/api/stockControlApi";
-import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { formatDateZA, fromISO, now, nowMillis } from "@/app/lib/datetime";
+import {
+  useAnalyzeCertificateDocument,
+  useBackfillCertificateProducts,
+  useCalibrationCertificates,
+  useCalibrationCertificateUrl,
+  useCertificateStockItems,
+  useCertificateSuppliers,
+  useCertificates,
+  useCompileDataBook,
+  useDataBookStatuses,
+  useDeactivateCalibrationCertificate,
+  useDeleteCalibrationCertificate,
+  useDeleteCertificate,
+  useDownloadDataBook,
+  useJobCards,
+  useSearchBatch,
+  useUploadCertificate,
+  useViewCertificateUrl,
+} from "@/app/lib/query/hooks";
 
 interface IdentifiedCertificate {
   supplierName: string | null;
@@ -73,17 +89,38 @@ export default function QualityPage() {
 }
 
 function CertificatesTab() {
-  const [certificates, setCertificates] = useState<SupplierCertificate[]>([]);
-  const [suppliers, setSuppliers] = useState<StockControlSupplierDto[]>([]);
-  const [stockItems, setStockItems] = useState<StockItem[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [filterSupplierState, setFilterSupplierState] = useState("");
+  const [filterTypeState, setFilterTypeState] = useState("");
+  const certFilters = (() => {
+    const f: Record<string, string | number> = {};
+    if (filterSupplierState) f.supplierId = parseInt(filterSupplierState, 10);
+    if (filterTypeState) f.certificateType = filterTypeState;
+    return Object.keys(f).length > 0 ? f : undefined;
+  })();
+  const certsQuery = useCertificates(certFilters);
+  const certsData = certsQuery.data;
+  const certificates = certsData ? certsData : [];
+  const isLoading = certsQuery.isLoading;
+  const suppliersQuery = useCertificateSuppliers();
+  const suppliersData = suppliersQuery.data;
+  const suppliers = suppliersData ? suppliersData : [];
+  const stockItemsQuery = useCertificateStockItems();
+  const stockItemsData = stockItemsQuery.data;
+  const stockItems = stockItemsData ? stockItemsData : [];
+  const deleteCertMutation = useDeleteCertificate();
+  const viewCertMutation = useViewCertificateUrl();
+  const analyzeMutation = useAnalyzeCertificateDocument();
+  const uploadCertMutation = useUploadCertificate();
+  const backfillMutation = useBackfillCertificateProducts();
   const [error, setError] = useState<string | null>(null);
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [droppedFile, setDroppedFile] = useState<File | null>(null);
   const [isDragOver, setIsDragOver] = useState(false);
   const [isBackfilling, setIsBackfilling] = useState(false);
-  const [filterSupplier, setFilterSupplier] = useState("");
-  const [filterType, setFilterType] = useState("");
+  const filterSupplier = filterSupplierState;
+  const setFilterSupplier = setFilterSupplierState;
+  const filterType = filterTypeState;
+  const setFilterType = setFilterTypeState;
   const [searchQuery, setSearchQuery] = useState("");
   const [sortCol, setSortCol] = useState<"type" | "batch" | "supplier" | "product" | "uploaded">(
     "uploaded",
@@ -109,54 +146,13 @@ function CertificatesTab() {
 
   const dragCounter = useRef(0);
 
-  const fetchCertificates = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      const filters: Record<string, string | number> = {};
-      if (filterSupplier) filters.supplierId = parseInt(filterSupplier, 10);
-      if (filterType) filters.certificateType = filterType;
-
-      const data = await stockControlApiClient.certificates(filters);
-      setCertificates(Array.isArray(data) ? data : []);
-      setError(null);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load certificates");
-    } finally {
-      setIsLoading(false);
-    }
-  }, [filterSupplier, filterType]);
-
-  const fetchSuppliers = useCallback(async () => {
-    try {
-      const data = await stockControlApiClient.suppliers();
-      setSuppliers(Array.isArray(data) ? data : []);
-    } catch {
-      setSuppliers([]);
-    }
-  }, []);
-
-  const fetchStockItems = useCallback(async () => {
-    try {
-      const data = await stockControlApiClient.stockItems();
-      setStockItems(Array.isArray(data) ? data : []);
-    } catch {
-      setStockItems([]);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchCertificates();
-  }, [fetchCertificates]);
-
-  useEffect(() => {
-    fetchSuppliers();
-    fetchStockItems();
-  }, [fetchSuppliers, fetchStockItems]);
+  const fetchCertificates = useCallback(() => {
+    certsQuery.refetch();
+  }, [certsQuery]);
 
   const handleDelete = async (id: number) => {
     try {
-      await stockControlApiClient.deleteCertificate(id);
-      setCertificates((prev) => prev.filter((c) => c.id !== id));
+      await deleteCertMutation.mutateAsync(id);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to delete certificate");
     }
@@ -164,7 +160,7 @@ function CertificatesTab() {
 
   const handleView = async (id: number) => {
     try {
-      const cert = await stockControlApiClient.certificateById(id);
+      const cert = await viewCertMutation.mutateAsync(id);
       if (cert.downloadUrl) {
         pdfPreview.open(cert.downloadUrl, cert.originalFilename || "certificate.pdf");
       }
@@ -209,7 +205,7 @@ function CertificatesTab() {
       } = await files.reduce(
         async (accPromise, file, fileIdx) => {
           const acc = await accPromise;
-          const result = await stockControlApiClient.analyzeCertificateDocument(file);
+          const result = await analyzeMutation.mutateAsync(file);
           const tagged = result.certificates.map((c) => ({ ...c, sourceFileIndex: fileIdx }));
           return {
             certificates: [...acc.certificates, ...tagged],
@@ -253,7 +249,8 @@ function CertificatesTab() {
   );
 
   const handleSaveCertificate = async (cert: IdentifiedCertificate, index: number) => {
-    const sourceFile = analysisFiles?.[cert.sourceFileIndex] || null;
+    const sourceFileRaw = analysisFiles ? analysisFiles[cert.sourceFileIndex] : null;
+    const sourceFile = sourceFileRaw ? sourceFileRaw : null;
     if (!sourceFile) return;
 
     const matchedSupplier = suppliers.find(
@@ -273,14 +270,19 @@ function CertificatesTab() {
 
     try {
       setSavingCerts((prev) => new Set([...prev, index]));
-      await stockControlApiClient.uploadCertificate(sourceFile, {
-        supplierId: matchedSupplier.id,
-        certificateType: cert.certificateType || "COC",
-        batchNumber: cert.batchNumber || `BATCH-${nowMillis()}`,
-        description: [cert.productInfo, `Pages: ${cert.pageNumbers.join(", ")}`]
-          .filter(Boolean)
-          .join(" | "),
-        pageNumbers: needsPageExtraction ? cert.pageNumbers : null,
+      const certType = cert.certificateType;
+      const certBatch = cert.batchNumber;
+      await uploadCertMutation.mutateAsync({
+        file: sourceFile,
+        data: {
+          supplierId: matchedSupplier.id,
+          certificateType: certType ? certType : "COC",
+          batchNumber: certBatch ? certBatch : `BATCH-${nowMillis()}`,
+          description: [cert.productInfo, `Pages: ${cert.pageNumbers.join(", ")}`]
+            .filter(Boolean)
+            .join(" | "),
+          pageNumbers: needsPageExtraction ? cert.pageNumbers : null,
+        },
       });
       setSavedCerts((prev) => new Set([...prev, index]));
       fetchCertificates();
@@ -300,8 +302,14 @@ function CertificatesTab() {
         const q = searchQuery.toLowerCase();
         return (
           (cert.batchNumber ?? "").toLowerCase().includes(q) ||
-          (cert.supplier?.name || "").toLowerCase().includes(q) ||
-          (cert.stockItem?.name || "").toLowerCase().includes(q) ||
+          (() => {
+            const sn = cert.supplier ? cert.supplier.name : "";
+            return sn.toLowerCase().includes(q);
+          })() ||
+          (() => {
+            const sin = cert.stockItem ? cert.stockItem.name : "";
+            return sin.toLowerCase().includes(q);
+          })() ||
           (cert.originalFilename ?? "").toLowerCase().includes(q) ||
           (cert.certificateType ?? "").toLowerCase().includes(q)
         );
@@ -338,7 +346,7 @@ function CertificatesTab() {
         const key = cert.supplierName || "Unknown Supplier";
         return {
           ...groups,
-          [key]: [...(groups[key] || []), { cert, index }],
+          [key]: [...(groups[key] ? groups[key] : []), { cert, index }],
         };
       }, {})
     : {};
@@ -449,7 +457,12 @@ function CertificatesTab() {
               </div>
               <button
                 onClick={() => {
-                  setDroppedFile(analysisFiles?.[0] || null);
+                  setDroppedFile(
+                    (() => {
+                      const af = analysisFiles ? analysisFiles[0] : null;
+                      return af ? af : null;
+                    })(),
+                  );
                   setShowUploadModal(true);
                 }}
                 className="rounded-md border border-green-600 px-3 py-1.5 text-xs font-medium text-green-700 hover:bg-green-100"
@@ -583,7 +596,7 @@ function CertificatesTab() {
                 onClick={async () => {
                   setIsBackfilling(true);
                   try {
-                    const result = await stockControlApiClient.backfillCertificateProducts();
+                    const result = await backfillMutation.mutateAsync(undefined as never);
                     if (result.processed > 0) {
                       await fetchCertificates();
                     }
@@ -702,7 +715,10 @@ function CertificatesTab() {
                         {cert.batchNumber}
                       </td>
                       <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-600">
-                        {cert.supplier?.name || "-"}
+                        {(() => {
+                          const csn = cert.supplier ? cert.supplier.name : null;
+                          return csn ? csn : "-";
+                        })()}
                       </td>
                       <td className="px-4 py-3 text-sm text-gray-600">
                         {(() => {
@@ -770,34 +786,21 @@ function CertificatesTab() {
 }
 
 function CalibrationTab() {
-  const [calCerts, setCalCerts] = useState<CalibrationCertificate[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [showActive, setShowActive] = useState(true);
+  const filterStr = showActive ? "true" : "all";
+  const calQuery = useCalibrationCertificates(filterStr);
+  const calData = calQuery.data;
+  const calCerts = calData ? calData : [];
+  const isLoading = calQuery.isLoading;
+  const [error, setError] = useState<string | null>(null);
   const pdfPreview = usePdfPreview();
-
-  const fetchCalCerts = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      const data = await stockControlApiClient.calibrationCertificates(
-        showActive ? { active: true } : undefined,
-      );
-      setCalCerts(Array.isArray(data) ? data : []);
-      setError(null);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load calibration certificates");
-    } finally {
-      setIsLoading(false);
-    }
-  }, [showActive]);
-
-  useEffect(() => {
-    fetchCalCerts();
-  }, [fetchCalCerts]);
+  const viewCalCertMutation = useCalibrationCertificateUrl();
+  const deactivateMutation = useDeactivateCalibrationCertificate();
+  const deleteCalMutation = useDeleteCalibrationCertificate();
 
   const handleView = async (id: number) => {
     try {
-      const cert = await stockControlApiClient.calibrationCertificateById(id);
+      const cert = await viewCalCertMutation.mutateAsync(id);
       if (cert.downloadUrl) {
         pdfPreview.open(cert.downloadUrl, cert.originalFilename || "calibration-certificate.pdf");
       }
@@ -808,8 +811,7 @@ function CalibrationTab() {
 
   const handleDeactivate = async (id: number) => {
     try {
-      await stockControlApiClient.deactivateCalibrationCertificate(id);
-      fetchCalCerts();
+      await deactivateMutation.mutateAsync(id);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to deactivate certificate");
     }
@@ -817,8 +819,7 @@ function CalibrationTab() {
 
   const handleDelete = async (id: number) => {
     try {
-      await stockControlApiClient.deleteCalibrationCertificate(id);
-      setCalCerts((prev) => prev.filter((c) => c.id !== id));
+      await deleteCalMutation.mutateAsync(id);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to delete certificate");
     }
@@ -970,48 +971,25 @@ function CalibrationTab() {
 }
 
 function DataBooksTab() {
-  const [jobCards, setJobCards] = useState<JobCard[]>([]);
-  const [statuses, setStatuses] = useState<
-    Record<number, { exists: boolean; isStale: boolean; certificateCount: number }>
-  >({});
-  const [isLoading, setIsLoading] = useState(true);
+  const jobCardsQuery = useJobCards("active");
+  const jobCardsData = jobCardsQuery.data;
+  const jobCards = jobCardsData ? jobCardsData : [];
+  const isLoading = jobCardsQuery.isLoading;
+  const ids = jobCards.map((jc) => jc.id);
+  const statusesQuery = useDataBookStatuses(ids);
+  const statusesData = statusesQuery.data;
+  const statuses = statusesData ? statusesData : {};
   const [error, setError] = useState<string | null>(null);
   const [compilingId, setCompilingId] = useState<number | null>(null);
   const [downloadingId, setDownloadingId] = useState<number | null>(null);
-
-  const fetchJobCards = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      const data = await stockControlApiClient.jobCards("active");
-      setJobCards(Array.isArray(data) ? data : []);
-      setError(null);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load job cards");
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchJobCards();
-  }, [fetchJobCards]);
-
-  useEffect(() => {
-    if (jobCards.length === 0) return;
-    const ids = jobCards.map((jc) => jc.id);
-    stockControlApiClient
-      .dataBookStatusBulk(ids)
-      .then(setStatuses)
-      .catch(() => setStatuses({}));
-  }, [jobCards]);
+  const compileDataBookMutation = useCompileDataBook();
+  const downloadDataBookMutation = useDownloadDataBook();
 
   const handleCompile = async (jobCardId: number) => {
     try {
       setCompilingId(jobCardId);
-      await stockControlApiClient.compileDataBook(jobCardId);
-      const ids = jobCards.map((jc) => jc.id);
-      const newStatuses = await stockControlApiClient.dataBookStatusBulk(ids);
-      setStatuses(newStatuses);
+      await compileDataBookMutation.mutateAsync(jobCardId);
+      await statusesQuery.refetch();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to compile data book");
     } finally {
@@ -1022,7 +1000,7 @@ function DataBooksTab() {
   const handleDownload = async (jobCardId: number) => {
     try {
       setDownloadingId(jobCardId);
-      await stockControlApiClient.downloadDataBook(jobCardId);
+      await downloadDataBookMutation.mutateAsync(jobCardId);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to download data book");
     } finally {
@@ -1145,6 +1123,8 @@ function DataBooksTab() {
 }
 
 function BatchLookupTab() {
+  const searchBatchMutation = useSearchBatch();
+  const viewCertLookupMutation = useViewCertificateUrl();
   const [batchNumber, setBatchNumber] = useState("");
   const [searchedBatch, setSearchedBatch] = useState<string | null>(null);
   const [certificates, setCertificates] = useState<SupplierCertificate[]>([]);
@@ -1160,10 +1140,9 @@ function BatchLookupTab() {
     try {
       setIsSearching(true);
       setError(null);
-      const [certs, records] = await Promise.all([
-        stockControlApiClient.certificatesByBatchNumber(trimmed),
-        stockControlApiClient.batchRecordsByBatchNumber(trimmed),
-      ]);
+      const result = await searchBatchMutation.mutateAsync(trimmed);
+      const certs = result.certificates;
+      const records = result.batchRecords;
       setCertificates(certs);
       setBatchRecords(records);
       setSearchedBatch(trimmed);
@@ -1182,7 +1161,7 @@ function BatchLookupTab() {
 
   const handleViewCert = async (id: number) => {
     try {
-      const cert = await stockControlApiClient.certificateById(id);
+      const cert = await viewCertLookupMutation.mutateAsync(id);
       if (cert.downloadUrl) {
         pdfPreview.open(cert.downloadUrl, cert.originalFilename || "certificate.pdf");
       }
@@ -1283,10 +1262,16 @@ function BatchLookupTab() {
                           </span>
                         </td>
                         <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-600">
-                          {cert.supplier?.name || "-"}
+                          {(() => {
+                            const csn2 = cert.supplier ? cert.supplier.name : null;
+                            return csn2 ? csn2 : "-";
+                          })()}
                         </td>
                         <td className="hidden sm:table-cell px-4 py-3 text-sm text-gray-600">
-                          {cert.stockItem?.name || "-"}
+                          {(() => {
+                            const csn3 = cert.stockItem ? cert.stockItem.name : null;
+                            return csn3 ? csn3 : "-";
+                          })()}
                         </td>
                         <td className="hidden sm:table-cell px-4 py-3 text-sm text-gray-600">
                           <span
@@ -1346,7 +1331,10 @@ function BatchLookupTab() {
                     {batchRecords.map((record) => (
                       <tr key={record.id} className="hover:bg-gray-50">
                         <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-900">
-                          {record.stockItem?.name || "-"}
+                          {(() => {
+                            const rsn = record.stockItem ? record.stockItem.name : null;
+                            return rsn ? rsn : "-";
+                          })()}
                         </td>
                         <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-600">
                           {record.quantity}
@@ -1364,7 +1352,12 @@ function BatchLookupTab() {
                                 {record.supplierCertificate.certificateType}
                               </span>
                               <span className="text-xs text-gray-500">
-                                {record.supplierCertificate.supplier?.name || ""}
+                                {(() => {
+                                  const rscn = record.supplierCertificate.supplier
+                                    ? record.supplierCertificate.supplier.name
+                                    : "";
+                                  return rscn;
+                                })()}
                               </span>
                             </span>
                           ) : (
@@ -1426,7 +1419,9 @@ function UploadCertificateModal({
   onClose: () => void;
   onUploaded: () => void;
 }) {
-  const [file, setFile] = useState<File | null>(initialFile ?? null);
+  const uploadModalCertMutation = useUploadCertificate();
+  const initFile = initialFile || null;
+  const [file, setFile] = useState<File | null>(initFile);
   const [supplierId, setSupplierId] = useState("");
   const [stockItemId, setStockItemId] = useState("");
   const [certificateType, setCertificateType] = useState("COC");
@@ -1445,13 +1440,16 @@ function UploadCertificateModal({
     try {
       setIsUploading(true);
       setError(null);
-      await stockControlApiClient.uploadCertificate(file, {
-        supplierId: parseInt(supplierId, 10),
-        stockItemId: stockItemId ? parseInt(stockItemId, 10) : null,
-        certificateType,
-        batchNumber,
-        description: description || null,
-        expiryDate: expiryDate || null,
+      await uploadModalCertMutation.mutateAsync({
+        file,
+        data: {
+          supplierId: parseInt(supplierId, 10),
+          stockItemId: stockItemId ? parseInt(stockItemId, 10) : null,
+          certificateType,
+          batchNumber,
+          description: description || null,
+          expiryDate: expiryDate || null,
+        },
       });
       onUploaded();
     } catch (err) {
@@ -1566,7 +1564,11 @@ function UploadCertificateModal({
             <input
               type="file"
               accept=".pdf,.jpg,.jpeg,.png"
-              onChange={(e) => setFile(e.target.files?.[0] || null)}
+              onChange={(e) => {
+                const files = e.target.files;
+                const firstFile = files ? files[0] : null;
+                setFile(firstFile ? firstFile : null);
+              }}
               className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:rounded-md file:border-0 file:bg-teal-50 file:px-4 file:py-2 file:text-sm file:font-medium file:text-teal-700 hover:file:bg-teal-100"
             />
           </div>

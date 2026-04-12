@@ -3,12 +3,8 @@
 import Link from "next/link";
 import { useState } from "react";
 import { useToast } from "@/app/components/Toast";
-import type {
-  AnalyzedDeliveryNoteData,
-  DeliveryNote,
-  StockItem,
-} from "@/app/lib/api/stockControlApi";
-import { SdnStatus, stockControlApiClient } from "@/app/lib/api/stockControlApi";
+import type { AnalyzedDeliveryNoteData, DeliveryNote } from "@/app/lib/api/stockControlApi";
+import { SdnStatus } from "@/app/lib/api/stockControlApi";
 import { formatDateZA } from "@/app/lib/datetime";
 import {
   useConfirmDeliveryNote,
@@ -16,6 +12,7 @@ import {
   useDeleteDeliveryNote,
   useDeliveryNotes,
   useLinkDeliveryNoteToStock,
+  useReportStockItems,
 } from "@/app/lib/query/hooks";
 import { DeliveryNoteConfirmationModal } from "@/app/stock-control/components/DeliveryNoteConfirmationModal";
 
@@ -33,7 +30,9 @@ function needsStockLink(delivery: DeliveryNote): boolean {
   const linkedCount = delivery.items ? delivery.items.length : 0;
   if (linkedCount > 0) return false;
   const extractedData = delivery.extractedData as { lineItems?: unknown[] } | null;
-  return (extractedData?.lineItems?.length || 0) > 0;
+  const lineItems = extractedData?.lineItems;
+  const lineCount = lineItems ? lineItems.length : 0;
+  return lineCount > 0;
 }
 
 function sdnStatusBadge(status: string) {
@@ -72,7 +71,7 @@ export default function DeliveriesPage() {
   const linkMutation = useLinkDeliveryNoteToStock();
   const confirmMutation = useConfirmDeliveryNote();
 
-  const [stockItems, setStockItems] = useState<StockItem[]>([]);
+  const { data: stockItems = [] } = useReportStockItems();
   const [showModal, setShowModal] = useState(false);
   const [createForm, setCreateForm] = useState({
     deliveryNumber: "",
@@ -90,17 +89,7 @@ export default function DeliveriesPage() {
   const [reviewTarget, setReviewTarget] = useState<DeliveryNote | null>(null);
   const [isReviewSubmitting, setIsReviewSubmitting] = useState(false);
 
-  const fetchStockItems = async () => {
-    try {
-      const result = await stockControlApiClient.stockItems({ limit: "1000" });
-      setStockItems(Array.isArray(result.items) ? result.items : []);
-    } catch (err) {
-      showToast("Failed to load stock items", "error");
-    }
-  };
-
-  const openCreateModal = async () => {
-    await fetchStockItems();
+  const openCreateModal = () => {
     setCreateForm({
       deliveryNumber: "",
       supplierName: "",

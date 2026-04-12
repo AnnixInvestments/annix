@@ -1,6 +1,5 @@
 "use client";
 
-import { useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Fragment, useCallback, useEffect, useRef, useState } from "react";
@@ -12,9 +11,17 @@ import type {
   JobCardImportRow,
   M2Result,
 } from "@/app/lib/api/stockControlApi";
-import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { nowMillis } from "@/app/lib/datetime";
-import { stockControlKeys } from "@/app/lib/query/keys";
+import {
+  useAutoDetectJobCardMapping,
+  useCalculateM2,
+  useConfirmDeliveryMatches,
+  useConfirmJobCardImport,
+  useInvalidateJobCards,
+  useSaveJobCardImportMapping,
+  useUploadDrawingFiles,
+  useUploadJobCardImportFile,
+} from "@/app/lib/query/hooks";
 import { correctLineItemsEndRow, validItemRows } from "../../../lib/lineItemsEndRow";
 import { consumePendingImportFile } from "./pending-file";
 
@@ -284,7 +291,9 @@ function extractMappedRows(
 
   const hasLineItems = Array.from(LINE_ITEM_KEYS).some((k) => regions[k] !== null);
 
-  const liRegion = regions["itemCode"] || regions["itemDescription"];
+  const itemCodeRegion = regions["itemCode"];
+  const itemDescRegion = regions["itemDescription"];
+  const liRegion = itemCodeRegion ? itemCodeRegion : itemDescRegion;
   const validRows = liRegion ? validItemRows(grid, liRegion.startRow) : new Set<number>();
 
   if (hasLineItems) {
@@ -299,18 +308,25 @@ function extractMappedRows(
       lastJobNumber: string;
     }>(
       (acc, r) => {
-        const gridRow = grid[r] ?? [];
+        const rawGridRow = grid[r];
+        const gridRow = rawGridRow ? rawGridRow : [];
         const cellVal = (key: string): string => {
           const region = regions[key];
-          return region ? (gridRow[region.col] ?? "").trim() : "";
+          if (!region) return "";
+          const cellValue = gridRow[region.col];
+          return (cellValue ? cellValue : "").trim();
         };
         const metaCellVal = (key: string): string => {
           const region = regions[key];
           if (!region) return "";
           if (r >= region.startRow && r <= region.endRow) {
-            return (gridRow[region.col] ?? "").trim();
+            const cellValue = gridRow[region.col];
+            return (cellValue ? cellValue : "").trim();
           }
-          return ((grid[region.startRow] ?? [])[region.col] ?? "").trim();
+          const startGridRow = grid[region.startRow];
+          const startRow = startGridRow ? startGridRow : [];
+          const startCellValue = startRow[region.col];
+          return (startCellValue ? startCellValue : "").trim();
         };
 
         const jobNumberRegion = regions["jobNumber"];
@@ -331,7 +347,8 @@ function extractMappedRows(
           const cfValues = customFields.reduce<Record<string, string>>((cv, cf) => {
             const cfRegion = customRegions[cf.id];
             if (cfRegion) {
-              const val = (gridRow[cfRegion.col] ?? "").trim();
+              const cfCellValue = gridRow[cfRegion.col];
+              const val = (cfCellValue ? cfCellValue : "").trim();
               return val ? { ...cv, [cf.fieldName]: val } : cv;
             }
             return cv;
@@ -353,7 +370,8 @@ function extractMappedRows(
           ? Array.from(LINE_ITEM_KEYS).reduce<Record<string, string>>((li, key) => {
               const region = regions[key];
               if (region && r >= region.startRow && r <= region.endRow) {
-                const val = (gridRow[region.col] ?? "").trim();
+                const liCellValue = gridRow[region.col];
+                const val = (liCellValue ? liCellValue : "").trim();
                 if (val) {
                   return { ...li, [key]: val };
                 }
@@ -461,17 +479,21 @@ function extractMappedRows(
   }
 
   return Array.from({ length: maxRow - minRow + 1 }, (_, i) => minRow + i).map((r) => {
-    const gridRow = grid[r] ?? [];
+    const rawGridRow2 = grid[r];
+    const gridRow = rawGridRow2 ? rawGridRow2 : [];
     const cellVal = (key: string): string | undefined => {
       const region = regions[key];
-      return region ? (gridRow[region.col] ?? "").trim() || undefined : undefined;
+      if (!region) return undefined;
+      const cellValue = gridRow[region.col];
+      return (cellValue ? cellValue : "").trim() || undefined;
     };
 
     const cfValues: Record<string, string> = {};
     customFields.forEach((cf) => {
       const cfRegion = customRegions[cf.id];
       if (cfRegion) {
-        const val = (gridRow[cfRegion.col] ?? "").trim();
+        const cfCellValue2 = gridRow[cfRegion.col];
+        const val = (cfCellValue2 ? cfCellValue2 : "").trim();
         if (val) cfValues[cf.fieldName] = val;
       }
     });
@@ -509,10 +531,15 @@ function savedMappingToRegions(
 
   const lastRow = grid.length - 1;
 
-  const liStartRow =
-    config.lineItems?.itemCode?.startRow || config.lineItems?.itemDescription?.startRow || 0;
-  const liEndRow =
-    config.lineItems?.itemCode?.endRow || config.lineItems?.itemDescription?.endRow || lastRow;
+  const lineItems = config.lineItems;
+  const liItemCode = lineItems ? lineItems.itemCode : null;
+  const liItemDesc = lineItems ? lineItems.itemDescription : null;
+  const liCodeStartRow = liItemCode ? liItemCode.startRow : null;
+  const liDescStartRow = liItemDesc ? liItemDesc.startRow : null;
+  const liCodeEndRow = liItemCode ? liItemCode.endRow : null;
+  const liDescEndRow = liItemDesc ? liItemDesc.endRow : null;
+  const liStartRow = liCodeStartRow || liDescStartRow || 0;
+  const liEndRow = liCodeEndRow || liDescEndRow || lastRow;
   const correctedLiEndRow = correctLineItemsEndRow(grid, liStartRow, liEndRow);
 
   const toRegion = (
@@ -529,10 +556,14 @@ function savedMappingToRegions(
     return { col: fm.column, startRow: fm.startRow, endRow: Math.min(correctedLiEndRow, lastRow) };
   };
 
+  const configJcNumber = config.jcNumber;
+  const configPageNumber = config.pageNumber;
+  const configCustomFields = config.customFields;
+
   const regions: Record<string, CellRegion | null> = {
     jobNumber: toRegion(config.jobNumber),
-    jcNumber: toRegion(config.jcNumber ?? null),
-    pageNumber: toRegion(config.pageNumber ?? null),
+    jcNumber: toRegion(configJcNumber ? configJcNumber : null),
+    pageNumber: toRegion(configPageNumber ? configPageNumber : null),
     jobName: toRegion(config.jobName),
     customerName: toRegion(config.customerName),
     description: toRegion(config.description),
@@ -542,21 +573,22 @@ function savedMappingToRegions(
     dueDate: toRegion(config.dueDate),
     notes: toRegion(config.notes),
     reference: toRegion(config.reference),
-    itemCode: toLineItemRegion(config.lineItems ? config.lineItems.itemCode : null),
-    itemDescription: toLineItemRegion(config.lineItems ? config.lineItems.itemDescription : null),
-    itemNo: toLineItemRegion(config.lineItems ? config.lineItems.itemNo : null),
-    quantity: toLineItemRegion(config.lineItems ? config.lineItems.quantity : null),
-    jtNo: toLineItemRegion(config.lineItems ? config.lineItems.jtNo : null),
+    itemCode: toLineItemRegion(lineItems ? lineItems.itemCode : null),
+    itemDescription: toLineItemRegion(lineItems ? lineItems.itemDescription : null),
+    itemNo: toLineItemRegion(lineItems ? lineItems.itemNo : null),
+    quantity: toLineItemRegion(lineItems ? lineItems.quantity : null),
+    jtNo: toLineItemRegion(lineItems ? lineItems.jtNo : null),
   };
 
-  const customFields: CustomFieldDef[] = (config.customFields ?? []).map((cf, idx) => ({
+  const cfList = configCustomFields ? configCustomFields : [];
+  const customFields: CustomFieldDef[] = cfList.map((cf, idx) => ({
     id: `custom_${idx}`,
     fieldName: cf.fieldName,
     color: CUSTOM_FIELD_COLORS[idx % CUSTOM_FIELD_COLORS.length],
   }));
 
   const customRegions: Record<string, CellRegion | null> = {};
-  (config.customFields ?? []).forEach((cf, idx) => {
+  cfList.forEach((cf, idx) => {
     customRegions[`custom_${idx}`] = toRegion(cf);
   });
 
@@ -636,8 +668,15 @@ function fieldForCell(
 }
 
 export default function JobCardImportPage() {
-  const queryClient = useQueryClient();
   const router = useRouter();
+  const autoDetectMutation = useAutoDetectJobCardMapping();
+  const uploadFileMutation = useUploadJobCardImportFile();
+  const uploadDrawingsMutation = useUploadDrawingFiles();
+  const calculateM2Mutation = useCalculateM2();
+  const saveMappingMutation = useSaveJobCardImportMapping();
+  const confirmImportMutation = useConfirmJobCardImport();
+  const confirmDeliveryMutation = useConfirmDeliveryMatches();
+  const invalidateJobCards = useInvalidateJobCards();
   const [step, setStep] = useState<ImportStep>("upload");
   const [file, setFile] = useState<File | null>(null);
   const [grid, setGrid] = useState<string[][]>([]);
@@ -683,7 +722,7 @@ export default function JobCardImportPage() {
     if (grid.length === 0) return;
     setIsAutoDetecting(true);
     try {
-      const detectedMapping = await stockControlApiClient.autoDetectJobCardMapping(grid);
+      const detectedMapping = await autoDetectMutation.mutateAsync(grid);
       const newRegions: Record<string, CellRegion | null> = {};
 
       const fieldKeys = [
@@ -717,7 +756,8 @@ export default function JobCardImportPage() {
       const lineItemKeys = ["itemCode", "itemDescription", "itemNo", "quantity", "jtNo"] as const;
 
       lineItemKeys.forEach((key) => {
-        const mapping = detectedMapping.lineItems?.[key];
+        const liItems = detectedMapping.lineItems;
+        const mapping = liItems ? liItems[key] : null;
         if (mapping) {
           newRegions[key] = {
             col: mapping.column,
@@ -743,26 +783,38 @@ export default function JobCardImportPage() {
 
     try {
       setIsUploading(true);
-      const response = await stockControlApiClient.uploadJobCardImportFile(selectedFile);
+      const response = await uploadFileMutation.mutateAsync(selectedFile);
       setGrid(response.grid);
       setDocumentNumber(response.documentNumber);
-      setSourceFilePath(response.sourceFilePath || null);
-      setSourceFileName(response.sourceFileName || null);
+      const srcPath = response.sourceFilePath;
+      const srcName = response.sourceFileName;
+      setSourceFilePath(srcPath || null);
+      setSourceFileName(srcName || null);
 
-      if (response.drawingRows && response.drawingRows.length > 0) {
+      const drawingRows = response.drawingRows;
+      if (drawingRows && drawingRows.length > 0) {
         setIsDrawingImport(true);
-        setMappedRows(response.drawingRows);
-        setExpandedJobs(new Set(response.drawingRows.map((r) => r.jobNumber ?? "")));
+        setMappedRows(drawingRows);
+        setExpandedJobs(
+          new Set(
+            drawingRows.map((r) => {
+              const jn = r.jobNumber;
+              return jn ? jn : "";
+            }),
+          ),
+        );
         setStep("preview");
         return;
       }
 
-      if (response.savedMapping?.mappingConfig && response.grid.length > 1) {
+      const savedMapping = response.savedMapping;
+      const mappingConfig = savedMapping ? savedMapping.mappingConfig : null;
+      if (mappingConfig && response.grid.length > 1) {
         const {
           regions: savedRegions,
           customFields: savedCf,
           customRegions: savedCfRegions,
-        } = savedMappingToRegions(response.savedMapping, response.grid);
+        } = savedMappingToRegions(savedMapping as JobCardImportMapping, response.grid);
         const hasRequired = savedRegions.jobNumber !== null && savedRegions.jobName !== null;
 
         if (hasRequired) {
@@ -795,15 +847,25 @@ export default function JobCardImportPage() {
 
     try {
       setIsUploading(true);
-      const response = await stockControlApiClient.uploadDrawingFiles(files);
+      const response = await uploadDrawingsMutation.mutateAsync(files);
       setDocumentNumber(response.documentNumber);
-      setSourceFilePath(response.sourceFilePath || null);
-      setSourceFileName(response.sourceFileName || null);
+      const srcPath = response.sourceFilePath;
+      const srcName = response.sourceFileName;
+      setSourceFilePath(srcPath || null);
+      setSourceFileName(srcName || null);
 
-      if (response.drawingRows && response.drawingRows.length > 0) {
+      const drawingRows = response.drawingRows;
+      if (drawingRows && drawingRows.length > 0) {
         setIsDrawingImport(true);
-        setMappedRows(response.drawingRows);
-        setExpandedJobs(new Set(response.drawingRows.map((r) => r.jobNumber ?? "")));
+        setMappedRows(drawingRows);
+        setExpandedJobs(
+          new Set(
+            drawingRows.map((r) => {
+              const jn = r.jobNumber;
+              return jn ? jn : "";
+            }),
+          ),
+        );
         setStep("preview");
       } else {
         setError(
@@ -836,7 +898,7 @@ export default function JobCardImportPage() {
 
     setIsCalculatingM2(true);
     try {
-      const results = await stockControlApiClient.calculateM2(descriptions);
+      const results = await calculateM2Mutation.mutateAsync(descriptions);
       const resultsMap: Record<string, M2Result> = {};
       results.forEach((r) => {
         resultsMap[r.description] = r;
@@ -923,7 +985,7 @@ export default function JobCardImportPage() {
     const currentIndex = allFieldKeys.indexOf(field);
     const allAssigned = { ...regions, ...customRegions, [field]: newRegion };
     const nextUnassigned = allFieldKeys.find((k, i) => i > currentIndex && !allAssigned[k]);
-    setActiveField(nextUnassigned ?? null);
+    setActiveField(nextUnassigned ? nextUnassigned : null);
 
     setDragStart(null);
     setDragEnd(null);
@@ -967,7 +1029,7 @@ export default function JobCardImportPage() {
       setIsSavingMapping(true);
       setError(null);
       const config = regionsToMappingConfig(regions, customFields, customRegions);
-      await stockControlApiClient.saveJobCardImportMapping(config);
+      await saveMappingMutation.mutateAsync(config);
       const rows = extractMappedRows(grid, regions, customFields, customRegions);
       setMappedRows(rows);
       setStep("preview");
@@ -1043,47 +1105,62 @@ export default function JobCardImportPage() {
       setError(null);
       const jcFromFilename =
         documentNumber && /^JC\d+$/i.test(documentNumber) ? documentNumber.toUpperCase() : null;
-      const rowsWithM2 = mappedRows.map((row, rowIdx) => ({
-        ...row,
-        jcNumber: row.jcNumber || jcFromFilename || undefined,
-        reference: row.reference || documentNumber || undefined,
-        lineItems: row.lineItems?.map((li, liIdx) => {
-          const manualKey = `${rowIdx}-${liIdx}`;
-          const manualVal = manualM2[manualKey];
-          if (manualVal != null) return { ...li, m2: manualVal };
-          const m2r = li.itemDescription ? m2Results[li.itemDescription] : null;
-          const autoM2 = m2r ? m2r.externalM2 || m2r.totalM2 : undefined;
-          return autoM2 != null ? { ...li, m2: autoM2 } : li;
-        }),
-      }));
-      const importResult = await stockControlApiClient.confirmJobCardImport(
-        rowsWithM2,
+      const rowsWithM2 = mappedRows.map((row, rowIdx) => {
+        const rowJcNumber = row.jcNumber;
+        const rowReference = row.reference;
+        const rowLineItems = row.lineItems;
+        return {
+          ...row,
+          jcNumber: rowJcNumber || jcFromFilename || undefined,
+          reference: rowReference || documentNumber || undefined,
+          lineItems: rowLineItems
+            ? rowLineItems.map((li, liIdx) => {
+                const manualKey = `${rowIdx}-${liIdx}`;
+                const manualVal = manualM2[manualKey];
+                if (manualVal != null) return { ...li, m2: manualVal };
+                const liDesc = li.itemDescription;
+                const m2r = liDesc ? m2Results[liDesc] : null;
+                const extM2 = m2r ? m2r.externalM2 : null;
+                const totM2 = m2r ? m2r.totalM2 : null;
+                const autoM2 = extM2 || totM2 || undefined;
+                return autoM2 != null ? { ...li, m2: autoM2 } : li;
+              })
+            : undefined,
+        };
+      });
+      const importResult = await confirmImportMutation.mutateAsync({
+        rows: rowsWithM2,
         sourceFilePath,
         sourceFileName,
-      );
+      });
       setResult(importResult);
-      queryClient.invalidateQueries({ queryKey: stockControlKeys.jobCards.all });
+      invalidateJobCards();
 
-      if (importResult.deliveryMatches && importResult.deliveryMatches.length > 0) {
-        setPendingDeliveryMatches(importResult.deliveryMatches);
-        const initialSelections = importResult.deliveryMatches.reduce<
-          Record<number, Record<number, boolean>>
-        >((acc, dm) => {
-          const matchSelections = dm.matches.reduce<Record<number, boolean>>(
-            (mAcc, match) => ({
-              ...mAcc,
-              [match.deliveryItemId]: match.preSelected,
-            }),
-            {},
-          );
-          return { ...acc, [dm.jobCardId]: matchSelections };
-        }, {});
+      const deliveryMatches = importResult.deliveryMatches;
+      if (deliveryMatches && deliveryMatches.length > 0) {
+        setPendingDeliveryMatches(deliveryMatches);
+        const initialSelections = deliveryMatches.reduce<Record<number, Record<number, boolean>>>(
+          (acc, dm) => {
+            const matchSelections = dm.matches.reduce<Record<number, boolean>>(
+              (mAcc, match) => ({
+                ...mAcc,
+                [match.deliveryItemId]: match.preSelected,
+              }),
+              {},
+            );
+            return { ...acc, [dm.jobCardId]: matchSelections };
+          },
+          {},
+        );
         setDeliverySelections(initialSelections);
         setStep("delivery-matching");
-      } else if (importResult.createdJobCardIds && importResult.createdJobCardIds.length === 1) {
-        router.push(`/stock-control/portal/job-cards/${importResult.createdJobCardIds[0]}`);
       } else {
-        setStep("result");
+        const createdIds = importResult.createdJobCardIds;
+        if (createdIds && createdIds.length === 1) {
+          router.push(`/stock-control/portal/job-cards/${createdIds[0]}`);
+        } else {
+          setStep("result");
+        }
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to import job cards");
@@ -1384,17 +1461,19 @@ export default function JobCardImportPage() {
                       d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
                     />
                   </svg>
-                  <span className="text-sm font-medium">{file?.name}</span>
+                  <span className="text-sm font-medium">{file ? file.name : ""}</span>
                   <span className="text-xs text-gray-400">({grid.length} rows)</span>
                 </div>
-                {activeField && (
-                  <div className="text-sm px-3 py-1 rounded bg-white/20">
-                    Drag to select:{" "}
-                    <span className="font-medium">
-                      {allFieldDefs.find((f) => f.key === activeField)?.label}
-                    </span>
-                  </div>
-                )}
+                {activeField &&
+                  (() => {
+                    const activeFieldDef = allFieldDefs.find((f) => f.key === activeField);
+                    const activeLabel = activeFieldDef ? activeFieldDef.label : "";
+                    return (
+                      <div className="text-sm px-3 py-1 rounded bg-white/20">
+                        Drag to select: <span className="font-medium">{activeLabel}</span>
+                      </div>
+                    );
+                  })()}
               </div>
 
               <div
@@ -1430,7 +1509,8 @@ export default function JobCardImportPage() {
                           {rowIdx + 1}
                         </td>
                         {Array.from({ length: maxCols }, (_, colIdx) => {
-                          const value = row[colIdx] ?? "";
+                          const cellRaw = row[colIdx];
+                          const value = cellRaw ? cellRaw : "";
                           const assigned = fieldForCell(
                             rowIdx,
                             colIdx,
@@ -1532,7 +1612,9 @@ export default function JobCardImportPage() {
 
               <div className="flex-1 overflow-auto p-4 space-y-4">
                 {FIELD_GROUPS.map((group) => {
-                  const isCollapsed = collapsedGroups[group.key] ?? false;
+                  const groupKey = group.key;
+                  const collapsedRaw = collapsedGroups[groupKey];
+                  const isCollapsed = collapsedRaw ? collapsedRaw : false;
                   return (
                     <div key={group.key}>
                       <button
@@ -1678,9 +1760,12 @@ export default function JobCardImportPage() {
                   <div className="space-y-2">
                     {customFields.map((cf) => {
                       const isActive = activeField === cf.id;
-                      const region = customRegions[cf.id] ?? null;
+                      const cfId = cf.id;
+                      const cfRegionRaw = customRegions[cfId];
+                      const region = cfRegionRaw ? cfRegionRaw : null;
                       const isMapped = region !== null;
-                      const colors = FIELD_COLORS[cf.color];
+                      const cfColor = cf.color;
+                      const colors = FIELD_COLORS[cfColor];
 
                       return (
                         <div
@@ -1823,10 +1908,13 @@ export default function JobCardImportPage() {
                   )}
                 </h3>
                 <p className="mt-1 text-sm text-gray-500">
-                  {isDrawingImport
-                    ? `Extracted from ${drawingFiles.length > 0 ? `${drawingFiles.length} drawing${drawingFiles.length !== 1 ? "s" : ""}` : file?.name || "drawing"}`
-                    : file?.name}{" "}
-                  - {mappedRows.length} job card{mappedRows.length !== 1 ? "s" : ""}
+                  {(() => {
+                    const fileName = file ? file.name : null;
+                    if (isDrawingImport) {
+                      return `Extracted from ${drawingFiles.length > 0 ? `${drawingFiles.length} drawing${drawingFiles.length !== 1 ? "s" : ""}` : fileName || "drawing"}`;
+                    }
+                    return fileName || "";
+                  })()} - {mappedRows.length} job card{mappedRows.length !== 1 ? "s" : ""}
                   {hasAnyLineItems ? " (with line items)" : ""}
                 </p>
               </div>
@@ -1928,16 +2016,29 @@ export default function JobCardImportPage() {
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
                     {mappedRows.map((row, index) => {
-                      const missingRequired = !row.jobNumber || !row.jobName;
+                      const rowJobNumber = row.jobNumber;
+                      const rowJcNumber = row.jcNumber;
+                      const rowPageNumber = row.pageNumber;
+                      const rowJobName = row.jobName;
+                      const rowCustomerName = row.customerName;
+                      const rowDescription = row.description;
+                      const rowPoNumber = row.poNumber;
+                      const rowSiteLocation = row.siteLocation;
+                      const rowContactPerson = row.contactPerson;
+                      const rowDueDate = row.dueDate;
+                      const rowNotes = row.notes;
+                      const rowReference = row.reference;
+                      const missingRequired = !rowJobNumber || !rowJobName;
                       const lineCount = row.lineItems ? row.lineItems.length : 0;
-                      const isExpanded = expandedJobs.has(row.jobNumber ?? "");
+                      const jobNumberKey = rowJobNumber || "";
+                      const isExpanded = expandedJobs.has(jobNumberKey);
                       const extraFields = [
-                        row.poNumber ? `PO: ${row.poNumber}` : null,
-                        row.siteLocation ? `Site: ${row.siteLocation}` : null,
-                        row.contactPerson ? `Contact: ${row.contactPerson}` : null,
-                        row.dueDate ? `Due: ${row.dueDate}` : null,
-                        row.notes && !regions["notes"] ? `Notes: ${row.notes}` : null,
-                        row.reference ? `Ref: ${row.reference}` : null,
+                        rowPoNumber ? `PO: ${rowPoNumber}` : null,
+                        rowSiteLocation ? `Site: ${rowSiteLocation}` : null,
+                        rowContactPerson ? `Contact: ${rowContactPerson}` : null,
+                        rowDueDate ? `Due: ${rowDueDate}` : null,
+                        rowNotes && !regions["notes"] ? `Notes: ${rowNotes}` : null,
+                        rowReference ? `Ref: ${rowReference}` : null,
                       ].filter(Boolean);
 
                       return (
@@ -1947,32 +2048,32 @@ export default function JobCardImportPage() {
                               {index + 1}
                             </td>
                             <td
-                              className={`px-4 py-3 whitespace-nowrap text-sm ${!row.jobNumber ? "text-red-500 font-medium" : "text-gray-900"}`}
+                              className={`px-4 py-3 whitespace-nowrap text-sm ${!rowJobNumber ? "text-red-500 font-medium" : "text-gray-900"}`}
                             >
-                              {row.jobNumber || "Missing"}
+                              {rowJobNumber || "Missing"}
                             </td>
                             <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
-                              {row.jcNumber || "-"}
+                              {rowJcNumber || "-"}
                             </td>
                             <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
-                              {row.pageNumber || "-"}
+                              {rowPageNumber || "-"}
                             </td>
                             <td
-                              className={`px-4 py-3 whitespace-nowrap text-sm ${!row.jobName ? "text-red-500 font-medium" : "text-gray-900"}`}
+                              className={`px-4 py-3 whitespace-nowrap text-sm ${!rowJobName ? "text-red-500 font-medium" : "text-gray-900"}`}
                             >
-                              {row.jobName || "Missing"}
+                              {rowJobName || "Missing"}
                             </td>
                             <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
-                              {row.customerName || "-"}
+                              {rowCustomerName || "-"}
                             </td>
                             <td className="px-4 py-3 text-sm text-gray-900 max-w-xs truncate">
-                              {row.description || "-"}
+                              {rowDescription || "-"}
                             </td>
                             {hasLineItemMapped && (
                               <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
                                 {lineCount > 0 ? (
                                   <button
-                                    onClick={() => toggleJobExpanded(row.jobNumber ?? "")}
+                                    onClick={() => toggleJobExpanded(jobNumberKey)}
                                     className="text-teal-600 hover:text-teal-800 font-medium"
                                   >
                                     {lineCount} item{lineCount !== 1 ? "s" : ""}{" "}
@@ -2027,26 +2128,33 @@ export default function JobCardImportPage() {
                                   </thead>
                                   <tbody className="divide-y divide-gray-100">
                                     {row.lineItems.map((li, liIdx) => {
-                                      const m2r = li.itemDescription
-                                        ? m2Results[li.itemDescription]
+                                      const liItemCode = li.itemCode;
+                                      const liItemDescription = li.itemDescription;
+                                      const liItemNo = li.itemNo;
+                                      const liQuantity = li.quantity;
+                                      const liJtNo = li.jtNo;
+                                      const liNotes = li.notes;
+                                      const m2rRaw = liItemDescription
+                                        ? m2Results[liItemDescription]
                                         : null;
+                                      const m2r = m2rRaw ? m2rRaw : null;
                                       return (
                                         <Fragment key={liIdx}>
                                           <tr className="hover:bg-gray-100/50">
                                             <td className="px-3 py-1.5 text-xs text-gray-600 whitespace-nowrap">
-                                              {li.itemCode || "-"}
+                                              {liItemCode || "-"}
                                             </td>
                                             <td className="px-3 py-1.5 text-xs text-gray-900 font-medium">
-                                              {li.itemDescription || "-"}
+                                              {liItemDescription || "-"}
                                             </td>
                                             <td className="px-3 py-1.5 text-xs text-gray-600 whitespace-nowrap">
-                                              {li.itemNo || "-"}
+                                              {liItemNo || "-"}
                                             </td>
                                             <td className="px-3 py-1.5 text-xs text-gray-600 text-right whitespace-nowrap">
-                                              {li.quantity || "-"}
+                                              {liQuantity || "-"}
                                             </td>
                                             <td className="px-3 py-1.5 text-xs text-gray-600 whitespace-nowrap">
-                                              {li.jtNo || "-"}
+                                              {liJtNo || "-"}
                                             </td>
                                             <td className="px-3 py-1.5 text-xs text-right whitespace-nowrap">
                                               {isCalculatingM2 ? (
@@ -2054,11 +2162,15 @@ export default function JobCardImportPage() {
                                               ) : (
                                                 (() => {
                                                   const manualKey = `${index}-${liIdx}`;
-                                                  const manualVal = manualM2[manualKey];
-                                                  const autoVal = m2r
-                                                    ? m2r.externalM2 || m2r.totalM2
-                                                    : undefined;
-                                                  const displayVal = manualVal ?? autoVal;
+                                                  const manualValRaw = manualM2[manualKey];
+                                                  const manualVal =
+                                                    manualValRaw != null ? manualValRaw : undefined;
+                                                  const m2rExternal = m2r ? m2r.externalM2 : null;
+                                                  const m2rTotal = m2r ? m2r.totalM2 : null;
+                                                  const autoVal =
+                                                    m2rExternal || m2rTotal || undefined;
+                                                  const displayVal =
+                                                    manualVal != null ? manualVal : autoVal;
                                                   return displayVal != null ? (
                                                     <span
                                                       className={`font-medium cursor-pointer ${manualVal != null ? "text-blue-700" : "text-teal-700"}`}
@@ -2115,11 +2227,11 @@ export default function JobCardImportPage() {
                                               )}
                                             </td>
                                           </tr>
-                                          {li.notes && (
+                                          {liNotes && (
                                             <tr className="bg-teal-50/50">
                                               <td colSpan={6} className="px-3 py-1 pl-8">
                                                 <span className="text-[10px] italic text-teal-700 whitespace-pre-wrap">
-                                                  {li.notes}
+                                                  {liNotes}
                                                 </span>
                                               </td>
                                             </tr>
@@ -2132,7 +2244,7 @@ export default function JobCardImportPage() {
                               </td>
                             </tr>
                           )}
-                          {regions["notes"] && row.notes && (
+                          {regions["notes"] && rowNotes && (
                             <tr className="bg-fuchsia-50">
                               <td className="px-4 py-2 text-xs text-gray-400"></td>
                               <td
@@ -2146,7 +2258,7 @@ export default function JobCardImportPage() {
                                 <div className="text-xs">
                                   <span className="font-semibold text-fuchsia-700">Notes: </span>
                                   <span className="text-gray-700 whitespace-pre-wrap">
-                                    {row.notes}
+                                    {rowNotes}
                                   </span>
                                 </div>
                               </td>
@@ -2198,42 +2310,49 @@ export default function JobCardImportPage() {
                     </thead>
                     <tbody className="divide-y divide-gray-200">
                       {dm.matches.map((match) => {
-                        const isSelected =
-                          deliverySelections[dm.jobCardId]?.[match.deliveryItemId] || false;
+                        const matchDeliveryItemId = match.deliveryItemId;
+                        const dmJobId = dm.jobCardId;
+                        const dmSelections = deliverySelections[dmJobId];
+                        const isSelectedRaw = dmSelections
+                          ? dmSelections[matchDeliveryItemId]
+                          : false;
+                        const isSelected = isSelectedRaw || false;
+                        const matchDeliveryItemCode = match.deliveryItemCode;
+                        const matchDeliveryItemDesc = match.deliveryItemDescription;
+                        const matchCpoItemCode = match.cpoItemCode;
+                        const matchCpoItemDesc = match.cpoItemDescription;
                         return (
-                          <tr
-                            key={match.deliveryItemId}
-                            className={isSelected ? "bg-green-50" : ""}
-                          >
+                          <tr key={matchDeliveryItemId} className={isSelected ? "bg-green-50" : ""}>
                             <td className="px-3 py-2">
                               <input
                                 type="checkbox"
                                 checked={isSelected}
                                 onChange={() => {
-                                  setDeliverySelections((prev) => ({
-                                    ...prev,
-                                    [dm.jobCardId]: {
-                                      ...prev[dm.jobCardId],
-                                      [match.deliveryItemId]: !isSelected,
-                                    },
-                                  }));
+                                  setDeliverySelections((prev) => {
+                                    const prevForJob = prev[dmJobId];
+                                    return {
+                                      ...prev,
+                                      [dmJobId]: {
+                                        ...prevForJob,
+                                        [matchDeliveryItemId]: !isSelected,
+                                      },
+                                    };
+                                  });
                                 }}
                                 className="h-4 w-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500"
                               />
                             </td>
                             <td className="px-3 py-2 text-sm">
                               <div className="font-medium text-gray-900">
-                                {match.deliveryItemCode || "-"}
+                                {matchDeliveryItemCode || "-"}
                               </div>
-                              <div className="text-gray-500">
-                                {match.deliveryItemDescription || "-"}
-                              </div>
+                              <div className="text-gray-500">{matchDeliveryItemDesc || "-"}</div>
                             </td>
                             <td className="px-3 py-2 text-sm">
                               <div className="font-medium text-gray-900">
-                                {match.cpoItemCode || "-"}
+                                {matchCpoItemCode || "-"}
                               </div>
-                              <div className="text-gray-500">{match.cpoItemDescription || "-"}</div>
+                              <div className="text-gray-500">{matchCpoItemDesc || "-"}</div>
                             </td>
                             <td className="px-3 py-2 text-sm">
                               <span
@@ -2269,7 +2388,9 @@ export default function JobCardImportPage() {
 
                       await Promise.all(
                         pendingDeliveryMatches.map((dm) => {
-                          const selections = deliverySelections[dm.jobCardId] || {};
+                          const dmJobCardId = dm.jobCardId;
+                          const selectionsRaw = deliverySelections[dmJobCardId];
+                          const selections = selectionsRaw ? selectionsRaw : {};
                           const confirmed = dm.matches
                             .filter((m) => selections[m.deliveryItemId])
                             .map((m) => ({
@@ -2279,10 +2400,10 @@ export default function JobCardImportPage() {
 
                           if (confirmed.length === 0) return Promise.resolve();
 
-                          return stockControlApiClient.confirmDeliveryMatches(
-                            dm.jobCardId,
-                            confirmed,
-                          );
+                          return confirmDeliveryMutation.mutateAsync({
+                            jobCardId: dmJobCardId,
+                            matches: confirmed,
+                          });
                         }),
                       );
 

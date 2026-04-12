@@ -3,16 +3,20 @@
 import { Camera, CheckCircle, FileText, ImageIcon, Trash2, Truck, Upload, X } from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { useCallback, useEffect, useRef, useState } from "react";
-import type {
-  CdnLineMatch,
-  DispatchCdn,
-  DispatchLoadPhoto,
-  DispatchProgress,
-} from "@/app/lib/api/stockControlApi";
-import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
+import { useRef, useState } from "react";
+import type { CdnLineMatch, DispatchCdn, DispatchLoadPhoto } from "@/app/lib/api/stockControlApi";
 import { formatDateLongZA } from "@/app/lib/datetime";
-import { useJobCardDetail } from "@/app/lib/query/hooks";
+import {
+  useCompleteDispatch,
+  useDeleteDispatchCdn,
+  useDeleteDispatchLoadPhoto,
+  useDispatchCdns,
+  useDispatchLoadPhotos,
+  useDispatchProgress,
+  useJobCardDetail,
+  useUploadDispatchCdn,
+  useUploadDispatchLoadPhotos,
+} from "@/app/lib/query/hooks";
 
 export default function DispatchPage() {
   const params = useParams();
@@ -20,58 +24,37 @@ export default function DispatchPage() {
   const jobId = Number(params.id);
 
   const { data: jobCard, isLoading: isLoadingJob } = useJobCardDetail(jobId);
+  const { data: progress = null, isLoading: isLoadingProgress } = useDispatchProgress(jobId);
+  const { data: cdns = [], isLoading: isLoadingCdns } = useDispatchCdns(jobId);
+  const { data: loadPhotos = [] } = useDispatchLoadPhotos(jobId);
 
-  const [progress, setProgress] = useState<DispatchProgress | null>(null);
-  const [cdns, setCdns] = useState<DispatchCdn[]>([]);
-  const [loadPhotos, setLoadPhotos] = useState<DispatchLoadPhoto[]>([]);
-  const [isLoadingDispatch, setIsLoadingDispatch] = useState(true);
+  const uploadCdnMutation = useUploadDispatchCdn();
+  const uploadPhotosMutation = useUploadDispatchLoadPhotos();
+  const deleteCdnMutation = useDeleteDispatchCdn();
+  const deletePhotoMutation = useDeleteDispatchLoadPhoto();
+  const completeDispatchMutation = useCompleteDispatch();
+
   const [error, setError] = useState<string | null>(null);
-  const [isUploadingCdn, setIsUploadingCdn] = useState(false);
-  const [isUploadingPhotos, setIsUploadingPhotos] = useState(false);
-  const [isCompleting, setIsCompleting] = useState(false);
   const [showCdnPreview, setShowCdnPreview] = useState<DispatchCdn | null>(null);
   const [showPhotoPreview, setShowPhotoPreview] = useState<DispatchLoadPhoto | null>(null);
   const cdnInputRef = useRef<HTMLInputElement>(null);
   const photoInputRef = useRef<HTMLInputElement>(null);
 
-  const isLoading = isLoadingJob || isLoadingDispatch;
-
-  const fetchDispatchData = useCallback(async () => {
-    try {
-      setIsLoadingDispatch(true);
-      const [progressData, cdnData, photoData] = await Promise.all([
-        stockControlApiClient.dispatchProgress(jobId),
-        stockControlApiClient.dispatchCdns(jobId),
-        stockControlApiClient.dispatchLoadPhotos(jobId),
-      ]);
-      setProgress(progressData);
-      setCdns(cdnData);
-      setLoadPhotos(photoData);
-      setError(null);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load dispatch data");
-    } finally {
-      setIsLoadingDispatch(false);
-    }
-  }, [jobId]);
-
-  useEffect(() => {
-    fetchDispatchData();
-  }, [fetchDispatchData]);
+  const isUploadingCdn = uploadCdnMutation.isPending;
+  const isUploadingPhotos = uploadPhotosMutation.isPending;
+  const isCompleting = completeDispatchMutation.isPending;
+  const isLoading = isLoadingJob || isLoadingProgress || isLoadingCdns;
 
   const handleCdnUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     try {
-      setIsUploadingCdn(true);
       setError(null);
-      await stockControlApiClient.uploadDispatchCdn(jobId, file);
-      await fetchDispatchData();
+      await uploadCdnMutation.mutateAsync({ jobCardId: jobId, file });
     } catch (err) {
       setError(err instanceof Error ? err.message : "CDN upload failed");
     } finally {
-      setIsUploadingCdn(false);
       if (cdnInputRef.current) {
         cdnInputRef.current.value = "";
       }
@@ -83,14 +66,11 @@ export default function DispatchPage() {
     if (!files || files.length === 0) return;
 
     try {
-      setIsUploadingPhotos(true);
       setError(null);
-      await stockControlApiClient.uploadDispatchLoadPhotos(jobId, Array.from(files));
-      await fetchDispatchData();
+      await uploadPhotosMutation.mutateAsync({ jobCardId: jobId, files: Array.from(files) });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Photo upload failed");
     } finally {
-      setIsUploadingPhotos(false);
       if (photoInputRef.current) {
         photoInputRef.current.value = "";
       }
@@ -99,8 +79,7 @@ export default function DispatchPage() {
 
   const handleDeleteCdn = async (cdnId: number) => {
     try {
-      await stockControlApiClient.deleteDispatchCdn(jobId, cdnId);
-      await fetchDispatchData();
+      await deleteCdnMutation.mutateAsync({ jobCardId: jobId, cdnId });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to delete CDN");
     }
@@ -108,20 +87,22 @@ export default function DispatchPage() {
 
   const handleDeletePhoto = async (photoId: number) => {
     try {
-      await stockControlApiClient.deleteDispatchLoadPhoto(jobId, photoId);
-      await fetchDispatchData();
+      await deletePhotoMutation.mutateAsync({ jobCardId: jobId, photoId });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to delete photo");
     }
   };
 
   const handleCompleteDispatch = async () => {
-    if (!progress?.canComplete) {
+    const canComplete = progress ? progress.canComplete : false;
+    const hasCdn = progress ? progress.hasCdn : false;
+    const hasLoadPhotos = progress ? progress.hasLoadPhotos : false;
+    if (!canComplete) {
       const missing: string[] = [];
-      if (!progress?.hasCdn) {
+      if (!hasCdn) {
         missing.push("Customer Delivery Note");
       }
-      if (!progress?.hasLoadPhotos) {
+      if (!hasLoadPhotos) {
         missing.push("load photos");
       }
       setError(`Cannot complete dispatch. Missing: ${missing.join(" and ")}.`);
@@ -129,13 +110,10 @@ export default function DispatchPage() {
     }
 
     try {
-      setIsCompleting(true);
-      await stockControlApiClient.completeDispatch(jobId);
+      await completeDispatchMutation.mutateAsync(jobId);
       router.push(`/stock-control/portal/job-cards/${jobId}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to complete dispatch");
-    } finally {
-      setIsCompleting(false);
     }
   };
 
@@ -322,39 +300,43 @@ export default function DispatchPage() {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {cdns.flatMap((cdn) =>
-                (cdn.lineMatches || ([] as CdnLineMatch[])).map((match, idx) => (
-                  <tr key={`${cdn.id}-${idx}`}>
-                    <td className="px-6 py-4 text-sm text-gray-900 max-w-xs truncate">
-                      {match.cdnDescription}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-900 text-right">
-                      {match.cdnQuantity || "-"}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-600 max-w-xs truncate">
-                      {match.matchedDescription || (
-                        <span className="text-orange-500 italic">No match</span>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-600 text-right">
-                      {match.matchedQuantity || "-"}
-                    </td>
-                    <td className="px-6 py-4 text-center">
-                      <span
-                        className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-                          match.confidence >= 0.7
-                            ? "bg-green-100 text-green-800"
-                            : match.confidence >= 0.4
-                              ? "bg-yellow-100 text-yellow-800"
-                              : "bg-red-100 text-red-800"
-                        }`}
-                      >
-                        {Math.round(match.confidence * 100)}%
-                      </span>
-                    </td>
-                  </tr>
-                )),
-              )}
+              {cdns.flatMap((cdn) => {
+                const matches = cdn.lineMatches ? cdn.lineMatches : ([] as CdnLineMatch[]);
+                return matches.map((match, idx) => {
+                  const cdnQty = match.cdnQuantity ? match.cdnQuantity : "-";
+                  const matchedDesc = match.matchedDescription;
+                  const matchedQty = match.matchedQuantity ? match.matchedQuantity : "-";
+                  return (
+                    <tr key={`${cdn.id}-${idx}`}>
+                      <td className="px-6 py-4 text-sm text-gray-900 max-w-xs truncate">
+                        {match.cdnDescription}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-900 text-right">{cdnQty}</td>
+                      <td className="px-6 py-4 text-sm text-gray-600 max-w-xs truncate">
+                        {matchedDesc ? (
+                          matchedDesc
+                        ) : (
+                          <span className="text-orange-500 italic">No match</span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-600 text-right">{matchedQty}</td>
+                      <td className="px-6 py-4 text-center">
+                        <span
+                          className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                            match.confidence >= 0.7
+                              ? "bg-green-100 text-green-800"
+                              : match.confidence >= 0.4
+                                ? "bg-yellow-100 text-yellow-800"
+                                : "bg-red-100 text-red-800"
+                          }`}
+                        >
+                          {Math.round(match.confidence * 100)}%
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                });
+              })}
             </tbody>
           </table>
         </div>
@@ -422,7 +404,9 @@ export default function DispatchPage() {
                 </div>
                 <div className="p-2">
                   <p className="text-xs text-gray-600 truncate">{photo.originalFilename}</p>
-                  <p className="text-xs text-gray-400">{photo.uploadedByName || "Unknown"}</p>
+                  <p className="text-xs text-gray-400">
+                    {photo.uploadedByName ? photo.uploadedByName : "Unknown"}
+                  </p>
                 </div>
                 <button
                   onClick={() => handleDeletePhoto(photo.id)}

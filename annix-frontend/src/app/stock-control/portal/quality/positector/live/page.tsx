@@ -13,8 +13,21 @@ import type {
   PositectorStreamingSaveResult,
   PositectorStreamingSession,
 } from "@/app/lib/api/stockControlApi";
-import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
-import { usePositectorDevices } from "@/app/lib/query/hooks";
+import {
+  positectorStreamingEventsUrl,
+  positectorWebhookUrl,
+  useCheckPositectorConnection,
+  useDiscardPositectorStreamingSession,
+  useEndPositectorStreamingSession,
+  useJobCardCoatingAnalysis,
+  useJobCards,
+  usePositectorDevices,
+  usePositectorStreamingSessionDetail,
+  usePositectorStreamingSessions,
+  useRubberStockOptions,
+  useScanQrCode,
+  useStartPositectorStreamingSession,
+} from "@/app/lib/query/hooks";
 import { QrScanner } from "@/app/stock-control/components/QrScanner";
 
 const ENTITY_TYPE_LABELS: Record<string, string> = {
@@ -49,6 +62,10 @@ function specStatusDot(status: "in-spec" | "out-of-spec" | "unknown"): string {
 
 export default function PositectorLiveStreamingPage() {
   const { data: devices = [], isLoading } = usePositectorDevices();
+  const sessionsMutation = usePositectorStreamingSessions();
+  const sessionDetailMutation = usePositectorStreamingSessionDetail();
+  const endSessionMutation = useEndPositectorStreamingSession();
+  const discardSessionMutation = useDiscardPositectorStreamingSession();
   const [error, setError] = useState<string | null>(null);
   const [session, setSession] = useState<PositectorStreamingSession | null>(null);
   const [readings, setReadings] = useState<PositectorStreamingReading[]>([]);
@@ -63,12 +80,10 @@ export default function PositectorLiveStreamingPage() {
 
   const checkForActiveSessions = useCallback(async () => {
     try {
-      const sessions = await stockControlApiClient.positectorStreamingSessions();
+      const sessions = await sessionsMutation.mutateAsync();
       if (Array.isArray(sessions) && sessions.length > 0) {
         const activeSession = sessions[0];
-        const details = await stockControlApiClient.positectorStreamingSession(
-          activeSession.sessionId,
-        );
+        const details = await sessionDetailMutation.mutateAsync(activeSession.sessionId);
         setSession(details);
         setReadings(details.readings ?? []);
       }
@@ -84,7 +99,7 @@ export default function PositectorLiveStreamingPage() {
   useEffect(() => {
     if (!session) return;
 
-    const url = stockControlApiClient.positectorStreamingEventsUrl(session.sessionId);
+    const url = positectorStreamingEventsUrl(session.sessionId);
     const token =
       localStorage.getItem("stockControlAccessToken") ??
       sessionStorage.getItem("stockControlAccessToken");
@@ -144,7 +159,7 @@ export default function PositectorLiveStreamingPage() {
   const handleEndSession = async () => {
     if (!session) return;
     try {
-      const result = await stockControlApiClient.endPositectorStreamingSession(session.sessionId);
+      const result = await endSessionMutation.mutateAsync(session.sessionId);
       setSaveResult(result);
       setSession(null);
       setReadings([]);
@@ -156,7 +171,7 @@ export default function PositectorLiveStreamingPage() {
   const handleDiscardSession = async () => {
     if (!session) return;
     try {
-      await stockControlApiClient.discardPositectorStreamingSession(session.sessionId);
+      await discardSessionMutation.mutateAsync(session.sessionId);
       setSession(null);
       setReadings([]);
     } catch (err) {
@@ -164,7 +179,8 @@ export default function PositectorLiveStreamingPage() {
     }
   };
 
-  const specLimits = session?.specLimits || { min: null, max: null };
+  const sessionSpecLimits = session ? session.specLimits : null;
+  const specLimits = sessionSpecLimits ? sessionSpecLimits : { min: null, max: null };
   const average =
     readings.length > 0 ? readings.reduce((sum, r) => sum + r.value, 0) / readings.length : null;
   const outOfSpecCount = readings.filter(
@@ -206,7 +222,8 @@ export default function PositectorLiveStreamingPage() {
 
       {saveResult &&
         (() => {
-          const entityLabel = ENTITY_TYPE_LABELS[saveResult.entityType] ?? saveResult.entityType;
+          const entityLabelRaw = ENTITY_TYPE_LABELS[saveResult.entityType];
+          const entityLabel = entityLabelRaw ? entityLabelRaw : saveResult.entityType;
           return (
             <div className="rounded-md bg-green-50 p-4">
               <div className="flex items-center justify-between">
@@ -232,7 +249,10 @@ export default function PositectorLiveStreamingPage() {
         (() => {
           const sessionConfig = session.config;
           const sessionEntityType = sessionConfig.entityType;
-          const sessionEntityLabel = ENTITY_TYPE_LABELS[sessionEntityType] ?? sessionEntityType;
+          const sessionEntityLabelRaw = ENTITY_TYPE_LABELS[sessionEntityType];
+          const sessionEntityLabel = sessionEntityLabelRaw
+            ? sessionEntityLabelRaw
+            : sessionEntityType;
           const sessionJobCardId = sessionConfig.jobCardId;
           return (
             <>
@@ -306,10 +326,7 @@ export default function PositectorLiveStreamingPage() {
                         <div className="mt-4 rounded-md bg-gray-50 p-3 text-left text-xs text-gray-500">
                           <p className="mb-1 font-medium">PosiTector WiFi Streaming URL:</p>
                           <code className="break-all text-gray-700">
-                            {stockControlApiClient.positectorWebhookUrl(
-                              profile.companyId,
-                              session.deviceId,
-                            )}
+                            {positectorWebhookUrl(profile.companyId, session.deviceId)}
                           </code>
                         </div>
                       )}
@@ -456,13 +473,17 @@ function StartSessionForm({
   onStarted: (session: PositectorStreamingSession) => void;
   onCancel: () => void;
 }) {
+  const checkConnMutation = useCheckPositectorConnection();
+  const coatingMutation = useJobCardCoatingAnalysis();
+  const rubberMutation = useRubberStockOptions();
+  const scanQrMutation = useScanQrCode();
+  const startSessionMut = useStartPositectorStreamingSession();
+  const { data: activeJobCards = [] } = useJobCards("active");
   const [deviceId, setDeviceId] = useState("");
   const [deviceStatus, setDeviceStatus] = useState<PositectorConnectionStatus | null>(null);
   const [isCheckingDevice, setIsCheckingDevice] = useState(false);
   const [jobCardId, setJobCardId] = useState("");
   const [selectedJobCard, setSelectedJobCard] = useState<JobCard | null>(null);
-  const [jobCards, setJobCards] = useState<JobCard[]>([]);
-  const [isLoadingJobCards, setIsLoadingJobCards] = useState(true);
   const [showQrScanner, setShowQrScanner] = useState(false);
   const [coatingAnalysis, setCoatingAnalysis] = useState<CoatingAnalysis | null>(null);
   const [rubberShore, setRubberShore] = useState<number | null>(null);
@@ -490,9 +511,7 @@ function StartSessionForm({
 
     try {
       setIsCheckingDevice(true);
-      const status = await stockControlApiClient.checkPositectorConnection(
-        parseInt(selectedId, 10),
-      );
+      const status = await checkConnMutation.mutateAsync(parseInt(selectedId, 10));
       setDeviceStatus(status);
     } catch {
       setDeviceStatus(null);
@@ -507,7 +526,7 @@ function StartSessionForm({
 
     try {
       setIsCheckingDevice(true);
-      const status = await stockControlApiClient.checkPositectorConnection(parseInt(deviceId, 10));
+      const status = await checkConnMutation.mutateAsync(parseInt(deviceId, 10));
       setDeviceStatus(status);
     } catch {
       setDeviceStatus(null);
@@ -517,19 +536,8 @@ function StartSessionForm({
     }
   }, [deviceId]);
 
-  useEffect(() => {
-    const fetchJobCards = async () => {
-      try {
-        const data = await stockControlApiClient.jobCards("active");
-        setJobCards(Array.isArray(data) ? data : []);
-      } catch {
-        setJobCards([]);
-      } finally {
-        setIsLoadingJobCards(false);
-      }
-    };
-    fetchJobCards();
-  }, []);
+  const jobCards = activeJobCards;
+  const isLoadingJobCards = false;
 
   const selectJobCard = useCallback(
     async (id: number) => {
@@ -549,8 +557,8 @@ function StartSessionForm({
       try {
         setIsLoadingCoating(true);
         const [analysis, rubberOptions] = await Promise.all([
-          stockControlApiClient.jobCardCoatingAnalysis(id).catch(() => null),
-          stockControlApiClient.rubberStockOptions(id).catch(() => null),
+          coatingMutation.mutateAsync(id).catch(() => null),
+          rubberMutation.mutateAsync(id).catch(() => null),
         ]);
         setCoatingAnalysis(analysis);
 
@@ -599,7 +607,7 @@ function StartSessionForm({
     async (result: string) => {
       setShowQrScanner(false);
       try {
-        const parsed = await stockControlApiClient.scanQrCode(result);
+        const parsed = await scanQrMutation.mutateAsync(result);
         if (parsed.type === "job_card") {
           selectJobCard(parsed.id);
         } else {
@@ -663,7 +671,7 @@ function StartSessionForm({
       setIsStarting(true);
       setError(null);
 
-      const session = await stockControlApiClient.startPositectorStreamingSession({
+      const session = await startSessionMut.mutateAsync({
         deviceId: parseInt(deviceId, 10),
         jobCardId: parseInt(jobCardId, 10),
         entityType,
@@ -688,7 +696,8 @@ function StartSessionForm({
     }
   };
 
-  const availableCoats = coatingAnalysis?.coats || [];
+  const coatingCoats = coatingAnalysis ? coatingAnalysis.coats : null;
+  const availableCoats = coatingCoats ? coatingCoats : [];
 
   return (
     <div className="rounded-lg border border-gray-200 bg-white p-6">

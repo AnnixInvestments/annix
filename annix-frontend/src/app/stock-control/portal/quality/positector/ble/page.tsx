@@ -6,8 +6,12 @@ import type {
   PositectorStreamingSaveResult,
   PositectorStreamingSession,
 } from "@/app/lib/api/stockControlApi";
-import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { nowISO } from "@/app/lib/datetime";
+import {
+  useAddPositectorStreamingReading,
+  useEndPositectorStreamingSession,
+  useStartPositectorStreamingSession,
+} from "@/app/lib/query/hooks";
 
 const ENTITY_TYPE_LABELS: Record<string, string> = {
   dft: "DFT Reading",
@@ -79,6 +83,8 @@ function specStatusColor(status: "in-spec" | "out-of-spec" | "unknown"): string 
 }
 
 export default function PositectorBlePage() {
+  const addReadingMutation = useAddPositectorStreamingReading();
+  const endSessionMutation = useEndPositectorStreamingSession();
   const [supported, setSupported] = useState<boolean | null>(null);
   const [bleDevice, setBleDevice] = useState<BleDeviceInfo | null>(null);
   const [isScanning, setIsScanning] = useState(false);
@@ -183,7 +189,7 @@ export default function PositectorBlePage() {
               uuid: c.uuid,
               properties: {
                 read: c.properties.read,
-                write: c.properties.write || c.properties.writeWithoutResponse,
+                write: c.properties.write ? c.properties.write : c.properties.writeWithoutResponse,
                 notify: c.properties.notify,
                 indicate: c.properties.indicate,
               },
@@ -239,15 +245,15 @@ export default function PositectorBlePage() {
               value,
               units: null,
               probeType: null,
-              serialNumber: bleDevice.device.name ?? null,
+              serialNumber: bleDevice.device.name ? bleDevice.device.name : null,
               timestamp: nowISO(),
             };
 
             setReadings((prev) => [...prev, reading]);
 
             if (session) {
-              stockControlApiClient
-                .addPositectorStreamingReading(session.sessionId, { value })
+              addReadingMutation
+                .mutateAsync({ sessionId: session.sessionId, data: { value } })
                 .catch(() => {});
             }
           }
@@ -286,14 +292,14 @@ export default function PositectorBlePage() {
             value,
             units: null,
             probeType: null,
-            serialNumber: bleDevice.device.name ?? null,
+            serialNumber: bleDevice.device.name ? bleDevice.device.name : null,
             timestamp: nowISO(),
           };
           setReadings((prev) => [...prev, reading]);
 
           if (session) {
-            stockControlApiClient
-              .addPositectorStreamingReading(session.sessionId, { value })
+            addReadingMutation
+              .mutateAsync({ sessionId: session.sessionId, data: { value } })
               .catch(() => {});
           }
         }
@@ -307,7 +313,7 @@ export default function PositectorBlePage() {
   const handleEndSession = async () => {
     if (!session) return;
     try {
-      const result = await stockControlApiClient.endPositectorStreamingSession(session.sessionId);
+      const result = await endSessionMutation.mutateAsync(session.sessionId);
       setSaveResult(result);
       setSession(null);
       setReadings([]);
@@ -317,7 +323,8 @@ export default function PositectorBlePage() {
     }
   };
 
-  const specLimits = session?.specLimits || { min: null, max: null };
+  const sessionSpecLimits = session ? session.specLimits : null;
+  const specLimits = sessionSpecLimits || { min: null, max: null };
   const average =
     readings.length > 0 ? readings.reduce((sum, r) => sum + r.value, 0) / readings.length : null;
 
@@ -379,8 +386,10 @@ export default function PositectorBlePage() {
         <div className="rounded-md bg-green-50 p-4">
           <div className="flex items-center justify-between">
             <p className="text-sm font-medium text-green-800">
-              Saved {saveResult.readingsImported} readings as{" "}
-              {ENTITY_TYPE_LABELS[saveResult.entityType] ?? saveResult.entityType}
+              Saved {saveResult.readingsImported} readings as {(() => {
+                const label = ENTITY_TYPE_LABELS[saveResult.entityType];
+                return label || saveResult.entityType;
+              })()}
               {saveResult.average !== null && ` (avg: ${saveResult.average.toFixed(1)})`}
             </p>
             <button
@@ -466,7 +475,7 @@ export default function PositectorBlePage() {
                   }`}
                 />
                 <span className="text-sm font-medium text-gray-900">
-                  {bleDevice.device.name ?? "Unknown Device"}
+                  {bleDevice.device.name ? bleDevice.device.name : "Unknown Device"}
                 </span>
               </div>
               <span className="text-xs text-gray-500">
@@ -578,7 +587,11 @@ export default function PositectorBlePage() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <span className="rounded-full bg-indigo-100 px-2.5 py-0.5 text-xs font-medium text-indigo-800">
-                {ENTITY_TYPE_LABELS[session.config.entityType] ?? session.config.entityType}
+                {(() => {
+                  const entityType = session.config.entityType;
+                  const label = ENTITY_TYPE_LABELS[entityType];
+                  return label || entityType;
+                })()}
               </span>
               <span className="text-xs text-gray-500">Job Card #{session.config.jobCardId}</span>
               <span className="text-sm text-gray-600">
@@ -676,7 +689,10 @@ export default function PositectorBlePage() {
             setSaveResult(null);
           }}
           onCancel={() => setShowSessionForm(false)}
-          deviceName={bleDevice?.device.name || null}
+          deviceName={(() => {
+            const dn = bleDevice ? bleDevice.device.name : null;
+            return dn ? dn : null;
+          })()}
         />
       )}
     </div>
@@ -692,6 +708,7 @@ function BleSessionForm({
   onCancel: () => void;
   deviceName: string | null;
 }) {
+  const startSessionMutation = useStartPositectorStreamingSession();
   const [jobCardId, setJobCardId] = useState("");
   const [entityType, setEntityType] = useState<"dft" | "blast_profile" | "shore_hardness">("dft");
   const [coatType, setCoatType] = useState("primer");
@@ -715,7 +732,7 @@ function BleSessionForm({
       setIsStarting(true);
       setError(null);
 
-      const session = await stockControlApiClient.startPositectorStreamingSession({
+      const session = await startSessionMutation.mutateAsync({
         deviceId: 0,
         jobCardId: parseInt(jobCardId, 10),
         entityType,

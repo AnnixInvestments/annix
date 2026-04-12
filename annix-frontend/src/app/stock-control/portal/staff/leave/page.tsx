@@ -1,14 +1,21 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
 import type {
   CreateLeaveRequest,
   LeaveType,
   StaffLeaveRecord,
 } from "@/app/lib/api/stock-control-api/types";
-import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { DateTime } from "@/app/lib/datetime";
+import {
+  useAdminDeleteLeaveRecord,
+  useCreateLeaveRecord,
+  useDeleteLeaveRecord,
+  useLeaveRecords,
+  useSickNoteUrl,
+  useUploadSickNote,
+} from "@/app/lib/query/hooks";
 
 const DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
@@ -38,8 +45,6 @@ export default function StaffLeavePage() {
   const isAdmin = profile?.role === "admin" || profile?.role === "manager";
 
   const [currentMonth, setCurrentMonth] = useState(() => DateTime.now().startOf("month"));
-  const [records, setRecords] = useState<StaffLeaveRecord[]>([]);
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const [showRecordModal, setShowRecordModal] = useState(false);
@@ -59,27 +64,22 @@ export default function StaffLeavePage() {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const fetchRecords = useCallback(async (month: DateTime) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await stockControlApiClient.leaveRecordsForMonth(month.year, month.month);
-      setRecords(data);
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Failed to load leave records";
-      setError(message);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const { data: records = [], isLoading: loading } = useLeaveRecords(
+    currentMonth.year,
+    currentMonth.month,
+  );
+  const createLeaveMutation = useCreateLeaveRecord();
+  const uploadSickNoteMutation = useUploadSickNote();
+  const deleteLeaveMutation = useDeleteLeaveRecord();
+  const adminDeleteLeaveMutation = useAdminDeleteLeaveRecord();
+  const sickNoteUrlMutation = useSickNoteUrl();
 
   const handleMonthChange = useCallback(
     (direction: number) => {
       const next = currentMonth.plus({ months: direction });
       setCurrentMonth(next);
-      fetchRecords(next);
     },
-    [currentMonth, fetchRecords],
+    [currentMonth],
   );
 
   const calendarDays = useMemo((): CalendarDay[] => {
@@ -111,11 +111,6 @@ export default function StaffLeavePage() {
     });
   }, [currentMonth, records]);
 
-  useEffect(() => {
-    fetchRecords(currentMonth);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   const handleDayClick = useCallback((day: CalendarDay) => {
     const dateStr = day.date.toISODate() || "";
     setSelectedDate(dateStr);
@@ -139,16 +134,15 @@ export default function StaffLeavePage() {
         endDate,
         ...(notes ? { notes } : {}),
       };
-      const newRecord = await stockControlApiClient.createLeaveRecord(payload);
+      const newRecord = await createLeaveMutation.mutateAsync(payload);
 
       if (sickNoteFile && leaveType === "sick") {
         setUploadingNote(true);
-        await stockControlApiClient.uploadSickNote(newRecord.id, sickNoteFile);
+        await uploadSickNoteMutation.mutateAsync({ recordId: newRecord.id, file: sickNoteFile });
         setUploadingNote(false);
       }
 
       setShowRecordModal(false);
-      fetchRecords(currentMonth);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Failed to save leave record";
       setError(message);
@@ -156,41 +150,52 @@ export default function StaffLeavePage() {
       setSaving(false);
       setUploadingNote(false);
     }
-  }, [startDate, endDate, leaveType, notes, sickNoteFile, currentMonth, fetchRecords]);
+  }, [
+    startDate,
+    endDate,
+    leaveType,
+    notes,
+    sickNoteFile,
+    createLeaveMutation,
+    uploadSickNoteMutation,
+  ]);
 
   const handleDeleteRecord = useCallback(
     async (record: StaffLeaveRecord) => {
       try {
-        if (isAdmin && record.userId !== user?.id) {
-          await stockControlApiClient.adminDeleteLeaveRecord(record.id);
+        const userId = user?.id;
+        if (isAdmin && record.userId !== userId) {
+          await adminDeleteLeaveMutation.mutateAsync(record.id);
         } else {
-          await stockControlApiClient.deleteLeaveRecord(record.id);
+          await deleteLeaveMutation.mutateAsync(record.id);
         }
-        fetchRecords(currentMonth);
         setViewingRecord(null);
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : "Failed to delete record";
         setError(message);
       }
     },
-    [isAdmin, user, currentMonth, fetchRecords],
+    [isAdmin, user, adminDeleteLeaveMutation, deleteLeaveMutation],
   );
 
-  const handleViewSickNote = useCallback(async (record: StaffLeaveRecord) => {
-    setViewingRecord(record);
-    setSickNoteViewUrl(null);
-    if (record.sickNoteUrl) {
-      setLoadingSickNote(true);
-      try {
-        const result = await stockControlApiClient.sickNoteUrl(record.id);
-        setSickNoteViewUrl(result.url);
-      } catch {
-        setSickNoteViewUrl(null);
-      } finally {
-        setLoadingSickNote(false);
+  const handleViewSickNote = useCallback(
+    async (record: StaffLeaveRecord) => {
+      setViewingRecord(record);
+      setSickNoteViewUrl(null);
+      if (record.sickNoteUrl) {
+        setLoadingSickNote(true);
+        try {
+          const result = await sickNoteUrlMutation.mutateAsync(record.id);
+          setSickNoteViewUrl(result.url);
+        } catch {
+          setSickNoteViewUrl(null);
+        } finally {
+          setLoadingSickNote(false);
+        }
       }
-    }
-  }, []);
+    },
+    [sickNoteUrlMutation],
+  );
 
   const handleSickToday = useCallback(() => {
     const today = DateTime.now().toISODate() || "";
@@ -272,24 +277,27 @@ export default function StaffLeavePage() {
                   {day.date.day}
                 </span>
                 <div className="mt-0.5 space-y-0.5">
-                  {day.records.slice(0, 3).map((record) => (
-                    <div
-                      key={record.id}
-                      className={`text-[10px] leading-tight px-1 py-0.5 rounded truncate ${leaveTypeBadgeColor(record.leaveType)}`}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleViewSickNote(record);
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
+                  {day.records.slice(0, 3).map((record) => {
+                    const recName = record.userName ? record.userName : "User";
+                    return (
+                      <div
+                        key={record.id}
+                        className={`text-[10px] leading-tight px-1 py-0.5 rounded truncate ${leaveTypeBadgeColor(record.leaveType)}`}
+                        onClick={(e) => {
                           e.stopPropagation();
                           handleViewSickNote(record);
-                        }
-                      }}
-                    >
-                      {record.userName || "User"} - {leaveTypeLabel(record.leaveType)}
-                    </div>
-                  ))}
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.stopPropagation();
+                            handleViewSickNote(record);
+                          }
+                        }}
+                      >
+                        {recName} - {leaveTypeLabel(record.leaveType)}
+                      </div>
+                    );
+                  })}
                   {day.records.length > 3 && (
                     <div className="text-[10px] text-gray-500 px-1">
                       +{day.records.length - 3} more
@@ -379,7 +387,11 @@ export default function StaffLeavePage() {
                     type="file"
                     accept="image/*,.pdf"
                     capture="environment"
-                    onChange={(e) => setSickNoteFile(e.target.files?.[0] || null)}
+                    onChange={(e) => {
+                      const files = e.target.files;
+                      const picked = files ? files[0] : null;
+                      setSickNoteFile(picked || null);
+                    }}
                     className="w-full text-sm text-gray-500 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-teal-50 file:text-teal-700 hover:file:bg-teal-100"
                   />
                   <p className="mt-1 text-xs text-gray-500">
@@ -450,7 +462,7 @@ export default function StaffLeavePage() {
                   {leaveTypeLabel(viewingRecord.leaveType)}
                 </span>
                 <span className="text-sm text-gray-700 font-medium">
-                  {viewingRecord.userName || "Unknown User"}
+                  {viewingRecord.userName ? viewingRecord.userName : "Unknown User"}
                 </span>
               </div>
               <div className="text-sm text-gray-600">
@@ -497,7 +509,11 @@ export default function StaffLeavePage() {
                       </a>
                       <a
                         href={sickNoteViewUrl}
-                        download={viewingRecord.sickNoteOriginalFilename || "sick-note"}
+                        download={
+                          viewingRecord.sickNoteOriginalFilename
+                            ? viewingRecord.sickNoteOriginalFilename
+                            : "sick-note"
+                        }
                         className="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
                       >
                         <svg
@@ -521,7 +537,7 @@ export default function StaffLeavePage() {
               )}
             </div>
             <div className="px-6 py-4 border-t border-gray-200 flex justify-between">
-              {(viewingRecord.userId === user?.id || isAdmin) && (
+              {(viewingRecord.userId === (user ? user.id : null) || isAdmin) && (
                 <button
                   type="button"
                   onClick={() => handleDeleteRecord(viewingRecord)}

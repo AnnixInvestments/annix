@@ -8,7 +8,13 @@ import type {
   PositectorImportResult,
   PositectorUploadResponse,
 } from "@/app/lib/api/stockControlApi";
-import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
+import {
+  useAnalyzeBundlePdf,
+  useImportBundlePdf,
+  useLinkPositectorUpload,
+  usePositectorUploadDownloadUrl,
+  useUploadPositectorFile,
+} from "@/app/lib/query/hooks";
 
 const FORMAT_LABELS: Record<string, string> = {
   positector_json: "PosiTector JSON",
@@ -75,6 +81,10 @@ const BUNDLE_ENTITY_COLORS: Record<string, string> = {
 
 export default function PositectorUploadPage() {
   const router = useRouter();
+  const uploadFileMutation = useUploadPositectorFile();
+  const analyzeBundleMutation = useAnalyzeBundlePdf();
+  const importBundleMutation = useImportBundlePdf();
+  const downloadUrlMutation = usePositectorUploadDownloadUrl();
   const [isDragOver, setIsDragOver] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -142,7 +152,7 @@ export default function PositectorUploadPage() {
       setUploadResponse(null);
       setImportResult(null);
 
-      const result = await stockControlApiClient.uploadPositectorFile(file);
+      const result = await uploadFileMutation.mutateAsync(file);
       setUploadResponse(result);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to parse pasted data");
@@ -167,7 +177,7 @@ export default function PositectorUploadPage() {
 
       const isPdf = file.name.toLowerCase().endsWith(".pdf");
       if (isPdf) {
-        const analysis = await stockControlApiClient.analyzeBundlePdf(file);
+        const analysis = await analyzeBundleMutation.mutateAsync(file);
         if (analysis.reports.length > 1) {
           setBundleAnalysis({ file, ...analysis });
           setIsUploading(false);
@@ -175,7 +185,7 @@ export default function PositectorUploadPage() {
         }
       }
 
-      const result = await stockControlApiClient.uploadPositectorFile(file);
+      const result = await uploadFileMutation.mutateAsync(file);
       setUploadResponse(result);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to parse file");
@@ -189,7 +199,7 @@ export default function PositectorUploadPage() {
     try {
       setBundleImporting(true);
       setError(null);
-      const result = await stockControlApiClient.importBundlePdf(bundleAnalysis.file);
+      const result = await importBundleMutation.mutateAsync(bundleAnalysis.file);
       setBundleResult(result);
       setBundleAnalysis(null);
     } catch (err) {
@@ -348,8 +358,10 @@ export default function PositectorUploadPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-green-800">
-                    Imported {importResult.readingsImported} readings as{" "}
-                    {ENTITY_TYPE_LABELS[importResult.entityType] || importResult.entityType}
+                    Imported {importResult.readingsImported} readings as {(() => {
+                      const etl = ENTITY_TYPE_LABELS[importResult.entityType];
+                      return etl ? etl : importResult.entityType;
+                    })()}
                     {importResult.average !== null && ` (avg: ${importResult.average.toFixed(1)})`}
                   </p>
                   {importResult.duplicateWarning && (
@@ -490,7 +502,10 @@ export default function PositectorUploadPage() {
                           </p>
                           <p className="mt-1 text-xs text-teal-700">
                             Batch name matched — {autoResult.readingsImported} readings imported as{" "}
-                            {ENTITY_TYPE_LABELS[autoResult.entityType] || autoResult.entityType}
+                            {(() => {
+                              const etl2 = ENTITY_TYPE_LABELS[autoResult.entityType];
+                              return etl2 ? etl2 : autoResult.entityType;
+                            })()}
                             {autoResult.average != null &&
                               ` (avg: ${autoResult.average.toFixed(1)})`}
                             {autoMatch &&
@@ -553,10 +568,7 @@ export default function PositectorUploadPage() {
                             <button
                               type="button"
                               onClick={async () => {
-                                const result =
-                                  await stockControlApiClient.positectorUploadDownloadUrl(
-                                    upload.id,
-                                  );
+                                const result = await downloadUrlMutation.mutateAsync(upload.id);
                                 const downloadUrl = result.url;
                                 if (downloadUrl) {
                                   const filename = uploadBatchName || uploadFilename || "report";
@@ -582,7 +594,10 @@ export default function PositectorUploadPage() {
                             </button>
                           ) : (
                             <span className="inline-flex rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-800">
-                              {FORMAT_LABELS[detectedFormat] || detectedFormat}
+                              {(() => {
+                                const fl = FORMAT_LABELS[detectedFormat];
+                                return fl ? fl : detectedFormat;
+                              })()}
                             </span>
                           )}
                           {uploadProbeType && <span>Probe: {uploadProbeType}</span>}
@@ -594,7 +609,10 @@ export default function PositectorUploadPage() {
                                 : "bg-gray-100 text-gray-800"
                             }`}
                           >
-                            Maps to: {ENTITY_TYPE_LABELS[uploadEntityType] || "Unknown"}
+                            Maps to: {(() => {
+                              const etl3 = ENTITY_TYPE_LABELS[uploadEntityType];
+                              return etl3 ? etl3 : "Unknown";
+                            })()}
                           </span>
                           {isLinked && (
                             <span className="inline-flex rounded-full bg-teal-100 px-2 py-0.5 text-xs font-medium text-teal-800">
@@ -685,12 +703,17 @@ export default function PositectorUploadPage() {
               <div className="flex flex-wrap gap-3">
                 {Object.entries(
                   bundleAnalysis.reports.reduce<Record<string, number>>(
-                    (acc, r) => ({ ...acc, [r.entityType]: (acc[r.entityType] || 0) + 1 }),
+                    (acc, r) => ({
+                      ...acc,
+                      [r.entityType]: (acc[r.entityType] ? acc[r.entityType] : 0) + 1,
+                    }),
                     {},
                   ),
                 ).map(([type, count]) => {
-                  const colorClass = BUNDLE_ENTITY_COLORS[type] || BUNDLE_ENTITY_COLORS.unknown;
-                  const label = BUNDLE_ENTITY_LABELS[type] || type;
+                  const colorClassRaw = BUNDLE_ENTITY_COLORS[type];
+                  const colorClass = colorClassRaw ? colorClassRaw : BUNDLE_ENTITY_COLORS.unknown;
+                  const labelRaw = BUNDLE_ENTITY_LABELS[type];
+                  const label = labelRaw ? labelRaw : type;
                   return (
                     <div key={type} className={`rounded-lg px-4 py-3 text-center ${colorClass}`}>
                       <p className="text-2xl font-bold">{count}</p>
@@ -813,6 +836,7 @@ function LinkUploadForm(props: {
   onClose: () => void;
   onLinked: (result: PositectorImportResult & { uploadId: number }) => void;
 }) {
+  const linkUploadMutation = useLinkPositectorUpload();
   const upload = props.upload;
   const onClose = props.onClose;
   const onLinked = props.onLinked;
@@ -843,18 +867,21 @@ function LinkUploadForm(props: {
       setIsImporting(true);
       setError(null);
 
-      const result = await stockControlApiClient.linkPositectorUpload(upload.id, {
-        jobCardId: parseInt(jobCardId, 10),
-        coatType: entityType === "dft" ? coatType : undefined,
-        paintProduct: entityType === "dft" ? paintProduct || "Unknown" : undefined,
-        specMinMicrons: entityType === "dft" ? parseFloat(specMin) || 0 : undefined,
-        specMaxMicrons: entityType === "dft" ? parseFloat(specMax) || 0 : undefined,
-        specMicrons: entityType === "blast_profile" ? parseFloat(specMicrons) || 0 : undefined,
-        rubberSpec: entityType === "shore_hardness" ? rubberSpec || "Unknown" : undefined,
-        rubberBatchNumber:
-          entityType === "shore_hardness" && rubberBatchNumber ? rubberBatchNumber : null,
-        requiredShore:
-          entityType === "shore_hardness" ? parseInt(requiredShore, 10) || 0 : undefined,
+      const result = await linkUploadMutation.mutateAsync({
+        uploadId: upload.id,
+        data: {
+          jobCardId: parseInt(jobCardId, 10),
+          coatType: entityType === "dft" ? coatType : undefined,
+          paintProduct: entityType === "dft" ? paintProduct || "Unknown" : undefined,
+          specMinMicrons: entityType === "dft" ? parseFloat(specMin) || 0 : undefined,
+          specMaxMicrons: entityType === "dft" ? parseFloat(specMax) || 0 : undefined,
+          specMicrons: entityType === "blast_profile" ? parseFloat(specMicrons) || 0 : undefined,
+          rubberSpec: entityType === "shore_hardness" ? rubberSpec || "Unknown" : undefined,
+          rubberBatchNumber:
+            entityType === "shore_hardness" && rubberBatchNumber ? rubberBatchNumber : null,
+          requiredShore:
+            entityType === "shore_hardness" ? parseInt(requiredShore, 10) || 0 : undefined,
+        },
       });
 
       onLinked(result);

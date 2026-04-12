@@ -11,19 +11,20 @@ import type {
   SageJcDumpImportResult,
   SageJcDumpParseResult,
 } from "@/app/lib/api/stockControlApi";
-import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { formatDateZA, fromISO, now } from "@/app/lib/datetime";
 import {
   useAddCpoItem,
+  useConfirmSageJcDump,
   useCpoCalloffRecords,
   useCpoDeliveryHistory,
   useCpoDetail,
   useDeleteCpoItem,
   useUpdateCalloffRecordStatus,
+  useUpdateCpoCoatingSpecs,
   useUpdateCpoItem,
   useUpdateCpoStatus,
+  useUploadSageJcDump,
 } from "@/app/lib/query/hooks";
-import { stockControlKeys } from "@/app/lib/query/keys";
 import { QcpSection } from "@/app/stock-control/portal/job-cards/[id]/components/QcpSection";
 import { AsteriskAllocationModal } from "../../../components/AsteriskAllocationModal";
 import { CpoBatchSessionList } from "../../../components/CpoBatchSessionList";
@@ -37,7 +38,8 @@ function statusBadgeColor(status: string): string {
     fulfilled: "bg-blue-100 text-blue-800",
     cancelled: "bg-red-100 text-red-800",
   };
-  return colors[status.toLowerCase()] || "bg-gray-100 text-gray-800";
+  const color = colors[status.toLowerCase()];
+  return color ? color : "bg-gray-100 text-gray-800";
 }
 
 function calloffStatusColor(status: string): string {
@@ -47,7 +49,8 @@ function calloffStatusColor(status: string): string {
     delivered: "bg-green-100 text-green-800 border-green-200",
     invoiced: "bg-teal-100 text-teal-800 border-teal-200",
   };
-  return colors[status] || "bg-gray-100 text-gray-800 border-gray-200";
+  const statusColor = colors[status];
+  return statusColor ? statusColor : "bg-gray-100 text-gray-800 border-gray-200";
 }
 
 function calloffStatusLabel(status: string): string {
@@ -57,7 +60,8 @@ function calloffStatusLabel(status: string): string {
     delivered: "Delivered",
     invoiced: "Invoiced",
   };
-  return labels[status] || status;
+  const statusLabel = labels[status];
+  return statusLabel ? statusLabel : status;
 }
 
 const CALLOFF_STATUS_FLOW = ["pending", "called_off", "delivered", "invoiced"] as const;
@@ -119,6 +123,9 @@ export default function CpoDetailPage() {
   const updateCpoStatusMutation = useUpdateCpoStatus();
   const updateCalloffRecordStatusMutation = useUpdateCalloffRecordStatus();
   const deleteCpoItemMutation = useDeleteCpoItem();
+  const updateCoatingSpecsMutation = useUpdateCpoCoatingSpecs();
+  const uploadSageJcDumpMutation = useUploadSageJcDump();
+  const confirmSageJcDumpMutation = useConfirmSageJcDump();
 
   const [mutationError, setMutationError] = useState<string | null>(null);
   const [updatingRecordId, setUpdatingRecordId] = useState<number | null>(null);
@@ -186,8 +193,7 @@ export default function CpoDetailPage() {
       setIsSavingSpecs(true);
       setSpecsError(null);
       const trimmed = specsDraft.trim() || null;
-      await stockControlApiClient.updateCpoCoatingSpecs(id, trimmed);
-      await queryClient.invalidateQueries({ queryKey: stockControlKeys.cpos.detail(id) });
+      await updateCoatingSpecsMutation.mutateAsync({ cpoId: id, specs: trimmed });
       setIsEditingSpecs(false);
     } catch (err) {
       setSpecsError(err instanceof Error ? err.message : "Failed to save coating specs");
@@ -215,7 +221,7 @@ export default function CpoDetailPage() {
         setSageError(null);
         setSageImportResult(null);
         setSageParsing(true);
-        const result = await stockControlApiClient.uploadSageJcDump(id, file);
+        const result = await uploadSageJcDumpMutation.mutateAsync({ cpoId: id, file });
         setSageParseResult(result);
 
         if (result.asteriskItems.length > 0) {
@@ -224,10 +230,13 @@ export default function CpoDetailPage() {
           const jtGroupKeys = Object.keys(result.jtGroups);
           if (jtGroupKeys.length > 0) {
             setSageConfirming(true);
-            const importResult = await stockControlApiClient.confirmSageJcDump(id, {
-              cpoId: result.cpoId,
-              jtGroups: result.jtGroups,
-              asteriskAllocations: [],
+            const importResult = await confirmSageJcDumpMutation.mutateAsync({
+              cpoId: id,
+              data: {
+                cpoId: result.cpoId,
+                jtGroups: result.jtGroups,
+                asteriskAllocations: [],
+              },
             });
             setSageImportResult(importResult);
             setSageConfirming(false);
@@ -249,10 +258,13 @@ export default function CpoDetailPage() {
       try {
         setSageError(null);
         setSageConfirming(true);
-        const importResult = await stockControlApiClient.confirmSageJcDump(id, {
-          cpoId: sageParseResult.cpoId,
-          jtGroups: sageParseResult.jtGroups,
-          asteriskAllocations: allocations,
+        const importResult = await confirmSageJcDumpMutation.mutateAsync({
+          cpoId: id,
+          data: {
+            cpoId: sageParseResult.cpoId,
+            jtGroups: sageParseResult.jtGroups,
+            asteriskAllocations: allocations,
+          },
         });
         setSageImportResult(importResult);
         setShowAllocationModal(false);
@@ -461,7 +473,7 @@ export default function CpoDetailPage() {
       const key = record.jobCardId ? `jc-${record.jobCardId}` : "unlinked";
       return {
         ...acc,
-        [key]: [...(acc[key] || []), record],
+        [key]: [...(acc[key] ? acc[key] : []), record],
       };
     },
     {},
@@ -474,7 +486,10 @@ export default function CpoDetailPage() {
   const calloffRows = Object.entries(recordsByJobCard)
     .map(([key, records]) => ({
       key,
-      jobCard: records[0]?.jobCard || null,
+      jobCard: (() => {
+        const firstRecord = records[0];
+        return firstRecord ? firstRecord.jobCard : null;
+      })(),
       rubber: records.find((r) => r.calloffType === "rubber") || null,
       paint: records.find((r) => r.calloffType === "paint") || null,
       solution: records.find((r) => r.calloffType === "solution") || null,
@@ -916,10 +931,16 @@ export default function CpoDetailPage() {
                           )}
                         </td>
                         <td className="px-4 py-2 whitespace-nowrap text-gray-600">
-                          {row.jobCard?.jtDnNumber || "—"}
+                          {(() => {
+                            const jdn = row.jobCard ? row.jobCard.jtDnNumber : null;
+                            return jdn ? jdn : "—";
+                          })()}
                         </td>
                         <td className="px-4 py-2 text-gray-600 max-w-[220px] truncate">
-                          {row.jobCard?.jobName || "—"}
+                          {(() => {
+                            const jn = row.jobCard ? row.jobCard.jobName : null;
+                            return jn ? jn : "—";
+                          })()}
                         </td>
                         {hasRubberColumn && (
                           <td className="px-4 py-2 text-center">{renderCell(row.rubber)}</td>

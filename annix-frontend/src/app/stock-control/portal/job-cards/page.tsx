@@ -7,13 +7,14 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { ConfirmModal } from "@/app/components/modals/ConfirmModal";
 import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
-import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { formatDateZA } from "@/app/lib/datetime";
 import {
   useCreateJobCard,
   useDataBookStatuses,
+  useDeduplicateJobCards,
   useDeleteJobCard,
   useJobCards,
+  useTriggerCoatingAnalysis,
 } from "@/app/lib/query/hooks";
 import { stockControlKeys } from "@/app/lib/query/keys";
 import { HelpTooltip } from "../../components/HelpTooltip";
@@ -110,8 +111,10 @@ export default function JobCardsPage() {
     if (!sortKey) return filtered;
 
     return [...filtered].sort((a, b) => {
-      const aVal = (a[sortKey] || "").toString().toLowerCase();
-      const bVal = (b[sortKey] || "").toString().toLowerCase();
+      const aRaw = a[sortKey];
+      const bRaw = b[sortKey];
+      const aVal = (aRaw ? aRaw : "").toString().toLowerCase();
+      const bVal = (bRaw ? bRaw : "").toString().toLowerCase();
       const cmp = aVal.localeCompare(bVal);
       return sortDir === "asc" ? cmp : -cmp;
     });
@@ -121,25 +124,22 @@ export default function JobCardsPage() {
   const { data: dataBookStatuses = {} } = useDataBookStatuses(jobCardIds);
   const createJobCard = useCreateJobCard();
   const deleteJobCard = useDeleteJobCard();
+  const deduplicateMutation = useDeduplicateJobCards();
+  const coatingMutation = useTriggerCoatingAnalysis();
   const dedupRanRef = useRef(false);
-  const [isDeduplicating, setIsDeduplicating] = useState(false);
   const [dedupResult, setDedupResult] = useState<{ merged: number; groups: number } | null>(null);
 
   useEffect(() => {
     if (dedupRanRef.current || !isAdmin) return;
     dedupRanRef.current = true;
-    setIsDeduplicating(true);
-    stockControlApiClient
-      .deduplicateJobCards()
-      .then((result) => {
+    deduplicateMutation.mutate(undefined, {
+      onSuccess: (result) => {
         if (result.merged > 0) {
           setDedupResult(result);
-          queryClient.invalidateQueries({ queryKey: stockControlKeys.jobCards.all });
         }
-      })
-      .catch(() => {})
-      .finally(() => setIsDeduplicating(false));
-  }, [isAdmin, queryClient]);
+      },
+    });
+  }, [isAdmin]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const navigateWithFile = (file: File) => {
     setPendingImportFile(file);
@@ -362,7 +362,7 @@ export default function JobCardsPage() {
                       failed,
                     });
                     try {
-                      await stockControlApiClient.triggerCoatingAnalysis(jc.id);
+                      await coatingMutation.mutateAsync(jc.id);
                       processed++;
                     } catch {
                       failed++;
@@ -907,7 +907,10 @@ export default function JobCardsPage() {
       <ConfirmModal
         isOpen={confirmDelete !== null}
         title="Delete Job Card"
-        message={`Delete job card ${confirmDelete?.jobNumber || ""}? This cannot be undone.`}
+        message={(() => {
+          const jn = confirmDelete?.jobNumber;
+          return `Delete job card ${jn ? jn : ""}? This cannot be undone.`;
+        })()}
         confirmLabel="Delete"
         variant="danger"
         loading={deletingId !== null}

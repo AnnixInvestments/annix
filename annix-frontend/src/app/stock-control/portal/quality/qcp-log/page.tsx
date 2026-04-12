@@ -1,10 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { PdfPreviewModal, usePdfPreview } from "@/app/components/PdfPreviewModal";
 import type { QcControlPlanRecord } from "@/app/lib/api/stockControlApi";
-import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { formatDateZA } from "@/app/lib/datetime";
+import { useOpenControlPlanPdf, useQcpLog } from "@/app/lib/query/hooks";
 
 const PLAN_TYPE_LABELS: Record<string, string> = {
   paint_external: "Paint External",
@@ -35,7 +35,10 @@ type SortDir = "asc" | "desc";
 
 function sortValue(plan: QcControlPlanRecord, key: SortKey): string {
   if (key === "qcpNumber") return (plan.qcpNumber || `QCP #${plan.id}`).toLowerCase();
-  if (key === "planType") return (PLAN_TYPE_LABELS[plan.planType] || plan.planType).toLowerCase();
+  if (key === "planType") {
+    const typeLabel = PLAN_TYPE_LABELS[plan.planType];
+    return (typeLabel ? typeLabel : plan.planType).toLowerCase();
+  }
   if (key === "createdAt") return plan.createdAt || "";
   const val = plan[key as keyof QcControlPlanRecord];
   return (typeof val === "string" ? val : "").toLowerCase();
@@ -65,32 +68,18 @@ function SortIcon(props: { active: boolean; direction: SortDir }) {
 }
 
 export default function QcpLogPage() {
-  const [plans, setPlans] = useState<QcControlPlanRecord[]>([]);
   const [search, setSearch] = useState("");
-  const [loading, setLoading] = useState(true);
+  const [appliedSearch, setAppliedSearch] = useState("");
   const [sortKey, setSortKey] = useState<SortKey | null>(null);
   const [sortDir, setSortDir] = useState<SortDir>("asc");
   const pdfPreview = usePdfPreview();
+  const openPdfMutation = useOpenControlPlanPdf();
 
-  const loadPlans = useCallback(async (searchTerm: string) => {
-    setLoading(true);
-    try {
-      const result = await stockControlApiClient.qcpLog(searchTerm || undefined);
-      setPlans(result);
-    } catch {
-      setPlans([]);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    loadPlans("");
-  }, [loadPlans]);
+  const { data: plans = [], isLoading: loading } = useQcpLog(appliedSearch);
 
   const handleSearch = useCallback(() => {
-    loadPlans(search);
-  }, [search, loadPlans]);
+    setAppliedSearch(search);
+  }, [search]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
@@ -103,18 +92,21 @@ export default function QcpLogPage() {
 
   const handleClear = useCallback(() => {
     setSearch("");
-    loadPlans("");
-  }, [loadPlans]);
+    setAppliedSearch("");
+  }, []);
 
   const handleViewPdf = useCallback(
     (plan: QcControlPlanRecord) => {
-      const qcpNum = plan.qcpNumber || `QCP-${plan.id}`;
-      pdfPreview.openWithFetch(() => {
-        const jobCardId = plan.jobCardId || 0;
-        return stockControlApiClient.openControlPlanPdf(jobCardId, plan.id);
-      }, `${qcpNum}.pdf`);
+      const qcpNum = plan.qcpNumber;
+      const label = qcpNum ? qcpNum : `QCP-${plan.id}`;
+      const jobCardId = plan.jobCardId;
+      const jcId = jobCardId ? jobCardId : 0;
+      pdfPreview.openWithFetch(
+        () => openPdfMutation.mutateAsync({ jobCardId: jcId, planId: plan.id }),
+        `${label}.pdf`,
+      );
     },
-    [pdfPreview],
+    [pdfPreview, openPdfMutation],
   );
 
   const handleSort = useCallback(
@@ -235,9 +227,15 @@ export default function QcpLogPage() {
                   </td>
                   <td className="whitespace-nowrap px-4 py-3 text-sm">
                     <span
-                      className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${PLAN_TYPE_BADGE_COLORS[plan.planType] || "bg-gray-100 text-gray-800"}`}
+                      className={(() => {
+                        const badgeColor = PLAN_TYPE_BADGE_COLORS[plan.planType];
+                        return `inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${badgeColor ? badgeColor : "bg-gray-100 text-gray-800"}`;
+                      })()}
                     >
-                      {PLAN_TYPE_LABELS[plan.planType] || plan.planType}
+                      {(() => {
+                        const tLabel = PLAN_TYPE_LABELS[plan.planType];
+                        return tLabel ? tLabel : plan.planType;
+                      })()}
                     </span>
                   </td>
                   <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-500">

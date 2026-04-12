@@ -3,15 +3,20 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useState } from "react";
+
 import { useToast } from "@/app/components/Toast";
 import type { SupplierInvoice } from "@/app/lib/api/stockControlApi";
-import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { formatDateZA } from "@/app/lib/datetime";
 import {
+  useAcceptAnalyzedInvoice,
+  useAnalyzeDeliveryNotePhoto,
+  useAutoLinkInvoices,
   useDeleteInvoice,
   useDeliveryNotes,
   useInvalidateInvoices,
   useInvoices,
+  useReExtractAllFailed,
+  useReExtractInvoice,
 } from "@/app/lib/query/hooks";
 import { useViewAs } from "@/app/stock-control/context/ViewAsContext";
 import InvoiceUploadModal from "./InvoiceUploadModal";
@@ -42,7 +47,8 @@ const statusLabel = (invoice: SupplierInvoice): string => {
   if (invoice.extractionStatus === "pending") {
     return "Pending Scan";
   }
-  return STATUS_LABELS[invoice.extractionStatus] || invoice.extractionStatus;
+  const label = STATUS_LABELS[invoice.extractionStatus];
+  return label ? label : invoice.extractionStatus;
 };
 
 export default function InvoicesPage() {
@@ -53,6 +59,11 @@ export default function InvoicesPage() {
   const { data: deliveryNotes = [] } = useDeliveryNotes();
   const deleteInvoiceMutation = useDeleteInvoice();
   const invalidateInvoices = useInvalidateInvoices();
+  const analyzePhotoMutation = useAnalyzeDeliveryNotePhoto();
+  const acceptInvoiceMutation = useAcceptAnalyzedInvoice();
+  const reExtractMutation = useReExtractInvoice();
+  const reExtractAllMutation = useReExtractAllFailed();
+  const autoLinkMutation = useAutoLinkInvoices();
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<SupplierInvoice | null>(null);
@@ -92,9 +103,14 @@ export default function InvoicesPage() {
       try {
         setIsAnalyzing(true);
         showToast("Analyzing document...", "info");
-        const result = await stockControlApiClient.analyzeDeliveryNotePhoto(file);
-        const invoice = await stockControlApiClient.acceptAnalyzedInvoice(file, result.data);
-        showToast(`Invoice ${invoice.invoiceNumber || ""} created successfully`, "success");
+        const result = await analyzePhotoMutation.mutateAsync(file);
+        const invoice = await acceptInvoiceMutation.mutateAsync({
+          file,
+          analyzedData: result.data,
+        });
+        const invNum = invoice.invoiceNumber;
+        const invDisplay = invNum ? invNum : "";
+        showToast(`Invoice ${invDisplay} created successfully`, "success");
         invalidateInvoices();
       } catch (err) {
         showToast(err instanceof Error ? err.message : "Failed to analyze document", "error");
@@ -113,7 +129,7 @@ export default function InvoicesPage() {
   const handleReExtract = async (invoiceId: number) => {
     try {
       showToast("Re-extracting invoice...", "info");
-      await stockControlApiClient.reExtractInvoice(invoiceId);
+      await reExtractMutation.mutateAsync(invoiceId);
       showToast("Extraction triggered successfully", "success");
       invalidateInvoices();
     } catch (err) {
@@ -125,7 +141,7 @@ export default function InvoicesPage() {
     try {
       setIsReExtractingAll(true);
       showToast("Re-extracting all failed invoices...", "info");
-      const result = await stockControlApiClient.reExtractAllFailed();
+      const result = await reExtractAllMutation.mutateAsync(undefined);
       if (result.triggered > 0) {
         showToast(`Re-extracted ${result.triggered} invoice(s) successfully`, "success");
       } else {
@@ -145,7 +161,7 @@ export default function InvoicesPage() {
   const handleAutoLink = async () => {
     try {
       setIsAutoLinking(true);
-      const result = await stockControlApiClient.autoLinkInvoices();
+      const result = await autoLinkMutation.mutateAsync(undefined);
       if (result.linked > 0) {
         showToast(`Auto-linked ${result.linked} invoice(s) to delivery notes`, "success");
         invalidateInvoices();
@@ -466,7 +482,10 @@ export default function InvoicesPage() {
                   </td>
                   <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
                     <span
-                      className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${STATUS_COLORS[invoice.extractionStatus] || "bg-gray-100 text-gray-800"}`}
+                      className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${(() => {
+                        const sc = STATUS_COLORS[invoice.extractionStatus];
+                        return sc ? sc : "bg-gray-100 text-gray-800";
+                      })()}`}
                     >
                       {statusLabel(invoice)}
                     </span>

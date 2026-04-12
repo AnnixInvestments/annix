@@ -1,7 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
 import type {
   AddCpoItemRequest,
+  AnalyzedDeliveryNoteData,
   CalibrationCertificate,
+  CoatingAnalysis,
   CostByJob,
   CpoCalloffBreakdown,
   CpoCalloffRecord,
@@ -12,10 +15,13 @@ import type {
   DeliveryNote,
   DispatchProgress,
   DispatchScan,
+  ImportMappingConfig,
   InspectionBooking,
   JobCard,
   JobCardActionCompletion,
   JobCardApproval,
+  JobCardImportRow,
+  QcControlPlanRecord,
   Requisition,
   StaffMember,
   StaffStockFilters,
@@ -763,3 +769,431 @@ export const useScanQrCode = createMutationHook((qrToken: string) =>
 export const useDownloadStockItemQrPdf = createMutationHook((id: number) =>
   stockControlApiClient.downloadStockItemQrPdf(id),
 );
+
+export const useViewCertificateUrl = createMutationHook((id: number) =>
+  stockControlApiClient.certificateById(id),
+);
+
+export const useCalibrationCertificateUrl = createMutationHook((id: number) =>
+  stockControlApiClient.calibrationCertificateById(id),
+);
+
+export function useQcpLog(search: string) {
+  return useQuery<QcControlPlanRecord[]>({
+    queryKey: stockControlKeys.qcpLog.list(search),
+    queryFn: async () => {
+      const data = await stockControlApiClient.qcpLog(search || undefined);
+      return Array.isArray(data) ? data : [];
+    },
+  });
+}
+
+export const useUpsertGlossaryTerm = createMutationHook(
+  (params: {
+    abbreviation: string;
+    body: { term: string; definition: string; category: string | null };
+  }) => stockControlApiClient.upsertGlossaryTerm(params.abbreviation, params.body),
+  [stockControlKeys.glossary.all],
+);
+
+export const useDeleteGlossaryTerm = createMutationHook(
+  (abbreviation: string) => stockControlApiClient.deleteGlossaryTerm(abbreviation),
+  [stockControlKeys.glossary.all],
+);
+
+export const useResetGlossary = createMutationHook(
+  () => stockControlApiClient.resetGlossary(),
+  [stockControlKeys.glossary.all],
+);
+
+export const useUpdateStockControlNotificationPreferences = createMutationHook(
+  (prefs: { emailNotificationsEnabled?: boolean; pushNotificationsEnabled?: boolean }) =>
+    stockControlApiClient.updateNotificationPreferences(prefs),
+);
+
+export const useCpoExportCsv = createMutationHook(() => stockControlApiClient.cpoExportCsv());
+
+export const useAnalyzeDeliveryNotePhoto = createMutationHook((file: File) =>
+  stockControlApiClient.analyzeDeliveryNotePhoto(file),
+);
+
+export const useAcceptAnalyzedDeliveryNote = createMutationHook(
+  (params: { file: File; analyzedData: AnalyzedDeliveryNoteData; documentType?: string }) => {
+    const paramDocType = params.documentType;
+    const docType = paramDocType ? paramDocType : "SUPPLIER_DELIVERY";
+    return stockControlApiClient.acceptAnalyzedDeliveryNote(
+      params.file,
+      params.analyzedData,
+      docType,
+    );
+  },
+  [stockControlKeys.deliveries.all],
+);
+
+export const useAcceptAnalyzedInvoice = createMutationHook(
+  (params: { file: File; analyzedData: AnalyzedDeliveryNoteData }) =>
+    stockControlApiClient.acceptAnalyzedInvoice(params.file, params.analyzedData),
+  [stockControlKeys.invoices.all],
+);
+
+export const useDeduplicateJobCards = createMutationHook(
+  () => stockControlApiClient.deduplicateJobCards(),
+  [stockControlKeys.jobCards.all],
+);
+
+export const useTriggerCoatingAnalysis = createMutationHook(
+  (jobCardId: number) =>
+    stockControlApiClient.triggerCoatingAnalysis(jobCardId) as Promise<CoatingAnalysis>,
+);
+
+export const useDownloadDataBook = createMutationHook((jobCardId: number) =>
+  stockControlApiClient.downloadDataBook(jobCardId),
+);
+
+export const useOpenControlPlanPdf = createMutationHook(
+  (params: { jobCardId: number; planId: number }) =>
+    stockControlApiClient.openControlPlanPdf(params.jobCardId, params.planId),
+);
+
+export const useUploadCpoImportFile = createMutationHook((file: File) =>
+  stockControlApiClient.uploadCpoImportFile(file),
+);
+
+export const useAutoDetectJobCardMapping = createMutationHook((grid: string[][]) =>
+  stockControlApiClient.autoDetectJobCardMapping(grid),
+);
+
+export const useUploadJobCardImportFile = createMutationHook((file: File) =>
+  stockControlApiClient.uploadJobCardImportFile(file),
+);
+
+export const useUploadDrawingFiles = createMutationHook((files: File[]) =>
+  stockControlApiClient.uploadDrawingFiles(files),
+);
+
+export const useSaveJobCardImportMapping = createMutationHook(
+  (mappingConfig: ImportMappingConfig) =>
+    stockControlApiClient.saveJobCardImportMapping(mappingConfig),
+);
+
+export const useCalculateM2 = createMutationHook((descriptions: string[]) =>
+  stockControlApiClient.calculateM2(descriptions),
+);
+
+export const useConfirmJobCardImport = createMutationHook(
+  (params: {
+    rows: JobCardImportRow[];
+    sourceFilePath?: string | null;
+    sourceFileName?: string | null;
+  }) =>
+    stockControlApiClient.confirmJobCardImport(
+      params.rows,
+      params.sourceFilePath,
+      params.sourceFileName,
+    ),
+  [stockControlKeys.jobCards.all],
+);
+
+export const useConfirmDeliveryMatches = createMutationHook(
+  (params: { jobCardId: number; matches: { deliveryItemId: number; cpoItemId: number }[] }) =>
+    stockControlApiClient.confirmDeliveryMatches(params.jobCardId, params.matches),
+);
+
+export const useConfirmCpoImport = createMutationHook(
+  (rows: Parameters<typeof stockControlApiClient.confirmCpoImport>[0]) =>
+    stockControlApiClient.confirmCpoImport(rows),
+  [stockControlKeys.cpos.all, stockControlKeys.jobCards.all],
+);
+
+export const useUploadImportFile = createMutationHook((file: File) =>
+  stockControlApiClient.uploadImportFile(file),
+);
+
+export const useMatchImportRows = createMutationHook((rows: Record<string, unknown>[]) =>
+  stockControlApiClient.matchImportRows(rows),
+);
+
+export function useStockControlSuppliers() {
+  return useQuery<StockControlSupplierDto[]>({
+    queryKey: stockControlKeys.suppliers.list(),
+    queryFn: async () => {
+      const data = await stockControlApiClient.suppliers();
+      return Array.isArray(data) ? data : [];
+    },
+    staleTime: 60_000,
+  });
+}
+
+export function useSupplierDocumentsList(filters: Record<string, string | number | undefined>) {
+  return useQuery({
+    queryKey: stockControlKeys.supplierDocuments.list(filters),
+    queryFn: () =>
+      stockControlApiClient.supplierDocuments(
+        filters as Parameters<typeof stockControlApiClient.supplierDocuments>[0],
+      ),
+  });
+}
+
+export const useUploadSupplierDocument = createMutationHook(
+  (params: {
+    file: File;
+    data: Parameters<typeof stockControlApiClient.uploadSupplierDocument>[1];
+  }) => stockControlApiClient.uploadSupplierDocument(params.file, params.data),
+  [stockControlKeys.supplierDocuments.all],
+);
+
+export const useSupplierDocumentById = createMutationHook((id: number) =>
+  stockControlApiClient.supplierDocumentById(id),
+);
+
+export const useDeleteSupplierDocument = createMutationHook(
+  (id: number) => stockControlApiClient.deleteSupplierDocument(id),
+  [stockControlKeys.supplierDocuments.all],
+);
+
+export function useDispatchCdns(jobCardId: number) {
+  return useQuery({
+    queryKey: stockControlKeys.dispatch.cdns(jobCardId),
+    queryFn: () => stockControlApiClient.dispatchCdns(jobCardId),
+    enabled: !!jobCardId,
+  });
+}
+
+export function useDispatchLoadPhotos(jobCardId: number) {
+  return useQuery({
+    queryKey: stockControlKeys.dispatch.loadPhotos(jobCardId),
+    queryFn: () => stockControlApiClient.dispatchLoadPhotos(jobCardId),
+    enabled: !!jobCardId,
+  });
+}
+
+export const useUploadDispatchCdn = createMutationHook(
+  (params: { jobCardId: number; file: File }) =>
+    stockControlApiClient.uploadDispatchCdn(params.jobCardId, params.file),
+  (_data, vars) => [
+    stockControlKeys.dispatch.cdns(vars.jobCardId),
+    stockControlKeys.jobCards.dispatchProgress(vars.jobCardId),
+  ],
+);
+
+export const useUploadDispatchLoadPhotos = createMutationHook(
+  (params: { jobCardId: number; files: File[] }) =>
+    stockControlApiClient.uploadDispatchLoadPhotos(params.jobCardId, params.files),
+  (_data, vars) => [
+    stockControlKeys.dispatch.loadPhotos(vars.jobCardId),
+    stockControlKeys.jobCards.dispatchProgress(vars.jobCardId),
+  ],
+);
+
+export const useDeleteDispatchCdn = createMutationHook(
+  (params: { jobCardId: number; cdnId: number }) =>
+    stockControlApiClient.deleteDispatchCdn(params.jobCardId, params.cdnId),
+  (_data, vars) => [
+    stockControlKeys.dispatch.cdns(vars.jobCardId),
+    stockControlKeys.jobCards.dispatchProgress(vars.jobCardId),
+  ],
+);
+
+export const useDeleteDispatchLoadPhoto = createMutationHook(
+  (params: { jobCardId: number; photoId: number }) =>
+    stockControlApiClient.deleteDispatchLoadPhoto(params.jobCardId, params.photoId),
+  (_data, vars) => [
+    stockControlKeys.dispatch.loadPhotos(vars.jobCardId),
+    stockControlKeys.jobCards.dispatchProgress(vars.jobCardId),
+  ],
+);
+
+export const useReExtractInvoice = createMutationHook(
+  (invoiceId: number) => stockControlApiClient.reExtractInvoice(invoiceId),
+  [stockControlKeys.invoices.all],
+);
+
+export const useReExtractAllFailed = createMutationHook(
+  () => stockControlApiClient.reExtractAllFailed(),
+  [stockControlKeys.invoices.all],
+);
+
+export const useAutoLinkInvoices = createMutationHook(
+  () => stockControlApiClient.autoLinkInvoices(),
+  [stockControlKeys.invoices.all],
+);
+
+export const useCompleteRequisitionStep = createMutationHook(
+  (jobCardId: number) => stockControlApiClient.completeRequisitionStep(jobCardId),
+  [stockControlKeys.notifications.all, stockControlKeys.jobCardDetail.all],
+);
+
+export const useUpdateStaffMember = createMutationHook(
+  (params: { id: number; data: Partial<StaffMember> }) =>
+    stockControlApiClient.updateStaffMember(params.id, params.data),
+  [stockControlKeys.staff.all],
+);
+
+export const useCreateStaffMember = createMutationHook(
+  (data: { name: string; employeeNumber: string | null; departmentId: number | null }) =>
+    stockControlApiClient.createStaffMember(data),
+  [stockControlKeys.staff.all],
+);
+
+export const useUploadStaffPhoto = createMutationHook(
+  (params: { staffId: number; file: File }) =>
+    stockControlApiClient.uploadStaffPhoto(params.staffId, params.file),
+  [stockControlKeys.staff.all],
+);
+
+export const useDeleteStaffMember = createMutationHook(
+  (id: number) => stockControlApiClient.deleteStaffMember(id),
+  [stockControlKeys.staff.all],
+);
+
+export const useDownloadStaffIdCardPdf = createMutationHook((staffId: number) =>
+  stockControlApiClient.downloadStaffIdCardPdf(staffId),
+);
+
+export const useDownloadBatchStaffIdCards = createMutationHook((staffIds: number[]) =>
+  stockControlApiClient.downloadBatchStaffIdCards(staffIds),
+);
+
+export const useInvalidateSupplierDocuments = createInvalidationHook(
+  stockControlKeys.supplierDocuments.all,
+);
+
+export const useUploadCertificate = createMutationHook(
+  (params: {
+    file: File;
+    data: {
+      supplierId: number;
+      stockItemId?: number | null;
+      certificateType: string;
+      batchNumber: string;
+      description?: string | null;
+      expiryDate?: string | null;
+      pageNumbers?: number[] | null;
+    };
+  }) => stockControlApiClient.uploadCertificate(params.file, params.data),
+  [stockControlKeys.certificates.all],
+);
+
+export const useAnalyzeCertificateDocument = createMutationHook((file: File) =>
+  stockControlApiClient.analyzeCertificateDocument(file),
+);
+
+export const useBackfillCertificateProducts = createMutationHook(
+  () => stockControlApiClient.backfillCertificateProducts(),
+  [stockControlKeys.certificates.all],
+);
+
+export const useInvoiceDetail = createQueryHook<SupplierInvoice, [number]>(
+  (id) => stockControlKeys.invoices.detail(id),
+  (id) => stockControlApiClient.supplierInvoiceById(id),
+  { enabled: (id) => !!id },
+);
+
+export const useSuggestedDeliveryNotes = createArrayQueryHook<
+  import("@/app/lib/api/stockControlApi").SuggestedDeliveryNote,
+  [number]
+>(
+  (invoiceId) =>
+    [...stockControlKeys.invoices.detail(invoiceId), "suggested-delivery-notes"] as const,
+  (invoiceId) => stockControlApiClient.suggestedDeliveryNotes(invoiceId),
+  { enabled: (invoiceId) => !!invoiceId },
+);
+
+export const useLinkInvoiceToDeliveryNote = createMutationHook(
+  (params: { invoiceId: number; deliveryNoteId: number }) =>
+    stockControlApiClient.linkInvoiceToDeliveryNote(params.invoiceId, params.deliveryNoteId),
+  [stockControlKeys.invoices.all, stockControlKeys.deliveries.all],
+);
+
+export const useSubmitInvoiceClarification = createMutationHook(
+  (params: { invoiceId: number; clarificationId: number; response: Record<string, unknown> }) =>
+    stockControlApiClient.submitInvoiceClarification(
+      params.invoiceId,
+      params.clarificationId,
+      params.response,
+    ),
+  [stockControlKeys.invoices.all],
+);
+
+export const useSkipInvoiceClarification = createMutationHook(
+  (params: { invoiceId: number; clarificationId: number }) =>
+    stockControlApiClient.skipInvoiceClarification(params.invoiceId, params.clarificationId),
+  [stockControlKeys.invoices.all],
+);
+
+export const useApproveInvoice = createMutationHook(
+  (invoiceId: number) => stockControlApiClient.approveInvoice(invoiceId),
+  [stockControlKeys.invoices.all],
+);
+
+export const useUpdateInvoiceItem = createMutationHook(
+  (params: { invoiceId: number; itemId: number; updates: Record<string, unknown> }) =>
+    stockControlApiClient.updateInvoiceItem(params.invoiceId, params.itemId, params.updates),
+  [stockControlKeys.invoices.all],
+);
+
+export const useManualMatchInvoiceItem = createMutationHook(
+  (params: { invoiceId: number; itemId: number; stockItemId: number }) =>
+    stockControlApiClient.manualMatchInvoiceItem(
+      params.invoiceId,
+      params.itemId,
+      params.stockItemId,
+    ),
+  [stockControlKeys.invoices.all],
+);
+
+export const useUpdateCpoCoatingSpecs = createMutationHook(
+  (params: { cpoId: number; specs: string | null }) =>
+    stockControlApiClient.updateCpoCoatingSpecs(params.cpoId, params.specs),
+  (_data, vars) => [stockControlKeys.cpos.detail(vars.cpoId)],
+);
+
+export const useUploadSageJcDump = createMutationHook((params: { cpoId: number; file: File }) =>
+  stockControlApiClient.uploadSageJcDump(params.cpoId, params.file),
+);
+
+export const useConfirmSageJcDump = createMutationHook(
+  (params: {
+    cpoId: number;
+    data: Parameters<typeof stockControlApiClient.confirmSageJcDump>[1];
+  }) => stockControlApiClient.confirmSageJcDump(params.cpoId, params.data),
+  [stockControlKeys.cpos.all, stockControlKeys.jobCards.all],
+);
+
+export function useStockControlProxyImageBlob(url: string | null) {
+  const [objectUrl, setObjectUrl] = useState<string | null>(null);
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    if (!url) {
+      setObjectUrl(null);
+      setFailed(false);
+      return;
+    }
+    const controller = new AbortController();
+    const proxyUrl = stockControlApiClient.proxyImageUrl(url);
+    const headers = stockControlApiClient.authHeaders();
+    let createdObjectUrl: string | null = null;
+    setFailed(false);
+    fetch(proxyUrl, { headers, signal: controller.signal })
+      .then((res) => (res.ok ? res.blob() : Promise.reject(new Error("proxy failed"))))
+      .then((blob) => {
+        if (!controller.signal.aborted) {
+          createdObjectUrl = URL.createObjectURL(blob);
+          setObjectUrl(createdObjectUrl);
+        }
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) setFailed(true);
+      });
+
+    return () => {
+      controller.abort();
+      if (createdObjectUrl) {
+        URL.revokeObjectURL(createdObjectUrl);
+      }
+    };
+  }, [url]);
+
+  return { objectUrl, failed };
+}

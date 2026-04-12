@@ -2,18 +2,23 @@
 
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
 import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
-import type {
-  DeliveryNote,
-  InvoiceClarification,
-  PriceChangeSummary,
-  StockItem,
-  SuggestedDeliveryNote,
-  SupplierInvoice,
-} from "@/app/lib/api/stockControlApi";
-import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
+import type { InvoiceClarification, PriceChangeSummary } from "@/app/lib/api/stockControlApi";
 import { formatDateZA } from "@/app/lib/datetime";
+import {
+  useApproveInvoice,
+  useDeliveryNotes,
+  useInvoiceDetail,
+  useLinkInvoiceToDeliveryNote,
+  useManualMatchInvoiceItem,
+  useReExtractInvoice,
+  useReportStockItems,
+  useSkipInvoiceClarification,
+  useSubmitInvoiceClarification,
+  useSuggestedDeliveryNotes,
+  useUpdateInvoiceItem,
+} from "@/app/lib/query/hooks";
 import { InvoiceNextAction } from "@/app/stock-control/components/NextActionBanner";
 import { useViewAs } from "@/app/stock-control/context/ViewAsContext";
 import InvoiceClarificationPopup from "./InvoiceClarificationPopup";
@@ -52,17 +57,36 @@ export default function InvoiceDetailPage() {
   const { effectiveRole } = useViewAs();
   const invoiceId = Number(params.id);
 
-  const [invoice, setInvoice] = useState<SupplierInvoice | null>(null);
+  const invoiceQuery = useInvoiceDetail(invoiceId);
+  const invoiceData = invoiceQuery.data;
+  const invoice = invoiceData ? invoiceData : null;
+  const invoiceLoading = invoiceQuery.isLoading;
+  const isLoading = invoiceLoading;
+  const invoiceError = invoiceQuery.error;
+  const [mutationError, setMutationError] = useState<Error | null>(null);
+  const error = mutationError
+    ? mutationError
+    : invoiceError
+      ? invoiceError instanceof Error
+        ? invoiceError
+        : new Error("Failed to load invoice")
+      : null;
+  const setError = setMutationError;
+  const suggestedDnQuery = useSuggestedDeliveryNotes(invoiceId);
+  const suggestedDnData = suggestedDnQuery.data;
+  const suggestedDeliveryNotes = suggestedDnData ? suggestedDnData : [];
+  const allDnQuery = useDeliveryNotes();
+  const allDnData = allDnQuery.data;
+  const allDeliveryNotes = allDnData ? allDnData : [];
+  const stockItemsQuery = useReportStockItems();
+  const stockItemsData = stockItemsQuery.data;
+  const stockItems = stockItemsData ? stockItemsData : [];
+
   const [clarifications, setClarifications] = useState<InvoiceClarification[]>([]);
   const [priceSummary, setPriceSummary] = useState<PriceChangeSummary | null>(null);
-  const [stockItems, setStockItems] = useState<StockItem[]>([]);
-  const [suggestedDeliveryNotes, setSuggestedDeliveryNotes] = useState<SuggestedDeliveryNote[]>([]);
-  const [allDeliveryNotes, setAllDeliveryNotes] = useState<DeliveryNote[]>([]);
   const [selectedDeliveryNoteId, setSelectedDeliveryNoteId] = useState<number | null>(null);
   const [isLinking, setIsLinking] = useState(false);
   const [linkError, setLinkError] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
   const [currentClarificationIndex, setCurrentClarificationIndex] = useState(0);
   const [showApprovalModal, setShowApprovalModal] = useState(false);
   const [isApproving, setIsApproving] = useState(false);
@@ -76,64 +100,13 @@ export default function InvoiceDetailPage() {
   }>({ quantity: "", unitPrice: "", unitType: "", description: "" });
   const [isSavingItem, setIsSavingItem] = useState(false);
 
-  const fetchInvoice = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      const data = await stockControlApiClient.supplierInvoiceById(invoiceId);
-      setInvoice(data);
-      setError(null);
-    } catch (err) {
-      setError(err instanceof Error ? err : new Error("Failed to load invoice"));
-    } finally {
-      setIsLoading(false);
-    }
-  }, [invoiceId]);
-
-  const fetchClarifications = useCallback(async () => {
-    try {
-      const data = await stockControlApiClient.invoiceClarifications(invoiceId);
-      setClarifications(data);
-      setCurrentClarificationIndex(0);
-    } catch (err) {
-      console.error("Failed to load clarifications:", err);
-    }
-  }, [invoiceId]);
-
-  const fetchPriceSummary = useCallback(async () => {
-    try {
-      const data = await stockControlApiClient.invoicePriceSummary(invoiceId);
-      setPriceSummary(data);
-    } catch (err) {
-      console.error("Failed to load price summary:", err);
-    }
-  }, [invoiceId]);
-
-  const fetchStockItems = useCallback(async () => {
-    try {
-      const result = await stockControlApiClient.stockItems({ limit: "1000" });
-      setStockItems(result.items);
-    } catch (err) {
-      console.error("Failed to load stock items:", err);
-    }
-  }, []);
-
-  const fetchSuggestedDeliveryNotes = useCallback(async () => {
-    try {
-      const data = await stockControlApiClient.suggestedDeliveryNotes(invoiceId);
-      setSuggestedDeliveryNotes(data);
-    } catch (err) {
-      console.error("Failed to load suggested delivery notes:", err);
-    }
-  }, [invoiceId]);
-
-  const fetchAllDeliveryNotes = useCallback(async () => {
-    try {
-      const data = await stockControlApiClient.deliveryNotes();
-      setAllDeliveryNotes(Array.isArray(data) ? data : []);
-    } catch (err) {
-      console.error("Failed to load delivery notes:", err);
-    }
-  }, []);
+  const linkDnMutation = useLinkInvoiceToDeliveryNote();
+  const submitClarificationMutation = useSubmitInvoiceClarification();
+  const skipClarificationMutation = useSkipInvoiceClarification();
+  const reExtractMutation = useReExtractInvoice();
+  const approveMutation = useApproveInvoice();
+  const updateItemMutation = useUpdateInvoiceItem();
+  const manualMatchMutation = useManualMatchInvoiceItem();
 
   const handleLinkDeliveryNote = async (deliveryNoteId?: number) => {
     const idToLink = deliveryNoteId || selectedDeliveryNoteId;
@@ -142,8 +115,8 @@ export default function InvoiceDetailPage() {
       setIsLinking(true);
       setLinkError(null);
       setSelectedDeliveryNoteId(idToLink);
-      await stockControlApiClient.linkInvoiceToDeliveryNote(invoiceId, idToLink);
-      await fetchInvoice();
+      await linkDnMutation.mutateAsync({ invoiceId, deliveryNoteId: idToLink });
+      await invoiceQuery.refetch();
       setSelectedDeliveryNoteId(null);
     } catch (err) {
       setLinkError(err instanceof Error ? err.message : "Failed to link delivery note");
@@ -151,22 +124,6 @@ export default function InvoiceDetailPage() {
       setIsLinking(false);
     }
   };
-
-  useEffect(() => {
-    fetchInvoice();
-    fetchClarifications();
-    fetchPriceSummary();
-    fetchStockItems();
-    fetchSuggestedDeliveryNotes();
-    fetchAllDeliveryNotes();
-  }, [
-    fetchInvoice,
-    fetchClarifications,
-    fetchPriceSummary,
-    fetchStockItems,
-    fetchSuggestedDeliveryNotes,
-    fetchAllDeliveryNotes,
-  ]);
 
   const handleClarificationSubmit = async (
     clarificationId: number,
@@ -184,10 +141,12 @@ export default function InvoiceDetailPage() {
     },
   ) => {
     try {
-      await stockControlApiClient.submitInvoiceClarification(invoiceId, clarificationId, response);
-      await fetchClarifications();
-      await fetchInvoice();
-      await fetchPriceSummary();
+      await submitClarificationMutation.mutateAsync({
+        invoiceId,
+        clarificationId,
+        response: response as Record<string, unknown>,
+      });
+      await invoiceQuery.refetch();
 
       if (currentClarificationIndex < clarifications.length - 1) {
         setCurrentClarificationIndex((prev) => prev + 1);
@@ -199,9 +158,8 @@ export default function InvoiceDetailPage() {
 
   const handleClarificationSkip = async (clarificationId: number) => {
     try {
-      await stockControlApiClient.skipInvoiceClarification(invoiceId, clarificationId);
-      await fetchClarifications();
-      await fetchInvoice();
+      await skipClarificationMutation.mutateAsync({ invoiceId, clarificationId });
+      await invoiceQuery.refetch();
 
       if (currentClarificationIndex < clarifications.length - 1) {
         setCurrentClarificationIndex((prev) => prev + 1);
@@ -214,12 +172,10 @@ export default function InvoiceDetailPage() {
   const handleReExtract = async () => {
     try {
       setIsReExtracting(true);
-      await stockControlApiClient.reExtractInvoice(invoiceId);
-      await fetchInvoice();
-      await fetchClarifications();
-      await fetchPriceSummary();
+      await reExtractMutation.mutateAsync(invoiceId);
+      await invoiceQuery.refetch();
     } catch (err) {
-      setError(err instanceof Error ? err : new Error("Re-extraction failed"));
+      invoiceQuery.refetch();
     } finally {
       setIsReExtracting(false);
     }
@@ -228,11 +184,11 @@ export default function InvoiceDetailPage() {
   const handleApprove = async () => {
     try {
       setIsApproving(true);
-      await stockControlApiClient.approveInvoice(invoiceId);
-      await fetchInvoice();
+      await approveMutation.mutateAsync(invoiceId);
+      await invoiceQuery.refetch();
       setShowApprovalModal(false);
     } catch (err) {
-      setError(err instanceof Error ? err : new Error("Failed to approve invoice"));
+      invoiceQuery.refetch();
     } finally {
       setIsApproving(false);
     }
@@ -248,7 +204,11 @@ export default function InvoiceDetailPage() {
     setEditValues({
       quantity: String(item.quantity),
       unitPrice: item.unitPrice !== null ? String(item.unitPrice) : "",
-      unitType: uType || sItem?.unitOfMeasure || "each",
+      unitType: (() => {
+        if (uType) return uType;
+        const sItemUom = sItem ? sItem.unitOfMeasure : null;
+        return sItemUom ? sItemUom : "each";
+      })(),
       description: item.extractedDescription || "",
     });
     setEditStockItemId(item.stockItemId || null);
@@ -263,22 +223,26 @@ export default function InvoiceDetailPage() {
     setIsSavingItem(true);
     try {
       const currentItem = invoice?.items?.find((i) => i.id === itemId);
-      const stockItemChanged = editStockItemId !== (currentItem?.stockItemId || null);
+      const currentStockItemId = currentItem ? currentItem.stockItemId : null;
+      const stockItemChanged = editStockItemId !== (currentStockItemId ? currentStockItemId : null);
 
-      await stockControlApiClient.updateInvoiceItem(invoiceId, itemId, {
-        quantity: Number(editValues.quantity),
-        unitPrice: Number(editValues.unitPrice),
-        unitType: editValues.unitType,
-        extractedDescription: editValues.description,
+      await updateItemMutation.mutateAsync({
+        invoiceId,
+        itemId,
+        updates: {
+          quantity: Number(editValues.quantity),
+          unitPrice: Number(editValues.unitPrice),
+          unitType: editValues.unitType,
+          extractedDescription: editValues.description,
+        },
       });
 
       if (stockItemChanged && editStockItemId) {
-        await stockControlApiClient.manualMatchInvoiceItem(invoiceId, itemId, editStockItemId);
+        await manualMatchMutation.mutateAsync({ invoiceId, itemId, stockItemId: editStockItemId });
       }
 
       setEditingItemId(null);
-      await fetchInvoice();
-      await fetchPriceSummary();
+      await invoiceQuery.refetch();
     } catch (err) {
       setError(err instanceof Error ? err : new Error("Failed to update item"));
     } finally {
@@ -295,9 +259,8 @@ export default function InvoiceDetailPage() {
     itemId: number,
     updates: { quantity?: number; unitPrice?: number; extractedDescription?: string },
   ) => {
-    await stockControlApiClient.updateInvoiceItem(invoiceId, itemId, updates);
-    await fetchInvoice();
-    await fetchPriceSummary();
+    await updateItemMutation.mutateAsync({ invoiceId, itemId, updates });
+    await invoiceQuery.refetch();
   };
 
   if (isLoading) {
@@ -316,7 +279,12 @@ export default function InvoiceDetailPage() {
       <div className="flex items-center justify-center min-h-96">
         <div className="text-center">
           <div className="text-red-500 text-lg font-semibold mb-2">Error Loading Invoice</div>
-          <p className="text-gray-600">{error?.message || "Invoice not found"}</p>
+          <p className="text-gray-600">
+            {(() => {
+              const msg = error ? error.message : null;
+              return msg ? msg : "Invoice not found";
+            })()}
+          </p>
           <Link
             href="/stock-control/portal/invoices"
             className="mt-4 inline-block text-teal-600 hover:text-teal-800"
@@ -350,9 +318,15 @@ export default function InvoiceDetailPage() {
           </div>
         </div>
         <span
-          className={`inline-flex px-3 py-1 text-sm font-medium rounded-full ${STATUS_COLORS[invoice.extractionStatus] || "bg-gray-100 text-gray-800"}`}
+          className={`inline-flex px-3 py-1 text-sm font-medium rounded-full ${(() => {
+            const sc = STATUS_COLORS[invoice.extractionStatus];
+            return sc ? sc : "bg-gray-100 text-gray-800";
+          })()}`}
         >
-          {STATUS_LABELS[invoice.extractionStatus] || invoice.extractionStatus}
+          {(() => {
+            const sl = STATUS_LABELS[invoice.extractionStatus];
+            return sl ? sl : invoice.extractionStatus;
+          })()}
         </span>
       </div>
 
@@ -413,7 +387,12 @@ export default function InvoiceDetailPage() {
                         href={`/stock-control/portal/deliveries/${invoice.deliveryNoteId}`}
                         className="text-teal-600 hover:text-teal-800"
                       >
-                        {invoice.deliveryNote?.deliveryNumber || `DN-${invoice.deliveryNoteId}`}
+                        {(() => {
+                          const dnNum = invoice.deliveryNote
+                            ? invoice.deliveryNote.deliveryNumber
+                            : null;
+                          return dnNum ? dnNum : `DN-${invoice.deliveryNoteId}`;
+                        })()}
                       </Link>
                       {invoice.linkedDeliveryNoteIds
                         ?.filter((dnId) => dnId !== invoice.deliveryNoteId)
@@ -566,7 +545,11 @@ export default function InvoiceDetailPage() {
                             </select>
                           ) : (
                             <span className="text-gray-400 text-xs">
-                              {itemUnitType || itemStockItem?.unitOfMeasure || "-"}
+                              {(() => {
+                                if (itemUnitType) return itemUnitType;
+                                const uom = itemStockItem ? itemStockItem.unitOfMeasure : null;
+                                return uom ? uom : "-";
+                              })()}
                             </span>
                           )}
                         </td>
@@ -608,8 +591,11 @@ export default function InvoiceDetailPage() {
                               />
                               {editStockItemId && (
                                 <div className="mt-1 text-xs text-teal-700">
-                                  {stockItems.find((s) => s.id === editStockItemId)?.name ||
-                                    "Selected"}
+                                  {(() => {
+                                    const found = stockItems.find((s) => s.id === editStockItemId);
+                                    const foundName = found ? found.name : null;
+                                    return foundName ? foundName : "Selected";
+                                  })()}
                                 </div>
                               )}
                               {stockSearchQuery.length >= 2 && (
@@ -675,7 +661,10 @@ export default function InvoiceDetailPage() {
                             </div>
                           ) : (
                             <span
-                              className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${MATCH_STATUS_COLORS[item.matchStatus] || "bg-gray-100 text-gray-800"}`}
+                              className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${(() => {
+                                const mc = MATCH_STATUS_COLORS[item.matchStatus];
+                                return mc ? mc : "bg-gray-100 text-gray-800";
+                              })()}`}
                             >
                               {item.matchStatus.replace(/_/g, " ")}
                             </span>

@@ -8,7 +8,11 @@ import type {
   JobCardImportMapping,
   JobCardImportRow,
 } from "@/app/lib/api/stockControlApi";
-import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
+import {
+  useAutoDetectJobCardMapping,
+  useConfirmCpoImport,
+  useUploadCpoImportFile,
+} from "@/app/lib/query/hooks";
 import { correctLineItemsEndRow, validItemRows } from "../../../lib/lineItemsEndRow";
 import { consumePendingCpoImportFile } from "./pending-file";
 
@@ -27,42 +31,50 @@ export default function CpoImportPage() {
   const [fileName, setFileName] = useState<string>("");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const pendingProcessed = useRef(false);
+  const uploadMutation = useUploadCpoImportFile();
+  const autoDetectMutation = useAutoDetectJobCardMapping();
+  const confirmImportMutation = useConfirmCpoImport();
 
-  const processFile = useCallback(async (file: File) => {
-    try {
-      setIsUploading(true);
-      setError(null);
-      setFileName(file.name);
+  const processFile = useCallback(
+    async (file: File) => {
+      try {
+        setIsUploading(true);
+        setError(null);
+        setFileName(file.name);
 
-      const result = await stockControlApiClient.uploadCpoImportFile(file);
-      setGrid(result.grid);
-      setSavedMapping(result.savedMapping);
+        const result = await uploadMutation.mutateAsync(file);
+        setGrid(result.grid);
+        setSavedMapping(result.savedMapping);
 
-      if (result.drawingRows && result.drawingRows.length > 0) {
-        setDrawingRows(result.drawingRows);
-        setPreviewRows(result.drawingRows);
-        setStep("preview");
-      } else if (result.grid.length > 0) {
-        const mapping = result.savedMapping?.mappingConfig;
-        if (mapping) {
-          const rows = extractRowsFromGrid(result.grid, mapping);
-          setPreviewRows(rows);
+        const resultDrawingRows = result.drawingRows;
+        if (resultDrawingRows && resultDrawingRows.length > 0) {
+          setDrawingRows(resultDrawingRows);
+          setPreviewRows(resultDrawingRows);
           setStep("preview");
+        } else if (result.grid.length > 0) {
+          const savedMappingConfig = result.savedMapping;
+          const mapping = savedMappingConfig ? savedMappingConfig.mappingConfig : null;
+          if (mapping) {
+            const rows = extractRowsFromGrid(result.grid, mapping);
+            setPreviewRows(rows);
+            setStep("preview");
+          } else {
+            const detected = await autoDetectMutation.mutateAsync(result.grid);
+            const rows = extractRowsFromGrid(result.grid, detected);
+            setPreviewRows(rows);
+            setStep("preview");
+          }
         } else {
-          const detected = await stockControlApiClient.autoDetectJobCardMapping(result.grid);
-          const rows = extractRowsFromGrid(result.grid, detected);
-          setPreviewRows(rows);
-          setStep("preview");
+          setError("No data found in the uploaded file");
         }
-      } else {
-        setError("No data found in the uploaded file");
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Upload failed");
+      } finally {
+        setIsUploading(false);
       }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Upload failed");
-    } finally {
-      setIsUploading(false);
-    }
-  }, []);
+    },
+    [uploadMutation, autoDetectMutation],
+  );
 
   useEffect(() => {
     if (pendingProcessed.current) return;
@@ -93,7 +105,7 @@ export default function CpoImportPage() {
     try {
       setIsImporting(true);
       setError(null);
-      const result = await stockControlApiClient.confirmCpoImport(previewRows);
+      const result = await confirmImportMutation.mutateAsync(previewRows);
       setImportResult(result);
       setStep("result");
     } catch (err) {
@@ -237,61 +249,66 @@ export default function CpoImportPage() {
             </div>
 
             <div className="divide-y divide-gray-200">
-              {previewRows.map((row, idx) => (
-                <div key={`row-${idx}`} className="px-6 py-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <div>
-                      <span className="text-sm font-medium text-gray-900">
-                        {row.jobNumber || "No Job #"}
-                      </span>
-                      {row.jobName && (
-                        <span className="ml-2 text-sm text-gray-500">{row.jobName}</span>
-                      )}
+              {previewRows.map((row, idx) => {
+                const jobNum = row.jobNumber;
+                const jobNumDisplay = jobNum || "No Job #";
+                const items = row.lineItems ? row.lineItems : [];
+                return (
+                  <div key={`row-${idx}`} className="px-6 py-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <div>
+                        <span className="text-sm font-medium text-gray-900">{jobNumDisplay}</span>
+                        {row.jobName && (
+                          <span className="ml-2 text-sm text-gray-500">{row.jobName}</span>
+                        )}
+                      </div>
+                      <span className="text-xs text-gray-400">{items.length} line items</span>
                     </div>
-                    <span className="text-xs text-gray-400">
-                      {(row.lineItems || []).length} line items
-                    </span>
-                  </div>
 
-                  <div className="flex flex-wrap gap-x-6 gap-y-1 text-xs text-gray-500">
-                    {row.customerName && <span>Customer: {row.customerName}</span>}
-                    {row.poNumber && <span>PO: {row.poNumber}</span>}
-                    {row.siteLocation && <span>Site: {row.siteLocation}</span>}
-                    {row.dueDate && <span>Due: {row.dueDate}</span>}
-                  </div>
+                    <div className="flex flex-wrap gap-x-6 gap-y-1 text-xs text-gray-500">
+                      {row.customerName && <span>Customer: {row.customerName}</span>}
+                      {row.poNumber && <span>PO: {row.poNumber}</span>}
+                      {row.siteLocation && <span>Site: {row.siteLocation}</span>}
+                      {row.dueDate && <span>Due: {row.dueDate}</span>}
+                    </div>
 
-                  {(row.lineItems || []).length > 0 && (
-                    <div className="mt-2 overflow-x-auto">
-                      <table className="min-w-full text-xs">
-                        <thead>
-                          <tr className="text-gray-500">
-                            <th className="text-left pr-4 py-1 font-medium">Code</th>
-                            <th className="text-left pr-4 py-1 font-medium">Description</th>
-                            <th className="text-right pr-4 py-1 font-medium">Qty</th>
-                            <th className="text-left pr-4 py-1 font-medium">JT No</th>
-                            <th className="text-right py-1 font-medium">m2</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {(row.lineItems || []).map((li, liIdx) => (
-                            <tr key={`li-${idx}-${liIdx}`} className="text-gray-700">
-                              <td className="pr-4 py-0.5 font-mono">{li.itemCode || "-"}</td>
-                              <td className="pr-4 py-0.5 max-w-xs truncate">
-                                {li.itemDescription || "-"}
-                              </td>
-                              <td className="pr-4 py-0.5 text-right">{li.quantity || "-"}</td>
-                              <td className="pr-4 py-0.5">{li.jtNo || "-"}</td>
-                              <td className="py-0.5 text-right">
-                                {li.m2 != null ? Number(li.m2).toFixed(2) : "-"}
-                              </td>
+                    {items.length > 0 && (
+                      <div className="mt-2 overflow-x-auto">
+                        <table className="min-w-full text-xs">
+                          <thead>
+                            <tr className="text-gray-500">
+                              <th className="text-left pr-4 py-1 font-medium">Code</th>
+                              <th className="text-left pr-4 py-1 font-medium">Description</th>
+                              <th className="text-right pr-4 py-1 font-medium">Qty</th>
+                              <th className="text-left pr-4 py-1 font-medium">JT No</th>
+                              <th className="text-right py-1 font-medium">m2</th>
                             </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                </div>
-              ))}
+                          </thead>
+                          <tbody>
+                            {items.map((li, liIdx) => {
+                              const code = li.itemCode ? li.itemCode : "-";
+                              const desc = li.itemDescription ? li.itemDescription : "-";
+                              const qty = li.quantity ? li.quantity : "-";
+                              const jt = li.jtNo ? li.jtNo : "-";
+                              return (
+                                <tr key={`li-${idx}-${liIdx}`} className="text-gray-700">
+                                  <td className="pr-4 py-0.5 font-mono">{code}</td>
+                                  <td className="pr-4 py-0.5 max-w-xs truncate">{desc}</td>
+                                  <td className="pr-4 py-0.5 text-right">{qty}</td>
+                                  <td className="pr-4 py-0.5">{jt}</td>
+                                  <td className="py-0.5 text-right">
+                                    {li.m2 != null ? Number(li.m2).toFixed(2) : "-"}
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>
@@ -402,12 +419,14 @@ function extractRowsFromGrid(grid: string[][], mapping: ImportMappingConfig): Jo
 
   if (!jobNumber && !jobName) return rows;
 
-  const lineItemStart =
-    mapping.lineItems?.itemCode?.startRow || mapping.lineItems?.itemDescription?.startRow || 0;
-  const rawLineItemEnd =
-    mapping.lineItems?.itemCode?.endRow ||
-    mapping.lineItems?.itemDescription?.endRow ||
-    grid.length - 1;
+  const liItemCode = mapping.lineItems?.itemCode;
+  const liItemDesc = mapping.lineItems?.itemDescription;
+  const codeStart = liItemCode ? liItemCode.startRow : 0;
+  const descStart = liItemDesc ? liItemDesc.startRow : 0;
+  const lineItemStart = codeStart || descStart || 0;
+  const codeEnd = liItemCode ? liItemCode.endRow : 0;
+  const descEnd = liItemDesc ? liItemDesc.endRow : 0;
+  const rawLineItemEnd = codeEnd || descEnd || grid.length - 1;
   const lineItemEnd = correctLineItemsEndRow(grid, lineItemStart, rawLineItemEnd);
   const validRows = validItemRows(grid, lineItemStart);
 
@@ -421,21 +440,25 @@ function extractRowsFromGrid(grid: string[][], mapping: ImportMappingConfig): Jo
 
   for (let r = lineItemStart; r <= Math.min(lineItemEnd, grid.length - 1); r++) {
     if (validRows.size > 0 && !validRows.has(r)) continue;
-    const itemCode = mapping.lineItems?.itemCode
-      ? (grid[r]?.[mapping.lineItems.itemCode.column] || "").trim()
-      : "";
-    const itemDescription = mapping.lineItems?.itemDescription
-      ? (grid[r]?.[mapping.lineItems.itemDescription.column] || "").trim()
-      : "";
-    const itemNo = mapping.lineItems?.itemNo
-      ? (grid[r]?.[mapping.lineItems.itemNo.column] || "").trim()
-      : "";
-    const quantity = mapping.lineItems?.quantity
-      ? (grid[r]?.[mapping.lineItems.quantity.column] || "").trim()
-      : "";
-    const jtNo = mapping.lineItems?.jtNo
-      ? (grid[r]?.[mapping.lineItems.jtNo.column] || "").trim()
-      : "";
+    const gridRow = grid[r];
+    const liNo = mapping.lineItems?.itemNo;
+    const liQty = mapping.lineItems?.quantity;
+    const liJt = mapping.lineItems?.jtNo;
+    const codeCol = liItemCode ? liItemCode.column : -1;
+    const descCol = liItemDesc ? liItemDesc.column : -1;
+    const noCol = liNo ? liNo.column : -1;
+    const qtyCol = liQty ? liQty.column : -1;
+    const jtCol = liJt ? liJt.column : -1;
+    const cellOrEmpty = (col: number): string => {
+      if (col < 0 || !gridRow) return "";
+      const val = gridRow[col];
+      return val ? val.trim() : "";
+    };
+    const itemCode = liItemCode ? cellOrEmpty(codeCol) : "";
+    const itemDescription = liItemDesc ? cellOrEmpty(descCol) : "";
+    const itemNo = liNo ? cellOrEmpty(noCol) : "";
+    const quantity = liQty ? cellOrEmpty(qtyCol) : "";
+    const jtNo = liJt ? cellOrEmpty(jtCol) : "";
 
     if (itemCode || itemDescription || quantity) {
       lineItems.push({ itemCode, itemDescription, itemNo, quantity, jtNo });

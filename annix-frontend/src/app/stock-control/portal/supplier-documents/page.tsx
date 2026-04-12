@@ -1,13 +1,18 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import type {
-  StockControlSupplierDto,
   SupplierDocument,
   SupplierDocumentExpiryStatus,
   SupplierDocumentType,
 } from "@/app/lib/api/stock-control-api/types";
-import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
+import {
+  useDeleteSupplierDocument,
+  useStockControlSuppliers,
+  useSupplierDocumentById,
+  useSupplierDocumentsList,
+  useUploadSupplierDocument,
+} from "@/app/lib/query/hooks";
 
 const DOC_TYPE_OPTIONS: { value: SupplierDocumentType; label: string }[] = [
   { value: "bee_certificate", label: "BEE Certificate" },
@@ -53,11 +58,6 @@ function formatDate(iso: string | null): string {
 }
 
 export default function SupplierDocumentsPage() {
-  const [documents, setDocuments] = useState<SupplierDocument[]>([]);
-  const [suppliers, setSuppliers] = useState<StockControlSupplierDto[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
   const [filterSupplier, setFilterSupplier] = useState<string>("");
   const [filterDocType, setFilterDocType] = useState<string>("");
   const [filterExpiry, setFilterExpiry] = useState<string>("");
@@ -70,34 +70,31 @@ export default function SupplierDocumentsPage() {
   const [uploadIssuedAt, setUploadIssuedAt] = useState("");
   const [uploadExpiresAt, setUploadExpiresAt] = useState("");
   const [uploadNotes, setUploadNotes] = useState("");
-  const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
 
-  const loadData = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const filters: Parameters<typeof stockControlApiClient.supplierDocuments>[0] = {};
-      if (filterSupplier) filters.supplierId = Number(filterSupplier);
-      if (filterDocType) filters.docType = filterDocType as SupplierDocumentType;
-      if (filterExpiry) filters.expiryStatus = filterExpiry as SupplierDocumentExpiryStatus;
-      const [docs, sups] = await Promise.all([
-        stockControlApiClient.supplierDocuments(filters),
-        stockControlApiClient.suppliers(),
-      ]);
-      setDocuments(docs);
-      setSuppliers(sups);
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : "Failed to load supplier documents";
-      setError(msg);
-    } finally {
-      setLoading(false);
-    }
+  const docFilters = useMemo(() => {
+    const f: Record<string, string | number | undefined> = {};
+    if (filterSupplier) f.supplierId = Number(filterSupplier);
+    if (filterDocType) f.docType = filterDocType;
+    if (filterExpiry) f.expiryStatus = filterExpiry;
+    return f;
   }, [filterSupplier, filterDocType, filterExpiry]);
 
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
+  const {
+    data: documents = [],
+    isLoading: loading,
+    error: queryError,
+  } = useSupplierDocumentsList(docFilters);
+  const { data: suppliers = [] } = useStockControlSuppliers();
+  const uploadDocMutation = useUploadSupplierDocument();
+  const docByIdMutation = useSupplierDocumentById();
+  const deleteDocMutation = useDeleteSupplierDocument();
+
+  const error = queryError
+    ? queryError instanceof Error
+      ? queryError.message
+      : "Failed to load supplier documents"
+    : null;
 
   const supplierMap = useMemo(() => {
     return suppliers.reduce((acc, s) => ({ ...acc, [s.id]: s.name }), {} as Record<number, string>);
@@ -114,37 +111,38 @@ export default function SupplierDocumentsPage() {
     setUploadError(null);
   };
 
+  const uploading = uploadDocMutation.isPending;
+
   const handleUpload = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!uploadFile || !uploadSupplierId) {
       setUploadError("File and supplier are required");
       return;
     }
-    setUploading(true);
     setUploadError(null);
     try {
-      await stockControlApiClient.uploadSupplierDocument(uploadFile, {
-        supplierId: Number(uploadSupplierId),
-        docType: uploadDocType,
-        docNumber: uploadDocNumber || null,
-        issuedAt: uploadIssuedAt || null,
-        expiresAt: uploadExpiresAt || null,
-        notes: uploadNotes || null,
+      await uploadDocMutation.mutateAsync({
+        file: uploadFile,
+        data: {
+          supplierId: Number(uploadSupplierId),
+          docType: uploadDocType,
+          docNumber: uploadDocNumber || null,
+          issuedAt: uploadIssuedAt || null,
+          expiresAt: uploadExpiresAt || null,
+          notes: uploadNotes || null,
+        },
       });
       setShowUploadModal(false);
       resetUploadForm();
-      await loadData();
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Upload failed";
       setUploadError(msg);
-    } finally {
-      setUploading(false);
     }
   };
 
   const handleDownload = async (doc: SupplierDocument) => {
     try {
-      const full = await stockControlApiClient.supplierDocumentById(doc.id);
+      const full = await docByIdMutation.mutateAsync(doc.id);
       const url = full.downloadUrl;
       if (url) {
         window.open(url, "_blank");
@@ -157,13 +155,12 @@ export default function SupplierDocumentsPage() {
 
   const handleDelete = async (doc: SupplierDocument) => {
     const mappedName = supplierMap[doc.supplierId];
-    const supplierName = mappedName || `Supplier ${doc.supplierId}`;
+    const supplierName = mappedName ? mappedName : `Supplier ${doc.supplierId}`;
     const docLabel = DOC_TYPE_LABELS[doc.docType];
     const confirmed = window.confirm(`Delete ${docLabel} for ${supplierName}?`);
     if (!confirmed) return;
     try {
-      await stockControlApiClient.deleteSupplierDocument(doc.id);
-      await loadData();
+      await deleteDocMutation.mutateAsync(doc.id);
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Failed to delete document";
       alert(msg);

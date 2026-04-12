@@ -4,8 +4,19 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
 import type { AdminTransferPending } from "@/app/lib/api/stock-control-api/types";
-import { CandidateImage, stockControlApiClient } from "@/app/lib/api/stockControlApi";
-import { useCompanyRoles } from "@/app/lib/query/hooks";
+import type { CandidateImage } from "@/app/lib/api/stockControlApi";
+import {
+  useCancelAdminTransfer,
+  useCompanyRoles,
+  useInitiateAdminTransfer,
+  usePendingAdminTransfer,
+  useProcessBrandingSelection,
+  useResendAdminTransfer,
+  useScrapeBranding,
+  useSetBranding,
+  useStockControlProxyImageBlob,
+  useUpdateCompanyDetails,
+} from "@/app/lib/query/hooks";
 import { useConfirm } from "@/app/stock-control/hooks/useConfirm";
 import { usePushNotifications } from "@/app/stock-control/hooks/usePushNotifications";
 import { STOCK_CONTROL_VERSION } from "../../config/version";
@@ -26,57 +37,26 @@ const SOURCE_LABELS: Record<string, string> = {
   "large-img": "Large image",
 };
 
-function CandidateThumbnail({
-  candidate,
-  selected,
-  onSelect,
-  size,
-}: {
+function CandidateThumbnail(props: {
   candidate: CandidateImage;
   selected: boolean;
   onSelect: () => void;
   size: "small" | "large";
 }) {
-  const [objectUrl, setObjectUrl] = useState<string | null>(null);
-  const [failed, setFailed] = useState(false);
+  const candidate = props.candidate;
+  const selected = props.selected;
+  const onSelect = props.onSelect;
+  const size = props.size;
+  const { objectUrl, failed: loadFailed } = useStockControlProxyImageBlob(candidate.url);
+  const [imgError, setImgError] = useState(false);
 
-  useEffect(() => {
-    let revoked = false;
-    const proxyUrl = stockControlApiClient.proxyImageUrl(candidate.url);
-    const headers = stockControlApiClient.authHeaders();
-
-    fetch(proxyUrl, { headers })
-      .then((res) => {
-        if (!res.ok) {
-          throw new Error("proxy failed");
-        }
-        return res.blob();
-      })
-      .then((blob) => {
-        if (!revoked) {
-          setObjectUrl(URL.createObjectURL(blob));
-        }
-      })
-      .catch(() => {
-        if (!revoked) {
-          setFailed(true);
-        }
-      });
-
-    return () => {
-      revoked = true;
-      if (objectUrl) {
-        URL.revokeObjectURL(objectUrl);
-      }
-    };
-  }, [candidate.url]);
-
-  if (failed) {
+  if (loadFailed || imgError) {
     return null;
   }
 
   const heightClass = size === "small" ? "h-16" : "h-32";
-  const label = SOURCE_LABELS[candidate.source] || candidate.source;
+  const sourceLabel = SOURCE_LABELS[candidate.source];
+  const label = sourceLabel ? sourceLabel : candidate.source;
 
   return (
     <button
@@ -93,7 +73,7 @@ function CandidateThumbnail({
           src={objectUrl}
           alt={label}
           className={`${heightClass} w-full object-contain rounded`}
-          onError={() => setFailed(true)}
+          onError={() => setImgError(true)}
         />
       ) : (
         <div
@@ -121,6 +101,14 @@ function CandidateThumbnail({
 export default function CompanyProfilePage() {
   const router = useRouter();
   const { user, profile, refreshProfile } = useStockControlAuth();
+  const updateDetailsMutation = useUpdateCompanyDetails();
+  const scrapeBrandingMutation = useScrapeBranding();
+  const processBrandingMutation = useProcessBrandingSelection();
+  const setBrandingMutation = useSetBranding();
+  const pendingTransferMutation = usePendingAdminTransfer();
+  const initiateTransferMutation = useInitiateAdminTransfer();
+  const resendTransferMutation = useResendAdminTransfer();
+  const cancelTransferMutation = useCancelAdminTransfer();
 
   const [companyName, setCompanyName] = useState("");
   const [registrationNumber, setRegistrationNumber] = useState("");
@@ -285,7 +273,7 @@ export default function CompanyProfilePage() {
     setDetailsSuccess(false);
 
     try {
-      await stockControlApiClient.updateCompanyDetails({
+      await updateDetailsMutation.mutateAsync({
         name: companyName.trim(),
         registrationNumber: registrationNumber.trim() || undefined,
         vatNumber: vatNumber.trim() || undefined,
@@ -315,7 +303,7 @@ export default function CompanyProfilePage() {
     setFeaturesSuccess(false);
 
     try {
-      await stockControlApiClient.updateCompanyDetails({
+      await updateDetailsMutation.mutateAsync({
         qcEnabled,
         messagingEnabled,
         workflowEnabled,
@@ -359,7 +347,7 @@ export default function CompanyProfilePage() {
       const normalizedUrl = websiteUrl.startsWith("http")
         ? websiteUrl.trim()
         : `https://${websiteUrl.trim()}`;
-      const result = await stockControlApiClient.scrapeBranding(normalizedUrl);
+      const result = await scrapeBrandingMutation.mutateAsync(normalizedUrl);
 
       if (
         result.logoCandidates.length === 0 &&
@@ -426,7 +414,7 @@ export default function CompanyProfilePage() {
 
       if (brandingSelection === "custom" && (selectedLogoUrl || selectedHeroUrl)) {
         setProcessing(true);
-        const processed = await stockControlApiClient.processBrandingSelection({
+        const processed = await processBrandingMutation.mutateAsync({
           logoSourceUrl: selectedLogoUrl ?? undefined,
           heroSourceUrl: selectedHeroUrl ?? undefined,
           scrapedPrimaryColor: scrapedPrimaryColor ?? undefined,
@@ -451,7 +439,7 @@ export default function CompanyProfilePage() {
         }
       }
 
-      await stockControlApiClient.setBranding({
+      await setBrandingMutation.mutateAsync({
         brandingType: brandingSelection,
         websiteUrl: normalizedUrl,
         brandingAuthorized: brandingSelection === "custom" ? brandingAuthorized : undefined,
@@ -1245,6 +1233,10 @@ export default function CompanyProfilePage() {
 function AdminTransferSection() {
   const { data: companyRoles = [] } = useCompanyRoles();
   const { confirm, ConfirmDialog } = useConfirm();
+  const pendingTransferMutation = usePendingAdminTransfer();
+  const initiateTransferMutation = useInitiateAdminTransfer();
+  const resendTransferMutation = useResendAdminTransfer();
+  const cancelTransferMutation = useCancelAdminTransfer();
 
   const [targetEmail, setTargetEmail] = useState("");
   const [selectedNewRole, setSelectedNewRole] = useState<string | null>(null);
@@ -1261,7 +1253,7 @@ function AdminTransferSection() {
 
   const loadPendingTransfer = useCallback(async () => {
     try {
-      const result = await stockControlApiClient.pendingAdminTransfer();
+      const result = await pendingTransferMutation.mutateAsync();
       setPendingTransfer(result);
     } catch {
       setPendingTransfer(null);
@@ -1302,10 +1294,10 @@ function AdminTransferSection() {
 
     setInitiating(true);
     try {
-      const result = await stockControlApiClient.initiateAdminTransfer(
+      const result = await initiateTransferMutation.mutateAsync([
         targetEmail.trim(),
         selectedNewRole,
-      );
+      ] as [string, string | null]);
       setSuccess(result.message);
       setTargetEmail("");
       setSelectedNewRole(null);
@@ -1322,7 +1314,7 @@ function AdminTransferSection() {
     setSuccess("");
     setResending(true);
     try {
-      const result = await stockControlApiClient.resendAdminTransfer();
+      const result = await resendTransferMutation.mutateAsync();
       setSuccess(result.message);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to resend email");
@@ -1355,7 +1347,7 @@ function AdminTransferSection() {
 
     setCancelling(true);
     try {
-      await stockControlApiClient.cancelAdminTransfer(pendingTransfer.id);
+      await cancelTransferMutation.mutateAsync(pendingTransfer.id);
       setPendingTransfer(null);
       setSuccess("Admin transfer cancelled.");
     } catch (e) {
@@ -1404,8 +1396,13 @@ function AdminTransferSection() {
                   <p className="text-xs text-amber-600 mt-1">
                     Your role after transfer:{" "}
                     <strong>
-                      {nonAdminRoles.find((r) => r.key === pendingTransfer.newRoleForInitiator)
-                        ?.label || pendingTransfer.newRoleForInitiator}
+                      {(() => {
+                        const matchedRole = nonAdminRoles.find(
+                          (r) => r.key === pendingTransfer.newRoleForInitiator,
+                        );
+                        const roleLabel = matchedRole ? matchedRole.label : null;
+                        return roleLabel ? roleLabel : pendingTransfer.newRoleForInitiator;
+                      })()}
                     </strong>
                   </p>
                 ) : (

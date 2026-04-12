@@ -7,13 +7,20 @@ import type {
   CompanyRole,
   StockControlLocation,
   StockControlTeamMember,
-  UserLocationSummary,
 } from "@/app/lib/api/stockControlApi";
-import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import {
+  useActionPermissions,
   useCompanyRoles,
+  useCreateCompanyRole,
+  useDeleteCompanyRole,
   useInvalidateCompanyRoles,
+  useReorderCompanyRoles,
   useSettingsTeamMembers,
+  useUpdateActionPermissions,
+  useUpdateCompanyRole,
+  useUpdateNavRbacConfig,
+  useUpdateUserLocations,
+  useUserLocationAssignments,
 } from "@/app/lib/query/hooks";
 import { ALL_NAV_ITEMS, NAV_GROUP_ORDER, resolveNavItemRoles } from "../../config/navItems";
 import { useStockControlRbac } from "../../context/StockControlRbacContext";
@@ -83,6 +90,11 @@ function MenuVisibilitySection({
   onRolesChanged: () => Promise<void>;
 }) {
   const { rbacConfig, reloadRbacConfig } = useStockControlRbac();
+  const updateNavRbacMutation = useUpdateNavRbacConfig();
+  const createRoleMutation = useCreateCompanyRole();
+  const updateRoleMutation = useUpdateCompanyRole();
+  const deleteRoleMutation = useDeleteCompanyRole();
+  const reorderRolesMutation = useReorderCompanyRoles();
   const [localConfig, setLocalConfig] = useState<Record<string, string[]>>({});
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -109,7 +121,8 @@ function MenuVisibilitySection({
 
   const handleToggle = useCallback((navKey: string, role: string) => {
     setLocalConfig((prev) => {
-      const current = prev[navKey] ?? [];
+      const currentRaw = prev[navKey];
+      const current = currentRaw ? currentRaw : [];
       const has = current.includes(role);
       return {
         ...prev,
@@ -174,7 +187,7 @@ function MenuVisibilitySection({
     setSaving(true);
     setSuccess(false);
     try {
-      await stockControlApiClient.updateNavRbacConfig(localConfig);
+      await updateNavRbacMutation.mutateAsync(localConfig);
       await reloadRbacConfig();
       setDirty(false);
       setSuccess(true);
@@ -203,7 +216,7 @@ function MenuVisibilitySection({
         .trim()
         .replace(/[^a-z0-9_-]/g, "-")
         .replace(/-+/g, "-");
-      await stockControlApiClient.createCompanyRole(key, newRoleLabel.trim());
+      await createRoleMutation.mutateAsync({ key, label: newRoleLabel.trim() });
       setNewRoleLabel("");
       setShowAddRole(false);
       await onRolesChanged();
@@ -216,7 +229,7 @@ function MenuVisibilitySection({
     if (!editingRoleLabel.trim()) return;
     setRoleError("");
     try {
-      await stockControlApiClient.updateCompanyRole(id, editingRoleLabel.trim());
+      await updateRoleMutation.mutateAsync({ id, label: editingRoleLabel.trim() });
       setEditingRoleId(null);
       await onRolesChanged();
     } catch (e) {
@@ -227,7 +240,7 @@ function MenuVisibilitySection({
   const handleDeleteRole = async (id: number) => {
     setRoleError("");
     try {
-      await stockControlApiClient.deleteCompanyRole(id);
+      await deleteRoleMutation.mutateAsync(id);
       await onRolesChanged();
     } catch (e) {
       setRoleError(e instanceof Error ? e.message : "Failed to delete role");
@@ -253,7 +266,7 @@ function MenuVisibilitySection({
 
     setRoleError("");
     try {
-      await stockControlApiClient.reorderCompanyRoles(reordered.map((r) => r.id));
+      await reorderRolesMutation.mutateAsync(reordered.map((r) => r.id));
       await onRolesChanged();
     } catch (e) {
       setRoleError(e instanceof Error ? e.message : "Failed to reorder roles");
@@ -556,8 +569,12 @@ function UserLocationAssignmentsSection({
   locations: StockControlLocation[];
   teamMembers: StockControlTeamMember[];
 }) {
-  const [userLocations, setUserLocations] = useState<UserLocationSummary[]>([]);
-  const [loading, setLoading] = useState(true);
+  const {
+    data: userLocations = [],
+    isLoading: loading,
+    error: loadError,
+  } = useUserLocationAssignments();
+  const updateLocationsMutation = useUpdateUserLocations();
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
@@ -568,30 +585,22 @@ function UserLocationAssignmentsSection({
     (m) => m.role === "storeman" || m.role === "manager" || m.role === "admin",
   );
 
-  const loadUserLocations = useCallback(async () => {
-    setLoading(true);
-    try {
-      const data = await stockControlApiClient.userLocationAssignments();
-      setUserLocations(data);
-    } catch {
-      setError("Failed to load user location assignments");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
   useEffect(() => {
-    loadUserLocations();
-  }, [loadUserLocations]);
+    if (loadError) {
+      setError("Failed to load user location assignments");
+    }
+  }, [loadError]);
 
   const isLocationAssigned = (userId: number, locationId: number): boolean => {
     const userLoc = userLocations.find((ul) => ul.userId === userId);
-    return userLoc?.locationIds?.includes(locationId) || false;
+    const locIds = userLoc ? userLoc.locationIds : null;
+    return locIds ? locIds.includes(locationId) : false;
   };
 
   const handleToggleLocation = async (userId: number, locationId: number) => {
     const userLoc = userLocations.find((ul) => ul.userId === userId);
-    const currentIds = userLoc?.locationIds || [];
+    const currentLocIds = userLoc ? userLoc.locationIds : null;
+    const currentIds = currentLocIds ? currentLocIds : [];
     const newIds = currentIds.includes(locationId)
       ? currentIds.filter((id) => id !== locationId)
       : [...currentIds, locationId];
@@ -601,8 +610,7 @@ function UserLocationAssignmentsSection({
     setSuccess(false);
 
     try {
-      await stockControlApiClient.updateUserLocations(userId, newIds);
-      await loadUserLocations();
+      await updateLocationsMutation.mutateAsync({ userId, locationIds: newIds });
       setSuccess(true);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to update location assignment");
@@ -659,7 +667,9 @@ function UserLocationAssignmentsSection({
                 <tbody className="divide-y divide-gray-100">
                   {eligibleMembers.map((member) => {
                     const userLoc = userLocations.find((ul) => ul.userId === member.id);
-                    const hasAny = (userLoc?.locationIds?.length || 0) > 0;
+                    const ulLocIds = userLoc ? userLoc.locationIds : null;
+                    const ulLocLen = ulLocIds ? ulLocIds.length : 0;
+                    const hasAny = ulLocLen > 0;
 
                     return (
                       <tr key={member.id} className="hover:bg-gray-50 transition-colors">
@@ -735,11 +745,13 @@ function ActionPermissionsSection({
   const [success, setSuccess] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
+  const loadPermissionsMutation = useActionPermissions();
+  const updatePermissionsMutation = useUpdateActionPermissions();
 
   const loadPermissions = useCallback(async () => {
     try {
       setLoading(true);
-      const data = await stockControlApiClient.actionPermissions();
+      const data = await loadPermissionsMutation.mutateAsync();
       setConfig(data.config);
       setLabels(data.labels);
     } catch {
@@ -758,7 +770,9 @@ function ActionPermissionsSection({
 
   const actionKeys = Object.keys(labels);
   const groups = actionKeys.reduce<Record<string, string[]>>((acc, key) => {
-    const group = labels[key]?.group || "Other";
+    const labelEntry = labels[key];
+    const groupVal = labelEntry ? labelEntry.group : null;
+    const group = groupVal ? groupVal : "Other";
     if (!acc[group]) {
       acc[group] = [];
     }
@@ -770,7 +784,8 @@ function ActionPermissionsSection({
   const handleToggle = useCallback((actionKey: string, role: string) => {
     if (role === "admin") return;
     setConfig((prev) => {
-      const current = prev[actionKey] ?? [];
+      const currentRaw2 = prev[actionKey];
+      const current = currentRaw2 ? currentRaw2 : [];
       const has = current.includes(role);
       return {
         ...prev,
@@ -784,11 +799,15 @@ function ActionPermissionsSection({
   const handleToggleGroupAll = useCallback(
     (groupActions: string[], role: string) => {
       if (role === "admin") return;
-      const allChecked = groupActions.every((ak) => (config[ak] ?? []).includes(role));
+      const allChecked = groupActions.every((ak) => {
+        const cval = config[ak];
+        return (cval ? cval : []).includes(role);
+      });
       setConfig((prev) => {
         const next = { ...prev };
         groupActions.forEach((ak) => {
-          const current = next[ak] ?? [];
+          const currentRaw3 = next[ak];
+          const current = currentRaw3 ? currentRaw3 : [];
           if (allChecked) {
             next[ak] = current.filter((r) => r !== role);
           } else if (!current.includes(role)) {
@@ -806,7 +825,7 @@ function ActionPermissionsSection({
   const handleSave = useCallback(async () => {
     try {
       setSaving(true);
-      const data = await stockControlApiClient.updateActionPermissions(config);
+      const data = await updatePermissionsMutation.mutateAsync(config);
       setConfig(data.config);
       setDirty(false);
       setSuccess(true);
@@ -906,9 +925,10 @@ function ActionPermissionsSection({
                         </span>
                       </td>
                       {roles.map((role) => {
-                        const checked = groupActions.filter((ak) =>
-                          (config[ak] ?? []).includes(role.key),
-                        ).length;
+                        const checked = groupActions.filter((ak) => {
+                          const akVal = config[ak];
+                          return (akVal ? akVal : []).includes(role.key);
+                        }).length;
                         const allChecked = checked === groupActions.length;
                         const partial = checked > 0 && !allChecked;
                         const disabled = role.key === "admin";
@@ -929,11 +949,16 @@ function ActionPermissionsSection({
                       })}
                     </tr>
                     {groupActions.map((actionKey) => {
-                      const actionRoles = config[actionKey] ?? [];
+                      const actionRolesRaw = config[actionKey];
+                      const actionRoles = actionRolesRaw ? actionRolesRaw : [];
                       return (
                         <tr key={actionKey} className="border-b border-gray-50 hover:bg-gray-50/50">
                           <td className="py-0.5 pr-2 text-gray-600 pl-4">
-                            {labels[actionKey]?.label || actionKey}
+                            {(() => {
+                              const akEntry = labels[actionKey];
+                              const akLabel = akEntry ? akEntry.label : null;
+                              return akLabel ? akLabel : actionKey;
+                            })()}
                           </td>
                           {roles.map((role) => {
                             const checked = actionRoles.includes(role.key);

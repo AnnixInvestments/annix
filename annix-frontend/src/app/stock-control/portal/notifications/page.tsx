@@ -5,12 +5,12 @@ import { useRouter } from "next/navigation";
 import { useCallback, useState } from "react";
 import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
 import type { WorkflowNotification } from "@/app/lib/api/stockControlApi";
-import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { formatDateTimeZA } from "@/app/lib/datetime";
 import {
   useCompleteBackgroundStep,
   useMarkAllNotificationsAsRead,
   useMarkNotificationAsRead,
+  useUpdateStockControlNotificationPreferences,
   useWorkflowNotifications,
 } from "@/app/lib/query/hooks";
 
@@ -22,12 +22,12 @@ export default function NotificationsPage() {
   const [filter, setFilter] = useState<FilterType>("all");
   const [completingBgStep, setCompletingBgStep] = useState<number | null>(null);
   const [bgNotes, setBgNotes] = useState("");
-  const [savingPrefs, setSavingPrefs] = useState(false);
 
   const { data: notifications = [], isLoading: loading } = useWorkflowNotifications(filter);
   const markAsRead = useMarkNotificationAsRead();
   const markAllAsRead = useMarkAllNotificationsAsRead();
   const completeBgStep = useCompleteBackgroundStep();
+  const updatePrefs = useUpdateStockControlNotificationPreferences();
 
   const handleMarkAsRead = useCallback(
     (notificationId: number) => {
@@ -93,7 +93,8 @@ export default function NotificationsPage() {
       stock_allocated: "Stock Allocated",
       dispatch_ready: "Ready for Dispatch",
     };
-    return labels[actionType] || actionType;
+    const label = labels[actionType];
+    return label ? label : actionType;
   };
 
   const actionTypeColor = (actionType: string): string => {
@@ -110,22 +111,15 @@ export default function NotificationsPage() {
       stock_allocated: "bg-blue-100 text-blue-800",
       dispatch_ready: "bg-purple-100 text-purple-800",
     };
-    return colors[actionType] || "bg-gray-100 text-gray-800";
+    const color = colors[actionType];
+    return color ? color : "bg-gray-100 text-gray-800";
   };
 
   const handleTogglePreference = useCallback(
-    async (key: "emailNotificationsEnabled" | "pushNotificationsEnabled", value: boolean) => {
-      setSavingPrefs(true);
-      try {
-        await stockControlApiClient.updateNotificationPreferences({ [key]: value });
-        await refreshProfile();
-      } catch {
-        /* profile will reflect actual state on next refresh */
-      } finally {
-        setSavingPrefs(false);
-      }
+    (key: "emailNotificationsEnabled" | "pushNotificationsEnabled", value: boolean) => {
+      updatePrefs.mutate({ [key]: value }, { onSuccess: () => refreshProfile() });
     },
-    [refreshProfile],
+    [refreshProfile, updatePrefs],
   );
 
   const unreadCount = notifications.filter((n) => !n.readAt).length;
@@ -178,7 +172,7 @@ export default function NotificationsPage() {
                   onChange={(e) =>
                     handleTogglePreference("emailNotificationsEnabled", e.target.checked)
                   }
-                  disabled={savingPrefs}
+                  disabled={updatePrefs.isPending}
                   className="sr-only peer"
                 />
                 <div className="w-10 h-5 bg-gray-200 peer-focus:ring-2 peer-focus:ring-teal-300 rounded-full peer peer-checked:bg-teal-500 transition-colors" />
@@ -197,7 +191,7 @@ export default function NotificationsPage() {
                   onChange={(e) =>
                     handleTogglePreference("pushNotificationsEnabled", e.target.checked)
                   }
-                  disabled={savingPrefs}
+                  disabled={updatePrefs.isPending}
                   className="sr-only peer"
                 />
                 <div className="w-10 h-5 bg-gray-200 peer-focus:ring-2 peer-focus:ring-teal-300 rounded-full peer peer-checked:bg-teal-500 transition-colors" />

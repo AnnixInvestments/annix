@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useCallback, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
+import { useAnalyzeBundlePdf, useImportBundlePdf } from "@/app/lib/query/hooks";
 
 type ViewMode = "drop" | "analyzing" | "review" | "importing" | "done";
 
@@ -59,23 +59,28 @@ export default function BundleUploadPage() {
   const [isDragOver, setIsDragOver] = useState(false);
   const dragCounter = useRef(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const analyzeMutation = useAnalyzeBundlePdf();
+  const importMutation = useImportBundlePdf();
 
-  const handleAnalyze = useCallback(async (selectedFile: File) => {
-    setFile(selectedFile);
-    setViewMode("analyzing");
-    setError(null);
+  const handleAnalyze = useCallback(
+    async (selectedFile: File) => {
+      setFile(selectedFile);
+      setViewMode("analyzing");
+      setError(null);
 
-    try {
-      const result = await stockControlApiClient.analyzeBundlePdf(selectedFile);
-      setTotalPages(result.totalPages);
-      setSummaryPageCount(result.summaryPageCount);
-      setReports(result.reports);
-      setViewMode("review");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Analysis failed");
-      setViewMode("drop");
-    }
-  }, []);
+      try {
+        const result = await analyzeMutation.mutateAsync(selectedFile);
+        setTotalPages(result.totalPages);
+        setSummaryPageCount(result.summaryPageCount);
+        setReports(result.reports);
+        setViewMode("review");
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Analysis failed");
+        setViewMode("drop");
+      }
+    },
+    [analyzeMutation],
+  );
 
   const handleImport = useCallback(async () => {
     if (!file) return;
@@ -83,7 +88,7 @@ export default function BundleUploadPage() {
     setError(null);
 
     try {
-      const result = await stockControlApiClient.importBundlePdf(file);
+      const result = await importMutation.mutateAsync(file);
       setImports(result.uploads);
       setImportStats({
         found: result.reportsFound,
@@ -94,7 +99,7 @@ export default function BundleUploadPage() {
       setError(err instanceof Error ? err.message : "Import failed");
       setViewMode("review");
     }
-  }, [file]);
+  }, [file, importMutation]);
 
   const handleDrop = useCallback(
     (e: React.DragEvent) => {
@@ -155,7 +160,10 @@ export default function BundleUploadPage() {
   };
 
   const typeCounts = reports.reduce<Record<string, number>>((acc, r) => {
-    return { ...acc, [r.entityType]: (acc[r.entityType] || 0) + 1 };
+    const et = r.entityType;
+    const prev = acc[et];
+    const count = prev ? prev : 0;
+    return { ...acc, [et]: count + 1 };
   }, {});
 
   const handleClose = () => {
@@ -330,8 +338,10 @@ export default function BundleUploadPage() {
 
               <div className="flex flex-wrap gap-3">
                 {Object.entries(typeCounts).map(([type, count]) => {
-                  const colorClass = ENTITY_COLORS[type] || ENTITY_COLORS.unknown;
-                  const label = ENTITY_LABELS[type] || type;
+                  const rawColor = ENTITY_COLORS[type];
+                  const colorClass = rawColor ? rawColor : ENTITY_COLORS.unknown;
+                  const rawLabel = ENTITY_LABELS[type];
+                  const label = rawLabel ? rawLabel : type;
                   return (
                     <div key={type} className={`rounded-lg px-4 py-3 text-center ${colorClass}`}>
                       <p className="text-2xl font-bold">{count}</p>
@@ -365,8 +375,10 @@ export default function BundleUploadPage() {
                     </thead>
                     <tbody className="divide-y divide-gray-100">
                       {reports.map((r, idx) => {
-                        const colorClass = ENTITY_COLORS[r.entityType] || ENTITY_COLORS.unknown;
-                        const label = ENTITY_LABELS[r.entityType] || r.entityType;
+                        const rColor = ENTITY_COLORS[r.entityType];
+                        const colorClass = rColor ? rColor : ENTITY_COLORS.unknown;
+                        const rLabel = ENTITY_LABELS[r.entityType];
+                        const label = rLabel ? rLabel : r.entityType;
                         return (
                           <tr key={idx} className="hover:bg-gray-50">
                             <td className="whitespace-nowrap px-3 py-2 font-mono font-medium text-gray-900">
@@ -388,7 +400,7 @@ export default function BundleUploadPage() {
                                 : `p${r.pageStart}-${r.pageEnd}`}
                             </td>
                             <td className="hidden sm:table-cell whitespace-nowrap px-3 py-2 text-gray-500">
-                              {r.createdAt || "-"}
+                              {r.createdAt ? r.createdAt : "-"}
                             </td>
                           </tr>
                         );
@@ -449,8 +461,10 @@ export default function BundleUploadPage() {
                     </thead>
                     <tbody className="divide-y divide-gray-100">
                       {imports.map((u) => {
-                        const colorClass = ENTITY_COLORS[u.entityType] || ENTITY_COLORS.unknown;
-                        const label = ENTITY_LABELS[u.entityType] || u.entityType;
+                        const uColor = ENTITY_COLORS[u.entityType];
+                        const colorClass = uColor ? uColor : ENTITY_COLORS.unknown;
+                        const uLabel = ENTITY_LABELS[u.entityType];
+                        const label = uLabel ? uLabel : u.entityType;
                         return (
                           <tr key={u.uploadId} className="hover:bg-gray-50">
                             <td className="whitespace-nowrap px-3 py-2 text-gray-900">
@@ -464,7 +478,7 @@ export default function BundleUploadPage() {
                               </span>
                             </td>
                             <td className="whitespace-nowrap px-3 py-2 text-gray-500">
-                              {u.createdAt || "-"}
+                              {u.createdAt ? u.createdAt : "-"}
                             </td>
                             <td className="px-3 py-2">
                               {u.autoMatch ? (

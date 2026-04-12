@@ -3,9 +3,18 @@
 import { useMemo, useState } from "react";
 import { PdfPreviewModal, usePdfPreview } from "@/app/components/PdfPreviewModal";
 import type { StaffMember } from "@/app/lib/api/stockControlApi";
-import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { formatDateZA } from "@/app/lib/datetime";
-import { useInvalidateStaff, useStaffDepartments, useStaffMembers } from "@/app/lib/query/hooks";
+import {
+  useCreateStaffMember,
+  useDeleteStaffMember,
+  useDownloadBatchStaffIdCards,
+  useDownloadStaffIdCardPdf,
+  useInvalidateStaff,
+  useStaffDepartments,
+  useStaffMembers,
+  useUpdateStaffMember,
+  useUploadStaffPhoto,
+} from "@/app/lib/query/hooks";
 import { PhotoCapture } from "@/app/stock-control/components/PhotoCapture";
 
 export default function StaffPage() {
@@ -37,6 +46,12 @@ export default function StaffPage() {
   const { data: staffMembers = [], isLoading } = useStaffMembers(staffParams);
   const { data: departments = [] } = useStaffDepartments();
   const invalidateStaff = useInvalidateStaff();
+  const updateStaffMutation = useUpdateStaffMember();
+  const createStaffMutation = useCreateStaffMember();
+  const uploadPhotoMutation = useUploadStaffPhoto();
+  const deleteStaffMutation = useDeleteStaffMember();
+  const downloadIdCardMutation = useDownloadStaffIdCardPdf();
+  const downloadBatchIdCardsMutation = useDownloadBatchStaffIdCards();
 
   const openCreateModal = () => {
     setEditingMember(null);
@@ -49,7 +64,7 @@ export default function StaffPage() {
     setEditingMember(member);
     setForm({
       name: member.name,
-      employeeNumber: member.employeeNumber || "",
+      employeeNumber: member.employeeNumber ? member.employeeNumber : "",
       departmentId: member.departmentId,
     });
     setCapturedFile(null);
@@ -70,14 +85,17 @@ export default function StaffPage() {
       };
 
       if (editingMember) {
-        const updated = await stockControlApiClient.updateStaffMember(editingMember.id, payload);
+        const updated = await updateStaffMutation.mutateAsync({
+          id: editingMember.id,
+          data: payload,
+        });
         if (capturedFile) {
-          await stockControlApiClient.uploadStaffPhoto(updated.id, capturedFile);
+          await uploadPhotoMutation.mutateAsync({ staffId: updated.id, file: capturedFile });
         }
       } else {
-        const created = await stockControlApiClient.createStaffMember(payload);
+        const created = await createStaffMutation.mutateAsync(payload);
         if (capturedFile) {
-          await stockControlApiClient.uploadStaffPhoto(created.id, capturedFile);
+          await uploadPhotoMutation.mutateAsync({ staffId: created.id, file: capturedFile });
         }
       }
 
@@ -94,11 +112,12 @@ export default function StaffPage() {
   const handleToggleActive = async (member: StaffMember) => {
     try {
       if (member.active) {
-        await stockControlApiClient.deleteStaffMember(member.id);
+        await deleteStaffMutation.mutateAsync(member.id);
       } else {
-        await stockControlApiClient.updateStaffMember(member.id, {
-          active: true,
-        } as Partial<StaffMember>);
+        await updateStaffMutation.mutateAsync({
+          id: member.id,
+          data: { active: true } as Partial<StaffMember>,
+        });
       }
       invalidateStaff();
     } catch (err) {
@@ -108,7 +127,7 @@ export default function StaffPage() {
 
   const handlePrintIdCard = (staffId: number) => {
     pdfPreview.openWithFetch(
-      () => stockControlApiClient.downloadStaffIdCardPdf(staffId),
+      () => downloadIdCardMutation.mutateAsync(staffId),
       `staff-id-${staffId}.pdf`,
     );
   };
@@ -124,7 +143,7 @@ export default function StaffPage() {
     }
     setIsDownloadingPdf(true);
     pdfPreview.openWithFetch(
-      () => stockControlApiClient.downloadBatchStaffIdCards(Array.from(selectedIds)),
+      () => downloadBatchIdCardsMutation.mutateAsync(Array.from(selectedIds)),
       "staff-id-cards-batch.pdf",
     );
     setIsDownloadingPdf(false);
@@ -359,7 +378,7 @@ export default function StaffPage() {
                       </div>
                     </td>
                     <td className="hidden px-3 py-4 whitespace-nowrap text-sm font-mono text-gray-500 sm:table-cell sm:px-6">
-                      {member.employeeNumber || "-"}
+                      {member.employeeNumber ? member.employeeNumber : "-"}
                     </td>
                     <td className="hidden px-3 py-4 whitespace-nowrap text-sm text-gray-500 md:table-cell sm:px-6">
                       {member.departmentId
@@ -504,7 +523,7 @@ export default function StaffPage() {
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Department</label>
                   <select
-                    value={form.departmentId || ""}
+                    value={form.departmentId ? form.departmentId : ""}
                     onChange={(e) =>
                       setForm({
                         ...form,
@@ -529,7 +548,9 @@ export default function StaffPage() {
                       capturedFile
                         ? URL.createObjectURL(capturedFile)
                         : editingMember
-                          ? editingMember.photoUrl || undefined
+                          ? editingMember.photoUrl
+                            ? editingMember.photoUrl
+                            : undefined
                           : undefined
                     }
                   />

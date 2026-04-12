@@ -4,11 +4,16 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 import { useToast } from "@/app/components/Toast";
-import {
-  type AnalyzedDeliveryNoteData,
-  type AnalyzedDeliveryNoteResult,
-  stockControlApiClient,
+import type {
+  AnalyzedDeliveryNoteData,
+  AnalyzedDeliveryNoteResult,
 } from "@/app/lib/api/stockControlApi";
+import {
+  useAcceptAnalyzedDeliveryNote,
+  useAcceptAnalyzedInvoice,
+  useAnalyzeDeliveryNotePhoto,
+  useSavePendingDeliveryNote,
+} from "@/app/lib/query/hooks";
 import { DeliveryNoteConfirmationModal } from "@/app/stock-control/components/DeliveryNoteConfirmationModal";
 
 const isInvoiceDocument = (docType: AnalyzedDeliveryNoteData["documentType"]): boolean =>
@@ -20,8 +25,17 @@ export default function ScanDeliveryNotePage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
 
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const analyzeMutation = useAnalyzeDeliveryNotePhoto();
+  const acceptDnMutation = useAcceptAnalyzedDeliveryNote();
+  const acceptInvoiceMutation = useAcceptAnalyzedInvoice();
+  const savePendingMutation = useSavePendingDeliveryNote();
+
+  const isAnalyzing = analyzeMutation.isPending;
+  const aLoading = acceptDnMutation.isPending;
+  const bLoading = acceptInvoiceMutation.isPending;
+  const cLoading = savePendingMutation.isPending;
+  const isSubmitting = aLoading || bLoading || cLoading;
+
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [result, setResult] = useState<AnalyzedDeliveryNoteResult | null>(null);
@@ -76,40 +90,40 @@ export default function ScanDeliveryNotePage() {
     }
   };
 
-  const handleAnalyze = async () => {
+  const handleAnalyze = () => {
     if (!selectedFile) {
       showToast("Please select a file first", "error");
       return;
     }
 
-    try {
-      setIsAnalyzing(true);
-      const analysisResult = await stockControlApiClient.analyzeDeliveryNotePhoto(selectedFile);
-      setResult(analysisResult);
+    analyzeMutation.mutate(selectedFile, {
+      onSuccess: (analysisResult) => {
+        setResult(analysisResult);
 
-      if (isInvoiceDocument(analysisResult.data.documentType)) {
-        showToast("Invoice detected — accepting automatically", "info");
-        setIsSubmitting(true);
-        try {
-          const invoice = await stockControlApiClient.acceptAnalyzedInvoice(
-            selectedFile,
-            analysisResult.data,
+        if (isInvoiceDocument(analysisResult.data.documentType)) {
+          showToast("Invoice detected — accepting automatically", "info");
+          acceptInvoiceMutation.mutate(
+            { file: selectedFile, analyzedData: analysisResult.data },
+            {
+              onSuccess: (invoice) => {
+                const invNum = invoice.invoiceNumber;
+                showToast(`Invoice ${invNum ? invNum : ""} created successfully`, "success");
+                router.push("/stock-control/portal/invoices");
+              },
+              onError: (err) => {
+                showToast(err instanceof Error ? err.message : "Failed to create invoice", "error");
+              },
+            },
           );
-          showToast(`Invoice ${invoice.invoiceNumber || ""} created successfully`, "success");
-          router.push("/stock-control/portal/invoices");
-        } catch (err) {
-          showToast(err instanceof Error ? err.message : "Failed to create invoice", "error");
-          setIsSubmitting(false);
+        } else {
+          setShowConfirmModal(true);
+          showToast("Delivery note analyzed — review the data below", "success");
         }
-      } else {
-        setShowConfirmModal(true);
-        showToast("Delivery note analyzed — review the data below", "success");
-      }
-    } catch (err) {
-      showToast(err instanceof Error ? err.message : "Failed to analyze delivery note", "error");
-    } finally {
-      setIsAnalyzing(false);
-    }
+      },
+      onError: (err) => {
+        showToast(err instanceof Error ? err.message : "Failed to analyze delivery note", "error");
+      },
+    });
   };
 
   const handleClear = () => {
@@ -121,42 +135,38 @@ export default function ScanDeliveryNotePage() {
     if (cameraInputRef.current) cameraInputRef.current.value = "";
   };
 
-  const handleConfirmAndAddToStock = async (editedData: AnalyzedDeliveryNoteData) => {
+  const handleConfirmAndAddToStock = (editedData: AnalyzedDeliveryNoteData) => {
     if (!selectedFile) return;
-    try {
-      setIsSubmitting(true);
-      const deliveryNote = await stockControlApiClient.acceptAnalyzedDeliveryNote(
-        selectedFile,
-        editedData,
-        "SUPPLIER_DELIVERY",
-      );
-      showToast(
-        `Delivery note ${deliveryNote.deliveryNumber || ""} created and stock updated`,
-        "success",
-      );
-      router.push("/stock-control/portal/deliveries");
-    } catch (err) {
-      showToast(err instanceof Error ? err.message : "Failed to create record", "error");
-    } finally {
-      setIsSubmitting(false);
-    }
+    acceptDnMutation.mutate(
+      { file: selectedFile, analyzedData: editedData, documentType: "SUPPLIER_DELIVERY" },
+      {
+        onSuccess: (deliveryNote) => {
+          const dnNum = deliveryNote.deliveryNumber;
+          showToast(`Delivery note ${dnNum ? dnNum : ""} created and stock updated`, "success");
+          router.push("/stock-control/portal/deliveries");
+        },
+        onError: (err) => {
+          showToast(err instanceof Error ? err.message : "Failed to create record", "error");
+        },
+      },
+    );
   };
 
-  const handleSaveForReview = async (editedData: AnalyzedDeliveryNoteData) => {
+  const handleSaveForReview = (editedData: AnalyzedDeliveryNoteData) => {
     if (!selectedFile) return;
-    try {
-      setIsSubmitting(true);
-      const deliveryNote = await stockControlApiClient.savePendingDeliveryNote(
-        selectedFile,
-        editedData,
-      );
-      showToast(`Delivery note ${deliveryNote.deliveryNumber || ""} saved for review`, "success");
-      router.push("/stock-control/portal/deliveries");
-    } catch (err) {
-      showToast(err instanceof Error ? err.message : "Failed to save delivery note", "error");
-    } finally {
-      setIsSubmitting(false);
-    }
+    savePendingMutation.mutate(
+      { file: selectedFile, analyzedData: editedData as unknown as Record<string, unknown> },
+      {
+        onSuccess: (deliveryNote) => {
+          const dnNum = deliveryNote.deliveryNumber;
+          showToast(`Delivery note ${dnNum ? dnNum : ""} saved for review`, "success");
+          router.push("/stock-control/portal/deliveries");
+        },
+        onError: (err) => {
+          showToast(err instanceof Error ? err.message : "Failed to save delivery note", "error");
+        },
+      },
+    );
   };
 
   return (

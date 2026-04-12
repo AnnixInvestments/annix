@@ -2,7 +2,12 @@
 
 import { useCallback, useMemo, useState } from "react";
 import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
-import { type GlossaryTerm, stockControlApiClient } from "@/app/lib/api/stockControlApi";
+import type { GlossaryTerm } from "@/app/lib/api/stockControlApi";
+import {
+  useDeleteGlossaryTerm,
+  useResetGlossary,
+  useUpsertGlossaryTerm,
+} from "@/app/lib/query/hooks";
 import { useGlossary } from "../../context/GlossaryContext";
 
 export default function GlossaryPage() {
@@ -16,7 +21,9 @@ export default function GlossaryPage() {
     definition: "",
     category: "",
   });
-  const [saving, setSaving] = useState(false);
+  const upsertTerm = useUpsertGlossaryTerm();
+  const deleteTerm = useDeleteGlossaryTerm();
+  const resetAll = useResetGlossary();
 
   const isAdmin = profile?.role === "admin";
 
@@ -43,40 +50,46 @@ export default function GlossaryPage() {
     setEditForm({
       term: t.term,
       definition: t.definition,
-      category: t.category || "",
+      category: t.category ? t.category : "",
     });
   }, []);
 
-  const handleSave = useCallback(async () => {
+  const handleSave = useCallback(() => {
     if (!editingTerm) {
       return;
     }
-    setSaving(true);
-    try {
-      await stockControlApiClient.upsertGlossaryTerm(editingTerm.abbreviation, {
-        term: editForm.term,
-        definition: editForm.definition,
-        category: editForm.category || null,
-      });
-      reloadTerms();
-      setEditingTerm(null);
-    } finally {
-      setSaving(false);
-    }
-  }, [editingTerm, editForm, reloadTerms]);
+    upsertTerm.mutate(
+      {
+        abbreviation: editingTerm.abbreviation,
+        body: {
+          term: editForm.term,
+          definition: editForm.definition,
+          category: editForm.category ? editForm.category : null,
+        },
+      },
+      {
+        onSuccess: () => {
+          reloadTerms();
+          setEditingTerm(null);
+        },
+      },
+    );
+  }, [editingTerm, editForm, reloadTerms, upsertTerm]);
 
   const handleDelete = useCallback(
-    async (abbreviation: string) => {
-      await stockControlApiClient.deleteGlossaryTerm(abbreviation);
-      reloadTerms();
+    (abbreviation: string) => {
+      deleteTerm.mutate(abbreviation, {
+        onSuccess: () => reloadTerms(),
+      });
     },
-    [reloadTerms],
+    [reloadTerms, deleteTerm],
   );
 
-  const handleResetAll = useCallback(async () => {
-    await stockControlApiClient.resetGlossary();
-    reloadTerms();
-  }, [reloadTerms]);
+  const handleResetAll = useCallback(() => {
+    resetAll.mutate(undefined, {
+      onSuccess: () => reloadTerms(),
+    });
+  }, [reloadTerms, resetAll]);
 
   return (
     <div className="max-w-5xl mx-auto">
@@ -301,10 +314,10 @@ export default function GlossaryPage() {
                 <button
                   type="button"
                   onClick={handleSave}
-                  disabled={saving}
+                  disabled={upsertTerm.isPending}
                   className="px-4 py-2 text-sm text-white bg-teal-600 hover:bg-teal-700 rounded-lg disabled:opacity-50"
                 >
-                  {saving ? "Saving..." : "Save"}
+                  {upsertTerm.isPending ? "Saving..." : "Save"}
                 </button>
               </div>
             </div>

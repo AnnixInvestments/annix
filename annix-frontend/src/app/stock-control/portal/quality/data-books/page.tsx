@@ -2,9 +2,8 @@
 
 import { useState } from "react";
 import { PdfPreviewModal, usePdfPreview } from "@/app/components/PdfPreviewModal";
-import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { formatDateZA } from "@/app/lib/datetime";
-import { useCompileDataBook, useSearchDataBook } from "@/app/lib/query/hooks";
+import { useCompileDataBook, useDownloadDataBook, useSearchDataBook } from "@/app/lib/query/hooks";
 
 export default function DataBooksPage() {
   const [jobCardId, setJobCardId] = useState("");
@@ -14,6 +13,7 @@ export default function DataBooksPage() {
 
   const searchMutation = useSearchDataBook();
   const compileMutation = useCompileDataBook();
+  const downloadMutation = useDownloadDataBook();
 
   const handleSearch = async () => {
     const id = parseInt(jobCardId, 10);
@@ -48,15 +48,13 @@ export default function DataBooksPage() {
     const id = parseInt(jobCardId, 10);
     if (!id) return;
 
-    pdfPreview.openWithFetch(
-      () => stockControlApiClient.downloadDataBook(id),
-      `DataBook-JC${id}.pdf`,
-    );
+    pdfPreview.openWithFetch(() => downloadMutation.mutateAsync(id), `DataBook-JC${id}.pdf`);
   };
 
-  const status = searchMutation.data?.status || null;
-  const certs = searchMutation.data?.certs || [];
-  const batchRecords = searchMutation.data?.batchRecords || [];
+  const searchData = searchMutation.data;
+  const status = searchData ? searchData.status : null;
+  const certs = searchData ? searchData.certs : [];
+  const batchRecords = searchData ? searchData.batchRecords : [];
 
   return (
     <div className="space-y-6">
@@ -165,7 +163,10 @@ export default function DataBooksPage() {
                             {record.batchNumber}
                           </td>
                           <td className="px-3 py-2 text-sm text-gray-600">
-                            {record.stockItem?.name || "-"}
+                            {(() => {
+                              const name = record.stockItem?.name;
+                              return name ? name : "-";
+                            })()}
                           </td>
                           <td className="whitespace-nowrap px-3 py-2 text-sm text-gray-600">
                             {record.quantity}
@@ -214,7 +215,12 @@ export default function DataBooksPage() {
                         <span className="text-sm font-medium text-gray-900">
                           {cert.batchNumber}
                         </span>
-                        <span className="text-sm text-gray-500">{cert.supplier?.name || ""}</span>
+                        <span className="text-sm text-gray-500">
+                          {(() => {
+                            const supplierName = cert.supplier?.name;
+                            return supplierName ? supplierName : "";
+                          })()}
+                        </span>
                       </div>
                       <span className="text-xs text-gray-400">{cert.originalFilename}</span>
                     </div>

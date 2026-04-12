@@ -1,11 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { useToast } from "@/app/components/Toast";
-import type { DeliveryNote } from "@/app/lib/api/stockControlApi";
-import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
+import type { AnalyzedDeliveryNoteData, DeliveryNote } from "@/app/lib/api/stockControlApi";
 import { formatDateZA } from "@/app/lib/datetime";
+import {
+  useAcceptAnalyzedDeliveryNote,
+  useAnalyzeDeliveryNotePhoto,
+  useCustomerDeliveries,
+} from "@/app/lib/query/hooks";
 
 function itemsCount(delivery: DeliveryNote): { count: number; isExtracted: boolean } {
   const linkedCount = delivery.items ? delivery.items.length : 0;
@@ -19,32 +23,14 @@ function itemsCount(delivery: DeliveryNote): { count: number; isExtracted: boole
 
 export default function CustomerDeliveriesPage() {
   const { showToast } = useToast();
-  const [deliveries, setDeliveries] = useState<DeliveryNote[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
+  const { data: deliveries = [], isLoading, error } = useCustomerDeliveries();
   const [isDragOver, setIsDragOver] = useState(false);
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const analyzeMutation = useAnalyzeDeliveryNotePhoto();
+  const acceptMutation = useAcceptAnalyzedDeliveryNote();
   const [mismatchPopup, setMismatchPopup] = useState<{
     detectedType: string;
     supplierName: string;
   } | null>(null);
-
-  const fetchDeliveries = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      const data = await stockControlApiClient.deliveryNotes();
-      const customerDeliveries = (Array.isArray(data) ? data : []).filter((dn) => {
-        const extracted = dn.extractedData as { documentType?: string } | null;
-        return extracted?.documentType === "CUSTOMER_DELIVERY";
-      });
-      setDeliveries(customerDeliveries);
-      setError(null);
-    } catch (err) {
-      setError(err instanceof Error ? err : new Error("Failed to load customer delivery notes"));
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -58,8 +44,12 @@ export default function CustomerDeliveriesPage() {
     setIsDragOver(false);
   }, []);
 
+  const analyzeIsPending = analyzeMutation.isPending;
+  const acceptIsPending = acceptMutation.isPending;
+  const isAnalyzing = analyzeIsPending || acceptIsPending;
+
   const handleDrop = useCallback(
-    async (e: React.DragEvent) => {
+    (e: React.DragEvent) => {
       e.preventDefault();
       e.stopPropagation();
       setIsDragOver(false);
@@ -73,49 +63,57 @@ export default function CustomerDeliveriesPage() {
         return;
       }
 
-      try {
-        setIsAnalyzing(true);
-        showToast("Analyzing document...", "info");
-        const result = await stockControlApiClient.analyzeDeliveryNotePhoto(file);
-
-        const detectedType = result.data.documentType;
-        if (detectedType !== "CUSTOMER_DELIVERY") {
-          const supplierName =
-            result.data.fromCompany?.name || result.data.toCompany?.name || "Unknown";
-          setMismatchPopup({
-            detectedType:
+      showToast("Analyzing document...", "info");
+      analyzeMutation.mutate(file, {
+        onSuccess: (result) => {
+          const detectedType = result.data.documentType;
+          if (detectedType !== "CUSTOMER_DELIVERY") {
+            const fromName = result.data.fromCompany?.name;
+            const toName = result.data.toCompany?.name;
+            const supplierName = fromName ? fromName : toName ? toName : "Unknown";
+            const detectedLabel =
               detectedType === "SUPPLIER_DELIVERY"
                 ? "Supplier Delivery Note"
                 : detectedType === "SUPPLIER_INVOICE" || detectedType === "TAX_INVOICE"
                   ? "Supplier Invoice"
-                  : detectedType,
-            supplierName,
-          });
-          return;
-        }
+                  : detectedType;
+            setMismatchPopup({
+              detectedType: detectedLabel,
+              supplierName,
+            });
+            return;
+          }
 
-        const deliveryNote = await stockControlApiClient.acceptAnalyzedDeliveryNote(
-          file,
-          result.data,
-          "CUSTOMER_DELIVERY",
-        );
-        showToast(
-          `Delivery note ${deliveryNote.deliveryNumber || ""} created successfully`,
-          "success",
-        );
-        fetchDeliveries();
-      } catch (err) {
-        showToast(err instanceof Error ? err.message : "Failed to analyze document", "error");
-      } finally {
-        setIsAnalyzing(false);
-      }
+          acceptMutation.mutate(
+            {
+              file,
+              analyzedData: result.data as AnalyzedDeliveryNoteData,
+              documentType: "CUSTOMER_DELIVERY",
+            },
+            {
+              onSuccess: (deliveryNote) => {
+                const dnNumber = deliveryNote.deliveryNumber;
+                showToast(
+                  `Delivery note ${dnNumber ? dnNumber : ""} created successfully`,
+                  "success",
+                );
+              },
+              onError: (err) => {
+                showToast(
+                  err instanceof Error ? err.message : "Failed to create delivery note",
+                  "error",
+                );
+              },
+            },
+          );
+        },
+        onError: (err) => {
+          showToast(err instanceof Error ? err.message : "Failed to analyze document", "error");
+        },
+      });
     },
-    [showToast, fetchDeliveries],
+    [showToast, analyzeMutation, acceptMutation],
   );
-
-  useEffect(() => {
-    fetchDeliveries();
-  }, [fetchDeliveries]);
 
   if (isLoading && deliveries.length === 0) {
     return (
@@ -129,11 +127,12 @@ export default function CustomerDeliveriesPage() {
   }
 
   if (error && deliveries.length === 0) {
+    const errorMsg = error.message;
     return (
       <div className="flex items-center justify-center min-h-96">
         <div className="text-center">
           <div className="text-red-500 text-lg font-semibold mb-2">Error Loading Data</div>
-          <p className="text-gray-600">{error.message}</p>
+          <p className="text-gray-600">{errorMsg}</p>
         </div>
       </div>
     );
@@ -336,7 +335,7 @@ export default function CustomerDeliveriesPage() {
                     {formatDateZA(delivery.receivedDate)}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {delivery.receivedBy || "-"}
+                    {delivery.receivedBy ? delivery.receivedBy : "-"}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900">
                     {(() => {

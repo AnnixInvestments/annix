@@ -151,6 +151,13 @@ export const stockControlKeys = {
     all: ["stock-control", "dft-readings"] as const,
     list: () => [...stockControlKeys.dftReadings.all, "list"] as const,
   },
+  qcpLog: {
+    all: ["stock-control", "qcp-log"] as const,
+    list: (search?: string) => [...stockControlKeys.qcpLog.all, "list", search ?? ""] as const,
+  },
+  glossary: {
+    all: ["stock-control", "glossary"] as const,
+  },
   inspections: {
     all: ["stock-control", "inspections"] as const,
     forRange: (startDate: string, endDate: string) =>
@@ -171,5 +178,25 @@ export const stockControlKeys = {
     all: ["stock-control", "workflow-config"] as const,
     foreground: () => [...stockControlKeys.workflowConfig.all, "foreground"] as const,
     background: () => [...stockControlKeys.workflowConfig.all, "background"] as const,
+  },
+  supplierDocuments: {
+    all: ["stock-control", "supplier-documents"] as const,
+    list: (filters?: Record<string, string | number | undefined>) =>
+      [...stockControlKeys.supplierDocuments.all, "list", filters ?? {}] as const,
+  },
+  suppliers: {
+    all: ["stock-control", "suppliers"] as const,
+    list: () => [...stockControlKeys.suppliers.all, "list"] as const,
+  },
+  leave: {
+    all: ["stock-control", "leave"] as const,
+    month: (year: number, month: number) =>
+      [...stockControlKeys.leave.all, "month", year, month] as const,
+  },
+  dispatch: {
+    all: ["stock-control", "dispatch"] as const,
+    cdns: (jobCardId: number) => [...stockControlKeys.dispatch.all, "cdns", jobCardId] as const,
+    loadPhotos: (jobCardId: number) =>
+      [...stockControlKeys.dispatch.all, "load-photos", jobCardId] as const,
   },
 };

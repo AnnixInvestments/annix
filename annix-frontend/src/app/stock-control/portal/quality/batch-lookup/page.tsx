@@ -1,15 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { formatDateZA } from "@/app/lib/datetime";
-import { useSearchBatch } from "@/app/lib/query/hooks";
+import { useSearchBatch, useViewCertificateUrl } from "@/app/lib/query/hooks";
 
 export default function BatchLookupPage() {
   const [batchNumber, setBatchNumber] = useState("");
   const [searched, setSearched] = useState(false);
 
   const searchMutation = useSearchBatch();
+  const viewCert = useViewCertificateUrl();
 
   const handleSearch = () => {
     if (!batchNumber.trim()) return;
@@ -22,19 +22,20 @@ export default function BatchLookupPage() {
     });
   };
 
-  const handleView = async (id: number) => {
-    try {
-      const cert = await stockControlApiClient.certificateById(id);
-      if (cert.downloadUrl) {
-        window.open(cert.downloadUrl, "_blank");
-      }
-    } catch {
-      // View failed silently
-    }
+  const handleView = (id: number) => {
+    viewCert.mutate(id, {
+      onSuccess: (cert) => {
+        const url = cert.downloadUrl;
+        if (url) {
+          window.open(url, "_blank");
+        }
+      },
+    });
   };
 
-  const certificates = searchMutation.data?.certificates || [];
-  const batchRecords = searchMutation.data?.batchRecords || [];
+  const mutationData = searchMutation.data;
+  const certificates = mutationData ? mutationData.certificates : [];
+  const batchRecords = mutationData ? mutationData.batchRecords : [];
 
   return (
     <div className="space-y-6">
@@ -111,10 +112,16 @@ export default function BatchLookupPage() {
                         </span>
                       </td>
                       <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-600">
-                        {cert.supplier?.name || "-"}
+                        {(() => {
+                          const sName = cert.supplier?.name;
+                          return sName ? sName : "-";
+                        })()}
                       </td>
                       <td className="px-4 py-3 text-sm text-gray-600">
-                        {cert.stockItem?.name || "-"}
+                        {(() => {
+                          const siName = cert.stockItem?.name;
+                          return siName ? siName : "-";
+                        })()}
                       </td>
                       <td className="px-4 py-3 text-sm text-gray-600">{cert.originalFilename}</td>
                       <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-500">
@@ -164,7 +171,10 @@ export default function BatchLookupPage() {
                   {batchRecords.map((record) => (
                     <tr key={record.id} className="hover:bg-gray-50">
                       <td className="px-4 py-3 text-sm text-gray-900">
-                        {record.stockItem?.name || "-"}
+                        {(() => {
+                          const rsiName = record.stockItem?.name;
+                          return rsiName ? rsiName : "-";
+                        })()}
                       </td>
                       <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-600">
                         {record.quantity}

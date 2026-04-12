@@ -145,3 +145,147 @@ export function useSearchBatch() {
     },
   });
 }
+
+export function useAnalyzeBundlePdf() {
+  return useMutation({
+    mutationFn: (file: File) => stockControlApiClient.analyzeBundlePdf(file),
+  });
+}
+
+export function useImportBundlePdf() {
+  return useMutation({
+    mutationFn: (file: File) => stockControlApiClient.importBundlePdf(file),
+  });
+}
+
+export function useStartPositectorStreamingSession() {
+  return useMutation({
+    mutationFn: (
+      config: Parameters<typeof stockControlApiClient.startPositectorStreamingSession>[0],
+    ) => stockControlApiClient.startPositectorStreamingSession(config),
+  });
+}
+
+export function useAddPositectorStreamingReading() {
+  return useMutation({
+    mutationFn: (params: { sessionId: string; data: { value: number } }) =>
+      stockControlApiClient.addPositectorStreamingReading(params.sessionId, params.data),
+  });
+}
+
+export function useEndPositectorStreamingSession() {
+  return useMutation({
+    mutationFn: (sessionId: string) =>
+      stockControlApiClient.endPositectorStreamingSession(sessionId),
+  });
+}
+
+export function useDiscardPositectorStreamingSession() {
+  return useMutation({
+    mutationFn: (sessionId: string) =>
+      stockControlApiClient.discardPositectorStreamingSession(sessionId),
+  });
+}
+
+export function useCheckPositectorConnection() {
+  return useMutation({
+    mutationFn: (deviceId: number) => stockControlApiClient.checkPositectorConnection(deviceId),
+  });
+}
+
+export function useRegisterPositectorDevice() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: Parameters<typeof stockControlApiClient.registerPositectorDevice>[0]) =>
+      stockControlApiClient.registerPositectorDevice(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: stockControlKeys.positector.all });
+    },
+  });
+}
+
+export function useDeletePositectorDevice() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => stockControlApiClient.deletePositectorDevice(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: stockControlKeys.positector.all });
+    },
+  });
+}
+
+export function usePositectorBatches() {
+  return useMutation({
+    mutationFn: (deviceId: number) => stockControlApiClient.positectorBatches(deviceId),
+  });
+}
+
+export function usePositectorBatchDetail() {
+  return useMutation({
+    mutationFn: (params: { deviceId: number; buid: string }) =>
+      stockControlApiClient.positectorBatch(params.deviceId, params.buid),
+  });
+}
+
+export function useImportPositectorBatch() {
+  return useMutation({
+    mutationFn: (params: {
+      deviceId: number;
+      buid: string;
+      data: Parameters<typeof stockControlApiClient.importPositectorBatch>[2];
+    }) => stockControlApiClient.importPositectorBatch(params.deviceId, params.buid, params.data),
+  });
+}
+
+export function useUploadPositectorFile() {
+  return useMutation({
+    mutationFn: (file: File) => stockControlApiClient.uploadPositectorFile(file),
+  });
+}
+
+export function useLinkPositectorUpload() {
+  return useMutation({
+    mutationFn: (params: {
+      uploadId: number;
+      data: Parameters<typeof stockControlApiClient.linkPositectorUpload>[1];
+    }) => stockControlApiClient.linkPositectorUpload(params.uploadId, params.data),
+  });
+}
+
+export function usePositectorUploadDownloadUrl() {
+  return useMutation({
+    mutationFn: (uploadId: number) => stockControlApiClient.positectorUploadDownloadUrl(uploadId),
+  });
+}
+
+export function usePositectorStreamingSessions() {
+  return useMutation({
+    mutationFn: () => stockControlApiClient.positectorStreamingSessions(),
+  });
+}
+
+export function usePositectorStreamingSessionDetail() {
+  return useMutation({
+    mutationFn: (sessionId: string) => stockControlApiClient.positectorStreamingSession(sessionId),
+  });
+}
+
+export function positectorStreamingEventsUrl(sessionId: string): string {
+  return stockControlApiClient.positectorStreamingEventsUrl(sessionId);
+}
+
+export function positectorWebhookUrl(companyId: number, deviceId: number): string {
+  return stockControlApiClient.positectorWebhookUrl(companyId, deviceId);
+}
+
+export function useJobCardCoatingAnalysis() {
+  return useMutation({
+    mutationFn: (jobCardId: number) => stockControlApiClient.jobCardCoatingAnalysis(jobCardId),
+  });
+}
+
+export function useRubberStockOptions() {
+  return useMutation({
+    mutationFn: (jobCardId: number) => stockControlApiClient.rubberStockOptions(jobCardId),
+  });
+}
