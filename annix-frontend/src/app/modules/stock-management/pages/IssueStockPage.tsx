@@ -1680,7 +1680,7 @@ export function IssueStockPage() {
                 <div key={row.product.id} className="p-3 text-sm flex justify-between">
                   <span>{row.product.name}</span>
                   <span className="font-mono">
-                    {row.quantity} {row.product.unitOfMeasure}
+                    {Math.round(row.quantity * 100) / 100} {row.product.unitOfMeasure}
                   </span>
                 </div>
               ))}
