@@ -10,13 +10,17 @@ import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { formatDateZA } from "@/app/lib/datetime";
 import { HelpTooltip } from "../../../../components/HelpTooltip";
 
-function isBandingProduct(product: string, rawNotes: string | null): boolean {
+function isBandingProduct(product: string, rawNotes: string | null, isBanding?: boolean): boolean {
+  if (isBanding === true) return true;
+  if (isBanding === false) return false;
   if (!rawNotes) return false;
   const upper = rawNotes.toUpperCase();
   const productUpper = product.toUpperCase();
   const bandingIdx = upper.indexOf("BANDING");
   if (bandingIdx < 0) return false;
   const afterBanding = upper.substring(bandingIdx);
+  const beforeBanding = upper.substring(0, bandingIdx);
+  if (beforeBanding.includes(productUpper)) return false;
   return afterBanding.includes(productUpper);
 }
 
@@ -191,7 +195,8 @@ export function CoatingAnalysisTab(props: CoatingAnalysisTabProps) {
     if (!correctionValue.trim()) return;
     try {
       setIsSavingCorrection(true);
-      const originalValue = coatingAnalysis?.rawNotes || null;
+      const rawNotes = coatingAnalysis ? coatingAnalysis.rawNotes : null;
+      const originalValue = rawNotes || null;
       await stockControlApiClient.saveJobCardCorrection(jobId, {
         fieldName: correctionField,
         originalValue,
@@ -944,7 +949,8 @@ export function CoatingAnalysisTab(props: CoatingAnalysisTabProps) {
                   e.preventDefault();
                   e.stopPropagation();
                   setIsDraggingTds(false);
-                  const file = e.dataTransfer.files?.[0] || null;
+                  const dtFiles = e.dataTransfer.files;
+                  const file = dtFiles ? dtFiles[0] : null;
                   if (file) {
                     onTdsFileChange(file);
                   }
@@ -999,7 +1005,8 @@ export function CoatingAnalysisTab(props: CoatingAnalysisTabProps) {
                       accept=".pdf,.png,.jpg,.jpeg,.gif,.bmp,.webp,.heic,.tiff"
                       className="hidden"
                       onChange={(e) => {
-                        const file = e.target.files?.[0] || null;
+                        const targetFiles = e.target.files;
+                        const file = targetFiles ? targetFiles[0] : null;
                         onTdsFileChange(file);
                       }}
                     />

@@ -152,23 +152,24 @@ export class CoatingAnalysisService {
         where: { jobCardId, companyId },
       });
 
-      const junkItemIds = allLineItems
-        .filter((li) => {
-          const code = (li.itemCode || "").trim();
-          const desc = (li.itemDescription || "").trim();
-          const texts = [code, desc].filter(Boolean);
-          return texts.some((t) => INVALID_LINE_ITEM_PATTERNS.some((p) => p.test(t)));
-        })
-        .map((li) => li.id);
+      const junkItemIds = new Set(
+        allLineItems
+          .filter((li) => {
+            const code = (li.itemCode || "").trim();
+            const desc = (li.itemDescription || "").trim();
+            const texts = [code, desc].filter(Boolean);
+            return texts.some((t) => INVALID_LINE_ITEM_PATTERNS.some((p) => p.test(t)));
+          })
+          .map((li) => li.id),
+      );
 
-      if (junkItemIds.length > 0) {
-        await this.lineItemRepo.delete(junkItemIds);
+      if (junkItemIds.size > 0) {
         this.logger.log(
-          `Removed ${junkItemIds.length} junk line item(s) from job card ${jobCardId}`,
+          `Skipping ${junkItemIds.size} junk line item(s) from job card ${jobCardId} (not deleted)`,
         );
       }
 
-      const lineItems = allLineItems.filter((li) => !junkItemIds.includes(li.id));
+      const lineItems = allLineItems.filter((li) => !junkItemIds.has(li.id));
 
       const PIPE_ITEM_PATTERN =
         /(?:\d+\s*NB|NB\s*\d+|^\d{2,4}\s*x\s*\d{2,4}\b|\bPIPE\b|\bBEND\b|\bELBOW\b|\bTEE\b|\bT[- ]?PIECE\b|\bREDUCER\b|\bLATERAL\b|\bFLANGE\b|\bOFFSET\b|\bVALVE\b|\bSCH(?:EDULE)?\s*\d+|\d+\s*LG\b)/i;
@@ -696,7 +697,14 @@ export class CoatingAnalysisService {
       throw new Error("AI response did not contain valid JSON");
     }
 
-    const validated = validateCoatingExtraction(JSON.parse(jsonMatch[0]));
+    const parsed = JSON.parse(jsonMatch[0]);
+    const validated = validateCoatingExtraction(parsed);
+
+    if (validated.coats.length === 0) {
+      this.logger.warn(
+        `AI returned 0 coats for coating spec. Raw keys: ${Object.keys(parsed).join(", ")}. Notes snippet: "${notes.substring(0, 200)}"`,
+      );
+    }
 
     const RUBBER_PATTERN = /\br\/l\b|rubber|shore|lining|liner|lagging|\brot\b/i;
 
