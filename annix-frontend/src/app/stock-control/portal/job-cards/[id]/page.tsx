@@ -17,6 +17,7 @@ import type {
   StockItem,
   WorkflowStatus as WorkflowStatusData,
 } from "@/app/lib/api/stockControlApi";
+import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { formatDateZA, nowMillis } from "@/app/lib/datetime";
 import {
   useAllocateStock,
@@ -163,41 +164,48 @@ export default function JobCardDetailPage() {
     try {
       setIsLoading(true);
       const [jobData, allocationsData] = await Promise.all([
-        loadJobCard(jobId),
-        loadJobCardAllocations(jobId),
+        stockControlApiClient.jobCardById(jobId),
+        stockControlApiClient.jobCardAllocations(jobId),
       ]);
       setJobCard(jobData);
       setAllocations(Array.isArray(allocationsData) ? allocationsData : []);
       setError(null);
 
-      loadRequisitions()
+      stockControlApiClient
+        .requisitions()
         .then((reqs) => {
           const match = reqs.find((r) => r.jobCardId === jobId && r.status !== "cancelled");
           setRequisition(match ? match : null);
         })
         .catch(() => setRequisition(null));
 
-      loadDeliveryJobCards(jobId)
+      stockControlApiClient
+        .deliveryJobCards(jobId)
         .then((data) => setDeliveryJobCards(data))
         .catch(() => setDeliveryJobCards([]));
 
-      loadWorkflowStatus(jobId)
+      stockControlApiClient
+        .workflowStatus(jobId)
         .then((data) => setWorkflowStatus(data))
         .catch(() => setWorkflowStatus(null));
 
-      loadApprovalHistory(jobId)
+      stockControlApiClient
+        .approvalHistory(jobId)
         .then((data) => setApprovals(data))
         .catch(() => setApprovals([]));
 
-      loadBackgroundSteps(jobId)
+      stockControlApiClient
+        .backgroundStepsForJobCard(jobId)
         .then((data) => setBackgroundSteps(data))
         .catch(() => setBackgroundSteps([]));
 
-      loadJobCardAdjacentIds(jobId)
+      stockControlApiClient
+        .jobCardAdjacentIds(jobId)
         .then((data) => setAdjacentIds(data))
         .catch(() => setAdjacentIds({ previousId: null, nextId: null }));
 
-      loadControlPlans(jobId)
+      stockControlApiClient
+        .controlPlansForJobCard(jobId)
         .then((data) => setControlPlans(data))
         .catch(() => setControlPlans([]));
     } catch (err) {
@@ -205,30 +213,21 @@ export default function JobCardDetailPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [
-    jobId,
-    loadJobCard,
-    loadJobCardAllocations,
-    loadRequisitions,
-    loadDeliveryJobCards,
-    loadWorkflowStatus,
-    loadApprovalHistory,
-    loadBackgroundSteps,
-    loadJobCardAdjacentIds,
-    loadControlPlans,
-  ]);
+  }, [jobId]);
 
   const refreshWorkflowState = useCallback(() => {
     if (document.hidden) return;
     Promise.all([
-      loadJobCard(jobId).then((data) => setJobCard(data)),
-      loadWorkflowStatus(jobId).then((data) => setWorkflowStatus(data)),
-      loadApprovalHistory(jobId).then((data) => setApprovals(data)),
-      loadBackgroundSteps(jobId).then((data) => setBackgroundSteps(data)),
+      stockControlApiClient.jobCardById(jobId).then((data) => setJobCard(data)),
+      stockControlApiClient.workflowStatus(jobId).then((data) => setWorkflowStatus(data)),
+      stockControlApiClient.approvalHistory(jobId).then((data) => setApprovals(data)),
+      stockControlApiClient
+        .backgroundStepsForJobCard(jobId)
+        .then((data) => setBackgroundSteps(data)),
     ]).catch((err) => {
       console.error("Failed to refresh workflow state:", err);
     });
-  }, [jobId, loadJobCard, loadWorkflowStatus, loadApprovalHistory, loadBackgroundSteps]);
+  }, [jobId]);
 
   const documents = useJobCardDocuments(jobId, fetchData, confirm);
   const coating = useJobCardCoating(jobId);
