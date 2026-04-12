@@ -61,15 +61,18 @@ export function AllocationPlanSection(props: AllocationPlanSectionProps) {
 
   const adjustPackCount = (stockItemId: number, delta: number) => {
     setPackCounts((prev) => {
-      const current = prev[stockItemId] || 0;
+      const raw = prev[stockItemId];
+      const current = raw == null ? 0 : raw;
       const next = Math.max(0, current + delta);
       return { ...prev, [stockItemId]: next };
     });
   };
 
   const totalLitresForItem = (item: AllocationPlanItem): number => {
-    const count = packCounts[item.stockItemId] || 0;
-    return count * (item.packSizeLitres || 0);
+    const raw = packCounts[item.stockItemId];
+    const count = raw == null ? 0 : raw;
+    const packSize = item.packSizeLitres;
+    return count * (packSize == null ? 0 : packSize);
   };
 
   const isOverAllocated = (item: AllocationPlanItem): boolean => {
@@ -81,13 +84,22 @@ export function AllocationPlanSection(props: AllocationPlanSectionProps) {
   };
 
   const handleAllocateSelected = () => {
-    const itemsToAllocate = (plan?.items || [])
-      .filter((item) => (packCounts[item.stockItemId] || 0) > 0)
-      .map((item) => ({
-        stockItemId: item.stockItemId,
-        packCount: packCounts[item.stockItemId] || 0,
-        sourceLeftoverItemId: item.leftoverSuggestion?.stockItemId || null,
-      }));
+    const planItems = plan == null ? [] : plan.items == null ? [] : plan.items;
+    const itemsToAllocate = planItems
+      .filter((item) => {
+        const raw = packCounts[item.stockItemId];
+        return (raw == null ? 0 : raw) > 0;
+      })
+      .map((item) => {
+        const rawCount = packCounts[item.stockItemId];
+        const suggestion = item.leftoverSuggestion;
+        const suggestedId = suggestion == null ? null : suggestion.stockItemId;
+        return {
+          stockItemId: item.stockItemId,
+          packCount: rawCount == null ? 0 : rawCount,
+          sourceLeftoverItemId: suggestedId == null ? null : suggestedId,
+        };
+      });
 
     if (itemsToAllocate.length === 0) {
       return;
@@ -123,10 +135,13 @@ export function AllocationPlanSection(props: AllocationPlanSectionProps) {
   const groupedItems = (items: AllocationPlanItem[]) => {
     return items.reduce(
       (acc, item) => {
-        const group = item.componentGroup || "__standalone__";
+        const cg = item.componentGroup;
+        const group = cg == null ? "__standalone__" : cg;
+        const existing = acc[group];
+        const arr = existing == null ? [] : existing;
         return {
           ...acc,
-          [group]: [...(acc[group] || []), item],
+          [group]: [...arr, item],
         };
       },
       {} as Record<string, AllocationPlanItem[]>,
@@ -134,7 +149,11 @@ export function AllocationPlanSection(props: AllocationPlanSectionProps) {
   };
 
   const allocationForStockItem = (stockItemId: number): StockAllocation | null => {
-    return activeAllocations.find((a) => a.stockItem?.id === stockItemId) || null;
+    const found = activeAllocations.find((a) => {
+      const si = a.stockItem;
+      return si != null && si.id === stockItemId;
+    });
+    return found == null ? null : found;
   };
 
   if (loading) {
@@ -222,7 +241,8 @@ export function AllocationPlanSection(props: AllocationPlanSectionProps) {
 
       <div className="divide-y divide-gray-200">
         {groupKeys.map((groupKey) => {
-          const items = groups[groupKey] || [];
+          const rawItems = groups[groupKey];
+          const items = rawItems == null ? [] : rawItems;
           return (
             <div key={groupKey}>
               {groupKey !== "__standalone__" && (
@@ -231,10 +251,11 @@ export function AllocationPlanSection(props: AllocationPlanSectionProps) {
                 </div>
               )}
               <div className={groupKey !== "__standalone__" ? "pl-4" : ""}>
-                {items.map((item) => {
+                {items.map((item, itemIdx) => {
                   const existingAllocation = allocationForStockItem(item.stockItemId);
                   const isAllocated = allocatedStockItemIds.has(item.stockItemId);
-                  const currentPackCount = packCounts[item.stockItemId] || 0;
+                  const rawPackCount = packCounts[item.stockItemId];
+                  const currentPackCount = rawPackCount == null ? 0 : rawPackCount;
                   const currentTotalLitres = totalLitresForItem(item);
                   const overAllocated = isOverAllocated(item);
                   const insufficient = isInsufficientStock(item);
@@ -248,7 +269,7 @@ export function AllocationPlanSection(props: AllocationPlanSectionProps) {
 
                   return (
                     <div
-                      key={item.stockItemId}
+                      key={`${groupKey}-${item.stockItemId}-${itemIdx}`}
                       className={`${rowBg} px-4 py-4 sm:px-6 border-b border-gray-100 last:border-b-0`}
                     >
                       <div className="flex items-start justify-between gap-4">
