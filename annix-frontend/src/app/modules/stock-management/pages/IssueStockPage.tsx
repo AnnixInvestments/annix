@@ -1314,9 +1314,7 @@ export function IssueStockPage() {
                         const ratioB = rawRatioB == null || Number.isNaN(rawRatioB) ? 0 : rawRatioB;
                         const totalRatio = ratioA + ratioB;
 
-                        const numKits = isMultiPart
-                          ? Math.round(row.quantity / ((kit * ratioA) / totalRatio))
-                          : 0;
+                        const numKits = isMultiPart ? Math.round(row.quantity / kit) : 0;
                         const partAPerKit = packSizeA || 0;
                         const partBPerKit = isMultiPart ? partAPerKit * (ratioB / ratioA) : 0;
                         const tinsA = numKits;
