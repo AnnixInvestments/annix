@@ -34,49 +34,26 @@ export function StaffPicker(props: StaffPickerProps) {
   const currentValue = props.value;
   const onChangeProp = props.onChange;
 
-  const [staff, setStaff] = useState<StaffOption[]>([]);
+  const pickerData = config.pickerData;
+  const staff = pickerData.staff as StaffOption[];
+  const isLoading = pickerData.isLoading;
+  const prefetchError = pickerData.error;
+
   const [search, setSearch] = useState("");
   const [isOpen, setIsOpen] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
   const [scanError, setScanError] = useState<string | null>(null);
   const [isScanning, setIsScanning] = useState(false);
   const [showScanner, setShowScanner] = useState(false);
+  const [extraStaff, setExtraStaff] = useState<StaffOption[]>([]);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    let cancelled = false;
-    setIsLoading(true);
-    fetch("/api/stock-control/staff?active=true", {
-      headers: authHeaders(),
-      credentials: "include",
-    })
-      .then(async (response) => {
-        if (!response.ok) {
-          const text = await response.text().catch(() => "");
-          throw new Error(`Failed to load staff (${response.status}) ${text}`);
-        }
-        return response.json() as Promise<StaffOption[]>;
-      })
-      .then((data) => {
-        if (!cancelled) {
-          setStaff(data);
-        }
-      })
-      .catch((e: unknown) => {
-        if (!cancelled) {
-          setError(e instanceof Error ? e : new Error(String(e)));
-        }
-      })
-      .finally(() => {
-        if (!cancelled) {
-          setIsLoading(false);
-        }
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [authHeaders]);
+  const allStaff = useMemo(() => {
+    if (extraStaff.length === 0) return staff;
+    const ids = new Set(staff.map((s) => s.id));
+    return [...staff, ...extraStaff.filter((s) => !ids.has(s.id))];
+  }, [staff, extraStaff]);
+
+  const error = prefetchError == null ? null : new Error(prefetchError);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -95,16 +72,16 @@ export function StaffPicker(props: StaffPickerProps) {
     if (currentValue === "") {
       return null;
     }
-    const found = staff.find((s) => s.id === currentValue);
+    const found = allStaff.find((s) => s.id === currentValue);
     return found == null ? null : found;
-  }, [currentValue, staff]);
+  }, [currentValue, allStaff]);
 
   const filtered = useMemo<StaffOption[]>(() => {
     const trimmed = search.trim().toLowerCase();
     if (trimmed === "") {
-      return staff;
+      return allStaff;
     }
-    return staff.filter((s) => {
+    return allStaff.filter((s) => {
       const rawName = s.name;
       const rawEmp = s.employeeNumber;
       const rawDept = s.department;
@@ -113,7 +90,7 @@ export function StaffPicker(props: StaffPickerProps) {
       const dept = rawDept == null ? "" : rawDept.toLowerCase();
       return name.includes(trimmed) || emp.includes(trimmed) || dept.includes(trimmed);
     });
-  }, [search, staff]);
+  }, [search, allStaff]);
 
   const handleSelect = (staffMember: StaffOption) => {
     onChangeProp(staffMember.id);
@@ -152,9 +129,9 @@ export function StaffPicker(props: StaffPickerProps) {
         return;
       }
       const scannedStaff = result.data;
-      const existing = staff.find((s) => s.id === scannedStaff.id);
+      const existing = allStaff.find((s) => s.id === scannedStaff.id);
       if (existing == null) {
-        setStaff((prev) => [...prev, scannedStaff]);
+        setExtraStaff((prev) => [...prev, scannedStaff]);
       }
       onChangeProp(scannedStaff.id);
       setIsOpen(false);
@@ -251,7 +228,7 @@ export function StaffPicker(props: StaffPickerProps) {
               <div className="px-3 py-2 text-sm text-red-600">Error: {errorMessage}</div>
             ) : filtered.length === 0 ? (
               <div className="px-3 py-2 text-sm text-gray-500">
-                {staff.length === 0 ? "No staff members found for this company" : "No matches"}
+                {allStaff.length === 0 ? "No staff members found for this company" : "No matches"}
               </div>
             ) : (
               filtered.map((s) => {

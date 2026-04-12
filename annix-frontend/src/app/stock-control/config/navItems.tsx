@@ -12,7 +12,8 @@ export interface NavItemDef {
 }
 
 export const NAV_GROUP_ORDER = [
-  "Inventory",
+  "Staff",
+  "Stock",
   "Supplier",
   "Customer",
   "Quality",
@@ -20,7 +21,8 @@ export const NAV_GROUP_ORDER = [
 ] as const;
 
 export const NAV_GROUP_HUB_PATHS: Record<string, string> = {
-  Inventory: "/stock-control/portal/inventory",
+  Staff: "/stock-control/portal/staff",
+  Stock: "/stock-control/portal/stock",
   Supplier: "/stock-control/portal/supplier",
   Customer: "/stock-control/portal/customer",
   Quality: "/stock-control/portal/quality",
@@ -49,7 +51,7 @@ export const ALL_NAV_ITEMS: NavItemDef[] = [
     href: "/stock-control/portal/inventory",
     label: "Stock",
     defaultRoles: ["viewer", "quality", "storeman", "accounts", "manager", "admin"],
-    group: "Inventory",
+    group: "Stock",
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path
@@ -66,7 +68,7 @@ export const ALL_NAV_ITEMS: NavItemDef[] = [
     href: "/stock-control/portal/reports?tab=stock-valuation",
     label: "Stock Value",
     defaultRoles: ["accounts", "manager", "admin"],
-    group: "Inventory",
+    group: "Stock",
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path
@@ -83,7 +85,7 @@ export const ALL_NAV_ITEMS: NavItemDef[] = [
     href: "/stock-control/portal/inventory/import",
     label: "Import",
     defaultRoles: ["manager", "admin"],
-    group: "Inventory",
+    group: "Stock",
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path
@@ -100,7 +102,7 @@ export const ALL_NAV_ITEMS: NavItemDef[] = [
     href: "/stock-control/portal/inventory/identify",
     label: "Identify",
     defaultRoles: ["storeman", "manager", "admin"],
-    group: "Inventory",
+    group: "Stock",
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path
@@ -236,6 +238,7 @@ export const ALL_NAV_ITEMS: NavItemDef[] = [
     href: "/stock-control/portal/staff",
     label: "Staff",
     defaultRoles: ["viewer", "quality", "storeman", "accounts", "manager", "admin"],
+    group: "Staff",
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path
@@ -252,6 +255,7 @@ export const ALL_NAV_ITEMS: NavItemDef[] = [
     href: "/stock-control/portal/staff/leave",
     label: "Staff Leave",
     defaultRoles: ["viewer", "quality", "storeman", "accounts", "manager", "admin"],
+    group: "Staff",
     requiresStaffLeave: true,
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -302,6 +306,7 @@ export const ALL_NAV_ITEMS: NavItemDef[] = [
     href: "/stock-control/portal/cpo-batch-approvals",
     label: "CPO Batch Approvals",
     defaultRoles: ["manager", "admin"],
+    group: "Quality",
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path
@@ -318,6 +323,7 @@ export const ALL_NAV_ITEMS: NavItemDef[] = [
     href: "/stock-control/portal/preview/stock-management/returns",
     label: "Returns",
     defaultRoles: ["storeman", "manager", "admin"],
+    group: "Stock",
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path
@@ -334,6 +340,7 @@ export const ALL_NAV_ITEMS: NavItemDef[] = [
     href: "/stock-control/portal/preview/stock-management/stock-take",
     label: "Stock Take",
     defaultRoles: ["storeman", "accounts", "manager", "admin"],
+    group: "Stock",
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path
@@ -341,6 +348,29 @@ export const ALL_NAV_ITEMS: NavItemDef[] = [
           strokeLinejoin="round"
           strokeWidth={2}
           d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"
+        />
+      </svg>
+    ),
+  },
+  {
+    key: "stock-management-admin",
+    href: "/stock-control/portal/preview/stock-management",
+    label: "Stock Management",
+    defaultRoles: ["manager", "admin"],
+    group: "Stock",
+    icon: (
+      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
+        />
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
         />
       </svg>
     ),
@@ -711,6 +741,23 @@ export const ALL_NAV_ITEMS: NavItemDef[] = [
           strokeLinejoin="round"
           strokeWidth={2}
           d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"
+        />
+      </svg>
+    ),
+  },
+  {
+    key: "module-license",
+    href: "/stock-control/portal/preview/stock-management/admin/module-license",
+    label: "Module License",
+    defaultRoles: ["admin"],
+    group: "Resources",
+    icon: (
+      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"
         />
       </svg>
     ),

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { StockManagementApiClient } from "../api/stockManagementApi";
 import { JobCardOrCpoPicker, type TargetSelection } from "../components/JobCardOrCpoPicker";
 import {
@@ -31,6 +31,39 @@ const STEPS: ReadonlyArray<{ key: StepKey; label: string }> = [
   { key: "confirm", label: "Confirm" },
 ];
 
+interface CpoLineItem {
+  id: number;
+  itemCode: string | null;
+  itemDescription: string | null;
+  itemNo: string | null;
+  jtNo: string | null;
+  quantity: number | null;
+  m2: number | null;
+}
+
+interface CoatDetail {
+  product: string;
+  genericType: string | null;
+  area: "external" | "internal";
+  coatRole: string | null;
+  litersRequired: number;
+  coverageM2PerLiter: number;
+}
+
+interface CpoChildJc {
+  id: number;
+  jobNumber: string;
+  jcNumber: string | null;
+  jobName: string | null;
+  status: string | null;
+  extM2: number;
+  intM2: number;
+  totalAreaM2: number;
+  lineItems: CpoLineItem[];
+  lineItemCount: number;
+  coats: CoatDetail[];
+}
+
 interface CartRow {
   product: IssuableProductDto;
   quantity: number;
@@ -59,7 +92,21 @@ export function IssueStockPage() {
   const [target, setTarget] = useState<TargetSelection | null>(null);
   const [search, setSearch] = useState("");
   const [cart, setCart] = useState<CartRow[]>([]);
-  const [cpoJobCards, setCpoJobCards] = useState<ProRataJobCard[]>([]);
+  const [cpoChildJcs, setCpoChildJcs] = useState<CpoChildJc[]>([]);
+  const [selectedCpoJcIds, setSelectedCpoJcIds] = useState<number[]>([]);
+  const [selectedLineItemIds, setSelectedLineItemIds] = useState<number[]>([]);
+  const [lineItemIssueQty, setLineItemIssueQty] = useState<Record<number, number>>({});
+  const [expandedJcIds, setExpandedJcIds] = useState<number[]>([]);
+  const [cpoJcLoading, setCpoJcLoading] = useState(false);
+  const cpoContextCache = useMemo(() => new Map<number, CpoChildJc[]>(), []);
+  const prefetchStarted = useRef(false);
+  const [singleJcData, setSingleJcData] = useState<CpoChildJc | null>(null);
+  const [singleJcLoading, setSingleJcLoading] = useState(false);
+  const [singleJcExpanded, setSingleJcExpanded] = useState(false);
+  const [singleJcSelectedItems, setSingleJcSelectedItems] = useState<number[]>([]);
+  const jcDetailCache = useMemo(() => new Map<number, CpoChildJc>(), []);
+  const [allocPaintQty, setAllocPaintQty] = useState<Record<string, number>>({});
+  const [pendingAllocQty, setPendingAllocQty] = useState<number | null>(null);
   const [photoCapturing, setPhotoCapturing] = useState(false);
   const [photoResult, setPhotoResult] = useState<{
     matches: Array<{ productId: number; sku: string; name: string; productType: string }>;
@@ -77,15 +124,38 @@ export function IssueStockPage() {
   const targetKind = target == null ? null : target.kind;
   const targetId = target == null ? null : target.id;
   const authHeaders = config.authHeaders;
+  const authHeadersRef = useRef(authHeaders);
+  authHeadersRef.current = authHeaders;
 
   useEffect(() => {
     if (targetKind !== "cpo" || targetId == null) {
-      setCpoJobCards([]);
+      setCpoChildJcs([]);
+      setSelectedCpoJcIds([]);
+      setSelectedLineItemIds([]);
+      setLineItemIssueQty({});
+      setExpandedJcIds([]);
+      return;
+    }
+    const cached = cpoContextCache.get(targetId);
+    if (cached) {
+      setCpoChildJcs(cached);
+      setSelectedCpoJcIds(cached.map((jc) => jc.id));
+      const allLineIds = cached.flatMap((jc) => jc.lineItems.map((li) => li.id));
+      setSelectedLineItemIds(allLineIds);
+      const defaultQty: Record<number, number> = {};
+      for (const jc of cached) {
+        for (const li of jc.lineItems) {
+          defaultQty[li.id] = li.quantity == null ? 1 : li.quantity;
+        }
+      }
+      setLineItemIssueQty(defaultQty);
+      setExpandedJcIds([]);
       return;
     }
     let cancelled = false;
+    setCpoJcLoading(true);
     fetch(`/api/stock-control/issuance/cpo-batch/context/${targetId}`, {
-      headers: authHeaders(),
+      headers: authHeadersRef.current(),
       credentials: "include",
     })
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`${r.status}`))))
@@ -95,34 +165,277 @@ export function IssueStockPage() {
             id: number;
             jobNumber: string;
             jcNumber: string | null;
+            jobName?: string | null;
+            status?: string | null;
             extM2: number;
             intM2: number;
+            lineItems?: CpoLineItem[];
+            lineItemCount?: number;
+            coatingAnalysis?: { coats?: CoatDetail[] } | null;
           }>;
         }) => {
-          if (cancelled) {
-            return;
-          }
+          if (cancelled) return;
           const rawJcs = data.jobCards;
           const jcs = rawJcs == null ? [] : rawJcs;
-          setCpoJobCards(
-            jcs.map((jc) => ({
+          const mapped: CpoChildJc[] = jcs.map((jc) => {
+            const items = jc.lineItems == null ? [] : jc.lineItems;
+            const ca = jc.coatingAnalysis;
+            const rawCoats = ca == null ? [] : ca.coats == null ? [] : ca.coats;
+            return {
               id: jc.id,
               jcNumber: jc.jcNumber,
               jobNumber: jc.jobNumber,
+              jobName: jc.jobName == null ? null : jc.jobName,
+              status: jc.status == null ? null : jc.status,
+              extM2: jc.extM2,
+              intM2: jc.intM2,
               totalAreaM2: jc.extM2 + jc.intM2,
-            })),
-          );
+              lineItems: items,
+              lineItemCount: jc.lineItemCount == null ? items.length : jc.lineItemCount,
+              coats: rawCoats,
+            };
+          });
+          cpoContextCache.set(targetId, mapped);
+          setCpoChildJcs(mapped);
+          setSelectedCpoJcIds(mapped.map((jc) => jc.id));
+          const allLineIds = mapped.flatMap((jc) => jc.lineItems.map((li) => li.id));
+          setSelectedLineItemIds(allLineIds);
+          const defaultQty: Record<number, number> = {};
+          for (const mjc of mapped) {
+            for (const li of mjc.lineItems) {
+              defaultQty[li.id] = li.quantity == null ? 1 : li.quantity;
+            }
+          }
+          setLineItemIssueQty(defaultQty);
+          setExpandedJcIds([]);
         },
       )
       .catch((e: unknown) => {
         const message = e instanceof Error ? e.message : String(e);
         console.error(`Failed to load CPO ${targetId} job cards: ${message}`);
-        setCpoJobCards([]);
+        setCpoChildJcs([]);
+        setSelectedCpoJcIds([]);
+        setSelectedLineItemIds([]);
+      })
+      .finally(() => {
+        if (!cancelled) setCpoJcLoading(false);
       });
     return () => {
       cancelled = true;
     };
-  }, [targetKind, targetId, authHeaders]);
+  }, [targetKind, targetId, cpoContextCache]);
+
+  const pickerCpos = config.pickerData.cpos;
+  const pickerLoading = config.pickerData.isLoading;
+  useEffect(() => {
+    if (pickerLoading || pickerCpos.length === 0 || prefetchStarted.current) return;
+    prefetchStarted.current = true;
+    const headers = authHeadersRef.current();
+    const opts: RequestInit = { headers, credentials: "include" };
+    const parseCpoContext = (data: {
+      jobCards?: Array<{
+        id: number;
+        jobNumber: string;
+        jcNumber: string | null;
+        jobName?: string | null;
+        status?: string | null;
+        extM2: number;
+        intM2: number;
+        lineItems?: CpoLineItem[];
+        lineItemCount?: number;
+        coatingAnalysis?: { coats?: CoatDetail[] } | null;
+      }>;
+    }): CpoChildJc[] => {
+      const rawJcs = data.jobCards;
+      const jcs = rawJcs == null ? [] : rawJcs;
+      return jcs.map((jc) => {
+        const items = jc.lineItems == null ? [] : jc.lineItems;
+        const ca = jc.coatingAnalysis;
+        const rawCoats = ca == null ? [] : ca.coats == null ? [] : ca.coats;
+        return {
+          id: jc.id,
+          jcNumber: jc.jcNumber,
+          jobNumber: jc.jobNumber,
+          jobName: jc.jobName == null ? null : jc.jobName,
+          status: jc.status == null ? null : jc.status,
+          extM2: jc.extM2,
+          intM2: jc.intM2,
+          totalAreaM2: jc.extM2 + jc.intM2,
+          lineItems: items,
+          lineItemCount: jc.lineItemCount == null ? items.length : jc.lineItemCount,
+          coats: rawCoats,
+        };
+      });
+    };
+
+    const prefetchOne = async (cpoId: number) => {
+      if (cpoContextCache.has(cpoId)) return;
+      try {
+        const r = await fetch(`/api/stock-control/issuance/cpo-batch/context/${cpoId}`, opts);
+        if (r.ok) {
+          const data = await r.json();
+          cpoContextCache.set(cpoId, parseCpoContext(data));
+        }
+      } catch (_) {
+        /* background prefetch — swallow errors */
+      }
+    };
+
+    const runPrefetch = async () => {
+      for (const cpo of pickerCpos) {
+        await prefetchOne(cpo.id);
+      }
+    };
+    runPrefetch();
+  }, [pickerCpos, pickerLoading, cpoContextCache]);
+
+  useEffect(() => {
+    if (targetKind !== "job_card" || targetId == null) {
+      setSingleJcData(null);
+      setSingleJcSelectedItems([]);
+      setSingleJcExpanded(false);
+      return;
+    }
+    const cached = jcDetailCache.get(targetId);
+    if (cached) {
+      setSingleJcData(cached);
+      setSingleJcSelectedItems(cached.lineItems.map((li) => li.id));
+      setSingleJcExpanded(false);
+      return;
+    }
+    let cancelled = false;
+    setSingleJcLoading(true);
+    fetch(`/api/stock-control/job-cards/${targetId}`, {
+      headers: authHeadersRef.current(),
+      credentials: "include",
+    })
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`${r.status}`))))
+      .then(
+        (data: {
+          id: number;
+          jobNumber: string;
+          jcNumber?: string | null;
+          jobName?: string | null;
+          workflowStatus?: string | null;
+          lineItems?: CpoLineItem[];
+          extM2?: number;
+          intM2?: number;
+        }) => {
+          if (cancelled) return;
+          const items = data.lineItems == null ? [] : data.lineItems;
+          const extM2 = data.extM2 == null ? 0 : data.extM2;
+          const intM2 = data.intM2 == null ? 0 : data.intM2;
+          const jc: CpoChildJc = {
+            id: data.id,
+            jobNumber: data.jobNumber,
+            jcNumber: data.jcNumber == null ? null : data.jcNumber,
+            jobName: data.jobName == null ? null : data.jobName,
+            status: data.workflowStatus == null ? null : data.workflowStatus,
+            extM2,
+            intM2,
+            totalAreaM2: extM2 + intM2,
+            lineItems: items,
+            lineItemCount: items.length,
+            coats: [],
+          };
+          jcDetailCache.set(targetId, jc);
+          setSingleJcData(jc);
+          setSingleJcSelectedItems(items.map((li) => li.id));
+        },
+      )
+      .catch((e: unknown) => {
+        const message = e instanceof Error ? e.message : String(e);
+        console.error(`Failed to load JC ${targetId}: ${message}`);
+        setSingleJcData(null);
+      })
+      .finally(() => {
+        if (!cancelled) setSingleJcLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [targetKind, targetId, jcDetailCache]);
+
+  const cpoJobCards = useMemo<ProRataJobCard[]>(() => {
+    return cpoChildJcs
+      .filter((jc) => selectedCpoJcIds.includes(jc.id))
+      .map((jc) => ({
+        id: jc.id,
+        jcNumber: jc.jcNumber,
+        jobNumber: jc.jobNumber,
+        totalAreaM2: jc.totalAreaM2,
+      }));
+  }, [cpoChildJcs, selectedCpoJcIds]);
+
+  const selectedCoatsSummary = useMemo(() => {
+    const selectedJcs = cpoChildJcs.filter((jc) => selectedCpoJcIds.includes(jc.id));
+    let totalSelectedM2 = 0;
+    const allCoats = selectedJcs.flatMap((jc) => jc.coats);
+    const hasIntermediate = allCoats.some((c) => c.coatRole === "intermediate");
+    const paintMap = new Map<string, { litres: number; role: string | null }>();
+
+    for (const jc of selectedJcs) {
+      const selectedItems = jc.lineItems.filter((li) => selectedLineItemIds.includes(li.id));
+      const noItemsSelected = selectedItems.length === 0;
+
+      if (noItemsSelected && jc.lineItems.length > 0) continue;
+
+      let m2Ratio: number;
+      if (jc.lineItems.length === 0) {
+        totalSelectedM2 += jc.totalAreaM2;
+        m2Ratio = 1;
+      } else {
+        const totalItemM2 = jc.lineItems.reduce((sum, li) => {
+          const liQty = li.quantity == null ? 1 : li.quantity;
+          const liM2 = li.m2 == null ? 0 : li.m2;
+          return sum + liM2;
+        }, 0);
+        const selectedItemM2 = selectedItems.reduce((sum, li) => {
+          const fullQty = li.quantity == null ? 1 : li.quantity;
+          const issueQty = lineItemIssueQty[li.id] == null ? fullQty : lineItemIssueQty[li.id];
+          const liM2 = li.m2 == null ? 0 : li.m2;
+          const qtyRatio = fullQty > 0 ? issueQty / fullQty : 1;
+          return sum + liM2 * qtyRatio;
+        }, 0);
+        const jcM2 =
+          totalItemM2 > 0
+            ? jc.totalAreaM2 * (selectedItemM2 / totalItemM2)
+            : jc.totalAreaM2 * (selectedItems.length / jc.lineItems.length);
+        totalSelectedM2 += jcM2;
+        m2Ratio =
+          totalItemM2 > 0
+            ? selectedItemM2 / totalItemM2
+            : selectedItems.length / jc.lineItems.length;
+      }
+
+      for (const coat of jc.coats) {
+        const isBanding = hasIntermediate && coat.coatRole === "final";
+        if (isBanding) continue;
+        const displayRole =
+          hasIntermediate && coat.coatRole === "intermediate" ? "final" : coat.coatRole;
+        const scaledLitres = coat.litersRequired * m2Ratio;
+        const key = coat.product;
+        const existing = paintMap.get(key);
+        if (existing) {
+          paintMap.set(key, { litres: existing.litres + scaledLitres, role: displayRole });
+        } else {
+          paintMap.set(key, { litres: scaledLitres, role: displayRole });
+        }
+      }
+    }
+
+    const activeJcCount = selectedJcs.filter((jc) => {
+      if (jc.lineItems.length === 0) return true;
+      return jc.lineItems.some((li) => selectedLineItemIds.includes(li.id));
+    }).length;
+
+    const paints = Array.from(paintMap.entries()).map(([product, info]) => ({
+      product,
+      litres: info.litres,
+      role: info.role,
+    }));
+    return { selectedM2: totalSelectedM2, paints, selectedJcCount: activeJcCount };
+  }, [cpoChildJcs, selectedCpoJcIds, selectedLineItemIds, lineItemIssueQty]);
 
   const showPaintProRata = useMemo(() => {
     return targetKind === "cpo" && cpoJobCards.length > 1;
@@ -139,16 +452,18 @@ export function IssueStockPage() {
 
   const addToCart = (product: IssuableProductDto) => {
     if (cart.some((c) => c.product.id === product.id)) return;
+    const qty = pendingAllocQty != null ? pendingAllocQty : 1;
     setCart([
       ...cart,
       {
         product,
-        quantity: 1,
+        quantity: qty,
         batchNumber: "",
         paintSplits: [],
         rubberRollDetails: { ...EMPTY_RUBBER_ROLL },
       },
     ]);
+    setPendingAllocQty(null);
   };
 
   const removeFromCart = (productId: number) => {
@@ -185,7 +500,12 @@ export function IssueStockPage() {
       alert("Cart is empty");
       return;
     }
-    const rowJobCardId = target != null && target.kind === "job_card" ? target.id : null;
+    const rowJobCardId =
+      target != null && target.kind === "job_card"
+        ? target.id
+        : selectedCpoJcIds.length === 1
+          ? selectedCpoJcIds[0]
+          : null;
     const rows: IssuanceRowInputDto[] = cart.map((row) => {
       if (row.product.productType === "paint") {
         const splits = row.paintSplits;
@@ -236,7 +556,12 @@ export function IssueStockPage() {
       };
     });
     const sessionCpoId = target != null && target.kind === "cpo" ? target.id : null;
-    const sessionJobCardIds = target != null && target.kind === "job_card" ? [target.id] : null;
+    const sessionJobCardIds =
+      target != null && target.kind === "job_card"
+        ? [target.id]
+        : selectedCpoJcIds.length > 0
+          ? selectedCpoJcIds
+          : null;
     try {
       await createMutation.createSession({
         issuerStaffId: issuerStaffId === "" ? null : Number(issuerStaffId),
@@ -334,11 +659,391 @@ export function IssueStockPage() {
               without one.
             </p>
             <JobCardOrCpoPicker value={target} onChange={setTarget} />
+
+            {targetKind === "job_card" && singleJcLoading ? (
+              <div className="rounded border border-gray-200 bg-gray-50 p-3 text-sm text-gray-500">
+                Loading job card details...
+              </div>
+            ) : null}
+
+            {targetKind === "job_card" && !singleJcLoading && singleJcData != null ? (
+              <div className="rounded border border-teal-200 bg-white">
+                <div className="flex items-center gap-2 px-3 py-2">
+                  <button
+                    type="button"
+                    onClick={() => setSingleJcExpanded(!singleJcExpanded)}
+                    className="flex-1 flex items-center gap-2 text-left min-w-0"
+                  >
+                    <svg
+                      className={`h-3.5 w-3.5 shrink-0 text-teal-600 transition-transform ${singleJcExpanded ? "rotate-90" : ""}`}
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M9 5l7 7-7 7"
+                      />
+                    </svg>
+                    <span className="text-sm font-semibold text-teal-900">
+                      Line Items ({singleJcData.lineItems.length})
+                    </span>
+                    {singleJcData.totalAreaM2 > 0 ? (
+                      <span className="text-xs text-teal-700">
+                        {singleJcData.totalAreaM2.toFixed(1)} m²
+                      </span>
+                    ) : null}
+                    <span className="text-[10px] text-gray-400">
+                      {singleJcSelectedItems.length}/{singleJcData.lineItems.length} selected
+                    </span>
+                  </button>
+                  {singleJcData.lineItems.length > 0 ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const allSelected =
+                          singleJcSelectedItems.length === singleJcData.lineItems.length;
+                        setSingleJcSelectedItems(
+                          allSelected ? [] : singleJcData.lineItems.map((li) => li.id),
+                        );
+                      }}
+                      className="text-xs text-teal-700 hover:underline shrink-0"
+                    >
+                      {singleJcSelectedItems.length === singleJcData.lineItems.length
+                        ? "Deselect all"
+                        : "Select all"}
+                    </button>
+                  ) : null}
+                </div>
+
+                {singleJcExpanded && singleJcData.lineItems.length > 0 ? (
+                  <div className="border-t border-teal-100 bg-gray-50 px-3 py-2 space-y-1">
+                    {singleJcData.lineItems.map((li) => {
+                      const liSelected = singleJcSelectedItems.includes(li.id);
+                      const itemLabel =
+                        li.itemDescription == null
+                          ? li.itemCode == null
+                            ? `Item #${li.id}`
+                            : li.itemCode
+                          : li.itemDescription;
+                      const itemNo = li.itemNo;
+                      const jtNo = li.jtNo;
+                      const liM2 = li.m2;
+                      return (
+                        <label
+                          key={li.id}
+                          className="flex items-center gap-2 rounded px-2 py-1 hover:bg-white cursor-pointer text-xs"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={liSelected}
+                            onChange={() => {
+                              setSingleJcSelectedItems(
+                                liSelected
+                                  ? singleJcSelectedItems.filter((id) => id !== li.id)
+                                  : [...singleJcSelectedItems, li.id],
+                              );
+                            }}
+                            className="rounded border-gray-300 text-teal-600 focus:ring-teal-500"
+                          />
+                          {itemNo != null ? (
+                            <span className="font-mono text-gray-500 shrink-0">{itemNo}</span>
+                          ) : null}
+                          <span className="text-gray-800 truncate flex-1">{itemLabel}</span>
+                          {jtNo != null ? (
+                            <span className="text-gray-400 shrink-0">JT {jtNo}</span>
+                          ) : null}
+                          {liM2 != null && liM2 > 0 ? (
+                            <span className="text-teal-700 shrink-0">{liM2.toFixed(1)} m²</span>
+                          ) : null}
+                        </label>
+                      );
+                    })}
+                  </div>
+                ) : null}
+
+                {singleJcExpanded && singleJcData.lineItems.length === 0 ? (
+                  <div className="border-t border-teal-100 bg-gray-50 px-3 py-2 text-xs text-gray-400">
+                    No line items on this job card
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
+
+            {targetKind === "cpo" && cpoJcLoading ? (
+              <div className="rounded border border-gray-200 bg-gray-50 p-3 text-sm text-gray-500">
+                Loading job cards for this CPO...
+              </div>
+            ) : null}
+
+            {targetKind === "cpo" && !cpoJcLoading && cpoChildJcs.length > 0 ? (
+              <div className="rounded border border-teal-200 bg-teal-50 p-3 space-y-2">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-semibold text-teal-900">
+                    Job Cards on this CPO ({cpoChildJcs.length})
+                  </h3>
+                  <div className="flex gap-3">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const allExpanded = expandedJcIds.length === cpoChildJcs.length;
+                        setExpandedJcIds(allExpanded ? [] : cpoChildJcs.map((jc) => jc.id));
+                      }}
+                      className="text-xs text-teal-700 hover:underline"
+                    >
+                      {expandedJcIds.length === cpoChildJcs.length ? "Collapse all" : "Expand all"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const allSelected = selectedCpoJcIds.length === cpoChildJcs.length;
+                        if (allSelected) {
+                          setSelectedCpoJcIds([]);
+                          setSelectedLineItemIds([]);
+                        } else {
+                          setSelectedCpoJcIds(cpoChildJcs.map((jc) => jc.id));
+                          setSelectedLineItemIds(
+                            cpoChildJcs.flatMap((jc) => jc.lineItems.map((li) => li.id)),
+                          );
+                        }
+                      }}
+                      className="text-xs text-teal-700 hover:underline"
+                    >
+                      {selectedCpoJcIds.length === cpoChildJcs.length
+                        ? "Deselect all"
+                        : "Select all"}
+                    </button>
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  {cpoChildJcs.map((jc) => {
+                    const isSelected = selectedCpoJcIds.includes(jc.id);
+                    const isExpanded = expandedJcIds.includes(jc.id);
+                    const jcLabel = jc.jcNumber == null ? jc.jobNumber : jc.jcNumber;
+                    const areaM2 = jc.totalAreaM2;
+                    const areaLabel = areaM2 > 0 ? `${areaM2.toFixed(1)} m²` : "";
+                    const jobNameLabel = jc.jobName == null ? "" : jc.jobName;
+                    const selectedItemCount = jc.lineItems.filter((li) =>
+                      selectedLineItemIds.includes(li.id),
+                    ).length;
+                    const totalItemCount = jc.lineItems.length;
+
+                    return (
+                      <div key={jc.id} className="rounded border border-teal-100 bg-white">
+                        <div
+                          className="flex items-center gap-2 px-2 py-1.5 cursor-pointer select-none hover:bg-teal-50"
+                          onClick={() => {
+                            setExpandedJcIds(
+                              isExpanded
+                                ? expandedJcIds.filter((id) => id !== jc.id)
+                                : [...expandedJcIds, jc.id],
+                            );
+                          }}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onClick={(e) => e.stopPropagation()}
+                            onChange={() => {
+                              if (isSelected) {
+                                setSelectedCpoJcIds(selectedCpoJcIds.filter((id) => id !== jc.id));
+                                const jcLineIds = jc.lineItems.map((li) => li.id);
+                                setSelectedLineItemIds(
+                                  selectedLineItemIds.filter((id) => !jcLineIds.includes(id)),
+                                );
+                              } else {
+                                setSelectedCpoJcIds([...selectedCpoJcIds, jc.id]);
+                                const jcLineIds = jc.lineItems.map((li) => li.id);
+                                const newIds = jcLineIds.filter(
+                                  (id) => !selectedLineItemIds.includes(id),
+                                );
+                                setSelectedLineItemIds([...selectedLineItemIds, ...newIds]);
+                              }
+                            }}
+                            className="rounded border-gray-300 text-teal-600 focus:ring-teal-500 shrink-0"
+                          />
+                          <svg
+                            className={`h-3.5 w-3.5 shrink-0 text-teal-600 transition-transform ${isExpanded ? "rotate-90" : ""}`}
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M9 5l7 7-7 7"
+                            />
+                          </svg>
+                          <span className="text-sm text-teal-900 font-medium truncate">
+                            {jcLabel}
+                          </span>
+                          {jobNameLabel !== "" ? (
+                            <span className="text-xs text-gray-500 truncate hidden sm:inline">
+                              {jobNameLabel}
+                            </span>
+                          ) : null}
+                          {areaLabel !== "" ? (
+                            <span className="text-xs text-teal-700 shrink-0">{areaLabel}</span>
+                          ) : null}
+                          {totalItemCount > 0 ? (
+                            <span className="text-[10px] text-gray-400 shrink-0">
+                              {selectedItemCount}/{totalItemCount} items
+                            </span>
+                          ) : null}
+                        </div>
+
+                        {isExpanded && jc.lineItems.length > 0 ? (
+                          <div className="border-t border-teal-100 bg-gray-50 px-3 py-2 space-y-1.5">
+                            {jc.lineItems.map((li) => {
+                              const liSelected = selectedLineItemIds.includes(li.id);
+                              const itemLabel =
+                                li.itemDescription == null
+                                  ? li.itemCode == null
+                                    ? `Item #${li.id}`
+                                    : li.itemCode
+                                  : li.itemDescription;
+                              const itemNo = li.itemNo;
+                              const jtNo = li.jtNo;
+                              const liM2 = li.m2;
+                              const fullQty = li.quantity == null ? 1 : li.quantity;
+                              const rawIssueQty = lineItemIssueQty[li.id];
+                              const currentIssueQty = rawIssueQty == null ? fullQty : rawIssueQty;
+                              return (
+                                <div
+                                  key={li.id}
+                                  className={`flex items-center gap-2 rounded px-2 py-1 text-xs ${liSelected ? "bg-white" : "opacity-50"}`}
+                                >
+                                  <input
+                                    type="checkbox"
+                                    checked={liSelected}
+                                    onChange={() => {
+                                      if (liSelected) {
+                                        setSelectedLineItemIds(
+                                          selectedLineItemIds.filter((id) => id !== li.id),
+                                        );
+                                      } else {
+                                        setSelectedLineItemIds([...selectedLineItemIds, li.id]);
+                                        if (!isSelected) {
+                                          setSelectedCpoJcIds([...selectedCpoJcIds, jc.id]);
+                                        }
+                                        if (lineItemIssueQty[li.id] == null) {
+                                          setLineItemIssueQty({
+                                            ...lineItemIssueQty,
+                                            [li.id]: fullQty,
+                                          });
+                                        }
+                                      }
+                                    }}
+                                    className="rounded border-gray-300 text-teal-600 focus:ring-teal-500 shrink-0"
+                                  />
+                                  {itemNo != null ? (
+                                    <span className="font-mono text-gray-500 shrink-0">
+                                      {itemNo}
+                                    </span>
+                                  ) : null}
+                                  <span className="text-gray-800 truncate flex-1">{itemLabel}</span>
+                                  {jtNo != null ? (
+                                    <span className="text-gray-400 shrink-0">JT {jtNo}</span>
+                                  ) : null}
+                                  {liM2 != null && liM2 > 0 ? (
+                                    <span className="text-teal-700 shrink-0">
+                                      {liM2.toFixed(1)} m²
+                                    </span>
+                                  ) : null}
+                                  <div className="flex items-center gap-1 shrink-0">
+                                    <input
+                                      type="text"
+                                      inputMode="numeric"
+                                      value={
+                                        liSelected && currentIssueQty > 0
+                                          ? String(currentIssueQty)
+                                          : ""
+                                      }
+                                      disabled={!liSelected}
+                                      placeholder="0"
+                                      onChange={(e) => {
+                                        const raw = e.target.value.replace(/\D/g, "");
+                                        const parsed = raw === "" ? 0 : parseInt(raw, 10);
+                                        const val = Math.min(parsed, fullQty);
+                                        setLineItemIssueQty({ ...lineItemIssueQty, [li.id]: val });
+                                      }}
+                                      className="w-14 border border-gray-300 rounded px-1.5 py-0.5 text-xs text-center disabled:opacity-40"
+                                    />
+                                    <span className="text-gray-400">/ {fullQty}</span>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        ) : null}
+
+                        {isExpanded && jc.lineItems.length === 0 ? (
+                          <div className="border-t border-teal-100 bg-gray-50 px-3 py-2 text-xs text-gray-400">
+                            No line items on this job card
+                          </div>
+                        ) : null}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : null}
+
+            {targetKind === "cpo" && !cpoJcLoading && cpoChildJcs.length === 0 && target != null ? (
+              <div className="rounded border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+                No job cards found for this CPO.
+              </div>
+            ) : null}
+
+            {targetKind === "cpo" && !cpoJcLoading && cpoChildJcs.length > 0 ? (
+              <div className="rounded border border-gray-200 bg-white p-3 space-y-2">
+                <h3 className="text-sm font-semibold text-gray-900">
+                  Selection Summary — {selectedCoatsSummary.selectedJcCount}/{cpoChildJcs.length}{" "}
+                  JCs · {selectedCoatsSummary.selectedM2.toFixed(1)} m²
+                </h3>
+
+                {selectedCoatsSummary.paints.length > 0 ? (
+                  <div>
+                    <div className="text-xs font-medium text-gray-600 mb-1">Paint Requirements</div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-1">
+                      {selectedCoatsSummary.paints.map((p) => {
+                        const roleLabel = p.role == null ? "" : ` (${p.role})`;
+                        return (
+                          <div
+                            key={p.product}
+                            className="flex items-center justify-between rounded bg-blue-50 px-2 py-1 text-xs"
+                          >
+                            <span className="text-blue-900 truncate flex-1">
+                              {p.product}
+                              {roleLabel}
+                            </span>
+                            <span className="text-blue-700 font-mono font-semibold shrink-0 ml-2">
+                              {p.litres.toFixed(1)} L
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-xs text-gray-400">
+                    No paint specifications on selected JCs
+                  </div>
+                )}
+              </div>
+            ) : null}
+
             <div className="flex gap-2">
               <button
                 type="button"
                 onClick={() => setCurrentStep("items")}
-                className="px-4 py-2 bg-teal-600 text-white rounded text-sm font-medium"
+                disabled={
+                  targetKind === "cpo" && cpoChildJcs.length > 0 && selectedCpoJcIds.length === 0
+                }
+                className="px-4 py-2 bg-teal-600 text-white rounded text-sm font-medium disabled:opacity-50"
               >
                 Next →
               </button>
@@ -361,6 +1066,78 @@ export function IssueStockPage() {
         {currentStep === "items" && (
           <div className="space-y-4">
             <h2 className="text-lg font-semibold">Items</h2>
+
+            {targetKind === "cpo" && selectedCoatsSummary.paints.length > 0 ? (
+              <div className="rounded border border-blue-200 bg-blue-50 p-3 space-y-2">
+                <h3 className="text-sm font-semibold text-blue-900">CPO Paint Allocation</h3>
+                <p className="text-xs text-blue-700">
+                  Paint required for the selected JCs. Click a product to search stock.
+                </p>
+                <div className="space-y-1">
+                  {selectedCoatsSummary.paints.map((p) => {
+                    const roleLabel = p.role == null ? "" : ` (${p.role})`;
+                    const alreadyInCart = cart.some((c) => {
+                      const productName = c.product.name.toUpperCase();
+                      const paintName = p.product.toUpperCase();
+                      return (
+                        productName.includes(paintName.slice(0, 15)) ||
+                        paintName.includes(productName.slice(0, 15))
+                      );
+                    });
+                    const rawAllocQty = allocPaintQty[p.product];
+                    const issueQty = rawAllocQty == null ? Math.ceil(p.litres) : rawAllocQty;
+                    return (
+                      <div
+                        key={p.product}
+                        className="flex items-center gap-2 rounded bg-white px-3 py-2 border border-blue-100"
+                      >
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm font-medium text-blue-900 truncate">
+                            {p.product}
+                            {roleLabel}
+                          </div>
+                          <div className="text-xs text-blue-700">
+                            {p.litres.toFixed(1)} L required
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1 shrink-0">
+                          <label className="text-[10px] text-gray-500 uppercase">Issue L</label>
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            value={issueQty > 0 ? String(issueQty) : ""}
+                            placeholder="0"
+                            onChange={(e) => {
+                              const raw = e.target.value.replace(/\D/g, "");
+                              const val = raw === "" ? 0 : parseInt(raw, 10);
+                              setAllocPaintQty({ ...allocPaintQty, [p.product]: val });
+                            }}
+                            className="w-16 border border-gray-300 rounded px-1.5 py-1 text-sm text-center"
+                            disabled={alreadyInCart}
+                          />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setPendingAllocQty(issueQty);
+                            setSearch(p.product.split(" ").slice(0, 3).join(" "));
+                          }}
+                          className={`shrink-0 text-xs font-medium px-3 py-1.5 rounded ${
+                            alreadyInCart
+                              ? "bg-green-100 text-green-700"
+                              : "bg-blue-600 text-white hover:bg-blue-700"
+                          }`}
+                          disabled={alreadyInCart}
+                        >
+                          {alreadyInCart ? "In cart" : "Find & add"}
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : null}
+
             <div className="flex gap-2">
               <input
                 type="text"
@@ -405,34 +1182,44 @@ export function IssueStockPage() {
               </div>
             )}
 
-            <div className="rounded-lg border border-gray-200 max-h-96 overflow-y-auto">
-              {isLoading && <div className="p-4 text-sm text-gray-500">Loading…</div>}
-              {!isLoading && products.length === 0 && (
-                <div className="p-4 text-sm text-gray-500">No products found</div>
-              )}
-              {products.map((p) => {
-                const inCart = cart.some((c) => c.product.id === p.id);
-                return (
-                  <button
-                    key={p.id}
-                    type="button"
-                    onClick={() => addToCart(p)}
-                    disabled={inCart}
-                    className="w-full text-left p-3 hover:bg-gray-50 border-b last:border-b-0 disabled:opacity-50"
-                  >
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <div className="text-sm font-medium">{p.name}</div>
-                        <div className="text-xs text-gray-500">
-                          {p.sku} · {p.productType} · Qty: {p.quantity}
+            {search.trim() === "" && !photoResult ? (
+              <div className="rounded-lg border border-gray-200 p-4 text-sm text-gray-500">
+                Type to search for consumables, paint, or rubber rolls
+              </div>
+            ) : null}
+
+            {search.trim() !== "" || photoResult ? (
+              <div className="rounded-lg border border-gray-200 max-h-96 overflow-y-auto">
+                {isLoading && <div className="p-4 text-sm text-gray-500">Loading…</div>}
+                {!isLoading && products.length === 0 && (
+                  <div className="p-4 text-sm text-gray-500">No products found</div>
+                )}
+                {products.map((p) => {
+                  const inCart = cart.some((c) => c.product.id === p.id);
+                  return (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => addToCart(p)}
+                      disabled={inCart}
+                      className="w-full text-left p-3 hover:bg-gray-50 border-b last:border-b-0 disabled:opacity-50"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <div className="text-sm font-medium">{p.name}</div>
+                          <div className="text-xs text-gray-500">
+                            {p.sku} · {p.productType} · Qty: {p.quantity}
+                          </div>
                         </div>
+                        <span className="text-xs text-teal-700">
+                          {inCart ? "In cart" : "Add +"}
+                        </span>
                       </div>
-                      <span className="text-xs text-teal-700">{inCart ? "In cart" : "Add +"}</span>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
+                    </button>
+                  );
+                })}
+              </div>
+            ) : null}
 
             {cart.length > 0 && (
               <div className="space-y-2">
@@ -485,6 +1272,58 @@ export function IssueStockPage() {
                           />
                         </div>
                       </div>
+                      {row.product.productType === "paint" &&
+                        (() => {
+                          const paintDetail = row.product.paint;
+                          const numParts = paintDetail == null ? null : paintDetail.numberOfParts;
+                          const ratioStr = paintDetail == null ? null : paintDetail.mixingRatio;
+                          if (numParts == null || numParts <= 1 || ratioStr == null) return null;
+                          const ratioParts = ratioStr.split(":").map(Number);
+                          const ratioA =
+                            ratioParts[0] == null || Number.isNaN(ratioParts[0])
+                              ? 1
+                              : ratioParts[0];
+                          const ratioB =
+                            ratioParts[1] == null || Number.isNaN(ratioParts[1])
+                              ? 0
+                              : ratioParts[1];
+                          const ratioC =
+                            ratioParts[2] == null || Number.isNaN(ratioParts[2])
+                              ? 0
+                              : ratioParts[2];
+                          const totalRatio = ratioA + ratioB + ratioC;
+                          const partALitres = row.quantity;
+                          const partBLitres = ratioB > 0 ? partALitres * (ratioB / ratioA) : 0;
+                          const partCLitres = ratioC > 0 ? partALitres * (ratioC / ratioA) : 0;
+                          const grandTotal = partALitres + partBLitres + partCLitres;
+                          return (
+                            <div className="rounded border border-blue-200 bg-blue-50 px-3 py-2 text-xs space-y-1">
+                              <div className="font-semibold text-blue-900">
+                                Mix ratio {ratioStr} ({numParts}-pack)
+                              </div>
+                              <div className="flex justify-between text-blue-800">
+                                <span>Part A (Base)</span>
+                                <span className="font-mono">{partALitres.toFixed(1)} L</span>
+                              </div>
+                              {partBLitres > 0 ? (
+                                <div className="flex justify-between text-blue-800">
+                                  <span>Part B (Hardener)</span>
+                                  <span className="font-mono">{partBLitres.toFixed(1)} L</span>
+                                </div>
+                              ) : null}
+                              {partCLitres > 0 ? (
+                                <div className="flex justify-between text-blue-800">
+                                  <span>Part C</span>
+                                  <span className="font-mono">{partCLitres.toFixed(1)} L</span>
+                                </div>
+                              ) : null}
+                              <div className="flex justify-between text-blue-900 font-semibold border-t border-blue-200 pt-1">
+                                <span>Total mixed</span>
+                                <span className="font-mono">{grandTotal.toFixed(1)} L</span>
+                              </div>
+                            </div>
+                          );
+                        })()}
                       {row.product.productType === "paint" && showPaintProRata ? (
                         <PaintProRataSplitEditor
                           totalLitres={row.quantity}
@@ -530,6 +1369,15 @@ export function IssueStockPage() {
               {target != null ? (
                 <div>
                   {target.kind === "cpo" ? "CPO" : "Job Card"}: {target.label}
+                  {target.kind === "cpo" && selectedCpoJcIds.length > 0 ? (
+                    <div className="text-xs text-gray-500 mt-1">
+                      Job Cards:{" "}
+                      {cpoChildJcs
+                        .filter((jc) => selectedCpoJcIds.includes(jc.id))
+                        .map((jc) => (jc.jcNumber == null ? jc.jobNumber : jc.jcNumber))
+                        .join(", ")}
+                    </div>
+                  ) : null}
                 </div>
               ) : null}
             </div>

@@ -19,6 +19,38 @@ export interface StockManagementHostConfig {
   currentUser?: StockManagementCurrentUser;
 }
 
+export interface PrefetchedPickerData {
+  staff: Array<{
+    id: number;
+    name: string;
+    employeeNumber: string | null;
+    department: string | null;
+    photoUrl: string | null;
+    active: boolean;
+  }>;
+  jobCards: Array<{
+    id: number;
+    jobNumber: string;
+    jcNumber?: string | null;
+    jobName: string | null;
+    customerName: string | null;
+    poNumber: string | null;
+    workflowStatus: string | null;
+    status: string | null;
+  }>;
+  cpos: Array<{
+    id: number;
+    cpoNumber: string;
+    jobNumber: string | null;
+    jobName: string | null;
+    customerName: string | null;
+    poNumber: string | null;
+    status: string | null;
+  }>;
+  isLoading: boolean;
+  error: string | null;
+}
+
 export interface StockManagementResolvedConfig {
   hostAppKey: StockManagementHostAppKey;
   apiBaseUrl: string;
@@ -30,4 +62,5 @@ export interface StockManagementResolvedConfig {
   currentUser: StockManagementCurrentUser;
   isLoadingLicense: boolean;
   refetchLicense: () => Promise<void>;
+  pickerData: PrefetchedPickerData;
 }

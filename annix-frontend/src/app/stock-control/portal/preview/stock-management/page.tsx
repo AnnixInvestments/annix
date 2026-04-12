@@ -99,6 +99,13 @@ export default function StockManagementPreviewIndexPage() {
   const [isSeeding, setIsSeeding] = useState(false);
   const [seedResult, setSeedResult] = useState<SeedResult | null>(null);
   const [seedError, setSeedError] = useState<string | null>(null);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [syncResult, setSyncResult] = useState<{
+    created: number;
+    skipped: number;
+    errors: string[];
+  } | null>(null);
+  const [syncError, setSyncError] = useState<string | null>(null);
 
   const handleSeed = async () => {
     setIsSeeding(true);
@@ -123,6 +130,32 @@ export default function StockManagementPreviewIndexPage() {
       setSeedError(message);
     } finally {
       setIsSeeding(false);
+    }
+  };
+
+  const handleSyncLegacy = async () => {
+    setIsSyncing(true);
+    setSyncError(null);
+    setSyncResult(null);
+    try {
+      const response = await fetch("/api/stock-management/demo-seed/sync-legacy-stock", {
+        method: "POST",
+        headers: {
+          ...stockControlTokenStore.authHeaders(),
+        },
+        credentials: "include",
+      });
+      if (!response.ok) {
+        const text = await response.text().catch(() => "");
+        throw new Error(`${response.status} ${text}`);
+      }
+      const data = await response.json();
+      setSyncResult(data);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      setSyncError(message);
+    } finally {
+      setIsSyncing(false);
     }
   };
 
@@ -163,6 +196,32 @@ export default function StockManagementPreviewIndexPage() {
             </span>
           ) : null}
           {seedError ? <span className="text-sm text-red-700">Error: {seedError}</span> : null}
+        </div>
+      </section>
+
+      <section className="rounded-lg border border-blue-200 bg-blue-50 p-4">
+        <h2 className="text-base font-semibold text-blue-900">Sync legacy stock items</h2>
+        <p className="mt-1 text-sm text-blue-800">
+          Imports all stock items from the Stock Control system into the Stock Management module.
+          Maps paint, rubber rolls, and consumables with their details. <strong>Idempotent</strong>{" "}
+          — skips items already synced.
+        </p>
+        <div className="mt-3 flex flex-wrap items-center gap-3">
+          <button
+            type="button"
+            onClick={handleSyncLegacy}
+            disabled={isSyncing}
+            className="rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
+          >
+            {isSyncing ? "Syncing…" : "Sync legacy stock"}
+          </button>
+          {syncResult ? (
+            <span className="text-sm text-blue-900">
+              Created {syncResult.created}, skipped {syncResult.skipped}
+              {syncResult.errors.length > 0 ? `, ${syncResult.errors.length} errors` : ""}
+            </span>
+          ) : null}
+          {syncError ? <span className="text-sm text-red-700">Error: {syncError}</span> : null}
         </div>
       </section>
 

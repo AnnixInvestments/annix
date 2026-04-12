@@ -18,4 +18,14 @@ export class DemoSeedController {
     const companyId = Number(req.user.companyId);
     return this.demoSeedService.seed(companyId);
   }
+
+  @Post("sync-legacy-stock")
+  @ApiOperation({
+    summary:
+      "Sync all stock_items from stock control into sm_issuable_product — idempotent, skips already-mapped items",
+  })
+  async syncLegacyStock(@Req() req: any) {
+    const companyId = Number(req.user.companyId);
+    return this.demoSeedService.syncLegacyStock(companyId);
+  }
 }

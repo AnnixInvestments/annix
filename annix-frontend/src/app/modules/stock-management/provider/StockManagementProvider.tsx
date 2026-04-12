@@ -10,6 +10,7 @@ import {
 import { DEFAULT_STOCK_MANAGEMENT_THEME } from "../theme/default-theme";
 import type { StockManagementThemeTokens } from "../theme/theme-types";
 import type {
+  PrefetchedPickerData,
   StockManagementCurrentUser,
   StockManagementHostConfig,
   StockManagementResolvedConfig,
@@ -53,9 +54,66 @@ export function StockManagementProvider(props: StockManagementProviderProps) {
     }
   }, []);
 
+  const [pickerStaff, setPickerStaff] = useState<PrefetchedPickerData["staff"]>([]);
+  const [pickerJobCards, setPickerJobCards] = useState<PrefetchedPickerData["jobCards"]>([]);
+  const [pickerCpos, setPickerCpos] = useState<PrefetchedPickerData["cpos"]>([]);
+  const [pickerLoading, setPickerLoading] = useState(true);
+  const [pickerError, setPickerError] = useState<string | null>(null);
+
   useEffect(() => {
     refetchLicense();
   }, [refetchLicense]);
+
+  useEffect(() => {
+    let cancelled = false;
+    setPickerLoading(true);
+    const headers = authHeaders();
+    const opts: RequestInit = { headers, credentials: "include" };
+
+    const fetchJson = async (url: string) => {
+      const res = await fetch(url, opts);
+      if (!res.ok) {
+        const text = await res.text().catch(() => "");
+        throw new Error(`${res.status} ${text}`);
+      }
+      return res.json();
+    };
+
+    Promise.all([
+      fetchJson("/api/stock-control/staff?active=true"),
+      fetchJson("/api/stock-control/job-cards?limit=100"),
+      fetchJson("/api/stock-control/cpos?limit=100"),
+    ])
+      .then(([staffData, jcData, cpoData]) => {
+        if (cancelled) return;
+        setPickerStaff(staffData as PrefetchedPickerData["staff"]);
+        setPickerJobCards(jcData as PrefetchedPickerData["jobCards"]);
+        setPickerCpos(cpoData as PrefetchedPickerData["cpos"]);
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        const message = err instanceof Error ? err.message : String(err);
+        console.error("Picker prefetch failed:", message);
+        setPickerError(message);
+      })
+      .finally(() => {
+        if (!cancelled) setPickerLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [authHeaders]);
+
+  const pickerData = useMemo<PrefetchedPickerData>(() => {
+    return {
+      staff: pickerStaff,
+      jobCards: pickerJobCards,
+      cpos: pickerCpos,
+      isLoading: pickerLoading,
+      error: pickerError,
+    };
+  }, [pickerStaff, pickerJobCards, pickerCpos, pickerLoading, pickerError]);
 
   const theme = useMemo<Required<StockManagementThemeTokens>>(() => {
     return { ...DEFAULT_STOCK_MANAGEMENT_THEME, ...(config.theme ?? {}) };
@@ -96,6 +154,7 @@ export function StockManagementProvider(props: StockManagementProviderProps) {
       currentUser: config.currentUser ?? EMPTY_USER,
       isLoadingLicense,
       refetchLicense,
+      pickerData,
     };
   }, [
     config.hostAppKey,
@@ -108,6 +167,7 @@ export function StockManagementProvider(props: StockManagementProviderProps) {
     labelLookup,
     isLoadingLicense,
     refetchLicense,
+    pickerData,
   ]);
 
   return (

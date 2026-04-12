@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { QrScanner } from "@/app/stock-control/components/QrScanner";
 import { useStockManagementConfig } from "../provider/useStockManagementConfig";
 
@@ -52,81 +52,18 @@ export function JobCardOrCpoPicker(props: JobCardOrCpoPickerProps) {
   const currentValue = props.value;
   const onChangeProp = props.onChange;
 
+  const pickerData = config.pickerData;
+  const jobCards = pickerData.jobCards as JobCardOption[];
+  const cpos = pickerData.cpos as CpoOption[];
+  const isLoading = pickerData.isLoading;
+  const prefetchError = pickerData.error;
+  const error = prefetchError == null ? null : new Error(prefetchError);
+
   const [tab, setTab] = useState<Tab>("job_cards");
   const [search, setSearch] = useState("");
-  const [isOpen, setIsOpen] = useState(false);
-  const [jobCards, setJobCards] = useState<JobCardOption[]>([]);
-  const [cpos, setCpos] = useState<CpoOption[]>([]);
-  const [loadedJobCards, setLoadedJobCards] = useState(false);
-  const [loadedCpos, setLoadedCpos] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<Error | null>(null);
   const [scanError, setScanError] = useState<string | null>(null);
   const [isScanning, setIsScanning] = useState(false);
   const [showScanner, setShowScanner] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      const container = containerRef.current;
-      if (container && !container.contains(e.target as Node)) {
-        setIsOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, []);
-
-  useEffect(() => {
-    let cancelled = false;
-    const needsJobCards = tab === "job_cards" && !loadedJobCards;
-    const needsCpos = tab === "cpos" && !loadedCpos;
-    if (!needsJobCards && !needsCpos) {
-      return;
-    }
-    setIsLoading(true);
-    const url = needsJobCards
-      ? "/api/stock-control/job-cards?limit=100"
-      : "/api/stock-control/cpos?limit=100";
-    fetch(url, {
-      headers: authHeaders(),
-      credentials: "include",
-    })
-      .then(async (response) => {
-        if (!response.ok) {
-          const text = await response.text().catch(() => "");
-          throw new Error(`Failed to load (${response.status}) ${text}`);
-        }
-        return response.json();
-      })
-      .then((data: unknown) => {
-        if (cancelled) {
-          return;
-        }
-        if (needsJobCards) {
-          setJobCards(data as JobCardOption[]);
-          setLoadedJobCards(true);
-        } else {
-          setCpos(data as CpoOption[]);
-          setLoadedCpos(true);
-        }
-      })
-      .catch((e: unknown) => {
-        if (!cancelled) {
-          setError(e instanceof Error ? e : new Error(String(e)));
-        }
-      })
-      .finally(() => {
-        if (!cancelled) {
-          setIsLoading(false);
-        }
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [tab, loadedJobCards, loadedCpos, authHeaders]);
 
   const filteredJobCards = useMemo(() => {
     const trimmed = search.trim().toLowerCase();
@@ -178,7 +115,6 @@ export function JobCardOrCpoPicker(props: JobCardOrCpoPickerProps) {
       customer: jc.customerName,
       status: jc.workflowStatus == null ? jc.status : jc.workflowStatus,
     });
-    setIsOpen(false);
     setSearch("");
     setScanError(null);
   };
@@ -193,7 +129,6 @@ export function JobCardOrCpoPicker(props: JobCardOrCpoPickerProps) {
       customer: cpo.customerName,
       status: cpo.status,
     });
-    setIsOpen(false);
     setSearch("");
     setScanError(null);
   };
@@ -245,39 +180,23 @@ export function JobCardOrCpoPicker(props: JobCardOrCpoPickerProps) {
 
   const errorMessage = error == null ? null : error.message;
 
-  const displayValue = (() => {
-    if (isOpen) {
-      return search;
-    }
-    if (currentValue == null) {
-      return "";
-    }
-    return currentValue.label;
-  })();
-
   const selectedCustomer = currentValue == null ? null : currentValue.customer;
   const selectedStatus = currentValue == null ? null : currentValue.status;
   const selectedKind = currentValue == null ? null : currentValue.kind;
 
   return (
     <div className="space-y-2">
-      <div ref={containerRef} className="relative w-full">
-        <div className="relative flex items-center gap-2">
+      <div className="w-full">
+        <div className="flex items-center gap-2">
           <div className="relative flex-1">
             <input
               type="text"
-              value={displayValue}
-              onChange={(e) => {
-                setSearch(e.target.value);
-                if (!isOpen) {
-                  setIsOpen(true);
-                }
-              }}
-              onFocus={() => setIsOpen(true)}
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
               placeholder="Search job number, customer, CPO number (optional)"
               className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500"
             />
-            {currentValue != null && !isOpen ? (
+            {currentValue != null ? (
               <button
                 type="button"
                 onClick={handleClear}
@@ -312,96 +231,61 @@ export function JobCardOrCpoPicker(props: JobCardOrCpoPickerProps) {
             Scan QR
           </button>
         </div>
-        {isOpen ? (
-          <div className="absolute left-0 right-0 mt-1 rounded border border-gray-200 bg-white shadow-lg z-20">
-            <div className="flex border-b border-gray-200">
-              <button
-                type="button"
-                onClick={() => setTab("job_cards")}
-                className={`flex-1 px-3 py-2 text-sm font-medium ${
-                  tab === "job_cards"
-                    ? "text-teal-700 border-b-2 border-teal-600"
-                    : "text-gray-600 hover:text-gray-900"
-                }`}
-              >
-                Job Cards
-              </button>
-              <button
-                type="button"
-                onClick={() => setTab("cpos")}
-                className={`flex-1 px-3 py-2 text-sm font-medium ${
-                  tab === "cpos"
-                    ? "text-teal-700 border-b-2 border-teal-600"
-                    : "text-gray-600 hover:text-gray-900"
-                }`}
-              >
-                CPOs
-              </button>
-            </div>
-            <div className="max-h-80 overflow-y-auto">
-              {isLoading ? (
-                <div className="px-3 py-2 text-sm text-gray-500">Loading…</div>
-              ) : errorMessage != null ? (
-                <div className="px-3 py-2 text-sm text-red-600">Error: {errorMessage}</div>
-              ) : tab === "job_cards" ? (
-                filteredJobCards.length === 0 ? (
-                  <div className="px-3 py-2 text-sm text-gray-500">
-                    {jobCards.length === 0 ? "No job cards found" : "No matches"}
-                  </div>
-                ) : (
-                  filteredJobCards.map((jc) => {
-                    const jobNameRaw = jc.jobName;
-                    const customerRaw = jc.customerName;
-                    const statusRaw = jc.workflowStatus == null ? jc.status : jc.workflowStatus;
-                    const jobNameLabel = jobNameRaw == null ? "—" : jobNameRaw;
-                    const customerLabel = customerRaw == null ? "" : customerRaw;
-                    const statusLabel = statusRaw == null ? "" : statusRaw;
-                    return (
-                      <button
-                        key={jc.id}
-                        type="button"
-                        onClick={() => handleSelectJobCard(jc)}
-                        className="block w-full px-3 py-2 text-left text-sm hover:bg-teal-50 border-b border-gray-100 last:border-b-0"
-                      >
-                        <div className="flex items-center justify-between gap-2">
-                          <div className="font-semibold text-gray-900 truncate">{jc.jobNumber}</div>
-                          {statusLabel !== "" ? (
-                            <span className="text-[10px] uppercase tracking-wide font-medium text-gray-500 shrink-0">
-                              {statusLabel}
-                            </span>
-                          ) : null}
-                        </div>
-                        <div className="text-xs text-gray-600 truncate">{jobNameLabel}</div>
-                        {customerLabel !== "" ? (
-                          <div className="text-xs text-gray-500 truncate">{customerLabel}</div>
-                        ) : null}
-                      </button>
-                    );
-                  })
-                )
-              ) : filteredCpos.length === 0 ? (
+      </div>
+
+      {currentValue == null ? (
+        <div className="rounded border border-gray-200 bg-white">
+          <div className="flex border-b border-gray-200">
+            <button
+              type="button"
+              onClick={() => setTab("job_cards")}
+              className={`flex-1 px-3 py-2 text-sm font-medium ${
+                tab === "job_cards"
+                  ? "text-teal-700 border-b-2 border-teal-600"
+                  : "text-gray-600 hover:text-gray-900"
+              }`}
+            >
+              Job Cards
+            </button>
+            <button
+              type="button"
+              onClick={() => setTab("cpos")}
+              className={`flex-1 px-3 py-2 text-sm font-medium ${
+                tab === "cpos"
+                  ? "text-teal-700 border-b-2 border-teal-600"
+                  : "text-gray-600 hover:text-gray-900"
+              }`}
+            >
+              CPOs
+            </button>
+          </div>
+          <div className="max-h-80 overflow-y-auto">
+            {isLoading ? (
+              <div className="px-3 py-2 text-sm text-gray-500">Loading…</div>
+            ) : errorMessage != null ? (
+              <div className="px-3 py-2 text-sm text-red-600">Error: {errorMessage}</div>
+            ) : tab === "job_cards" ? (
+              filteredJobCards.length === 0 ? (
                 <div className="px-3 py-2 text-sm text-gray-500">
-                  {cpos.length === 0 ? "No CPOs found" : "No matches"}
+                  {jobCards.length === 0 ? "No job cards found" : "No matches"}
                 </div>
               ) : (
-                filteredCpos.map((cpo) => {
-                  const jobNameRaw = cpo.jobName;
-                  const customerRaw = cpo.customerName;
-                  const statusRaw = cpo.status;
+                filteredJobCards.map((jc) => {
+                  const jobNameRaw = jc.jobName;
+                  const customerRaw = jc.customerName;
+                  const statusRaw = jc.workflowStatus == null ? jc.status : jc.workflowStatus;
                   const jobNameLabel = jobNameRaw == null ? "—" : jobNameRaw;
                   const customerLabel = customerRaw == null ? "" : customerRaw;
                   const statusLabel = statusRaw == null ? "" : statusRaw;
                   return (
                     <button
-                      key={cpo.id}
+                      key={jc.id}
                       type="button"
-                      onClick={() => handleSelectCpo(cpo)}
+                      onClick={() => handleSelectJobCard(jc)}
                       className="block w-full px-3 py-2 text-left text-sm hover:bg-teal-50 border-b border-gray-100 last:border-b-0"
                     >
                       <div className="flex items-center justify-between gap-2">
-                        <div className="font-semibold text-gray-900 truncate">
-                          CPO {cpo.cpoNumber}
-                        </div>
+                        <div className="font-semibold text-gray-900 truncate">{jc.jobNumber}</div>
                         {statusLabel !== "" ? (
                           <span className="text-[10px] uppercase tracking-wide font-medium text-gray-500 shrink-0">
                             {statusLabel}
@@ -415,11 +299,47 @@ export function JobCardOrCpoPicker(props: JobCardOrCpoPickerProps) {
                     </button>
                   );
                 })
-              )}
-            </div>
+              )
+            ) : filteredCpos.length === 0 ? (
+              <div className="px-3 py-2 text-sm text-gray-500">
+                {cpos.length === 0 ? "No CPOs found" : "No matches"}
+              </div>
+            ) : (
+              filteredCpos.map((cpo) => {
+                const jobNameRaw = cpo.jobName;
+                const customerRaw = cpo.customerName;
+                const statusRaw = cpo.status;
+                const jobNameLabel = jobNameRaw == null ? "—" : jobNameRaw;
+                const customerLabel = customerRaw == null ? "" : customerRaw;
+                const statusLabel = statusRaw == null ? "" : statusRaw;
+                return (
+                  <button
+                    key={cpo.id}
+                    type="button"
+                    onClick={() => handleSelectCpo(cpo)}
+                    className="block w-full px-3 py-2 text-left text-sm hover:bg-teal-50 border-b border-gray-100 last:border-b-0"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="font-semibold text-gray-900 truncate">
+                        CPO {cpo.cpoNumber}
+                      </div>
+                      {statusLabel !== "" ? (
+                        <span className="text-[10px] uppercase tracking-wide font-medium text-gray-500 shrink-0">
+                          {statusLabel}
+                        </span>
+                      ) : null}
+                    </div>
+                    <div className="text-xs text-gray-600 truncate">{jobNameLabel}</div>
+                    {customerLabel !== "" ? (
+                      <div className="text-xs text-gray-500 truncate">{customerLabel}</div>
+                    ) : null}
+                  </button>
+                );
+              })
+            )}
           </div>
-        ) : null}
-      </div>
+        </div>
+      ) : null}
       {currentValue != null ? (
         <div className="rounded border border-teal-200 bg-teal-50 px-3 py-2 text-xs text-teal-900">
           <div className="font-semibold">

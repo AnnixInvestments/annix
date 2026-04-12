@@ -1,7 +1,8 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
+import { DataSource, Repository } from "typeorm";
 import { now } from "../../lib/datetime";
+import { StockItem } from "../../stock-control/entities/stock-item.entity";
 import { IssuableProduct } from "../entities/issuable-product.entity";
 import { ProductCategory } from "../entities/product-category.entity";
 import { RubberCompound } from "../entities/rubber-compound.entity";
@@ -33,6 +34,7 @@ export class DemoSeedService {
     private readonly compoundService: RubberCompoundService,
     private readonly productService: IssuableProductService,
     private readonly fifoBatchService: FifoBatchService,
+    private readonly dataSource: DataSource,
   ) {}
 
   async seed(companyId: number): Promise<DemoSeedResult> {
@@ -346,5 +348,175 @@ export class DemoSeedService {
     this.logger.log(`Demo seed complete for company ${companyId}: ${JSON.stringify(result)}`);
     void rubberSbrCategory;
     return result;
+  }
+
+  async syncLegacyStock(companyId: number): Promise<{
+    created: number;
+    skipped: number;
+    errors: string[];
+  }> {
+    this.logger.log(`Syncing legacy stock items for company ${companyId}`);
+
+    const stockItems = await this.dataSource.getRepository(StockItem).find({
+      where: { companyId },
+    });
+    this.logger.log(`Found ${stockItems.length} legacy stock items`);
+
+    let created = 0;
+    let skipped = 0;
+    const errors: string[] = [];
+
+    const paintKeywords = [
+      "paint",
+      "primer",
+      "topcoat",
+      "hardener",
+      "base",
+      "epoxy",
+      "jotamastic",
+      "penguard",
+      "hempadur",
+      "hempel",
+      "jotun",
+      "sigma",
+      "international",
+      "polyurethane",
+      "zinc",
+      "sealer",
+      "thinner",
+      "solvent",
+    ];
+
+    for (const si of stockItems) {
+      const existing = await this.productRepo.findOne({
+        where: { companyId, legacyStockItemId: si.id },
+      });
+      if (existing) {
+        skipped++;
+        continue;
+      }
+
+      const alsoExistsBySku = await this.productRepo.findOne({
+        where: { companyId, sku: si.sku },
+      });
+      if (alsoExistsBySku) {
+        skipped++;
+        continue;
+      }
+
+      try {
+        const productType = this.classifyStockItem(si, paintKeywords);
+        const createDto: any = {
+          productType,
+          sku: si.sku,
+          name: si.name,
+          description: si.description,
+          unitOfMeasure: si.unitOfMeasure,
+          costPerUnit: Number(si.costPerUnit) || 0,
+          quantity: Number(si.quantity) || 0,
+          minStockLevel: Number(si.minStockLevel) || 0,
+          legacyStockItemId: si.id,
+        };
+
+        if (productType === "paint") {
+          const numParts = si.mixRatio ? si.mixRatio.split(":").length : 1;
+          const nameLower = si.name.toLowerCase();
+          let coatType: string | null = null;
+          if (nameLower.includes("primer") || nameLower.includes("red oxide")) coatType = "primer";
+          else if (nameLower.includes("intermediate")) coatType = "intermediate";
+          else if (nameLower.includes("hardener") || si.componentRole === "hardener")
+            coatType = "finish";
+          else if (nameLower.includes("topcoat") || nameLower.includes("finish"))
+            coatType = "finish";
+          else if (nameLower.includes("thinner")) coatType = null;
+
+          let paintSystem: string | null = null;
+          if (
+            nameLower.includes("epoxy") ||
+            nameLower.includes("jotamastic") ||
+            nameLower.includes("hempadur")
+          )
+            paintSystem = "epoxy";
+          else if (nameLower.includes("polyurethane") || nameLower.includes("hardtop"))
+            paintSystem = "polyurethane";
+          else if (nameLower.includes("zinc")) paintSystem = "zinc_rich";
+          else if (nameLower.includes("alkyd")) paintSystem = "alkyd";
+
+          createDto.paint = {
+            numberOfParts: numParts > 1 ? numParts : si.componentGroup ? 2 : 1,
+            mixingRatio: si.mixRatio || null,
+            coatType,
+            paintSystem,
+            colourCode: si.color || null,
+            isBanding: false,
+          };
+        } else if (productType === "rubber_roll") {
+          createDto.rubberRoll = {
+            rollNumber: si.rollNumber || si.sku,
+            compoundCode: si.compoundCode || null,
+            colour: si.color || "black",
+            widthMm: si.widthMm ? Number(si.widthMm) : null,
+            thicknessMm: si.thicknessMm ? Number(si.thicknessMm) : null,
+            lengthM: si.lengthM ? Number(si.lengthM) : null,
+            weightKg: Number(si.quantity) || null,
+            status: "available",
+          };
+        } else if (productType === "consumable") {
+          createDto.consumable = { notes: null };
+        }
+
+        await this.productService.create(companyId, createDto);
+
+        const createdProduct = await this.productRepo.findOne({
+          where: { companyId, sku: si.sku },
+        });
+        if (createdProduct) {
+          createdProduct.legacyStockItemId = si.id;
+          await this.productRepo.save(createdProduct);
+
+          if (Number(si.quantity) > 0) {
+            await this.fifoBatchService.createBatch(companyId, {
+              productId: createdProduct.id,
+              sourceType: "legacy",
+              quantityPurchased: Number(si.quantity),
+              costPerUnit: Number(si.costPerUnit) || 0,
+              receivedAt: now().toJSDate(),
+              isLegacyBatch: true,
+              notes: `Synced from stock item #${si.id}`,
+            });
+          }
+        }
+
+        created++;
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : String(err);
+        errors.push(`SKU ${si.sku}: ${message}`);
+      }
+    }
+
+    this.logger.log(
+      `Sync complete: ${created} created, ${skipped} skipped, ${errors.length} errors`,
+    );
+    return { created, skipped, errors };
+  }
+
+  private classifyStockItem(si: StockItem, paintKeywords: string[]): string {
+    if (si.rollNumber || si.sourceRollNumber) return "rubber_roll";
+    if (si.isLeftover && (si.widthMm || si.thicknessMm || si.lengthM)) return "rubber_roll";
+    if (si.compoundCode) return "rubber_roll";
+
+    const nameLower = si.name.toLowerCase();
+    const categoryLower = (si.category || "").toLowerCase();
+    const uom = (si.unitOfMeasure || "").toLowerCase();
+
+    if (si.componentRole || si.componentGroup || si.mixRatio) return "paint";
+    if (si.packSizeLitres) return "paint";
+    if (uom === "litres" || uom === "litre" || uom === "liter" || uom === "l") return "paint";
+
+    for (const kw of paintKeywords) {
+      if (nameLower.includes(kw) || categoryLower.includes(kw)) return "paint";
+    }
+
+    return "consumable";
   }
 }
