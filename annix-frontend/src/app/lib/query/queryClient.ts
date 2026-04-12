@@ -24,41 +24,51 @@ function isNetworkError(error: unknown): boolean {
   return !isClientError(error);
 }
 
+const queryRetryFn = (failureCount: number, error: Error) => {
+  if (error instanceof SessionExpiredError) {
+    return false;
+  }
+  if (isClientError(error)) {
+    return false;
+  }
+  return failureCount < 3;
+};
+
+const queryRetryDelayFn = (attemptIndex: number) => Math.min(1000 * 2 ** attemptIndex, 4000);
+
+const mutationRetryFn = (failureCount: number, error: Error) => {
+  if (error instanceof SessionExpiredError) {
+    return false;
+  }
+  if (!isNetworkError(error)) {
+    return false;
+  }
+  return failureCount < 1;
+};
+
+const mutationOnErrorFn = (error: Error) => {
+  if (error instanceof SessionExpiredError) {
+    sessionExpiredEvent.emit();
+  }
+};
+
 function createQueryClient(): QueryClient {
+  const queryDefaults = {
+    staleTime: 30 * 1000,
+    gcTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    retry: queryRetryFn,
+    retryDelay: queryRetryDelayFn,
+  };
+  const mutationDefaults = {
+    retry: mutationRetryFn,
+    retryDelay: 1000,
+    onError: mutationOnErrorFn,
+  };
   return new QueryClient({
     defaultOptions: {
-      queries: {
-        staleTime: 30 * 1000,
-        gcTime: 5 * 60 * 1000,
-        refetchOnWindowFocus: false,
-        retry: (failureCount, error) => {
-          if (error instanceof SessionExpiredError) {
-            return false;
-          }
-          if (isClientError(error)) {
-            return false;
-          }
-          return failureCount < 3;
-        },
-        retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 4000),
-      },
-      mutations: {
-        retry: (failureCount, error) => {
-          if (error instanceof SessionExpiredError) {
-            return false;
-          }
-          if (!isNetworkError(error)) {
-            return false;
-          }
-          return failureCount < 1;
-        },
-        retryDelay: 1000,
-        onError: (error) => {
-          if (error instanceof SessionExpiredError) {
-            sessionExpiredEvent.emit();
-          }
-        },
-      },
+      queries: queryDefaults,
+      mutations: mutationDefaults,
     },
   });
 }
