@@ -5,9 +5,7 @@ import { generateUniqueId, nowMillis } from "../lib/datetime";
 import { SharedDocumentType } from "../lib/document-classification/document-types";
 import {
   extractTextByMime,
-  extractTextFromExcel,
   extractTextFromPdf,
-  extractTextFromWord,
   isExcelFile,
   isWordFile,
 } from "../lib/document-extraction";
@@ -18,11 +16,11 @@ import { DeliveryNoteStatus, DeliveryNoteType } from "./entities/rubber-delivery
 import { ProductCodingType, RubberProductCoding } from "./entities/rubber-product-coding.entity";
 import { SupplierCocType } from "./entities/rubber-supplier-coc.entity";
 import { TaxInvoiceType } from "./entities/rubber-tax-invoice.entity";
-import { RubberAuCocReadinessService } from "./rubber-au-coc-readiness.service";
 import { RubberCocService } from "./rubber-coc.service";
 import { RubberCocExtractionService } from "./rubber-coc-extraction.service";
 import { RubberDeliveryNoteService } from "./rubber-delivery-note.service";
 import { RubberTaxInvoiceService } from "./rubber-tax-invoice.service";
+import { RubberExtractionOrchestratorService } from "./services/rubber-extraction-orchestrator.service";
 
 export interface ParsedCompoundCode {
   brand: string;
@@ -164,7 +162,7 @@ export class RubberInboundEmailService {
     private taxInvoiceService: RubberTaxInvoiceService,
     private aiChatService: AiChatService,
     private cocExtractionService: RubberCocExtractionService,
-    private auCocReadinessService: RubberAuCocReadinessService,
+    private extractionOrchestrator: RubberExtractionOrchestratorService,
   ) {}
 
   async processInboundEmail(emailData: InboundEmailData): Promise<ProcessedEmailResult> {
@@ -538,32 +536,6 @@ export class RubberInboundEmailService {
 
   private async extractTextFromAttachment(attachment: InboundEmailAttachment): Promise<string> {
     return extractTextByMime(attachment.content, attachment.filename, attachment.contentType);
-  }
-
-  private async extractTextFromPdfWithPageHint(buffer: Buffer): Promise<string> {
-    try {
-      const pdfParseModule = require("pdf-parse");
-      const pdfParseFn = pdfParseModule.default ?? pdfParseModule;
-      const pdfData = await pdfParseFn(buffer);
-      const numPages = pdfData.numpages || 1;
-      const text = pdfData.text || "";
-
-      if (numPages > 1) {
-        this.logger.log(`PDF has ${numPages} pages - adding page count hint`);
-        return `DOCUMENT HAS ${numPages} PAGES. Each page likely contains a separate delivery note.\n\n${text}`;
-      }
-
-      return text;
-    } catch {
-      try {
-        const text = extractTextFromExcel(buffer);
-        this.logger.log(`Extracted text from Excel file (${text.length} chars)`);
-        return text;
-      } catch {
-        this.logger.error("Failed to extract text from attachment (not a valid PDF or Excel)");
-        return "";
-      }
-    }
   }
 
   private classifyImpiloCocType(_pdfText: string): SupplierCocType {
@@ -1017,55 +989,12 @@ ${truncatedText}`;
     file: Express.Multer.File,
     companyName: string | null,
   ): void {
-    const ext = file.originalname.split(".").pop()?.toLowerCase() || "";
-    const isPdf = ext === "pdf";
-
-    (async () => {
-      try {
-        const correctionHints = companyName
-          ? await this.taxInvoiceService.correctionHintsForSupplier(companyName)
-          : null;
-
-        if (isPdf) {
-          const pdfText = await extractTextFromPdf(file.buffer);
-          if (pdfText.length >= 50) {
-            const extractionResult = await this.cocExtractionService.extractTaxInvoice(
-              pdfText,
-              correctionHints,
-            );
-            await this.taxInvoiceService.setExtractedData(invoiceId, extractionResult.data);
-            this.logger.log(
-              `Auto-extracted Tax Invoice ${invoiceId} in ${extractionResult.processingTimeMs}ms`,
-            );
-          } else {
-            const extractionResult = await this.cocExtractionService.extractTaxInvoiceFromImages(
-              file.buffer,
-              correctionHints,
-            );
-            await this.taxInvoiceService.setExtractedData(invoiceId, extractionResult.data);
-            this.logger.log(
-              `Auto-extracted Tax Invoice ${invoiceId} via OCR in ${extractionResult.processingTimeMs}ms`,
-            );
-          }
-        } else {
-          const docText = await extractTextFromWord(file.buffer);
-          if (docText.length >= 20) {
-            const extractionResult = await this.cocExtractionService.extractTaxInvoice(
-              docText,
-              correctionHints,
-            );
-            await this.taxInvoiceService.setExtractedData(invoiceId, extractionResult.data);
-            this.logger.log(
-              `Auto-extracted Tax Invoice ${invoiceId} from document in ${extractionResult.processingTimeMs}ms`,
-            );
-          }
-        }
-      } catch (error) {
-        this.logger.error(
-          `Failed to auto-extract Tax Invoice ${invoiceId}: ${error instanceof Error ? error.message : String(error)}`,
-        );
-      }
-    })();
+    this.extractionOrchestrator.triggerTaxInvoiceExtraction(
+      invoiceId,
+      file.buffer,
+      file.originalname,
+      companyName,
+    );
   }
 
   private autoExtractAndSplitDeliveryNote(
@@ -1073,94 +1002,7 @@ ${truncatedText}`;
     pdfBuffer: Buffer,
     dnType: DeliveryNoteType,
   ): void {
-    (async () => {
-      try {
-        const isRoll = dnType === DeliveryNoteType.ROLL;
-
-        const extractedData = await (async () => {
-          if (isRoll) {
-            const customerResult =
-              await this.cocExtractionService.extractCustomerDeliveryNoteFromImages(pdfBuffer);
-
-            const supplierDns = customerResult.deliveryNotes.filter((dn) => {
-              const supplier = (dn.supplierName || "").toLowerCase();
-              const isCdn = supplier.includes("au industrie") || supplier.includes("au industries");
-              if (isCdn) {
-                this.logger.log(
-                  `[SupplierDN] Filtering out customer DN "${dn.deliveryNoteNumber}" (supplier: ${dn.supplierName}) from supplier extraction`,
-                );
-              }
-              return !isCdn;
-            });
-            const dnsToProcess =
-              supplierDns.length > 0 ? supplierDns : customerResult.deliveryNotes;
-
-            const allRolls = dnsToProcess.flatMap((dn, dnIdx) =>
-              (dn.lineItems || [])
-                .filter((item) => item != null && typeof item === "object")
-                .map((item) => ({
-                  rollNumber: item.rollNumber ?? null,
-                  thicknessMm: item.thicknessMm ?? null,
-                  widthMm: item.widthMm ?? null,
-                  lengthM: item.lengthM ?? null,
-                  weightKg: item.actualWeightKg ?? null,
-                  areaSqM:
-                    item.widthMm && item.lengthM ? (item.widthMm * item.lengthM) / 1000 : null,
-                  deliveryNoteNumber: dn.deliveryNoteNumber ?? null,
-                  deliveryDate: dn.deliveryDate ?? null,
-                  customerName: dn.customerName ?? null,
-                  customerReference: dn.customerReference ?? null,
-                  supplierName: dn.supplierName ?? null,
-                  pageNumber: dnIdx + 1,
-                })),
-            );
-
-            const podPageNumbers = this.resolvePodPageNumbersByOrder(
-              customerResult.podPages,
-              dnsToProcess,
-            );
-            const dnMetadata = dnsToProcess[0];
-            const dnNumber = dnMetadata?.deliveryNoteNumber || null;
-            if (dnNumber && podPageNumbers[dnNumber]) {
-              await this.deliveryNoteService.setPodPageNumbers(
-                deliveryNoteId,
-                podPageNumbers[dnNumber],
-              );
-            }
-
-            return {
-              deliveryNoteNumber: dnMetadata?.deliveryNoteNumber ?? null,
-              deliveryDate: dnMetadata?.deliveryDate ?? null,
-              customerName: dnMetadata?.customerName ?? null,
-              customerReference: dnMetadata?.customerReference ?? null,
-              supplierName: dnMetadata?.supplierName ?? null,
-              rolls: allRolls,
-            };
-          } else {
-            const pdfText = await this.extractTextFromPdfWithPageHint(pdfBuffer);
-            const useOcr = pdfText.length < 50;
-            const extractionResult = useOcr
-              ? await this.cocExtractionService.extractDeliveryNoteFromImages(pdfBuffer)
-              : await this.cocExtractionService.extractDeliveryNote(pdfText);
-            return extractionResult.data;
-          }
-        })();
-
-        await this.deliveryNoteService.setExtractedData(deliveryNoteId, extractedData);
-        this.logger.log(`Auto-extracted delivery note ${deliveryNoteId}`);
-
-        const splitResult = await this.deliveryNoteService.acceptExtractAndSplit(deliveryNoteId);
-        if (splitResult.deliveryNoteIds.length > 1) {
-          this.logger.log(
-            `Auto-split delivery note ${deliveryNoteId} into ${splitResult.deliveryNoteIds.length} notes: ${splitResult.deliveryNoteIds.join(", ")}`,
-          );
-        }
-      } catch (error) {
-        this.logger.error(
-          `Failed to auto-extract delivery note ${deliveryNoteId}: ${error instanceof Error ? error.message : String(error)}`,
-        );
-      }
-    })();
+    this.extractionOrchestrator.triggerDeliveryNoteExtraction(deliveryNoteId, pdfBuffer, dnType);
   }
 
   async analyzeFiles(files: Express.Multer.File[]): Promise<AnalyzeFilesResult> {
@@ -1898,36 +1740,15 @@ ${truncatedText}`;
   }
 
   private triggerReadinessCheckForGraphLink(cocId: number): void {
-    this.auCocReadinessService.checkAndAutoGenerateForCoc(cocId).catch((error) => {
-      this.logger.error(
-        `Readiness check after graph link to CoC ${cocId} failed: ${error.message}`,
-      );
-    });
+    this.extractionOrchestrator.triggerReadinessCheckForCoc(cocId);
   }
 
   private triggerReadinessCheckForDeliveryNote(deliveryNoteId: number): void {
-    this.auCocReadinessService
-      .checkAndAutoGenerateForDeliveryNote(deliveryNoteId)
-      .catch((error) => {
-        this.logger.error(
-          `Readiness check after DN ${deliveryNoteId} creation failed: ${error.message}`,
-        );
-      });
+    this.extractionOrchestrator.triggerReadinessCheckForDeliveryNote(deliveryNoteId);
   }
 
   private autoExtractCoc(cocId: number, cocType: SupplierCocType, pdfText: string): void {
-    this.cocService
-      .correctionHintsForCoc(cocId)
-      .then((hints) => this.cocExtractionService.extractByType(cocType, pdfText, hints))
-      .then(async (result) => {
-        if (result?.data) {
-          await this.cocService.setExtractedData(cocId, result.data);
-          this.logger.log(`Auto-extracted data for CoC ${cocId} in ${result.processingTimeMs}ms`);
-        }
-      })
-      .catch((error) => {
-        this.logger.error(`Auto-extraction failed for CoC ${cocId}: ${error.message}`);
-      });
+    this.extractionOrchestrator.triggerCocExtraction(cocId, cocType, pdfText);
   }
 
   parseSnCompoundCode(code: string): ParsedCompoundCode | null {

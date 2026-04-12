@@ -4,12 +4,12 @@ import { AiChatService } from "../nix/ai-providers/ai-chat.service";
 import { STORAGE_SERVICE } from "../storage/storage.interface";
 import { RubberCompany } from "./entities/rubber-company.entity";
 import { RubberProductCoding } from "./entities/rubber-product-coding.entity";
-import { RubberAuCocReadinessService } from "./rubber-au-coc-readiness.service";
 import { RubberCocService } from "./rubber-coc.service";
 import { RubberCocExtractionService } from "./rubber-coc-extraction.service";
 import { RubberDeliveryNoteService } from "./rubber-delivery-note.service";
 import { RubberInboundEmailService } from "./rubber-inbound-email.service";
 import { RubberTaxInvoiceService } from "./rubber-tax-invoice.service";
+import { RubberExtractionOrchestratorService } from "./services/rubber-extraction-orchestrator.service";
 
 describe("RubberInboundEmailService", () => {
   let service: RubberInboundEmailService;
@@ -33,7 +33,7 @@ describe("RubberInboundEmailService", () => {
         { provide: RubberTaxInvoiceService, useValue: {} },
         { provide: AiChatService, useValue: {} },
         { provide: RubberCocExtractionService, useValue: {} },
-        { provide: RubberAuCocReadinessService, useValue: {} },
+        { provide: RubberExtractionOrchestratorService, useValue: {} },
       ],
     }).compile();
 

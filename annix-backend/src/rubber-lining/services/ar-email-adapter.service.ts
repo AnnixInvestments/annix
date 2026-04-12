@@ -28,6 +28,7 @@ import {
   TaxInvoiceStatus,
   TaxInvoiceType,
 } from "../entities/rubber-tax-invoice.entity";
+import { RubberExtractionOrchestratorService } from "./rubber-extraction-orchestrator.service";
 
 export const ArDocumentType = {
   COC: SharedDocumentType.COC,
@@ -104,6 +105,7 @@ export class ArEmailAdapterService implements EmailAppAdapter, OnModuleInit {
     private readonly taxInvoiceRepo: Repository<RubberTaxInvoice>,
     @InjectRepository(RubberCompany)
     private readonly companyRepo: Repository<RubberCompany>,
+    private readonly extractionOrchestrator: RubberExtractionOrchestratorService,
   ) {}
 
   onModuleInit() {
@@ -244,7 +246,7 @@ Respond ONLY with JSON:
 
   async route(
     attachment: InboundEmailAttachment,
-    _fileBuffer: Buffer,
+    fileBuffer: Buffer,
     _companyId: number | null,
     fromEmail: string,
     subject: string,
@@ -252,11 +254,11 @@ Respond ONLY with JSON:
     const documentType = attachment.documentType;
 
     if (documentType === ArDocumentType.TAX_INVOICE) {
-      return this.routeInvoice(attachment, fromEmail, subject);
+      return this.routeInvoice(attachment, fileBuffer, fromEmail, subject);
     }
 
     if (documentType === ArDocumentType.DELIVERY_NOTE) {
-      return this.routeDeliveryNote(attachment, fromEmail);
+      return this.routeDeliveryNote(attachment, fileBuffer, fromEmail);
     }
 
     if (documentType === ArDocumentType.COC) {
@@ -272,6 +274,7 @@ Respond ONLY with JSON:
 
   private async routeInvoice(
     attachment: InboundEmailAttachment,
+    fileBuffer: Buffer,
     fromEmail: string,
     subject: string,
   ): Promise<RoutingResult> {
@@ -290,10 +293,18 @@ Respond ONLY with JSON:
       const saved = await this.taxInvoiceRepo.save(invoice);
       this.logger.log(`Created tax invoice ${saved.id} from email (${fromEmail})`);
 
+      const originalFilename = attachment.originalFilename || "document.pdf";
+      this.extractionOrchestrator.triggerTaxInvoiceExtraction(
+        saved.id,
+        fileBuffer,
+        originalFilename,
+        supplier?.name || null,
+      );
+
       return {
         linkedEntityType: "RubberTaxInvoice",
         linkedEntityId: saved.id,
-        extractionTriggered: false,
+        extractionTriggered: true,
       };
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
@@ -304,6 +315,7 @@ Respond ONLY with JSON:
 
   private async routeDeliveryNote(
     attachment: InboundEmailAttachment,
+    fileBuffer: Buffer,
     fromEmail: string,
   ): Promise<RoutingResult> {
     try {
@@ -321,10 +333,16 @@ Respond ONLY with JSON:
       const saved = await this.deliveryNoteRepo.save(dn);
       this.logger.log(`Created delivery note ${saved.id} from email (${fromEmail})`);
 
+      this.extractionOrchestrator.triggerDeliveryNoteExtraction(
+        saved.id,
+        fileBuffer,
+        DeliveryNoteType.COMPOUND,
+      );
+
       return {
         linkedEntityType: "RubberDeliveryNote",
         linkedEntityId: saved.id,
-        extractionTriggered: false,
+        extractionTriggered: true,
       };
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
