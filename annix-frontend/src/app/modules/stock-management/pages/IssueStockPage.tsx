@@ -146,6 +146,7 @@ export function IssueStockPage() {
   const [cpoIssuedTotals, setCpoIssuedTotals] = useState<
     Array<{ productId: number; productName: string; rowType: string; totalIssued: number }>
   >([]);
+  const [cpoPerJcIssued, setCpoPerJcIssued] = useState<Record<string, Record<number, number>>>({});
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitSuccess, setSubmitSuccess] = useState(false);
 
@@ -167,15 +168,25 @@ export function IssueStockPage() {
   useEffect(() => {
     if (targetKind !== "cpo" || targetId == null) {
       setCpoIssuedTotals([]);
+      setCpoPerJcIssued({});
       return;
     }
     fetch(`/api/stock-management/issuance/sessions/cpo-issued-totals/${targetId}`, {
       headers: authHeadersRef.current(),
       credentials: "include",
     })
-      .then((res) => (res.ok ? res.json() : []))
-      .then((data) => setCpoIssuedTotals(data))
-      .catch(() => setCpoIssuedTotals([]));
+      .then((res) => (res.ok ? res.json() : { totals: [], perJc: {} }))
+      .then((data) => {
+        const rawTotals = data.totals;
+        const totals = rawTotals == null ? data : rawTotals;
+        setCpoIssuedTotals(Array.isArray(totals) ? totals : []);
+        const rawPerJc = data.perJc;
+        setCpoPerJcIssued(rawPerJc == null ? {} : rawPerJc);
+      })
+      .catch(() => {
+        setCpoIssuedTotals([]);
+        setCpoPerJcIssued({});
+      });
   }, [targetKind, targetId]);
 
   useEffect(() => {
@@ -580,6 +591,7 @@ export function IssueStockPage() {
     setPhotoResult(null);
     setLinkedPartsMap({});
     setCpoIssuedTotals([]);
+    setCpoPerJcIssued({});
     setSubmitError(null);
     setSubmitSuccess(false);
   };
@@ -979,6 +991,18 @@ export function IssueStockPage() {
                               {selectedItemCount}/{totalItemCount} items
                             </span>
                           ) : null}
+                          {(() => {
+                            const jcIdStr = String(jc.id);
+                            const jcIssued = cpoPerJcIssued[jcIdStr];
+                            if (!jcIssued) return null;
+                            const entries = Object.entries(jcIssued);
+                            if (entries.length === 0) return null;
+                            return (
+                              <span className="text-[10px] text-green-700 bg-green-100 px-1.5 py-0.5 rounded shrink-0">
+                                {entries.length} paint{entries.length !== 1 ? "s" : ""} issued
+                              </span>
+                            );
+                          })()}
                         </div>
 
                         {isExpanded && jc.lineItems.length > 0 ? (

@@ -260,9 +260,15 @@ export class IssuanceService {
   async issuedTotalsForCpo(
     companyId: number,
     cpoId: number,
-  ): Promise<
-    Array<{ productId: number; productName: string; rowType: string; totalIssued: number }>
-  > {
+  ): Promise<{
+    totals: Array<{
+      productId: number;
+      productName: string;
+      rowType: string;
+      totalIssued: number;
+    }>;
+    perJc: Record<string, Record<number, number>>;
+  }> {
     const rows = await this.dataSource.query(
       `SELECT ir.product_id, ip.name AS product_name, ir.row_type,
               COALESCE(SUM(pir.litres), 0) + COALESCE(SUM(cir.quantity), 0)
@@ -279,12 +285,36 @@ export class IssuanceService {
        GROUP BY ir.product_id, ip.name, ir.row_type`,
       [companyId, cpoId],
     );
-    return rows.map((r: any) => ({
+    const totals = rows.map((r: any) => ({
       productId: r.product_id,
       productName: r.product_name,
       rowType: r.row_type,
       totalIssued: Number(r.total_issued),
     }));
+
+    const splitRows = await this.dataSource.query(
+      `SELECT ir.product_id, pir.cpo_pro_rata_split
+       FROM sm_paint_issuance_row pir
+       JOIN sm_issuance_row ir ON ir.id = pir.row_id
+       JOIN sm_issuance_session s ON s.id = ir.session_id
+       WHERE s.company_id = $1 AND s.cpo_id = $2 AND s.status != 'undone'
+         AND pir.cpo_pro_rata_split IS NOT NULL`,
+      [companyId, cpoId],
+    );
+
+    const perJc: Record<string, Record<number, number>> = {};
+    for (const row of splitRows) {
+      const productId = row.product_id;
+      const split = row.cpo_pro_rata_split as Record<string, number>;
+      if (!split) continue;
+      for (const [jcId, litres] of Object.entries(split)) {
+        if (!perJc[jcId]) perJc[jcId] = {};
+        const existing = perJc[jcId][productId] || 0;
+        perJc[jcId][productId] = existing + Number(litres);
+      }
+    }
+
+    return { totals, perJc };
   }
 
   private fullSessionRelations() {
