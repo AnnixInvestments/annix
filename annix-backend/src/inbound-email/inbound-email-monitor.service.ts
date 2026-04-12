@@ -2,6 +2,7 @@ import { Inject, Injectable, Logger } from "@nestjs/common";
 import { Cron } from "@nestjs/schedule";
 import * as Imap from "imap-simple";
 import { simpleParser } from "mailparser";
+import { bufferToMulterFile, documentPath } from "../lib/app-storage-helper";
 import { nowMillis } from "../lib/datetime";
 import { IStorageService, STORAGE_SERVICE } from "../storage/storage.interface";
 import { InboundEmailStatus } from "./entities/inbound-email.entity";
@@ -199,19 +200,8 @@ export class InboundEmailMonitorService {
             }
           }
 
-          const storagePrefix = `${config.app}/inbound/${resolvedCompanyId ?? "shared"}`;
-          const multerFile: Express.Multer.File = {
-            fieldname: "file",
-            originalname: filename,
-            encoding: "7bit",
-            mimetype: att.contentType,
-            size: att.size,
-            buffer: att.content,
-            stream: null as never,
-            destination: "",
-            filename: "",
-            path: "",
-          };
+          const storagePrefix = documentPath(config.app, "inbound", resolvedCompanyId ?? "shared");
+          const multerFile = bufferToMulterFile(att.content, filename, att.contentType);
 
           const storageResult = await this.storageService.upload(multerFile, storagePrefix);
 

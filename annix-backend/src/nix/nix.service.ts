@@ -2,8 +2,10 @@ import * as fs from "node:fs";
 import { forwardRef, Inject, Injectable, Logger } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
+import { documentPath } from "../lib/app-storage-helper";
 import { SecureDocumentsService } from "../secure-documents/secure-documents.service";
 import { S3StorageService } from "../storage/s3-storage.service";
+import { StorageArea } from "../storage/storage.interface";
 import { AiExtractionService } from "./ai-providers/ai-extraction.service";
 import { ProcessDocumentDto, ProcessDocumentResponseDto } from "./dto/process-document.dto";
 import {
@@ -760,7 +762,7 @@ export class NixService {
 
       const storageResult = await this.s3StorageService.upload(
         multerFile,
-        "secure-documents/attachments",
+        documentPath(StorageArea.SECURE_DOCUMENTS, "attachments"),
       );
 
       const title = customTitle || fileName.replace(/\.[^.]+$/, "");

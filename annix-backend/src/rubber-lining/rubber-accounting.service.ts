@@ -3,6 +3,7 @@ import { Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { EmailService } from "../email/email.service";
+import { uploadDocument } from "../lib/app-storage-helper";
 import { now } from "../lib/datetime";
 import { IStorageService, STORAGE_SERVICE, StorageArea } from "../storage/storage.interface";
 import { RubberAccountSignOff, SignOffStatus } from "./entities/rubber-account-sign-off.entity";
@@ -188,23 +189,19 @@ export class RubberAccountingService {
 
     const buffer = await this.pdfService.generateAccountsPdf(data);
     const timestamp = now().toFormat("yyyyMMdd-HHmmss");
-    const filename = `${type.toLowerCase()}-${year}-${String(month).padStart(2, "0")}-${timestamp}.pdf`;
-    const s3Path = `${StorageArea.AU_RUBBER}/accounts/${year}-${String(month).padStart(2, "0")}/${filename}`;
+    const period = `${year}-${String(month).padStart(2, "0")}`;
+    const filename = `${type.toLowerCase()}-${period}-${timestamp}.pdf`;
 
-    const multerFile = {
+    const uploadResult = await uploadDocument(
+      this.storageService,
       buffer,
-      originalname: filename,
-      mimetype: "application/pdf",
-      size: buffer.length,
-      fieldname: "file",
-      encoding: "7bit",
-      stream: null as never,
-      destination: "",
       filename,
-      path: "",
-    } as Express.Multer.File;
-
-    const uploadResult = await this.storageService.upload(multerFile, s3Path);
+      "application/pdf",
+      StorageArea.AU_RUBBER,
+      "accounts",
+      period,
+      filename,
+    );
 
     const firebaseUid = randomBytes(16).toString("hex");
     const account = this.monthlyAccountRepository.create({

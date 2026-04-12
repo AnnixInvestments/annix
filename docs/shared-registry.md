@@ -1,6 +1,6 @@
 # Shared Module Registry
 
-**Last updated:** 2026-04-12
+**Last updated:** 2026-04-13
 
 This is the canonical index of shared modules across the Annix monorepo. Every Claude session MUST consult this file before writing new constants, components, services, or utilities (see `CLAUDE.md` §"Discovery-first protocol").
 
@@ -42,6 +42,7 @@ Shared workspace package (pnpm workspace). Both `annix-backend` and `annix-front
 | Document classification | `lib/document-classification/` | Inbound document type detection (invoice, PO, delivery note, CoC, etc.). |
 | Steel constants | `lib/steel-constants.ts` | Re-exports from `@annix/product-data/steel` + `steelDensity` helper. |
 | Pipe constants | `lib/pipe-constants.ts` | Re-exports from `@annix/product-data/pipe`. |
+| S3 storage helpers | `lib/app-storage-helper.ts` | `documentPath` (canonical S3 prefix builder), `bufferToMulterFile` (buffer→Multer shim), `uploadDocument` (build path + create Multer file + upload in one call). Use instead of manual S3 path strings + inline Multer object construction. |
 | Entity helpers | `lib/entity-helpers.ts` | `findOneOrFail`, base entity utilities. |
 | Base CRUD service | `lib/base-crud.service.ts` | Generic `BaseCrudService<Entity, CreateDto, UpdateDto>`. Pure-CRUD reference-data services should `extends BaseCrudService<...>` to inherit `create / findAll / findOne / update / remove` + `checkUnique`/`checkUniqueExceptId` helpers. |
 | Pagination DTO | `lib/dto/pagination-query.dto.ts` | Shared `PaginationQueryDto`, `PaginatedResult<T>`, `buildPaginatedResult` helper. Use in any service that returns paginated lists. |
