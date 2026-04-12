@@ -1093,7 +1093,18 @@ export function IssueStockPage() {
                               const fullQty = li.quantity == null ? 1 : li.quantity;
                               const rawIssueQty = lineItemIssueQty[li.id];
                               const currentIssueQty = rawIssueQty == null ? fullQty : rawIssueQty;
-                              const extCoats = jc.coats.filter((ct) => ct.area === "external");
+                              const allExtCoats = jc.coats.filter((ct) => ct.area === "external");
+                              const hasIntermediateCoat = allExtCoats.some(
+                                (ct) => ct.coatRole === "intermediate",
+                              );
+                              const extCoats = allExtCoats
+                                .filter((ct) => !(hasIntermediateCoat && ct.coatRole === "final"))
+                                .map((ct) => {
+                                  if (hasIntermediateCoat && ct.coatRole === "intermediate") {
+                                    return { ...ct, coatRole: "final" as const };
+                                  }
+                                  return ct;
+                                });
                               const descUpper = itemLabel.toUpperCase();
                               const jcRubber = jc.hasInternalLining;
                               const hasRubber =
