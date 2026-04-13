@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useState } from "react";
 import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
 import type { InvoiceClarification, PriceChangeSummary } from "@/app/lib/api/stockControlApi";
+import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { formatDateZA } from "@/app/lib/datetime";
 import {
   useApproveInvoice,
@@ -432,7 +433,36 @@ export default function InvoiceDetailPage() {
           <div className="bg-white shadow rounded-lg overflow-x-auto">
             <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
               <h2 className="text-lg font-medium text-gray-900">Line Items</h2>
-              {canEdit && <span className="text-xs text-gray-400">Click a row to edit</span>}
+              <div className="flex items-center gap-3">
+                {canEdit &&
+                  (() => {
+                    const rawItems = invoice.items;
+                    const items = rawItems || [];
+                    const unmatchedCount = items.filter((i) => {
+                      const ms = i.matchStatus;
+                      return ms === "unmatched";
+                    }).length;
+                    if (unmatchedCount === 0) return null;
+                    return (
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          try {
+                            await stockControlApiClient.deleteUnmatchedInvoiceItems(invoiceId);
+                            await invoiceQuery.refetch();
+                          } catch (err) {
+                            const e = err instanceof Error ? err : new Error("Failed to delete");
+                            setError(e);
+                          }
+                        }}
+                        className="px-3 py-1.5 text-xs font-medium text-red-700 bg-red-50 border border-red-200 rounded-md hover:bg-red-100"
+                      >
+                        Delete All Unmatched ({unmatchedCount})
+                      </button>
+                    );
+                  })()}
+                {canEdit && <span className="text-xs text-gray-400">Click a row to edit</span>}
+              </div>
             </div>
             {invoice.items && invoice.items.length > 0 ? (
               <table className="min-w-full divide-y divide-gray-200">
