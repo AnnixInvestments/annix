@@ -1102,6 +1102,18 @@ export class InvoiceExtractionService {
     return savedItem;
   }
 
+  async removeItem(invoiceId: number, itemId: number): Promise<void> {
+    const item = await this.invoiceItemRepo.findOne({
+      where: { id: itemId, invoiceId },
+    });
+
+    if (!item) {
+      throw new Error(`Invoice item ${itemId} not found on invoice ${invoiceId}`);
+    }
+
+    await this.invoiceItemRepo.remove(item);
+  }
+
   async manualMatchInvoiceItem(
     invoiceId: number,
     itemId: number,
