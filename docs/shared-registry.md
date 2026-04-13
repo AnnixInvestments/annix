@@ -78,7 +78,7 @@ Host-app-agnostic inventory management module. Currently consumed by Stock Contr
 |---|---|---|
 | Module entry | `stock-management/stock-management.module.ts` | NestJS module registration. Imports: AuthModule, FeatureFlagsModule, StorageModule, NotificationsModule, NixModule. |
 | Entities (products) | `stock-management/entities/issuable-product.entity.ts` + children | Base `sm_issuable_product` + child tables: `sm_consumable_product`, `sm_paint_product`, `sm_rubber_roll`, `sm_rubber_offcut_stock`, `sm_solution_product` |
-| Entities (issuance) | `stock-management/entities/issuance-session.entity.ts` + children | Base `sm_issuance_session` + `sm_issuance_row` + per-type child rows |
+| Entities (issuance) | `stock-management/entities/issuance-session.entity.ts` + children | Base `sm_issuance_session` + `sm_issuance_row` + per-type child rows + `sm_issuance_item_coat_tracking` (per-line-item per-coat-type issued quantities) |
 | Entities (returns) | `stock-management/entities/return-session.entity.ts` + children | Base `sm_return_session` + `sm_rubber_offcut_return` + `sm_paint_return` + `sm_consumable_return` |
 | Entities (stock take) | `stock-management/entities/stock-take.entity.ts` + children | `sm_stock_take` + `sm_stock_take_line` + `sm_stock_take_adjustment` + `sm_stock_take_variance_category` |
 | Entities (FIFO) | `stock-management/entities/stock-purchase-batch.entity.ts` | `sm_stock_purchase_batch` + `sm_stock_movement_batch_consumption` |
