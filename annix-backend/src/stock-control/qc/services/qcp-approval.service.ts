@@ -12,6 +12,11 @@ import { Repository } from "typeorm";
 import { now, nowISO } from "../../../lib/datetime";
 import { S3StorageService } from "../../../storage/s3-storage.service";
 import { StockControlCompany } from "../../entities/stock-control-company.entity";
+import { StockControlRole, StockControlUser } from "../../entities/stock-control-user.entity";
+import {
+  NotificationActionType,
+  WorkflowNotification,
+} from "../../entities/workflow-notification.entity";
 import { CompanyEmailService } from "../../services/company-email.service";
 import { QcControlPlan } from "../entities/qc-control-plan.entity";
 import {
@@ -35,6 +40,10 @@ export class QcpApprovalService {
     private readonly planRepo: Repository<QcControlPlan>,
     @InjectRepository(StockControlCompany)
     private readonly companyRepo: Repository<StockControlCompany>,
+    @InjectRepository(StockControlUser)
+    private readonly userRepo: Repository<StockControlUser>,
+    @InjectRepository(WorkflowNotification)
+    private readonly notificationRepo: Repository<WorkflowNotification>,
     private readonly emailService: CompanyEmailService,
     private readonly s3StorageService: S3StorageService,
     private readonly configService: ConfigService,
@@ -328,6 +337,37 @@ export class QcpApprovalService {
           `,
           text: `Changes requested for QCP ${plan.qcpNumber || plan.id} by ${token.recipientEmail}.`,
         });
+      }
+
+      const qcpLabel = plan.qcpNumber || `QCP #${plan.id}`;
+      const partyLabel = roleLabelMap[token.partyRole] || token.partyRole;
+      const commentSummary = payload.overallComments || "";
+      const frontendUrl = this.configService.get<string>("FRONTEND_URL") || "http://localhost:3000";
+      const actionUrl = plan.jobCardId
+        ? `${frontendUrl}/stock-control/portal/job-cards/${plan.jobCardId}#qcp`
+        : null;
+
+      const managers = await this.userRepo.find({
+        where: [
+          { companyId: token.companyId, role: StockControlRole.MANAGER },
+          { companyId: token.companyId, role: StockControlRole.ADMIN },
+        ],
+      });
+
+      if (managers.length > 0) {
+        const notifications = managers.map((user) =>
+          this.notificationRepo.create({
+            companyId: token.companyId,
+            userId: user.id,
+            jobCardId: plan.jobCardId,
+            title: `QCP Changes Requested — ${qcpLabel}`,
+            message: `${token.recipientEmail} (${partyLabel}) has requested changes.${commentSummary ? ` "${commentSummary}"` : ""}`,
+            actionType: NotificationActionType.QCP_CHANGES_REQUESTED,
+            actionUrl,
+            senderName: token.recipientEmail,
+          }),
+        );
+        await this.notificationRepo.save(notifications);
       }
     }
 

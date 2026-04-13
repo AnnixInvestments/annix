@@ -1132,6 +1132,12 @@ export const useUpdateInvoiceItem = createMutationHook(
   [stockControlKeys.invoices.all],
 );
 
+export const useDeleteInvoiceItem = createMutationHook(
+  (params: { invoiceId: number; itemId: number }) =>
+    stockControlApiClient.deleteInvoiceItem(params.invoiceId, params.itemId),
+  [stockControlKeys.invoices.all],
+);
+
 export const useManualMatchInvoiceItem = createMutationHook(
   (params: { invoiceId: number; itemId: number; stockItemId: number }) =>
     stockControlApiClient.manualMatchInvoiceItem(

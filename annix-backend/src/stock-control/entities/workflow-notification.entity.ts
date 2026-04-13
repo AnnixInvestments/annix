@@ -27,6 +27,7 @@ export enum NotificationActionType {
   BACKGROUND_STEP_COMPLETED = "background_step_completed",
   DOCUMENT_ARRIVED = "document_arrived",
   QA_REJECTION_ESCALATION = "qa_rejection_escalation",
+  QCP_CHANGES_REQUESTED = "qcp_changes_requested",
 }
 
 @Entity("workflow_notifications")

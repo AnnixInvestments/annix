@@ -784,6 +784,7 @@ export {
   useDeleteEnvironmentalRecord,
   useDeleteGlossaryTerm,
   useDeleteInvoice,
+  useDeleteInvoiceItem,
   useDeleteJobCard,
   useDeleteLeaveRecord,
   useDeleteLineItem,

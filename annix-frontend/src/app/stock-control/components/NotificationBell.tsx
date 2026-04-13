@@ -127,8 +127,10 @@ export function NotificationBell() {
       background_step_completed: "Task Completed",
       stock_allocated: "Stock Allocated",
       dispatch_ready: "Ready for Dispatch",
+      qcp_changes_requested: "QCP Changes Requested",
     };
-    return labels[actionType] || actionType;
+    const matched = labels[actionType];
+    return matched || actionType;
   };
 
   const actionTypeColor = (actionType: string): string => {
@@ -144,8 +146,10 @@ export function NotificationBell() {
       background_step_completed: "bg-emerald-100 text-emerald-800",
       stock_allocated: "bg-blue-100 text-blue-800",
       dispatch_ready: "bg-purple-100 text-purple-800",
+      qcp_changes_requested: "bg-orange-100 text-orange-800",
     };
-    return colors[actionType] || "bg-gray-100 text-gray-800";
+    const matchedColor = colors[actionType];
+    return matchedColor || "bg-gray-100 text-gray-800";
   };
 
   return (

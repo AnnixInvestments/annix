@@ -45,4 +45,8 @@ export class CreateStockItemDto {
   @IsOptional()
   @IsString()
   rollNumber?: string;
+
+  @IsOptional()
+  @IsNumber()
+  locationId?: number | null;
 }

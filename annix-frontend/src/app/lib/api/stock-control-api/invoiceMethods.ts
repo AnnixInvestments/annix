@@ -45,6 +45,7 @@ declare module "./base" {
       itemId: number,
       stockItemId: number,
     ): Promise<SupplierInvoiceItem>;
+    deleteInvoiceItem(invoiceId: number, itemId: number): Promise<void>;
     deleteSupplierInvoice(id: number): Promise<void>;
     unlinkedInvoices(): Promise<SupplierInvoice[]>;
     suggestedDeliveryNotes(invoiceId: number): Promise<SuggestedDeliveryNote[]>;
@@ -130,6 +131,12 @@ proto.manualMatchInvoiceItem = async function (invoiceId, itemId, stockItemId) {
   return this.request(`/stock-control/invoices/${invoiceId}/items/${itemId}/match`, {
     method: "POST",
     body: JSON.stringify({ stockItemId }),
+  });
+};
+
+proto.deleteInvoiceItem = async function (invoiceId, itemId) {
+  await this.request(`/stock-control/invoices/${invoiceId}/items/${itemId}`, {
+    method: "DELETE",
   });
 };
 

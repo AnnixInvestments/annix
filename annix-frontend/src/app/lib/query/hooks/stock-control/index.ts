@@ -129,6 +129,7 @@ export {
   useDeleteDispatchLoadPhoto,
   useDeleteGlossaryTerm,
   useDeleteInvoice,
+  useDeleteInvoiceItem,
   useDeleteJobCard,
   useDeleteLineItem,
   useDeleteStaffMember,

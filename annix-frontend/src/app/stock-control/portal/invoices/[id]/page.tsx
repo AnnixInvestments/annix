@@ -8,6 +8,7 @@ import type { InvoiceClarification, PriceChangeSummary } from "@/app/lib/api/sto
 import { formatDateZA } from "@/app/lib/datetime";
 import {
   useApproveInvoice,
+  useDeleteInvoiceItem,
   useDeliveryNotes,
   useInvoiceDetail,
   useLinkInvoiceToDeliveryNote,
@@ -107,6 +108,7 @@ export default function InvoiceDetailPage() {
   const approveMutation = useApproveInvoice();
   const updateItemMutation = useUpdateInvoiceItem();
   const manualMatchMutation = useManualMatchInvoiceItem();
+  const deleteItemMutation = useDeleteInvoiceItem();
 
   const handleLinkDeliveryNote = async (deliveryNoteId?: number) => {
     const idToLink = deliveryNoteId || selectedDeliveryNoteId;
@@ -217,6 +219,16 @@ export default function InvoiceDetailPage() {
 
   const cancelEditing = () => {
     setEditingItemId(null);
+  };
+
+  const deleteItem = async (itemId: number) => {
+    try {
+      await deleteItemMutation.mutateAsync({ invoiceId, itemId });
+      setEditingItemId(null);
+      await invoiceQuery.refetch();
+    } catch (err) {
+      setError(err instanceof Error ? err : new Error("Failed to delete item"));
+    }
   };
 
   const saveItemEdit = async (itemId: number) => {
@@ -673,6 +685,14 @@ export default function InvoiceDetailPage() {
                                   className="px-2 py-1 text-xs text-gray-600 bg-gray-100 rounded hover:bg-gray-200"
                                 >
                                   Cancel
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => deleteItem(item.id)}
+                                  disabled={deleteItemMutation.isPending}
+                                  className="px-2 py-1 text-xs font-medium text-white bg-red-600 rounded hover:bg-red-700 disabled:opacity-50"
+                                >
+                                  Delete
                                 </button>
                               </div>
                             ) : (

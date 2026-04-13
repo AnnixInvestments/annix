@@ -636,13 +636,15 @@ export class SageJcDumpService {
       }> = [];
       const pendingSpecLines: string[] = [];
       let collectingSpecs = false;
+      let lastSpec: string | null = null;
 
       const flushGroup = () => {
-        const specText = pendingSpecLines.length > 0 ? pendingSpecLines.join("\n") : null;
+        const specText = pendingSpecLines.length > 0 ? pendingSpecLines.join("\n") : lastSpec;
         pendingItems.forEach((item) => {
           lineItems.push({ ...item, specNotes: specText });
         });
-        if (specText) {
+        if (pendingSpecLines.length > 0) {
+          lastSpec = pendingSpecLines.join("\n");
           pendingSpecLines.forEach((line) => {
             specNotes.push(line);
           });
