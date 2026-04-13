@@ -32,6 +32,8 @@ interface ExtractedLineItem {
   widthMm?: number;
   lengthM?: number;
   weightKg?: number;
+  volumeLitersPerPack?: number;
+  isPaint?: boolean;
 }
 
 function extractedLineItems(delivery: DeliveryNote): ExtractedLineItem[] {
@@ -374,7 +376,19 @@ export default function DeliveryDetailPage() {
                   scope="col"
                   className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
                 >
+                  L/Tin
+                </th>
+                <th
+                  scope="col"
+                  className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
                   Qty Received
+                </th>
+                <th
+                  scope="col"
+                  className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
+                  Total L
                 </th>
               </tr>
             </thead>
@@ -384,6 +398,9 @@ export default function DeliveryDetailPage() {
                 const stockSku = item.stockItem ? item.stockItem.sku : null;
                 const rollNum = item.rollNumber;
                 const weightVal = item.weightKg;
+                const packLitres = item.stockItem ? item.stockItem.packSizeLitres : null;
+                const packVal = packLitres ? Number(packLitres) : null;
+                const totalLitres = packVal ? packVal * item.quantityReceived : null;
                 return (
                   <tr key={item.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 text-sm font-medium text-gray-900">
@@ -407,8 +424,14 @@ export default function DeliveryDetailPage() {
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-600">
                       {weightVal ? `${weightVal} kg` : "-"}
                     </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-600">
+                      {packVal ? `${packVal}L` : "-"}
+                    </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-semibold text-gray-900">
                       {item.quantityReceived}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-semibold text-teal-700">
+                      {totalLitres ? `${totalLitres.toFixed(1)}L` : "-"}
                     </td>
                   </tr>
                 );
@@ -489,7 +512,19 @@ export default function DeliveryDetailPage() {
                       scope="col"
                       className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
                     >
+                      L/Tin
+                    </th>
+                    <th
+                      scope="col"
+                      className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
+                    >
                       Qty
+                    </th>
+                    <th
+                      scope="col"
+                      className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
+                    >
+                      Total L
                     </th>
                     <th
                       scope="col"
@@ -506,38 +541,62 @@ export default function DeliveryDetailPage() {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {extractedLineItems(delivery).map((item, idx) => (
-                    <tr key={idx} className="hover:bg-gray-50">
-                      <td className="px-4 py-4 text-sm font-medium text-gray-900">
-                        {item.description || "-"}
-                        {item.rollNumber && (
-                          <span className="ml-2 text-xs text-gray-500">
-                            Roll: {item.rollNumber}
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500 font-mono">
-                        {item.productCode || item.compoundCode || item.itemCode || item.sku || "-"}
-                      </td>
-                      <td className="px-4 py-4 whitespace-nowrap text-sm text-right font-semibold text-gray-900">
-                        {item.quantity || "-"} {item.unitOfMeasure || ""}
-                      </td>
-                      <td className="px-4 py-4 whitespace-nowrap text-sm text-right text-gray-600">
-                        {item.thicknessMm || item.widthMm || item.lengthM ? (
-                          <span>
-                            {item.thicknessMm && `${item.thicknessMm}mm`}
-                            {item.widthMm && ` × ${item.widthMm}mm`}
-                            {item.lengthM && ` × ${item.lengthM}m`}
-                          </span>
-                        ) : (
-                          "-"
-                        )}
-                      </td>
-                      <td className="px-4 py-4 whitespace-nowrap text-sm text-right font-semibold text-gray-900">
-                        {item.weightKg ? `${item.weightKg} kg` : "-"}
-                      </td>
-                    </tr>
-                  ))}
+                  {extractedLineItems(delivery).map((item, idx) => {
+                    const volPerPack = item.volumeLitersPerPack;
+                    const qty = item.quantity;
+                    const totalL = volPerPack && qty ? volPerPack * qty : null;
+                    const rawDesc = item.description;
+                    const desc = rawDesc || "-";
+                    const rollNum = item.rollNumber;
+                    const rawPc = item.productCode;
+                    const rawCc = item.compoundCode;
+                    const rawIc = item.itemCode;
+                    const rawSku = item.sku;
+                    const code = rawPc || rawCc || rawIc || rawSku || "-";
+                    const rawUom = item.unitOfMeasure;
+                    const uom = rawUom || "";
+                    const thk = item.thicknessMm;
+                    const wid = item.widthMm;
+                    const len = item.lengthM;
+                    const wkg = item.weightKg;
+                    const hasDims = thk || wid || len;
+                    return (
+                      <tr key={idx} className="hover:bg-gray-50">
+                        <td className="px-4 py-4 text-sm font-medium text-gray-900">
+                          {desc}
+                          {rollNum && (
+                            <span className="ml-2 text-xs text-gray-500">Roll: {rollNum}</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500 font-mono">
+                          {code}
+                        </td>
+                        <td className="px-4 py-4 whitespace-nowrap text-sm text-right text-gray-600">
+                          {volPerPack ? `${volPerPack}L` : "-"}
+                        </td>
+                        <td className="px-4 py-4 whitespace-nowrap text-sm text-right font-semibold text-gray-900">
+                          {qty || "-"} {uom}
+                        </td>
+                        <td className="px-4 py-4 whitespace-nowrap text-sm text-right font-semibold text-teal-700">
+                          {totalL ? `${totalL.toFixed(1)}L` : "-"}
+                        </td>
+                        <td className="px-4 py-4 whitespace-nowrap text-sm text-right text-gray-600">
+                          {hasDims ? (
+                            <span>
+                              {thk && `${thk}mm`}
+                              {wid && ` × ${wid}mm`}
+                              {len && ` × ${len}m`}
+                            </span>
+                          ) : (
+                            "-"
+                          )}
+                        </td>
+                        <td className="px-4 py-4 whitespace-nowrap text-sm text-right font-semibold text-gray-900">
+                          {wkg ? `${wkg} kg` : "-"}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
