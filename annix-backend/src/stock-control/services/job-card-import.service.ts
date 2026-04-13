@@ -459,6 +459,7 @@ export class JobCardImportService {
     private readonly cpoService: CpoService,
     private readonly versionService: JobCardVersionService,
     @Inject(STORAGE_SERVICE) private readonly storageService: IStorageService,
+    @Inject(forwardRef(() => QcMeasurementService))
     private readonly qcMeasurementService: QcMeasurementService,
   ) {}
 

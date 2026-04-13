@@ -5,6 +5,7 @@ import { JobCardCoatingAnalysis } from "../../entities/coating-analysis.entity";
 import { CustomerPurchaseOrder } from "../../entities/customer-purchase-order.entity";
 import { JobCard } from "../../entities/job-card.entity";
 import { StockControlCompany } from "../../entities/stock-control-company.entity";
+import { CertificateService } from "../../services/certificate.service";
 import { QcBlastProfile } from "../entities/qc-blast-profile.entity";
 import { QcControlPlan } from "../entities/qc-control-plan.entity";
 import { QcDefelskoBatch } from "../entities/qc-defelsko-batch.entity";
@@ -89,6 +90,10 @@ describe("QcMeasurementService", () => {
         { provide: getRepositoryToken(StockControlCompany), useValue: companyRepo },
         { provide: getRepositoryToken(CustomerPurchaseOrder), useValue: mockRepo() },
         { provide: WORK_ITEM_PROVIDER, useValue: mockWorkItemProvider },
+        {
+          provide: CertificateService,
+          useValue: { findByJobCard: jest.fn().mockResolvedValue([]) },
+        },
       ],
     }).compile();
 

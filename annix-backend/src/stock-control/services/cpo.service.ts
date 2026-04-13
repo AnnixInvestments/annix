@@ -65,6 +65,7 @@ export class CpoService {
     @Inject(forwardRef(() => CoatingAnalysisService))
     private readonly coatingAnalysisService: CoatingAnalysisService,
     private readonly notificationService: WorkflowNotificationService,
+    @Inject(forwardRef(() => QcMeasurementService))
     private readonly qcMeasurementService: QcMeasurementService,
   ) {}
 
