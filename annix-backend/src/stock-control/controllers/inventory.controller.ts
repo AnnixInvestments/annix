@@ -97,7 +97,7 @@ export class InventoryController {
     );
   }
 
-  @StockControlRoles("manager", "admin")
+  @StockControlRoles("accounts", "manager", "admin")
   @Get("duplicates")
   @ApiOperation({ summary: "Detect duplicate stock items that may need merging" })
   async detectDuplicates(@Req() req: any) {
@@ -191,7 +191,7 @@ export class InventoryController {
     return this.inventoryService.deleteSupplierSkuMapping(id);
   }
 
-  @StockControlRoles("manager", "admin")
+  @StockControlRoles("accounts", "manager", "admin")
   @Post("merge")
   @ApiOperation({ summary: "Merge duplicate stock items into a single target item" })
   async mergeItems(

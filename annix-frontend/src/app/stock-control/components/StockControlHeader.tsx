@@ -78,6 +78,16 @@ export function StockControlHeader() {
 
   const isGroupActive = useCallback(
     (groupName: string) => {
+      const directItems = visibleNavItems.filter((item) => {
+        const group = item.group;
+        return !group || group === "hidden";
+      });
+      const directItemIsActive = directItems.some((item) => {
+        const href = item.href;
+        if (href === "/stock-control/portal/dashboard") return pathname === href;
+        return pathname.startsWith(href);
+      });
+      if (directItemIsActive) return false;
       const groupItems = visibleNavItems.filter((item) => item.group === groupName);
       const hubPath = NAV_GROUP_HUB_PATHS[groupName];
       const itemIsActive = (href: string) =>
@@ -426,34 +436,40 @@ export function StockControlHeader() {
         </div>
       </header>
 
-      {isPreviewActive && (
-        <div className="bg-amber-50 border-b border-amber-200 px-4 py-1.5 flex items-center justify-center gap-2">
-          <svg
-            className="w-4 h-4 text-amber-600"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-            />
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
-            />
-          </svg>
-          <span className="text-xs font-medium text-amber-700">
-            Previewing as {viewAsUser?.name} (
-            {companyRoles.find((r) => r.key === effectiveRole)?.label || effectiveRole}) — pages,
-            actions, and workflow reflect this user&apos;s view
-          </span>
-        </div>
-      )}
+      {isPreviewActive &&
+        (() => {
+          const viewAsName = viewAsUser?.name;
+          const roleMatch = companyRoles.find((r) => r.key === effectiveRole);
+          const roleLabel = roleMatch?.label;
+          const displayRole = roleLabel || effectiveRole;
+          return (
+            <div className="bg-amber-50 border-b border-amber-200 px-4 py-1.5 flex items-center justify-center gap-2">
+              <svg
+                className="w-4 h-4 text-amber-600"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                />
+              </svg>
+              <span className="text-xs font-medium text-amber-700">
+                Previewing as {viewAsName} ({displayRole}) — pages, actions, and workflow reflect
+                this user&apos;s view
+              </span>
+            </div>
+          );
+        })()}
 
       <GlobalSearchModal isOpen={searchOpen} onClose={closeSearch} />
     </>
