@@ -104,6 +104,11 @@ export class StockAllocationService {
           ? Number(matchedItem.packSizeLitres)
           : null
         : null;
+      const rawQuantity = matchedItem ? Number(matchedItem.quantity) : 0;
+      const uom = matchedItem ? matchedItem.unitOfMeasure : null;
+      const isLitreUnit = uom === "ltr" || uom === "L" || uom === "litre";
+      const availableLitres =
+        isLitreUnit || !packSizeLitres ? rawQuantity : rawQuantity * packSizeLitres;
       const remainingLitres = leftover
         ? Math.max(0, assessItem.required - Number(leftover.quantity))
         : assessItem.required;
@@ -119,7 +124,7 @@ export class StockAllocationService {
         componentGroup: matchedItem?.componentGroup || null,
         componentRole: matchedItem?.componentRole || null,
         mixRatio: matchedItem?.mixRatio || null,
-        availableQuantity: matchedItem ? Number(matchedItem.quantity) : 0,
+        availableQuantity: availableLitres,
         leftoverSuggestion: leftover
           ? {
               stockItemId: leftover.id,
