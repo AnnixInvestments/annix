@@ -779,6 +779,11 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
             firstIncompleteIdx === -1 ? branch.bgSteps.length : firstIncompleteIdx;
 
           if (progressIdx < btmCount) {
+            paths.push({
+              key: `loop-progress-entry-${branch.triggerFgKey}`,
+              color: activeColor,
+              d: `M ${sx - r} ${bottomEdge} Q ${sx} ${bottomEdge} ${sx} ${bottomEdge + r} L ${sx} ${sy - r} Q ${sx} ${sy} ${sx - r} ${sy}`,
+            });
             const startPos = startPositions[progressIdx];
             if (startPos) {
               paths.push({

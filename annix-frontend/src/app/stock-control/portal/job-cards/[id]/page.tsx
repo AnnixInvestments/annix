@@ -682,14 +682,20 @@ export default function JobCardDetailPage() {
       const trigger = bg.triggerAfterStep || "__root__";
       const originFgIdx = resolveOriginFgIdx(trigger);
       const isColored = isInColoredBranch(bg.stepKey);
-      const effectiveOrigin = isColored ? originFgIdx + 1 : originFgIdx;
+      const coloredAtTrigger = isColored && originFgIdx === currentFgIdx;
+      const coloredUnlocked = coloredAtTrigger && currentStepActionCompleted;
+      const effectiveOrigin = coloredUnlocked
+        ? originFgIdx
+        : isColored
+          ? originFgIdx + 1
+          : originFgIdx;
 
       const isNonBlocking = bg.rejoinAtStep !== null;
 
       if (isAdminView) {
-        if (effectiveOrigin >= currentFgIdx && !isNonBlocking) return false;
+        if (effectiveOrigin >= currentFgIdx && !isNonBlocking && !coloredUnlocked) return false;
       } else {
-        if (effectiveOrigin >= currentFgIdx && !isNonBlocking) return false;
+        if (effectiveOrigin >= currentFgIdx && !isNonBlocking && !coloredUnlocked) return false;
 
         if (hasIncompleteColored && !isInColoredBranch(bg.stepKey) && !isNonBlocking) {
           const originKey = fgKeys[resolveOriginFgIdx(trigger)];
