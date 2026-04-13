@@ -450,229 +450,245 @@ export default function InvoiceDetailPage() {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {invoice.items.map((item) => {
-                    const isEditing = editingItemId === item.id;
-                    const itemUnitType = item.unitType;
-                    const itemDiscountPercent = item.discountPercent;
-                    const itemStockItem = item.stockItem;
+                  {[...invoice.items]
+                    .sort((a, b) => a.lineNumber - b.lineNumber)
+                    .map((item) => {
+                      const isEditing = editingItemId === item.id;
+                      const itemUnitType = item.unitType;
+                      const itemDiscountPercent = item.discountPercent;
+                      const itemStockItem = item.stockItem;
 
-                    return (
-                      <tr
-                        key={item.id}
-                        className={`${canEdit && !isEditing ? "cursor-pointer hover:bg-gray-50" : ""} ${isEditing ? "bg-teal-50" : ""}`}
-                        onClick={() => {
-                          if (canEdit && !isEditing && !editingItemId) startEditing(item);
-                        }}
-                      >
-                        <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {item.lineNumber}
-                        </td>
-                        <td className="px-4 py-4 text-sm text-gray-900">
-                          {isEditing ? (
-                            <input
-                              type="text"
-                              value={editValues.description}
-                              onChange={(e) =>
-                                setEditValues((prev) => ({ ...prev, description: e.target.value }))
-                              }
-                              onClick={(e) => e.stopPropagation()}
-                              className="w-full px-2 py-1 text-sm border border-teal-300 rounded focus:ring-1 focus:ring-teal-500 focus:border-teal-500"
-                            />
-                          ) : (
-                            <div>{item.extractedDescription}</div>
-                          )}
-                          {item.extractedSku && (
-                            <div className="text-xs text-gray-500">SKU: {item.extractedSku}</div>
-                          )}
-                          {(item.isPartA || item.isPartB) && (
-                            <span
-                              className={`inline-flex mt-1 px-2 py-0.5 text-xs rounded-full ${item.isPartA ? "bg-blue-100 text-blue-800" : "bg-orange-100 text-orange-800"}`}
-                            >
-                              {item.isPartA ? "Part A" : "Part B"}
-                            </span>
-                          )}
-                        </td>
-                        <td className="px-4 py-4 whitespace-nowrap text-sm text-right text-gray-900">
-                          {isEditing ? (
-                            <input
-                              type="number"
-                              value={editValues.quantity}
-                              onChange={(e) =>
-                                setEditValues((prev) => ({ ...prev, quantity: e.target.value }))
-                              }
-                              onClick={(e) => e.stopPropagation()}
-                              className="w-16 px-2 py-1 text-sm border border-teal-300 rounded text-right focus:ring-1 focus:ring-teal-500 focus:border-teal-500"
-                              min={0}
-                            />
-                          ) : (
-                            item.quantity
-                          )}
-                        </td>
-                        <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {isEditing ? (
-                            <select
-                              value={editValues.unitType}
-                              onChange={(e) =>
-                                setEditValues((prev) => ({ ...prev, unitType: e.target.value }))
-                              }
-                              onClick={(e) => e.stopPropagation()}
-                              className="w-20 px-1 py-1 text-sm border border-teal-300 rounded focus:ring-1 focus:ring-teal-500 focus:border-teal-500"
-                            >
-                              {[
-                                "each",
-                                "ltr",
-                                "kg",
-                                "roll",
-                                "m",
-                                "m2",
-                                "pack",
-                                "set",
-                                "pair",
-                                "box",
-                                "drum",
-                                "pail",
-                                "can",
-                                "tin",
-                                "bag",
-                                "sheet",
-                                "length",
-                                "bundle",
-                              ].map((u) => (
-                                <option key={u} value={u}>
-                                  {u}
-                                </option>
-                              ))}
-                            </select>
-                          ) : (
-                            <span className="text-gray-400 text-xs">
-                              {(() => {
-                                if (itemUnitType) return itemUnitType;
-                                const uom = itemStockItem ? itemStockItem.unitOfMeasure : null;
-                                return uom ? uom : "-";
-                              })()}
-                            </span>
-                          )}
-                        </td>
-                        <td className="px-4 py-4 whitespace-nowrap text-sm text-right text-gray-900">
-                          {isEditing ? (
-                            <input
-                              type="number"
-                              value={editValues.unitPrice}
-                              onChange={(e) =>
-                                setEditValues((prev) => ({ ...prev, unitPrice: e.target.value }))
-                              }
-                              onClick={(e) => e.stopPropagation()}
-                              className="w-24 px-2 py-1 text-sm border border-teal-300 rounded text-right focus:ring-1 focus:ring-teal-500 focus:border-teal-500"
-                              min={0}
-                              step="0.01"
-                            />
-                          ) : (
-                            <>
-                              {item.unitPrice
-                                ? `R${Number(item.unitPrice).toLocaleString("en-ZA", { minimumFractionDigits: 2 })}`
-                                : "-"}
-                              {Number(itemDiscountPercent) > 0 && (
-                                <div className="text-xs text-green-600 font-medium">
-                                  {itemDiscountPercent}% disc.
-                                </div>
-                              )}
-                            </>
-                          )}
-                        </td>
-                        <td className="px-4 py-4 text-sm text-gray-900">
-                          {isEditing ? (
-                            <div className="relative" onClick={(e) => e.stopPropagation()}>
+                      return (
+                        <tr
+                          key={item.id}
+                          className={`${canEdit && !isEditing ? "cursor-pointer hover:bg-gray-50" : ""} ${isEditing ? "bg-teal-50" : ""}`}
+                          onClick={() => {
+                            if (canEdit && !isEditing && !editingItemId) startEditing(item);
+                          }}
+                        >
+                          <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {item.lineNumber}
+                          </td>
+                          <td className="px-4 py-4 text-sm text-gray-900">
+                            {isEditing ? (
                               <input
                                 type="text"
-                                placeholder="Search stock items..."
-                                value={stockSearchQuery}
-                                onChange={(e) => setStockSearchQuery(e.target.value)}
+                                value={editValues.description}
+                                onChange={(e) =>
+                                  setEditValues((prev) => ({
+                                    ...prev,
+                                    description: e.target.value,
+                                  }))
+                                }
+                                onClick={(e) => e.stopPropagation()}
                                 className="w-full px-2 py-1 text-sm border border-teal-300 rounded focus:ring-1 focus:ring-teal-500 focus:border-teal-500"
                               />
-                              {editStockItemId && (
-                                <div className="mt-1 text-xs text-teal-700">
-                                  {(() => {
-                                    const found = stockItems.find((s) => s.id === editStockItemId);
-                                    const foundName = found ? found.name : null;
-                                    return foundName ? foundName : "Selected";
-                                  })()}
-                                </div>
-                              )}
-                              {stockSearchQuery.length >= 2 && (
-                                <div className="absolute z-50 w-72 mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-48 overflow-y-auto">
-                                  {stockItems
-                                    .filter((s) => {
-                                      const q = stockSearchQuery.toLowerCase();
-                                      return (
-                                        (s.name || "").toLowerCase().includes(q) ||
-                                        (s.sku || "").toLowerCase().includes(q)
+                            ) : (
+                              <div>{item.extractedDescription}</div>
+                            )}
+                            {item.extractedSku && (
+                              <div className="text-xs text-gray-500">SKU: {item.extractedSku}</div>
+                            )}
+                            {(() => {
+                              const partA = item.isPartA;
+                              const partB = item.isPartB;
+                              if (!partA && !partB) return null;
+                              return (
+                                <span
+                                  className={`inline-flex mt-1 px-2 py-0.5 text-xs rounded-full ${partA ? "bg-blue-100 text-blue-800" : "bg-orange-100 text-orange-800"}`}
+                                >
+                                  {partA ? "Part A" : "Part B"}
+                                </span>
+                              );
+                            })()}
+                          </td>
+                          <td className="px-4 py-4 whitespace-nowrap text-sm text-right text-gray-900">
+                            {isEditing ? (
+                              <input
+                                type="number"
+                                value={editValues.quantity}
+                                onChange={(e) =>
+                                  setEditValues((prev) => ({ ...prev, quantity: e.target.value }))
+                                }
+                                onClick={(e) => e.stopPropagation()}
+                                className="w-16 px-2 py-1 text-sm border border-teal-300 rounded text-right focus:ring-1 focus:ring-teal-500 focus:border-teal-500"
+                                min={0}
+                              />
+                            ) : (
+                              item.quantity
+                            )}
+                          </td>
+                          <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {isEditing ? (
+                              <select
+                                value={editValues.unitType}
+                                onChange={(e) =>
+                                  setEditValues((prev) => ({ ...prev, unitType: e.target.value }))
+                                }
+                                onClick={(e) => e.stopPropagation()}
+                                className="w-20 px-1 py-1 text-sm border border-teal-300 rounded focus:ring-1 focus:ring-teal-500 focus:border-teal-500"
+                              >
+                                {[
+                                  "each",
+                                  "ltr",
+                                  "kg",
+                                  "roll",
+                                  "m",
+                                  "m2",
+                                  "pack",
+                                  "set",
+                                  "pair",
+                                  "box",
+                                  "drum",
+                                  "pail",
+                                  "can",
+                                  "tin",
+                                  "bag",
+                                  "sheet",
+                                  "length",
+                                  "bundle",
+                                ].map((u) => (
+                                  <option key={u} value={u}>
+                                    {u}
+                                  </option>
+                                ))}
+                              </select>
+                            ) : (
+                              <span className="text-gray-400 text-xs">
+                                {(() => {
+                                  if (itemUnitType) return itemUnitType;
+                                  const uom = itemStockItem ? itemStockItem.unitOfMeasure : null;
+                                  return uom ? uom : "-";
+                                })()}
+                              </span>
+                            )}
+                          </td>
+                          <td className="px-4 py-4 whitespace-nowrap text-sm text-right text-gray-900">
+                            {isEditing ? (
+                              <input
+                                type="number"
+                                value={editValues.unitPrice}
+                                onChange={(e) =>
+                                  setEditValues((prev) => ({ ...prev, unitPrice: e.target.value }))
+                                }
+                                onClick={(e) => e.stopPropagation()}
+                                className="w-24 px-2 py-1 text-sm border border-teal-300 rounded text-right focus:ring-1 focus:ring-teal-500 focus:border-teal-500"
+                                min={0}
+                                step="0.01"
+                              />
+                            ) : (
+                              <>
+                                {item.unitPrice
+                                  ? `R${Number(item.unitPrice).toLocaleString("en-ZA", { minimumFractionDigits: 2 })}`
+                                  : "-"}
+                                {Number(itemDiscountPercent) > 0 && (
+                                  <div className="text-xs text-green-600 font-medium">
+                                    {itemDiscountPercent}% disc.
+                                  </div>
+                                )}
+                              </>
+                            )}
+                          </td>
+                          <td className="px-4 py-4 text-sm text-gray-900">
+                            {isEditing ? (
+                              <div className="relative" onClick={(e) => e.stopPropagation()}>
+                                <input
+                                  type="text"
+                                  placeholder="Search stock items..."
+                                  value={stockSearchQuery}
+                                  onChange={(e) => setStockSearchQuery(e.target.value)}
+                                  className="w-full px-2 py-1 text-sm border border-teal-300 rounded focus:ring-1 focus:ring-teal-500 focus:border-teal-500"
+                                />
+                                {editStockItemId && (
+                                  <div className="mt-1 text-xs text-teal-700">
+                                    {(() => {
+                                      const found = stockItems.find(
+                                        (s) => s.id === editStockItemId,
                                       );
-                                    })
-                                    .slice(0, 10)
-                                    .map((s) => (
-                                      <button
-                                        key={s.id}
-                                        type="button"
-                                        onClick={() => {
-                                          setEditStockItemId(s.id);
-                                          setStockSearchQuery("");
-                                        }}
-                                        className={`w-full text-left px-3 py-2 text-sm hover:bg-teal-50 ${editStockItemId === s.id ? "bg-teal-100" : ""}`}
-                                      >
-                                        <div className="font-medium">{s.name}</div>
-                                        {s.sku && (
-                                          <div className="text-xs text-gray-500">{s.sku}</div>
-                                        )}
-                                      </button>
-                                    ))}
-                                </div>
-                              )}
-                            </div>
-                          ) : itemStockItem ? (
-                            <div>
-                              <div>{itemStockItem.name}</div>
-                              <div className="text-xs text-gray-500">{itemStockItem.sku}</div>
-                            </div>
-                          ) : (
-                            <span className="text-gray-400">-</span>
-                          )}
-                        </td>
-                        <td className="px-4 py-4 whitespace-nowrap">
-                          {isEditing ? (
-                            <div
-                              className="flex items-center gap-1"
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              <button
-                                type="button"
-                                onClick={() => saveItemEdit(item.id)}
-                                disabled={isSavingItem}
-                                className="px-2 py-1 text-xs font-medium text-white bg-teal-600 rounded hover:bg-teal-700 disabled:opacity-50"
+                                      const foundName = found ? found.name : null;
+                                      return foundName ? foundName : "Selected";
+                                    })()}
+                                  </div>
+                                )}
+                                {stockSearchQuery.length >= 2 && (
+                                  <div className="absolute z-50 w-72 mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-48 overflow-y-auto">
+                                    {stockItems
+                                      .filter((s) => {
+                                        const q = stockSearchQuery.toLowerCase();
+                                        const nameRaw = s.name;
+                                        const skuRaw = s.sku;
+                                        const sName = nameRaw || "";
+                                        const sSku = skuRaw || "";
+                                        return (
+                                          sName.toLowerCase().includes(q) ||
+                                          sSku.toLowerCase().includes(q)
+                                        );
+                                      })
+                                      .slice(0, 10)
+                                      .map((s) => (
+                                        <button
+                                          key={s.id}
+                                          type="button"
+                                          onClick={() => {
+                                            setEditStockItemId(s.id);
+                                            setStockSearchQuery("");
+                                          }}
+                                          className={`w-full text-left px-3 py-2 text-sm hover:bg-teal-50 ${editStockItemId === s.id ? "bg-teal-100" : ""}`}
+                                        >
+                                          <div className="font-medium">{s.name}</div>
+                                          {s.sku && (
+                                            <div className="text-xs text-gray-500">{s.sku}</div>
+                                          )}
+                                        </button>
+                                      ))}
+                                  </div>
+                                )}
+                              </div>
+                            ) : itemStockItem ? (
+                              <div>
+                                <div>{itemStockItem.name}</div>
+                                <div className="text-xs text-gray-500">{itemStockItem.sku}</div>
+                              </div>
+                            ) : (
+                              <span className="text-gray-400">-</span>
+                            )}
+                          </td>
+                          <td className="px-4 py-4 whitespace-nowrap">
+                            {isEditing ? (
+                              <div
+                                className="flex items-center gap-1"
+                                onClick={(e) => e.stopPropagation()}
                               >
-                                {isSavingItem ? "..." : "Save"}
-                              </button>
-                              <button
-                                type="button"
-                                onClick={cancelEditing}
-                                className="px-2 py-1 text-xs text-gray-600 bg-gray-100 rounded hover:bg-gray-200"
+                                <button
+                                  type="button"
+                                  onClick={() => saveItemEdit(item.id)}
+                                  disabled={isSavingItem}
+                                  className="px-2 py-1 text-xs font-medium text-white bg-teal-600 rounded hover:bg-teal-700 disabled:opacity-50"
+                                >
+                                  {isSavingItem ? "..." : "Save"}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={cancelEditing}
+                                  className="px-2 py-1 text-xs text-gray-600 bg-gray-100 rounded hover:bg-gray-200"
+                                >
+                                  Cancel
+                                </button>
+                              </div>
+                            ) : (
+                              <span
+                                className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${(() => {
+                                  const mc = MATCH_STATUS_COLORS[item.matchStatus];
+                                  return mc ? mc : "bg-gray-100 text-gray-800";
+                                })()}`}
                               >
-                                Cancel
-                              </button>
-                            </div>
-                          ) : (
-                            <span
-                              className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${(() => {
-                                const mc = MATCH_STATUS_COLORS[item.matchStatus];
-                                return mc ? mc : "bg-gray-100 text-gray-800";
-                              })()}`}
-                            >
-                              {item.matchStatus.replace(/_/g, " ")}
-                            </span>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })}
+                                {item.matchStatus.replace(/_/g, " ")}
+                              </span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
                 </tbody>
               </table>
             ) : (
