@@ -41,6 +41,7 @@ describe("InvoicesController", () => {
 
     const mockExtractionService = {
       updateInvoiceItem: jest.fn(),
+      removeItem: jest.fn(),
     };
 
     const mockSageAdapter = {
