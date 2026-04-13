@@ -102,7 +102,8 @@ const resolveBgChainFlat = (
   bgByTrigger: Record<string, BackgroundStepStatus[]>,
   bgKeySet: Set<string>,
 ): BackgroundStepStatus[] => {
-  const direct = (bgByTrigger[trigger] || []).filter((bg) => bg.rejoinAtStep === null);
+  const triggerEntries = bgByTrigger[trigger];
+  const direct = (triggerEntries || []).filter((bg) => bg.rejoinAtStep === null);
   return direct.reduce<BackgroundStepStatus[]>((chain, bg) => {
     const rest = bgKeySet.has(bg.stepKey)
       ? resolveBgChainFlat(bg.stepKey, bgByTrigger, bgKeySet)
@@ -297,7 +298,8 @@ const collectBranches = (
   };
 
   const resolveBgChain = (trigger: string): BackgroundStepStatus[] => {
-    const direct = bgByTrigger[trigger] || [];
+    const triggerEntries = bgByTrigger[trigger];
+    const direct = triggerEntries || [];
     return direct.reduce<BackgroundStepStatus[]>((chain, bg) => {
       const rest = bgStepKeySet.has(bg.stepKey) ? resolveBgChain(bg.stepKey) : [];
       return [...chain, bg, ...rest];
@@ -305,7 +307,8 @@ const collectBranches = (
   };
 
   return allSteps.reduce<BranchSegment[]>((branches, step, index) => {
-    const directChildren = bgByTrigger[step.key] || [];
+    const stepEntries = bgByTrigger[step.key];
+    const directChildren = stepEntries || [];
     if (directChildren.length === 0) return branches;
 
     const nonBypass = directChildren.filter((bg) => bg.rejoinAtStep === null);
@@ -565,9 +568,11 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
         if (!triggerNode) return acc;
 
         const rejoinKey = bp.rejoinAtStep || "";
+        const rejoinRef = bgNodeRefs.current[rejoinKey];
+        const rejoinCustomRef = bgNodeRefs.current[`custom_${rejoinKey}`];
         const rejoinNode =
-          bgNodeRefs.current[rejoinKey] ||
-          bgNodeRefs.current[`custom_${rejoinKey}`] ||
+          rejoinRef ||
+          rejoinCustomRef ||
           container.querySelector<HTMLDivElement>(
             `[data-bg-step="${rejoinKey}"], [data-bg-step="custom_${rejoinKey}"]`,
           );
@@ -581,7 +586,8 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
           : triggerX + 100;
 
         const groupKey = `${bp.triggerAfterStep}→${rejoinKey}`;
-        const existing = acc[groupKey] || { triggerX, rejoinX, steps: [] };
+        const accEntry = acc[groupKey];
+        const existing = accEntry || { triggerX, rejoinX, steps: [] };
         return { ...acc, [groupKey]: { ...existing, steps: [...existing.steps, bp] } };
       }, {});
 
@@ -646,9 +652,11 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
           if (!drawnMergeLines.has(mergeLineKey)) {
             drawnMergeLines.add(mergeLineKey);
 
+            const mergeRejoinRef = bgNodeRefs.current[rejoinKey];
+            const mergeRejoinCustomRef = bgNodeRefs.current[`custom_${rejoinKey}`];
             const rejoinNode =
-              bgNodeRefs.current[rejoinKey] ||
-              bgNodeRefs.current[`custom_${rejoinKey}`] ||
+              mergeRejoinRef ||
+              mergeRejoinCustomRef ||
               container.querySelector<HTMLDivElement>(
                 `[data-bg-step="${rejoinKey}"], [data-bg-step="custom_${rejoinKey}"]`,
               );
@@ -769,38 +777,49 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
             d: `M ${sx - r} ${bottomEdge} Q ${sx} ${bottomEdge} ${sx} ${bottomEdge + r} L ${sx} ${sy - r} Q ${sx} ${sy} ${sx - r} ${sy}`,
           });
 
-          const activeTopIdx = branch.bgSteps.findIndex(
-            (b, i) => i >= btmCount && i < totalSteps - btmCount && b.completedAt === null,
-          );
-          const progressTopEl =
-            activeTopIdx >= 0 ? bgNodeRefs.current[branch.bgSteps[activeTopIdx].stepKey] : null;
-          const progressTopX = progressTopEl
-            ? progressTopEl.getBoundingClientRect().left +
-              progressTopEl.getBoundingClientRect().width / 2 -
-              rect.left
-            : rightEdge - r;
+          if (progressIdx < btmCount) {
+            const startPos = startPositions[progressIdx];
+            if (startPos) {
+              paths.push({
+                key: `loop-progress-left-${branch.triggerFgKey}`,
+                color: activeColor,
+                d: `M ${sx - r} ${bottomEdge} L ${startPos.x} ${bottomEdge}`,
+              });
+            }
+          } else {
+            const activeTopIdx = branch.bgSteps.findIndex(
+              (b, i) => i >= btmCount && i < totalSteps - btmCount && b.completedAt === null,
+            );
+            const progressTopEl =
+              activeTopIdx >= 0 ? bgNodeRefs.current[branch.bgSteps[activeTopIdx].stepKey] : null;
+            const progressTopX = progressTopEl
+              ? progressTopEl.getBoundingClientRect().left +
+                progressTopEl.getBoundingClientRect().width / 2 -
+                rect.left
+              : rightEdge - r;
 
-          paths.push({
-            key: `loop-progress-left-${branch.triggerFgKey}`,
-            color: activeColor,
-            d: `M ${sx - r} ${bottomEdge} L ${leftEdge + r} ${bottomEdge} Q ${leftEdge} ${bottomEdge} ${leftEdge} ${bottomEdge - r} L ${leftEdge} ${fy + r} Q ${leftEdge} ${fy} ${leftEdge + r} ${fy} L ${progressTopX} ${fy}`,
-          });
-
-          if (allComplete) {
             paths.push({
-              key: `loop-progress-right-${branch.triggerFgKey}`,
+              key: `loop-progress-left-${branch.triggerFgKey}`,
               color: activeColor,
-              d: `M ${sx + r} ${bottomEdge} L ${rightEdge - r} ${bottomEdge} Q ${rightEdge} ${bottomEdge} ${rightEdge} ${bottomEdge - r} L ${rightEdge} ${fy + r} Q ${rightEdge} ${fy} ${rightEdge - r} ${fy}`,
+              d: `M ${sx - r} ${bottomEdge} L ${leftEdge + r} ${bottomEdge} Q ${leftEdge} ${bottomEdge} ${leftEdge} ${bottomEdge - r} L ${leftEdge} ${fy + r} Q ${leftEdge} ${fy} ${leftEdge + r} ${fy} L ${progressTopX} ${fy}`,
             });
-          } else if (progressIdx >= totalSteps - btmCount) {
-            const activeEndBtmIdx = progressIdx - (totalSteps - btmCount);
-            const endPos = endPositions[activeEndBtmIdx];
-            if (endPos) {
+
+            if (allComplete) {
               paths.push({
                 key: `loop-progress-right-${branch.triggerFgKey}`,
                 color: activeColor,
-                d: `M ${rightEdge - r} ${fy} Q ${rightEdge} ${fy} ${rightEdge} ${fy + r} L ${rightEdge} ${bottomEdge - r} Q ${rightEdge} ${bottomEdge} ${rightEdge - r} ${bottomEdge} L ${endPos.x} ${bottomEdge}`,
+                d: `M ${sx + r} ${bottomEdge} L ${rightEdge - r} ${bottomEdge} Q ${rightEdge} ${bottomEdge} ${rightEdge} ${bottomEdge - r} L ${rightEdge} ${fy + r} Q ${rightEdge} ${fy} ${rightEdge - r} ${fy}`,
               });
+            } else if (progressIdx >= totalSteps - btmCount) {
+              const activeEndBtmIdx = progressIdx - (totalSteps - btmCount);
+              const endPos = endPositions[activeEndBtmIdx];
+              if (endPos) {
+                paths.push({
+                  key: `loop-progress-right-${branch.triggerFgKey}`,
+                  color: activeColor,
+                  d: `M ${rightEdge - r} ${fy} Q ${rightEdge} ${fy} ${rightEdge} ${fy + r} L ${rightEdge} ${bottomEdge - r} Q ${rightEdge} ${bottomEdge} ${rightEdge - r} ${bottomEdge} L ${endPos.x} ${bottomEdge}`,
+                });
+              }
             }
           }
 
@@ -1090,10 +1109,14 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
       {loopBranches.map((branch) => {
         const triggerPos = branchPositions[`loop-${branch.triggerFgKey}`];
         const bottomData = loopBottomPositions[branch.triggerFgKey];
-        const bottomStartPos = bottomData?.start || [];
-        const bottomEndPos = bottomData?.end || [];
-        const totalBgSteps = bottomData?.totalSteps || branch.bgSteps.length;
-        const containerLeft = triggerPos?.left || 0;
+        const bottomStart = bottomData ? bottomData.start : null;
+        const bottomEnd = bottomData ? bottomData.end : null;
+        const bottomTotal = bottomData ? bottomData.totalSteps : null;
+        const triggerLeft = triggerPos ? triggerPos.left : null;
+        const bottomStartPos = bottomStart || [];
+        const bottomEndPos = bottomEnd || [];
+        const totalBgSteps = bottomTotal || branch.bgSteps.length;
+        const containerLeft = triggerLeft || 0;
         const prevLoopFgKey = allSteps[branch.triggerFgIdx - 1]?.key;
         const prevLoopAmberBg = prevLoopFgKey
           ? resolveBgChainFlat(prevLoopFgKey, bgByTrigger, bgKeySet).filter(
@@ -1466,7 +1489,8 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
         >
           {belowBranches.map((branch) => {
             const pos = branchPositions[branch.triggerFgKey];
-            const lane = branchLanes[branch.triggerFgKey] || 0;
+            const laneRaw = branchLanes[branch.triggerFgKey];
+            const lane = laneRaw || 0;
 
             return (
               <div
@@ -1627,7 +1651,8 @@ function MobileTransitMap(props: MobileTransitMapProps) {
   const branchesForStep = useMemo(
     () =>
       branches.reduce<Record<string, BranchSegment[]>>((acc, branch) => {
-        return { ...acc, [branch.triggerFgKey]: [...(acc[branch.triggerFgKey] || []), branch] };
+        const existing = acc[branch.triggerFgKey];
+        return { ...acc, [branch.triggerFgKey]: [...(existing || []), branch] };
       }, {}),
     [branches],
   );
@@ -1641,7 +1666,8 @@ function MobileTransitMap(props: MobileTransitMapProps) {
     () =>
       mobileBypassSteps.reduce<Record<string, BackgroundStepStatus[]>>((acc, bp) => {
         const trigger = bp.triggerAfterStep || "";
-        return { ...acc, [trigger]: [...(acc[trigger] || []), bp] };
+        const existing = acc[trigger];
+        return { ...acc, [trigger]: [...(existing || []), bp] };
       }, {}),
     [mobileBypassSteps],
   );
@@ -1714,7 +1740,8 @@ function MobileTransitMap(props: MobileTransitMapProps) {
         const approval = approvalByStep[step.key];
         const isLast = index === allSteps.length - 1;
         const lineCompleted = index < currentStepIndex;
-        const stepBranches = branchesForStep[step.key] || [];
+        const stepBranchesRaw = branchesForStep[step.key];
+        const stepBranches = stepBranchesRaw || [];
 
         const assignedName =
           state === "current" || state === "pending"
@@ -1892,7 +1919,10 @@ function MobileTransitMap(props: MobileTransitMapProps) {
               );
             })}
 
-            {(mobileBypassByTrigger[step.key] || []).map((bp) => {
+            {(() => {
+              const bypassForStep = mobileBypassByTrigger[step.key];
+              return bypassForStep || [];
+            })().map((bp) => {
               const bpComplete = bp.completedAt !== null;
               const bpActive = !bpComplete && index < currentStepIndex;
               const bpState = bpComplete
@@ -2014,9 +2044,16 @@ export function WorkflowStepper(props: WorkflowStepperProps) {
                 rejoinAtStep: null,
               }),
               triggerAfterStep: null,
-              completedAt: docUploadFromBg?.completedAt || docUploadApproval?.approvedAt || null,
-              completedByName:
-                docUploadFromBg?.completedByName || docUploadApproval?.approvedByName || null,
+              completedAt: (() => {
+                const bgAt = docUploadFromBg ? docUploadFromBg.completedAt : null;
+                const approvalAt = docUploadApproval ? docUploadApproval.approvedAt : null;
+                return bgAt || approvalAt || null;
+              })(),
+              completedByName: (() => {
+                const bgName = docUploadFromBg ? docUploadFromBg.completedByName : null;
+                const approvalName = docUploadApproval ? docUploadApproval.approvedByName : null;
+                return bgName || approvalName || null;
+              })(),
             },
             ...backgroundSteps.filter((bg) => bg.stepKey !== "document_upload"),
           ],
@@ -2031,7 +2068,8 @@ export function WorkflowStepper(props: WorkflowStepperProps) {
       const isFgTrigger = raw !== null && fgKeys.has(raw);
       const isBgChain = raw !== null && bgKeys.has(raw);
       const trigger = isFgTrigger || isBgChain ? raw : firstFgKey;
-      return { ...acc, [trigger]: [...(acc[trigger] || []), bg] };
+      const existingBg = acc[trigger];
+      return { ...acc, [trigger]: [...(existingBg || []), bg] };
     }, {});
   }, [effectiveBgSteps, allSteps, firstFgKey]);
 
