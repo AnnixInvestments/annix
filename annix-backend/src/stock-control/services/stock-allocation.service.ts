@@ -9,6 +9,7 @@ import { StockItem } from "../entities/stock-item.entity";
 import { MovementType, ReferenceType, StockMovement } from "../entities/stock-movement.entity";
 import { StockReturn } from "../entities/stock-return.entity";
 import { parseRubberSpecNote, suggestPlyCombinations } from "../lib/rubberCuttingCalculator";
+import { STOCK_ITEM_MATCH_SELECT } from "../lib/stock-item-select";
 
 export interface AllocationPlanItem {
   product: string;
@@ -77,7 +78,10 @@ export class StockAllocationService {
     const assessment: StockAssessmentItem[] =
       analysis.pmEditedAssessment || analysis.stockAssessment || [];
 
-    const stockItems = await this.stockItemRepo.find({ where: { companyId } });
+    const stockItems = await this.stockItemRepo.find({
+      where: { companyId },
+      select: STOCK_ITEM_MATCH_SELECT,
+    });
     const leftoverItems = stockItems.filter((si) => si.isLeftover && Number(si.quantity) > 0);
 
     const leftovers: LeftoverSuggestion[] = [];

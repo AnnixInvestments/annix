@@ -2,12 +2,16 @@ import { randomUUID } from "node:crypto";
 import { Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { ILike, Repository } from "typeorm";
+import { nowMillis } from "../../lib/datetime";
 import { IStorageService, STORAGE_SERVICE } from "../../storage/storage.interface";
 import { StaffMember } from "../entities/staff-member.entity";
+
+const PRESIGNED_URL_TTL_MS = 50 * 60 * 1000;
 
 @Injectable()
 export class StaffService {
   private readonly logger = new Logger(StaffService.name);
+  private readonly presignedUrlCache = new Map<string, { url: string; expiresAt: number }>();
 
   constructor(
     @InjectRepository(StaffMember)
@@ -109,8 +113,20 @@ export class StaffService {
     }
     const result = await this.storageService.upload(file, "stock-control/staff");
     member.photoUrl = result.path;
+    this.presignedUrlCache.delete(result.path);
     const saved = await this.staffRepo.save(member);
     return this.withPresignedPhotoUrl(saved);
+  }
+
+  private s3PathFromPhotoUrl(photoUrl: string): string | null {
+    if (photoUrl.startsWith("http")) {
+      const s3Match = photoUrl.match(/\.amazonaws\.com\/(.+?)(\?|$)/);
+      if (s3Match) {
+        return decodeURIComponent(s3Match[1]);
+      }
+      return null;
+    }
+    return photoUrl;
   }
 
   private async withPresignedPhotoUrl(member: StaffMember): Promise<StaffMember> {
@@ -118,22 +134,19 @@ export class StaffService {
       return member;
     }
 
-    let s3Path: string | null = null;
-
-    if (member.photoUrl.startsWith("http")) {
-      const s3Match = member.photoUrl.match(/\.amazonaws\.com\/(.+?)(\?|$)/);
-      if (s3Match) {
-        s3Path = decodeURIComponent(s3Match[1]);
-        this.logger.log(`Extracted S3 path from URL for ${member.name}: ${s3Path}`);
-      }
-    } else {
-      s3Path = member.photoUrl;
-    }
+    const s3Path = this.s3PathFromPhotoUrl(member.photoUrl);
 
     if (s3Path) {
+      const cached = this.presignedUrlCache.get(s3Path);
+      if (cached && cached.expiresAt > nowMillis()) {
+        member.photoUrl = cached.url;
+        return member;
+      }
+
       try {
-        member.photoUrl = await this.storageService.presignedUrl(s3Path, 3600);
-        this.logger.log(`Presigned URL generated for ${member.name}`);
+        const url = await this.storageService.presignedUrl(s3Path, 3600);
+        this.presignedUrlCache.set(s3Path, { url, expiresAt: nowMillis() + PRESIGNED_URL_TTL_MS });
+        member.photoUrl = url;
       } catch (error) {
         this.logger.error(
           `Failed to generate presigned URL for ${member.name} (${s3Path}): ${error instanceof Error ? error.message : "Unknown error"}`,

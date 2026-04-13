@@ -4,6 +4,7 @@ import { Repository } from "typeorm";
 import { DeliveryNoteItem } from "../entities/delivery-note-item.entity";
 import { StockControlSupplier } from "../entities/stock-control-supplier.entity";
 import { StockItem } from "../entities/stock-item.entity";
+import { STOCK_ITEM_MATCH_SELECT } from "../lib/stock-item-select";
 
 const LEGAL_SUFFIXES =
   /\b(pty|proprietary|ltd|limited|inc|incorporated|company|co|corp|corporation|cc|close\s*corporation|trading|t\/a|ta|group|holdings|enterprises|services|supplies|supply)\b/gi;
@@ -93,7 +94,10 @@ export class DeliverySupplierService {
     const normalised = this.normaliseSku(sku);
     if (normalised.length < 2) return null;
 
-    const allItems = await this.stockItemRepo.find({ where: { companyId } });
+    const allItems = await this.stockItemRepo.find({
+      where: { companyId },
+      select: STOCK_ITEM_MATCH_SELECT,
+    });
 
     return allItems.find((item) => this.normaliseSku(item.sku) === normalised) ?? null;
   }
@@ -105,7 +109,10 @@ export class DeliverySupplierService {
     newSku: string,
     category?: string | null,
   ): Promise<{ existingItem: StockItem | null; sameSupplier: boolean; score: number }> {
-    const allItems = await this.stockItemRepo.find({ where: { companyId } });
+    const allItems = await this.stockItemRepo.find({
+      where: { companyId },
+      select: STOCK_ITEM_MATCH_SELECT,
+    });
 
     const candidates = this.scoreCandidates(allItems, description, newSku, category);
 

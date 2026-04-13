@@ -19,6 +19,7 @@ import { JobCardLineItem } from "../entities/job-card-line-item.entity";
 import { StockControlCompany } from "../entities/stock-control-company.entity";
 import { StockItem } from "../entities/stock-item.entity";
 import { INVALID_LINE_ITEM_PATTERNS } from "../lib/line-item-validation";
+import { STOCK_ITEM_MATCH_SELECT } from "../lib/stock-item-select";
 import {
   validateCoatingExtraction,
   validPercentage,
@@ -817,7 +818,10 @@ export class CoatingAnalysisService {
     coats: CoatDetail[],
     companyId: number,
   ): Promise<StockAssessmentItem[]> {
-    const stockItems = await this.stockItemRepo.find({ where: { companyId } });
+    const stockItems = await this.stockItemRepo.find({
+      where: { companyId },
+      select: STOCK_ITEM_MATCH_SELECT,
+    });
 
     const grouped = coats.reduce<Record<string, { totalRequired: number; coat: CoatDetail }>>(
       (acc, coat) => {

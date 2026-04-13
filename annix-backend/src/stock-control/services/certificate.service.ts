@@ -17,6 +17,7 @@ import { StockControlCompany } from "../entities/stock-control-company.entity";
 import { StockControlSupplier } from "../entities/stock-control-supplier.entity";
 import { StockItem } from "../entities/stock-item.entity";
 import { SupplierCertificate } from "../entities/supplier-certificate.entity";
+import { STOCK_ITEM_MATCH_SELECT } from "../lib/stock-item-select";
 import { CalibrationCertificate } from "../qc/entities/calibration-certificate.entity";
 import { QcControlPlan } from "../qc/entities/qc-control-plan.entity";
 import { QcDefelskoBatch } from "../qc/entities/qc-defelsko-batch.entity";
@@ -262,7 +263,7 @@ export class CertificateService {
   }
 
   async stockItemsForCompany(companyId: number): Promise<StockItem[]> {
-    return this.stockItemRepo.find({ where: { companyId } });
+    return this.stockItemRepo.find({ where: { companyId }, select: STOCK_ITEM_MATCH_SELECT });
   }
 
   async findAll(companyId: number, filters?: CertificateFilters): Promise<SupplierCertificate[]> {
@@ -1326,7 +1327,10 @@ export class CertificateService {
       return null;
     }
 
-    const candidates = await this.certRepo.find({ where: { companyId } });
+    const candidates = await this.certRepo.find({
+      where: { companyId },
+      select: { id: true, batchNumber: true },
+    });
     const match = candidates.find((cert) => this.batchesMatch(cert.batchNumber, batchNumber));
 
     if (match) {

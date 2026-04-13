@@ -25,6 +25,7 @@ import {
   InvoiceItemMatchStatus,
   SupplierInvoiceItem,
 } from "../entities/supplier-invoice-item.entity";
+import { STOCK_ITEM_MATCH_SELECT } from "../lib/stock-item-select";
 import { validateInvoiceExtraction, validPositiveNumber } from "./extraction-validation";
 
 const INVOICE_EXTRACTION_PROMPT = `You are an industrial supplier invoice parser. Extract line items from scanned invoices.
@@ -338,6 +339,7 @@ export class InvoiceExtractionService {
   ): Promise<void> {
     const candidates = await this.deliveryNoteRepo.find({
       where: { companyId: invoice.companyId },
+      select: { id: true, deliveryNumber: true, supplierName: true, receivedDate: true },
     });
 
     if (candidates.length === 0) return;
@@ -432,7 +434,10 @@ export class InvoiceExtractionService {
       return { linked: 0, details: [] };
     }
 
-    const candidates = await this.deliveryNoteRepo.find({ where: { companyId } });
+    const candidates = await this.deliveryNoteRepo.find({
+      where: { companyId },
+      select: { id: true, deliveryNumber: true, supplierName: true, receivedDate: true },
+    });
 
     const { linked, details } = await unlinked.reduce(
       async (accPromise, invoice) => {
@@ -512,7 +517,10 @@ export class InvoiceExtractionService {
     if (!invoice) return;
 
     const items = await this.invoiceItemRepo.find({ where: { invoiceId } });
-    const stockItems = await this.stockItemRepo.find({ where: { companyId: invoice.companyId } });
+    const stockItems = await this.stockItemRepo.find({
+      where: { companyId: invoice.companyId },
+      select: STOCK_ITEM_MATCH_SELECT,
+    });
 
     await items.reduce(async (prev, item) => {
       await prev;
@@ -628,7 +636,10 @@ export class InvoiceExtractionService {
       relations: ["stockItem"],
     });
 
-    const stockItems = await this.stockItemRepo.find({ where: { companyId: invoice.companyId } });
+    const stockItems = await this.stockItemRepo.find({
+      where: { companyId: invoice.companyId },
+      select: STOCK_ITEM_MATCH_SELECT,
+    });
 
     await items.reduce(async (prev, item) => {
       await prev;
@@ -1061,7 +1072,10 @@ export class InvoiceExtractionService {
     }
 
     if (descriptionChanged) {
-      const stockItems = await this.stockItemRepo.find({ where: { companyId: item.companyId } });
+      const stockItems = await this.stockItemRepo.find({
+        where: { companyId: item.companyId },
+        select: STOCK_ITEM_MATCH_SELECT,
+      });
       const match = this.fuzzyMatchStockItem(
         item.extractedDescription || "",
         item.extractedSku || "",
