@@ -215,6 +215,14 @@ export class InvoicesController {
   }
 
   @StockControlRoles("accounts", "manager", "admin")
+  @Delete(":id/items/:itemId")
+  @ApiOperation({ summary: "Delete an invoice line item" })
+  async removeItem(@Req() req: any, @Param("id") id: number, @Param("itemId") itemId: number) {
+    await this.invoiceService.findById(req.user.companyId, id);
+    return this.extractionService.removeItem(id, itemId);
+  }
+
+  @StockControlRoles("accounts", "manager", "admin")
   @Post(":id/items/:itemId/match")
   @ApiOperation({ summary: "Manually match an invoice item to a stock item" })
   async manualMatchItem(

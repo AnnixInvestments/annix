@@ -1280,6 +1280,20 @@ export class CertificateService {
     return batch.replace(/[^a-zA-Z0-9]/g, "").toLowerCase();
   }
 
+  private baseBatchNumber(batch: string): string {
+    return batch.replace(/[-_]\*[-_].*$/, "").trim();
+  }
+
+  private batchesMatch(batchA: string, batchB: string): boolean {
+    if (batchA === batchB) return true;
+    const baseA = this.baseBatchNumber(batchA);
+    const baseB = this.baseBatchNumber(batchB);
+    if (baseA === baseB) return true;
+    const normA = this.normalizeBatch(baseA);
+    const normB = this.normalizeBatch(baseB);
+    return normA.length >= 4 && normA === normB;
+  }
+
   async findMatchingCertificate(
     companyId: number,
     batchNumber: string,
@@ -1292,15 +1306,21 @@ export class CertificateService {
       return exactMatch;
     }
 
-    const normalizedInput = this.normalizeBatch(batchNumber);
+    const baseBatch = this.baseBatchNumber(batchNumber);
+    if (baseBatch !== batchNumber) {
+      const baseMatch = await this.certRepo.findOne({
+        where: { companyId, batchNumber: baseBatch },
+      });
+      if (baseMatch) return baseMatch;
+    }
+
+    const normalizedInput = this.normalizeBatch(baseBatch);
     if (normalizedInput.length < 4) {
       return null;
     }
 
     const candidates = await this.certRepo.find({ where: { companyId } });
-    const match = candidates.find(
-      (cert) => this.normalizeBatch(cert.batchNumber) === normalizedInput,
-    );
+    const match = candidates.find((cert) => this.batchesMatch(cert.batchNumber, batchNumber));
 
     if (match) {
       this.logger.log(
@@ -1315,17 +1335,12 @@ export class CertificateService {
     const cert = await this.certRepo.findOne({ where: { id: certificateId, companyId } });
     if (!cert) return;
 
-    const normalizedCertBatch = this.normalizeBatch(cert.batchNumber);
-
     const unlinkedIssuanceBatches = await this.batchRecordRepo.find({
       where: { companyId, supplierCertificateId: IsNull() as any },
     });
 
-    const matchedIssuanceBatches = unlinkedIssuanceBatches.filter(
-      (br) =>
-        br.batchNumber === cert.batchNumber ||
-        (normalizedCertBatch.length >= 4 &&
-          this.normalizeBatch(br.batchNumber) === normalizedCertBatch),
+    const matchedIssuanceBatches = unlinkedIssuanceBatches.filter((br) =>
+      this.batchesMatch(br.batchNumber, cert.batchNumber),
     );
 
     const issuanceJobCardIds = new Set<number>();
@@ -1348,11 +1363,7 @@ export class CertificateService {
     });
 
     const matchedDefelsko = unlinkedDefelskoBatches.filter(
-      (db) =>
-        db.batchNumber !== null &&
-        (db.batchNumber === cert.batchNumber ||
-          (normalizedCertBatch.length >= 4 &&
-            this.normalizeBatch(db.batchNumber) === normalizedCertBatch)),
+      (db) => db.batchNumber !== null && this.batchesMatch(db.batchNumber, cert.batchNumber),
     );
 
     const defelskJobCardIds = new Set<number>();
