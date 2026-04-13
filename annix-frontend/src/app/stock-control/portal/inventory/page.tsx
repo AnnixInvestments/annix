@@ -293,6 +293,7 @@ export default function InventoryPage() {
         isSaving={state.isSaving}
         photoPreview={state.photoPreview}
         locations={locations}
+        modalError={state.modalError}
         onUpdateState={updateState}
         onSave={handleSave}
       />

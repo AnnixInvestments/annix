@@ -131,6 +131,7 @@ interface InventoryPageState {
   expandedGroups: Map<number | null, boolean>;
   listGroupByCategory: boolean;
   isAutoCategorizing: boolean;
+  modalError: string | null;
 }
 
 const INITIAL_STATE: InventoryPageState = {
@@ -178,6 +179,7 @@ const INITIAL_STATE: InventoryPageState = {
   expandedGroups: new Map(),
   listGroupByCategory: false,
   isAutoCategorizing: false,
+  modalError: null,
 };
 
 export function useInventoryPageState(pdfPreview?: ReturnType<typeof usePdfPreview>) {
@@ -223,8 +225,11 @@ export function useInventoryPageState(pdfPreview?: ReturnType<typeof usePdfPrevi
   const isLoading = isGroupedView ? groupedQuery.isLoading : listQuery.isLoading;
   const queryError = isGroupedView ? groupedQuery.error : listQuery.error;
   const error = state.actionError || queryError;
-  const items = isGroupedView ? [] : listQuery.data?.items || [];
-  const total = isGroupedView ? 0 : listQuery.data?.total || 0;
+  const listData = listQuery.data;
+  const listItems = listData ? listData.items : [];
+  const listTotal = listData ? listData.total : 0;
+  const items = isGroupedView ? [] : listItems;
+  const total = isGroupedView ? 0 : listTotal;
   const totalPages = state.pageSize > 0 ? Math.ceil(total / state.pageSize) : 1;
 
   const groupedData: LocationGroup[] = useMemo(() => {
@@ -242,8 +247,9 @@ export function useInventoryPageState(pdfPreview?: ReturnType<typeof usePdfPrevi
     const locMap = new Map(locations.map((l: StockControlLocation) => [l.id, l.name]));
     const byLocation = filteredItems.reduce<Record<string, StockItem[]>>((acc, item: StockItem) => {
       const key = item.locationId != null ? String(item.locationId) : "null";
-      const existing = acc[key] || [];
-      return { ...acc, [key]: [...existing, item] };
+      const existing = acc[key];
+      const list = existing || [];
+      return { ...acc, [key]: [...list, item] };
     }, {});
     return Object.entries(byLocation)
       .map(([key, locationItems]) => {
@@ -414,6 +420,7 @@ export function useInventoryPageState(pdfPreview?: ReturnType<typeof usePdfPrevi
         photoFile: null,
         photoPreview: item.photoUrl || null,
         showModal: true,
+        modalError: null,
       });
     },
     [updateState],
@@ -421,7 +428,7 @@ export function useInventoryPageState(pdfPreview?: ReturnType<typeof usePdfPrevi
 
   const handleSave = useCallback(async () => {
     try {
-      updateState({ isSaving: true });
+      updateState({ isSaving: true, modalError: null });
       let savedItem: StockItem;
       if (state.editingItem) {
         savedItem = await stockControlApiClient.updateStockItem(
@@ -434,12 +441,11 @@ export function useInventoryPageState(pdfPreview?: ReturnType<typeof usePdfPrevi
       if (state.photoFile) {
         await stockControlApiClient.uploadStockItemPhoto(savedItem.id, state.photoFile);
       }
-      updateState({ showModal: false, photoFile: null, photoPreview: null });
+      updateState({ showModal: false, photoFile: null, photoPreview: null, modalError: null });
       invalidateInventory();
     } catch (err) {
-      updateState({
-        actionError: err instanceof Error ? err : new Error("Failed to save item"),
-      });
+      const message = err instanceof Error ? err.message : "Failed to save item";
+      updateState({ modalError: message });
     } finally {
       updateState({ isSaving: false });
     }
