@@ -254,6 +254,7 @@ const bgNodeState = (
   currentStepIndex: number,
   branchBgSteps: BackgroundStepStatus[],
   prevAmberComplete?: boolean,
+  phase1ActionDone?: boolean,
 ): "completed" | "skipped" | "active" | "pending" => {
   if (bg.completedAt !== null) {
     if (bg.completionType === "skipped") return "skipped";
@@ -262,8 +263,9 @@ const bgNodeState = (
   }
   const hasColoredBranch = branchBgSteps.some((b) => b.branchColor !== null);
   const amberOk = prevAmberComplete !== false;
+  const isCurrentStep = fgIndex === currentStepIndex;
   const branchReached = hasColoredBranch
-    ? fgIndex <= currentStepIndex && amberOk
+    ? fgIndex <= currentStepIndex && amberOk && (!isCurrentStep || phase1ActionDone !== false)
     : fgIndex < currentStepIndex;
   if (branchReached) {
     const firstIncomplete = branchBgSteps.find((b) => b.completedAt === null);
@@ -400,6 +402,7 @@ interface DesktopTransitMapProps {
   onStepClick: (stepKey: string, state: StepState) => void;
   onSetExpandedStep: (key: string | null) => void;
   onSetHoveredRejection: (key: string | null) => void;
+  currentStepPhase1Done: boolean;
 }
 
 function DesktopTransitMap(props: DesktopTransitMapProps) {
@@ -416,6 +419,7 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
     onStepClick,
     onSetExpandedStep,
     onSetHoveredRejection,
+    currentStepPhase1Done,
   } = props;
 
   const containerRef = useRef<HTMLDivElement>(null);
@@ -1147,6 +1151,7 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
                     currentStepIndex,
                     branch.bgSteps,
                     prevLoopAmberComplete,
+                    currentStepPhase1Done,
                   );
                   const classes = bgNodeClasses(state, branch.branchColor);
                   const bgAssigned = assignedNameForStep(bg.stepKey, stepAssignments);
@@ -1187,6 +1192,7 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
                 currentStepIndex,
                 branch.bgSteps,
                 prevLoopAmberComplete,
+                currentStepPhase1Done,
               );
               const classes = bgNodeClasses(state, branch.branchColor);
               const bgAssigned = assignedNameForStep(bg.stepKey, stepAssignments);
@@ -1231,6 +1237,7 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
                   currentStepIndex,
                   branch.bgSteps,
                   prevLoopAmberComplete,
+                  currentStepPhase1Done,
                 );
                 const classes = bgNodeClasses(state, branch.branchColor);
                 const bgAssigned = assignedNameForStep(bg.stepKey, stepAssignments);
@@ -1434,7 +1441,14 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
 
       {docUploadStep &&
         (() => {
-          const docState = bgNodeState(docUploadStep, 0, currentStepIndex, [docUploadStep]);
+          const docState = bgNodeState(
+            docUploadStep,
+            0,
+            currentStepIndex,
+            [docUploadStep],
+            undefined,
+            true,
+          );
 
           return (
             <div
@@ -1508,6 +1522,8 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
                     branch.triggerFgIdx,
                     currentStepIndex,
                     branch.bgSteps,
+                    undefined,
+                    currentStepPhase1Done,
                   );
                   const classes = bgNodeClasses(state, branch.branchColor);
                   const bgAssigned = assignedNameForStep(bg.stepKey, stepAssignments);
@@ -1603,6 +1619,7 @@ interface MobileTransitMapProps {
   onStepClick: (stepKey: string, state: StepState) => void;
   onSetExpandedStep: (key: string | null) => void;
   onSetHoveredRejection: (key: string | null) => void;
+  currentStepPhase1Done: boolean;
 }
 
 function MobileTransitMap(props: MobileTransitMapProps) {
@@ -1619,6 +1636,7 @@ function MobileTransitMap(props: MobileTransitMapProps) {
     onStepClick,
     onSetExpandedStep,
     onSetHoveredRejection,
+    currentStepPhase1Done,
   } = props;
 
   const bgKeySet = useMemo(
@@ -1680,7 +1698,14 @@ function MobileTransitMap(props: MobileTransitMapProps) {
     <div className="relative">
       {docUploadStep &&
         (() => {
-          const docState = bgNodeState(docUploadStep, 0, currentStepIndex, [docUploadStep]);
+          const docState = bgNodeState(
+            docUploadStep,
+            0,
+            currentStepIndex,
+            [docUploadStep],
+            undefined,
+            true,
+          );
           const bgAssigned = assignedNameForStep("document_upload", stepAssignments);
           const bgDisplayName =
             docState === "completed" ? docUploadStep.completedByName : bgAssigned;
@@ -1883,6 +1908,7 @@ function MobileTransitMap(props: MobileTransitMapProps) {
                           currentStepIndex,
                           branch.bgSteps,
                           prevMobileAmberComplete,
+                          currentStepPhase1Done,
                         );
                         const mClasses = bgNodeClasses(bgState, branch.branchColor);
                         const bgAssigned = assignedNameForStep(bg.stepKey, stepAssignments);
@@ -1992,6 +2018,7 @@ interface WorkflowStepperProps {
   foregroundSteps: ForegroundStep[];
   backgroundSteps: BackgroundStepStatus[];
   currentUserName?: string | null;
+  currentStepPhase1Done?: boolean;
 }
 
 export function WorkflowStepper(props: WorkflowStepperProps) {
@@ -2002,6 +2029,7 @@ export function WorkflowStepper(props: WorkflowStepperProps) {
     foregroundSteps,
     backgroundSteps,
     currentUserName = null,
+    currentStepPhase1Done = false,
   } = props;
 
   const { data: stepConfigs } = useWorkflowStepConfigs();
@@ -2132,6 +2160,7 @@ export function WorkflowStepper(props: WorkflowStepperProps) {
               onStepClick={handleStepClick}
               onSetExpandedStep={setExpandedStep}
               onSetHoveredRejection={setHoveredRejection}
+              currentStepPhase1Done={currentStepPhase1Done}
             />
           </div>
 
@@ -2149,6 +2178,7 @@ export function WorkflowStepper(props: WorkflowStepperProps) {
               onStepClick={handleStepClick}
               onSetExpandedStep={setExpandedStep}
               onSetHoveredRejection={setHoveredRejection}
+              currentStepPhase1Done={currentStepPhase1Done}
             />
           </div>
         </>

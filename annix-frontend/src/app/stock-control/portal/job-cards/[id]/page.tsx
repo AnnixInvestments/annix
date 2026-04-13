@@ -2088,6 +2088,7 @@ export default function JobCardDetailPage() {
           foregroundSteps={workflowStatus.foregroundSteps || []}
           backgroundSteps={backgroundSteps}
           currentUserName={effectiveName || authUserName}
+          currentStepPhase1Done={currentStepActionCompleted}
         />
       )}
 
