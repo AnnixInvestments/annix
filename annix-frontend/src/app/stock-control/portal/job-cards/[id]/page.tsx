@@ -683,7 +683,13 @@ export default function JobCardDetailPage() {
       const originFgIdx = resolveOriginFgIdx(trigger);
       const isColored = isInColoredBranch(bg.stepKey);
       const coloredAtTrigger = isColored && originFgIdx === currentFgIdx;
-      const coloredUnlocked = coloredAtTrigger && currentStepActionCompleted;
+      const currentFgKey = fgKeys[currentFgIdx];
+      const rawCompletions = workflowStatus.actionCompletions;
+      const completions = rawCompletions || [];
+      const phase1Done = currentFgKey
+        ? completions.some((ac) => ac.stepKey === currentFgKey && ac.actionType === "primary")
+        : false;
+      const coloredUnlocked = coloredAtTrigger && phase1Done;
       const effectiveOrigin = coloredUnlocked
         ? originFgIdx
         : isColored
