@@ -23,14 +23,16 @@ const matchIssuanceBatch = (
     const abrasiveRecord = records.find(
       (r) => r.stockItem?.name && ABRASIVE_CATEGORY_PATTERN.test(r.stockItem.name),
     );
-    return abrasiveRecord?.batchNumber || "";
+    const abrasiveBatch = abrasiveRecord ? abrasiveRecord.batchNumber : null;
+    return abrasiveBatch || "";
   }
 
   if (field.fieldKey === "rubber_shore_hardness") {
     const rubberRecord = records.find(
       (r) => r.stockItem?.name && RUBBER_CATEGORY_PATTERN.test(r.stockItem.name),
     );
-    return rubberRecord?.batchNumber || "";
+    const rubberBatch = rubberRecord ? rubberRecord.batchNumber : null;
+    return rubberBatch || "";
   }
 
   if (field.fieldKey.startsWith("paint_dft_")) {
@@ -45,12 +47,15 @@ const matchIssuanceBatch = (
         paintRecords.find((r) => r.stockItem?.name?.toLowerCase().includes(productLower)) ||
         paintRecords.find((r) => productLower.includes(r.stockItem?.name?.toLowerCase() || "")) ||
         paintRecords[coatIndex];
-      return match?.batchNumber || "";
+      const matchBatch = match ? match.batchNumber : null;
+      return matchBatch || "";
     }
     const paintRecords = records.filter(
       (r) => r.stockItem?.name && PAINT_CATEGORY_PATTERN.test(r.stockItem.name),
     );
-    return paintRecords[coatIndex]?.batchNumber || "";
+    const paintEntry = paintRecords[coatIndex];
+    const paintBatch = paintEntry ? paintEntry.batchNumber : null;
+    return paintBatch || "";
   }
 
   return "";
@@ -95,10 +100,25 @@ export function DefelskoBatchSection(props: DefelskoBatchSectionProps) {
       allowNA: true,
     });
 
-    if (coatingAnalysis?.coats) {
-      coatingAnalysis.coats.forEach((coat, idx) => {
+    const coats = coatingAnalysis ? coatingAnalysis.coats : null;
+    if (coats) {
+      const rawNotes = coatingAnalysis ? coatingAnalysis.rawNotes : null;
+      const notesUpper = rawNotes ? rawNotes.toUpperCase() : "";
+      const bandingIdx = notesUpper.indexOf("BANDING");
+      const preBanding = bandingIdx >= 0 ? notesUpper.substring(0, bandingIdx) : notesUpper;
+      const postBanding = bandingIdx >= 0 ? notesUpper.substring(bandingIdx) : "";
+
+      coats.forEach((coat, idx) => {
+        const productUpper = coat.product ? coat.product.toUpperCase() : "";
+        const inBandingOnly =
+          postBanding.length > 0 &&
+          productUpper.length > 0 &&
+          postBanding.includes(productUpper) &&
+          !preBanding.includes(productUpper);
+        if (inBandingOnly) return;
         const key = `paint_dft_${idx}`;
-        const label = coat.product || `Coat ${idx + 1}`;
+        const coatProduct = coat.product;
+        const label = coatProduct || `Coat ${idx + 1}`;
         fields.push({
           fieldKey: key,
           category: "paint",
@@ -140,13 +160,13 @@ export function DefelskoBatchSection(props: DefelskoBatchSectionProps) {
       const initialValues: Record<string, BatchState> = {};
       allFields.forEach((f) => {
         const saved = batches.find((b) => b.fieldKey === f.fieldKey);
+        const savedBatch = saved ? saved.batchNumber : null;
+        const savedNA = saved ? saved.notApplicable : false;
         const issuanceDefault =
-          !saved?.batchNumber && !saved?.notApplicable
-            ? matchIssuanceBatch(batchRecords, f, coatingAnalysis)
-            : "";
+          !savedBatch && !savedNA ? matchIssuanceBatch(batchRecords, f, coatingAnalysis) : "";
         initialValues[f.fieldKey] = {
-          batchNumber: saved?.batchNumber || issuanceDefault,
-          notApplicable: saved?.notApplicable || false,
+          batchNumber: savedBatch || issuanceDefault,
+          notApplicable: savedNA || false,
         };
       });
       setBatchValues(initialValues);
@@ -174,13 +194,18 @@ export function DefelskoBatchSection(props: DefelskoBatchSectionProps) {
       setError(null);
       setSaveSuccess(false);
 
-      const batches = allFields.map((f) => ({
-        fieldKey: f.fieldKey,
-        category: f.category,
-        label: f.label,
-        batchNumber: batchValues[f.fieldKey]?.batchNumber || null,
-        notApplicable: batchValues[f.fieldKey]?.notApplicable || false,
-      }));
+      const batches = allFields.map((f) => {
+        const entry = batchValues[f.fieldKey];
+        const entryBatch = entry ? entry.batchNumber : null;
+        const entryNA = entry ? entry.notApplicable : false;
+        return {
+          fieldKey: f.fieldKey,
+          category: f.category,
+          label: f.label,
+          batchNumber: entryBatch || null,
+          notApplicable: entryNA || false,
+        };
+      });
 
       await stockControlApiClient.saveDefelskoBatches(jobCardId, { batches });
       setSaveSuccess(true);
@@ -210,13 +235,18 @@ export function DefelskoBatchSection(props: DefelskoBatchSectionProps) {
       setIsCompleting(true);
       setError(null);
 
-      const batches = allFields.map((f) => ({
-        fieldKey: f.fieldKey,
-        category: f.category,
-        label: f.label,
-        batchNumber: batchValues[f.fieldKey]?.batchNumber || null,
-        notApplicable: batchValues[f.fieldKey]?.notApplicable || false,
-      }));
+      const batches = allFields.map((f) => {
+        const entry = batchValues[f.fieldKey];
+        const entryBatch = entry ? entry.batchNumber : null;
+        const entryNA = entry ? entry.notApplicable : false;
+        return {
+          fieldKey: f.fieldKey,
+          category: f.category,
+          label: f.label,
+          batchNumber: entryBatch || null,
+          notApplicable: entryNA || false,
+        };
+      });
 
       await stockControlApiClient.saveDefelskoBatches(jobCardId, { batches });
 
@@ -245,7 +275,8 @@ export function DefelskoBatchSection(props: DefelskoBatchSectionProps) {
   }
 
   const renderFieldRow = (field: BatchField) => {
-    const state = batchValues[field.fieldKey] || { batchNumber: "", notApplicable: false };
+    const rawState = batchValues[field.fieldKey];
+    const state = rawState || { batchNumber: "", notApplicable: false };
 
     return (
       <tr key={field.fieldKey} className="border-b border-gray-50 last:border-0">
