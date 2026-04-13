@@ -211,7 +211,8 @@ export function BatchAssignmentSection(props: BatchAssignmentSectionProps) {
   };
 
   const handleOpenAddForm = (fieldKey: string) => {
-    const assignedIds = assignedItemIdsByField[fieldKey] || new Set();
+    const rawAssignedForForm = assignedItemIdsByField[fieldKey];
+    const assignedIds = rawAssignedForForm || new Set();
     setAddForm({
       fieldKey,
       batchNumber: "",
@@ -337,7 +338,7 @@ export function BatchAssignmentSection(props: BatchAssignmentSectionProps) {
             <label className="flex items-center gap-1.5 cursor-pointer">
               <input
                 type="checkbox"
-                checked={false}
+                checked={applyingAll}
                 onChange={handleApplyDefelskoBatches}
                 disabled={applyingAll}
                 className="rounded border-gray-300 text-teal-600 focus:ring-teal-500 h-3.5 w-3.5"

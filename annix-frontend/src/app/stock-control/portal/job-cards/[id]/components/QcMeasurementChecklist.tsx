@@ -34,8 +34,21 @@ function buildExpectedRows(coatingAnalysis: CoatingAnalysis | null): ExpectedRow
       category: "defelsko_paint",
     });
 
+    const rawNotes = coatingAnalysis ? coatingAnalysis.rawNotes : null;
+    const notesUpper = rawNotes ? rawNotes.toUpperCase() : "";
+    const bandingIdx = notesUpper.indexOf("BANDING");
+    const preBanding = bandingIdx >= 0 ? notesUpper.substring(0, bandingIdx) : notesUpper;
+    const postBanding = bandingIdx >= 0 ? notesUpper.substring(bandingIdx) : "";
+
     coats.forEach((coat, idx) => {
       const coatProduct = coat.product;
+      const productUpper = coatProduct ? coatProduct.toUpperCase() : "";
+      const inBandingOnly =
+        postBanding.length > 0 &&
+        productUpper.length > 0 &&
+        postBanding.includes(productUpper) &&
+        !preBanding.includes(productUpper);
+      if (inBandingOnly) return;
       const product = coatProduct || `Coat ${idx + 1}`;
       rows.push({
         fieldKey: `paint_dft_${idx}`,

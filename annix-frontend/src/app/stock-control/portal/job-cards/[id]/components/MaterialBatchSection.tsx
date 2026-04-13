@@ -75,7 +75,10 @@ function rubberManualFields(
   return [...rollFields, ...solutionFields];
 }
 
-function paintProductRows(coats: CoatingAnalysis["coats"] | null): PaintProductRow[] {
+function paintProductRows(
+  coats: CoatingAnalysis["coats"] | null,
+  rawNotes: string | null,
+): PaintProductRow[] {
   if (!coats || coats.length === 0) {
     return [
       {
@@ -85,10 +88,20 @@ function paintProductRows(coats: CoatingAnalysis["coats"] | null): PaintProductR
     ];
   }
 
+  const notesUpper = rawNotes ? rawNotes.toUpperCase() : "";
+  const bandingIdx = notesUpper.indexOf("BANDING");
+  const preBanding = bandingIdx >= 0 ? notesUpper.substring(0, bandingIdx) : notesUpper;
+  const postBanding = bandingIdx >= 0 ? notesUpper.substring(bandingIdx) : "";
+
   const seen = new Set<string>();
   return coats.reduce<PaintProductRow[]>((acc, coat, idx) => {
-    const isBanding = coat.product.toUpperCase().includes("BANDING");
-    if (isBanding) return acc;
+    const productUpper = coat.product ? coat.product.toUpperCase() : "";
+    const inBandingOnly =
+      postBanding.length > 0 &&
+      productUpper.length > 0 &&
+      postBanding.includes(productUpper) &&
+      !preBanding.includes(productUpper);
+    if (inBandingOnly) return acc;
 
     const productKey = coat.product
       .toLowerCase()
@@ -125,8 +138,15 @@ function paintProductRows(coats: CoatingAnalysis["coats"] | null): PaintProductR
 function groupByProduct(records: IssuanceBatchRecord[]): GroupedProduct[] {
   const grouped = records.reduce<Record<string, GroupedProduct>>((acc, rec) => {
     const item = rec.stockItem;
-    const groupKey = item?.componentGroup || item?.name || "Unknown";
-    const existing = acc[groupKey] || { productName: groupKey, parts: [] };
+    const rawComponentGroup = item ? item.componentGroup : null;
+    const rawItemName = item ? item.name : null;
+    const groupKey = rawComponentGroup || rawItemName || "Unknown";
+    const rawExisting = acc[groupKey];
+    const existing = rawExisting || { productName: groupKey, parts: [] };
+    const rawRole = item ? item.componentRole : null;
+    const role = rawRole || null;
+    const rawRollNumber = item ? item.rollNumber : null;
+    const rollNumber = rawRollNumber || null;
     return {
       ...acc,
       [groupKey]: {
@@ -134,9 +154,9 @@ function groupByProduct(records: IssuanceBatchRecord[]): GroupedProduct[] {
         parts: [
           ...existing.parts,
           {
-            role: item?.componentRole || null,
+            role,
             batchNumber: rec.batchNumber,
-            rollNumber: item?.rollNumber || null,
+            rollNumber,
             quantity: rec.quantity,
           },
         ],
@@ -190,10 +210,11 @@ export function MaterialBatchSection(props: MaterialBatchSectionProps) {
   const { jobCardId, batchRecords, hasRubber, hasPaint, coatingAnalysis, rubberPlanOverride } =
     props;
 
-  const productRows = useMemo(
-    () => paintProductRows(coatingAnalysis?.coats || null),
-    [coatingAnalysis],
-  );
+  const productRows = useMemo(() => {
+    const coats = coatingAnalysis ? coatingAnalysis.coats : null;
+    const rawNotes = coatingAnalysis ? coatingAnalysis.rawNotes : null;
+    return paintProductRows(coats || null, rawNotes || null);
+  }, [coatingAnalysis]);
 
   const allPaintFieldKeys = useMemo(
     () => productRows.flatMap((row) => row.fields.map((f) => f.fieldKey)),
@@ -221,15 +242,17 @@ export function MaterialBatchSection(props: MaterialBatchSectionProps) {
   }, [jobCardId, hasRubber]);
 
   const baseRollCount = useMemo(() => {
-    if (rubberPlanOverride?.manualRolls && rubberPlanOverride.manualRolls.length > 0) {
-      return rubberPlanOverride.manualRolls.length;
+    const manualRolls = rubberPlanOverride ? rubberPlanOverride.manualRolls : null;
+    if (manualRolls && manualRolls.length > 0) {
+      return manualRolls.length;
     }
     const rubberBatchItems = batchRecords.filter((r) => {
-      const name = r.stockItem?.name || "";
+      const rawStockName = r.stockItem ? r.stockItem.name : null;
+      const name = rawStockName || "";
       return RUBBER_PATTERN.test(name) && !SOLUTION_PATTERN.test(name);
     });
     const uniqueRolls = new Set(
-      rubberBatchItems.map((r) => r.stockItem?.rollNumber).filter(Boolean),
+      rubberBatchItems.map((r) => (r.stockItem ? r.stockItem.rollNumber : null)).filter(Boolean),
     );
     if (uniqueRolls.size > 0) return uniqueRolls.size;
     return 1;
@@ -296,14 +319,14 @@ export function MaterialBatchSection(props: MaterialBatchSectionProps) {
             (s: QcDefelskoBatchRecord) => s.fieldKey === "rubber_roll_batch_0",
           );
           if (!hasNewKeys) {
-            const oldRollVal =
-              materialEntries.find(
-                (s: QcDefelskoBatchRecord) => s.fieldKey === "rubber_roll_number",
-              )?.batchNumber || "";
-            const oldBatchVal =
-              materialEntries.find(
-                (s: QcDefelskoBatchRecord) => s.fieldKey === "rubber_batch_number",
-              )?.batchNumber || "";
+            const oldRollMatch = materialEntries.find(
+              (s: QcDefelskoBatchRecord) => s.fieldKey === "rubber_roll_number",
+            );
+            const oldRollVal = oldRollMatch ? oldRollMatch.batchNumber : "";
+            const oldBatchMatch = materialEntries.find(
+              (s: QcDefelskoBatchRecord) => s.fieldKey === "rubber_batch_number",
+            );
+            const oldBatchVal = oldBatchMatch ? oldBatchMatch.batchNumber : "";
             const mergedVal = [oldRollVal, oldBatchVal].filter(Boolean).join(" / ");
             if (mergedVal) {
               return migratedPrev.map((entry) =>
@@ -312,9 +335,10 @@ export function MaterialBatchSection(props: MaterialBatchSectionProps) {
             }
           }
 
-          const oldSolutionVal = materialEntries.find(
+          const oldSolutionMatch = materialEntries.find(
             (s: QcDefelskoBatchRecord) => s.fieldKey === "solution_batch_number",
-          )?.batchNumber;
+          );
+          const oldSolutionVal = oldSolutionMatch ? oldSolutionMatch.batchNumber : null;
           const hasNewSolutionKeys = materialEntries.some(
             (s: QcDefelskoBatchRecord) => s.fieldKey === "solution_batch_0",
           );
@@ -361,15 +385,25 @@ export function MaterialBatchSection(props: MaterialBatchSectionProps) {
     stockControlApiClient
       .jobCardOffcutsUsed(jobCardId)
       .then((allocations) => {
-        const mapped = (allocations || []).map((a: any) => ({
-          sourceRollNumber: a.stockItem?.sourceRollNumber || null,
-          rollNumber: a.stockItem?.rollNumber || null,
-          sourceJobCardId: a.stockItem?.sourceJobCardId || null,
-          sourceJobCard: a.stockItem?.sourceJobCard || null,
-          widthMm: a.stockItem?.widthMm || null,
-          lengthM: a.stockItem?.lengthM || null,
-          thicknessMm: a.stockItem?.thicknessMm || null,
-        }));
+        const mapped = (allocations || []).map((a: any) => {
+          const si = a.stockItem;
+          const sourceRollNumber = si ? si.sourceRollNumber : null;
+          const rollNumber = si ? si.rollNumber : null;
+          const sourceJobCardId = si ? si.sourceJobCardId : null;
+          const sourceJobCard = si ? si.sourceJobCard : null;
+          const widthMm = si ? si.widthMm : null;
+          const lengthM = si ? si.lengthM : null;
+          const thicknessMm = si ? si.thicknessMm : null;
+          return {
+            sourceRollNumber: sourceRollNumber || null,
+            rollNumber: rollNumber || null,
+            sourceJobCardId: sourceJobCardId || null,
+            sourceJobCard: sourceJobCard || null,
+            widthMm: widthMm || null,
+            lengthM: lengthM || null,
+            thicknessMm: thicknessMm || null,
+          };
+        });
         setOffcutsUsed(mapped);
       })
       .catch(() => setOffcutsUsed([]));
@@ -381,13 +415,16 @@ export function MaterialBatchSection(props: MaterialBatchSectionProps) {
     setSaveSuccess(false);
     try {
       const paintBatches = productRows.flatMap((row) =>
-        row.fields.map((f) => ({
-          fieldKey: f.fieldKey,
-          category: "material_paint",
-          label: f.partLabel ? `${row.productName} — ${f.partLabel}` : row.productName,
-          batchNumber: paintValues[f.fieldKey] || null,
-          notApplicable: false,
-        })),
+        row.fields.map((f) => {
+          const rawPaintVal = paintValues[f.fieldKey];
+          return {
+            fieldKey: f.fieldKey,
+            category: "material_paint",
+            label: f.partLabel ? `${row.productName} — ${f.partLabel}` : row.productName,
+            batchNumber: rawPaintVal || null,
+            notApplicable: false,
+          };
+        }),
       );
       const batches = [
         ...rubberManual.map((e) => ({
@@ -413,7 +450,8 @@ export function MaterialBatchSection(props: MaterialBatchSectionProps) {
   const rubberRecords = useMemo(
     () =>
       batchRecords.filter((r) => {
-        const name = r.stockItem?.name || "";
+        const rawName = r.stockItem ? r.stockItem.name : null;
+        const name = rawName || "";
         return RUBBER_PATTERN.test(name) || SOLUTION_PATTERN.test(name);
       }),
     [batchRecords],
@@ -422,7 +460,8 @@ export function MaterialBatchSection(props: MaterialBatchSectionProps) {
   const paintRecords = useMemo(
     () =>
       batchRecords.filter((r) => {
-        const name = r.stockItem?.name || "";
+        const rawName = r.stockItem ? r.stockItem.name : null;
+        const name = rawName || "";
         return (
           PAINT_PATTERN.test(name) && !RUBBER_PATTERN.test(name) && !SOLUTION_PATTERN.test(name)
         );
@@ -559,8 +598,10 @@ export function MaterialBatchSection(props: MaterialBatchSectionProps) {
                   <div className="space-y-1.5">
                     {offcutsUsed.map((offcut, idx) => {
                       const rollDisplay = offcut.sourceRollNumber || offcut.rollNumber || "—";
-                      const sourceRef = offcut.sourceJobCard?.jobNumber
-                        ? `JC ${offcut.sourceJobCard.jobNumber}`
+                      const sourceJobCard = offcut.sourceJobCard;
+                      const jobNumber = sourceJobCard ? sourceJobCard.jobNumber : null;
+                      const sourceRef = jobNumber
+                        ? `JC ${jobNumber}`
                         : offcut.sourceJobCardId
                           ? `JC #${offcut.sourceJobCardId}`
                           : "—";
@@ -652,26 +693,30 @@ export function MaterialBatchSection(props: MaterialBatchSectionProps) {
                         >
                           {row.productName}
                         </div>
-                        {row.fields.map((field) => (
-                          <div key={field.fieldKey} className="flex items-center gap-1">
-                            <input
-                              type="text"
-                              value={paintValues[field.fieldKey] || ""}
-                              onChange={(e) => updatePaintValue(field.fieldKey, e.target.value)}
-                              placeholder={
-                                partCount === 1
-                                  ? "Enter batch number"
-                                  : `${field.partLabel || "Batch"}`
-                              }
-                              className="flex-1 min-w-0 rounded border border-gray-300 px-2 py-1 text-xs text-gray-900 placeholder-gray-400 focus:border-teal-500 focus:ring-1 focus:ring-teal-500"
-                            />
-                            <CertLinkStatus
-                              fieldKey={field.fieldKey}
-                              value={paintValues[field.fieldKey] || ""}
-                              certLinks={certLinks}
-                            />
-                          </div>
-                        ))}
+                        {row.fields.map((field) => {
+                          const paintVal = paintValues[field.fieldKey];
+                          const paintDisplay = paintVal || "";
+                          const rawPartLabel = field.partLabel;
+                          const placeholderLabel = rawPartLabel || "Batch";
+                          return (
+                            <div key={field.fieldKey} className="flex items-center gap-1">
+                              <input
+                                type="text"
+                                value={paintDisplay}
+                                onChange={(e) => updatePaintValue(field.fieldKey, e.target.value)}
+                                placeholder={
+                                  partCount === 1 ? "Enter batch number" : `${placeholderLabel}`
+                                }
+                                className="flex-1 min-w-0 rounded border border-gray-300 px-2 py-1 text-xs text-gray-900 placeholder-gray-400 focus:border-teal-500 focus:ring-1 focus:ring-teal-500"
+                              />
+                              <CertLinkStatus
+                                fieldKey={field.fieldKey}
+                                value={paintDisplay}
+                                certLinks={certLinks}
+                              />
+                            </div>
+                          );
+                        })}
                       </div>
                     );
                   })}
