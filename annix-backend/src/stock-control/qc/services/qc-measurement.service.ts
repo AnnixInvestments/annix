@@ -11,6 +11,7 @@ import { IsNull, Repository } from "typeorm";
 import { JobCardCoatingAnalysis } from "../../entities/coating-analysis.entity";
 import { CustomerPurchaseOrder } from "../../entities/customer-purchase-order.entity";
 import { JobCard } from "../../entities/job-card.entity";
+import { JobCardLineItem } from "../../entities/job-card-line-item.entity";
 import { StockControlCompany } from "../../entities/stock-control-company.entity";
 import { INVALID_LINE_ITEM_PATTERNS, stripJunkSuffixes } from "../../lib/line-item-validation";
 import { CertificateService } from "../../services/certificate.service";
@@ -87,6 +88,8 @@ export class QcMeasurementService {
     private readonly envRecordRepo: Repository<QcEnvironmentalRecord>,
     @InjectRepository(JobCard)
     private readonly jobCardRepo: Repository<JobCard>,
+    @InjectRepository(JobCardLineItem)
+    private readonly lineItemRepo: Repository<JobCardLineItem>,
     @InjectRepository(JobCardCoatingAnalysis)
     private readonly coatingRepo: Repository<JobCardCoatingAnalysis>,
     @InjectRepository(StockControlCompany)
@@ -789,12 +792,54 @@ export class QcMeasurementService {
     return this.findOrFail(this.itemsReleaseRepo, companyId, id, "Items release");
   }
 
+  private async validateReleaseQuantities(
+    companyId: number,
+    jobCardId: number,
+    newItems: Array<{ itemCode: string; quantity: number }>,
+    excludeReleaseId?: number,
+  ): Promise<void> {
+    const lineItems = await this.lineItemRepo.find({ where: { jobCardId, companyId } });
+    const existingReleases = await this.itemsReleaseRepo.find({ where: { jobCardId, companyId } });
+
+    const alreadyReleased: Record<string, number> = {};
+    for (const release of existingReleases) {
+      if (excludeReleaseId && release.id === excludeReleaseId) continue;
+      const items = (release.items || []) as Array<{ itemCode: string; quantity: number }>;
+      for (const item of items) {
+        const key = item.itemCode;
+        const prev = alreadyReleased[key];
+        alreadyReleased[key] = (prev || 0) + Number(item.quantity);
+      }
+    }
+
+    for (const item of newItems) {
+      const key = item.itemCode;
+      const lineItem = lineItems.find((li) => li.itemCode === key);
+      const maxQty = lineItem ? Number(lineItem.quantity) : 0;
+      const prev = alreadyReleased[key];
+      const alreadyQty = prev || 0;
+      const totalAfter = alreadyQty + Number(item.quantity);
+      if (totalAfter > maxQty) {
+        throw new BadRequestException(
+          `Cannot release ${item.quantity} of "${key}" — already released ${alreadyQty} of ${maxQty} available`,
+        );
+      }
+    }
+  }
+
   async createItemsRelease(
     companyId: number,
     jobCardId: number,
     data: Partial<QcItemsRelease>,
     user: UserContext,
   ): Promise<QcItemsRelease> {
+    if (data.items && Array.isArray(data.items)) {
+      await this.validateReleaseQuantities(
+        companyId,
+        jobCardId,
+        data.items as Array<{ itemCode: string; quantity: number }>,
+      );
+    }
     const record = this.itemsReleaseRepo.create({
       ...data,
       companyId,
@@ -813,6 +858,17 @@ export class QcMeasurementService {
     const record = await this.findOrFail(this.itemsReleaseRepo, companyId, id, "Items release");
     const itemsChanged =
       data.items !== undefined && JSON.stringify(data.items) !== JSON.stringify(record.items);
+    if (itemsChanged && data.items && Array.isArray(data.items)) {
+      const jcId = record.jobCardId;
+      if (jcId) {
+        await this.validateReleaseQuantities(
+          companyId,
+          jcId,
+          data.items as Array<{ itemCode: string; quantity: number }>,
+          id,
+        );
+      }
+    }
     Object.assign(record, data);
     if (itemsChanged) {
       record.version = (record.version || 1) + 1;

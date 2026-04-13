@@ -9,6 +9,7 @@ import { CustomerPurchaseOrderItem } from "../entities/customer-purchase-order-i
 import { IssuanceBatchRecord } from "../entities/issuance-batch-record.entity";
 import { JobCard } from "../entities/job-card.entity";
 import { JobCardDataBook } from "../entities/job-card-data-book.entity";
+import { JobCardLineItem } from "../entities/job-card-line-item.entity";
 import { PushSubscription } from "../entities/push-subscription.entity";
 import { StockControlActionPermission } from "../entities/stock-control-action-permission.entity";
 import { StockControlCompany } from "../entities/stock-control-company.entity";
@@ -72,6 +73,7 @@ import { WORK_ITEM_PROVIDER } from "./work-item-provider.interface";
       IssuanceBatchRecord,
       JobCard,
       JobCardCoatingAnalysis,
+      JobCardLineItem,
       JobCardDataBook,
       PositectorDevice,
       PositectorUpload,
