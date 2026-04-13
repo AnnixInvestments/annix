@@ -834,16 +834,26 @@ export class CoatingAnalysisService {
 
     return Object.values(grouped).map(({ totalRequired, coat }) => {
       const matched = this.fuzzyMatchStockItem(coat.product, stockItems);
+      const availableLitres = matched ? this.availableLitres(matched) : 0;
       return {
         product: coat.product,
         stockItemId: matched?.id ?? null,
         stockItemName: matched?.name ?? null,
-        currentStock: matched ? Number(matched.quantity) : 0,
+        currentStock: availableLitres,
         required: totalRequired,
         unit: "liters",
-        sufficient: matched ? Number(matched.quantity) >= totalRequired : false,
+        sufficient: availableLitres >= totalRequired,
       };
     });
+  }
+
+  private availableLitres(item: StockItem): number {
+    const qty = Number(item.quantity);
+    const uom = item.unitOfMeasure;
+    const packL = item.packSizeLitres ? Number(item.packSizeLitres) : null;
+    const isLitreUnit = uom === "ltr" || uom === "L" || uom === "litre";
+    if (isLitreUnit || !packL) return qty;
+    return qty * packL;
   }
 
   private fuzzyMatchStockItem(productName: string, stockItems: StockItem[]): StockItem | null {
@@ -857,7 +867,12 @@ export class CoatingAnalysisService {
         return { item, score: matchingWords.length / words.length };
       })
       .filter((entry) => entry.score >= 0.5)
-      .sort((a, b) => b.score - a.score);
+      .sort((a, b) => {
+        if (b.score !== a.score) return b.score - a.score;
+        const aHasStock = Number(a.item.quantity) > 0 ? 1 : 0;
+        const bHasStock = Number(b.item.quantity) > 0 ? 1 : 0;
+        return bHasStock - aHasStock;
+      });
 
     return scored.length > 0 ? scored[0].item : null;
   }
