@@ -25,7 +25,6 @@ import { ItemsReleaseSection } from "./ItemsReleaseSection";
 import { MaterialBatchSection } from "./MaterialBatchSection";
 import { QaFinalPhotosSection } from "./QaFinalPhotosSection";
 import { QaReviewSection } from "./QaReviewSection";
-import { QcMeasurementChecklist } from "./QcMeasurementChecklist";
 import { QcpSection } from "./QcpSection";
 import { QcReleaseCertificateSection } from "./QcReleaseCertificateSection";
 import { ReleaseDocumentGenerator } from "./ReleaseDocumentGenerator";
@@ -192,22 +191,22 @@ export function QualityTab(props: QualityTabProps) {
     }
   };
 
-  const blastProfiles = useMemo(
-    () => (qcData?.blastProfiles || []).filter((r) => r.profileType !== "paint"),
-    [qcData],
-  );
-  const paintProfiles = useMemo(
-    () => (qcData?.blastProfiles || []).filter((r) => r.profileType === "paint"),
-    [qcData],
-  );
+  const blastProfiles = useMemo(() => {
+    const allProfiles = qcData ? qcData.blastProfiles : [];
+    return allProfiles.filter((r) => r.profileType !== "paint");
+  }, [qcData]);
+  const paintProfiles = useMemo(() => {
+    const allProfiles = qcData ? qcData.blastProfiles : [];
+    return allProfiles.filter((r) => r.profileType === "paint");
+  }, [qcData]);
 
-  const paintCoats = coatingAnalysis?.coats || [];
+  const rawCoats = coatingAnalysis ? coatingAnalysis.coats : [];
+  const paintCoats = rawCoats || [];
+  const shoreHardnessList = qcData ? qcData.shoreHardness : [];
+  const dftReadingsList = qcData ? qcData.dftReadings : [];
 
   const totalQcRecords =
-    (qcData?.shoreHardness.length || 0) +
-    (qcData?.dftReadings.length || 0) +
-    blastProfiles.length +
-    paintProfiles.length;
+    shoreHardnessList.length + dftReadingsList.length + blastProfiles.length + paintProfiles.length;
 
   return (
     <div className="space-y-6">
@@ -265,15 +264,11 @@ export function QualityTab(props: QualityTabProps) {
       <MaterialBatchSection
         jobCardId={jobCardId}
         batchRecords={batchRecords}
-        hasRubber={coatingAnalysis?.hasInternalLining === true}
-        hasPaint={(coatingAnalysis?.coats || []).length > 0}
+        hasRubber={coatingAnalysis ? coatingAnalysis.hasInternalLining === true : false}
+        hasPaint={paintCoats.length > 0}
         coatingAnalysis={coatingAnalysis}
         rubberPlanOverride={rubberPlanOverride || null}
       />
-
-      {coatingLoaded && (
-        <QcMeasurementChecklist jobCardId={jobCardId} coatingAnalysis={coatingAnalysis} />
-      )}
 
       <QaReviewSection
         jobCardId={jobCardId}
@@ -297,263 +292,274 @@ export function QualityTab(props: QualityTabProps) {
         <div className="py-12 text-center text-gray-500">Loading quality data...</div>
       ) : (
         <>
-          <div className="rounded-lg border border-gray-200 bg-white shadow-sm">
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between border-b border-gray-200 px-3 sm:px-5 py-3">
-              <h3 className="text-sm font-semibold text-gray-900">QC Measurements</h3>
-              <div className="flex flex-wrap gap-2">
-                <button
-                  onClick={() => setActiveForm("blast-profile")}
-                  className="rounded-md bg-sky-700 px-3 py-1.5 text-xs font-medium text-white hover:bg-sky-800"
-                >
-                  + Blast Profile
-                </button>
-                {paintCoats.map((coat, idx) => {
-                  const label = coat.product || `Coat ${idx + 1}`;
-                  return (
-                    <button
-                      key={`paint-btn-${idx}`}
-                      onClick={() => {
-                        setPaintProfileCoatLabel(label);
-                        setActiveForm("paint-profile");
-                      }}
-                      className="rounded-md bg-sky-700 px-3 py-1.5 text-xs font-medium text-white hover:bg-sky-800"
-                    >
-                      + Paint Profile ({label})
-                    </button>
-                  );
-                })}
-                <button
-                  onClick={() => setActiveForm("shore-hardness")}
-                  className="rounded-md bg-sky-700 px-3 py-1.5 text-xs font-medium text-white hover:bg-sky-800"
-                >
-                  + Shore Hardness
-                </button>
+          {false && (
+            <div className="rounded-lg border border-gray-200 bg-white shadow-sm">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between border-b border-gray-200 px-3 sm:px-5 py-3">
+                <h3 className="text-sm font-semibold text-gray-900">QC Measurements</h3>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    onClick={() => setActiveForm("blast-profile")}
+                    className="rounded-md bg-sky-700 px-3 py-1.5 text-xs font-medium text-white hover:bg-sky-800"
+                  >
+                    + Blast Profile
+                  </button>
+                  {paintCoats.map((coat, idx) => {
+                    const rawProduct = coat.product;
+                    const label = rawProduct || `Coat ${idx + 1}`;
+                    return (
+                      <button
+                        key={`paint-btn-${idx}`}
+                        onClick={() => {
+                          setPaintProfileCoatLabel(label);
+                          setActiveForm("paint-profile");
+                        }}
+                        className="rounded-md bg-sky-700 px-3 py-1.5 text-xs font-medium text-white hover:bg-sky-800"
+                      >
+                        + Paint Profile ({label})
+                      </button>
+                    );
+                  })}
+                  <button
+                    onClick={() => setActiveForm("shore-hardness")}
+                    className="rounded-md bg-sky-700 px-3 py-1.5 text-xs font-medium text-white hover:bg-sky-800"
+                  >
+                    + Shore Hardness
+                  </button>
+                </div>
               </div>
-            </div>
 
-            {totalQcRecords === 0 ? (
-              <div className="py-8 text-center text-sm text-gray-500">
-                No QC measurements recorded yet. Use the buttons above to add records.
-              </div>
-            ) : (
-              <div className="divide-y divide-gray-200">
-                {blastProfiles.map((rec) => {
-                  const avgMicrons = rec.averageMicrons;
-                  const avgDisplay = typeof avgMicrons === "number" ? avgMicrons.toFixed(1) : "-";
-                  return (
-                    <div
-                      key={`bp-${rec.id}`}
-                      className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between px-3 sm:px-5 py-3 hover:bg-gray-50"
-                    >
-                      <div className="flex flex-wrap items-center gap-2 sm:gap-3 min-w-0">
-                        <span className="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-800">
-                          Blast
-                        </span>
-                        <span className="text-sm text-gray-500">
-                          Avg: {avgDisplay} μm / Spec: {rec.specMicrons} μm
-                        </span>
-                        {rec.abrasiveBatchNumber && (
-                          <span className="hidden sm:inline text-xs text-gray-500">
-                            Batch: {rec.abrasiveBatchNumber}
+              {totalQcRecords === 0 ? (
+                <div className="py-8 text-center text-sm text-gray-500">
+                  No QC measurements recorded yet. Use the buttons above to add records.
+                </div>
+              ) : (
+                <div className="divide-y divide-gray-200">
+                  {blastProfiles.map((rec) => {
+                    const avgMicrons = rec.averageMicrons;
+                    const avgDisplay = typeof avgMicrons === "number" ? avgMicrons.toFixed(1) : "-";
+                    return (
+                      <div
+                        key={`bp-${rec.id}`}
+                        className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between px-3 sm:px-5 py-3 hover:bg-gray-50"
+                      >
+                        <div className="flex flex-wrap items-center gap-2 sm:gap-3 min-w-0">
+                          <span className="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-800">
+                            Blast
                           </span>
-                        )}
-                        {rec.temperature !== null && (
-                          <span className="hidden sm:inline text-xs text-gray-400">
-                            {rec.temperature}°C
+                          <span className="text-sm text-gray-500">
+                            Avg: {avgDisplay} μm / Spec: {rec.specMicrons} μm
                           </span>
-                        )}
-                        {rec.humidity !== null && (
-                          <span className="hidden sm:inline text-xs text-gray-400">
-                            {rec.humidity}% RH
-                          </span>
-                        )}
-                        <span className="text-xs text-gray-400">{rec.readingDate}</span>
-                      </div>
-                      <div className="flex items-center gap-2 shrink-0">
-                        <button
-                          onClick={() => {
-                            setEditingBlast(rec);
-                            setActiveForm("blast-profile");
-                          }}
-                          className="text-xs text-teal-600 hover:text-teal-800"
-                        >
-                          Edit
-                        </button>
-                        <button
-                          onClick={() => handleDeleteQc("blast-profile", rec.id)}
-                          className="text-xs text-red-600 hover:text-red-800"
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
-
-                {paintProfiles.map((rec) => {
-                  const label = rec.coatLabel || "Paint";
-                  const paintAvg = rec.averageMicrons;
-                  const paintAvgDisplay = typeof paintAvg === "number" ? paintAvg.toFixed(1) : "-";
-                  return (
-                    <div
-                      key={`pp-${rec.id}`}
-                      className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between px-3 sm:px-5 py-3 hover:bg-gray-50"
-                    >
-                      <div className="flex flex-wrap items-center gap-2 sm:gap-3 min-w-0">
-                        <span className="inline-flex items-center rounded-full bg-indigo-100 px-2.5 py-0.5 text-xs font-medium text-indigo-800">
-                          Paint
-                        </span>
-                        <span className="text-sm font-medium text-gray-900">{label}</span>
-                        <span className="text-sm text-gray-500">
-                          Avg: {paintAvgDisplay} μm / Spec: {rec.specMicrons} μm
-                        </span>
-                        {rec.abrasiveBatchNumber && (
-                          <span className="hidden sm:inline text-xs text-gray-500">
-                            Batch: {rec.abrasiveBatchNumber}
-                          </span>
-                        )}
-                        {rec.temperature !== null && (
-                          <span className="hidden sm:inline text-xs text-gray-400">
-                            {rec.temperature}°C
-                          </span>
-                        )}
-                        {rec.humidity !== null && (
-                          <span className="hidden sm:inline text-xs text-gray-400">
-                            {rec.humidity}% RH
-                          </span>
-                        )}
-                        <span className="text-xs text-gray-400">{rec.readingDate}</span>
-                      </div>
-                      <div className="flex items-center gap-2 shrink-0">
-                        <button
-                          onClick={() => {
-                            setEditingBlast(rec);
-                            setPaintProfileCoatLabel(rec.coatLabel || "Paint");
-                            setActiveForm("paint-profile");
-                          }}
-                          className="text-xs text-teal-600 hover:text-teal-800"
-                        >
-                          Edit
-                        </button>
-                        <button
-                          onClick={() => handleDeleteQc("blast-profile", rec.id)}
-                          className="text-xs text-red-600 hover:text-red-800"
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
-
-                {(qcData?.shoreHardness || []).map((rec) => {
-                  const overallAvg = rec.averages?.overall;
-                  const overallDisplay =
-                    typeof overallAvg === "number" ? overallAvg.toFixed(1) : "-";
-                  return (
-                    <div
-                      key={`sh-${rec.id}`}
-                      className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between px-3 sm:px-5 py-3 hover:bg-gray-50"
-                    >
-                      <div className="flex flex-wrap items-center gap-2 sm:gap-3 min-w-0">
-                        <span className="inline-flex items-center rounded-full bg-violet-100 px-2.5 py-0.5 text-xs font-medium text-violet-800">
-                          Shore
-                        </span>
-                        <span className="text-sm font-medium text-gray-900">{rec.rubberSpec}</span>
-                        <span className="text-sm text-gray-500">
-                          Avg: {overallDisplay} / Required: {rec.requiredShore}
-                        </span>
-                        {typeof overallAvg === "number" &&
-                          Math.abs(overallAvg - rec.requiredShore) > 5 && (
-                            <span className="inline-flex items-center rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-800">
-                              Out of spec
+                          {rec.abrasiveBatchNumber && (
+                            <span className="hidden sm:inline text-xs text-gray-500">
+                              Batch: {rec.abrasiveBatchNumber}
                             </span>
                           )}
-                        <span className="text-xs text-gray-400">{rec.readingDate}</span>
+                          {rec.temperature !== null && (
+                            <span className="hidden sm:inline text-xs text-gray-400">
+                              {rec.temperature}°C
+                            </span>
+                          )}
+                          {rec.humidity !== null && (
+                            <span className="hidden sm:inline text-xs text-gray-400">
+                              {rec.humidity}% RH
+                            </span>
+                          )}
+                          <span className="text-xs text-gray-400">{rec.readingDate}</span>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <button
+                            onClick={() => {
+                              setEditingBlast(rec);
+                              setActiveForm("blast-profile");
+                            }}
+                            className="text-xs text-teal-600 hover:text-teal-800"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => handleDeleteQc("blast-profile", rec.id)}
+                            className="text-xs text-red-600 hover:text-red-800"
+                          >
+                            Delete
+                          </button>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2 shrink-0">
-                        <button
-                          onClick={() => {
-                            setEditingShoreHardness(rec);
-                            setActiveForm("shore-hardness");
-                          }}
-                          className="text-xs text-teal-600 hover:text-teal-800"
-                        >
-                          Edit
-                        </button>
-                        <button
-                          onClick={() => handleDeleteQc("shore-hardness", rec.id)}
-                          className="text-xs text-red-600 hover:text-red-800"
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })}
 
-                {(qcData?.dftReadings || []).map((rec) => {
-                  const dftAvg = rec.averageMicrons;
-                  const dftAvgDisplay = typeof dftAvg === "number" ? dftAvg.toFixed(1) : "-";
-                  return (
-                    <div
-                      key={`dft-${rec.id}`}
-                      className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between px-3 sm:px-5 py-3 hover:bg-gray-50"
-                    >
-                      <div className="flex flex-wrap items-center gap-2 sm:gap-3 min-w-0">
-                        <span
-                          className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                            rec.coatType === "primer"
-                              ? "bg-orange-100 text-orange-800"
+                  {paintProfiles.map((rec) => {
+                    const rawCoatLabel = rec.coatLabel;
+                    const label = rawCoatLabel || "Paint";
+                    const paintAvg = rec.averageMicrons;
+                    const paintAvgDisplay =
+                      typeof paintAvg === "number" ? paintAvg.toFixed(1) : "-";
+                    return (
+                      <div
+                        key={`pp-${rec.id}`}
+                        className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between px-3 sm:px-5 py-3 hover:bg-gray-50"
+                      >
+                        <div className="flex flex-wrap items-center gap-2 sm:gap-3 min-w-0">
+                          <span className="inline-flex items-center rounded-full bg-indigo-100 px-2.5 py-0.5 text-xs font-medium text-indigo-800">
+                            Paint
+                          </span>
+                          <span className="text-sm font-medium text-gray-900">{label}</span>
+                          <span className="text-sm text-gray-500">
+                            Avg: {paintAvgDisplay} μm / Spec: {rec.specMicrons} μm
+                          </span>
+                          {rec.abrasiveBatchNumber && (
+                            <span className="hidden sm:inline text-xs text-gray-500">
+                              Batch: {rec.abrasiveBatchNumber}
+                            </span>
+                          )}
+                          {rec.temperature !== null && (
+                            <span className="hidden sm:inline text-xs text-gray-400">
+                              {rec.temperature}°C
+                            </span>
+                          )}
+                          {rec.humidity !== null && (
+                            <span className="hidden sm:inline text-xs text-gray-400">
+                              {rec.humidity}% RH
+                            </span>
+                          )}
+                          <span className="text-xs text-gray-400">{rec.readingDate}</span>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <button
+                            onClick={() => {
+                              setEditingBlast(rec);
+                              setPaintProfileCoatLabel(label);
+                              setActiveForm("paint-profile");
+                            }}
+                            className="text-xs text-teal-600 hover:text-teal-800"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => handleDeleteQc("blast-profile", rec.id)}
+                            className="text-xs text-red-600 hover:text-red-800"
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+
+                  {shoreHardnessList.map((rec) => {
+                    const rawOverall = rec.averages ? rec.averages.overall : null;
+                    const overallAvg = rawOverall;
+                    const overallDisplay =
+                      typeof overallAvg === "number" ? overallAvg.toFixed(1) : "-";
+                    return (
+                      <div
+                        key={`sh-${rec.id}`}
+                        className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between px-3 sm:px-5 py-3 hover:bg-gray-50"
+                      >
+                        <div className="flex flex-wrap items-center gap-2 sm:gap-3 min-w-0">
+                          <span className="inline-flex items-center rounded-full bg-violet-100 px-2.5 py-0.5 text-xs font-medium text-violet-800">
+                            Shore
+                          </span>
+                          <span className="text-sm font-medium text-gray-900">
+                            {rec.rubberSpec}
+                          </span>
+                          <span className="text-sm text-gray-500">
+                            Avg: {overallDisplay} / Required: {rec.requiredShore}
+                          </span>
+                          {typeof overallAvg === "number" &&
+                            Math.abs(overallAvg - rec.requiredShore) > 5 && (
+                              <span className="inline-flex items-center rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-800">
+                                Out of spec
+                              </span>
+                            )}
+                          <span className="text-xs text-gray-400">{rec.readingDate}</span>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <button
+                            onClick={() => {
+                              setEditingShoreHardness(rec);
+                              setActiveForm("shore-hardness");
+                            }}
+                            className="text-xs text-teal-600 hover:text-teal-800"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => handleDeleteQc("shore-hardness", rec.id)}
+                            className="text-xs text-red-600 hover:text-red-800"
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+
+                  {dftReadingsList.map((rec) => {
+                    const dftAvg = rec.averageMicrons;
+                    const dftAvgDisplay = typeof dftAvg === "number" ? dftAvg.toFixed(1) : "-";
+                    const specMin = rec.specMinMicrons;
+                    const specMax = rec.specMaxMicrons;
+                    const outOfSpec =
+                      typeof dftAvg === "number" && (dftAvg < specMin || dftAvg > specMax);
+                    return (
+                      <div
+                        key={`dft-${rec.id}`}
+                        className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between px-3 sm:px-5 py-3 hover:bg-gray-50"
+                      >
+                        <div className="flex flex-wrap items-center gap-2 sm:gap-3 min-w-0">
+                          <span
+                            className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                              rec.coatType === "primer"
+                                ? "bg-orange-100 text-orange-800"
+                                : rec.coatType === "intermediate"
+                                  ? "bg-purple-100 text-purple-800"
+                                  : "bg-blue-100 text-blue-800"
+                            }`}
+                          >
+                            DFT{" "}
+                            {rec.coatType === "primer"
+                              ? "Primer"
                               : rec.coatType === "intermediate"
-                                ? "bg-purple-100 text-purple-800"
-                                : "bg-blue-100 text-blue-800"
-                          }`}
-                        >
-                          DFT{" "}
-                          {rec.coatType === "primer"
-                            ? "Primer"
-                            : rec.coatType === "intermediate"
-                              ? "Intermediate"
-                              : "Final"}
-                        </span>
-                        <span className="text-sm font-medium text-gray-900">
-                          {rec.paintProduct}
-                        </span>
-                        <span className="text-sm text-gray-500">
-                          Avg: {dftAvgDisplay} μm ({rec.specMinMicrons}-{rec.specMaxMicrons})
-                        </span>
-                        {typeof dftAvg === "number" &&
-                          (dftAvg < rec.specMinMicrons || dftAvg > rec.specMaxMicrons) && (
+                                ? "Intermediate"
+                                : "Final"}
+                          </span>
+                          <span className="text-sm font-medium text-gray-900">
+                            {rec.paintProduct}
+                          </span>
+                          <span className="text-sm text-gray-500">
+                            Avg: {dftAvgDisplay} μm ({rec.specMinMicrons}-{rec.specMaxMicrons})
+                          </span>
+                          {outOfSpec && (
                             <span className="inline-flex items-center rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-800">
                               Out of spec
                             </span>
                           )}
-                        <span className="text-xs text-gray-400">{rec.readingDate}</span>
+                          <span className="text-xs text-gray-400">{rec.readingDate}</span>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <button
+                            onClick={() => {
+                              setEditingDft(rec);
+                              setActiveForm("dft");
+                            }}
+                            className="text-xs text-teal-600 hover:text-teal-800"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => handleDeleteQc("dft", rec.id)}
+                            className="text-xs text-red-600 hover:text-red-800"
+                          >
+                            Delete
+                          </button>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2 shrink-0">
-                        <button
-                          onClick={() => {
-                            setEditingDft(rec);
-                            setActiveForm("dft");
-                          }}
-                          className="text-xs text-teal-600 hover:text-teal-800"
-                        >
-                          Edit
-                        </button>
-                        <button
-                          onClick={() => handleDeleteQc("dft", rec.id)}
-                          className="text-xs text-red-600 hover:text-red-800"
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
 
           <ReleaseDocumentGenerator
             jobCardId={jobCardId}
@@ -581,37 +587,42 @@ export function QualityTab(props: QualityTabProps) {
                 <h3 className="text-sm font-semibold text-gray-900">Supplier Certificates</h3>
               </div>
               <div className="divide-y divide-gray-200">
-                {certificates.map((cert) => (
-                  <div
-                    key={cert.id}
-                    className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between px-3 sm:px-5 py-3 hover:bg-gray-50"
-                  >
-                    <div className="flex flex-wrap items-center gap-2 sm:gap-3 min-w-0">
-                      <span
-                        className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                          cert.certificateType === "COA"
-                            ? "bg-blue-100 text-blue-800"
-                            : "bg-purple-100 text-purple-800"
-                        }`}
-                      >
-                        {cert.certificateType}
-                      </span>
-                      <span className="text-sm font-medium text-gray-900">{cert.batchNumber}</span>
-                      <span className="hidden sm:inline text-sm text-gray-500">
-                        {cert.supplier?.name || ""}
-                      </span>
-                      <span className="hidden sm:inline text-xs text-gray-400">
-                        {cert.originalFilename}
-                      </span>
-                    </div>
-                    <button
-                      onClick={() => handleViewCertificate(cert.id)}
-                      className="self-start text-sm text-teal-600 hover:text-teal-800 shrink-0"
+                {certificates.map((cert) => {
+                  const supplierName = cert.supplier ? cert.supplier.name : "";
+                  return (
+                    <div
+                      key={cert.id}
+                      className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between px-3 sm:px-5 py-3 hover:bg-gray-50"
                     >
-                      View
-                    </button>
-                  </div>
-                ))}
+                      <div className="flex flex-wrap items-center gap-2 sm:gap-3 min-w-0">
+                        <span
+                          className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                            cert.certificateType === "COA"
+                              ? "bg-blue-100 text-blue-800"
+                              : "bg-purple-100 text-purple-800"
+                          }`}
+                        >
+                          {cert.certificateType}
+                        </span>
+                        <span className="text-sm font-medium text-gray-900">
+                          {cert.batchNumber}
+                        </span>
+                        <span className="hidden sm:inline text-sm text-gray-500">
+                          {supplierName}
+                        </span>
+                        <span className="hidden sm:inline text-xs text-gray-400">
+                          {cert.originalFilename}
+                        </span>
+                      </div>
+                      <button
+                        onClick={() => handleViewCertificate(cert.id)}
+                        className="self-start text-sm text-teal-600 hover:text-teal-800 shrink-0"
+                      >
+                        View
+                      </button>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}
@@ -703,36 +714,39 @@ export function QualityTab(props: QualityTabProps) {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200">
-                    {batchRecords.map((record) => (
-                      <tr key={record.id} className="hover:bg-gray-50">
-                        <td className="whitespace-nowrap px-4 py-3 text-sm font-medium text-gray-900">
-                          {record.batchNumber}
-                        </td>
-                        <td className="px-4 py-3 text-sm text-gray-600">
-                          {record.stockItem?.name || "-"}
-                        </td>
-                        <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-600">
-                          {record.quantity}
-                        </td>
-                        <td className="px-4 py-3 text-sm">
-                          {record.supplierCertificate ? (
-                            <button
-                              onClick={() => handleViewCertificate(record.supplierCertificate!.id)}
-                              className="inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800 hover:bg-green-200"
-                            >
-                              Linked - {record.supplierCertificate.certificateType}
-                            </button>
-                          ) : (
-                            <span className="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">
-                              No cert
-                            </span>
-                          )}
-                        </td>
-                        <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-500">
-                          {formatDateZA(record.createdAt)}
-                        </td>
-                      </tr>
-                    ))}
+                    {batchRecords.map((record) => {
+                      const stockItemName = record.stockItem ? record.stockItem.name : "-";
+                      return (
+                        <tr key={record.id} className="hover:bg-gray-50">
+                          <td className="whitespace-nowrap px-4 py-3 text-sm font-medium text-gray-900">
+                            {record.batchNumber}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-gray-600">{stockItemName}</td>
+                          <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-600">
+                            {record.quantity}
+                          </td>
+                          <td className="px-4 py-3 text-sm">
+                            {record.supplierCertificate ? (
+                              <button
+                                onClick={() =>
+                                  handleViewCertificate(record.supplierCertificate!.id)
+                                }
+                                className="inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800 hover:bg-green-200"
+                              >
+                                Linked - {record.supplierCertificate.certificateType}
+                              </button>
+                            ) : (
+                              <span className="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">
+                                No cert
+                              </span>
+                            )}
+                          </td>
+                          <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-500">
+                            {formatDateZA(record.createdAt)}
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>

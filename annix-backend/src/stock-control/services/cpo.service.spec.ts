@@ -180,6 +180,9 @@ describe("CpoService", () => {
   const mockCoatingAnalysisService = {
     analyseJobCard: jest.fn(),
     findByJobCard: jest.fn(),
+    flagsByJobCard: jest
+      .fn()
+      .mockResolvedValue({ hasInternalLining: false, hasExternalPaint: true }),
   };
 
   const mockNotificationService = {
@@ -558,9 +561,9 @@ describe("CpoService", () => {
         makeCalloffRecord({ id: 3, jobCardId: 10, calloffType: CalloffType.SOLUTION }),
       ];
       mockCalloffRepo.find.mockResolvedValue(records);
-      mockCoatingAnalysisService.findByJobCard.mockResolvedValue({
+      mockCoatingAnalysisService.flagsByJobCard.mockResolvedValue({
         hasInternalLining: true,
-        coats: [],
+        hasExternalPaint: true,
       });
 
       const result = await service.calloffRecordsForCpo(COMPANY_ID, 1);
