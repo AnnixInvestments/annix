@@ -242,7 +242,7 @@ export function QualityTab(props: QualityTabProps) {
           <QcpSection cpoId={props.cpoId} readOnly />
         </div>
       )}
-      <QcpSection jobCardId={jobCardId} />
+      {!props.cpoId && <QcpSection jobCardId={jobCardId} />}
 
       {coatingLoaded && (
         <DefelskoBatchSection
