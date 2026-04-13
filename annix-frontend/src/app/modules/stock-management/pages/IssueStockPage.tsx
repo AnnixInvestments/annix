@@ -603,7 +603,26 @@ export function IssueStockPage() {
         }, 0);
         const selectedItemM2 = selectedItems.reduce((sum, li) => {
           const fullQty = li.quantity == null ? 1 : li.quantity;
-          const issueQty = lineItemIssueQty[li.id] == null ? fullQty : lineItemIssueQty[li.id];
+          const rawIssue = lineItemIssueQty[li.id] == null ? fullQty : lineItemIssueQty[li.id];
+          const lineStatus = derivedCoatStatusMap[li.id];
+          const specIssued = (() => {
+            if (selectedProductSpec == null || lineStatus == null) return 0;
+            if (selectedProductSpec.kind === "rubber") {
+              const v = lineStatus["rubber_lining"];
+              return v == null ? 0 : v;
+            }
+            const jcExtCoats = jc.coats.filter((ct) => ct.area === "external");
+            const matched = jcExtCoats.find((ct) =>
+              specMatchesCoat(selectedProductSpec, ct.product, ct.coatRole, false),
+            );
+            if (matched == null) return 0;
+            const role = matched.coatRole == null ? "coat" : matched.coatRole;
+            const v = lineStatus[role];
+            return v == null ? 0 : v;
+          })();
+          const remaining =
+            selectedProductSpec != null ? Math.max(fullQty - specIssued, 0) : fullQty;
+          const issueQty = Math.min(rawIssue, remaining);
           const liM2 = li.m2 == null ? 0 : li.m2;
           const qtyRatio = fullQty > 0 ? issueQty / fullQty : 1;
           return sum + liM2 * qtyRatio;
@@ -646,7 +665,14 @@ export function IssueStockPage() {
       role: info.role,
     }));
     return { selectedM2: totalSelectedM2, paints, selectedJcCount: activeJcCount };
-  }, [cpoChildJcs, selectedCpoJcIds, selectedLineItemIds, lineItemIssueQty]);
+  }, [
+    cpoChildJcs,
+    selectedCpoJcIds,
+    selectedLineItemIds,
+    lineItemIssueQty,
+    derivedCoatStatusMap,
+    selectedProductSpec,
+  ]);
 
   const availableProductSpecs = useMemo(() => {
     if (targetKind !== "cpo" || cpoChildJcs.length === 0) return [];
@@ -1216,6 +1242,26 @@ export function IssueStockPage() {
                 <div className="space-y-1">
                   {cpoChildJcs.map((jc) => {
                     const isSelected = selectedCpoJcIds.includes(jc.id);
+                    const jcFullyIssuedForSpec =
+                      selectedProductSpec != null &&
+                      jc.lineItems.length > 0 &&
+                      jc.lineItems.every((li) => {
+                        const fullQ = li.quantity == null ? 1 : li.quantity;
+                        const liStatus = derivedCoatStatusMap[li.id];
+                        if (liStatus == null) return false;
+                        if (selectedProductSpec.kind === "rubber") {
+                          const v = liStatus["rubber_lining"];
+                          return v != null && v >= fullQ;
+                        }
+                        const jcExtCoats = jc.coats.filter((ct) => ct.area === "external");
+                        const matched = jcExtCoats.find((ct) =>
+                          specMatchesCoat(selectedProductSpec, ct.product, ct.coatRole, false),
+                        );
+                        if (matched == null) return false;
+                        const role = matched.coatRole == null ? "coat" : matched.coatRole;
+                        const v = liStatus[role];
+                        return v != null && v >= fullQ;
+                      });
                     const isExpanded = expandedJcIds.includes(jc.id);
                     const jcLabel = jc.jcNumber == null ? jc.jobNumber : jc.jcNumber;
                     const areaM2 = jc.totalAreaM2;
@@ -1240,7 +1286,8 @@ export function IssueStockPage() {
                         >
                           <input
                             type="checkbox"
-                            checked={isSelected}
+                            checked={isSelected && !jcFullyIssuedForSpec}
+                            disabled={jcFullyIssuedForSpec}
                             onClick={(e) => e.stopPropagation()}
                             onChange={() => {
                               if (isSelected) {
@@ -1410,15 +1457,18 @@ export function IssueStockPage() {
                                 rawIssueQty == null
                                   ? remainingQty
                                   : Math.min(rawIssueQty, remainingQty);
+                              const fullyIssuedForSpec =
+                                selectedProductSpec != null && remainingQty === 0;
                               return (
                                 <div
                                   key={li.id}
-                                  className={`rounded px-2 py-1.5 text-xs ${liSelected ? "bg-white" : "opacity-50"}`}
+                                  className={`rounded px-2 py-1.5 text-xs ${liSelected && !fullyIssuedForSpec ? "bg-white" : "opacity-50"}`}
                                 >
                                   <div className="flex items-center gap-2">
                                     <input
                                       type="checkbox"
-                                      checked={liSelected}
+                                      checked={liSelected && !fullyIssuedForSpec}
+                                      disabled={fullyIssuedForSpec}
                                       onChange={() => {
                                         if (liSelected) {
                                           setSelectedLineItemIds(
