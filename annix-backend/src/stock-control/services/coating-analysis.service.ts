@@ -316,6 +316,16 @@ export class CoatingAnalysisService {
     });
   }
 
+  async flagsByJobCard(
+    companyId: number,
+    jobCardId: number,
+  ): Promise<{ hasInternalLining: boolean } | null> {
+    return this.analysisRepo.findOne({
+      where: { jobCardId, companyId },
+      select: { id: true, hasInternalLining: true },
+    });
+  }
+
   async updateSurfacePrep(
     companyId: number,
     jobCardId: number,

@@ -699,7 +699,10 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
           : [];
         const prevAmberComplete =
           prevAmberBg.length === 0 || prevAmberBg.every((bg) => bg.completedAt !== null);
-        const branchActive = branch.triggerFgIdx < currentStepIndex && prevAmberComplete;
+        const atTrigger = branch.triggerFgIdx === currentStepIndex;
+        const pastTrigger = branch.triggerFgIdx < currentStepIndex;
+        const branchActive =
+          (pastTrigger || (atTrigger && currentStepPhase1Done)) && prevAmberComplete;
         const allComplete = branch.bgSteps.every((bg) => bg.completedAt !== null);
         const activeColor = branch.branchColor || "#f59e0b";
         const strokeColor = branchActive ? activeColor : "#d1d5db";

@@ -611,9 +611,9 @@ export class CpoService {
       where: { cpoId: cpo.id, companyId, isCalloffOrder: true },
     });
 
-    const analysis = await this.coatingAnalysisService.findByJobCard(companyId, jobCardId);
+    const analysisFlags = await this.coatingAnalysisService.flagsByJobCard(companyId, jobCardId);
     const applicableTypes =
-      analysis && !analysis.hasInternalLining
+      analysisFlags && !analysisFlags.hasInternalLining
         ? [CalloffType.PAINT]
         : [CalloffType.RUBBER, CalloffType.PAINT, CalloffType.SOLUTION];
 
@@ -649,7 +649,7 @@ export class CpoService {
     const jobCardIds = [...new Set(records.filter((r) => r.jobCardId).map((r) => r.jobCardId!))];
 
     const analyses = await Promise.all(
-      jobCardIds.map((jcId) => this.coatingAnalysisService.findByJobCard(companyId, jcId)),
+      jobCardIds.map((jcId) => this.coatingAnalysisService.flagsByJobCard(companyId, jcId)),
     );
 
     const analysisMap = new Map(jobCardIds.map((jcId, idx) => [jcId, analyses[idx]]));

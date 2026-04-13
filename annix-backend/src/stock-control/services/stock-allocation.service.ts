@@ -176,6 +176,7 @@ export class StockAllocationService {
 
     const analysis = await this.analysisRepo.findOne({
       where: { jobCardId, companyId },
+      select: { id: true, hasInternalLining: true },
     });
 
     const override = jobCard.rubberPlanOverride;
