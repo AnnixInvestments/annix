@@ -871,17 +871,9 @@ export default function JobCardDetailPage() {
     if (!currentStepActionLabel) return false;
     const rawFgaAssignments = workflowStatus.stepAssignments;
     const assignments = rawFgaAssignments || {};
-    const rawFgaBgSteps = workflowStatus.backgroundSteps;
-    const bgSteps: BackgroundStepStatus[] = rawFgaBgSteps || [];
-    const currentStepBgTasks = bgSteps.filter(
-      (bg) => bg.triggerAfterStep === currentStep && bg.completedAt === null,
-    );
-    if (currentStepBgTasks.length === 0) return false;
-    return currentStepBgTasks.some((bg) => {
-      const stepAssigned = assignments[bg.stepKey];
-      if (!stepAssigned || stepAssigned.length === 0) return true;
-      return !stepAssigned.some((u) => u.name === checkName);
-    });
+    const fgStepAssigned = assignments[currentStep];
+    if (!fgStepAssigned || fgStepAssigned.length === 0) return false;
+    return !fgStepAssigned.some((u) => u.name === checkName);
   }, [
     workflowStatus,
     currentStep,
