@@ -41,6 +41,12 @@ All stock-management tables use the `sm_` prefix to distinguish them from legacy
 3. Old pages remain accessible via direct URL for a rollback window (1 week)
 4. Legacy code deletion and hard data migrations deferred to post-cutover confirmation
 
+### Issuance workflow: single-product-per-session
+
+CPO paint issuance enforces one product spec per session (primer OR final OR intermediate OR rubber, not multiple). This reflects the physical constraint that each coat must dry before the next can be applied. Per-line-item per-coat-type tracking is stored in `sm_issuance_item_coat_tracking`, enabling colour-coded status (green/amber/red) and remaining-quantity-aware inputs. When no explicit tracking records exist (legacy issuances), the frontend derives coat status from paint issuance litres matched against coating analysis data.
+
+**Why single-product sessions?** Multi-product sessions led to users issuing primer and final simultaneously, which is physically incorrect. The storeman now picks one spec, sees only that spec's data, and creates another session for the next coat when it's time.
+
 ## Consequences
 
 - Two parallel sets of tables exist during the migration period, increasing database size

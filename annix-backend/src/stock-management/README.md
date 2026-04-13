@@ -64,6 +64,16 @@ The module registers its own controllers, services, and entities with TypeORM au
 
 No code change is needed in any host app to enable a new feature — the host just gets it for free once it's in the module.
 
+## Issuance workflow features
+
+The Issue Stock page enforces a structured issuance process for CPO-linked sessions:
+
+- **Product spec selector**: after choosing a CPO, the issuer must select one specific product (primer, final, intermediate, or rubber spec) before proceeding. Only one product can be issued per session to prevent issuing multiple coats simultaneously (each coat needs drying time).
+- **Coat-level tracking**: per-line-item per-coat-type issued quantities are tracked in `sm_issuance_item_coat_tracking`. Coat rows display colour-coded status — green (not issued), amber (partially issued), red (fully issued).
+- **Remaining quantity awareness**: editable quantity inputs default to remaining units for the selected coat type. Fully issued items and JCs are automatically disabled.
+- **Dynamic allocation summary**: the Selection Summary m2 and litres reflect only remaining quantities, not full totals.
+- **Batch auto-fill**: multi-part paint tins support a "Same batch for all" checkbox for quick batch number entry.
+
 ## Future host apps
 
 Today: Stock Control consumes this module.
