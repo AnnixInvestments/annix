@@ -775,12 +775,6 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
           const progressIdx =
             firstIncompleteIdx === -1 ? branch.bgSteps.length : firstIncompleteIdx;
 
-          paths.push({
-            key: `loop-progress-entry-${branch.triggerFgKey}`,
-            color: activeColor,
-            d: `M ${sx - r} ${bottomEdge} Q ${sx} ${bottomEdge} ${sx} ${bottomEdge + r} L ${sx} ${sy - r} Q ${sx} ${sy} ${sx - r} ${sy}`,
-          });
-
           if (progressIdx < btmCount) {
             const startPos = startPositions[progressIdx];
             if (startPos) {
@@ -791,6 +785,12 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
               });
             }
           } else {
+            paths.push({
+              key: `loop-progress-entry-${branch.triggerFgKey}`,
+              color: activeColor,
+              d: `M ${sx - r} ${bottomEdge} Q ${sx} ${bottomEdge} ${sx} ${bottomEdge + r} L ${sx} ${sy - r} Q ${sx} ${sy} ${sx - r} ${sy}`,
+            });
+
             const activeTopIdx = branch.bgSteps.findIndex(
               (b, i) => i >= btmCount && i < totalSteps - btmCount && b.completedAt === null,
             );
