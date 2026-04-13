@@ -36,7 +36,7 @@ export class StockAllocation {
   @Column({ name: "job_card_id" })
   jobCardId: number;
 
-  @Column({ name: "quantity_used", type: "integer" })
+  @Column({ name: "quantity_used", type: "numeric", precision: 12, scale: 2 })
   quantityUsed: number;
 
   @Column({ name: "photo_url", type: "text", nullable: true })

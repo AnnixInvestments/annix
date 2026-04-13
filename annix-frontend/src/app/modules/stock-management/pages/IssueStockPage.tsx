@@ -1384,9 +1384,28 @@ export function IssueStockPage() {
                                 rubberIssuedVal == null
                                   ? extIssuedValues
                                   : [...extIssuedValues, rubberIssuedVal];
-                              const minIssuedAcrossCoats =
-                                allCoatIssued.length > 0 ? Math.min(...allCoatIssued) : 0;
-                              const remainingQty = Math.max(fullQty - minIssuedAcrossCoats, 0);
+                              const issuedForRemaining = (() => {
+                                if (selectedProductSpec == null) {
+                                  return allCoatIssued.length > 0 ? Math.min(...allCoatIssued) : 0;
+                                }
+                                if (selectedProductSpec.kind === "rubber") {
+                                  return rubberIssuedVal == null ? 0 : rubberIssuedVal;
+                                }
+                                const matchedCoat = extCoats.find((ct) =>
+                                  specMatchesCoat(
+                                    selectedProductSpec,
+                                    ct.product,
+                                    ct.coatRole,
+                                    false,
+                                  ),
+                                );
+                                if (matchedCoat == null || lineCoatStatus == null) return 0;
+                                const role =
+                                  matchedCoat.coatRole == null ? "coat" : matchedCoat.coatRole;
+                                const v = lineCoatStatus[role];
+                                return v == null ? 0 : v;
+                              })();
+                              const remainingQty = Math.max(fullQty - issuedForRemaining, 0);
                               const currentIssueQty =
                                 rawIssueQty == null
                                   ? remainingQty
