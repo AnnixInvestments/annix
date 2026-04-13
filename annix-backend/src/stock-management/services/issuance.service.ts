@@ -300,6 +300,7 @@ export class IssuanceService {
        LEFT JOIN sm_rubber_roll_issuance_row rr ON rr.row_id = ir.id
        LEFT JOIN sm_solution_issuance_row sol ON sol.row_id = ir.id
        WHERE s.company_id = $1 AND s.cpo_id = $2 AND s.status != 'undone'
+         AND ir.undone = false
        GROUP BY ir.product_id, ip.name, ir.row_type`,
       [companyId, cpoId],
     );
@@ -316,6 +317,7 @@ export class IssuanceService {
        JOIN sm_issuance_row ir ON ir.id = pir.row_id
        JOIN sm_issuance_session s ON s.id = ir.session_id
        WHERE s.company_id = $1 AND s.cpo_id = $2 AND s.status != 'undone'
+         AND ir.undone = false
          AND pir.cpo_pro_rata_split IS NOT NULL`,
       [companyId, cpoId],
     );
@@ -368,7 +370,7 @@ export class IssuanceService {
       totalQuantityIssued: number;
     }>
   > {
-    const rows = await this.dataSource.query(
+    const trackingRows = await this.dataSource.query(
       `SELECT ict.line_item_id, ict.job_card_id, ict.coat_type,
               SUM(ict.quantity_issued)::integer AS total_quantity_issued
        FROM sm_issuance_item_coat_tracking ict
@@ -381,12 +383,129 @@ export class IssuanceService {
        GROUP BY ict.line_item_id, ict.job_card_id, ict.coat_type`,
       [companyId, cpoId],
     );
-    return rows.map((r: any) => ({
-      lineItemId: r.line_item_id,
-      jobCardId: r.job_card_id,
-      coatType: r.coat_type,
+    const result = trackingRows.map((r: any) => ({
+      lineItemId: r.line_item_id as number,
+      jobCardId: r.job_card_id as number,
+      coatType: r.coat_type as string,
       totalQuantityIssued: Number(r.total_quantity_issued),
     }));
+
+    if (result.length > 0) return result;
+
+    return this.deriveCoatStatusFromPaintRows(companyId, cpoId);
+  }
+
+  private async deriveCoatStatusFromPaintRows(
+    companyId: number,
+    cpoId: number,
+  ): Promise<
+    Array<{
+      lineItemId: number;
+      jobCardId: number;
+      coatType: string;
+      totalQuantityIssued: number;
+    }>
+  > {
+    const paintRows = await this.dataSource.query(
+      `SELECT ip.name AS product_name,
+              COALESCE(SUM(pir.litres), 0) AS total_litres,
+              s.job_card_ids
+       FROM sm_issuance_row ir
+       JOIN sm_issuance_session s ON s.id = ir.session_id
+       JOIN sm_issuable_product ip ON ip.id = ir.product_id
+       JOIN sm_paint_issuance_row pir ON pir.row_id = ir.id
+       WHERE s.company_id = $1
+         AND s.cpo_id = $2
+         AND s.status != 'undone'
+         AND ir.undone = false
+         AND ir.row_type = 'paint'
+       GROUP BY ip.name, s.job_card_ids`,
+      [companyId, cpoId],
+    );
+    if (paintRows.length === 0) return [];
+
+    const jcIds = await this.dataSource.query(
+      `SELECT DISTINCT jc.id AS job_card_id
+       FROM customer_purchase_orders cpo
+       JOIN job_cards jc ON jc.cpo_id = cpo.id
+       WHERE cpo.id = $1 AND cpo.company_id = $2`,
+      [cpoId, companyId],
+    );
+    const jobCardIds: number[] = jcIds.map((r: any) => Number(r.job_card_id));
+
+    const analyses = await this.dataSource.query(
+      `SELECT ca.job_card_id, ca.coats
+       FROM job_card_coating_analyses ca
+       WHERE ca.company_id = $1
+         AND ca.job_card_id = ANY($2)`,
+      [companyId, jobCardIds],
+    );
+
+    const lineItems = await this.dataSource.query(
+      `SELECT li.id, li.job_card_id, li.quantity, li.m2
+       FROM job_card_line_items li
+       WHERE li.job_card_id = ANY($1)`,
+      [jobCardIds],
+    );
+
+    const result: Array<{
+      lineItemId: number;
+      jobCardId: number;
+      coatType: string;
+      totalQuantityIssued: number;
+    }> = [];
+
+    for (const paintRow of paintRows) {
+      const productName = (paintRow.product_name as string).toUpperCase();
+      const totalLitres = Number(paintRow.total_litres);
+      if (totalLitres <= 0) continue;
+
+      for (const ca of analyses) {
+        const coats = ca.coats as Array<{
+          product: string;
+          coatRole?: string;
+          area: string;
+          coverageM2PerLiter: number;
+          litersRequired: number;
+        }>;
+        const matchedCoat = coats.find((c) => {
+          const coatName = c.product.toUpperCase();
+          return (
+            c.area === "external" &&
+            (coatName.includes(productName.slice(0, 15)) ||
+              productName.includes(coatName.slice(0, 15)))
+          );
+        });
+        if (!matchedCoat) continue;
+
+        const coatRole = matchedCoat.coatRole == null ? "primer" : matchedCoat.coatRole;
+        const coverage = matchedCoat.coverageM2PerLiter;
+        const jcLineItems = lineItems.filter(
+          (li: any) => Number(li.job_card_id) === Number(ca.job_card_id),
+        );
+        if (jcLineItems.length === 0 || coverage <= 0) continue;
+
+        const totalJcLitres = matchedCoat.litersRequired;
+        if (totalJcLitres <= 0) continue;
+
+        const litresShare = Math.min(totalLitres, totalJcLitres);
+        const fraction = litresShare / totalJcLitres;
+
+        for (const li of jcLineItems) {
+          const liQty = li.quantity == null ? 1 : Number(li.quantity);
+          const issuedUnits = Math.round(liQty * fraction);
+          if (issuedUnits <= 0) continue;
+          result.push({
+            lineItemId: Number(li.id),
+            jobCardId: Number(ca.job_card_id),
+            coatType: coatRole,
+            totalQuantityIssued: issuedUnits,
+          });
+        }
+      }
+    }
+
+    return result;
   }
 
   private fullSessionRelations() {

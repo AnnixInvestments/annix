@@ -163,6 +163,7 @@ export function IssueStockPage() {
   const jcDetailCache = useMemo(() => new Map<number, CpoChildJc>(), []);
   const [allocPaintQty, setAllocPaintQty] = useState<Record<string, number>>({});
   const [pendingAllocQty, setPendingAllocQty] = useState<number | null>(null);
+  const [pendingCoatType, setPendingCoatType] = useState<CartRow["coatType"]>(null);
   const [photoCapturing, setPhotoCapturing] = useState(false);
   const [photoResult, setPhotoResult] = useState<{
     matches: Array<{ productId: number; sku: string; name: string; productType: string }>;
@@ -487,6 +488,69 @@ export function IssueStockPage() {
       }));
   }, [cpoChildJcs, selectedCpoJcIds]);
 
+  const derivedCoatStatusMap = useMemo(() => {
+    const hasBackendData = Object.keys(coatStatusMap).length > 0;
+    if (hasBackendData) return coatStatusMap;
+    if (cpoIssuedTotals.length === 0 || cpoChildJcs.length === 0) return coatStatusMap;
+
+    const map: Record<number, Record<string, number>> = {};
+    for (const jc of cpoChildJcs) {
+      const jcIdStr = String(jc.id);
+      const jcIssued = cpoPerJcIssued[jcIdStr];
+      if (!jcIssued) continue;
+
+      const allExtCoats = jc.coats.filter((ct) => ct.area === "external");
+      const hasIntermediate = allExtCoats.some((ct) => ct.coatRole === "intermediate");
+      const extCoats = allExtCoats
+        .filter((ct) => !(hasIntermediate && ct.coatRole === "final"))
+        .map((ct) => {
+          if (hasIntermediate && ct.coatRole === "intermediate") {
+            return { ...ct, coatRole: "final" as const };
+          }
+          return ct;
+        });
+
+      const matchedRoles: Array<{ role: string; fraction: number }> = [];
+      for (const issuedEntry of cpoIssuedTotals) {
+        const issuedName = issuedEntry.productName.toUpperCase();
+        const issuedLitres = jcIssued[issuedEntry.productId];
+        if (issuedLitres == null || issuedLitres <= 0) continue;
+
+        const matchedCoat = extCoats.find((ct) => {
+          const coatName = ct.product.toUpperCase();
+          return (
+            coatName.includes(issuedName.slice(0, 15)) || issuedName.includes(coatName.slice(0, 15))
+          );
+        });
+        if (!matchedCoat) continue;
+
+        const coatRole = matchedCoat.coatRole == null ? "primer" : matchedCoat.coatRole;
+        const totalCoatLitres = matchedCoat.litersRequired;
+        if (totalCoatLitres <= 0) continue;
+
+        const fraction = Math.min(issuedLitres / totalCoatLitres, 1);
+        matchedRoles.push({ role: coatRole, fraction });
+      }
+
+      if (matchedRoles.length === 0) continue;
+
+      const maxFraction = Math.max(...matchedRoles.map((m) => m.fraction));
+      const issuedRoleNames = matchedRoles.map((m) => m.role);
+
+      for (const li of jc.lineItems) {
+        const liQty = li.quantity == null ? 1 : li.quantity;
+        const issuedUnits = Math.round(liQty * maxFraction);
+        if (issuedUnits <= 0) continue;
+        if (!map[li.id]) map[li.id] = {};
+        for (const roleName of issuedRoleNames) {
+          const existing = map[li.id][roleName];
+          map[li.id][roleName] = (existing == null ? 0 : existing) + issuedUnits;
+        }
+      }
+    }
+    return map;
+  }, [coatStatusMap, cpoIssuedTotals, cpoPerJcIssued, cpoChildJcs]);
+
   const selectedCoatsSummary = useMemo(() => {
     const selectedJcs = cpoChildJcs.filter((jc) => selectedCpoJcIds.includes(jc.id));
     let totalSelectedM2 = 0;
@@ -584,6 +648,7 @@ export function IssueStockPage() {
         tinBatchNumbers: [],
         coatType: (() => {
           if (product.productType === "rubber_roll") return "rubber_lining" as const;
+          if (pendingCoatType != null) return pendingCoatType;
           const paintDetail = product.paint;
           const ct = paintDetail == null ? null : paintDetail.coatType;
           if (ct === "primer") return "primer" as const;
@@ -595,6 +660,7 @@ export function IssueStockPage() {
       },
     ]);
     setPendingAllocQty(null);
+    setPendingCoatType(null);
     const groupKey = product.paint?.componentGroupKey;
     if (product.productType === "paint" && groupKey) {
       fetch(`/api/stock-management/products/${product.id}/linked-parts`, {
@@ -1073,11 +1139,39 @@ export function IssueStockPage() {
                             const jcIdStr = String(jc.id);
                             const jcIssued = cpoPerJcIssued[jcIdStr];
                             if (!jcIssued) return null;
-                            const entries = Object.entries(jcIssued);
-                            if (entries.length === 0) return null;
+                            const issuedProductIds = Object.keys(jcIssued).map(Number);
+                            if (issuedProductIds.length === 0) return null;
+                            const jcExtCoats = jc.coats.filter((ct) => ct.area === "external");
+                            const hasIntCoat = jcExtCoats.some(
+                              (ct) => ct.coatRole === "intermediate",
+                            );
+                            const issuedRoles = new Set<string>();
+                            for (const t of cpoIssuedTotals) {
+                              if (jcIssued[t.productId] == null) continue;
+                              const issuedName = t.productName.toUpperCase();
+                              for (const ct of jcExtCoats) {
+                                const coatName = ct.product.toUpperCase();
+                                const matches =
+                                  coatName.includes(issuedName.slice(0, 15)) ||
+                                  issuedName.includes(coatName.slice(0, 15));
+                                if (!matches) continue;
+                                const raw = ct.coatRole;
+                                if (hasIntCoat && raw === "intermediate") {
+                                  issuedRoles.add("Final");
+                                } else if (raw === "primer") {
+                                  issuedRoles.add("Primer");
+                                } else if (raw === "final") {
+                                  issuedRoles.add("Final");
+                                } else if (raw === "intermediate") {
+                                  issuedRoles.add("Intermediate");
+                                }
+                              }
+                            }
+                            if (issuedRoles.size === 0) return null;
+                            const label = `${Array.from(issuedRoles).join(" + ")} Issued`;
                             return (
                               <span className="text-[10px] text-green-700 bg-green-100 px-1.5 py-0.5 rounded shrink-0">
-                                {entries.length} paint{entries.length !== 1 ? "s" : ""} issued
+                                {label}
                               </span>
                             );
                           })()}
@@ -1098,7 +1192,6 @@ export function IssueStockPage() {
                               const liM2 = li.m2;
                               const fullQty = li.quantity == null ? 1 : li.quantity;
                               const rawIssueQty = lineItemIssueQty[li.id];
-                              const currentIssueQty = rawIssueQty == null ? fullQty : rawIssueQty;
                               const allExtCoats = jc.coats.filter((ct) => ct.area === "external");
                               const hasIntermediateCoat = allExtCoats.some(
                                 (ct) => ct.coatRole === "intermediate",
@@ -1119,6 +1212,31 @@ export function IssueStockPage() {
                                 descUpper.includes("R/FLG") ||
                                 descUpper.includes("RUBBER") ||
                                 descUpper.includes("+ R");
+                              const lineCoatStatus = derivedCoatStatusMap[li.id];
+                              const extIssuedValues = extCoats.map((ct) => {
+                                const role = ct.coatRole == null ? "coat" : ct.coatRole;
+                                if (lineCoatStatus == null) return 0;
+                                const v = lineCoatStatus[role];
+                                return v == null ? 0 : v;
+                              });
+                              const rubberIssuedVal = hasRubber
+                                ? (() => {
+                                    if (lineCoatStatus == null) return 0;
+                                    const v = lineCoatStatus["rubber_lining"];
+                                    return v == null ? 0 : v;
+                                  })()
+                                : null;
+                              const allCoatIssued =
+                                rubberIssuedVal == null
+                                  ? extIssuedValues
+                                  : [...extIssuedValues, rubberIssuedVal];
+                              const minIssuedAcrossCoats =
+                                allCoatIssued.length > 0 ? Math.min(...allCoatIssued) : 0;
+                              const remainingQty = Math.max(fullQty - minIssuedAcrossCoats, 0);
+                              const currentIssueQty =
+                                rawIssueQty == null
+                                  ? remainingQty
+                                  : Math.min(rawIssueQty, remainingQty);
                               return (
                                 <div
                                   key={li.id}
@@ -1141,7 +1259,7 @@ export function IssueStockPage() {
                                           if (lineItemIssueQty[li.id] == null) {
                                             setLineItemIssueQty({
                                               ...lineItemIssueQty,
-                                              [li.id]: fullQty,
+                                              [li.id]: remainingQty,
                                             });
                                           }
                                         }
@@ -1178,7 +1296,7 @@ export function IssueStockPage() {
                                         onChange={(e) => {
                                           const raw = e.target.value.replace(/\D/g, "");
                                           const parsed = raw === "" ? 0 : parseInt(raw, 10);
-                                          const val = Math.min(parsed, fullQty);
+                                          const val = Math.min(parsed, remainingQty);
                                           setLineItemIssueQty({
                                             ...lineItemIssueQty,
                                             [li.id]: val,
@@ -1203,7 +1321,7 @@ export function IssueStockPage() {
                                               (fullQty > 0 ? fullQty : 1) /
                                               coverage
                                             : 0;
-                                        const liCoats = coatStatusMap[li.id];
+                                        const liCoats = derivedCoatStatusMap[li.id];
                                         const issuedQty =
                                           liCoats == null
                                             ? 0
@@ -1217,8 +1335,10 @@ export function IssueStockPage() {
                                             key={ct.product + roleLabel}
                                             className={`flex items-center gap-2 text-[10px] px-2 py-0.5 rounded ${
                                               done
-                                                ? "bg-green-50 text-green-700"
-                                                : "bg-blue-50 text-blue-700"
+                                                ? "bg-red-100 text-red-700"
+                                                : issuedQty > 0
+                                                  ? "bg-amber-100 text-amber-700"
+                                                  : "bg-green-50 text-green-700"
                                             }`}
                                           >
                                             <span className="uppercase font-semibold w-10 shrink-0">
@@ -1233,9 +1353,7 @@ export function IssueStockPage() {
                                                 {coatLitres.toFixed(1)}L
                                               </span>
                                             ) : null}
-                                            <span
-                                              className={`shrink-0 font-medium ${done ? "text-green-700" : ""}`}
-                                            >
+                                            <span className="shrink-0 font-medium">
                                               {issuedQty}/{fullQty}
                                               {done ? " \u2713" : ""}
                                             </span>
@@ -1244,7 +1362,7 @@ export function IssueStockPage() {
                                       })}
                                       {hasRubber
                                         ? (() => {
-                                            const liCoats = coatStatusMap[li.id];
+                                            const liCoats = derivedCoatStatusMap[li.id];
                                             const issuedQty =
                                               liCoats == null
                                                 ? 0
@@ -1256,8 +1374,10 @@ export function IssueStockPage() {
                                               <div
                                                 className={`flex items-center gap-2 text-[10px] px-2 py-0.5 rounded ${
                                                   done
-                                                    ? "bg-green-50 text-green-700"
-                                                    : "bg-purple-50 text-purple-700"
+                                                    ? "bg-red-100 text-red-700"
+                                                    : issuedQty > 0
+                                                      ? "bg-amber-100 text-amber-700"
+                                                      : "bg-green-50 text-green-700"
                                                 }`}
                                               >
                                                 <span className="uppercase font-semibold w-10 shrink-0">
@@ -1283,9 +1403,7 @@ export function IssueStockPage() {
                                                       : rlLine.trim();
                                                   })()}
                                                 </span>
-                                                <span
-                                                  className={`shrink-0 font-medium ${done ? "text-green-700" : ""}`}
-                                                >
+                                                <span className="shrink-0 font-medium">
                                                   {issuedQty}/{fullQty}
                                                   {done ? " \u2713" : ""}
                                                 </span>
@@ -1462,6 +1580,16 @@ export function IssueStockPage() {
                           type="button"
                           onClick={() => {
                             setPendingAllocQty(issueQty);
+                            const role = p.role;
+                            const coatType: CartRow["coatType"] =
+                              role === "primer"
+                                ? "primer"
+                                : role === "intermediate"
+                                  ? "intermediate"
+                                  : role === "final"
+                                    ? "final"
+                                    : null;
+                            setPendingCoatType(coatType);
                             setSearch(p.product.split(" ").slice(0, 3).join(" "));
                           }}
                           className={`shrink-0 text-xs font-medium px-3 py-1.5 rounded ${

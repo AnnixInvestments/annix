@@ -1,5 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server";
 
+export const dynamic = "force-dynamic";
+
 const REMOTE_BACKEND = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4001";
 
 async function proxyRequest(request: NextRequest) {
@@ -34,6 +36,7 @@ async function proxyRequest(request: NextRequest) {
       headers: forwardHeaders,
       body,
       redirect: "manual",
+      cache: "no-store",
     });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);

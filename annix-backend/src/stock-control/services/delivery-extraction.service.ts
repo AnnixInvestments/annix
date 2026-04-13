@@ -30,6 +30,7 @@ interface ExtractedLineItem {
   costPerLiter?: number;
   rollNumber?: string;
   weightKg?: number;
+  rollDetails?: Array<{ rollNumber: string; weightKg: number | null }>;
 }
 
 type MediaType = "image/jpeg" | "image/png" | "image/gif" | "image/webp" | "application/pdf";
@@ -308,7 +309,6 @@ export class DeliveryExtractionService {
 
       const sku = this.generateSku(item);
       const { quantity, costPerUnit, unitOfMeasure } = this.calculateItemMetrics(item);
-      const rollNumber = this.extractRollNumber(item, sku);
 
       const stockItem = await this.resolveOrCreateStockItem(
         companyId,
@@ -320,34 +320,79 @@ export class DeliveryExtractionService {
         unitOfMeasure,
       );
 
-      const itemRollNumber = item.rollNumber || rollNumber;
-      const itemWeightKg = item.weightKg || null;
+      if (item.rollDetails && item.rollDetails.length > 0) {
+        const allRollNumbers = item.rollDetails.map((r) => r.rollNumber);
+        const existingRolls = stockItem.rollNumbers || [];
+        const mergedRolls = [
+          ...existingRolls,
+          ...allRollNumbers.filter((rn) => !existingRolls.includes(rn)),
+        ];
+        stockItem.rollNumbers = mergedRolls;
+        await this.stockItemRepo.save(stockItem);
 
-      const noteItem = this.deliveryNoteItemRepo.create({
-        deliveryNote,
-        stockItem,
-        quantityReceived: quantity,
-        rollNumber: itemRollNumber || null,
-        weightKg: itemWeightKg,
-        photoUrl: null,
-        companyId,
-      });
-      await this.deliveryNoteItemRepo.save(noteItem);
+        const rollNoteItems = item.rollDetails.map((roll) =>
+          this.deliveryNoteItemRepo.create({
+            deliveryNote,
+            stockItem,
+            quantityReceived: 1,
+            rollNumber: roll.rollNumber,
+            weightKg: roll.weightKg,
+            photoUrl: null,
+            companyId,
+          }),
+        );
+        await this.deliveryNoteItemRepo.save(rollNoteItems);
 
-      const movementNotes = itemRollNumber
-        ? `Received via delivery ${deliveryNote.deliveryNumber} (Roll #${itemRollNumber})`
-        : `Received via delivery ${deliveryNote.deliveryNumber}`;
-      const movement = this.movementRepo.create({
-        stockItem,
-        movementType: MovementType.IN,
-        quantity,
-        referenceType: ReferenceType.DELIVERY,
-        referenceId: deliveryNote.id,
-        notes: movementNotes,
-        createdBy: receivedBy || null,
-        companyId,
-      });
-      await this.movementRepo.save(movement);
+        const rollListStr = allRollNumbers.join(", ");
+        const movement = this.movementRepo.create({
+          stockItem,
+          movementType: MovementType.IN,
+          quantity,
+          referenceType: ReferenceType.DELIVERY,
+          referenceId: deliveryNote.id,
+          notes: `Received via delivery ${deliveryNote.deliveryNumber} (${allRollNumbers.length} rolls: ${rollListStr})`,
+          createdBy: receivedBy || null,
+          companyId,
+        });
+        await this.movementRepo.save(movement);
+      } else {
+        const itemRollNumber = item.rollNumber || this.extractRollNumber(item, sku);
+        const itemWeightKg = item.weightKg || null;
+
+        if (itemRollNumber) {
+          const existingRolls = stockItem.rollNumbers || [];
+          if (!existingRolls.includes(itemRollNumber)) {
+            stockItem.rollNumbers = [...existingRolls, itemRollNumber];
+            await this.stockItemRepo.save(stockItem);
+          }
+        }
+
+        const noteItem = this.deliveryNoteItemRepo.create({
+          deliveryNote,
+          stockItem,
+          quantityReceived: quantity,
+          rollNumber: itemRollNumber || null,
+          weightKg: itemWeightKg,
+          photoUrl: null,
+          companyId,
+        });
+        await this.deliveryNoteItemRepo.save(noteItem);
+
+        const movementNotes = itemRollNumber
+          ? `Received via delivery ${deliveryNote.deliveryNumber} (Roll #${itemRollNumber})`
+          : `Received via delivery ${deliveryNote.deliveryNumber}`;
+        const movement = this.movementRepo.create({
+          stockItem,
+          movementType: MovementType.IN,
+          quantity,
+          referenceType: ReferenceType.DELIVERY,
+          referenceId: deliveryNote.id,
+          notes: movementNotes,
+          createdBy: receivedBy || null,
+          companyId,
+        });
+        await this.movementRepo.save(movement);
+      }
     };
 
     let failedCount = 0;
@@ -867,13 +912,30 @@ export class DeliveryExtractionService {
           .replace(/ROLL[\s#-]*\d{4,6}/gi, "")
           .replace(/\s+/g, " ")
           .trim();
-        const uniqueKey = `roll:${rollNumber}`;
-        groups.set(uniqueKey, {
-          ...item,
-          rollNumber,
-          description: cleanDesc || item.description,
-          quantity: item.quantity ?? 1,
-        });
+        const productDesc = cleanDesc || item.description;
+        const normalised = productDesc
+          .toLowerCase()
+          .replace(/[^a-z0-9]/g, "")
+          .trim();
+        const codeKey = (item.itemCode || item.productCode || "").toLowerCase().trim();
+        const productKey = `rollproduct:${codeKey}:${normalised}`;
+
+        const existing = groups.get(productKey);
+        const rollDetail = { rollNumber, weightKg: item.weightKg || null };
+        if (existing) {
+          const existingQty = existing.quantity ?? 1;
+          existing.quantity = existingQty + 1;
+          existing.lineTotal = (existing.lineTotal ?? 0) + (item.lineTotal ?? 0) || undefined;
+          existing.rollDetails = [...(existing.rollDetails || []), rollDetail];
+        } else {
+          groups.set(productKey, {
+            ...item,
+            rollNumber: undefined,
+            description: productDesc,
+            quantity: 1,
+            rollDetails: [rollDetail],
+          });
+        }
         return;
       }
 
