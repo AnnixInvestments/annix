@@ -25,6 +25,7 @@ import { ItemsReleaseSection } from "./ItemsReleaseSection";
 import { MaterialBatchSection } from "./MaterialBatchSection";
 import { QaFinalPhotosSection } from "./QaFinalPhotosSection";
 import { QaReviewSection } from "./QaReviewSection";
+import { QcMeasurementChecklist } from "./QcMeasurementChecklist";
 import { QcpSection } from "./QcpSection";
 import { QcReleaseCertificateSection } from "./QcReleaseCertificateSection";
 import { ReleaseDocumentGenerator } from "./ReleaseDocumentGenerator";
@@ -269,6 +270,10 @@ export function QualityTab(props: QualityTabProps) {
         coatingAnalysis={coatingAnalysis}
         rubberPlanOverride={rubberPlanOverride || null}
       />
+
+      {coatingLoaded && (
+        <QcMeasurementChecklist jobCardId={jobCardId} coatingAnalysis={coatingAnalysis} />
+      )}
 
       <QaReviewSection
         jobCardId={jobCardId}
