@@ -28,7 +28,6 @@ import { ImportController } from "./controllers/import.controller";
 import { InventoryController } from "./controllers/inventory.controller";
 import { InvitationController } from "./controllers/invitation.controller";
 import { InvoicesController } from "./controllers/invoices.controller";
-import { IssuanceController } from "./controllers/issuance.controller";
 import { JobCardImportController } from "./controllers/job-card-import.controller";
 import { JobCardsController } from "./controllers/job-cards.controller";
 import { MovementsController } from "./controllers/movements.controller";
@@ -143,7 +142,6 @@ import { InventoryService } from "./services/inventory.service";
 import { StockControlInvitationService } from "./services/invitation.service";
 import { InvoiceService } from "./services/invoice.service";
 import { InvoiceExtractionService } from "./services/invoice-extraction.service";
-import { IssuanceService } from "./services/issuance.service";
 import { ItemIdentificationService } from "./services/item-identification.service";
 import { JobCardService } from "./services/job-card.service";
 import { JobCardImportService } from "./services/job-card-import.service";
@@ -287,7 +285,6 @@ import { WorkflowStepConfigService } from "./services/workflow-step-config.servi
     DeliveriesController,
     MovementsController,
     ImportController,
-    IssuanceController,
     JobCardImportController,
     DashboardController,
     ReportsController,
@@ -316,7 +313,6 @@ import { WorkflowStepConfigService } from "./services/workflow-step-config.servi
     BrandingScraperService,
     StockControlInvitationService,
     InventoryService,
-    IssuanceService,
     JobCardService,
     DeliverySupplierService,
     DeliveryExtractionService,
