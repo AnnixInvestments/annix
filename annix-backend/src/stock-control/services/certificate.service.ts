@@ -1098,7 +1098,8 @@ export class CertificateService {
       return !(postBanding.includes(productUpper) && !preBanding.includes(productUpper));
     });
 
-    const coatsWithRoles = CoatingAnalysisService.inferCoatRoles(nonBandingCoats);
+    const coatsWithoutRoles = nonBandingCoats.map((c) => ({ ...c, coatRole: undefined }));
+    const coatsWithRoles = CoatingAnalysisService.inferCoatRoles(coatsWithoutRoles);
     const distinctCoatRoles: CoatRole[] =
       coatsWithRoles.length > 0
         ? COAT_ROLE_ORDER.filter((role) => coatsWithRoles.some((c) => c.coatRole === role))
