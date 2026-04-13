@@ -708,6 +708,25 @@ export class DeliveryExtractionService {
     return null;
   }
 
+  private cleanRubberDescription(description: string, sku: string): string {
+    let cleaned = description;
+    if (sku) {
+      const escapedSku = sku.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      cleaned = cleaned.replace(new RegExp(`${escapedSku}\\s*[-–]?\\s*`, "gi"), "");
+    }
+    cleaned = cleaned
+      .replace(/,?\s*\d+(?:\.\d+)?\s*[Kk]g\s*[Pp]er\s*[Rr]oll/gi, "")
+      .replace(/,?\s*S\.?G\.?'?s?\s*\d+(?:\.\d+)?/gi, "")
+      .replace(/,?\s*\d+(?:\.\d+)?\s*S\.?G\.?'?s?/gi, "")
+      .replace(/,?\s*@\s*\d+(?:\.\d+)?\s*S\.?G\.?'?s?/gi, "")
+      .replace(/,?\s*Roll\s*No\s*&?\s*Weights?\s*:?-?\s*/gi, "")
+      .replace(/\b\d{3}-\d{4,6}(?:-\d+[Kk]g)?/g, "")
+      .replace(/\s{2,}/g, " ")
+      .replace(/^[\s,\-–]+|[\s,\-–]+$/g, "")
+      .trim();
+    return cleaned || description;
+  }
+
   private async enrichFromRubberRollStock(
     item: ExtractedLineItem,
     sku: string,
@@ -908,11 +927,12 @@ export class DeliveryExtractionService {
 
       const rollNumber = item.rollNumber || this.extractRollNumber(item, "");
       if (rollNumber) {
-        const cleanDesc = item.description
+        const skuForClean = item.itemCode || item.productCode || "";
+        const rawClean = item.description
           .replace(/ROLL[\s#-]*\d{4,6}/gi, "")
           .replace(/\s+/g, " ")
           .trim();
-        const productDesc = cleanDesc || item.description;
+        const productDesc = this.cleanRubberDescription(rawClean || item.description, skuForClean);
         const normalised = productDesc
           .toLowerCase()
           .replace(/[^a-z0-9]/g, "")

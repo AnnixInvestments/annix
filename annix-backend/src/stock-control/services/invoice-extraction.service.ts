@@ -70,6 +70,17 @@ DELIVERY NOTE NUMBERS (critical):
 
 UNIT TYPE: Identify the unit of measure for each line item. Common values: "each", "ltr", "kg", "roll", "m", "m2", "pack", "set", "pair", "box", "drum", "pail", "can", "tin", "bag", "sheet", "length", "bundle". Look for UOM columns like "Unit", "UoM", "U/M", "Measure" on the invoice or infer from the product description (e.g. "25Lt" = "ltr", "20L" = "ltr", "5kg" = "kg"). If unclear, default to "each".
 
+DESCRIPTION CLEANUP (critical):
+- The "description" field should be the PRODUCT NAME only — a clean, human-readable name for what the product is.
+- Do NOT include the SKU, item code, or product code in the description — those belong in the "sku" field.
+- Do NOT include specific gravity (SG, S.G., S.G's) values in the description.
+- Do NOT include "per Roll" pricing or "Kg Per Roll" specification weights in the description.
+- Do NOT include individual roll numbers, weights, or "Roll No & Weights" listings in the description.
+- For rubber products like "RSCA40-8.950.125 - Red A40 SC - 8mm x 950mm x 12.5m, 99.75Kg Per Roll, SG 1.05 Roll No & Weights:- 193-41791-99Kg..."
+  - description should be: "Red A40 SC - 8mm x 950mm x 12.5m"
+  - sku should be: "RSCA40-8.950.125"
+  - The roll numbers, weights, SG, and per-roll weight should be omitted from the description.
+
 For paint products, detect "Part A" or "Part B" in description. Common patterns:
 - "Part A", "Comp A", "Component A" -> isPaintPartA: true
 - "Part B", "Comp B", "Component B", "Hardener", "Activator" -> isPaintPartB: true
@@ -122,6 +133,16 @@ RUBBER ROLL EXTRACTION (CRITICAL):
 - The itemCode/productCode/sku should be the stock code from the header row (e.g. "0102508NR1250608K12.5"), the SAME for every roll line.
 - Do NOT use the roll number as the itemCode, productCode, or sku.
 - Example: A delivery note with stock code "0102508NR1250608K12.5", description "Steam Cure 50° B NR 1250x6mm Blk 12.5Mtr", and rolls 42170 (108kg), 42167 (107kg) should produce TWO line items, each with the full description, rollNumber "42170"/"42167", weightKg 108/107, and quantity 1.
+
+DESCRIPTION CLEANUP (critical):
+- The "description" field should be the PRODUCT NAME only — a clean, human-readable name.
+- Do NOT include the SKU, item code, or product code in the description — those belong in the "sku" / "itemCode" / "productCode" fields.
+- Do NOT include specific gravity (SG, S.G., S.G's) values in the description.
+- Do NOT include "per Roll" pricing or "Kg Per Roll" specification weights in the description.
+- Do NOT include individual roll numbers, weights, or "Roll No & Weights" listings in the description.
+- For rubber products like "RSCA40-8.950.125 - Red A40 SC - 8mm x 950mm x 12.5m, 99.75Kg Per Roll, SG 1.05"
+  - description should be: "Red A40 SC - 8mm x 950mm x 12.5m"
+  - sku/itemCode should be: "RSCA40-8.950.125"
 
 PAINT PRODUCT DETECTION:
 - Set isPaint to true for any paint, coating, primer, topcoat, hardener, activator, or thinner product.
@@ -443,12 +464,16 @@ export class InvoiceExtractionService {
     invoice: SupplierInvoice,
     lineItems: ExtractedLineItem[],
   ): Promise<void> {
-    const itemEntities = lineItems.map((item) =>
-      this.invoiceItemRepo.create({
+    const itemEntities = lineItems.map((item) => {
+      const cleanedDescription = this.cleanExtractedDescription(
+        item.description || "",
+        item.sku || "",
+      );
+      return this.invoiceItemRepo.create({
         invoiceId: invoice.id,
         companyId: invoice.companyId,
         lineNumber: item.lineNumber,
-        extractedDescription: item.description,
+        extractedDescription: cleanedDescription,
         extractedSku: item.sku || null,
         quantity: validPositiveNumber(item.quantity, 1),
         unitPrice: validPositiveNumber(item.unitPrice, 0),
@@ -457,10 +482,29 @@ export class InvoiceExtractionService {
         isPartA: item.isPaintPartA || false,
         isPartB: item.isPaintPartB || false,
         matchStatus: InvoiceItemMatchStatus.UNMATCHED,
-      }),
-    );
+      });
+    });
 
     await this.invoiceItemRepo.save(itemEntities);
+  }
+
+  private cleanExtractedDescription(description: string, sku: string): string {
+    let cleaned = description;
+    if (sku) {
+      const escapedSku = sku.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      cleaned = cleaned.replace(new RegExp(`${escapedSku}\\s*[-–]?\\s*`, "gi"), "");
+    }
+    cleaned = cleaned
+      .replace(/,?\s*\d+(?:\.\d+)?\s*[Kk]g\s*[Pp]er\s*[Rr]oll/gi, "")
+      .replace(/,?\s*S\.?G\.?'?s?\s*\d+(?:\.\d+)?/gi, "")
+      .replace(/,?\s*\d+(?:\.\d+)?\s*S\.?G\.?'?s?/gi, "")
+      .replace(/,?\s*@\s*\d+(?:\.\d+)?\s*S\.?G\.?'?s?/gi, "")
+      .replace(/,?\s*Roll\s*No\s*&?\s*Weights?\s*:?-?\s*/gi, "")
+      .replace(/\b\d{3}-\d{4,6}(?:-\d+[Kk]g)?/g, "")
+      .replace(/\s{2,}/g, " ")
+      .replace(/^[\s,\-–]+|[\s,\-–]+$/g, "")
+      .trim();
+    return cleaned || description;
   }
 
   async matchItemsToStock(invoiceId: number): Promise<void> {

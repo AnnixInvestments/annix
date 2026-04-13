@@ -290,6 +290,7 @@ export interface StockItem {
   componentRole: string | null;
   mixRatio: string | null;
   rollNumber: string | null;
+  rollNumbers: string[] | null;
   sourceRollNumber: string | null;
   isLeftover: boolean;
   sourceJobCardId: number | null;

@@ -4,6 +4,7 @@ import type { StockControlLocation, StockItem } from "@/app/lib/api/stockControl
 import { formatZAR } from "../../lib/currency";
 import { PAGE_SIZE_OPTIONS, type PageSize } from "../../lib/useInventoryPageState";
 import { InlineCategoryEdit } from "./InlineCategoryEdit";
+import { RollNumberCell } from "./RollNumberCell";
 
 interface InventoryListViewProps {
   items: StockItem[];
@@ -431,8 +432,8 @@ function ListTableRow({
       <td className="hidden sm:table-cell px-3 lg:px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-900">
         {item.sku}
       </td>
-      <td className="hidden lg:table-cell px-3 lg:px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-500">
-        {item.rollNumber == null ? "" : item.rollNumber}
+      <td className="hidden lg:table-cell px-3 lg:px-6 py-4 text-sm font-mono text-gray-500">
+        <RollNumberCell rollNumbers={item.rollNumbers} rollNumber={item.rollNumber} />
       </td>
       <td className="px-3 lg:px-6 py-4">
         <div className="flex items-center space-x-2">

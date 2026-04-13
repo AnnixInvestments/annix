@@ -115,6 +115,9 @@ export class StockItem {
   @Column({ name: "roll_number", type: "varchar", length: 100, nullable: true })
   rollNumber: string | null;
 
+  @Column({ name: "roll_numbers", type: "jsonb", nullable: true })
+  rollNumbers: string[] | null;
+
   @Column({ name: "source_roll_number", type: "varchar", length: 100, nullable: true })
   sourceRollNumber: string | null;
 

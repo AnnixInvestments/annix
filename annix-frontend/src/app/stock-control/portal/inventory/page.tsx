@@ -13,6 +13,7 @@ import { InventoryListView } from "../../components/inventory/InventoryListView"
 import { InventoryLocationTabs } from "../../components/inventory/InventoryLocationTabs";
 import { InventoryPendingChanges } from "../../components/inventory/InventoryPendingChanges";
 import { InventoryToolbar } from "../../components/inventory/InventoryToolbar";
+import { RollNumberCell } from "../../components/inventory/RollNumberCell";
 import { formatZAR } from "../../lib/currency";
 import { useInventoryPageState } from "../../lib/useInventoryPageState";
 
@@ -383,8 +384,11 @@ export default function InventoryPage() {
                             <td className="px-4 py-2 whitespace-nowrap text-sm font-mono text-gray-900 print:px-2 print:py-1">
                               {item.sku}
                             </td>
-                            <td className="px-4 py-2 whitespace-nowrap text-sm font-mono text-gray-500 print:px-2 print:py-1">
-                              {item.rollNumber == null ? "" : item.rollNumber}
+                            <td className="px-4 py-2 text-sm font-mono text-gray-500 print:px-2 print:py-1">
+                              <RollNumberCell
+                                rollNumbers={item.rollNumbers}
+                                rollNumber={item.rollNumber}
+                              />
                             </td>
                             <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900 print:px-2 print:py-1">
                               {item.name}
