@@ -184,10 +184,9 @@ export class QcBatchAssignmentService {
     for (const upload of uploads) {
       const header = upload.headerData as Record<string, unknown> | null;
       const createdStr = header ? (header.Created as string) : null;
-      if (!createdStr) continue;
-
-      const uploadDate = fromISO(createdStr);
-      if (!uploadDate.isValid) continue;
+      const fallbackDate = upload.createdAt ? fromISO(upload.createdAt.toISOString()) : null;
+      const uploadDate = createdStr ? fromISO(createdStr) : fallbackDate;
+      if (!uploadDate?.isValid) continue;
 
       const batchName = upload.batchName;
       const assignments = batchName
