@@ -1090,6 +1090,21 @@ export class CertificateService {
         ? COAT_ROLE_ORDER.filter((role) => coatsWithRoles.some((c) => c.coatRole === role))
         : COAT_ROLE_ORDER.filter((role) => qcData.dftReadings.some((r) => r.coatType === role));
 
+    const coatSections: Array<{ key: string; label: string; role: CoatRole }> =
+      coatsWithRoles.length > 0
+        ? coatsWithRoles.map((c, idx) => {
+            const product = (c as { product?: string }).product;
+            const role = c.coatRole || "primer";
+            const roleLabel = COAT_ROLE_LABELS[role];
+            const label = product ? `${roleLabel} DFT - ${product}` : `${roleLabel} DFT Reports`;
+            return { key: `dft_coat_${idx}`, label, role };
+          })
+        : distinctCoatRoles.map((role) => ({
+            key: `${role}Dft`,
+            label: `${COAT_ROLE_LABELS[role]} DFT Reports`,
+            role,
+          }));
+
     const dftByRole = distinctCoatRoles.reduce<Record<string, typeof qcData.dftReadings>>(
       (acc, role) => ({
         ...acc,
@@ -1206,12 +1221,8 @@ export class CertificateService {
           ),
           group: paintGroup,
         },
-        ...distinctCoatRoles.map((role) => ({
-          ...this.sectionFromCount(
-            `${role}Dft`,
-            `${COAT_ROLE_LABELS[role]} DFT Reports`,
-            (dftByRole[role] || []).length,
-          ),
+        ...coatSections.map((cs) => ({
+          ...this.sectionFromCount(cs.key, cs.label, (dftByRole[cs.role] || []).length),
           group: paintGroup,
         })),
         { ...sharedItemsRelease, group: paintGroup },
@@ -1237,12 +1248,8 @@ export class CertificateService {
           ),
           blastWarnings,
         ),
-        ...distinctCoatRoles.map((role) =>
-          this.sectionFromCount(
-            `${role}Dft`,
-            `${COAT_ROLE_LABELS[role]} DFT Reports`,
-            (dftByRole[role] || []).length,
-          ),
+        ...coatSections.map((cs) =>
+          this.sectionFromCount(cs.key, cs.label, (dftByRole[cs.role] || []).length),
         ),
         sectionWithWarnings(
           this.sectionFromCount(
