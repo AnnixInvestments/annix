@@ -82,9 +82,13 @@ export class StockAllocationService {
 
     const leftovers: LeftoverSuggestion[] = [];
     const items: AllocationPlanItem[] = assessment.map((assessItem) => {
-      const matchedItem = assessItem.stockItemId
-        ? stockItems.find((si) => si.id === assessItem.stockItemId)
-        : this.fuzzyMatchStockItem(assessItem.product, stockItems);
+      const linkedItem = assessItem.stockItemId
+        ? stockItems.find((si) => si.id === assessItem.stockItemId) || null
+        : null;
+      const linkedHasStock = linkedItem ? Number(linkedItem.quantity) > 0 : false;
+      const matchedItem = linkedHasStock
+        ? linkedItem
+        : this.fuzzyMatchStockItem(assessItem.product, stockItems) || linkedItem;
 
       const leftover = matchedItem
         ? this.findMatchingLeftover(assessItem.product, leftoverItems)
@@ -639,7 +643,12 @@ export class StockAllocationService {
         return { item, score: matchingWords.length / words.length };
       })
       .filter((entry) => entry.score >= 0.4)
-      .sort((a, b) => b.score - a.score);
+      .sort((a, b) => {
+        if (b.score !== a.score) return b.score - a.score;
+        const aHasStock = Number(a.item.quantity) > 0 ? 1 : 0;
+        const bHasStock = Number(b.item.quantity) > 0 ? 1 : 0;
+        return bHasStock - aHasStock;
+      });
 
     return scored.length > 0 ? scored[0].item : null;
   }
