@@ -92,45 +92,60 @@ export function QcReleaseCertificateForm({
 }: QcReleaseCertificateFormProps) {
   const isEditing = existingCertificate !== null;
 
+  const initCertNumber = existingCertificate ? existingCertificate.certificateNumber : null;
+  const initCertDate = existingCertificate ? existingCertificate.certificateDate : null;
+  const initBlasting = existingCertificate ? existingCertificate.blastingCheck : null;
+  const initSolutions = existingCertificate ? existingCertificate.solutionsUsed : null;
+  const initLining = existingCertificate ? existingCertificate.liningCheck : null;
+  const initCureCycles = existingCertificate ? existingCertificate.cureCycles : null;
+  const initPaintingChecks = existingCertificate ? existingCertificate.paintingChecks : null;
+  const initFinalInspection = existingCertificate ? existingCertificate.finalInspection : null;
+  const initComments = existingCertificate ? existingCertificate.comments : null;
+  const initApprovalName = existingCertificate ? existingCertificate.finalApprovalName : null;
+  const initApprovalDate = existingCertificate ? existingCertificate.finalApprovalDate : null;
+  const initSignatureUrl = existingCertificate
+    ? existingCertificate.finalApprovalSignatureUrl
+    : null;
+
   const [certificateNumber, setCertificateNumber] = useState(
-    existingCertificate?.certificateNumber || "",
+    initCertNumber == null ? "" : initCertNumber,
   );
   const [certificateDate, setCertificateDate] = useState(
-    existingCertificate?.certificateDate || nowISO().slice(0, 10),
+    initCertDate == null ? nowISO().slice(0, 10) : initCertDate,
   );
   const [blastingCheck, setBlastingCheck] = useState<QcBlastingCheck>(
-    existingCertificate?.blastingCheck || { ...emptyBlastingCheck },
+    initBlasting == null ? { ...emptyBlastingCheck } : initBlasting,
   );
   const [solutionsUsed, setSolutionsUsed] = useState<QcSolutionUsed[]>(
-    existingCertificate?.solutionsUsed?.length
-      ? existingCertificate.solutionsUsed
-      : [{ productName: "", typeBatch: null, result: "pass", inspectorName: null }],
+    initSolutions == null || initSolutions.length === 0
+      ? [{ productName: "", typeBatch: null, result: "pass", inspectorName: null }]
+      : initSolutions,
   );
   const [liningCheck, setLiningCheck] = useState<QcLiningCheck>(
-    existingCertificate?.liningCheck || { ...emptyLiningCheck },
+    initLining == null ? { ...emptyLiningCheck } : initLining,
   );
   const [cureCycles, setCureCycles] = useState<QcCureCycleRecord[]>(
-    existingCertificate?.cureCycles?.length
-      ? existingCertificate.cureCycles
-      : [{ cycleNumber: 1, timeIn: null, timeOut: null, pressureBar: null }],
+    initCureCycles == null || initCureCycles.length === 0
+      ? [{ cycleNumber: 1, timeIn: null, timeOut: null, pressureBar: null }]
+      : initCureCycles,
   );
   const [paintingChecks, setPaintingChecks] = useState<QcPaintingCheck[]>(
-    existingCertificate?.paintingChecks?.length
-      ? existingCertificate.paintingChecks
-      : [...defaultPaintingChecks],
+    initPaintingChecks == null || initPaintingChecks.length === 0
+      ? [...defaultPaintingChecks]
+      : initPaintingChecks,
   );
   const [finalInspection, setFinalInspection] = useState<QcFinalInspection>(
-    existingCertificate?.finalInspection || { ...emptyFinalInspection },
+    initFinalInspection == null ? { ...emptyFinalInspection } : initFinalInspection,
   );
-  const [comments, setComments] = useState(existingCertificate?.comments || "");
+  const [comments, setComments] = useState(initComments == null ? "" : initComments);
   const [finalApprovalName, setFinalApprovalName] = useState(
-    existingCertificate?.finalApprovalName || "",
+    initApprovalName == null ? "" : initApprovalName,
   );
   const [finalApprovalDate, setFinalApprovalDate] = useState(
-    existingCertificate?.finalApprovalDate || nowISO().slice(0, 10),
+    initApprovalDate == null ? nowISO().slice(0, 10) : initApprovalDate,
   );
   const [signatureUrl, setSignatureUrl] = useState<string | null>(
-    existingCertificate?.finalApprovalSignatureUrl || null,
+    initSignatureUrl == null ? null : initSignatureUrl,
   );
   const [showSignaturePad, setShowSignaturePad] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -274,7 +289,10 @@ export function QcReleaseCertificateForm({
       <input
         type="text"
         value={value ?? ""}
-        onChange={(e) => onChange(e.target.value || null)}
+        onChange={(e) => {
+          const v = e.target.value;
+          onChange(v || null);
+        }}
         placeholder="Inspector name"
         className="w-44 rounded border border-gray-300 px-2 py-1 text-sm"
       />
@@ -289,6 +307,27 @@ export function QcReleaseCertificateForm({
       )}
     </div>
   );
+
+  const rawBlastBatchNo = blastingCheck.blastProfileBatchNo;
+  const blastProfileBatchNoValue = rawBlastBatchNo == null ? "" : rawBlastBatchNo;
+  const blastContaminationFree = blastingCheck.contaminationFree;
+  const blastSa25Grade = blastingCheck.sa25Grade;
+  const blastInspectorName = blastingCheck.inspectorName;
+
+  const liningPreCureLinedAsPerDrawing = liningCheck.preCureLinedAsPerDrawing;
+  const liningPreCureInspectorName = liningCheck.preCureInspectorName;
+  const liningVisualDefectInspection = liningCheck.visualDefectInspection;
+  const liningVisualDefectInspectorName = liningCheck.visualDefectInspectorName;
+
+  const finalLinedAsPerDrawing = finalInspection.linedAsPerDrawing;
+  const finalVisualInspection = finalInspection.visualInspection;
+  const finalTestPlate = finalInspection.testPlate;
+  const rawShoreHardness = finalInspection.shoreHardness;
+  const finalShoreHardness = rawShoreHardness == null ? "" : rawShoreHardness;
+  const finalSparkTest = finalInspection.sparkTest;
+  const rawSparkVoltage = finalInspection.sparkTestVoltagePerMm;
+  const finalSparkTestVoltagePerMm = rawSparkVoltage == null ? "" : rawSparkVoltage;
+  const finalInspectorName = finalInspection.inspectorName;
 
   return (
     <div className="space-y-4">
@@ -335,54 +374,65 @@ export function QcReleaseCertificateForm({
           <label className="min-w-[140px] text-sm text-gray-700">Profile Batch No</label>
           <input
             type="text"
-            value={blastingCheck.blastProfileBatchNo ?? ""}
-            onChange={(e) => updateBlasting("blastProfileBatchNo", e.target.value || null)}
+            value={blastProfileBatchNoValue}
+            onChange={(e) => {
+              const v = e.target.value;
+              updateBlasting("blastProfileBatchNo", v || null);
+            }}
             className="w-48 rounded border border-gray-300 px-2 py-1 text-sm"
           />
         </div>
-        {passFailToggle("Contamination Free", blastingCheck.contaminationFree, (val) =>
+        {passFailToggle("Contamination Free", blastContaminationFree, (val) =>
           updateBlasting("contaminationFree", val),
         )}
-        {passFailToggle("SA 2.5 Grade", blastingCheck.sa25Grade, (val) =>
-          updateBlasting("sa25Grade", val),
-        )}
-        {inspectorField(blastingCheck.inspectorName, (val) => updateBlasting("inspectorName", val))}
+        {passFailToggle("SA 2.5 Grade", blastSa25Grade, (val) => updateBlasting("sa25Grade", val))}
+        {inspectorField(blastInspectorName, (val) => updateBlasting("inspectorName", val))}
       </div>
 
       {sectionHeader("2. Solutions Used")}
       <div className="space-y-3 pl-2">
-        {solutionsUsed.map((sol, idx) => (
-          <div
-            key={idx}
-            className="flex flex-wrap items-center gap-2 rounded border border-gray-100 bg-gray-50 p-2"
-          >
-            <input
-              type="text"
-              value={sol.productName}
-              onChange={(e) => updateSolution(idx, "productName", e.target.value)}
-              placeholder="Product name"
-              className="w-40 rounded border border-gray-300 px-2 py-1 text-sm"
-            />
-            <input
-              type="text"
-              value={sol.typeBatch ?? ""}
-              onChange={(e) => updateSolution(idx, "typeBatch", e.target.value || null)}
-              placeholder="Type / Batch"
-              className="w-36 rounded border border-gray-300 px-2 py-1 text-sm"
-            />
-            {passFailToggle("", sol.result, (val) => updateSolution(idx, "result", val ?? "pass"))}
-            {inspectorField(sol.inspectorName, (val) => updateSolution(idx, "inspectorName", val))}
-            {solutionsUsed.length > 1 && (
-              <button
-                type="button"
-                onClick={() => removeSolution(idx)}
-                className="text-xs text-red-500 hover:text-red-700"
-              >
-                Remove
-              </button>
-            )}
-          </div>
-        ))}
+        {solutionsUsed.map((sol, idx) => {
+          const productName = sol.productName;
+          const rawTypeBatch = sol.typeBatch;
+          const typeBatch = rawTypeBatch == null ? "" : rawTypeBatch;
+          const result = sol.result;
+          const inspectorName = sol.inspectorName;
+          return (
+            <div
+              key={idx}
+              className="flex flex-wrap items-center gap-2 rounded border border-gray-100 bg-gray-50 p-2"
+            >
+              <input
+                type="text"
+                value={productName}
+                onChange={(e) => updateSolution(idx, "productName", e.target.value)}
+                placeholder="Product name"
+                className="w-40 rounded border border-gray-300 px-2 py-1 text-sm"
+              />
+              <input
+                type="text"
+                value={typeBatch}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  updateSolution(idx, "typeBatch", v || null);
+                }}
+                placeholder="Type / Batch"
+                className="w-36 rounded border border-gray-300 px-2 py-1 text-sm"
+              />
+              {passFailToggle("", result, (val) => updateSolution(idx, "result", val || "pass"))}
+              {inspectorField(inspectorName, (val) => updateSolution(idx, "inspectorName", val))}
+              {solutionsUsed.length > 1 && (
+                <button
+                  type="button"
+                  onClick={() => removeSolution(idx)}
+                  className="text-xs text-red-500 hover:text-red-700"
+                >
+                  Remove
+                </button>
+              )}
+            </div>
+          );
+        })}
         <button
           type="button"
           onClick={addSolution}
@@ -394,75 +444,85 @@ export function QcReleaseCertificateForm({
 
       {sectionHeader("3. Lining Checks")}
       <div className="space-y-3 pl-2">
-        {passFailToggle(
-          "Pre-cure lined as per drawing",
-          liningCheck.preCureLinedAsPerDrawing,
-          (val) => updateLining("preCureLinedAsPerDrawing", val),
+        {passFailToggle("Pre-cure lined as per drawing", liningPreCureLinedAsPerDrawing, (val) =>
+          updateLining("preCureLinedAsPerDrawing", val),
         )}
-        {inspectorField(liningCheck.preCureInspectorName, (val) =>
+        {inspectorField(liningPreCureInspectorName, (val) =>
           updateLining("preCureInspectorName", val),
         )}
-        {passFailToggle("Visual defect inspection", liningCheck.visualDefectInspection, (val) =>
+        {passFailToggle("Visual defect inspection", liningVisualDefectInspection, (val) =>
           updateLining("visualDefectInspection", val),
         )}
-        {inspectorField(liningCheck.visualDefectInspectorName, (val) =>
+        {inspectorField(liningVisualDefectInspectorName, (val) =>
           updateLining("visualDefectInspectorName", val),
         )}
       </div>
 
       {sectionHeader("4. Curing Records")}
       <div className="space-y-3 pl-2">
-        {cureCycles.map((cycle, idx) => (
-          <div
-            key={idx}
-            className="flex flex-wrap items-center gap-3 rounded border border-gray-100 bg-gray-50 p-2"
-          >
-            <span className="text-sm font-medium text-gray-700">Cycle {cycle.cycleNumber}</span>
-            <div className="flex items-center gap-1">
-              <label className="text-xs text-gray-500">Time In</label>
-              <input
-                type="datetime-local"
-                value={cycle.timeIn ?? ""}
-                onChange={(e) => updateCureCycle(idx, "timeIn", e.target.value || null)}
-                className="rounded border border-gray-300 px-2 py-1 text-sm"
-              />
+        {cureCycles.map((cycle, idx) => {
+          const cycleNumber = cycle.cycleNumber;
+          const rawTimeIn = cycle.timeIn;
+          const timeIn = rawTimeIn == null ? "" : rawTimeIn;
+          const rawTimeOut = cycle.timeOut;
+          const timeOut = rawTimeOut == null ? "" : rawTimeOut;
+          const rawPressure = cycle.pressureBar;
+          const pressureBar = rawPressure == null ? "" : rawPressure;
+          return (
+            <div
+              key={idx}
+              className="flex flex-wrap items-center gap-3 rounded border border-gray-100 bg-gray-50 p-2"
+            >
+              <span className="text-sm font-medium text-gray-700">Cycle {cycleNumber}</span>
+              <div className="flex items-center gap-1">
+                <label className="text-xs text-gray-500">Time In</label>
+                <input
+                  type="datetime-local"
+                  value={timeIn}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    updateCureCycle(idx, "timeIn", v || null);
+                  }}
+                  className="rounded border border-gray-300 px-2 py-1 text-sm"
+                />
+              </div>
+              <div className="flex items-center gap-1">
+                <label className="text-xs text-gray-500">Time Out</label>
+                <input
+                  type="datetime-local"
+                  value={timeOut}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    updateCureCycle(idx, "timeOut", v || null);
+                  }}
+                  className="rounded border border-gray-300 px-2 py-1 text-sm"
+                />
+              </div>
+              <div className="flex items-center gap-1">
+                <label className="text-xs text-gray-500">Pressure (BAR)</label>
+                <input
+                  type="number"
+                  step="0.1"
+                  value={pressureBar}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    updateCureCycle(idx, "pressureBar", v ? Number(v) : null);
+                  }}
+                  className="w-20 rounded border border-gray-300 px-2 py-1 text-sm"
+                />
+              </div>
+              {cureCycles.length > 1 && (
+                <button
+                  type="button"
+                  onClick={() => removeCureCycle(idx)}
+                  className="text-xs text-red-500 hover:text-red-700"
+                >
+                  Remove
+                </button>
+              )}
             </div>
-            <div className="flex items-center gap-1">
-              <label className="text-xs text-gray-500">Time Out</label>
-              <input
-                type="datetime-local"
-                value={cycle.timeOut ?? ""}
-                onChange={(e) => updateCureCycle(idx, "timeOut", e.target.value || null)}
-                className="rounded border border-gray-300 px-2 py-1 text-sm"
-              />
-            </div>
-            <div className="flex items-center gap-1">
-              <label className="text-xs text-gray-500">Pressure (BAR)</label>
-              <input
-                type="number"
-                step="0.1"
-                value={cycle.pressureBar ?? ""}
-                onChange={(e) =>
-                  updateCureCycle(
-                    idx,
-                    "pressureBar",
-                    e.target.value ? Number(e.target.value) : null,
-                  )
-                }
-                className="w-20 rounded border border-gray-300 px-2 py-1 text-sm"
-              />
-            </div>
-            {cureCycles.length > 1 && (
-              <button
-                type="button"
-                onClick={() => removeCureCycle(idx)}
-                className="text-xs text-red-500 hover:text-red-700"
-              >
-                Remove
-              </button>
-            )}
-          </div>
-        ))}
+          );
+        })}
         <button
           type="button"
           onClick={addCureCycle}
@@ -474,67 +534,77 @@ export function QcReleaseCertificateForm({
 
       {sectionHeader("5. Painting Checks")}
       <div className="space-y-3 pl-2">
-        {paintingChecks.map((pc, idx) => (
-          <div
-            key={idx}
-            className="flex flex-wrap items-center gap-3 rounded border border-gray-100 bg-gray-50 p-2"
-          >
-            <span className="w-24 text-sm font-medium capitalize text-gray-700">{pc.coat}</span>
-            <div className="flex items-center gap-1">
-              <label className="text-xs text-gray-500">Batch</label>
-              <input
-                type="text"
-                value={pc.batchNumber ?? ""}
-                onChange={(e) => updatePaintingCheck(idx, "batchNumber", e.target.value || null)}
-                className="w-28 rounded border border-gray-300 px-2 py-1 text-sm"
-              />
+        {paintingChecks.map((pc, idx) => {
+          const coat = pc.coat;
+          const rawBatchNumber = pc.batchNumber;
+          const batchNumber = rawBatchNumber == null ? "" : rawBatchNumber;
+          const rawDftMicrons = pc.dftMicrons;
+          const dftMicrons = rawDftMicrons == null ? "" : rawDftMicrons;
+          const result = pc.result;
+          const inspectorName = pc.inspectorName;
+          return (
+            <div
+              key={idx}
+              className="flex flex-wrap items-center gap-3 rounded border border-gray-100 bg-gray-50 p-2"
+            >
+              <span className="w-24 text-sm font-medium capitalize text-gray-700">{coat}</span>
+              <div className="flex items-center gap-1">
+                <label className="text-xs text-gray-500">Batch</label>
+                <input
+                  type="text"
+                  value={batchNumber}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    updatePaintingCheck(idx, "batchNumber", v || null);
+                  }}
+                  className="w-28 rounded border border-gray-300 px-2 py-1 text-sm"
+                />
+              </div>
+              <div className="flex items-center gap-1">
+                <label className="text-xs text-gray-500">DFT (um)</label>
+                <input
+                  type="number"
+                  value={dftMicrons}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    updatePaintingCheck(idx, "dftMicrons", v ? Number(v) : null);
+                  }}
+                  className="w-20 rounded border border-gray-300 px-2 py-1 text-sm"
+                />
+              </div>
+              {passFailToggle("", result, (val) => updatePaintingCheck(idx, "result", val))}
+              {inspectorField(inspectorName, (val) =>
+                updatePaintingCheck(idx, "inspectorName", val),
+              )}
             </div>
-            <div className="flex items-center gap-1">
-              <label className="text-xs text-gray-500">DFT (um)</label>
-              <input
-                type="number"
-                value={pc.dftMicrons ?? ""}
-                onChange={(e) =>
-                  updatePaintingCheck(
-                    idx,
-                    "dftMicrons",
-                    e.target.value ? Number(e.target.value) : null,
-                  )
-                }
-                className="w-20 rounded border border-gray-300 px-2 py-1 text-sm"
-              />
-            </div>
-            {passFailToggle("", pc.result, (val) => updatePaintingCheck(idx, "result", val))}
-            {inspectorField(pc.inspectorName, (val) =>
-              updatePaintingCheck(idx, "inspectorName", val),
-            )}
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {sectionHeader("6. Final Inspection")}
       <div className="space-y-3 pl-2">
-        {passFailToggle("Lined as per drawing", finalInspection.linedAsPerDrawing, (val) =>
+        {passFailToggle("Lined as per drawing", finalLinedAsPerDrawing, (val) =>
           updateFinalInspection("linedAsPerDrawing", val),
         )}
-        {passFailToggle("Visual inspection", finalInspection.visualInspection, (val) =>
+        {passFailToggle("Visual inspection", finalVisualInspection, (val) =>
           updateFinalInspection("visualInspection", val),
         )}
-        {passFailToggle("Test plate", finalInspection.testPlate, (val) =>
+        {passFailToggle("Test plate", finalTestPlate, (val) =>
           updateFinalInspection("testPlate", val),
         )}
         <div className="flex items-center gap-2">
           <label className="min-w-[140px] text-sm text-gray-700">Shore Hardness</label>
           <input
             type="number"
-            value={finalInspection.shoreHardness ?? ""}
-            onChange={(e) =>
-              updateFinalInspection("shoreHardness", e.target.value ? Number(e.target.value) : null)
-            }
+            value={finalShoreHardness}
+            onChange={(e) => {
+              const v = e.target.value;
+              updateFinalInspection("shoreHardness", v ? Number(v) : null);
+            }}
             className="w-20 rounded border border-gray-300 px-2 py-1 text-sm"
           />
         </div>
-        {passFailToggle("Spark test", finalInspection.sparkTest, (val) =>
+        {passFailToggle("Spark test", finalSparkTest, (val) =>
           updateFinalInspection("sparkTest", val),
         )}
         <div className="flex items-center gap-2">
@@ -542,19 +612,15 @@ export function QcReleaseCertificateForm({
           <input
             type="number"
             step="0.1"
-            value={finalInspection.sparkTestVoltagePerMm ?? ""}
-            onChange={(e) =>
-              updateFinalInspection(
-                "sparkTestVoltagePerMm",
-                e.target.value ? Number(e.target.value) : null,
-              )
-            }
+            value={finalSparkTestVoltagePerMm}
+            onChange={(e) => {
+              const v = e.target.value;
+              updateFinalInspection("sparkTestVoltagePerMm", v ? Number(v) : null);
+            }}
             className="w-20 rounded border border-gray-300 px-2 py-1 text-sm"
           />
         </div>
-        {inspectorField(finalInspection.inspectorName, (val) =>
-          updateFinalInspection("inspectorName", val),
-        )}
+        {inspectorField(finalInspectorName, (val) => updateFinalInspection("inspectorName", val))}
       </div>
 
       {sectionHeader("7. Comments")}
