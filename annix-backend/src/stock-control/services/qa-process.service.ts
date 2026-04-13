@@ -54,14 +54,19 @@ export class QaProcessService {
     });
 
     if (!analysis) {
-      return { hasRubber: false, hasPaint: false };
+      return { hasRubber: true, hasPaint: true };
     }
 
     const hasRubber = analysis.hasInternalLining === true;
     const coats = analysis.coats;
     const hasPaint = Array.isArray(coats) && coats.length > 0;
+    const hasStockAssessment =
+      Array.isArray(analysis.stockAssessment) && analysis.stockAssessment.length > 0;
 
-    return { hasRubber, hasPaint };
+    return {
+      hasRubber,
+      hasPaint: hasPaint || hasStockAssessment,
+    };
   }
 
   async autoSkipInapplicableSteps(
@@ -102,6 +107,21 @@ export class QaProcessService {
       this.logger.log(
         `Auto-skipped ${newCompletions.length} QA step(s) [${stepsToSkip.join(", ")}] for job card ${jobCardId}`,
       );
+    }
+
+    if (hasRubber || hasPaint) {
+      const wronglySkipped = existing.filter(
+        (c) =>
+          c.completionType === "skipped" &&
+          c.notes === "Auto-skipped — not applicable" &&
+          ["qc_batch_certs", "qc_repairs", "qa_review"].includes(c.stepKey),
+      );
+      if (wronglySkipped.length > 0) {
+        await this.completionRepo.remove(wronglySkipped);
+        this.logger.log(
+          `Reversed ${wronglySkipped.length} wrongly-skipped QA step(s) for job card ${jobCardId} (now has rubber=${hasRubber}, paint=${hasPaint})`,
+        );
+      }
     }
   }
 
