@@ -1085,7 +1085,20 @@ export class CertificateService {
       final: "Final",
     };
 
-    const coatsWithRoles = CoatingAnalysisService.inferCoatRoles(coatingAnalysis?.coats || []);
+    const rawCoats = coatingAnalysis?.coats || [];
+    const rawNotes = coatingAnalysis?.rawNotes || "";
+    const notesUpper = rawNotes.toUpperCase();
+    const bandingIdx = notesUpper.indexOf("BANDING");
+    const preBanding = bandingIdx >= 0 ? notesUpper.substring(0, bandingIdx) : notesUpper;
+    const postBanding = bandingIdx >= 0 ? notesUpper.substring(bandingIdx) : "";
+
+    const nonBandingCoats = rawCoats.filter((coat) => {
+      const productUpper = coat.product ? coat.product.toUpperCase() : "";
+      if (postBanding.length === 0 || productUpper.length === 0) return true;
+      return !(postBanding.includes(productUpper) && !preBanding.includes(productUpper));
+    });
+
+    const coatsWithRoles = CoatingAnalysisService.inferCoatRoles(nonBandingCoats);
     const distinctCoatRoles: CoatRole[] =
       coatsWithRoles.length > 0
         ? COAT_ROLE_ORDER.filter((role) => coatsWithRoles.some((c) => c.coatRole === role))

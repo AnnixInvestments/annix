@@ -4,6 +4,7 @@ import { getRepositoryToken } from "@nestjs/typeorm";
 import { JobCardCoatingAnalysis } from "../../entities/coating-analysis.entity";
 import { CustomerPurchaseOrder } from "../../entities/customer-purchase-order.entity";
 import { JobCard } from "../../entities/job-card.entity";
+import { JobCardLineItem } from "../../entities/job-card-line-item.entity";
 import { StockControlCompany } from "../../entities/stock-control-company.entity";
 import { CertificateService } from "../../services/certificate.service";
 import { QcBlastProfile } from "../entities/qc-blast-profile.entity";
@@ -66,6 +67,7 @@ describe("QcMeasurementService", () => {
   const environmentalRecordRepo = mockRepo();
   const jobCardRepo = mockRepo();
   const coatingRepo = mockRepo();
+  const lineItemRepo = mockRepo();
   const companyRepo = mockRepo();
   const mockWorkItemProvider = {
     lineItemsForWorkItem: jest.fn().mockResolvedValue([]),
@@ -86,6 +88,7 @@ describe("QcMeasurementService", () => {
         { provide: getRepositoryToken(QcDefelskoBatch), useValue: defelskoBatchRepo },
         { provide: getRepositoryToken(QcEnvironmentalRecord), useValue: environmentalRecordRepo },
         { provide: getRepositoryToken(JobCard), useValue: jobCardRepo },
+        { provide: getRepositoryToken(JobCardLineItem), useValue: lineItemRepo },
         { provide: getRepositoryToken(JobCardCoatingAnalysis), useValue: coatingRepo },
         { provide: getRepositoryToken(StockControlCompany), useValue: companyRepo },
         { provide: getRepositoryToken(CustomerPurchaseOrder), useValue: mockRepo() },
@@ -358,6 +361,9 @@ describe("QcMeasurementService", () => {
         ],
         totalQuantity: 2,
       };
+
+      lineItemRepo.find.mockResolvedValue([{ itemCode: "VLV-001", quantity: 10 }]);
+      itemsReleaseRepo.find.mockResolvedValue([]);
 
       await service.createItemsRelease(COMPANY_ID, JOB_CARD_ID, data, mockUser);
 
