@@ -1,4 +1,11 @@
-import { BadRequestException, Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
+import {
+  BadRequestException,
+  forwardRef,
+  Inject,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { IsNull, Repository } from "typeorm";
 import { JobCardCoatingAnalysis } from "../../entities/coating-analysis.entity";
@@ -6,6 +13,7 @@ import { CustomerPurchaseOrder } from "../../entities/customer-purchase-order.en
 import { JobCard } from "../../entities/job-card.entity";
 import { StockControlCompany } from "../../entities/stock-control-company.entity";
 import { INVALID_LINE_ITEM_PATTERNS, stripJunkSuffixes } from "../../lib/line-item-validation";
+import { CertificateService } from "../../services/certificate.service";
 import { QcBlastProfile } from "../entities/qc-blast-profile.entity";
 import {
   InterventionType,
@@ -87,6 +95,8 @@ export class QcMeasurementService {
     private readonly cpoRepo: Repository<CustomerPurchaseOrder>,
     @Inject(WORK_ITEM_PROVIDER)
     private readonly workItemProvider: IWorkItemProvider,
+    @Inject(forwardRef(() => CertificateService))
+    private readonly certificateService: CertificateService,
   ) {}
 
   // ── Shore Hardness ──────────────────────────────────────────────────
@@ -1231,6 +1241,19 @@ export class QcMeasurementService {
             capturedById: user.id,
           }),
         );
+      }),
+    );
+
+    await Promise.all(
+      results.map(async (batch) => {
+        const bn = batch.batchNumber;
+        if (!bn || batch.notApplicable || batch.supplierCertificateId) return;
+        const cert = await this.certificateService.findMatchingCertificate(companyId, bn);
+        if (cert) {
+          batch.supplierCertificateId = cert.id;
+          await this.defelskoBatchRepo.save(batch);
+          this.logger.log(`Linked defelsko batch "${bn}" to cert ${cert.id} on save`);
+        }
       }),
     );
 
