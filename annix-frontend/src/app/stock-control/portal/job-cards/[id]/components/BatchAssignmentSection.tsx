@@ -88,6 +88,7 @@ export function BatchAssignmentSection(props: BatchAssignmentSectionProps) {
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [defelskoBatches, setDefelskoBatches] = useState<QcDefelskoBatchRecord[]>([]);
   const [applyingAll, setApplyingAll] = useState(false);
+  const [appliedAll, setAppliedAll] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   const pdfPreview = usePdfPreview();
 
@@ -202,6 +203,7 @@ export function BatchAssignmentSection(props: BatchAssignmentSectionProps) {
       await Promise.all(promises);
       await fetchAssignments();
       onAssignmentSaved();
+      setAppliedAll(true);
       setCollapsed(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to apply batch numbers");
@@ -338,9 +340,9 @@ export function BatchAssignmentSection(props: BatchAssignmentSectionProps) {
             <label className="flex items-center gap-1.5 cursor-pointer">
               <input
                 type="checkbox"
-                checked={applyingAll}
+                checked={appliedAll || applyingAll}
                 onChange={handleApplyDefelskoBatches}
-                disabled={applyingAll}
+                disabled={applyingAll || appliedAll}
                 className="rounded border-gray-300 text-teal-600 focus:ring-teal-500 h-3.5 w-3.5"
               />
               <span className="text-[10px] text-gray-600">
