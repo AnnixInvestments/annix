@@ -300,18 +300,20 @@ function CertificatesTab() {
   const filteredCertificates = searchQuery
     ? certificates.filter((cert) => {
         const q = searchQuery.toLowerCase();
+        const batch = cert.batchNumber;
+        const batchStr = batch == null ? "" : batch;
+        const sn = cert.supplier ? cert.supplier.name : "";
+        const sin = cert.stockItem ? cert.stockItem.name : "";
+        const fname = cert.originalFilename;
+        const fnameStr = fname == null ? "" : fname;
+        const ctype = cert.certificateType;
+        const ctypeStr = ctype == null ? "" : ctype;
         return (
-          (cert.batchNumber ?? "").toLowerCase().includes(q) ||
-          (() => {
-            const sn = cert.supplier ? cert.supplier.name : "";
-            return sn.toLowerCase().includes(q);
-          })() ||
-          (() => {
-            const sin = cert.stockItem ? cert.stockItem.name : "";
-            return sin.toLowerCase().includes(q);
-          })() ||
-          (cert.originalFilename ?? "").toLowerCase().includes(q) ||
-          (cert.certificateType ?? "").toLowerCase().includes(q)
+          batchStr.toLowerCase().includes(q) ||
+          sn.toLowerCase().includes(q) ||
+          sin.toLowerCase().includes(q) ||
+          fnameStr.toLowerCase().includes(q) ||
+          ctypeStr.toLowerCase().includes(q)
         );
       })
     : certificates;
@@ -320,8 +322,10 @@ function CertificatesTab() {
     const dir = sortDir === "asc" ? 1 : -1;
     if (sortCol === "type") return dir * a.certificateType.localeCompare(b.certificateType);
     if (sortCol === "batch") {
-      const aBatch = a.batchNumber || "";
-      const bBatch = b.batchNumber || "";
+      const aBatchRaw = a.batchNumber;
+      const bBatchRaw = b.batchNumber;
+      const aBatch = aBatchRaw || "";
+      const bBatch = bBatchRaw || "";
       return dir * aBatch.localeCompare(bBatch);
     }
     if (sortCol === "supplier") {
@@ -332,8 +336,10 @@ function CertificatesTab() {
     if (sortCol === "product") {
       const aStockName = a.stockItem ? a.stockItem.name : "";
       const bStockName = b.stockItem ? b.stockItem.name : "";
-      const aProduct = aStockName || a.description || "";
-      const bProduct = bStockName || b.description || "";
+      const aDesc = a.description;
+      const bDesc = b.description;
+      const aProduct = aStockName || aDesc || "";
+      const bProduct = bStockName || bDesc || "";
       return dir * aProduct.localeCompare(bProduct);
     }
     return dir * (fromISO(a.createdAt).toMillis() - fromISO(b.createdAt).toMillis());
