@@ -107,8 +107,20 @@ export class StockAllocationService {
       const rawQuantity = matchedItem ? Number(matchedItem.quantity) : 0;
       const uom = matchedItem ? matchedItem.unitOfMeasure : null;
       const isLitreUnit = uom === "ltr" || uom === "L" || uom === "litre";
+
+      const availableKits = (() => {
+        if (!matchedItem) return 0;
+        const cg = matchedItem.componentGroup;
+        if (!cg) return rawQuantity;
+        const siblings = stockItems.filter(
+          (si) => si.componentGroup === cg && Number(si.quantity) >= 0,
+        );
+        if (siblings.length <= 1) return rawQuantity;
+        return Math.min(...siblings.map((si) => Number(si.quantity)));
+      })();
+
       const availableLitres =
-        isLitreUnit || !packSizeLitres ? rawQuantity : rawQuantity * packSizeLitres;
+        isLitreUnit || !packSizeLitres ? availableKits : availableKits * packSizeLitres;
       const remainingLitres = leftover
         ? Math.max(0, assessItem.required - Number(leftover.quantity))
         : assessItem.required;
