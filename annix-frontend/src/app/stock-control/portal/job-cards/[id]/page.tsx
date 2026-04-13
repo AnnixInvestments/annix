@@ -555,12 +555,16 @@ export default function JobCardDetailPage() {
     const tryScroll = (attempts: number) => {
       const el = document.getElementById(elementId);
       if (el) {
-        el.scrollIntoView({ behavior: "smooth", block: "start" });
+        const rect = el.getBoundingClientRect();
+        const rawScrollY = window.scrollY;
+        const scrollY = rawScrollY || 0;
+        const top = rect.top + scrollY - 120;
+        window.scrollTo({ top, behavior: "smooth" });
       } else if (attempts > 0) {
-        setTimeout(() => tryScroll(attempts - 1), 150);
+        setTimeout(() => tryScroll(attempts - 1), 200);
       }
     };
-    setTimeout(() => tryScroll(20), 100);
+    setTimeout(() => tryScroll(25), 200);
   }, []);
 
   const pipingLossPct = profile?.pipingLossFactorPct ? profile.pipingLossFactorPct : 45;
