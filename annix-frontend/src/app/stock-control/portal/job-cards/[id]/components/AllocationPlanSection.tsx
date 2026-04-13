@@ -272,142 +272,156 @@ export function AllocationPlanSection(props: AllocationPlanSectionProps) {
                       key={`${groupKey}-${item.stockItemId}-${itemIdx}`}
                       className={`${rowBg} px-4 py-4 sm:px-6 border-b border-gray-100 last:border-b-0`}
                     >
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            {isAllocated && (
-                              <svg
-                                className="h-5 w-5 text-green-600 flex-shrink-0"
-                                fill="currentColor"
-                                viewBox="0 0 20 20"
-                              >
-                                <path
-                                  fillRule="evenodd"
-                                  d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                                  clipRule="evenodd"
-                                />
-                              </svg>
-                            )}
-                            <p className="text-sm font-medium text-gray-900 truncate">
+                      <div className="space-y-3">
+                        <div className="flex items-center gap-2 min-w-0">
+                          {isAllocated && (
+                            <svg
+                              className="h-5 w-5 text-green-600 flex-shrink-0"
+                              fill="currentColor"
+                              viewBox="0 0 20 20"
+                            >
+                              <path
+                                fillRule="evenodd"
+                                d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                clipRule="evenodd"
+                              />
+                            </svg>
+                          )}
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium text-gray-900 break-words">
                               {item.product}
                             </p>
+                            <p className="text-xs text-gray-500 break-words">
+                              {item.stockItemName}
+                            </p>
                           </div>
-                          <p className="mt-1 text-xs text-gray-500">{item.stockItemName}</p>
                           {isLeftover && item.leftoverSuggestion && (
-                            <span className="inline-flex items-center mt-1 px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800">
+                            <span className="inline-flex items-center flex-shrink-0 px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800">
                               Leftover from JC-{item.leftoverSuggestion.sourceJobCardId}
                             </span>
                           )}
-                          {item.componentRole && (
-                            <span className="inline-flex items-center mt-1 ml-1 px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-600">
-                              {item.componentRole}
-                              {item.mixRatio ? ` (${item.mixRatio})` : ""}
-                            </span>
-                          )}
+                          {item.componentRole &&
+                            (() => {
+                              const ratio = item.mixRatio;
+                              const label = ratio
+                                ? `${item.componentRole} (${ratio})`
+                                : item.componentRole;
+                              return (
+                                <span className="inline-flex items-center flex-shrink-0 px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-600">
+                                  {label}
+                                </span>
+                              );
+                            })()}
                         </div>
 
-                        <div className="flex flex-col items-end gap-1 text-sm">
-                          {item.unitOfMeasure === "rolls" ? (
-                            <>
-                              <div className="text-gray-500">
-                                Rolls:{" "}
-                                <span className="font-medium text-gray-900">
-                                  {item.rubberRollsRequired || 1}
-                                </span>
-                              </div>
-                              {item.rubberRollWidthMm && item.rubberRollLengthM && (
-                                <div className="text-gray-500">
-                                  Size:{" "}
+                        <div className="flex items-center justify-between gap-3 flex-wrap">
+                          <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
+                            {item.unitOfMeasure === "rolls" ? (
+                              (() => {
+                                const rawRollsReq = item.rubberRollsRequired;
+                                const rollsReq = rawRollsReq || 1;
+                                const rollW = item.rubberRollWidthMm;
+                                const rollL = item.rubberRollLengthM;
+                                const avail = item.availableQuantity;
+                                return (
+                                  <>
+                                    <span className="text-gray-500">
+                                      Rolls:{" "}
+                                      <span className="font-medium text-gray-900">{rollsReq}</span>
+                                    </span>
+                                    {rollW && rollL && (
+                                      <span className="text-gray-500">
+                                        Size:{" "}
+                                        <span className="font-medium text-gray-900">
+                                          {rollW}mm x {rollL}m
+                                        </span>
+                                      </span>
+                                    )}
+                                    <span className="text-gray-500">
+                                      Available:{" "}
+                                      <span className="font-medium text-gray-900">
+                                        {avail > 0 ? `${avail} in stock` : "None"}
+                                      </span>
+                                    </span>
+                                  </>
+                                );
+                              })()
+                            ) : (
+                              <>
+                                <span className="text-gray-500">
+                                  Required:{" "}
                                   <span className="font-medium text-gray-900">
-                                    {item.rubberRollWidthMm}mm x {item.rubberRollLengthM}m
+                                    {item.requiredLitres.toFixed(1)}L
                                   </span>
-                                </div>
-                              )}
-                              <div className="text-gray-500">
-                                Available:{" "}
-                                <span className="font-medium text-gray-900">
-                                  {item.availableQuantity > 0
-                                    ? `${item.availableQuantity} in stock`
-                                    : "None"}
                                 </span>
-                              </div>
-                            </>
-                          ) : (
-                            <>
-                              <div className="text-gray-500">
-                                Required:{" "}
-                                <span className="font-medium text-gray-900">
-                                  {item.requiredLitres.toFixed(1)}L
-                                </span>
-                              </div>
-                              <div className="text-gray-500">
-                                Available:{" "}
-                                <span className="font-medium text-gray-900">
-                                  {item.availableQuantity.toFixed(1)}L
-                                </span>
-                              </div>
-                              {item.packSizeLitres && (
-                                <div className="text-gray-500">
-                                  Pack:{" "}
+                                <span className="text-gray-500">
+                                  Available:{" "}
                                   <span className="font-medium text-gray-900">
-                                    {item.packSizeLitres}L
+                                    {item.availableQuantity.toFixed(1)}L
                                   </span>
-                                </div>
-                              )}
-                            </>
-                          )}
-                        </div>
+                                </span>
+                                {item.packSizeLitres && (
+                                  <span className="text-gray-500">
+                                    Pack:{" "}
+                                    <span className="font-medium text-gray-900">
+                                      {item.packSizeLitres}L
+                                    </span>
+                                  </span>
+                                )}
+                              </>
+                            )}
+                          </div>
 
-                        <div className="flex flex-col items-end gap-2">
-                          {isAllocated && existingAllocation ? (
-                            <button
-                              type="button"
-                              onClick={() => handleDeallocate(existingAllocation.id)}
-                              className="inline-flex items-center px-3 py-1.5 border border-red-300 text-xs font-medium rounded-md text-red-700 bg-white hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
-                            >
-                              Deallocate
-                            </button>
-                          ) : (
-                            <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 flex-shrink-0">
+                            {isAllocated && existingAllocation ? (
                               <button
                                 type="button"
-                                onClick={() => adjustPackCount(item.stockItemId, -1)}
-                                disabled={currentPackCount <= 0}
-                                className="inline-flex items-center justify-center w-8 h-8 rounded-full border border-gray-300 text-gray-600 hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed"
+                                onClick={() => handleDeallocate(existingAllocation.id)}
+                                className="inline-flex items-center px-3 py-1.5 border border-red-300 text-xs font-medium rounded-md text-red-700 bg-white hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
                               >
-                                -
+                                Deallocate
                               </button>
-                              <span className="w-10 text-center text-sm font-medium text-gray-900">
-                                {currentPackCount}
-                              </span>
-                              <button
-                                type="button"
-                                onClick={() => adjustPackCount(item.stockItemId, 1)}
-                                className="inline-flex items-center justify-center w-8 h-8 rounded-full border border-gray-300 text-gray-600 hover:bg-gray-100"
-                              >
-                                +
-                              </button>
-                            </div>
-                          )}
+                            ) : (
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={() => adjustPackCount(item.stockItemId, -1)}
+                                  disabled={currentPackCount <= 0}
+                                  className="inline-flex items-center justify-center w-8 h-8 rounded-full border border-gray-300 text-gray-600 hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed"
+                                >
+                                  -
+                                </button>
+                                <span className="w-8 text-center text-sm font-medium text-gray-900">
+                                  {currentPackCount}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => adjustPackCount(item.stockItemId, 1)}
+                                  className="inline-flex items-center justify-center w-8 h-8 rounded-full border border-gray-300 text-gray-600 hover:bg-gray-100"
+                                >
+                                  +
+                                </button>
+                              </>
+                            )}
 
-                          {!isAllocated && currentPackCount > 0 && (
-                            <div className="text-right">
-                              <span className="text-xs text-gray-500">
-                                Total: {currentTotalLitres.toFixed(1)}L
-                              </span>
-                              {overAllocated && !insufficient && (
-                                <p className="text-xs text-amber-600 font-medium mt-0.5">
-                                  Over-allocation: +
-                                  {(currentTotalLitres - item.requiredLitres).toFixed(1)}L
-                                </p>
-                              )}
-                              {insufficient && (
-                                <p className="text-xs text-red-600 font-medium mt-0.5">
-                                  Insufficient stock
-                                </p>
-                              )}
-                            </div>
-                          )}
+                            {!isAllocated && currentPackCount > 0 && (
+                              <div className="text-right ml-2">
+                                <span className="text-xs text-gray-500">
+                                  Total: {currentTotalLitres.toFixed(1)}L
+                                </span>
+                                {overAllocated && !insufficient && (
+                                  <p className="text-xs text-amber-600 font-medium mt-0.5">
+                                    Over: +{(currentTotalLitres - item.requiredLitres).toFixed(1)}L
+                                  </p>
+                                )}
+                                {insufficient && (
+                                  <p className="text-xs text-red-600 font-medium mt-0.5">
+                                    Insufficient
+                                  </p>
+                                )}
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>
