@@ -155,6 +155,109 @@ export class QcBatchAssignmentService {
     return summary;
   }
 
+  async requiredEnvironmentalDateRange(
+    companyId: number,
+    jobCardId: number,
+  ): Promise<{
+    requiredDates: string[];
+    coveredDates: string[];
+    missingDates: string[];
+    earliestDate: string | null;
+    latestDate: string | null;
+  }> {
+    const uploads = await this.uploadRepo.find({
+      where: { linkedJobCardId: jobCardId, companyId },
+    });
+
+    if (uploads.length === 0) {
+      return {
+        requiredDates: [],
+        coveredDates: [],
+        missingDates: [],
+        earliestDate: null,
+        latestDate: null,
+      };
+    }
+
+    const requiredDateSet = new Set<string>();
+
+    for (const upload of uploads) {
+      const header = upload.headerData as Record<string, unknown> | null;
+      const createdStr = header ? (header.Created as string) : null;
+      if (!createdStr) continue;
+
+      const uploadDate = fromISO(createdStr);
+      if (!uploadDate.isValid) continue;
+
+      const batchName = upload.batchName;
+      const assignments = batchName
+        ? await this.assignmentRepo.find({
+            where: { companyId, jobCardId, batchNumber: batchName },
+          })
+        : [];
+
+      const fieldKeys =
+        assignments.length > 0
+          ? assignments.map((a) => a.fieldKey)
+          : [this.inferFieldKeyFromUpload(upload)];
+
+      let maxLookback = 0;
+      for (const fk of fieldKeys) {
+        const lookback = this.lookbackForFieldKey(fk);
+        if (lookback > maxLookback) maxLookback = lookback;
+      }
+
+      for (let d = maxLookback; d >= 0; d--) {
+        const date = uploadDate.minus({ days: d });
+        requiredDateSet.add(date.toISODate() || "");
+      }
+    }
+
+    const requiredDates = [...requiredDateSet].filter(Boolean).sort();
+    if (requiredDates.length === 0) {
+      return {
+        requiredDates: [],
+        coveredDates: [],
+        missingDates: [],
+        earliestDate: null,
+        latestDate: null,
+      };
+    }
+
+    const envRecords = await this.envRecordRepo.find({
+      where: { companyId, jobCardId },
+    });
+    const coveredSet = new Set(envRecords.map((r) => r.recordDate.slice(0, 10)));
+
+    const coveredDates = requiredDates.filter((d) => coveredSet.has(d));
+    const missingDates = requiredDates.filter((d) => !coveredSet.has(d));
+
+    return {
+      requiredDates,
+      coveredDates,
+      missingDates,
+      earliestDate: requiredDates[0] || null,
+      latestDate: requiredDates[requiredDates.length - 1] || null,
+    };
+  }
+
+  private lookbackForFieldKey(fieldKey: string): number {
+    const exact = FIELD_KEY_LOOKBACK_DAYS[fieldKey];
+    if (exact !== undefined) return exact;
+    if (fieldKey.startsWith("paint_dft_")) return 2;
+    return 0;
+  }
+
+  private inferFieldKeyFromUpload(upload: PositectorUpload): string {
+    const header = upload.headerData as Record<string, unknown> | null;
+    const probeType = header ? String(header.ProbeType || "") : "";
+    const lower = probeType.toLowerCase();
+    if (lower.includes("shore") || lower.includes("hardness")) return "rubber_shore_hardness";
+    if (lower.includes("dft") || lower.includes("coating")) return "paint_dft_primer";
+    if (lower.includes("blast") || lower.includes("profile")) return "paint_blast_profile";
+    return "paint_blast_profile";
+  }
+
   async resolveEnvironmentalLinks(companyId: number, jobCardId: number): Promise<void> {
     const assignments = await this.assignmentRepo.find({
       where: { companyId, jobCardId },

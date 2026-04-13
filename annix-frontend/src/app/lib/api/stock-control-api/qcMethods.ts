@@ -212,6 +212,13 @@ declare module "./base" {
     deleteEnvironmentalRecord(jobCardId: number, id: number): Promise<void>;
     deleteEnvironmentalRecordById(id: number): Promise<void>;
     defelskoBatchesForJobCard(jobCardId: number): Promise<QcDefelskoBatchRecord[]>;
+    environmentalDateRange(jobCardId: number): Promise<{
+      requiredDates: string[];
+      coveredDates: string[];
+      missingDates: string[];
+      earliestDate: string | null;
+      latestDate: string | null;
+    }>;
     saveDefelskoBatches(
       jobCardId: number,
       data: {
@@ -548,6 +555,10 @@ proto.deleteEnvironmentalRecordById = async function (id) {
 
 proto.defelskoBatchesForJobCard = async function (jobCardId) {
   return this.request(`/stock-control/job-cards/${jobCardId}/qc/defelsko-batches`);
+};
+
+proto.environmentalDateRange = async function (jobCardId) {
+  return this.request(`/stock-control/job-cards/${jobCardId}/qc/environmental-date-range`);
 };
 
 proto.saveDefelskoBatches = async function (jobCardId, data) {

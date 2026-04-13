@@ -89,6 +89,13 @@ export function DefelskoBatchSection(props: DefelskoBatchSectionProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [envDateRange, setEnvDateRange] = useState<{
+    requiredDates: string[];
+    coveredDates: string[];
+    missingDates: string[];
+    earliestDate: string | null;
+    latestDate: string | null;
+  } | null>(null);
 
   const paintFields = useMemo((): BatchField[] => {
     const fields: BatchField[] = [];
@@ -184,8 +191,16 @@ export function DefelskoBatchSection(props: DefelskoBatchSectionProps) {
     }
   }, [jobCardId, allFields, batchRecords, coatingAnalysis]);
 
+  const fetchEnvDateRange = useCallback(() => {
+    stockControlApiClient
+      .environmentalDateRange(jobCardId)
+      .then((data) => setEnvDateRange(data))
+      .catch(() => setEnvDateRange(null));
+  }, [jobCardId]);
+
   useEffect(() => {
     fetchBatches();
+    fetchEnvDateRange();
   }, [fetchBatches]);
 
   const handleSave = async () => {
@@ -209,6 +224,7 @@ export function DefelskoBatchSection(props: DefelskoBatchSectionProps) {
 
       await stockControlApiClient.saveDefelskoBatches(jobCardId, { batches });
       setSaveSuccess(true);
+      fetchEnvDateRange();
       setTimeout(() => setSaveSuccess(false), 3000);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save batch numbers");
@@ -387,6 +403,49 @@ export function DefelskoBatchSection(props: DefelskoBatchSectionProps) {
             </table>
           </div>
         </div>
+
+        {envDateRange && envDateRange.requiredDates.length > 0 && (
+          <div className="mt-3 rounded-md border border-blue-200 bg-blue-50 px-3 py-2">
+            <h4 className="text-xs font-semibold text-blue-800 mb-1">
+              Environmental Readings Required
+            </h4>
+            <p className="text-[10px] text-blue-700 mb-2">
+              Based on uploaded Defelsko documents, environmental probe readings are needed from{" "}
+              <span className="font-semibold">{envDateRange.earliestDate}</span> to{" "}
+              <span className="font-semibold">{envDateRange.latestDate}</span> (
+              {envDateRange.requiredDates.length} day
+              {envDateRange.requiredDates.length === 1 ? "" : "s"})
+            </p>
+            <div className="flex flex-wrap gap-1">
+              {envDateRange.requiredDates.map((date) => {
+                const covered = envDateRange.coveredDates.includes(date);
+                return (
+                  <span
+                    key={date}
+                    className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium ${
+                      covered ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
+                    }`}
+                  >
+                    {date.slice(5)}
+                    {covered ? " \u2713" : " \u2717"}
+                  </span>
+                );
+              })}
+            </div>
+            {envDateRange.missingDates.length > 0 && (
+              <p className="mt-1 text-[10px] text-red-700 font-medium">
+                {envDateRange.missingDates.length} missing date
+                {envDateRange.missingDates.length === 1 ? "" : "s"} — please add environmental
+                records for these dates
+              </p>
+            )}
+            {envDateRange.missingDates.length === 0 && (
+              <p className="mt-1 text-[10px] text-green-700 font-medium">
+                All required environmental dates are covered
+              </p>
+            )}
+          </div>
+        )}
 
         {onComplete && (
           <div className="pt-3 mt-3 border-t border-gray-200">

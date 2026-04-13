@@ -698,6 +698,15 @@ export class QcMeasurementController {
     return this.qcService.defelskoBatchesForJobCard(req.user.companyId, jobCardId);
   }
 
+  @Get("environmental-date-range")
+  @ApiOperation({ summary: "Required environmental date range based on Positector uploads" })
+  async environmentalDateRange(@Req() req: any, @Param("jobCardId") jobCardId: number) {
+    return this.batchAssignmentService.requiredEnvironmentalDateRange(
+      req.user.companyId,
+      jobCardId,
+    );
+  }
+
   @Post("defelsko-batches")
   @ApiOperation({ summary: "Save defelsko batch numbers (upsert)" })
   async saveDefelskoBatches(
@@ -758,6 +767,14 @@ export class QcMeasurementController {
           ),
         );
     });
+
+    this.batchAssignmentService
+      .resolveEnvironmentalLinks(req.user.companyId, jobCardId)
+      .catch((err: Error) =>
+        this.logger.warn(
+          `Environmental link resolution for JC ${jobCardId} failed: ${err.message}`,
+        ),
+      );
 
     return saved;
   }
