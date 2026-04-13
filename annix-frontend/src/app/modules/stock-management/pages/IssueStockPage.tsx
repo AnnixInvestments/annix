@@ -24,6 +24,11 @@ import type { IssuableProductDto } from "../types/products";
 
 type StepKey = "issuer" | "recipient" | "target" | "items" | "confirm";
 
+type SelectedProductSpec =
+  | { kind: "paint"; product: string; role: string | null }
+  | { kind: "rubber"; specLabel: string }
+  | null;
+
 const STEPS: ReadonlyArray<{ key: StepKey; label: string }> = [
   { key: "issuer", label: "Issuer" },
   { key: "recipient", label: "Recipient" },
@@ -164,6 +169,7 @@ export function IssueStockPage() {
   const [allocPaintQty, setAllocPaintQty] = useState<Record<string, number>>({});
   const [pendingAllocQty, setPendingAllocQty] = useState<number | null>(null);
   const [pendingCoatType, setPendingCoatType] = useState<CartRow["coatType"]>(null);
+  const [selectedProductSpec, setSelectedProductSpec] = useState<SelectedProductSpec>(null);
   const [photoCapturing, setPhotoCapturing] = useState(false);
   const [photoResult, setPhotoResult] = useState<{
     matches: Array<{ productId: number; sku: string; name: string; productType: string }>;
@@ -248,6 +254,7 @@ export function IssueStockPage() {
       setSelectedLineItemIds([]);
       setLineItemIssueQty({});
       setExpandedJcIds([]);
+      setSelectedProductSpec(null);
       return;
     }
     const cached = cpoContextCache.get(targetId);
@@ -488,6 +495,26 @@ export function IssueStockPage() {
       }));
   }, [cpoChildJcs, selectedCpoJcIds]);
 
+  useEffect(() => {
+    if (currentStep !== "items" || selectedProductSpec == null) return;
+    if (selectedProductSpec.kind === "paint") {
+      const words = selectedProductSpec.product.split(" ").slice(0, 3).join(" ");
+      setSearch(words);
+      const role = selectedProductSpec.role;
+      const ct: CartRow["coatType"] =
+        role === "primer"
+          ? "primer"
+          : role === "intermediate"
+            ? "intermediate"
+            : role === "final"
+              ? "final"
+              : null;
+      setPendingCoatType(ct);
+    } else {
+      setSearch("rubber");
+    }
+  }, [currentStep, selectedProductSpec]);
+
   const derivedCoatStatusMap = useMemo(() => {
     const hasBackendData = Object.keys(coatStatusMap).length > 0;
     if (hasBackendData) return coatStatusMap;
@@ -620,6 +647,53 @@ export function IssueStockPage() {
     }));
     return { selectedM2: totalSelectedM2, paints, selectedJcCount: activeJcCount };
   }, [cpoChildJcs, selectedCpoJcIds, selectedLineItemIds, lineItemIssueQty]);
+
+  const availableProductSpecs = useMemo(() => {
+    if (targetKind !== "cpo" || cpoChildJcs.length === 0) return [];
+    const specs: Array<
+      | { kind: "paint"; product: string; role: string | null; totalLitres: number }
+      | { kind: "rubber"; specLabel: string }
+    > = [];
+    for (const p of selectedCoatsSummary.paints) {
+      specs.push({ kind: "paint", product: p.product, role: p.role, totalLitres: p.litres });
+    }
+    const hasRubberJc = cpoChildJcs.some((jc) => jc.hasInternalLining);
+    if (hasRubberJc && cpoCoatingSpecs != null) {
+      const lines = cpoCoatingSpecs.split("\n");
+      const rubberSpecs = new Set<string>();
+      for (const line of lines) {
+        const upper = line.trim().toUpperCase();
+        if (
+          upper.includes("R/L") ||
+          upper.includes("RUBBER") ||
+          upper.includes("FOLD") ||
+          upper.includes("LOOSE RUBBER")
+        ) {
+          rubberSpecs.add(line.trim());
+        }
+      }
+      for (const spec of rubberSpecs) {
+        specs.push({ kind: "rubber", specLabel: spec });
+      }
+    } else if (hasRubberJc) {
+      specs.push({ kind: "rubber", specLabel: "Rubber Lining" });
+    }
+    return specs;
+  }, [targetKind, cpoChildJcs, selectedCoatsSummary.paints, cpoCoatingSpecs]);
+
+  const specMatchesCoat = (
+    spec: SelectedProductSpec,
+    coatProduct: string,
+    coatRole: string | null,
+    isRubber: boolean,
+  ): boolean => {
+    if (spec == null) return true;
+    if (spec.kind === "rubber") return isRubber;
+    if (isRubber) return false;
+    const specName = spec.product.toUpperCase();
+    const coatName = coatProduct.toUpperCase();
+    return coatName.includes(specName.slice(0, 15)) || specName.includes(coatName.slice(0, 15));
+  };
 
   const showPaintProRata = useMemo(() => {
     return targetKind === "cpo" && cpoJobCards.length > 1;
@@ -1020,6 +1094,86 @@ export function IssueStockPage() {
               </div>
             ) : null}
 
+            {targetKind === "cpo" &&
+            !cpoJcLoading &&
+            cpoChildJcs.length > 0 &&
+            availableProductSpecs.length > 0 ? (
+              <div className="rounded border border-indigo-200 bg-indigo-50 p-3 space-y-2">
+                <h3 className="text-sm font-semibold text-indigo-900">Select Product to Issue</h3>
+                <p className="text-xs text-indigo-700">
+                  Choose one product for this issuance session. Create another session for
+                  additional products.
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {availableProductSpecs.map((spec) => {
+                    const key =
+                      spec.kind === "paint" ? `paint:${spec.product}` : `rubber:${spec.specLabel}`;
+                    const label =
+                      spec.kind === "paint"
+                        ? `${spec.product}${spec.role != null ? ` (${spec.role})` : ""}`
+                        : spec.specLabel;
+                    const isSelected =
+                      selectedProductSpec != null &&
+                      ((selectedProductSpec.kind === "paint" &&
+                        spec.kind === "paint" &&
+                        selectedProductSpec.product === spec.product) ||
+                        (selectedProductSpec.kind === "rubber" &&
+                          spec.kind === "rubber" &&
+                          selectedProductSpec.specLabel === spec.specLabel));
+                    const baseColor =
+                      spec.kind === "paint"
+                        ? isSelected
+                          ? "bg-blue-600 text-white ring-2 ring-blue-400"
+                          : "bg-white text-blue-800 border border-blue-300 hover:bg-blue-100"
+                        : isSelected
+                          ? "bg-purple-600 text-white ring-2 ring-purple-400"
+                          : "bg-white text-purple-800 border border-purple-300 hover:bg-purple-100";
+                    return (
+                      <button
+                        key={key}
+                        type="button"
+                        onClick={() => {
+                          const newSpec: SelectedProductSpec =
+                            spec.kind === "paint"
+                              ? { kind: "paint", product: spec.product, role: spec.role }
+                              : { kind: "rubber", specLabel: spec.specLabel };
+                          setSelectedProductSpec(isSelected ? null : newSpec);
+                          setCart([]);
+                          setSearch("");
+                          setPendingAllocQty(null);
+                          setPendingCoatType(null);
+                        }}
+                        className={`px-3 py-1.5 rounded text-xs font-medium transition-all ${baseColor}`}
+                      >
+                        {label}
+                      </button>
+                    );
+                  })}
+                </div>
+                {selectedProductSpec != null ? (
+                  <div className="text-[10px] text-indigo-600">
+                    Issuing:{" "}
+                    <span className="font-semibold">
+                      {selectedProductSpec.kind === "paint"
+                        ? selectedProductSpec.product
+                        : selectedProductSpec.specLabel}
+                    </span>
+                    {" \u2014 "}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedProductSpec(null);
+                        setCart([]);
+                      }}
+                      className="underline hover:text-indigo-800"
+                    >
+                      Clear
+                    </button>
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
+
             {targetKind === "cpo" && !cpoJcLoading && cpoChildJcs.length > 0 ? (
               <div className="rounded border border-teal-200 bg-teal-50 p-3 space-y-2">
                 <div className="flex items-center justify-between">
@@ -1309,58 +1463,68 @@ export function IssueStockPage() {
                                   </div>
                                   {extCoats.length > 0 || hasRubber ? (
                                     <div className="ml-6 mt-1 space-y-0.5">
-                                      {extCoats.map((ct) => {
-                                        const roleLabel =
-                                          ct.coatRole == null ? "coat" : ct.coatRole;
-                                        const totalM2 = jc.totalAreaM2;
-                                        const itemM2 = liM2 == null ? 0 : liM2;
-                                        const coverage = ct.coverageM2PerLiter;
-                                        const coatLitres =
-                                          coverage > 0 && itemM2 > 0
-                                            ? (itemM2 * currentIssueQty) /
-                                              (fullQty > 0 ? fullQty : 1) /
-                                              coverage
-                                            : 0;
-                                        const liCoats = derivedCoatStatusMap[li.id];
-                                        const issuedQty =
-                                          liCoats == null
-                                            ? 0
-                                            : liCoats[roleLabel] == null
+                                      {extCoats
+                                        .filter((ct) =>
+                                          specMatchesCoat(
+                                            selectedProductSpec,
+                                            ct.product,
+                                            ct.coatRole,
+                                            false,
+                                          ),
+                                        )
+                                        .map((ct) => {
+                                          const roleLabel =
+                                            ct.coatRole == null ? "coat" : ct.coatRole;
+                                          const totalM2 = jc.totalAreaM2;
+                                          const itemM2 = liM2 == null ? 0 : liM2;
+                                          const coverage = ct.coverageM2PerLiter;
+                                          const coatLitres =
+                                            coverage > 0 && itemM2 > 0
+                                              ? (itemM2 * currentIssueQty) /
+                                                (fullQty > 0 ? fullQty : 1) /
+                                                coverage
+                                              : 0;
+                                          const liCoats = derivedCoatStatusMap[li.id];
+                                          const issuedQty =
+                                            liCoats == null
                                               ? 0
-                                              : liCoats[roleLabel];
-                                        const remaining = Math.max(fullQty - issuedQty, 0);
-                                        const done = issuedQty >= fullQty && fullQty > 0;
-                                        return (
-                                          <div
-                                            key={ct.product + roleLabel}
-                                            className={`flex items-center gap-2 text-[10px] px-2 py-0.5 rounded ${
-                                              done
-                                                ? "bg-red-100 text-red-700"
-                                                : issuedQty > 0
-                                                  ? "bg-amber-100 text-amber-700"
-                                                  : "bg-green-50 text-green-700"
-                                            }`}
-                                          >
-                                            <span className="uppercase font-semibold w-10 shrink-0">
-                                              EXT
-                                            </span>
-                                            <span className="w-14 shrink-0 font-medium">
-                                              {roleLabel}
-                                            </span>
-                                            <span className="flex-1 truncate">{ct.product}</span>
-                                            {coatLitres > 0 ? (
-                                              <span className="font-mono shrink-0">
-                                                {coatLitres.toFixed(1)}L
+                                              : liCoats[roleLabel] == null
+                                                ? 0
+                                                : liCoats[roleLabel];
+                                          const remaining = Math.max(fullQty - issuedQty, 0);
+                                          const done = issuedQty >= fullQty && fullQty > 0;
+                                          return (
+                                            <div
+                                              key={ct.product + roleLabel}
+                                              className={`flex items-center gap-2 text-[10px] px-2 py-0.5 rounded ${
+                                                done
+                                                  ? "bg-red-100 text-red-700"
+                                                  : issuedQty > 0
+                                                    ? "bg-amber-100 text-amber-700"
+                                                    : "bg-green-50 text-green-700"
+                                              }`}
+                                            >
+                                              <span className="uppercase font-semibold w-10 shrink-0">
+                                                EXT
                                               </span>
-                                            ) : null}
-                                            <span className="shrink-0 font-medium">
-                                              {issuedQty}/{fullQty}
-                                              {done ? " \u2713" : ""}
-                                            </span>
-                                          </div>
-                                        );
-                                      })}
-                                      {hasRubber
+                                              <span className="w-14 shrink-0 font-medium">
+                                                {roleLabel}
+                                              </span>
+                                              <span className="flex-1 truncate">{ct.product}</span>
+                                              {coatLitres > 0 ? (
+                                                <span className="font-mono shrink-0">
+                                                  {coatLitres.toFixed(1)}L
+                                                </span>
+                                              ) : null}
+                                              <span className="shrink-0 font-medium">
+                                                {issuedQty}/{fullQty}
+                                                {done ? " \u2713" : ""}
+                                              </span>
+                                            </div>
+                                          );
+                                        })}
+                                      {hasRubber &&
+                                      specMatchesCoat(selectedProductSpec, "", null, true)
                                         ? (() => {
                                             const liCoats = derivedCoatStatusMap[li.id];
                                             const issuedQty =
@@ -1480,7 +1644,12 @@ export function IssueStockPage() {
                 type="button"
                 onClick={() => setCurrentStep("items")}
                 disabled={
-                  targetKind === "cpo" && cpoChildJcs.length > 0 && selectedCpoJcIds.length === 0
+                  (targetKind === "cpo" &&
+                    cpoChildJcs.length > 0 &&
+                    selectedCpoJcIds.length === 0) ||
+                  (targetKind === "cpo" &&
+                    availableProductSpecs.length > 0 &&
+                    selectedProductSpec == null)
                 }
                 className="px-4 py-2 bg-teal-600 text-white rounded text-sm font-medium disabled:opacity-50"
               >
@@ -1504,113 +1673,135 @@ export function IssueStockPage() {
 
         {currentStep === "items" && (
           <div className="space-y-4">
-            <h2 className="text-lg font-semibold">Items</h2>
+            <h2 className="text-lg font-semibold">
+              Items
+              {selectedProductSpec != null ? (
+                <span className="ml-2 text-sm font-normal text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded">
+                  {selectedProductSpec.kind === "paint"
+                    ? `${selectedProductSpec.product}${selectedProductSpec.role != null ? ` (${selectedProductSpec.role})` : ""}`
+                    : selectedProductSpec.specLabel}
+                </span>
+              ) : null}
+            </h2>
 
-            {targetKind === "cpo" && selectedCoatsSummary.paints.length > 0 ? (
+            {targetKind === "cpo" &&
+            selectedCoatsSummary.paints.length > 0 &&
+            (selectedProductSpec == null || selectedProductSpec.kind === "paint") ? (
               <div className="rounded border border-blue-200 bg-blue-50 p-3 space-y-2">
-                <h3 className="text-sm font-semibold text-blue-900">CPO Paint Allocation</h3>
+                <h3 className="text-sm font-semibold text-blue-900">
+                  CPO Paint Allocation
+                  {selectedProductSpec != null && selectedProductSpec.kind === "paint"
+                    ? ` — ${selectedProductSpec.product}`
+                    : ""}
+                </h3>
                 <p className="text-xs text-blue-700">
                   Paint required for the selected JCs. Click a product to search stock.
                 </p>
                 <div className="space-y-1">
-                  {selectedCoatsSummary.paints.map((p) => {
-                    const roleLabel = p.role == null ? "" : ` (${p.role})`;
-                    const alreadyInCart = cart.some((c) => {
-                      const productName = c.product.name.toUpperCase();
-                      const paintName = p.product.toUpperCase();
+                  {selectedCoatsSummary.paints
+                    .filter((p) => specMatchesCoat(selectedProductSpec, p.product, p.role, false))
+                    .map((p) => {
+                      const roleLabel = p.role == null ? "" : ` (${p.role})`;
+                      const alreadyInCart = cart.some((c) => {
+                        const productName = c.product.name.toUpperCase();
+                        const paintName = p.product.toUpperCase();
+                        return (
+                          productName.includes(paintName.slice(0, 15)) ||
+                          paintName.includes(productName.slice(0, 15))
+                        );
+                      });
+                      const priorIssued = cpoIssuedTotals.reduce((sum, t) => {
+                        const issuedName = t.productName.toUpperCase();
+                        const paintName = p.product.toUpperCase();
+                        const matches =
+                          issuedName.includes(paintName.slice(0, 15)) ||
+                          paintName.includes(issuedName.slice(0, 15));
+                        return matches ? sum + t.totalIssued : sum;
+                      }, 0);
+                      const remaining = Math.max(p.litres - priorIssued, 0);
+                      const fullyIssued = priorIssued >= p.litres && priorIssued > 0;
+                      const rawAllocQty = allocPaintQty[p.product];
+                      const issueQty = rawAllocQty == null ? Math.ceil(remaining) : rawAllocQty;
                       return (
-                        productName.includes(paintName.slice(0, 15)) ||
-                        paintName.includes(productName.slice(0, 15))
-                      );
-                    });
-                    const priorIssued = cpoIssuedTotals.reduce((sum, t) => {
-                      const issuedName = t.productName.toUpperCase();
-                      const paintName = p.product.toUpperCase();
-                      const matches =
-                        issuedName.includes(paintName.slice(0, 15)) ||
-                        paintName.includes(issuedName.slice(0, 15));
-                      return matches ? sum + t.totalIssued : sum;
-                    }, 0);
-                    const remaining = Math.max(p.litres - priorIssued, 0);
-                    const fullyIssued = priorIssued >= p.litres && priorIssued > 0;
-                    const rawAllocQty = allocPaintQty[p.product];
-                    const issueQty = rawAllocQty == null ? Math.ceil(remaining) : rawAllocQty;
-                    return (
-                      <div
-                        key={p.product}
-                        className={`flex items-center gap-2 rounded px-3 py-2 border ${
-                          fullyIssued ? "bg-green-50 border-green-200" : "bg-white border-blue-100"
-                        }`}
-                      >
-                        <div className="flex-1 min-w-0">
-                          <div className="text-sm font-medium text-blue-900 truncate">
-                            {p.product}
-                            {roleLabel}
-                          </div>
-                          <div className="text-xs text-blue-700">
-                            {p.litres.toFixed(1)} L required
-                            {priorIssued > 0 ? (
-                              <span className="ml-1 text-green-700 font-medium">
-                                ({Math.round(priorIssued * 100) / 100}L already issued
-                                {fullyIssued
-                                  ? " - COMPLETE"
-                                  : `, ${remaining.toFixed(1)}L remaining`}
-                                )
-                              </span>
-                            ) : null}
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-1 shrink-0">
-                          <label className="text-[10px] text-gray-500 uppercase">Issue L</label>
-                          <input
-                            type="text"
-                            inputMode="numeric"
-                            value={issueQty > 0 ? String(issueQty) : ""}
-                            placeholder="0"
-                            onChange={(e) => {
-                              const raw = e.target.value.replace(/\D/g, "");
-                              const val = raw === "" ? 0 : parseInt(raw, 10);
-                              setAllocPaintQty({ ...allocPaintQty, [p.product]: val });
-                            }}
-                            className="w-16 border border-gray-300 rounded px-1.5 py-1 text-sm text-center"
-                            disabled={alreadyInCart || fullyIssued}
-                          />
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setPendingAllocQty(issueQty);
-                            const role = p.role;
-                            const coatType: CartRow["coatType"] =
-                              role === "primer"
-                                ? "primer"
-                                : role === "intermediate"
-                                  ? "intermediate"
-                                  : role === "final"
-                                    ? "final"
-                                    : null;
-                            setPendingCoatType(coatType);
-                            setSearch(p.product.split(" ").slice(0, 3).join(" "));
-                          }}
-                          className={`shrink-0 text-xs font-medium px-3 py-1.5 rounded ${
+                        <div
+                          key={p.product}
+                          className={`flex items-center gap-2 rounded px-3 py-2 border ${
                             fullyIssued
-                              ? "bg-green-100 text-green-700"
-                              : alreadyInCart
-                                ? "bg-green-100 text-green-700"
-                                : "bg-blue-600 text-white hover:bg-blue-700"
+                              ? "bg-green-50 border-green-200"
+                              : "bg-white border-blue-100"
                           }`}
-                          disabled={alreadyInCart || fullyIssued}
                         >
-                          {fullyIssued ? "Issued" : alreadyInCart ? "In cart" : "Find & add"}
-                        </button>
-                      </div>
-                    );
-                  })}
+                          <div className="flex-1 min-w-0">
+                            <div className="text-sm font-medium text-blue-900 truncate">
+                              {p.product}
+                              {roleLabel}
+                            </div>
+                            <div className="text-xs text-blue-700">
+                              {p.litres.toFixed(1)} L required
+                              {priorIssued > 0 ? (
+                                <span className="ml-1 text-green-700 font-medium">
+                                  ({Math.round(priorIssued * 100) / 100}L already issued
+                                  {fullyIssued
+                                    ? " - COMPLETE"
+                                    : `, ${remaining.toFixed(1)}L remaining`}
+                                  )
+                                </span>
+                              ) : null}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-1 shrink-0">
+                            <label className="text-[10px] text-gray-500 uppercase">Issue L</label>
+                            <input
+                              type="text"
+                              inputMode="numeric"
+                              value={issueQty > 0 ? String(issueQty) : ""}
+                              placeholder="0"
+                              onChange={(e) => {
+                                const raw = e.target.value.replace(/\D/g, "");
+                                const val = raw === "" ? 0 : parseInt(raw, 10);
+                                setAllocPaintQty({ ...allocPaintQty, [p.product]: val });
+                              }}
+                              className="w-16 border border-gray-300 rounded px-1.5 py-1 text-sm text-center"
+                              disabled={alreadyInCart || fullyIssued}
+                            />
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setPendingAllocQty(issueQty);
+                              const role = p.role;
+                              const coatType: CartRow["coatType"] =
+                                role === "primer"
+                                  ? "primer"
+                                  : role === "intermediate"
+                                    ? "intermediate"
+                                    : role === "final"
+                                      ? "final"
+                                      : null;
+                              setPendingCoatType(coatType);
+                              setSearch(p.product.split(" ").slice(0, 3).join(" "));
+                            }}
+                            className={`shrink-0 text-xs font-medium px-3 py-1.5 rounded ${
+                              fullyIssued
+                                ? "bg-green-100 text-green-700"
+                                : alreadyInCart
+                                  ? "bg-green-100 text-green-700"
+                                  : "bg-blue-600 text-white hover:bg-blue-700"
+                            }`}
+                            disabled={alreadyInCart || fullyIssued}
+                          >
+                            {fullyIssued ? "Issued" : alreadyInCart ? "In cart" : "Find & add"}
+                          </button>
+                        </div>
+                      );
+                    })}
                 </div>
               </div>
             ) : null}
 
-            {targetKind === "cpo" && cpoChildJcs.some((jc) => jc.hasInternalLining)
+            {targetKind === "cpo" &&
+            cpoChildJcs.some((jc) => jc.hasInternalLining) &&
+            (selectedProductSpec == null || selectedProductSpec.kind === "rubber")
               ? (() => {
                   const rubberLines: string[] = [];
                   if (cpoCoatingSpecs != null) {
@@ -1954,8 +2145,35 @@ export function IssueStockPage() {
                                 </div>
                               </div>
                               <div className="rounded border border-gray-200 bg-gray-50 px-3 py-2 text-xs space-y-1">
-                                <div className="font-semibold text-gray-700">
-                                  Batch numbers per tin
+                                <div className="flex items-center justify-between">
+                                  <span className="font-semibold text-gray-700">
+                                    Batch numbers per tin
+                                  </span>
+                                  <label className="flex items-center gap-1.5 text-[10px] text-gray-600 cursor-pointer select-none">
+                                    <input
+                                      type="checkbox"
+                                      className="rounded border-gray-300 text-teal-600 focus:ring-teal-500"
+                                      onChange={(e) => {
+                                        if (!e.target.checked) return;
+                                        const existing = row.tinBatchNumbers;
+                                        const firstA = existing[0] == null ? "" : existing[0];
+                                        const firstB =
+                                          tinsB > 0
+                                            ? existing[tinsA] == null
+                                              ? ""
+                                              : existing[tinsA]
+                                            : "";
+                                        const filled = Array.from(
+                                          { length: tinsA + tinsB },
+                                          (_, idx) => (idx < tinsA ? firstA : firstB),
+                                        );
+                                        updateCartRow(row.product.id, {
+                                          tinBatchNumbers: filled,
+                                        });
+                                      }}
+                                    />
+                                    Same batch for all
+                                  </label>
                                 </div>
                                 <div className="text-[10px] text-gray-500 mb-1">
                                   Part A tins ({partAPerKit}L each)
