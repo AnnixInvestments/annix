@@ -10,7 +10,7 @@ import "./staffMethods";
 import "./dashboardMethods";
 import "./workflowMethods";
 import "./invoiceMethods";
-import "./issuanceMethods";
+
 import "./chatMethods";
 import "./certificateMethods";
 import "./supplierDocumentMethods";

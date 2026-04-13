@@ -27,7 +27,6 @@ import {
 } from "@/app/lib/query/hooks";
 import { QcpSection } from "@/app/stock-control/portal/job-cards/[id]/components/QcpSection";
 import { AsteriskAllocationModal } from "../../../components/AsteriskAllocationModal";
-import { CpoBatchSessionList } from "../../../components/CpoBatchSessionList";
 import { CpoBatchAssignmentSection } from "./components/CpoBatchAssignmentSection";
 import { CpoDataBookSection } from "./components/CpoDataBookSection";
 import { CpoReleaseDocumentGenerator } from "./components/CpoReleaseDocumentGenerator";
@@ -1765,8 +1764,6 @@ export default function CpoDetailPage() {
             )}
           </div>
         )}
-
-        <CpoBatchSessionList scope="cpo" id={id} title="Stock Issuance Sessions" />
 
         <div className="text-xs text-gray-400">
           Created {formatDateZA(cpo.createdAt)}

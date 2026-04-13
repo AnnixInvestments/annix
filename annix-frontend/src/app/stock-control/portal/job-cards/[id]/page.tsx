@@ -33,15 +33,11 @@ import {
   useLoadBackgroundStepsForJobCard,
   useLoadControlPlansForJobCard,
   useLoadDeliveryJobCards,
-  useLoadJobCard,
   useLoadJobCardAdjacentIds,
-  useLoadJobCardAllocations,
   useLoadJobCardPdfPreview,
   useLoadReconciliationGateStatus,
   useLoadRequisitions,
   useLoadSourceFileUrl,
-  useLoadStaffMembers,
-  useLoadStockItems,
   useLoadWorkflowStatus,
   usePlaceRequisitionDecision,
   useReExtractJobCardNotes,
@@ -53,7 +49,6 @@ import {
   useUseCurrentStockDecision,
 } from "@/app/lib/query/hooks";
 import { ApprovalModal } from "@/app/stock-control/components/ApprovalModal";
-import { CpoBatchSessionList } from "@/app/stock-control/components/CpoBatchSessionList";
 import { JobCardNextAction } from "@/app/stock-control/components/NextActionBanner";
 import { WorkflowStatus } from "@/app/stock-control/components/WorkflowStatus";
 import { useViewAs } from "@/app/stock-control/context/ViewAsContext";
@@ -92,8 +87,6 @@ export default function JobCardDetailPage() {
   const invalidateJobCardsList = useInvalidateJobCards();
   const jobId = Number(params.id);
 
-  const { mutateAsync: loadJobCard } = useLoadJobCard();
-  const { mutateAsync: loadJobCardAllocations } = useLoadJobCardAllocations();
   const { mutateAsync: loadRequisitions } = useLoadRequisitions();
   const { mutateAsync: loadDeliveryJobCards } = useLoadDeliveryJobCards();
   const { mutateAsync: loadWorkflowStatus } = useLoadWorkflowStatus();
@@ -101,8 +94,6 @@ export default function JobCardDetailPage() {
   const { mutateAsync: loadBackgroundSteps } = useLoadBackgroundStepsForJobCard();
   const { mutateAsync: loadJobCardAdjacentIds } = useLoadJobCardAdjacentIds();
   const { mutateAsync: loadControlPlans } = useLoadControlPlansForJobCard();
-  const { mutateAsync: loadStockItems } = useLoadStockItems();
-  const { mutateAsync: loadStaffMembers } = useLoadStaffMembers();
   const { mutateAsync: allocateStockMutation } = useAllocateStock();
   const { mutateAsync: approveOverAllocation } = useApproveOverAllocation();
   const { mutateAsync: rejectOverAllocation } = useRejectOverAllocation();
@@ -247,7 +238,7 @@ export default function JobCardDetailPage() {
 
   const fetchStockItems = async () => {
     try {
-      const result = await loadStockItems({ limit: "1000" });
+      const result = await stockControlApiClient.stockItems({ limit: "1000" });
       setStockItems(Array.isArray(result.items) ? result.items : []);
     } catch (err) {
       setError(err instanceof Error ? err : new Error("Failed to load stock items"));
@@ -257,7 +248,7 @@ export default function JobCardDetailPage() {
   const openAllocateModal = async () => {
     await fetchStockItems();
     try {
-      const staff = await loadStaffMembers({ active: "true" });
+      const staff = await stockControlApiClient.staffMembers({ active: "true" });
       setActiveStaff(Array.isArray(staff) ? staff : []);
     } catch {
       setActiveStaff([]);
@@ -2537,7 +2528,6 @@ export default function JobCardDetailPage() {
           </div>
         </div>
       )}
-      <CpoBatchSessionList scope="job-card" id={jobId} title="Linked CPO Batch Sessions" />
       {pdfPreviewUrl &&
         createPortal(
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">

@@ -5,7 +5,6 @@ import { useParams, useRouter } from "next/navigation";
 import { useState } from "react";
 import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
 import type { InvoiceClarification, PriceChangeSummary } from "@/app/lib/api/stockControlApi";
-import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { formatDateZA } from "@/app/lib/datetime";
 import {
   useApproveInvoice,
@@ -437,29 +436,7 @@ export default function InvoiceDetailPage() {
                 {canEdit &&
                   (() => {
                     const rawItems = invoice.items;
-                    const items = rawItems || [];
-                    const unmatchedCount = items.filter((i) => {
-                      const ms = i.matchStatus;
-                      return ms === "unmatched";
-                    }).length;
-                    if (unmatchedCount === 0) return null;
-                    return (
-                      <button
-                        type="button"
-                        onClick={async () => {
-                          try {
-                            await stockControlApiClient.deleteUnmatchedInvoiceItems(invoiceId);
-                            await invoiceQuery.refetch();
-                          } catch (err) {
-                            const e = err instanceof Error ? err : new Error("Failed to delete");
-                            setError(e);
-                          }
-                        }}
-                        className="px-3 py-1.5 text-xs font-medium text-red-700 bg-red-50 border border-red-200 rounded-md hover:bg-red-100"
-                      >
-                        Delete All Unmatched ({unmatchedCount})
-                      </button>
-                    );
+                    return null;
                   })()}
                 {canEdit && <span className="text-xs text-gray-400">Click a row to edit</span>}
               </div>

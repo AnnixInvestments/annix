@@ -30,7 +30,6 @@ import type {
   StockControlDepartment,
   StockControlLocation,
   StockControlSupplierDto,
-  StockIssuance,
   StockItem,
   StockMovement,
   StockValuation,
@@ -748,11 +747,6 @@ export function useIssueStockStaffMembers() {
     staleTime: 60_000,
   });
 }
-
-export const useRecentIssuances = createArrayQueryHook<StockIssuance>(
-  () => stockControlKeys.issueStock.recentIssuances(),
-  () => stockControlApiClient.recentIssuances(),
-);
 
 export const useLinkedStaff = createQueryHook<StaffMember | null, [number | null | undefined]>(
   (staffId) => stockControlKeys.issueStock.linkedStaff(staffId ?? 0),
