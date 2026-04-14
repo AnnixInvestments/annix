@@ -894,6 +894,7 @@ export {
   useRequisitions,
   useResendAdminTransfer,
   useResetGlossary,
+  useResolveAndApproveInvoice,
   useRoleSummary,
   useRubberStockOptions,
   useSaveJobCardCorrection,

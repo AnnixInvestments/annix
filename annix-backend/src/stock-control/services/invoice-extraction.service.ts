@@ -54,6 +54,11 @@ Return JSON only:
   ]
 }
 
+ROLL-BASED ITEMS (rubber/polymer rolls, coated fabrics, etc):
+- Some invoices list a parent line (e.g. "Steam Cure 50° B NR 1250x6mm Blk 12.5Mtr") followed by per-roll rows like "Roll # 42168", "Roll # 42170".
+- Each per-roll row is NOT a separate product — it is a serial number for one unit of the parent line.
+- Emit ONE line for the parent with quantity = number of rolls and list each "Roll # N" as its own lineItem with description exactly "Roll # 42168" (the code will fold them into the parent). Do not invent unit prices for roll rows.
+
 DISCOUNT HANDLING (critical):
 - Look for discount columns: "Disc %", "Disc. %", "Discount", "Less", or similar.
 - If a line item has a discount, set discountPercent to the percentage value (e.g. 20 for 20%).
@@ -156,6 +161,48 @@ Return valid JSON only, no additional text.`;
 const MIN_MATCH_CONFIDENCE = 50;
 const HIGH_CONFIDENCE_THRESHOLD = 80;
 const PRICE_CHANGE_APPROVAL_THRESHOLD = 20;
+
+const ROLL_LINE_PATTERN = /^\s*roll\s*#?\s*(\d+[A-Za-z0-9-]*)\s*$/i;
+
+export function extractRollNumber(description: string | null | undefined): string | null {
+  if (!description) return null;
+  const match = description.match(ROLL_LINE_PATTERN);
+  return match ? match[1] : null;
+}
+
+export function consolidateRollLineItems(
+  lineItems: ExtractedLineItem[],
+): (ExtractedLineItem & { rollNumbers?: string[] })[] {
+  const result: (ExtractedLineItem & { rollNumbers?: string[] })[] = [];
+  const ordered = [...lineItems].sort((a, b) => (a.lineNumber || 0) - (b.lineNumber || 0));
+
+  const flush = (item: ExtractedLineItem & { rollNumbers?: string[] }) => {
+    if (item.rollNumbers && item.rollNumbers.length > 0) {
+      item.quantity = item.rollNumbers.length;
+    }
+    result.push(item);
+  };
+
+  const state: { parent: (ExtractedLineItem & { rollNumbers?: string[] }) | null } = {
+    parent: null,
+  };
+
+  ordered.forEach((item) => {
+    const rollNo = extractRollNumber(item.description);
+    if (rollNo && state.parent) {
+      const parent = state.parent;
+      parent.rollNumbers = [...(parent.rollNumbers || []), rollNo];
+      return;
+    }
+
+    if (state.parent) flush(state.parent);
+    state.parent = { ...item };
+  });
+
+  if (state.parent) flush(state.parent);
+
+  return result;
+}
 
 @Injectable()
 export class InvoiceExtractionService {
@@ -469,7 +516,9 @@ export class InvoiceExtractionService {
     invoice: SupplierInvoice,
     lineItems: ExtractedLineItem[],
   ): Promise<void> {
-    const itemEntities = lineItems.map((item) => {
+    const consolidated = consolidateRollLineItems(lineItems);
+
+    const itemEntities = consolidated.map((item) => {
       const cleanedDescription = this.cleanExtractedDescription(
         item.description || "",
         item.sku || "",
@@ -487,6 +536,7 @@ export class InvoiceExtractionService {
         isPartA: item.isPaintPartA || false,
         isPartB: item.isPaintPartB || false,
         matchStatus: InvoiceItemMatchStatus.UNMATCHED,
+        rollNumbers: item.rollNumbers && item.rollNumbers.length > 0 ? item.rollNumbers : null,
       });
     });
 
@@ -879,6 +929,49 @@ export class InvoiceExtractionService {
     return clarification;
   }
 
+  private async autoResolveClarificationsForItem(
+    invoiceItemId: number,
+    userId: number | null,
+  ): Promise<void> {
+    const pending = await this.clarificationRepo.find({
+      where: { invoiceItemId, status: ClarificationStatus.PENDING },
+    });
+
+    if (pending.length === 0) return;
+
+    const resolved = pending.map((c) => {
+      c.status = ClarificationStatus.ANSWERED;
+      c.answeredBy = userId;
+      c.answeredAt = now().toJSDate();
+      c.responseData = { ...(c.responseData || {}), autoResolved: true };
+      return c;
+    });
+
+    await this.clarificationRepo.save(resolved);
+  }
+
+  async resolveAndApprove(invoiceId: number, userId: number): Promise<SupplierInvoice> {
+    const pending = await this.clarificationRepo.find({
+      where: { invoiceId, status: ClarificationStatus.PENDING },
+    });
+
+    const skipped = pending.map((c) => {
+      c.status = ClarificationStatus.SKIPPED;
+      c.answeredBy = userId;
+      c.answeredAt = now().toJSDate();
+      c.responseData = { ...(c.responseData || {}), resolvedAndApproved: true };
+      return c;
+    });
+
+    if (skipped.length > 0) {
+      await this.clarificationRepo.save(skipped);
+    }
+
+    await this.updateInvoiceStatus(invoiceId);
+
+    return this.applyPriceUpdates(invoiceId, userId);
+  }
+
   private async updateInvoiceStatus(invoiceId: number): Promise<void> {
     const pendingCount = await this.clarificationRepo.count({
       where: { invoiceId, status: ClarificationStatus.PENDING },
@@ -1097,6 +1190,11 @@ export class InvoiceExtractionService {
 
     const savedItem = await this.invoiceItemRepo.save(item);
 
+    if (savedItem.stockItemId) {
+      await this.autoResolveClarificationsForItem(savedItem.id, userId);
+    }
+    await this.updateInvoiceStatus(invoiceId);
+
     if (corrections.length > 0 && item.invoice?.supplierName) {
       const correctionEntities = corrections.map((c) =>
         this.correctionRepo.create({
@@ -1158,6 +1256,9 @@ export class InvoiceExtractionService {
     item.previousPrice = Number(stockItem.costPerUnit) || null;
 
     const savedItem = await this.invoiceItemRepo.save(item);
+
+    await this.autoResolveClarificationsForItem(savedItem.id, userId);
+    await this.updateInvoiceStatus(invoiceId);
 
     if (item.invoice?.supplierName && previousStockItemId !== stockItemId) {
       await this.correctionRepo.save(

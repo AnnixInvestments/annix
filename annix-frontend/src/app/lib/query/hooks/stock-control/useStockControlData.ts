@@ -1120,6 +1120,11 @@ export const useApproveInvoice = createMutationHook(
   [stockControlKeys.invoices.all],
 );
 
+export const useResolveAndApproveInvoice = createMutationHook(
+  (invoiceId: number) => stockControlApiClient.resolveAndApproveInvoice(invoiceId),
+  [stockControlKeys.invoices.all],
+);
+
 export const useUpdateInvoiceItem = createMutationHook(
   (params: { invoiceId: number; itemId: number; updates: Record<string, unknown> }) =>
     stockControlApiClient.updateInvoiceItem(params.invoiceId, params.itemId, params.updates),

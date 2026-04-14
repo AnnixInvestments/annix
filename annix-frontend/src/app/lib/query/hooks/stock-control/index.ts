@@ -164,6 +164,7 @@ export {
   useRequisitionDetail,
   useRequisitions,
   useResetGlossary,
+  useResolveAndApproveInvoice,
   useSaveJobCardImportMapping,
   useSavePendingDeliveryNote,
   useScanDispatchItem,

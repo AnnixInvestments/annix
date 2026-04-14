@@ -2541,6 +2541,7 @@ export interface SupplierInvoiceItem {
   linkedItemId: number | null;
   priceUpdated: boolean;
   previousPrice: number | null;
+  rollNumbers: string[] | null;
 }
 
 export interface InvoiceClarification {

@@ -202,6 +202,14 @@ export class InvoicesController {
   }
 
   @StockControlRoles("accounts", "manager", "admin")
+  @PermissionKey("invoices.approve")
+  @Post(":id/resolve-and-approve")
+  @ApiOperation({ summary: "Skip all pending clarifications and approve" })
+  async resolveAndApprove(@Req() req: any, @Param("id") id: number) {
+    return this.invoiceService.resolveAndApprove(req.user.companyId, id, req.user.id);
+  }
+
+  @StockControlRoles("accounts", "manager", "admin")
   @Patch(":id/items/:itemId")
   @ApiOperation({ summary: "Update an invoice line item (correction)" })
   async updateItem(

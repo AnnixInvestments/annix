@@ -29,6 +29,7 @@ declare module "./base" {
     ): Promise<InvoiceClarification>;
     invoicePriceSummary(invoiceId: number): Promise<PriceChangeSummary>;
     approveInvoice(invoiceId: number): Promise<SupplierInvoice>;
+    resolveAndApproveInvoice(invoiceId: number): Promise<SupplierInvoice>;
     deleteInvoice(invoiceId: number): Promise<void>;
     updateInvoiceItem(
       invoiceId: number,
@@ -115,6 +116,12 @@ proto.invoicePriceSummary = async function (invoiceId) {
 
 proto.approveInvoice = async function (invoiceId) {
   return this.request(`/stock-control/invoices/${invoiceId}/approve`, { method: "POST" });
+};
+
+proto.resolveAndApproveInvoice = async function (invoiceId) {
+  return this.request(`/stock-control/invoices/${invoiceId}/resolve-and-approve`, {
+    method: "POST",
+  });
 };
 
 proto.deleteInvoice = async function (invoiceId) {

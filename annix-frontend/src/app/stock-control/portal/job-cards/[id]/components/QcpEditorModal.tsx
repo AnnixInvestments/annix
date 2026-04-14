@@ -13,7 +13,9 @@ import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 
 interface QcpEditorModalProps {
   plan: QcControlPlanRecord;
-  jobCardId: number;
+  jobCardId?: number | null;
+  cpoId?: number | null;
+  readOnly?: boolean;
   onClose: () => void;
   onSaved: () => void;
 }
@@ -51,7 +53,10 @@ function ensureSignOff(so: QcpPartySignOff | undefined | null): QcpPartySignOff 
 }
 
 export function QcpEditorModal(props: QcpEditorModalProps) {
-  const { plan, jobCardId, onClose, onSaved } = props;
+  const { plan, jobCardId, cpoId, readOnly, onClose, onSaved } = props;
+  const isCpoMode = (cpoId ?? null) !== null && (jobCardId ?? null) === null;
+  const planQcpNumberValue = plan.qcpNumber;
+  const planQcpLabel = planQcpNumberValue || `#${plan.id}`;
 
   const [activities, setActivities] = useState<QcpActivity[]>(
     plan.activities.map((a) => ({
@@ -95,19 +100,36 @@ export function QcpEditorModal(props: QcpEditorModalProps) {
     );
   }, []);
 
+  const persistActivities = async () => {
+    const payload = {
+      activities: activities.filter((a) => a.description.trim() !== ""),
+    };
+    if (isCpoMode && cpoId) {
+      await stockControlApiClient.updateControlPlanForCpo(cpoId, plan.id, payload);
+    } else if (jobCardId) {
+      await stockControlApiClient.updateControlPlan(jobCardId, plan.id, payload);
+    }
+  };
+
+  const openPdf = () => {
+    const planQcpNumber = plan.qcpNumber;
+    const qcpNum = planQcpNumber || `QCP-${plan.id}`;
+    pdfPreview.openWithFetch(
+      () =>
+        isCpoMode && cpoId
+          ? stockControlApiClient.openControlPlanPdfForCpo(cpoId, plan.id)
+          : stockControlApiClient.openControlPlanPdf(jobCardId!, plan.id),
+      `${qcpNum}.pdf`,
+    );
+  };
+
   const saveAndDownload = async () => {
     try {
       setIsSaving(true);
       setError(null);
-      await stockControlApiClient.updateControlPlan(jobCardId, plan.id, {
-        activities: activities.filter((a) => a.description.trim() !== ""),
-      });
+      if (!readOnly) await persistActivities();
       onSaved();
-      const qcpNum = plan.qcpNumber || `QCP-${plan.id}`;
-      pdfPreview.openWithFetch(
-        () => stockControlApiClient.openControlPlanPdf(jobCardId, plan.id),
-        `${qcpNum}.pdf`,
-      );
+      openPdf();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save");
     } finally {
@@ -119,9 +141,7 @@ export function QcpEditorModal(props: QcpEditorModalProps) {
     try {
       setIsSaving(true);
       setError(null);
-      await stockControlApiClient.updateControlPlan(jobCardId, plan.id, {
-        activities: activities.filter((a) => a.description.trim() !== ""),
-      });
+      await persistActivities();
       onSaved();
       onClose();
     } catch (err) {
@@ -137,11 +157,12 @@ export function QcpEditorModal(props: QcpEditorModalProps) {
         <div className="flex items-center justify-between border-b border-gray-200 px-5 py-3">
           <div>
             <h3 className="text-sm font-semibold text-gray-900">
-              Edit QCP: {plan.qcpNumber || `#${plan.id}`}
+              {readOnly ? "Review QCP" : "Edit QCP"}: {planQcpLabel}
             </h3>
             <p className="text-xs text-gray-500">
-              Review and edit intervention types before generating PDF. Legend: H=Hold,
-              I=Inspection, W=Witness, R=Review, S=Surveillance, V=Verify
+              {readOnly
+                ? "Review intervention types and sign-offs. Legend: H=Hold, I=Inspection, W=Witness, R=Review, S=Surveillance, V=Verify"
+                : "Review and edit intervention types before generating PDF. Legend: H=Hold, I=Inspection, W=Witness, R=Review, S=Surveillance, V=Verify"}
             </p>
           </div>
           <button type="button" onClick={onClose} className="text-gray-400 hover:text-gray-600">
@@ -190,6 +211,7 @@ export function QcpEditorModal(props: QcpEditorModalProps) {
                       type="text"
                       value={a.description}
                       onChange={(e) => updateField(idx, "description", e.target.value)}
+                      readOnly={readOnly}
                       className="w-full rounded border border-gray-200 px-1.5 py-0.5 text-xs"
                     />
                   </td>
@@ -198,6 +220,7 @@ export function QcpEditorModal(props: QcpEditorModalProps) {
                       type="text"
                       value={a.specification || ""}
                       onChange={(e) => updateField(idx, "specification", e.target.value || null)}
+                      readOnly={readOnly}
                       className="w-full rounded border border-gray-200 px-1.5 py-0.5 text-xs"
                     />
                   </td>
@@ -206,11 +229,13 @@ export function QcpEditorModal(props: QcpEditorModalProps) {
                       type="text"
                       value={a.documentation || ""}
                       onChange={(e) => updateField(idx, "documentation", e.target.value || null)}
+                      readOnly={readOnly}
                       className="w-full rounded border border-gray-200 px-1.5 py-0.5 text-xs"
                     />
                   </td>
                   {PARTY_KEYS.map((pk) => {
-                    const so = a[pk] || { interventionType: null, initial: null };
+                    const rawSo = a[pk];
+                    const so = rawSo || { interventionType: null, initial: null };
                     return (
                       <td key={pk} className="px-1 py-1">
                         <div className="flex items-center gap-0.5">
@@ -223,6 +248,7 @@ export function QcpEditorModal(props: QcpEditorModalProps) {
                                 (e.target.value as InterventionType) || null,
                               )
                             }
+                            disabled={readOnly}
                             className="w-12 rounded border border-gray-200 px-0 py-0.5 text-center text-xs"
                           >
                             <option value="">-</option>
@@ -236,6 +262,7 @@ export function QcpEditorModal(props: QcpEditorModalProps) {
                             type="text"
                             value={(so as QcpPartySignOff).initial || ""}
                             onChange={(e) => updateInitial(idx, pk, e.target.value || null)}
+                            readOnly={readOnly}
                             className="w-10 rounded border border-gray-200 px-0.5 py-0.5 text-center text-xs"
                             placeholder=""
                             title="Initial"
@@ -249,6 +276,7 @@ export function QcpEditorModal(props: QcpEditorModalProps) {
                       type="text"
                       value={a.remarks || ""}
                       onChange={(e) => updateField(idx, "remarks", e.target.value || null)}
+                      readOnly={readOnly}
                       className="w-full rounded border border-gray-200 px-1.5 py-0.5 text-xs"
                     />
                   </td>
@@ -264,23 +292,25 @@ export function QcpEditorModal(props: QcpEditorModalProps) {
             onClick={onClose}
             className="rounded-md border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
           >
-            Cancel
+            {readOnly ? "Close" : "Cancel"}
           </button>
-          <button
-            type="button"
-            onClick={saveOnly}
-            disabled={isSaving}
-            className="rounded-md border border-teal-600 px-3 py-1.5 text-xs font-medium text-teal-700 hover:bg-teal-50 disabled:opacity-50"
-          >
-            Save
-          </button>
+          {!readOnly && (
+            <button
+              type="button"
+              onClick={saveOnly}
+              disabled={isSaving}
+              className="rounded-md border border-teal-600 px-3 py-1.5 text-xs font-medium text-teal-700 hover:bg-teal-50 disabled:opacity-50"
+            >
+              Save
+            </button>
+          )}
           <button
             type="button"
             onClick={saveAndDownload}
             disabled={isSaving}
             className="rounded-md bg-teal-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-teal-700 disabled:opacity-50"
           >
-            {isSaving ? "Saving..." : "Save & Download PDF"}
+            {isSaving ? "Saving..." : readOnly ? "Download PDF" : "Save & Download PDF"}
           </button>
         </div>
       </div>

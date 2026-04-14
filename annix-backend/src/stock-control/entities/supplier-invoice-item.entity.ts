@@ -107,6 +107,9 @@ export class SupplierInvoiceItem {
   @Column({ name: "previous_price", type: "numeric", precision: 12, scale: 2, nullable: true })
   previousPrice: number | null;
 
+  @Column({ name: "roll_numbers", type: "jsonb", nullable: true })
+  rollNumbers: string[] | null;
+
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;
 

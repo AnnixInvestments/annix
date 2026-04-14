@@ -11,6 +11,7 @@ import type {
 } from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { InitialsPad } from "@/app/stock-control/components/InitialsPad";
+import { QcpEditorModal } from "./QcpEditorModal";
 import { QcpForm } from "./QcpForm";
 
 interface QcpSectionProps {
@@ -219,6 +220,7 @@ export function QcpSection(props: QcpSectionProps) {
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [isAutoGenerating, setIsAutoGenerating] = useState(false);
+  const [reviewPlan, setReviewPlan] = useState<QcControlPlanRecord | null>(null);
   const [initialsTarget, setInitialsTarget] = useState<{
     planId: number;
     activityIdx: number;
@@ -451,14 +453,20 @@ export function QcpSection(props: QcpSectionProps) {
                           V{plan.revision}
                         </span>
                       )}
-                      {plan.approvalStatus && plan.approvalStatus !== "draft" && (
-                        <span
-                          className={`ml-1.5 inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ${APPROVAL_STATUS_COLORS[plan.approvalStatus as QcpApprovalStatus] || ""}`}
-                        >
-                          {APPROVAL_STATUS_LABELS[plan.approvalStatus as QcpApprovalStatus] ||
-                            plan.approvalStatus}
-                        </span>
-                      )}
+                      {(() => {
+                        const approvalStatus = plan.approvalStatus;
+                        if (!approvalStatus || approvalStatus === "draft") return null;
+                        const statusKey = approvalStatus as QcpApprovalStatus;
+                        const statusColor = APPROVAL_STATUS_COLORS[statusKey];
+                        const statusLabel = APPROVAL_STATUS_LABELS[statusKey];
+                        return (
+                          <span
+                            className={`ml-1.5 inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ${statusColor || ""}`}
+                          >
+                            {statusLabel || approvalStatus}
+                          </span>
+                        );
+                      })()}
                       {plan.version > 1 && (
                         <span className="ml-1.5 text-[10px] text-gray-400">v{plan.version}</span>
                       )}
@@ -500,6 +508,16 @@ export function QcpSection(props: QcpSectionProps) {
                       className="text-sm text-blue-600 hover:text-blue-800"
                     >
                       PDF
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setReviewPlan(plan);
+                      }}
+                      className="text-sm text-indigo-600 hover:text-indigo-800"
+                    >
+                      Review
                     </button>
                     {!readOnly && (
                       <>
@@ -648,26 +666,39 @@ export function QcpSection(props: QcpSectionProps) {
         </div>
       )}
 
-      {initialsTarget && (
-        <InitialsPad
-          currentValue={
-            plans.find((p) => p.id === initialsTarget.planId)?.activities[
-              initialsTarget.activityIdx
-            ]?.[initialsTarget.party]?.initial || null
-          }
-          onSave={(text) => {
-            handlePartyInitialChange(
-              initialsTarget.planId,
-              initialsTarget.activityIdx,
-              initialsTarget.party,
-              text,
-            );
-            setInitialsTarget(null);
-          }}
-          onCancel={() => setInitialsTarget(null)}
+      {initialsTarget &&
+        (() => {
+          const targetPlan = plans.find((p) => p.id === initialsTarget.planId);
+          const targetActivity = targetPlan?.activities[initialsTarget.activityIdx];
+          const targetParty = targetActivity?.[initialsTarget.party];
+          const targetInitial = targetParty?.initial;
+          return (
+            <InitialsPad
+              currentValue={targetInitial || null}
+              onSave={(text) => {
+                handlePartyInitialChange(
+                  initialsTarget.planId,
+                  initialsTarget.activityIdx,
+                  initialsTarget.party,
+                  text,
+                );
+                setInitialsTarget(null);
+              }}
+              onCancel={() => setInitialsTarget(null)}
+            />
+          );
+        })()}
+      <PdfPreviewModal state={pdfPreview.state} onClose={pdfPreview.close} />
+      {reviewPlan && (
+        <QcpEditorModal
+          plan={reviewPlan}
+          jobCardId={jobCardId}
+          cpoId={cpoId}
+          readOnly={readOnly}
+          onClose={() => setReviewPlan(null)}
+          onSaved={fetchPlans}
         />
       )}
-      <PdfPreviewModal state={pdfPreview.state} onClose={pdfPreview.close} />
     </div>
   );
 }

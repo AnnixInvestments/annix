@@ -15,6 +15,7 @@ import {
   useManualMatchInvoiceItem,
   useReExtractInvoice,
   useReportStockItems,
+  useResolveAndApproveInvoice,
   useSkipInvoiceClarification,
   useSubmitInvoiceClarification,
   useSuggestedDeliveryNotes,
@@ -106,6 +107,7 @@ export default function InvoiceDetailPage() {
   const skipClarificationMutation = useSkipInvoiceClarification();
   const reExtractMutation = useReExtractInvoice();
   const approveMutation = useApproveInvoice();
+  const resolveAndApproveMutation = useResolveAndApproveInvoice();
   const updateItemMutation = useUpdateInvoiceItem();
   const manualMatchMutation = useManualMatchInvoiceItem();
   const deleteItemMutation = useDeleteInvoiceItem();
@@ -310,6 +312,29 @@ export default function InvoiceDetailPage() {
 
   const currentClarification = clarifications[currentClarificationIndex];
 
+  const rawInvoiceItems = invoice.items;
+  const invoiceItems = rawInvoiceItems ? rawInvoiceItems : [];
+  const allItemsResolved =
+    invoiceItems.length > 0 &&
+    invoiceItems.every(
+      (item) =>
+        item.matchStatus === "matched" ||
+        item.matchStatus === "manually_matched" ||
+        item.matchStatus === "new_item_created",
+    );
+  const canResolveAndApprove =
+    canEdit && invoice.extractionStatus === "needs_clarification" && allItemsResolved;
+
+  const handleResolveAndApprove = async () => {
+    if (!window.confirm("Skip remaining clarifications and approve this invoice?")) return;
+    try {
+      await resolveAndApproveMutation.mutateAsync(invoiceId);
+      await invoiceQuery.refetch();
+    } catch (err) {
+      setError(err instanceof Error ? err : new Error("Failed to resolve and approve"));
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -329,17 +354,29 @@ export default function InvoiceDetailPage() {
             <p className="mt-1 text-sm text-gray-600">{invoice.supplierName}</p>
           </div>
         </div>
-        <span
-          className={`inline-flex px-3 py-1 text-sm font-medium rounded-full ${(() => {
-            const sc = STATUS_COLORS[invoice.extractionStatus];
-            return sc ? sc : "bg-gray-100 text-gray-800";
-          })()}`}
-        >
-          {(() => {
-            const sl = STATUS_LABELS[invoice.extractionStatus];
-            return sl ? sl : invoice.extractionStatus;
-          })()}
-        </span>
+        <div className="flex items-center gap-3">
+          {canResolveAndApprove && (
+            <button
+              type="button"
+              onClick={handleResolveAndApprove}
+              disabled={resolveAndApproveMutation.isPending}
+              className="inline-flex items-center px-3 py-1.5 text-sm font-medium rounded-md bg-teal-600 text-white hover:bg-teal-700 disabled:opacity-50"
+            >
+              {resolveAndApproveMutation.isPending ? "Approving..." : "Resolve & Approve"}
+            </button>
+          )}
+          <span
+            className={`inline-flex px-3 py-1 text-sm font-medium rounded-full ${(() => {
+              const sc = STATUS_COLORS[invoice.extractionStatus];
+              return sc ? sc : "bg-gray-100 text-gray-800";
+            })()}`}
+          >
+            {(() => {
+              const sl = STATUS_LABELS[invoice.extractionStatus];
+              return sl ? sl : invoice.extractionStatus;
+            })()}
+          </span>
+        </div>
       </div>
 
       <InvoiceNextAction
@@ -455,6 +492,9 @@ export default function InvoiceDetailPage() {
                       Qty
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Rolls
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Unit
                     </th>
                     <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -536,6 +576,19 @@ export default function InvoiceDetailPage() {
                             ) : (
                               item.quantity
                             )}
+                          </td>
+                          <td className="px-4 py-4 text-sm text-gray-700">
+                            {(() => {
+                              const rolls = item.rollNumbers;
+                              if (!rolls || rolls.length === 0)
+                                return <span className="text-gray-300">-</span>;
+                              const joined = rolls.join(", ");
+                              return (
+                                <span title={joined} className="cursor-help">
+                                  {rolls.length} roll{rolls.length === 1 ? "" : "s"}
+                                </span>
+                              );
+                            })()}
                           </td>
                           <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
                             {isEditing ? (

@@ -393,49 +393,83 @@ export default function DeliveryDetailPage() {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {delivery.items.map((item) => {
-                const stockName = item.stockItem ? item.stockItem.name : "-";
-                const stockSku = item.stockItem ? item.stockItem.sku : null;
-                const rollNum = item.rollNumber;
-                const weightVal = item.weightKg;
-                const packLitres = item.stockItem ? item.stockItem.packSizeLitres : null;
-                const packVal = packLitres ? Number(packLitres) : null;
-                const totalLitres = packVal ? packVal * item.quantityReceived : null;
-                return (
-                  <tr key={item.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 text-sm font-medium text-gray-900">
-                      {item.stockItem ? (
-                        <Link
-                          href={`/stock-control/portal/inventory/${item.stockItem.id}`}
-                          className="text-teal-700 hover:text-teal-900"
-                        >
-                          {stockName}
-                        </Link>
-                      ) : (
-                        "-"
-                      )}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 font-mono">
-                      {rollNum || "-"}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-mono">
-                      {stockSku || "-"}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-600">
-                      {weightVal ? `${weightVal} kg` : "-"}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-600">
-                      {packVal ? `${packVal}L` : "-"}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-semibold text-gray-900">
-                      {item.quantityReceived}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-semibold text-teal-700">
-                      {totalLitres ? `${totalLitres.toFixed(1)}L` : "-"}
-                    </td>
-                  </tr>
-                );
-              })}
+              {(() => {
+                const groups = delivery.items.reduce<
+                  Map<string, { key: string; items: typeof delivery.items }>
+                >((acc, item) => {
+                  const stockKey = item.stockItem ? `s:${item.stockItem.id}` : null;
+                  const descKey = item.stockItem ? item.stockItem.name : null;
+                  const groupKey = stockKey || (descKey ? `d:${descKey}` : `i:${item.id}`);
+                  const existing = acc.get(groupKey);
+                  if (existing) {
+                    existing.items.push(item);
+                  } else {
+                    acc.set(groupKey, { key: groupKey, items: [item] });
+                  }
+                  return acc;
+                }, new Map());
+
+                return Array.from(groups.values()).map((group) => {
+                  const first = group.items[0];
+                  const stockName = first.stockItem ? first.stockItem.name : "-";
+                  const stockSku = first.stockItem ? first.stockItem.sku : null;
+                  const rolls = group.items
+                    .map((i) => i.rollNumber)
+                    .filter((r): r is string => Boolean(r));
+                  const rollLabel =
+                    rolls.length === 0
+                      ? "-"
+                      : rolls.length === 1
+                        ? rolls[0]
+                        : `${rolls.length} rolls`;
+                  const rollTooltip = rolls.length > 1 ? rolls.join(", ") : undefined;
+                  const totalWeight = group.items.reduce(
+                    (sum, i) => sum + (Number(i.weightKg) || 0),
+                    0,
+                  );
+                  const packLitres = first.stockItem ? first.stockItem.packSizeLitres : null;
+                  const packVal = packLitres ? Number(packLitres) : null;
+                  const totalQty = group.items.reduce((sum, i) => sum + i.quantityReceived, 0);
+                  const totalLitres = packVal ? packVal * totalQty : null;
+                  return (
+                    <tr key={group.key} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 text-sm font-medium text-gray-900">
+                        {first.stockItem ? (
+                          <Link
+                            href={`/stock-control/portal/inventory/${first.stockItem.id}`}
+                            className="text-teal-700 hover:text-teal-900"
+                          >
+                            {stockName}
+                          </Link>
+                        ) : (
+                          "-"
+                        )}
+                      </td>
+                      <td
+                        className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 font-mono"
+                        title={rollTooltip}
+                      >
+                        {rollLabel}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-mono">
+                        {stockSku || "-"}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-600">
+                        {totalWeight > 0 ? `${totalWeight} kg` : "-"}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-600">
+                        {packVal ? `${packVal}L` : "-"}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-semibold text-gray-900">
+                        {totalQty}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-semibold text-teal-700">
+                        {totalLitres ? `${totalLitres.toFixed(1)}L` : "-"}
+                      </td>
+                    </tr>
+                  );
+                });
+              })()}
             </tbody>
           </table>
         ) : extractedLineItems(delivery).length > 0 ? (

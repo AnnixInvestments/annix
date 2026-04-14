@@ -313,6 +313,30 @@ export class InvoiceService {
     return this.extractionService.skipClarification(clarificationId, userId);
   }
 
+  async resolveAndApprove(
+    companyId: number,
+    invoiceId: number,
+    userId: number,
+  ): Promise<SupplierInvoice> {
+    await this.findById(companyId, invoiceId);
+    const result = await this.extractionService.resolveAndApprove(invoiceId, userId);
+
+    this.auditService
+      .log({
+        entityType: "supplier_invoice",
+        entityId: invoiceId,
+        action: AuditAction.APPROVE,
+        newValues: {
+          approvedByUserId: userId,
+          extractionStatus: result.extractionStatus,
+          resolvedAndApproved: true,
+        },
+      })
+      .catch((err) => this.logger.error(`Audit log failed: ${err.message}`, err.stack));
+
+    return result;
+  }
+
   async approve(companyId: number, invoiceId: number, userId: number): Promise<SupplierInvoice> {
     await this.findById(companyId, invoiceId);
     const result = await this.extractionService.applyPriceUpdates(invoiceId, userId);
