@@ -78,9 +78,45 @@ export interface DataBookCompleteness {
   warnings: string[];
 }
 
+interface CachedBundle {
+  value: unknown;
+  expiresAt: number;
+}
+
 @Injectable()
 export class CertificateService {
   private readonly logger = new Logger(CertificateService.name);
+  private readonly bundleCache = new Map<string, CachedBundle>();
+  private readonly calCertCache = new Map<number, CachedBundle>();
+  private static readonly BUNDLE_TTL_MS = 15_000;
+  private static readonly CAL_CERT_TTL_MS = 300_000;
+
+  private cacheGet<T>(store: Map<string | number, CachedBundle>, key: string | number): T | null {
+    const hit = store.get(key);
+    if (!hit) return null;
+    if (Date.now() > hit.expiresAt) {
+      store.delete(key);
+      return null;
+    }
+    return hit.value as T;
+  }
+
+  private cacheSet(
+    store: Map<string | number, CachedBundle>,
+    key: string | number,
+    value: unknown,
+    ttlMs: number,
+  ): void {
+    store.set(key, { value, expiresAt: Date.now() + ttlMs });
+  }
+
+  invalidateBundleForJobCard(companyId: number, jobCardId: number): void {
+    this.bundleCache.delete(`${companyId}:${jobCardId}`);
+  }
+
+  invalidateCalibrationCertCache(companyId: number): void {
+    this.calCertCache.delete(companyId);
+  }
 
   constructor(
     @InjectRepository(SupplierCertificate)
@@ -921,6 +957,50 @@ export class CertificateService {
       .getRawMany<{ batchNumber: string }>();
 
     return records.map((r) => r.batchNumber);
+  }
+
+  async activeCalibrationCertsCached(companyId: number) {
+    const cached = this.cacheGet<Awaited<ReturnType<typeof this.calCertRepo.find>>>(
+      this.calCertCache,
+      companyId,
+    );
+    if (cached) return cached;
+    const fresh = await this.calCertRepo.find({ where: { companyId, isActive: true } });
+    this.cacheSet(this.calCertCache, companyId, fresh, CertificateService.CAL_CERT_TTL_MS);
+    return fresh;
+  }
+
+  async qualityTabBundle(companyId: number, jobCardId: number) {
+    const cacheKey = `${companyId}:${jobCardId}`;
+    const cached = this.cacheGet<unknown>(this.bundleCache, cacheKey);
+    if (cached) return cached;
+
+    const perfStart = Date.now();
+    const [certs, calCerts, batchRecords, dataBookStatus, qcData, completeness] = await Promise.all(
+      [
+        this.certificatesForJobCard(companyId, jobCardId),
+        this.activeCalibrationCertsCached(companyId),
+        this.batchRecordsForJobCard(companyId, jobCardId),
+        this.dataBookStatus(companyId, jobCardId),
+        this.qcMeasurementService.allMeasurementsForJobCard(companyId, jobCardId),
+        this.dataBookCompleteness(companyId, jobCardId),
+      ],
+    );
+
+    const bundle = {
+      certificates: certs,
+      calibrationCerts: calCerts,
+      batchRecords,
+      dataBookStatus,
+      qcMeasurements: qcData,
+      completeness,
+    };
+
+    this.cacheSet(this.bundleCache, cacheKey, bundle, CertificateService.BUNDLE_TTL_MS);
+    this.logger.log(
+      `[perf] qualityTabBundle JC=${jobCardId} total=${Date.now() - perfStart}ms (cached for ${CertificateService.BUNDLE_TTL_MS}ms)`,
+    );
+    return bundle;
   }
 
   async dataBookCompleteness(companyId: number, jobCardId: number): Promise<DataBookCompleteness> {

@@ -101,35 +101,16 @@ export function QualityTab(props: QualityTabProps) {
       setIsLoading(true);
       setError(null);
       const overallStart = performance.now();
-      const time = async <T,>(label: string, p: Promise<T>): Promise<T> => {
-        const t0 = performance.now();
-        try {
-          const result = await p;
-          console.log(`[QualityTab] ${label} ${(performance.now() - t0).toFixed(0)}ms`);
-          return result;
-        } catch (err) {
-          console.log(`[QualityTab] ${label} FAILED ${(performance.now() - t0).toFixed(0)}ms`);
-          throw err;
-        }
-      };
-      const [certsRes, calCertsRes, recordsRes, statusRes, qcRes, completenessRes] =
-        await Promise.all([
-          time("certificates", stockControlApiClient.certificatesForJobCard(jobCardId)),
-          time("calibrationCerts", stockControlApiClient.calibrationCertificates({ active: true })),
-          time("batchRecords", stockControlApiClient.batchRecordsForJobCard(jobCardId)),
-          time("dataBookStatus", stockControlApiClient.dataBookStatus(jobCardId)),
-          time("qcMeasurements", stockControlApiClient.qcMeasurementsForJobCard(jobCardId)),
-          time("dataBookCompleteness", stockControlApiClient.dataBookCompleteness(jobCardId)),
-        ]);
+      const bundle = await stockControlApiClient.qualityTabBundle(jobCardId);
       console.log(
-        `[QualityTab] total fetchQualityData ${(performance.now() - overallStart).toFixed(0)}ms`,
+        `[QualityTab] qualityTabBundle ${(performance.now() - overallStart).toFixed(0)}ms`,
       );
-      setCertificates(Array.isArray(certsRes) ? certsRes : []);
-      setCalibrationCerts(Array.isArray(calCertsRes) ? calCertsRes : []);
-      setBatchRecords(Array.isArray(recordsRes) ? recordsRes : []);
-      setDataBookStatus(statusRes);
-      setQcData(qcRes);
-      setCompleteness(completenessRes);
+      setCertificates(Array.isArray(bundle.certificates) ? bundle.certificates : []);
+      setCalibrationCerts(Array.isArray(bundle.calibrationCerts) ? bundle.calibrationCerts : []);
+      setBatchRecords(Array.isArray(bundle.batchRecords) ? bundle.batchRecords : []);
+      setDataBookStatus(bundle.dataBookStatus);
+      setQcData(bundle.qcMeasurements);
+      setCompleteness(bundle.completeness);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load quality data");
     } finally {

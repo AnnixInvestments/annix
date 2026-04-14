@@ -4,8 +4,18 @@ import type {
   DataBookCompleteness,
   DataBookStatus,
   IssuanceBatchRecord,
+  QcMeasurementsAggregate,
   SupplierCertificate,
 } from "./types";
+
+export interface QualityTabBundle {
+  certificates: SupplierCertificate[];
+  calibrationCerts: CalibrationCertificate[];
+  batchRecords: IssuanceBatchRecord[];
+  dataBookStatus: DataBookStatus;
+  qcMeasurements: QcMeasurementsAggregate;
+  completeness: DataBookCompleteness;
+}
 
 declare module "./base" {
   interface StockControlApiClient {
@@ -53,6 +63,7 @@ declare module "./base" {
     batchRecordsForJobCard(jobCardId: number): Promise<IssuanceBatchRecord[]>;
     dataBookStatus(jobCardId: number): Promise<DataBookStatus>;
     dataBookCompleteness(jobCardId: number): Promise<DataBookCompleteness>;
+    qualityTabBundle(jobCardId: number): Promise<QualityTabBundle>;
     compileDataBook(
       jobCardId: number,
       force?: boolean,
@@ -167,6 +178,10 @@ proto.dataBookStatus = async function (jobCardId) {
 
 proto.dataBookCompleteness = async function (jobCardId) {
   return this.request(`/stock-control/certificates/job-card/${jobCardId}/data-book/completeness`);
+};
+
+proto.qualityTabBundle = async function (jobCardId) {
+  return this.request(`/stock-control/certificates/job-card/${jobCardId}/quality-tab-bundle`);
 };
 
 proto.compileDataBook = async function (jobCardId, force = false) {

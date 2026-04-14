@@ -130,6 +130,14 @@ export class CertificateController {
     return this.certificateService.dataBookCompleteness(req.user.companyId, jobCardId);
   }
 
+  @Get("job-card/:jobCardId/quality-tab-bundle")
+  @ApiOperation({
+    summary: "Bundled payload for the Quality tab (all 6 sections in one round-trip)",
+  })
+  async qualityTabBundle(@Req() req: any, @Param("jobCardId") jobCardId: number) {
+    return this.certificateService.qualityTabBundle(req.user.companyId, jobCardId);
+  }
+
   @Post("job-card/:jobCardId/data-book")
   @StockControlRoles("quality", "manager", "admin")
   @ApiOperation({ summary: "Compile data book for a job card" })
