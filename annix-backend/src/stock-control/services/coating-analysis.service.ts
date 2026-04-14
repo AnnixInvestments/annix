@@ -812,7 +812,7 @@ export class CoatingAnalysisService {
 
     return {
       product: coat.product,
-      genericType: coat.genericType,
+      genericType: knownProduct ? knownProduct.genericType : coat.genericType,
       area: coat.area,
       coatRole: coat.coatRole,
       minDftUm: effectiveMinDft,

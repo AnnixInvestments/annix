@@ -552,14 +552,34 @@ export default function JobCardDetailPage() {
   );
 
   const scrollToElementId = useCallback((elementId: string) => {
+    const findScrollParent = (el: HTMLElement): HTMLElement | Window => {
+      const parent = el.parentElement;
+      if (!parent) return window;
+      const style = window.getComputedStyle(parent);
+      const overflowY = style.overflowY;
+      if (
+        (overflowY === "auto" || overflowY === "scroll") &&
+        parent.scrollHeight > parent.clientHeight
+      ) {
+        return parent;
+      }
+      return findScrollParent(parent);
+    };
     const tryScroll = (attempts: number) => {
       const el = document.getElementById(elementId);
       if (el) {
-        const rect = el.getBoundingClientRect();
-        const rawScrollY = window.scrollY;
-        const scrollY = rawScrollY || 0;
-        const top = rect.top + scrollY - 120;
-        window.scrollTo({ top, behavior: "smooth" });
+        const container = findScrollParent(el);
+        if (container === window) {
+          const rect = el.getBoundingClientRect();
+          const top = rect.top + window.scrollY - 120;
+          window.scrollTo({ top, behavior: "smooth" });
+        } else {
+          const parent = container as HTMLElement;
+          const elRect = el.getBoundingClientRect();
+          const parentRect = parent.getBoundingClientRect();
+          const top = elRect.top - parentRect.top + parent.scrollTop - 24;
+          parent.scrollTo({ top, behavior: "smooth" });
+        }
       } else if (attempts > 0) {
         setTimeout(() => tryScroll(attempts - 1), 200);
       }
@@ -878,6 +898,34 @@ export default function JobCardDetailPage() {
     currentStepPhaseInfo.isMultiPhase && !currentStepPhaseInfo.phase1Complete;
 
   const hasBlueLineTasks = currentStepPhaseInfo.isMultiPhase;
+
+  const currentStepBgPending = useMemo(() => {
+    if (!workflowStatus || !currentStep) return false;
+    const rawFg = workflowStatus.foregroundSteps;
+    const rawBg: BackgroundStepStatus[] | undefined = workflowStatus.backgroundSteps;
+    const fgSteps = rawFg ? rawFg : [];
+    const bgSteps: BackgroundStepStatus[] = rawBg ? rawBg : [];
+    const fgKeySet = new Set(fgSteps.map((s) => s.key));
+    const bgKeySet = new Set(bgSteps.map((bg) => bg.stepKey));
+    const bgByTrigger = bgSteps.reduce<Record<string, BackgroundStepStatus[]>>((acc, bg) => {
+      const raw = bg.triggerAfterStep;
+      const isFgTrigger = raw !== null && fgKeySet.has(raw);
+      const isBgChain = raw !== null && bgKeySet.has(raw);
+      const firstFgKey = fgSteps[0]?.key;
+      const fallbackTrigger = firstFgKey ? firstFgKey : "";
+      const trigger = isFgTrigger || isBgChain ? raw : fallbackTrigger;
+      return { ...acc, [trigger]: [...(acc[trigger] ? acc[trigger] : []), bg] };
+    }, {});
+    const resolveChain = (trigger: string): BackgroundStepStatus[] => {
+      const direct = bgByTrigger[trigger] ? bgByTrigger[trigger] : [];
+      return direct.reduce<BackgroundStepStatus[]>((chain, bg) => {
+        const rest = bgKeySet.has(bg.stepKey) ? resolveChain(bg.stepKey) : [];
+        return [...chain, bg, ...rest];
+      }, []);
+    };
+    const currentBgTasks = resolveChain(currentStep).filter((bg) => bg.rejoinAtStep === null);
+    return currentBgTasks.length > 0 && currentBgTasks.some((bg) => bg.completedAt === null);
+  }, [workflowStatus, currentStep]);
 
   const fgActionAssignedToOther = useMemo(() => {
     if (!currentStepPhaseInfo.isMultiPhase) return false;
@@ -1518,6 +1566,7 @@ export default function JobCardDetailPage() {
                   currentStep &&
                   currentStepActionCompleted &&
                   !prevStepBgPending &&
+                  !currentStepBgPending &&
                   (!hasBlueLineTasks || !currentStepBlueBgPending)
                 ) {
                   return (
@@ -1600,7 +1649,8 @@ export default function JobCardDetailPage() {
                       isAdminView ||
                       !canApprove ||
                       prevStepBgPending ||
-                      currentStepBlueBgPending,
+                      currentStepBlueBgPending ||
+                      currentStepBgPending,
                   )
                   .map((bg) =>
                     isRequisitionStep(bg) ? (
