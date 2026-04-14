@@ -932,7 +932,9 @@ export default function JobCardDetailPage() {
         return [...chain, bg, ...rest];
       }, []);
     };
-    const currentBgTasks = resolveChain(currentStep).filter((bg) => bg.rejoinAtStep === null);
+    const currentBgTasks = resolveChain(currentStep).filter(
+      (bg) => bg.rejoinAtStep === currentStep,
+    );
     return currentBgTasks.length > 0 && currentBgTasks.some((bg) => bg.completedAt === null);
   }, [workflowStatus, currentStep]);
 
@@ -1570,10 +1572,11 @@ export default function JobCardDetailPage() {
               {(() => {
                 const phase2Label = currentStepPhaseInfo.phase2ActionLabel;
                 const approveLabel = hasBlueLineTasks ? phase2Label || "Release" : "Approve & Sign";
+                const actionGateSatisfied = currentStepActionCompleted || !currentStepActionLabel;
                 if (
                   canApprove &&
                   currentStep &&
-                  currentStepActionCompleted &&
+                  actionGateSatisfied &&
                   !prevStepBgPending &&
                   !currentStepBgPending &&
                   (!hasBlueLineTasks || !currentStepBlueBgPending)
