@@ -69,17 +69,21 @@ export function DeliveryNoteConfirmationModal(props: DeliveryNoteConfirmationMod
 
   const addRubberRow = () => {
     const lastRubber = [...lineItems].reverse().find(isRubberItem);
+    const lastCompound = lastRubber ? lastRubber.compoundCode : null;
+    const lastThickness = lastRubber ? lastRubber.thicknessMm : null;
+    const lastWidth = lastRubber ? lastRubber.widthMm : null;
+    const lastLength = lastRubber ? lastRubber.lengthM : null;
     const newItem: AnalyzedDeliveryNoteLineItem = {
       description: "",
       productCode: null,
-      compoundCode: lastRubber?.compoundCode || null,
+      compoundCode: lastCompound ? lastCompound : null,
       quantity: 1,
       unitOfMeasure: null,
       rollNumber: null,
       batchNumber: null,
-      thicknessMm: lastRubber?.thicknessMm || null,
-      widthMm: lastRubber?.widthMm || null,
-      lengthM: lastRubber?.lengthM || null,
+      thicknessMm: lastThickness ? lastThickness : null,
+      widthMm: lastWidth ? lastWidth : null,
+      lengthM: lastLength ? lastLength : null,
       weightKg: null,
       color: null,
       hardnessShoreA: null,
@@ -232,7 +236,169 @@ export function DeliveryNoteConfirmationModal(props: DeliveryNoteConfirmationMod
                     Add Row
                   </button>
                 </div>
-                <div className="overflow-x-auto">
+
+                <div className="md:hidden space-y-3">
+                  {rubberItems.map(({ item, index }) => {
+                    const rollValue = item.rollNumber == null ? "" : item.rollNumber;
+                    const compoundValue = item.compoundCode == null ? "" : item.compoundCode;
+                    const thicknessValue = item.thicknessMm == null ? "" : item.thicknessMm;
+                    const widthValue = item.widthMm == null ? "" : item.widthMm;
+                    const lengthValue = item.lengthM == null ? "" : item.lengthM;
+                    const qtyValue = item.quantity == null ? "" : item.quantity;
+                    const weightValue = item.weightKg == null ? "" : item.weightKg;
+                    return (
+                      <div
+                        key={`mob-rub-${index}`}
+                        className="rounded-md border border-gray-200 bg-white p-3 space-y-2"
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex-1">
+                            <label className="block text-[10px] font-medium text-gray-500 uppercase mb-1">
+                              Roll #
+                            </label>
+                            <input
+                              type="text"
+                              value={rollValue}
+                              onChange={(e) => updateLineItem(index, "rollNumber", e.target.value)}
+                              className="block w-full rounded border border-gray-300 px-2 py-2 text-sm"
+                              placeholder="e.g., 187-41524"
+                            />
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => removeRow(index)}
+                            className="text-red-500 hover:text-red-700 p-1 mt-4"
+                            title="Remove row"
+                          >
+                            <svg
+                              className="h-5 w-5"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                              aria-label="Remove row"
+                            >
+                              <title>Remove row</title>
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                              />
+                            </svg>
+                          </button>
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-medium text-gray-500 uppercase mb-1">
+                            Compound
+                          </label>
+                          <input
+                            type="text"
+                            value={compoundValue}
+                            onChange={(e) => updateLineItem(index, "compoundCode", e.target.value)}
+                            className="block w-full rounded border border-gray-300 px-2 py-2 text-sm"
+                            placeholder="SC38"
+                          />
+                        </div>
+                        <div className="grid grid-cols-3 gap-2">
+                          <div>
+                            <label className="block text-[10px] font-medium text-gray-500 uppercase mb-1">
+                              Thick (mm)
+                            </label>
+                            <input
+                              type="number"
+                              value={thicknessValue}
+                              onChange={(e) =>
+                                updateLineItem(
+                                  index,
+                                  "thicknessMm",
+                                  e.target.value ? Number(e.target.value) : null,
+                                )
+                              }
+                              className="block w-full rounded border border-gray-300 px-2 py-2 text-sm"
+                              step="any"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[10px] font-medium text-gray-500 uppercase mb-1">
+                              Width (mm)
+                            </label>
+                            <input
+                              type="number"
+                              value={widthValue}
+                              onChange={(e) =>
+                                updateLineItem(
+                                  index,
+                                  "widthMm",
+                                  e.target.value ? Number(e.target.value) : null,
+                                )
+                              }
+                              className="block w-full rounded border border-gray-300 px-2 py-2 text-sm"
+                              step="any"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[10px] font-medium text-gray-500 uppercase mb-1">
+                              Length (m)
+                            </label>
+                            <input
+                              type="number"
+                              value={lengthValue}
+                              onChange={(e) =>
+                                updateLineItem(
+                                  index,
+                                  "lengthM",
+                                  e.target.value ? Number(e.target.value) : null,
+                                )
+                              }
+                              className="block w-full rounded border border-gray-300 px-2 py-2 text-sm"
+                              step="any"
+                            />
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="block text-[10px] font-medium text-gray-500 uppercase mb-1">
+                              Qty
+                            </label>
+                            <input
+                              type="number"
+                              value={qtyValue}
+                              onChange={(e) =>
+                                updateLineItem(
+                                  index,
+                                  "quantity",
+                                  e.target.value ? Number(e.target.value) : null,
+                                )
+                              }
+                              className="block w-full rounded border border-gray-300 px-2 py-2 text-base"
+                              min="1"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[10px] font-medium text-gray-500 uppercase mb-1">
+                              Weight (kg)
+                            </label>
+                            <input
+                              type="number"
+                              value={weightValue}
+                              onChange={(e) =>
+                                updateLineItem(
+                                  index,
+                                  "weightKg",
+                                  e.target.value ? Number(e.target.value) : null,
+                                )
+                              }
+                              className="block w-full rounded border border-gray-300 px-2 py-2 text-sm"
+                              step="any"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <div className="hidden md:block overflow-x-auto">
                   <table className="min-w-full divide-y divide-gray-200 text-sm">
                     <thead className="bg-gray-50">
                       <tr>
@@ -415,7 +581,124 @@ export function DeliveryNoteConfirmationModal(props: DeliveryNoteConfirmationMod
                     Add Row
                   </button>
                 </div>
-                <div className="overflow-x-auto">
+
+                <div className="md:hidden space-y-3">
+                  {generalItems.map(({ item, index }) => {
+                    const descValue = item.description == null ? "" : item.description;
+                    const productCodeValue = item.productCode == null ? "" : item.productCode;
+                    const qtyValue = item.quantity == null ? "" : item.quantity;
+                    const unitValue = item.unitOfMeasure == null ? "" : item.unitOfMeasure;
+                    const weightValue = item.weightKg == null ? "" : item.weightKg;
+                    return (
+                      <div
+                        key={`mob-gen-${index}`}
+                        className="rounded-md border border-gray-200 bg-white p-3 space-y-2"
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex-1">
+                            <label className="block text-[10px] font-medium text-gray-500 uppercase mb-1">
+                              Description
+                            </label>
+                            <input
+                              type="text"
+                              value={descValue}
+                              onChange={(e) => updateLineItem(index, "description", e.target.value)}
+                              className="block w-full rounded border border-gray-300 px-2 py-2 text-sm"
+                              placeholder="Item description"
+                            />
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => removeRow(index)}
+                            className="text-red-500 hover:text-red-700 p-1 mt-4"
+                            title="Remove row"
+                          >
+                            <svg
+                              className="h-5 w-5"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                              aria-label="Remove row"
+                            >
+                              <title>Remove row</title>
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                              />
+                            </svg>
+                          </button>
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-medium text-gray-500 uppercase mb-1">
+                            Product Code
+                          </label>
+                          <input
+                            type="text"
+                            value={productCodeValue}
+                            onChange={(e) => updateLineItem(index, "productCode", e.target.value)}
+                            className="block w-full rounded border border-gray-300 px-2 py-2 text-sm"
+                          />
+                        </div>
+                        <div className="grid grid-cols-3 gap-2">
+                          <div>
+                            <label className="block text-[10px] font-medium text-gray-500 uppercase mb-1">
+                              Qty
+                            </label>
+                            <input
+                              type="number"
+                              value={qtyValue}
+                              onChange={(e) =>
+                                updateLineItem(
+                                  index,
+                                  "quantity",
+                                  e.target.value ? Number(e.target.value) : null,
+                                )
+                              }
+                              className="block w-full rounded border border-gray-300 px-2 py-2 text-base"
+                              min="1"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[10px] font-medium text-gray-500 uppercase mb-1">
+                              Unit
+                            </label>
+                            <input
+                              type="text"
+                              value={unitValue}
+                              onChange={(e) =>
+                                updateLineItem(index, "unitOfMeasure", e.target.value)
+                              }
+                              className="block w-full rounded border border-gray-300 px-2 py-2 text-sm"
+                              placeholder="each"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[10px] font-medium text-gray-500 uppercase mb-1">
+                              Weight (kg)
+                            </label>
+                            <input
+                              type="number"
+                              value={weightValue}
+                              onChange={(e) =>
+                                updateLineItem(
+                                  index,
+                                  "weightKg",
+                                  e.target.value ? Number(e.target.value) : null,
+                                )
+                              }
+                              className="block w-full rounded border border-gray-300 px-2 py-2 text-sm"
+                              step="any"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <div className="hidden md:block overflow-x-auto">
                   <table className="min-w-full divide-y divide-gray-200 text-sm">
                     <thead className="bg-gray-50">
                       <tr>
