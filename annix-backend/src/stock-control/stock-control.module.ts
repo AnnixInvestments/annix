@@ -25,6 +25,7 @@ import { DashboardController } from "./controllers/dashboard.controller";
 import { DeliveriesController } from "./controllers/deliveries.controller";
 import { GlossaryController } from "./controllers/glossary.controller";
 import { ImportController } from "./controllers/import.controller";
+import { InspectionPublicController } from "./controllers/inspection-public.controller";
 import { InventoryController } from "./controllers/inventory.controller";
 import { InvitationController } from "./controllers/invitation.controller";
 import { InvoicesController } from "./controllers/invoices.controller";
@@ -280,6 +281,7 @@ import { WorkflowStepConfigService } from "./services/workflow-step-config.servi
   controllers: [
     StockControlAuthController,
     PublicBrandingController,
+    InspectionPublicController,
     InventoryController,
     JobCardsController,
     DeliveriesController,

@@ -82,6 +82,7 @@ interface JobCardNextActionProps {
   currentStatus: string | null;
   canApprove: boolean;
   currentStep: string | null;
+  currentStepLabel?: string | null;
   userRole: string | null;
   onApprove?: () => void;
   jobCardId: number;
@@ -92,6 +93,7 @@ export function JobCardNextAction({
   currentStatus,
   canApprove,
   currentStep,
+  currentStepLabel,
   userRole,
   onApprove,
   jobCardId,
@@ -101,6 +103,7 @@ export function JobCardNextAction({
     currentStatus,
     canApprove,
     currentStep,
+    currentStepLabel ? currentStepLabel : null,
     userRole,
     hasLineItems,
   );
@@ -139,6 +142,7 @@ function resolveJobCardPrompt(
   currentStatus: string | null,
   canApprove: boolean,
   currentStep: string | null,
+  currentStepLabel: string | null,
   userRole: string | null,
   hasLineItems?: boolean,
 ): JobCardPrompt | null {
@@ -213,9 +217,10 @@ function resolveJobCardPrompt(
     };
   }
 
-  const stepLabel = currentStep
+  const fallbackLabel = currentStep
     ? currentStep.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())
     : "next step";
+  const stepLabel = currentStepLabel ? currentStepLabel : fallbackLabel;
 
   if (canApprove) {
     return {

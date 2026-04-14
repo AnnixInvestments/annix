@@ -19,6 +19,8 @@ declare module "./base" {
     bookedSlotsForDate(date: string): Promise<InspectionBooking[]>;
     completeInspection(bookingId: number, notes?: string): Promise<InspectionBooking>;
     cancelInspection(bookingId: number): Promise<InspectionBooking>;
+    acceptInspectionProposal(bookingId: number): Promise<InspectionBooking>;
+    rejectInspectionProposal(bookingId: number): Promise<InspectionBooking>;
   }
 }
 
@@ -54,6 +56,18 @@ proto.completeInspection = async function (bookingId, notes) {
 
 proto.cancelInspection = async function (bookingId) {
   return this.request(`/stock-control/workflow/inspection-bookings/${bookingId}/cancel`, {
+    method: "POST",
+  });
+};
+
+proto.acceptInspectionProposal = async function (bookingId) {
+  return this.request(`/stock-control/workflow/inspection-bookings/${bookingId}/accept-proposal`, {
+    method: "POST",
+  });
+};
+
+proto.rejectInspectionProposal = async function (bookingId) {
+  return this.request(`/stock-control/workflow/inspection-bookings/${bookingId}/reject-proposal`, {
     method: "POST",
   });
 };

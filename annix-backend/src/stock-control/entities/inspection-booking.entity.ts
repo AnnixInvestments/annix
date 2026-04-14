@@ -74,6 +74,30 @@ export class InspectionBooking {
   @Column({ name: "completed_by_name", type: "varchar", length: 255, nullable: true })
   completedByName: string | null;
 
+  @Column({ name: "response_token", type: "varchar", length: 64, nullable: true })
+  responseToken: string | null;
+
+  @Column({ name: "token_expires_at", type: "timestamptz", nullable: true })
+  tokenExpiresAt: Date | null;
+
+  @Column({ name: "proposed_date", type: "date", nullable: true })
+  proposedDate: string | null;
+
+  @Column({ name: "proposed_start_time", type: "varchar", length: 5, nullable: true })
+  proposedStartTime: string | null;
+
+  @Column({ name: "proposed_end_time", type: "varchar", length: 5, nullable: true })
+  proposedEndTime: string | null;
+
+  @Column({ name: "proposed_note", type: "text", nullable: true })
+  proposedNote: string | null;
+
+  @Column({ name: "proposed_at", type: "timestamptz", nullable: true })
+  proposedAt: Date | null;
+
+  @Column({ name: "responded_at", type: "timestamptz", nullable: true })
+  respondedAt: Date | null;
+
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;
 

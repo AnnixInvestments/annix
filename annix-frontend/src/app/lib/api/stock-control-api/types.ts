@@ -2701,10 +2701,16 @@ export interface InspectionBooking {
   inspectorEmail: string;
   inspectorName: string | null;
   notes: string | null;
-  status: "booked" | "completed" | "cancelled";
+  status: "booked" | "completed" | "cancelled" | "proposed" | "accepted";
   bookedByName: string | null;
   completedAt: string | null;
   completedByName: string | null;
+  proposedDate: string | null;
+  proposedStartTime: string | null;
+  proposedEndTime: string | null;
+  proposedNote: string | null;
+  proposedAt: string | null;
+  respondedAt: string | null;
   createdAt: string;
   updatedAt: string;
   jobNumber?: string;

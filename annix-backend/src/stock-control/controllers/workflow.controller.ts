@@ -882,4 +882,16 @@ export class WorkflowController {
   async cancelInspection(@Req() req: any, @Param("bookingId") bookingId: number) {
     return this.inspectionBookingService.cancelBooking(req.user.companyId, bookingId, req.user);
   }
+
+  @Post("inspection-bookings/:bookingId/accept-proposal")
+  @ApiOperation({ summary: "Accept the inspector's proposed new time" })
+  async acceptInspectionProposal(@Req() req: any, @Param("bookingId") bookingId: number) {
+    return this.inspectionBookingService.acceptProposal(req.user.companyId, bookingId, req.user);
+  }
+
+  @Post("inspection-bookings/:bookingId/reject-proposal")
+  @ApiOperation({ summary: "Reject the inspector's proposed new time and revert to original slot" })
+  async rejectInspectionProposal(@Req() req: any, @Param("bookingId") bookingId: number) {
+    return this.inspectionBookingService.rejectProposal(req.user.companyId, bookingId, req.user);
+  }
 }

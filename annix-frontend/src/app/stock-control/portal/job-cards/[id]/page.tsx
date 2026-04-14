@@ -58,6 +58,7 @@ import { DetailsTab } from "./components/DetailsTab";
 import DispatchTab from "./components/DispatchTab";
 import { DocumentUploadGate } from "./components/DocumentUploadGate";
 import { InspectionBookingModal } from "./components/InspectionBookingModal";
+import { InspectionProposalBanner } from "./components/InspectionProposalBanner";
 import {
   JobCardTabs,
   type TabDefinition,
@@ -494,6 +495,13 @@ export default function JobCardDetailPage() {
 
   const currentStatus = workflowStatus?.currentStatus ? workflowStatus.currentStatus : null;
   const currentStep = workflowStatus?.currentStep ? workflowStatus.currentStep : null;
+  const currentStepLabel = (() => {
+    if (!currentStep || !workflowStatus) return null;
+    const fgSteps = workflowStatus.foregroundSteps;
+    if (!fgSteps) return null;
+    const match = fgSteps.find((s) => s.key === currentStep);
+    return match ? match.label : null;
+  })();
   const userRole = effectiveRole;
   const isAdminView = userRole === "admin" && !isPreviewActive;
 
@@ -2141,14 +2149,18 @@ export default function JobCardDetailPage() {
         />
       )}
 
+      <InspectionProposalBanner jobCardId={jobId} onChanged={fetchData} />
+
       {!specsNeedReview &&
         !prevStepBgPending &&
         !currentStepBlueBgPending &&
+        !currentStepBgPending &&
         (currentStepActionCompleted || !currentStepActionLabel) && (
           <JobCardNextAction
             currentStatus={currentStatus}
             canApprove={canApprove}
             currentStep={currentStep}
+            currentStepLabel={currentStepLabel}
             userRole={userRole}
             onApprove={currentStep ? () => openApprovalModal(currentStep) : undefined}
             jobCardId={jobId}
