@@ -23,6 +23,7 @@ import { QcControlPlan } from "../qc/entities/qc-control-plan.entity";
 import { QcDefelskoBatch } from "../qc/entities/qc-defelsko-batch.entity";
 import { QcReleaseCertificate } from "../qc/entities/qc-release-certificate.entity";
 import { PositectorUploadService } from "../qc/services/positector-upload.service";
+import { QcBatchAssignmentService } from "../qc/services/qc-batch-assignment.service";
 import { QcMeasurementService } from "../qc/services/qc-measurement.service";
 import { generateBrandedCoverPage } from "./branded-cover-page";
 import { CoatingAnalysisService } from "./coating-analysis.service";
@@ -148,6 +149,7 @@ export class CertificateService {
     private readonly dataBookPdfService: DataBookPdfService,
     private readonly qcMeasurementService: QcMeasurementService,
     private readonly positectorUploadService: PositectorUploadService,
+    private readonly qcBatchAssignmentService: QcBatchAssignmentService,
   ) {}
 
   async uploadCertificate(
@@ -976,6 +978,30 @@ export class CertificateService {
     if (cached) return cached;
 
     const perfStart = Date.now();
+
+    try {
+      const envRange = await this.qcBatchAssignmentService.requiredEnvironmentalDateRange(
+        companyId,
+        jobCardId,
+      );
+      if (envRange.earliestDate && envRange.latestDate) {
+        const linked = await this.positectorUploadService.autoLinkEnvironmentalByDateRange(
+          companyId,
+          jobCardId,
+          envRange.earliestDate,
+          envRange.latestDate,
+          { name: "auto-link", companyId },
+        );
+        if (linked > 0) {
+          this.logger.log(
+            `[perf] qualityTabBundle auto-linked ${linked} env upload(s) to JC ${jobCardId}`,
+          );
+        }
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      this.logger.warn(`Auto-link environmental pass failed for JC ${jobCardId}: ${msg}`);
+    }
     const [certs, calCerts, batchRecords, dataBookStatus, qcData, completeness] = await Promise.all(
       [
         this.certificatesForJobCard(companyId, jobCardId),

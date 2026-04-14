@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { Inject, Injectable, Logger, OnModuleInit } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
+import { Between, IsNull, Repository } from "typeorm";
 import { nowISO } from "../../../lib/datetime";
 import type { IStorageService } from "../../../storage/storage.interface";
 import { STORAGE_SERVICE, StorageArea } from "../../../storage/storage.interface";
@@ -404,6 +404,42 @@ export class PositectorUploadService implements OnModuleInit {
     }
 
     return results;
+  }
+
+  async autoLinkEnvironmentalByDateRange(
+    companyId: number,
+    jobCardId: number,
+    earliestDate: string,
+    latestDate: string,
+    user: UserContext,
+  ): Promise<number> {
+    const candidates = await this.uploadRepo.find({
+      where: {
+        companyId,
+        entityType: "environmental",
+        linkedJobCardId: IsNull(),
+        measurementDate: Between(earliestDate, latestDate),
+      },
+    });
+
+    if (candidates.length === 0) return 0;
+
+    let linked = 0;
+    for (const upload of candidates) {
+      try {
+        await this.linkAndImport(companyId, upload.id, jobCardId, {}, user);
+        linked++;
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        this.logger.warn(
+          `Auto-link env upload ${upload.id} (date=${upload.measurementDate}) to JC ${jobCardId} failed: ${msg}`,
+        );
+      }
+    }
+    if (linked > 0) {
+      this.logger.log(`Auto-linked ${linked} environmental upload(s) to JC ${jobCardId}`);
+    }
+    return linked;
   }
 
   private extractMeasurementDate(raw: Record<string, string> | null | undefined): string | null {
