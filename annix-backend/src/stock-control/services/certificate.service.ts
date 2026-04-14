@@ -1105,20 +1105,40 @@ export class CertificateService {
         ? COAT_ROLE_ORDER.filter((role) => coatsWithRoles.some((c) => c.coatRole === role))
         : COAT_ROLE_ORDER.filter((role) => qcData.dftReadings.some((r) => r.coatType === role));
 
-    const coatSections: Array<{ key: string; label: string; role: CoatRole }> =
+    const normalizeProduct = (value: string | null | undefined): string =>
+      (value || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+
+    const coatSections: Array<{
+      key: string;
+      label: string;
+      role: CoatRole;
+      product: string | null;
+    }> =
       coatsWithRoles.length > 0
         ? coatsWithRoles.map((c, idx) => {
-            const product = (c as { product?: string }).product;
+            const product = (c as { product?: string }).product || null;
             const role = c.coatRole || "primer";
             const roleLabel = COAT_ROLE_LABELS[role];
             const label = product ? `${roleLabel} DFT - ${product}` : `${roleLabel} DFT Reports`;
-            return { key: `dft_coat_${idx}`, label, role };
+            return { key: `dft_coat_${idx}`, label, role, product };
           })
         : distinctCoatRoles.map((role) => ({
             key: `${role}Dft`,
             label: `${COAT_ROLE_LABELS[role]} DFT Reports`,
             role,
+            product: null,
           }));
+
+    const dftReadingCountForSection = (cs: { role: CoatRole; product: string | null }): number => {
+      if (cs.product) {
+        const normalizedCoatProduct = normalizeProduct(cs.product);
+        const productMatches = qcData.dftReadings.filter(
+          (r) => normalizeProduct(r.paintProduct) === normalizedCoatProduct,
+        );
+        if (productMatches.length > 0) return productMatches.length;
+      }
+      return qcData.dftReadings.filter((r) => r.coatType === cs.role).length;
+    };
 
     const dftByRole = distinctCoatRoles.reduce<Record<string, typeof qcData.dftReadings>>(
       (acc, role) => ({
@@ -1237,7 +1257,7 @@ export class CertificateService {
           group: paintGroup,
         },
         ...coatSections.map((cs) => ({
-          ...this.sectionFromCount(cs.key, cs.label, (dftByRole[cs.role] || []).length),
+          ...this.sectionFromCount(cs.key, cs.label, dftReadingCountForSection(cs)),
           group: paintGroup,
         })),
         { ...sharedItemsRelease, group: paintGroup },

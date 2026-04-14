@@ -22,6 +22,43 @@ const TWO_PART_GENERIC_TYPES = new Set([
   "zinc_rich",
 ]);
 
+const TWO_PART_PRODUCT_PATTERNS = [
+  /jotamastic/i,
+  /jotacote/i,
+  /penguard/i,
+  /hardtop/i,
+  /barrier\s*80/i,
+  /marathon\s*iq/i,
+  /intergard/i,
+  /interthane/i,
+  /interzone/i,
+  /intercure/i,
+  /interseal/i,
+  /interzinc/i,
+  /sigmacover/i,
+  /sigmaguard/i,
+  /hempadur/i,
+  /hempathane/i,
+  /carbozinc/i,
+  /carboguard/i,
+  /carboline\s*890/i,
+  /carbomastic/i,
+  /carbothane/i,
+  /macropoxy/i,
+  /acrolon/i,
+  /zinc\s*clad/i,
+  /protal/i,
+];
+
+function isTwoPartCoat(coat: { product?: string | null; genericType?: string | null }): boolean {
+  const rawGeneric = coat.genericType;
+  const generic = rawGeneric == null ? "" : rawGeneric;
+  if (TWO_PART_GENERIC_TYPES.has(generic)) return true;
+  const rawProduct = coat.product;
+  const product = rawProduct == null ? "" : rawProduct;
+  return TWO_PART_PRODUCT_PATTERNS.some((pattern) => pattern.test(product));
+}
+
 interface MaterialBatchSectionProps {
   jobCardId: number;
   batchRecords: IssuanceBatchRecord[];
@@ -111,7 +148,7 @@ function paintProductRows(
     if (seen.has(productKey)) return acc;
     seen.add(productKey);
 
-    const isTwoPart = TWO_PART_GENERIC_TYPES.has(coat.genericType || "");
+    const isTwoPart = isTwoPartCoat(coat);
 
     if (isTwoPart) {
       return [
