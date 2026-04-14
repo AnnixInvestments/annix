@@ -527,6 +527,10 @@ function ItemsReleaseForm({ jobCardId, existing, onSaved, onCancel }: ItemsRelea
           {(["pls", "mps", "client"] as const).map((party) => {
             const signOff = { pls: plsSignOff, mps: mpsSignOff, client: clientSignOff }[party];
             const labels = { pls: "PLS", mps: "MPS", client: "Client" };
+            const signOffName = signOff.name;
+            const signOffDate = signOff.date;
+            const nameValue = signOffName == null ? "" : signOffName;
+            const dateValue = signOffDate == null ? "" : signOffDate;
             return (
               <div key={party} className="rounded-lg border border-gray-200 p-3">
                 <h5 className="text-xs font-semibold uppercase text-gray-600 mb-2">
@@ -537,7 +541,7 @@ function ItemsReleaseForm({ jobCardId, existing, onSaved, onCancel }: ItemsRelea
                     <label className="block text-xs text-gray-500">Name</label>
                     <input
                       type="text"
-                      value={signOff.name ?? ""}
+                      value={nameValue}
                       onChange={(e) => updateSignOff(party, "name", e.target.value || null)}
                       className="mt-0.5 w-full rounded border border-gray-300 px-2 py-1 text-sm"
                     />
@@ -546,7 +550,7 @@ function ItemsReleaseForm({ jobCardId, existing, onSaved, onCancel }: ItemsRelea
                     <label className="block text-xs text-gray-500">Date</label>
                     <input
                       type="date"
-                      value={signOff.date ?? ""}
+                      value={dateValue}
                       onChange={(e) => updateSignOff(party, "date", e.target.value || null)}
                       className="mt-0.5 w-full rounded border border-gray-300 px-2 py-1 text-sm"
                     />
