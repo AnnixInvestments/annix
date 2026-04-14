@@ -43,6 +43,11 @@ describe("CoatingAnalysisService", () => {
 
   const mockM2CalculationService = {
     calculateM2ForLineItems: jest.fn().mockResolvedValue([]),
+    calculateM2ForItems: jest
+      .fn()
+      .mockImplementation((descriptions: string[]) =>
+        Promise.resolve(descriptions.map(() => ({ externalM2: 0, internalM2: 0 }))),
+      ),
   };
 
   beforeEach(async () => {
