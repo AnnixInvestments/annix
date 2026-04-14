@@ -47,8 +47,21 @@ function buildMeasurementFields(coatingAnalysis: CoatingAnalysis | null): BatchF
       category: "paint",
       label: "Blast Profile (Paint)",
     });
+    const rawNotes = coatingAnalysis ? coatingAnalysis.rawNotes : null;
+    const notesUpper = rawNotes ? rawNotes.toUpperCase() : "";
+    const bandingIdx = notesUpper.indexOf("BANDING");
+    const preBanding = bandingIdx >= 0 ? notesUpper.substring(0, bandingIdx) : notesUpper;
+    const postBanding = bandingIdx >= 0 ? notesUpper.substring(bandingIdx) : "";
+
     coats.forEach((coat, idx) => {
       const rawProduct = coat.product;
+      const productUpper = rawProduct ? rawProduct.toUpperCase() : "";
+      const inBandingOnly =
+        postBanding.length > 0 &&
+        productUpper.length > 0 &&
+        postBanding.includes(productUpper) &&
+        !preBanding.includes(productUpper);
+      if (inBandingOnly) return;
       const product = rawProduct || `Coat ${idx + 1}`;
       fields.push({
         fieldKey: `paint_dft_${idx}`,
