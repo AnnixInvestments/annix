@@ -42,12 +42,27 @@ export class CompanyEmailService {
   async sendEmail(companyId: number, options: EmailOptions): Promise<boolean> {
     const company = await this.companyRepo.findOne({ where: { id: companyId } });
 
-    if (
-      !company?.smtpHost ||
-      !company.smtpPort ||
-      !company.smtpUser ||
-      !company.smtpPassEncrypted
-    ) {
+    const companySmtpConfigured =
+      !!company?.smtpHost &&
+      !!company?.smtpPort &&
+      !!company?.smtpUser &&
+      !!company?.smtpPassEncrypted;
+
+    if (!companySmtpConfigured) {
+      if (!this.emailService.hasSmtpTransport) {
+        const missing = [
+          !company?.smtpHost && "host",
+          !company?.smtpPort && "port",
+          !company?.smtpUser && "user",
+          !company?.smtpPassEncrypted && "password",
+        ]
+          .filter(Boolean)
+          .join(", ");
+        this.logger.error(
+          `No SMTP available for company ${companyId} (missing company fields: ${missing || "n/a"}) and no global SMTP configured — email to ${options.to} was NOT sent`,
+        );
+        return false;
+      }
       const ccRecipients = (company?.notificationEmails ?? []).filter(
         (email) => email !== options.to,
       );
@@ -63,19 +78,23 @@ export class CompanyEmailService {
     }
 
     try {
-      const password = decrypt(company.smtpPassEncrypted, encryptionKey);
+      const smtpHost = company!.smtpHost!;
+      const smtpPort = company!.smtpPort!;
+      const smtpUser = company!.smtpUser!;
+      const smtpPassEncrypted = company!.smtpPassEncrypted!;
+      const password = decrypt(smtpPassEncrypted, encryptionKey);
       const transporter = nodemailer.createTransport({
-        host: company.smtpHost,
-        port: company.smtpPort,
-        secure: company.smtpPort === 465,
+        host: smtpHost,
+        port: smtpPort,
+        secure: smtpPort === 465,
         auth: {
-          user: company.smtpUser,
+          user: smtpUser,
           pass: password,
         },
       });
 
-      const fromEmail = company.smtpFromEmail || company.smtpUser;
-      const fromName = options.fromName || company.smtpFromName || company.name;
+      const fromEmail = company!.smtpFromEmail || smtpUser;
+      const fromName = options.fromName || company!.smtpFromName || company!.name;
       const from = `"${fromName}" <${fromEmail}>`;
 
       const domain = fromEmail.split("@")[1] || "annix.co.za";
@@ -101,7 +120,7 @@ export class CompanyEmailService {
         },
       });
 
-      this.logger.log(`Company email sent to ${options.to} via ${company.smtpHost}`);
+      this.logger.log(`Company email sent to ${options.to} via ${smtpHost}`);
       return true;
     } catch (error) {
       this.logger.error(`Company SMTP send failed for company ${companyId}: ${error.message}`);

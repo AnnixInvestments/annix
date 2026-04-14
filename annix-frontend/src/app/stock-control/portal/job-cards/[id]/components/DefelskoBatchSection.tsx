@@ -109,20 +109,7 @@ export function DefelskoBatchSection(props: DefelskoBatchSectionProps) {
 
     const coats = coatingAnalysis ? coatingAnalysis.coats : null;
     if (coats) {
-      const rawNotes = coatingAnalysis ? coatingAnalysis.rawNotes : null;
-      const notesUpper = rawNotes ? rawNotes.toUpperCase() : "";
-      const bandingIdx = notesUpper.indexOf("BANDING");
-      const preBanding = bandingIdx >= 0 ? notesUpper.substring(0, bandingIdx) : notesUpper;
-      const postBanding = bandingIdx >= 0 ? notesUpper.substring(bandingIdx) : "";
-
       coats.forEach((coat, idx) => {
-        const productUpper = coat.product ? coat.product.toUpperCase() : "";
-        const inBandingOnly =
-          postBanding.length > 0 &&
-          productUpper.length > 0 &&
-          postBanding.includes(productUpper) &&
-          !preBanding.includes(productUpper);
-        if (inBandingOnly) return;
         const key = `paint_dft_${idx}`;
         const coatProduct = coat.product;
         const label = coatProduct || `Coat ${idx + 1}`;

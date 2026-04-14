@@ -34,6 +34,10 @@ export class EmailService {
     this.initializeTransporter();
   }
 
+  get hasSmtpTransport(): boolean {
+    return this.isConfigured;
+  }
+
   private initializeTransporter(): void {
     const host = this.configService.get<string>("SMTP_HOST");
     const port = this.configService.get<number>("SMTP_PORT");

@@ -421,7 +421,12 @@ This link expires in 30 days.`;
     });
 
     if (!sent) {
-      this.logger.warn(`Inspection booking email to ${booking.inspectorEmail} reported not sent`);
+      this.logger.error(
+        `Inspection booking email to ${booking.inspectorEmail} was NOT sent — check company SMTP configuration`,
+      );
+      throw new BadRequestException(
+        `Inspection booking saved but the email to ${booking.inspectorEmail} could not be delivered. Configure SMTP under Settings > Email to enable notifications, then resend from the booking.`,
+      );
     }
   }
 
