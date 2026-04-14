@@ -1295,6 +1295,7 @@ export interface PositectorUploadRecord {
   importedAt: string | null;
   uploadedByName: string;
   uploadedById: number | null;
+  measurementDate: string | null;
   createdAt: string;
   updatedAt: string;
 }

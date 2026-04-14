@@ -394,82 +394,88 @@ function ItemsReleaseForm({ jobCardId, existing, onSaved, onCancel }: ItemsRelea
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200 bg-white">
-            {items.map((item, index) => (
-              <tr key={index} className="hover:bg-gray-50">
-                <td className="whitespace-nowrap px-3 py-2 text-sm text-gray-500">{index + 1}</td>
-                <td className="px-3 py-2">
-                  <input
-                    type="text"
-                    value={item.itemNo ?? ""}
-                    onChange={(e) => updateItem(index, "itemNo", e.target.value)}
-                    placeholder="Item No"
-                    className="w-20 rounded border border-gray-300 px-2 py-1 text-sm"
-                  />
-                </td>
-                <td className="hidden sm:table-cell px-3 py-2">
-                  <input
-                    type="text"
-                    value={item.itemCode}
-                    onChange={(e) => updateItem(index, "itemCode", e.target.value)}
-                    className="w-24 rounded border border-gray-300 px-2 py-1 text-sm"
-                  />
-                </td>
-                <td className="px-3 py-2">
-                  <input
-                    type="text"
-                    value={item.description}
-                    onChange={(e) => updateItem(index, "description", e.target.value)}
-                    className="w-32 sm:w-48 rounded border border-gray-300 px-2 py-1 text-sm"
-                  />
-                </td>
-                <td className="hidden md:table-cell px-3 py-2">
-                  <input
-                    type="text"
-                    value={item.jtNumber ?? ""}
-                    onChange={(e) => updateItem(index, "jtNumber", e.target.value)}
-                    placeholder="Paste JT"
-                    className="w-24 rounded border border-gray-300 px-2 py-1 text-sm"
-                  />
-                </td>
-                <td className="hidden md:table-cell px-3 py-2">
-                  <input
-                    type="text"
-                    value={item.rubberSpec ?? ""}
-                    onChange={(e) => updateItem(index, "rubberSpec", e.target.value)}
-                    className="w-24 rounded border border-gray-300 px-2 py-1 text-sm"
-                  />
-                </td>
-                <td className="hidden md:table-cell px-3 py-2">
-                  <input
-                    type="text"
-                    value={item.paintingSpec ?? ""}
-                    onChange={(e) => updateItem(index, "paintingSpec", e.target.value)}
-                    className="w-24 rounded border border-gray-300 px-2 py-1 text-sm"
-                  />
-                </td>
-                <td className="px-3 py-2 text-right">
-                  <input
-                    type="number"
-                    value={item.quantity}
-                    onChange={(e) => updateItem(index, "quantity", Number(e.target.value) || 0)}
-                    className="w-16 rounded border border-gray-300 px-2 py-1 text-right text-sm"
-                  />
-                </td>
-                <td className="px-3 py-2 text-center">
-                  <button
-                    type="button"
-                    onClick={() => toggleItemResult(index)}
-                    className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
-                      item.result === "pass"
-                        ? "bg-green-100 text-green-800 hover:bg-green-200"
-                        : "bg-red-100 text-red-800 hover:bg-red-200"
-                    }`}
-                  >
-                    {item.result === "pass" ? "Pass" : "Fail"}
-                  </button>
-                </td>
-              </tr>
-            ))}
+            {items.map((item, index) => {
+              const itemNoValue = item.itemNo == null ? "" : item.itemNo;
+              const jtNumberValue = item.jtNumber == null ? "" : item.jtNumber;
+              const rubberSpecValue = item.rubberSpec == null ? "" : item.rubberSpec;
+              const paintingSpecValue = item.paintingSpec == null ? "" : item.paintingSpec;
+              return (
+                <tr key={index} className="hover:bg-gray-50">
+                  <td className="whitespace-nowrap px-3 py-2 text-sm text-gray-500">{index + 1}</td>
+                  <td className="px-3 py-2">
+                    <input
+                      type="text"
+                      value={itemNoValue}
+                      onChange={(e) => updateItem(index, "itemNo", e.target.value)}
+                      placeholder="Item No"
+                      className="w-20 rounded border border-gray-300 px-2 py-1 text-sm"
+                    />
+                  </td>
+                  <td className="hidden sm:table-cell px-3 py-2">
+                    <input
+                      type="text"
+                      value={item.itemCode}
+                      onChange={(e) => updateItem(index, "itemCode", e.target.value)}
+                      className="w-24 rounded border border-gray-300 px-2 py-1 text-sm"
+                    />
+                  </td>
+                  <td className="px-3 py-2">
+                    <input
+                      type="text"
+                      value={item.description}
+                      onChange={(e) => updateItem(index, "description", e.target.value)}
+                      className="w-32 sm:w-48 rounded border border-gray-300 px-2 py-1 text-sm"
+                    />
+                  </td>
+                  <td className="hidden md:table-cell px-3 py-2">
+                    <input
+                      type="text"
+                      value={jtNumberValue}
+                      onChange={(e) => updateItem(index, "jtNumber", e.target.value)}
+                      placeholder="Paste JT"
+                      className="w-24 rounded border border-gray-300 px-2 py-1 text-sm"
+                    />
+                  </td>
+                  <td className="hidden md:table-cell px-3 py-2">
+                    <input
+                      type="text"
+                      value={rubberSpecValue}
+                      onChange={(e) => updateItem(index, "rubberSpec", e.target.value)}
+                      className="w-24 rounded border border-gray-300 px-2 py-1 text-sm"
+                    />
+                  </td>
+                  <td className="hidden md:table-cell px-3 py-2">
+                    <input
+                      type="text"
+                      value={paintingSpecValue}
+                      onChange={(e) => updateItem(index, "paintingSpec", e.target.value)}
+                      className="w-24 rounded border border-gray-300 px-2 py-1 text-sm"
+                    />
+                  </td>
+                  <td className="px-3 py-2 text-right">
+                    <input
+                      type="number"
+                      value={item.quantity}
+                      onChange={(e) => updateItem(index, "quantity", Number(e.target.value) || 0)}
+                      className="w-16 rounded border border-gray-300 px-2 py-1 text-right text-sm"
+                    />
+                  </td>
+                  <td className="px-3 py-2 text-center">
+                    <button
+                      type="button"
+                      onClick={() => toggleItemResult(index)}
+                      className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+                        item.result === "pass"
+                          ? "bg-green-100 text-green-800 hover:bg-green-200"
+                          : "bg-red-100 text-red-800 hover:bg-red-200"
+                      }`}
+                    >
+                      {item.result === "pass" ? "Pass" : "Fail"}
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
           <tfoot className="bg-gray-50">
             <tr>

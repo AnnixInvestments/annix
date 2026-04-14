@@ -149,9 +149,12 @@ function UploadRow(props: {
   const onViewPdf = props.onViewPdf;
 
   const headerData = upload.headerData;
-  const createdRaw = headerData?.Created || headerData?.created || null;
-  const readingDate = createdRaw ? createdRaw.split(" ")[0] : null;
-  const displayDate = readingDate || upload.createdAt;
+  const measurementDate = upload.measurementDate;
+  const rawCreated = headerData?.Created;
+  const rawCreatedLower = headerData?.created;
+  const createdRaw = rawCreated || rawCreatedLower || null;
+  const readingDateFromHeader = createdRaw ? createdRaw.split(" ")[0] : null;
+  const displayDate = measurementDate || readingDateFromHeader || upload.createdAt;
   const batchLabel = upload.batchName || upload.originalFilename;
 
   const isLinked = upload.linkedJobCardId !== null;
