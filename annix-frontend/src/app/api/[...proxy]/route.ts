@@ -12,10 +12,8 @@ async function proxyRequest(request: NextRequest) {
   const url = new URL(request.url);
   const targetUrl = `${REMOTE_BACKEND.replace(/\/api\/?$/, "")}${url.pathname}${url.search}`;
 
-  const targetParsed = new URL(targetUrl);
   const forwardHeaders: Record<string, string> = {
     "content-type": request.headers.get("content-type") || "application/json",
-    host: targetParsed.host,
   };
   const auth = request.headers.get("authorization");
   if (auth) {
@@ -29,19 +27,28 @@ async function proxyRequest(request: NextRequest) {
   const body =
     request.method !== "GET" && request.method !== "HEAD" ? await request.arrayBuffer() : undefined;
 
-  let response: Response;
-  try {
-    response = await fetch(targetUrl, {
+  const attempt = async (): Promise<Response> =>
+    fetch(targetUrl, {
       method: request.method,
       headers: forwardHeaders,
       body,
       redirect: "manual",
       cache: "no-store",
     });
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    console.error(`[proxy] fetch failed for ${targetUrl}: ${msg}`);
-    return NextResponse.json({ error: "Backend unreachable", detail: msg }, { status: 502 });
+
+  let response: Response;
+  try {
+    response = await attempt();
+  } catch (firstErr) {
+    const firstMsg = firstErr instanceof Error ? firstErr.message : String(firstErr);
+    console.warn(`[proxy] fetch failed for ${targetUrl}: ${firstMsg} — retrying once`);
+    try {
+      response = await attempt();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error(`[proxy] fetch failed (retry) for ${targetUrl}: ${msg}`);
+      return NextResponse.json({ error: "Backend unreachable", detail: msg }, { status: 502 });
+    }
   }
 
   if (response.status >= 500) {

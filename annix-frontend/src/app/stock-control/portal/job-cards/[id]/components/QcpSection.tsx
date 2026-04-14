@@ -221,6 +221,7 @@ export function QcpSection(props: QcpSectionProps) {
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [isAutoGenerating, setIsAutoGenerating] = useState(false);
   const [reviewPlan, setReviewPlan] = useState<QcControlPlanRecord | null>(null);
+  const [editModalPlan, setEditModalPlan] = useState<QcControlPlanRecord | null>(null);
   const [initialsTarget, setInitialsTarget] = useState<{
     planId: number;
     activityIdx: number;
@@ -519,6 +520,18 @@ export function QcpSection(props: QcpSectionProps) {
                     >
                       Review
                     </button>
+                    {isCpoMode ? (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setEditModalPlan(plan);
+                        }}
+                        className="text-sm text-teal-600 hover:text-teal-800"
+                      >
+                        Edit
+                      </button>
+                    ) : null}
                     {!readOnly && (
                       <>
                         <button
@@ -696,6 +709,16 @@ export function QcpSection(props: QcpSectionProps) {
           cpoId={cpoId}
           readOnly={readOnly}
           onClose={() => setReviewPlan(null)}
+          onSaved={fetchPlans}
+        />
+      )}
+      {editModalPlan && (
+        <QcpEditorModal
+          plan={editModalPlan}
+          jobCardId={jobCardId}
+          cpoId={cpoId}
+          readOnly={false}
+          onClose={() => setEditModalPlan(null)}
           onSaved={fetchPlans}
         />
       )}
