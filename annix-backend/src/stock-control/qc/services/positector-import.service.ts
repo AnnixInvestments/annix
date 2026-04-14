@@ -14,6 +14,17 @@ import type {
 import { QcShoreHardness } from "../entities/qc-shore-hardness.entity";
 import type { PositectorBatch, PositectorReading } from "./positector.service";
 
+function measurementDateFromBatch(batch: PositectorBatch): string {
+  const raw = batch.header.raw || {};
+  const candidates = [raw.Created, raw.created, raw.Date, raw.date];
+  for (const value of candidates) {
+    if (!value || typeof value !== "string") continue;
+    const match = value.match(/(\d{4}-\d{2}-\d{2})/);
+    if (match) return match[1];
+  }
+  return nowISO().split("T")[0];
+}
+
 export interface ImportDftOptions {
   jobCardId: number;
   coatType: DftCoatType;
@@ -99,7 +110,7 @@ export class PositectorImportService {
       specMaxMicrons: options.specMaxMicrons,
       readings,
       averageMicrons: average,
-      readingDate: nowISO().split("T")[0],
+      readingDate: measurementDateFromBatch(batch),
       capturedByName: user.name,
       capturedById: user.id ?? null,
     });
@@ -149,7 +160,7 @@ export class PositectorImportService {
       averageMicrons: average,
       temperature: options.temperature ?? environmentalData.temperature,
       humidity: options.humidity ?? environmentalData.humidity,
-      readingDate: nowISO().split("T")[0],
+      readingDate: measurementDateFromBatch(batch),
       capturedByName: user.name,
       capturedById: user.id ?? null,
     });
@@ -191,7 +202,7 @@ export class PositectorImportService {
       requiredShore: options.requiredShore,
       readings,
       averages,
-      readingDate: nowISO().split("T")[0],
+      readingDate: measurementDateFromBatch(batch),
       capturedByName: user.name,
       capturedById: user.id ?? null,
     });
@@ -225,14 +236,18 @@ export class PositectorImportService {
     }
 
     const dewPoint = this.extractDewPoint(batch);
-    const today = nowISO().split("T")[0];
+    const recordDate = measurementDateFromBatch(batch);
 
-    const duplicateWarning = await this.checkEnvDuplicates(companyId, options.jobCardId, today);
+    const duplicateWarning = await this.checkEnvDuplicates(
+      companyId,
+      options.jobCardId,
+      recordDate,
+    );
 
     const record = this.envRepo.create({
       companyId,
       jobCardId: options.jobCardId,
-      recordDate: today,
+      recordDate,
       temperatureC: temperature ?? 0,
       humidity: humidity ?? 0,
       dewPointC: dewPoint,
