@@ -100,15 +100,30 @@ export function QualityTab(props: QualityTabProps) {
     try {
       setIsLoading(true);
       setError(null);
+      const overallStart = performance.now();
+      const time = async <T,>(label: string, p: Promise<T>): Promise<T> => {
+        const t0 = performance.now();
+        try {
+          const result = await p;
+          console.log(`[QualityTab] ${label} ${(performance.now() - t0).toFixed(0)}ms`);
+          return result;
+        } catch (err) {
+          console.log(`[QualityTab] ${label} FAILED ${(performance.now() - t0).toFixed(0)}ms`);
+          throw err;
+        }
+      };
       const [certsRes, calCertsRes, recordsRes, statusRes, qcRes, completenessRes] =
         await Promise.all([
-          stockControlApiClient.certificatesForJobCard(jobCardId),
-          stockControlApiClient.calibrationCertificates({ active: true }),
-          stockControlApiClient.batchRecordsForJobCard(jobCardId),
-          stockControlApiClient.dataBookStatus(jobCardId),
-          stockControlApiClient.qcMeasurementsForJobCard(jobCardId),
-          stockControlApiClient.dataBookCompleteness(jobCardId),
+          time("certificates", stockControlApiClient.certificatesForJobCard(jobCardId)),
+          time("calibrationCerts", stockControlApiClient.calibrationCertificates({ active: true })),
+          time("batchRecords", stockControlApiClient.batchRecordsForJobCard(jobCardId)),
+          time("dataBookStatus", stockControlApiClient.dataBookStatus(jobCardId)),
+          time("qcMeasurements", stockControlApiClient.qcMeasurementsForJobCard(jobCardId)),
+          time("dataBookCompleteness", stockControlApiClient.dataBookCompleteness(jobCardId)),
         ]);
+      console.log(
+        `[QualityTab] total fetchQualityData ${(performance.now() - overallStart).toFixed(0)}ms`,
+      );
       setCertificates(Array.isArray(certsRes) ? certsRes : []);
       setCalibrationCerts(Array.isArray(calCertsRes) ? calCertsRes : []);
       setBatchRecords(Array.isArray(recordsRes) ? recordsRes : []);

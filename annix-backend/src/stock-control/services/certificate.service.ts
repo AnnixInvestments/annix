@@ -924,32 +924,41 @@ export class CertificateService {
   }
 
   async dataBookCompleteness(companyId: number, jobCardId: number): Promise<DataBookCompleteness> {
+    const perfStart = Date.now();
     const company = await this.companyRepo.findOne({ where: { id: companyId } });
     const qcEnabled = company?.qcEnabled ?? false;
 
+    const t1 = Date.now();
     const [certs, calCerts, batchRecords, coatingAnalysis] = await Promise.all([
       this.certificatesForJobCard(companyId, jobCardId),
       this.calCertRepo.find({ where: { companyId, isActive: true } }),
       this.batchRecordsForJobCard(companyId, jobCardId),
       this.coatingRepo.findOne({ where: { companyId, jobCardId } }),
     ]);
+    const tAfterMain = Date.now();
 
     const hasRubber = coatingAnalysis?.hasInternalLining === true;
     const hasPaint = (coatingAnalysis?.coats ?? []).length > 0;
 
     const qcResult = qcEnabled
       ? await (async () => {
+          const tQcStart = Date.now();
           const [qcData, itemsReleases] = await Promise.all([
             this.qcMeasurementService.allMeasurementsForJobCard(companyId, jobCardId),
             this.qcMeasurementService.itemsReleasesForJobCard(companyId, jobCardId),
           ]);
-          return this.qcSections(
+          const tQcData = Date.now();
+          const sections = this.qcSections(
             qcData,
             itemsReleases,
             hasRubber,
             hasPaint,
             coatingAnalysis || null,
           );
+          this.logger.log(
+            `[perf] dataBookCompleteness qc JC=${jobCardId} qcData=${tQcData - tQcStart}ms sections=${Date.now() - tQcData}ms`,
+          );
+          return sections;
         })()
       : { sections: [], warnings: [] };
 
@@ -1017,6 +1026,10 @@ export class CertificateService {
           })()
         : []),
     ];
+
+    this.logger.log(
+      `[perf] dataBookCompleteness JC=${jobCardId} company=${t1 - perfStart}ms mainParallel=${tAfterMain - t1}ms total=${Date.now() - perfStart}ms`,
+    );
 
     return {
       overallPercent,

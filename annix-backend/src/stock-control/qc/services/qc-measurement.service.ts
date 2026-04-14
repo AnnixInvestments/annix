@@ -1145,6 +1145,13 @@ export class QcMeasurementService {
     controlPlans: QcControlPlan[];
     releaseCertificates: QcReleaseCertificate[];
   }> {
+    const perfStart = Date.now();
+    const time = async <T>(label: string, p: Promise<T>): Promise<T> => {
+      const t0 = Date.now();
+      const result = await p;
+      this.logger.log(`[perf] allMeasurements.${label} JC=${jobCardId} ${Date.now() - t0}ms`);
+      return result;
+    };
     const [
       shoreHardness,
       dftReadings,
@@ -1154,14 +1161,17 @@ export class QcMeasurementService {
       controlPlans,
       releaseCertificates,
     ] = await Promise.all([
-      this.shoreHardnessForJobCard(companyId, jobCardId),
-      this.dftReadingsForJobCard(companyId, jobCardId),
-      this.blastProfilesForJobCard(companyId, jobCardId),
-      this.dustDebrisTestsForJobCard(companyId, jobCardId),
-      this.pullTestsForJobCard(companyId, jobCardId),
-      this.controlPlansForJobCard(companyId, jobCardId),
-      this.releaseCertificatesForJobCard(companyId, jobCardId),
+      time("shoreHardness", this.shoreHardnessForJobCard(companyId, jobCardId)),
+      time("dftReadings", this.dftReadingsForJobCard(companyId, jobCardId)),
+      time("blastProfiles", this.blastProfilesForJobCard(companyId, jobCardId)),
+      time("dustDebrisTests", this.dustDebrisTestsForJobCard(companyId, jobCardId)),
+      time("pullTests", this.pullTestsForJobCard(companyId, jobCardId)),
+      time("controlPlans", this.controlPlansForJobCard(companyId, jobCardId)),
+      time("releaseCertificates", this.releaseCertificatesForJobCard(companyId, jobCardId)),
     ]);
+    this.logger.log(
+      `[perf] allMeasurementsForJobCard JC=${jobCardId} total=${Date.now() - perfStart}ms`,
+    );
 
     return {
       shoreHardness,
