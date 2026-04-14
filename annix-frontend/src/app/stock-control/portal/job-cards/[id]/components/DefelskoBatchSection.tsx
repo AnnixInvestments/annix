@@ -138,22 +138,27 @@ export function DefelskoBatchSection(props: DefelskoBatchSectionProps) {
     return fields;
   }, [coatingAnalysis]);
 
+  const hasLining = coatingAnalysis ? coatingAnalysis.hasInternalLining : false;
+
   const rubberFields = useMemo(
-    (): BatchField[] => [
-      {
-        fieldKey: "rubber_blast_profile",
-        category: "rubber",
-        label: "Blast Profile",
-        allowNA: true,
-      },
-      {
-        fieldKey: "rubber_shore_hardness",
-        category: "rubber",
-        label: "Shore Hardness",
-        allowNA: true,
-      },
-    ],
-    [],
+    (): BatchField[] =>
+      hasLining
+        ? [
+            {
+              fieldKey: "rubber_blast_profile",
+              category: "rubber",
+              label: "Blast Profile",
+              allowNA: true,
+            },
+            {
+              fieldKey: "rubber_shore_hardness",
+              category: "rubber",
+              label: "Shore Hardness",
+              allowNA: true,
+            },
+          ]
+        : [],
+    [hasLining],
   );
 
   const allFields = useMemo(() => [...paintFields, ...rubberFields], [paintFields, rubberFields]);
@@ -383,25 +388,27 @@ export function DefelskoBatchSection(props: DefelskoBatchSectionProps) {
             </div>
           )}
 
-          <div>
-            <h4 className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-1">
-              Rubber
-            </h4>
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-gray-200">
-                  <th className="px-2 py-1 text-left text-[10px] font-medium text-gray-500 uppercase w-24 sm:w-32">
-                    Item
-                  </th>
-                  <th className="px-2 py-1 text-left text-[10px] font-medium text-gray-500 uppercase">
-                    Batch #
-                  </th>
-                  <th className="px-1 py-1 text-center text-[10px] font-medium text-gray-500 uppercase w-10"></th>
-                </tr>
-              </thead>
-              <tbody>{rubberFields.map(renderFieldRow)}</tbody>
-            </table>
-          </div>
+          {hasLining && (
+            <div>
+              <h4 className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-1">
+                Rubber
+              </h4>
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-gray-200">
+                    <th className="px-2 py-1 text-left text-[10px] font-medium text-gray-500 uppercase w-24 sm:w-32">
+                      Item
+                    </th>
+                    <th className="px-2 py-1 text-left text-[10px] font-medium text-gray-500 uppercase">
+                      Batch #
+                    </th>
+                    <th className="px-1 py-1 text-center text-[10px] font-medium text-gray-500 uppercase w-10"></th>
+                  </tr>
+                </thead>
+                <tbody>{rubberFields.map(renderFieldRow)}</tbody>
+              </table>
+            </div>
+          )}
         </div>
 
         {envDateRange && envDateRange.requiredDates.length > 0 && (
