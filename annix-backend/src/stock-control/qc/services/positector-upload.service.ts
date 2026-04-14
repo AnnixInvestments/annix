@@ -41,7 +41,50 @@ export class PositectorUploadService implements OnModuleInit {
         const msg = err instanceof Error ? err.message : String(err);
         this.logger.warn(`Auto-fix bundle batch names failed: ${msg}`);
       });
+      this.backfillMissingMeasurementDates().catch((err) => {
+        const msg = err instanceof Error ? err.message : String(err);
+        this.logger.warn(`Auto-backfill measurement dates failed: ${msg}`);
+      });
     }, 10000);
+  }
+
+  private async backfillMissingMeasurementDates(): Promise<void> {
+    const pending = await this.uploadRepo
+      .createQueryBuilder("u")
+      .where("u.measurementDate IS NULL")
+      .getMany();
+
+    if (pending.length === 0) return;
+
+    this.logger.log(`Backfilling measurement_date for ${pending.length} uploads...`);
+    const datePattern = /(\d{4}-\d{2}-\d{2})/;
+    let updated = 0;
+
+    for (const upload of pending) {
+      try {
+        const fromHeader = this.extractMeasurementDate(upload.headerData);
+        if (fromHeader) {
+          await this.uploadRepo.update(upload.id, { measurementDate: fromHeader });
+          updated++;
+          continue;
+        }
+        const buffer = await this.storageService.download(upload.s3FilePath);
+        const pdfParseModule = require("pdf-parse");
+        const pdfParse = pdfParseModule.default ?? pdfParseModule;
+        const pdfData = await pdfParse(buffer);
+        const text: string = pdfData.text;
+        const match = text.match(datePattern);
+        if (match) {
+          await this.uploadRepo.update(upload.id, { measurementDate: match[1] });
+          updated++;
+        }
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        this.logger.warn(`Failed to backfill measurement_date for upload ${upload.id}: ${msg}`);
+      }
+    }
+
+    this.logger.log(`Backfilled measurement_date for ${updated}/${pending.length} uploads`);
   }
 
   private async fixAllBundleBatchNames(): Promise<void> {
@@ -136,6 +179,7 @@ export class PositectorUploadService implements OnModuleInit {
       entityType,
       detectedFormat,
       headerData: batch.header.raw,
+      measurementDate: this.extractMeasurementDate(batch.header.raw),
       readingsData,
       statisticsData: batch.statistics || null,
       readingCount: batch.readings.length,
@@ -360,6 +404,17 @@ export class PositectorUploadService implements OnModuleInit {
     }
 
     return results;
+  }
+
+  private extractMeasurementDate(raw: Record<string, string> | null | undefined): string | null {
+    if (!raw) return null;
+    const candidates = [raw.Created, raw.created, raw.Date, raw.date];
+    for (const value of candidates) {
+      if (!value || typeof value !== "string") continue;
+      const match = value.match(/(\d{4}-\d{2}-\d{2})/);
+      if (match) return match[1];
+    }
+    return null;
   }
 
   private computeFingerprint(

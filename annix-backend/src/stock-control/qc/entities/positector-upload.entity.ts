@@ -74,6 +74,9 @@ export class PositectorUpload {
   @Column({ name: "fingerprint", type: "varchar", length: 64, nullable: true })
   fingerprint: string | null;
 
+  @Column({ name: "measurement_date", type: "date", nullable: true })
+  measurementDate: string | null;
+
   @CreateDateColumn({ name: "created_at", type: "timestamp with time zone" })
   createdAt: Date;
 
