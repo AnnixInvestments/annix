@@ -475,6 +475,7 @@ export default function JobCardDetailPage() {
     try {
       setIsReExtractingNotes(true);
       await reExtractJobCardNotes(jobId);
+      await stockControlApiClient.recalculateM2(jobId);
       fetchData();
     } catch (err) {
       setError(err instanceof Error ? err : new Error("Failed to re-extract notes"));

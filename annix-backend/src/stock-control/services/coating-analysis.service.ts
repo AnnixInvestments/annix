@@ -174,15 +174,15 @@ export class CoatingAnalysisService {
 
       const PIPE_ITEM_PATTERN =
         /(?:\d+\s*NB|NB\s*\d+|^\d{2,4}\s*x\s*\d{2,4}\b|\bPIPE\b|\bBEND\b|\bELBOW\b|\bTEE\b|\bT[- ]?PIECE\b|\bREDUCER\b|\bLATERAL\b|\bFLANGE\b|\bOFFSET\b|\bVALVE\b|\bSCH(?:EDULE)?\s*\d+|\d+\s*LG\b)/i;
-      const hasMissingM2 = lineItems.some((li) => {
+      const hasPipeItems = lineItems.some((li) => {
         const desc = li.itemDescription || li.itemCode || "";
-        return PIPE_ITEM_PATTERN.test(desc) && (li.m2 === null || li.m2 === 0);
+        return PIPE_ITEM_PATTERN.test(desc);
       });
 
       let calculatedExtM2 = 0;
       let calculatedIntM2 = 0;
 
-      if (hasMissingM2) {
+      if (hasPipeItems) {
         const calculated = await this.calculatePipeM2(lineItems);
         calculatedExtM2 = calculated.extM2;
         calculatedIntM2 = calculated.intM2;
