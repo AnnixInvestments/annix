@@ -227,17 +227,25 @@ interface ItemsReleaseFormProps {
 }
 
 function ItemsReleaseForm({ jobCardId, existing, onSaved, onCancel }: ItemsReleaseFormProps) {
-  const [items, setItems] = useState<ReleaseLineItem[]>(existing?.items || []);
-  const [checkedByName, setCheckedByName] = useState(existing?.checkedByName || "");
-  const [comments, setComments] = useState(existing?.comments || "");
+  const existingItems = existing ? existing.items : null;
+  const existingCheckedByName = existing ? existing.checkedByName : null;
+  const existingComments = existing ? existing.comments : null;
+  const existingPls = existing ? existing.plsSignOff : null;
+  const existingMps = existing ? existing.mpsSignOff : null;
+  const existingClient = existing ? existing.clientSignOff : null;
+  const [items, setItems] = useState<ReleaseLineItem[]>(existingItems ? existingItems : []);
+  const [checkedByName, setCheckedByName] = useState(
+    existingCheckedByName ? existingCheckedByName : "",
+  );
+  const [comments, setComments] = useState(existingComments ? existingComments : "");
   const [plsSignOff, setPlsSignOff] = useState<ReleasePartySignOff>(
-    existing?.plsSignOff || emptySignOff(),
+    existingPls ? existingPls : emptySignOff(),
   );
   const [mpsSignOff, setMpsSignOff] = useState<ReleasePartySignOff>(
-    existing?.mpsSignOff || emptySignOff(),
+    existingMps ? existingMps : emptySignOff(),
   );
   const [clientSignOff, setClientSignOff] = useState<ReleasePartySignOff>(
-    existing?.clientSignOff || emptySignOff(),
+    existingClient ? existingClient : emptySignOff(),
   );
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
