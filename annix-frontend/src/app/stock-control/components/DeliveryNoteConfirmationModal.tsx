@@ -19,12 +19,12 @@ const inputClass =
   "block w-full rounded border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 text-xs border px-1.5 py-1";
 
 function isRubberItem(item: AnalyzedDeliveryNoteLineItem): boolean {
-  return !!(
-    item.rollNumber ||
-    item.compoundCode ||
-    item.thicknessMm ||
-    item.widthMm ||
-    item.lengthM
+  return (
+    item.rollNumber != null ||
+    item.compoundCode != null ||
+    item.thicknessMm != null ||
+    item.widthMm != null ||
+    item.lengthM != null
   );
 }
 
@@ -38,13 +38,18 @@ function hasGeneralItems(items: AnalyzedDeliveryNoteLineItem[]): boolean {
 
 export function DeliveryNoteConfirmationModal(props: DeliveryNoteConfirmationModalProps) {
   const { analyzedData, onClose, onConfirmAndAddToStock, onSaveForReview, isSubmitting } = props;
+  const analyzedDeliveryNoteNumber = analyzedData.deliveryNoteNumber;
+  const analyzedDeliveryDate = analyzedData.deliveryDate;
+  const analyzedSupplierName = analyzedData.fromCompany.name;
+  const analyzedPurchaseOrderNumber = analyzedData.purchaseOrderNumber;
+  const analyzedCustomerReference = analyzedData.customerReference;
 
   const [header, setHeader] = useState({
-    deliveryNoteNumber: analyzedData.deliveryNoteNumber || "",
-    deliveryDate: analyzedData.deliveryDate || "",
-    supplierName: analyzedData.fromCompany.name || "",
-    purchaseOrderNumber: analyzedData.purchaseOrderNumber || "",
-    customerReference: analyzedData.customerReference || "",
+    deliveryNoteNumber: analyzedDeliveryNoteNumber || "",
+    deliveryDate: analyzedDeliveryDate || "",
+    supplierName: analyzedSupplierName || "",
+    purchaseOrderNumber: analyzedPurchaseOrderNumber || "",
+    customerReference: analyzedCustomerReference || "",
   });
 
   const [lineItems, setLineItems] = useState<AnalyzedDeliveryNoteLineItem[]>(
@@ -114,18 +119,25 @@ export function DeliveryNoteConfirmationModal(props: DeliveryNoteConfirmationMod
     setLineItems((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const buildEditedData = (): AnalyzedDeliveryNoteData => ({
-    ...analyzedData,
-    deliveryNoteNumber: header.deliveryNoteNumber || null,
-    deliveryDate: header.deliveryDate || null,
-    purchaseOrderNumber: header.purchaseOrderNumber || null,
-    customerReference: header.customerReference || null,
-    fromCompany: {
-      ...analyzedData.fromCompany,
-      name: header.supplierName || null,
-    },
-    lineItems,
-  });
+  const buildEditedData = (): AnalyzedDeliveryNoteData => {
+    const headerDeliveryNoteNumber = header.deliveryNoteNumber;
+    const headerDeliveryDate = header.deliveryDate;
+    const headerPurchaseOrderNumber = header.purchaseOrderNumber;
+    const headerCustomerReference = header.customerReference;
+    const headerSupplierName = header.supplierName;
+    return {
+      ...analyzedData,
+      deliveryNoteNumber: headerDeliveryNoteNumber || null,
+      deliveryDate: headerDeliveryDate || null,
+      purchaseOrderNumber: headerPurchaseOrderNumber || null,
+      customerReference: headerCustomerReference || null,
+      fromCompany: {
+        ...analyzedData.fromCompany,
+        name: headerSupplierName || null,
+      },
+      lineItems,
+    };
+  };
 
   const rubberItems = lineItems
     .map((item, index) => ({ item, index }))
@@ -427,127 +439,138 @@ export function DeliveryNoteConfirmationModal(props: DeliveryNoteConfirmationMod
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
-                      {rubberItems.map(({ item, index }) => (
-                        <tr key={index} className="hover:bg-gray-50">
-                          <td className="px-2 py-1.5">
-                            <input
-                              type="text"
-                              value={item.rollNumber || ""}
-                              onChange={(e) => updateLineItem(index, "rollNumber", e.target.value)}
-                              className={inputClass}
-                              placeholder="e.g., 187-41524"
-                            />
-                          </td>
-                          <td className="px-2 py-1.5">
-                            <input
-                              type="text"
-                              value={item.compoundCode || ""}
-                              onChange={(e) =>
-                                updateLineItem(index, "compoundCode", e.target.value)
-                              }
-                              className={inputClass}
-                              placeholder="SC38"
-                            />
-                          </td>
-                          <td className="px-2 py-1.5 w-20">
-                            <input
-                              type="number"
-                              value={item.thicknessMm || ""}
-                              onChange={(e) =>
-                                updateLineItem(
-                                  index,
-                                  "thicknessMm",
-                                  e.target.value ? Number(e.target.value) : null,
-                                )
-                              }
-                              className={inputClass}
-                              step="any"
-                            />
-                          </td>
-                          <td className="px-2 py-1.5 w-20">
-                            <input
-                              type="number"
-                              value={item.widthMm || ""}
-                              onChange={(e) =>
-                                updateLineItem(
-                                  index,
-                                  "widthMm",
-                                  e.target.value ? Number(e.target.value) : null,
-                                )
-                              }
-                              className={inputClass}
-                              step="any"
-                            />
-                          </td>
-                          <td className="px-2 py-1.5 w-20">
-                            <input
-                              type="number"
-                              value={item.lengthM || ""}
-                              onChange={(e) =>
-                                updateLineItem(
-                                  index,
-                                  "lengthM",
-                                  e.target.value ? Number(e.target.value) : null,
-                                )
-                              }
-                              className={inputClass}
-                              step="any"
-                            />
-                          </td>
-                          <td className="px-2 py-1.5 w-16">
-                            <input
-                              type="number"
-                              value={item.quantity || ""}
-                              onChange={(e) =>
-                                updateLineItem(
-                                  index,
-                                  "quantity",
-                                  e.target.value ? Number(e.target.value) : null,
-                                )
-                              }
-                              className={inputClass}
-                              min="1"
-                            />
-                          </td>
-                          <td className="px-2 py-1.5 w-20">
-                            <input
-                              type="number"
-                              value={item.weightKg || ""}
-                              onChange={(e) =>
-                                updateLineItem(
-                                  index,
-                                  "weightKg",
-                                  e.target.value ? Number(e.target.value) : null,
-                                )
-                              }
-                              className={inputClass}
-                              step="any"
-                            />
-                          </td>
-                          <td className="px-2 py-1.5">
-                            <button
-                              type="button"
-                              onClick={() => removeRow(index)}
-                              className="text-red-400 hover:text-red-600 p-0.5"
-                              title="Remove row"
-                            >
-                              <svg
-                                className="h-3.5 w-3.5"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
+                      {rubberItems.map(({ item, index }) => {
+                        const rollValue = item.rollNumber == null ? "" : item.rollNumber;
+                        const compoundValue = item.compoundCode == null ? "" : item.compoundCode;
+                        const thicknessValue = item.thicknessMm == null ? "" : item.thicknessMm;
+                        const widthValue = item.widthMm == null ? "" : item.widthMm;
+                        const lengthValue = item.lengthM == null ? "" : item.lengthM;
+                        const quantityValue = item.quantity == null ? "" : item.quantity;
+                        const weightValue = item.weightKg == null ? "" : item.weightKg;
+                        return (
+                          <tr key={index} className="hover:bg-gray-50">
+                            <td className="px-2 py-1.5">
+                              <input
+                                type="text"
+                                value={rollValue}
+                                onChange={(e) =>
+                                  updateLineItem(index, "rollNumber", e.target.value)
+                                }
+                                className={inputClass}
+                                placeholder="e.g., 187-41524"
+                              />
+                            </td>
+                            <td className="px-2 py-1.5">
+                              <input
+                                type="text"
+                                value={compoundValue}
+                                onChange={(e) =>
+                                  updateLineItem(index, "compoundCode", e.target.value)
+                                }
+                                className={inputClass}
+                                placeholder="SC38"
+                              />
+                            </td>
+                            <td className="px-2 py-1.5 w-20">
+                              <input
+                                type="number"
+                                value={thicknessValue}
+                                onChange={(e) =>
+                                  updateLineItem(
+                                    index,
+                                    "thicknessMm",
+                                    e.target.value ? Number(e.target.value) : null,
+                                  )
+                                }
+                                className={inputClass}
+                                step="any"
+                              />
+                            </td>
+                            <td className="px-2 py-1.5 w-20">
+                              <input
+                                type="number"
+                                value={widthValue}
+                                onChange={(e) =>
+                                  updateLineItem(
+                                    index,
+                                    "widthMm",
+                                    e.target.value ? Number(e.target.value) : null,
+                                  )
+                                }
+                                className={inputClass}
+                                step="any"
+                              />
+                            </td>
+                            <td className="px-2 py-1.5 w-20">
+                              <input
+                                type="number"
+                                value={lengthValue}
+                                onChange={(e) =>
+                                  updateLineItem(
+                                    index,
+                                    "lengthM",
+                                    e.target.value ? Number(e.target.value) : null,
+                                  )
+                                }
+                                className={inputClass}
+                                step="any"
+                              />
+                            </td>
+                            <td className="px-2 py-1.5 w-16">
+                              <input
+                                type="number"
+                                value={quantityValue}
+                                onChange={(e) =>
+                                  updateLineItem(
+                                    index,
+                                    "quantity",
+                                    e.target.value ? Number(e.target.value) : null,
+                                  )
+                                }
+                                className={inputClass}
+                                min="1"
+                              />
+                            </td>
+                            <td className="px-2 py-1.5 w-20">
+                              <input
+                                type="number"
+                                value={weightValue}
+                                onChange={(e) =>
+                                  updateLineItem(
+                                    index,
+                                    "weightKg",
+                                    e.target.value ? Number(e.target.value) : null,
+                                  )
+                                }
+                                className={inputClass}
+                                step="any"
+                              />
+                            </td>
+                            <td className="px-2 py-1.5">
+                              <button
+                                type="button"
+                                onClick={() => removeRow(index)}
+                                className="text-red-400 hover:text-red-600 p-0.5"
+                                title="Remove row"
                               >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={2}
-                                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                                />
-                              </svg>
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
+                                <svg
+                                  className="h-3.5 w-3.5"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                                  />
+                                </svg>
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
@@ -721,90 +744,102 @@ export function DeliveryNoteConfirmationModal(props: DeliveryNoteConfirmationMod
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
-                      {generalItems.map(({ item, index }) => (
-                        <tr key={index} className="hover:bg-gray-50">
-                          <td className="px-2 py-1.5">
-                            <input
-                              type="text"
-                              value={item.description || ""}
-                              onChange={(e) => updateLineItem(index, "description", e.target.value)}
-                              className={inputClass}
-                              placeholder="Item description"
-                            />
-                          </td>
-                          <td className="px-2 py-1.5 w-32">
-                            <input
-                              type="text"
-                              value={item.productCode || ""}
-                              onChange={(e) => updateLineItem(index, "productCode", e.target.value)}
-                              className={inputClass}
-                            />
-                          </td>
-                          <td className="px-2 py-1.5 w-16">
-                            <input
-                              type="number"
-                              value={item.quantity || ""}
-                              onChange={(e) =>
-                                updateLineItem(
-                                  index,
-                                  "quantity",
-                                  e.target.value ? Number(e.target.value) : null,
-                                )
-                              }
-                              className={inputClass}
-                              min="1"
-                            />
-                          </td>
-                          <td className="px-2 py-1.5 w-20">
-                            <input
-                              type="text"
-                              value={item.unitOfMeasure || ""}
-                              onChange={(e) =>
-                                updateLineItem(index, "unitOfMeasure", e.target.value)
-                              }
-                              className={inputClass}
-                              placeholder="each"
-                            />
-                          </td>
-                          <td className="px-2 py-1.5 w-20">
-                            <input
-                              type="number"
-                              value={item.weightKg || ""}
-                              onChange={(e) =>
-                                updateLineItem(
-                                  index,
-                                  "weightKg",
-                                  e.target.value ? Number(e.target.value) : null,
-                                )
-                              }
-                              className={inputClass}
-                              step="any"
-                            />
-                          </td>
-                          <td className="px-2 py-1.5">
-                            <button
-                              type="button"
-                              onClick={() => removeRow(index)}
-                              className="text-red-400 hover:text-red-600 p-0.5"
-                              title="Remove row"
-                            >
-                              <svg
-                                className="h-3.5 w-3.5"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
+                      {generalItems.map(({ item, index }) => {
+                        const descriptionValue = item.description == null ? "" : item.description;
+                        const productCodeValue = item.productCode == null ? "" : item.productCode;
+                        const quantityValue = item.quantity == null ? "" : item.quantity;
+                        const unitOfMeasureValue =
+                          item.unitOfMeasure == null ? "" : item.unitOfMeasure;
+                        const weightValue = item.weightKg == null ? "" : item.weightKg;
+                        return (
+                          <tr key={index} className="hover:bg-gray-50">
+                            <td className="px-2 py-1.5">
+                              <input
+                                type="text"
+                                value={descriptionValue}
+                                onChange={(e) =>
+                                  updateLineItem(index, "description", e.target.value)
+                                }
+                                className={inputClass}
+                                placeholder="Item description"
+                              />
+                            </td>
+                            <td className="px-2 py-1.5 w-32">
+                              <input
+                                type="text"
+                                value={productCodeValue}
+                                onChange={(e) =>
+                                  updateLineItem(index, "productCode", e.target.value)
+                                }
+                                className={inputClass}
+                              />
+                            </td>
+                            <td className="px-2 py-1.5 w-16">
+                              <input
+                                type="number"
+                                value={quantityValue}
+                                onChange={(e) =>
+                                  updateLineItem(
+                                    index,
+                                    "quantity",
+                                    e.target.value ? Number(e.target.value) : null,
+                                  )
+                                }
+                                className={inputClass}
+                                min="1"
+                              />
+                            </td>
+                            <td className="px-2 py-1.5 w-20">
+                              <input
+                                type="text"
+                                value={unitOfMeasureValue}
+                                onChange={(e) =>
+                                  updateLineItem(index, "unitOfMeasure", e.target.value)
+                                }
+                                className={inputClass}
+                                placeholder="each"
+                              />
+                            </td>
+                            <td className="px-2 py-1.5 w-20">
+                              <input
+                                type="number"
+                                value={weightValue}
+                                onChange={(e) =>
+                                  updateLineItem(
+                                    index,
+                                    "weightKg",
+                                    e.target.value ? Number(e.target.value) : null,
+                                  )
+                                }
+                                className={inputClass}
+                                step="any"
+                              />
+                            </td>
+                            <td className="px-2 py-1.5">
+                              <button
+                                type="button"
+                                onClick={() => removeRow(index)}
+                                className="text-red-400 hover:text-red-600 p-0.5"
+                                title="Remove row"
                               >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={2}
-                                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                                />
-                              </svg>
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
+                                <svg
+                                  className="h-3.5 w-3.5"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                                  />
+                                </svg>
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>

@@ -18,7 +18,10 @@ export default function SupplierHubPage() {
 
   const hubItems = items.map((item) => ({
     item,
-    description: DESCRIPTIONS[item.key] ?? "",
+    description: (() => {
+      const description = DESCRIPTIONS[item.key];
+      return description ?? "";
+    })(),
   }));
 
   return (

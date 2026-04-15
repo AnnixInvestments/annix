@@ -41,7 +41,8 @@ function matchLabel(matchType: string): string {
     fuzzy_same_supplier: "Same Supplier",
     fuzzy_high_confidence: "High Confidence",
   };
-  return labels[matchType] || matchType;
+  const label = labels[matchType];
+  return label || matchType;
 }
 
 function matchColor(score: number): string {

@@ -60,7 +60,9 @@ export function ApprovalModal(props: ApprovalModalProps) {
       setError(null);
       try {
         const dataUrl = signatureDataUrl || undefined;
-        await onApprove(dataUrl, comments || undefined, selectedOutcome || undefined);
+        const approvalComments = comments || undefined;
+        const outcomeKey = selectedOutcome || undefined;
+        await onApprove(dataUrl, approvalComments, outcomeKey);
         onClose();
       } catch (err) {
         const message = err instanceof Error ? err.message : "Approval failed. Please try again.";
@@ -108,7 +110,10 @@ export function ApprovalModal(props: ApprovalModalProps) {
 
   if (!isOpen) return null;
 
-  const selectedOutcomeLabel = stepOutcomes?.find((o) => o.key === selectedOutcome)?.label || "";
+  const selectedOutcomeMatch = stepOutcomes?.find((o) => o.key === selectedOutcome);
+  const selectedOutcomeText = selectedOutcomeMatch?.label;
+  const selectedOutcomeLabel = selectedOutcomeText || "";
+  const closeMode = hasOutcomes ? "outcome" : "choice";
 
   return createPortal(
     <div
@@ -171,7 +176,10 @@ export function ApprovalModal(props: ApprovalModalProps) {
                     <button
                       key={outcome.key}
                       onClick={() => handleSelectOutcome(outcome.key)}
-                      className={`flex-1 px-4 py-3 text-white rounded-lg font-medium ${OUTCOME_STYLE_MAP[outcome.style] || "bg-gray-600 hover:bg-gray-700"}`}
+                      className={`flex-1 px-4 py-3 text-white rounded-lg font-medium ${(() => {
+                        const outcomeStyle = OUTCOME_STYLE_MAP[outcome.style];
+                        return outcomeStyle || "bg-gray-600 hover:bg-gray-700";
+                      })()}`}
                     >
                       {outcome.label}
                     </button>
@@ -220,7 +228,7 @@ export function ApprovalModal(props: ApprovalModalProps) {
                   ) : (
                     <SignaturePad
                       onSave={handleApprove}
-                      onCancel={() => (hasOutcomes ? setMode("outcome") : setMode("choice"))}
+                      onCancel={() => setMode(closeMode)}
                       existingSignature={savedSignature}
                     />
                   )}

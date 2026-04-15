@@ -1,5 +1,6 @@
 "use client";
 
+import { isArray, keys } from "es-toolkit/compat";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -111,7 +112,7 @@ export default function JobCardDetailPage() {
   const { mutateAsync: uploadReadyPhoto } = useUploadReadyPhoto();
   const { mutateAsync: confirmIssuance } = useConfirmIssuance();
   const { mutateAsync: placeRequisitionDecision } = usePlaceRequisitionDecision();
-  const { mutateAsync: useCurrentStockDecisionMutation } = useUseCurrentStockDecision();
+  const { mutateAsync: submitUseCurrentStockDecision } = useUseCurrentStockDecision();
   const { mutateAsync: loadSourceFileUrl } = useLoadSourceFileUrl();
   const { mutateAsync: loadReconciliationGateStatus } = useLoadReconciliationGateStatus();
 
@@ -160,7 +161,7 @@ export default function JobCardDetailPage() {
         stockControlApiClient.jobCardAllocations(jobId),
       ]);
       setJobCard(jobData);
-      setAllocations(Array.isArray(allocationsData) ? allocationsData : []);
+      setAllocations(isArray(allocationsData) ? allocationsData : []);
       setError(null);
 
       stockControlApiClient
@@ -240,7 +241,7 @@ export default function JobCardDetailPage() {
   const fetchStockItems = async () => {
     try {
       const result = await stockControlApiClient.stockItems({ limit: "1000" });
-      setStockItems(Array.isArray(result.items) ? result.items : []);
+      setStockItems(isArray(result.items) ? result.items : []);
     } catch (err) {
       setError(err instanceof Error ? err : new Error("Failed to load stock items"));
     }
@@ -250,7 +251,7 @@ export default function JobCardDetailPage() {
     await fetchStockItems();
     try {
       const staff = await stockControlApiClient.staffMembers({ active: "true" });
-      setActiveStaff(Array.isArray(staff) ? staff : []);
+      setActiveStaff(isArray(staff) ? staff : []);
     } catch {
       setActiveStaff([]);
     }
@@ -446,7 +447,7 @@ export default function JobCardDetailPage() {
       fetchData();
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Failed to complete action";
-      alert(msg);
+      setError(new Error(msg));
     } finally {
       setIsCompletingFgAction(false);
     }
@@ -530,8 +531,9 @@ export default function JobCardDetailPage() {
     if (workflowStatus.jobCardStatus !== "active") return false;
     const checkName = isPreviewActive ? effectiveName : user?.name;
     if (!checkName) return false;
-    const assignments = workflowStatus.stepAssignments || {};
-    const qualityKeys = Object.keys(assignments).filter(
+    const stepAssignments = workflowStatus.stepAssignments;
+    const assignments = stepAssignments || {};
+    const qualityKeys = keys(assignments).filter(
       (k) => k.includes("quality") || k === "qa_review" || k === "qa_final_check",
     );
     return qualityKeys.some((k) => {
@@ -605,11 +607,15 @@ export default function JobCardDetailPage() {
 
   const tabDefinitions: TabDefinition[] = useMemo(() => {
     const status = jobCard?.status?.toLowerCase() || "draft";
+    const lineItems = jobCard?.lineItems ? jobCard.lineItems : [];
     const allLineItemText = [
       jobCard?.notes ? jobCard.notes : "",
-      ...(jobCard?.lineItems ? jobCard.lineItems : []).map(
-        (li) => `${li.itemCode || ""} ${li.itemDescription || ""} ${li.notes || ""}`,
-      ),
+      ...lineItems.map((li) => {
+        const itemCode = li.itemCode;
+        const itemDescription = li.itemDescription;
+        const lineItemNotes = li.notes;
+        return `${itemCode || ""} ${itemDescription || ""} ${lineItemNotes || ""}`;
+      }),
     ]
       .join(" ")
       .toLowerCase();
@@ -658,19 +664,22 @@ export default function JobCardDetailPage() {
     const checkName = effectiveName || user?.name;
     if (!workflowStatus || !checkName) return [];
     if (workflowStatus.jobCardStatus === "draft") return [];
-    const fgSteps = workflowStatus.foregroundSteps || [];
+    const foregroundSteps = workflowStatus.foregroundSteps;
+    const fgSteps = foregroundSteps || [];
     const fgKeys = fgSteps.filter((s) => s.key !== "draft").map((s) => s.key);
     const fgKeySet = new Set(fgKeys);
     const currentFgIdx = fgKeys.indexOf(currentStatus || "");
     const completedKeys = new Set(
       backgroundSteps.filter((bg) => bg.completedAt !== null).map((bg) => bg.stepKey),
     );
-    const assignments = workflowStatus.stepAssignments || {};
+    const stepAssignments = workflowStatus.stepAssignments;
+    const assignments = stepAssignments || {};
     const bgKeySet = new Set(backgroundSteps.map((bg) => bg.stepKey));
 
     const triggerGroups = backgroundSteps.reduce<Record<string, BackgroundStepStatus[]>>(
       (acc, bg) => {
-        const trigger = bg.triggerAfterStep || "__root__";
+        const triggerAfterStep = bg.triggerAfterStep;
+        const trigger = triggerAfterStep || "__root__";
         return { ...acc, [trigger]: [...(acc[trigger] ? acc[trigger] : []), bg] };
       },
       {},
@@ -682,7 +691,10 @@ export default function JobCardDetailPage() {
       if (visited.has(trigger)) return 0;
       visited.add(trigger);
       const parentBg = backgroundSteps.find((bg) => bg.stepKey === trigger);
-      if (parentBg) return resolveOriginFgIdx(parentBg.triggerAfterStep || "__root__", visited);
+      if (parentBg) {
+        const parentTriggerAfterStep = parentBg.triggerAfterStep;
+        return resolveOriginFgIdx(parentTriggerAfterStep || "__root__", visited);
+      }
       return 0;
     };
 
@@ -712,7 +724,8 @@ export default function JobCardDetailPage() {
         return false;
       }
 
-      const trigger = bg.triggerAfterStep || "__root__";
+      const triggerAfterStep = bg.triggerAfterStep;
+      const trigger = triggerAfterStep || "__root__";
       const originFgIdx = resolveOriginFgIdx(trigger);
       const isColored = isInColoredBranch(bg.stepKey);
       const coloredAtTrigger = isColored && originFgIdx === currentFgIdx;
@@ -740,7 +753,10 @@ export default function JobCardDetailPage() {
           const originKey = fgKeys[resolveOriginFgIdx(trigger)];
           const coloredOrigin =
             coloredSteps.length > 0
-              ? fgKeys[resolveOriginFgIdx(coloredSteps[0].triggerAfterStep || "__root__")]
+              ? (() => {
+                  const coloredStepTriggerAfterStep = coloredSteps[0].triggerAfterStep;
+                  return fgKeys[resolveOriginFgIdx(coloredStepTriggerAfterStep || "__root__")];
+                })()
               : null;
           if (originKey === coloredOrigin) return false;
         }
@@ -751,9 +767,11 @@ export default function JobCardDetailPage() {
       const isNonBlockingBranch = bg.rejoinAtStep !== null;
       if (!isNonBlockingBranch) {
         const allSiblings = triggerGroups[trigger] ? triggerGroups[trigger] : [];
-        const sameBranchSiblings = allSiblings.filter(
-          (s) => (s.branchColor || null) === (bg.branchColor || null),
-        );
+        const sameBranchSiblings = allSiblings.filter((s) => {
+          const siblingBranchColor = s.branchColor;
+          const branchColor = bg.branchColor;
+          return (siblingBranchColor || null) === (branchColor || null);
+        });
         const myIdx = sameBranchSiblings.findIndex((s) => s.stepKey === bg.stepKey);
         if (myIdx > 0) {
           const allPriorComplete = sameBranchSiblings
@@ -774,11 +792,13 @@ export default function JobCardDetailPage() {
 
     if (isAdminView || allActionable.length <= 1) return allActionable;
 
-    const firstOriginIdx = resolveOriginFgIdx(allActionable[0].triggerAfterStep || "__root__");
+    const firstActionableTriggerAfterStep = allActionable[0].triggerAfterStep;
+    const firstOriginIdx = resolveOriginFgIdx(firstActionableTriggerAfterStep || "__root__");
 
     return allActionable.filter((bg) => {
       if (bg.rejoinAtStep !== null) return true;
-      const originIdx = resolveOriginFgIdx(bg.triggerAfterStep || "__root__");
+      const triggerAfterStep = bg.triggerAfterStep;
+      const originIdx = resolveOriginFgIdx(triggerAfterStep || "__root__");
       return originIdx === firstOriginIdx;
     });
   }, [
@@ -809,12 +829,14 @@ export default function JobCardDetailPage() {
       };
     }
 
-    const completions = workflowStatus.actionCompletions || [];
+    const actionCompletions = workflowStatus.actionCompletions;
+    const completions = actionCompletions || [];
     const phase1ActionDone = completions.some(
       (ac) => ac.stepKey === currentStep && ac.actionType === "primary",
     );
 
-    const fgSteps = workflowStatus.foregroundSteps || [];
+    const foregroundSteps = workflowStatus.foregroundSteps;
+    const fgSteps = foregroundSteps || [];
     const stepConfig = fgSteps.find((s) => s.key === currentStep);
     const actionLabel = stepConfig?.actionLabel ? stepConfig.actionLabel : null;
 
@@ -831,7 +853,8 @@ export default function JobCardDetailPage() {
       };
     }
 
-    const bgSteps: BackgroundStepStatus[] = workflowStatus.backgroundSteps || [];
+    const backgroundWorkflowSteps = workflowStatus.backgroundSteps;
+    const bgSteps: BackgroundStepStatus[] = backgroundWorkflowSteps || [];
     const phase1Keys = new Set(phaseEntry.phases[0].bgStepKeys);
     const phase1BgSteps = bgSteps.filter((bg) => phase1Keys.has(bg.stepKey));
     const phase1Complete =
@@ -876,11 +899,13 @@ export default function JobCardDetailPage() {
 
   const prevStepBgPending = useMemo(() => {
     if (!workflowStatus || !currentStep) return false;
-    const fgSteps = workflowStatus.foregroundSteps || [];
+    const foregroundSteps = workflowStatus.foregroundSteps;
+    const fgSteps = foregroundSteps || [];
     const currentIdx = fgSteps.findIndex((s) => s.key === currentStep);
     if (currentIdx <= 0) return false;
     const prevStepKey = fgSteps[currentIdx - 1].key;
-    const bgSteps: BackgroundStepStatus[] = workflowStatus.backgroundSteps || [];
+    const backgroundWorkflowSteps = workflowStatus.backgroundSteps;
+    const bgSteps: BackgroundStepStatus[] = backgroundWorkflowSteps || [];
     const fgKeySet = new Set(fgSteps.map((s) => s.key));
     const bgKeySet = new Set(bgSteps.map((bg) => bg.stepKey));
     const bgByTrigger = bgSteps.reduce<Record<string, BackgroundStepStatus[]>>((acc, bg) => {
@@ -1151,7 +1176,7 @@ export default function JobCardDetailPage() {
       closeReadyPhotoModal();
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Failed to upload photo";
-      alert(msg);
+      setCameraError(msg);
     } finally {
       setIsUploadingReadyPhoto(false);
     }
@@ -1168,7 +1193,7 @@ export default function JobCardDetailPage() {
         closeReadyPhotoModal();
       } catch (err) {
         const msg = err instanceof Error ? err.message : "Failed to upload photo";
-        alert(msg);
+        setCameraError(msg);
       } finally {
         setIsUploadingReadyPhoto(false);
         if (readyPhotoInputRef.current) {
@@ -1263,7 +1288,7 @@ export default function JobCardDetailPage() {
     try {
       setIsProcessingDecision(true);
       setDecisionError(null);
-      await useCurrentStockDecisionMutation(jobId);
+      await submitUseCurrentStockDecision(jobId);
       fetchData();
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to use current stock";
@@ -1453,9 +1478,10 @@ export default function JobCardDetailPage() {
                 {jobCard.jobNumber}
                 {jobCard.jcNumber ? ` / ${jobCard.jcNumber}` : null}
                 {(() => {
+                  const lineItems = jobCard.lineItems;
                   const jtNumbers = [
                     ...new Set(
-                      (jobCard.lineItems || [])
+                      (lineItems || [])
                         .map((li) => li.jtNo)
                         .filter((jt): jt is string => jt !== null && jt !== ""),
                     ),
@@ -1729,9 +1755,12 @@ export default function JobCardDetailPage() {
                             }
                             className="px-3 py-1.5 text-xs font-medium rounded-md bg-amber-600 text-white hover:bg-amber-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
                           >
-                            {completingStepKey === bg.stepKey
-                              ? "..."
-                              : bg.actionLabel || `Complete ${bg.label}`}
+                            {(() => {
+                              const actionLabel = bg.actionLabel;
+                              return completingStepKey === bg.stepKey
+                                ? "..."
+                                : actionLabel || `Complete ${bg.label}`;
+                            })()}
                           </button>
                         )}
                       </div>
@@ -1918,9 +1947,12 @@ export default function JobCardDetailPage() {
                             }
                             className="px-3 py-1.5 text-xs font-medium rounded-md bg-amber-600 text-white hover:bg-amber-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
                           >
-                            {completingStepKey === bg.stepKey
-                              ? "..."
-                              : bg.actionLabel || "Docs Uploaded"}
+                            {(() => {
+                              const actionLabel = bg.actionLabel;
+                              return completingStepKey === bg.stepKey
+                                ? "..."
+                                : actionLabel || "Docs Uploaded";
+                            })()}
                           </button>
                         )}
                       </div>
@@ -1958,9 +1990,12 @@ export default function JobCardDetailPage() {
                         }
                         className="px-3 py-1.5 text-xs font-medium rounded-md bg-amber-600 text-white hover:bg-amber-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
                       >
-                        {completingStepKey === bg.stepKey
-                          ? "..."
-                          : bg.actionLabel || `Complete ${bg.label}`}
+                        {(() => {
+                          const actionLabel = bg.actionLabel;
+                          return completingStepKey === bg.stepKey
+                            ? "..."
+                            : actionLabel || `Complete ${bg.label}`;
+                        })()}
                       </button>
                     ),
                   )}
@@ -2141,17 +2176,22 @@ export default function JobCardDetailPage() {
         </div>
       )}
 
-      {workflowStatus && (
-        <WorkflowStatus
-          currentStatus={currentStatus!}
-          approvals={approvals}
-          stepAssignments={workflowStatus.stepAssignments || {}}
-          foregroundSteps={workflowStatus.foregroundSteps || []}
-          backgroundSteps={backgroundSteps}
-          currentUserName={effectiveName || authUserName}
-          currentStepPhase1Done={currentStepActionCompleted}
-        />
-      )}
+      {workflowStatus &&
+        (() => {
+          const stepAssignments = workflowStatus.stepAssignments;
+          const foregroundSteps = workflowStatus.foregroundSteps;
+          return (
+            <WorkflowStatus
+              currentStatus={currentStatus!}
+              approvals={approvals}
+              stepAssignments={stepAssignments || {}}
+              foregroundSteps={foregroundSteps || []}
+              backgroundSteps={backgroundSteps}
+              currentUserName={effectiveName || authUserName}
+              currentStepPhase1Done={currentStepActionCompleted}
+            />
+          );
+        })()}
 
       <InspectionProposalBanner jobCardId={jobId} onChanged={fetchData} />
 
@@ -2228,7 +2268,10 @@ export default function JobCardDetailPage() {
               <div className="mt-6 border rounded-lg p-4">
                 <h3 className="text-sm font-medium text-gray-900 mb-3">Version History</h3>
                 <select
-                  value={documents.selectedVersionId || ""}
+                  value={(() => {
+                    const selectedVersionId = documents.selectedVersionId;
+                    return selectedVersionId ?? "";
+                  })()}
                   onChange={(e) => {
                     const val = e.target.value;
                     documents.setSelectedVersionId(val ? Number(val) : null);
@@ -2304,21 +2347,28 @@ export default function JobCardDetailPage() {
                                   </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-100">
-                                  {selectedVersion.lineItemsSnapshot.map((li, idx) => (
-                                    <tr key={idx}>
-                                      <td className="px-3 py-1.5 text-gray-700">
-                                        {String(li.itemCode || "-")}
-                                      </td>
-                                      <td className="px-3 py-1.5 text-gray-700">
-                                        {String(li.itemDescription || "-")}
-                                      </td>
-                                      <td className="px-3 py-1.5 text-gray-700">
-                                        {li.quantity !== null && li.quantity !== undefined
-                                          ? String(li.quantity)
-                                          : "-"}
-                                      </td>
-                                    </tr>
-                                  ))}
+                                  {selectedVersion.lineItemsSnapshot.map((li, idx) =>
+                                    (() => {
+                                      const itemCode = li.itemCode;
+                                      const itemDescription = li.itemDescription;
+                                      const quantity = li.quantity;
+                                      return (
+                                        <tr key={idx}>
+                                          <td className="px-3 py-1.5 text-gray-700">
+                                            {String(itemCode || "-")}
+                                          </td>
+                                          <td className="px-3 py-1.5 text-gray-700">
+                                            {String(itemDescription || "-")}
+                                          </td>
+                                          <td className="px-3 py-1.5 text-gray-700">
+                                            {quantity !== null && quantity !== undefined
+                                              ? String(quantity)
+                                              : "-"}
+                                          </td>
+                                        </tr>
+                                      );
+                                    })(),
+                                  )}
                                 </tbody>
                               </table>
                             </div>
@@ -2335,28 +2385,34 @@ export default function JobCardDetailPage() {
                   Delivery Job Cards ({deliveryJobCards.length})
                 </h3>
                 <div className="space-y-2">
-                  {deliveryJobCards.map((djc) => (
-                    <Link
-                      key={djc.id}
-                      href={`/stock-control/portal/job-cards/${djc.id}`}
-                      className="flex items-center justify-between p-3 rounded-lg border border-gray-200 hover:bg-gray-50"
-                    >
-                      <div>
-                        <span className="font-medium text-gray-900">
-                          {djc.jobNumber} / {djc.jtDnNumber || djc.jcNumber}
-                        </span>
-                        <span className="ml-2 text-sm text-gray-500">{djc.jobName}</span>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <span
-                          className={`px-2 py-0.5 text-xs font-semibold rounded-full ${statusBadgeColor(djc.status)}`}
+                  {deliveryJobCards.map((djc) =>
+                    (() => {
+                      const jtDnNumber = djc.jtDnNumber;
+                      const deliveryCardLabel = jtDnNumber || djc.jcNumber;
+                      return (
+                        <Link
+                          key={djc.id}
+                          href={`/stock-control/portal/job-cards/${djc.id}`}
+                          className="flex items-center justify-between p-3 rounded-lg border border-gray-200 hover:bg-gray-50"
                         >
-                          {djc.status}
-                        </span>
-                        <span className="text-xs text-gray-400">{djc.workflowStatus}</span>
-                      </div>
-                    </Link>
-                  ))}
+                          <div>
+                            <span className="font-medium text-gray-900">
+                              {djc.jobNumber} / {deliveryCardLabel}
+                            </span>
+                            <span className="ml-2 text-sm text-gray-500">{djc.jobName}</span>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <span
+                              className={`px-2 py-0.5 text-xs font-semibold rounded-full ${statusBadgeColor(djc.status)}`}
+                            >
+                              {djc.status}
+                            </span>
+                            <span className="text-xs text-gray-400">{djc.workflowStatus}</span>
+                          </div>
+                        </Link>
+                      );
+                    })(),
+                  )}
                 </div>
               </div>
             )}
@@ -2480,12 +2536,17 @@ export default function JobCardDetailPage() {
                 onFinalPhotosSaved={() => {
                   setFinalPhotosSaved(true);
                 }}
-                lineItems={(jobCard?.lineItems ? jobCard.lineItems : []).map((li) => ({
-                  id: li.id,
-                  itemCode: li.itemCode || "",
-                  description: li.itemDescription || "",
-                  quantity: li.quantity || 0,
-                }))}
+                lineItems={(jobCard?.lineItems ? jobCard.lineItems : []).map((li) => {
+                  const itemCode = li.itemCode;
+                  const itemDescription = li.itemDescription;
+                  const quantity = li.quantity;
+                  return {
+                    id: li.id,
+                    itemCode: itemCode || "",
+                    description: itemDescription || "",
+                    quantity: quantity || 0,
+                  };
+                })}
               />
             </div>
           </TabPanel>
@@ -2533,75 +2594,88 @@ export default function JobCardDetailPage() {
         })()}
       />
 
-      {showSourceFileModal && sourceFileUrl && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/10 backdrop-blur-md">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl mx-4 max-h-[90vh] flex flex-col">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-              <h3 className="text-lg font-semibold text-gray-900">
-                Original Job Card — {jobCard.sourceFileName || "Source File"}
-              </h3>
-              <div className="flex items-center gap-3">
-                <a
-                  href={sourceFileUrl}
-                  download={jobCard.sourceFileName || "source-file"}
-                  className="px-3 py-1.5 text-sm font-medium rounded-md bg-teal-600 text-white hover:bg-teal-700"
-                >
-                  Download
-                </a>
-                <button
-                  onClick={() => {
-                    setShowSourceFileModal(false);
-                    setSourceFileUrl(null);
-                  }}
-                  className="text-gray-400 hover:text-gray-600"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M6 18L18 6M6 6l12 12"
+      {showSourceFileModal &&
+        sourceFileUrl &&
+        (() => {
+          const sourceFileName = jobCard.sourceFileName;
+          const sourceFileTitle = sourceFileName || "Source File";
+          const sourceFileDownloadName = sourceFileName || "source-file";
+          const sourceFileExtension = (sourceFileName || "").toLowerCase();
+          return (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/10 backdrop-blur-md">
+              <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl mx-4 max-h-[90vh] flex flex-col">
+                <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+                  <h3 className="text-lg font-semibold text-gray-900">
+                    Original Job Card — {sourceFileTitle}
+                  </h3>
+                  <div className="flex items-center gap-3">
+                    <a
+                      href={sourceFileUrl}
+                      download={sourceFileDownloadName}
+                      className="px-3 py-1.5 text-sm font-medium rounded-md bg-teal-600 text-white hover:bg-teal-700"
+                    >
+                      Download
+                    </a>
+                    <button
+                      onClick={() => {
+                        setShowSourceFileModal(false);
+                        setSourceFileUrl(null);
+                      }}
+                      className="text-gray-400 hover:text-gray-600"
+                    >
+                      <svg
+                        className="w-5 h-5"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M6 18L18 6M6 6l12 12"
+                        />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+                <div className="flex-1 overflow-auto p-2">
+                  {sourceFileExtension.endsWith(".pdf") ? (
+                    <iframe
+                      src={sourceFileUrl}
+                      className="w-full h-[75vh] border-0 rounded"
+                      title="Original Job Card"
                     />
-                  </svg>
-                </button>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center py-16 text-gray-500">
+                      <svg
+                        className="w-16 h-16 mb-4 text-gray-300"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={1.5}
+                          d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                        />
+                      </svg>
+                      <p className="text-sm mb-4">Preview not available for this file type</p>
+                      <a
+                        href={sourceFileUrl}
+                        download={sourceFileDownloadName}
+                        className="px-4 py-2 text-sm font-medium rounded-md bg-teal-600 text-white hover:bg-teal-700"
+                      >
+                        Download File
+                      </a>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
-            <div className="flex-1 overflow-auto p-2">
-              {(jobCard.sourceFileName || "").toLowerCase().endsWith(".pdf") ? (
-                <iframe
-                  src={sourceFileUrl}
-                  className="w-full h-[75vh] border-0 rounded"
-                  title="Original Job Card"
-                />
-              ) : (
-                <div className="flex flex-col items-center justify-center py-16 text-gray-500">
-                  <svg
-                    className="w-16 h-16 mb-4 text-gray-300"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={1.5}
-                      d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                    />
-                  </svg>
-                  <p className="text-sm mb-4">Preview not available for this file type</p>
-                  <a
-                    href={sourceFileUrl}
-                    download={jobCard.sourceFileName || "source-file"}
-                    className="px-4 py-2 text-sm font-medium rounded-md bg-teal-600 text-white hover:bg-teal-700"
-                  >
-                    Download File
-                  </a>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
+          );
+        })()}
       {pdfPreviewUrl &&
         createPortal(
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">

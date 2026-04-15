@@ -102,6 +102,28 @@ export default tseslint.config(
             "Use entries() from es-toolkit/compat instead of Object.entries() for better type safety.",
         },
         {
+          selector: "LogicalExpression[operator='||'][left.type='MemberExpression']",
+          message:
+            "Do not use member or bracket access on the left side of || in frontend code. Hoist it to a local const first to avoid the SWC miscompilation bug.",
+        },
+        {
+          selector:
+            "LogicalExpression[operator='||'][left.type='ChainExpression'][left.expression.type='MemberExpression']",
+          message:
+            "Do not use optional member or bracket access on the left side of || in frontend code. Hoist it to a local const first to avoid the SWC miscompilation bug.",
+        },
+        {
+          selector: "LogicalExpression[operator='??'][left.type='MemberExpression']",
+          message:
+            "Do not use member or bracket access on the left side of ?? in frontend code. Hoist it to a local const first to avoid the SWC miscompilation bug.",
+        },
+        {
+          selector:
+            "LogicalExpression[operator='??'][left.type='ChainExpression'][left.expression.type='MemberExpression']",
+          message:
+            "Do not use optional member or bracket access on the left side of ?? in frontend code. Hoist it to a local const first to avoid the SWC miscompilation bug.",
+        },
+        {
           selector:
             "CallExpression[callee.object.name='Array'][callee.property.name='isArray']",
           message:

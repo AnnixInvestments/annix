@@ -1,5 +1,6 @@
 "use client";
 
+import { isObject } from "es-toolkit/compat";
 import { useCallback, useState } from "react";
 import { createPortal } from "react-dom";
 import { PdfPreviewModal, usePdfPreview } from "@/app/components/PdfPreviewModal";
@@ -40,13 +41,18 @@ const PARTY_LABELS: Record<PartyKey, string> = {
 };
 
 function ensureSignOff(so: QcpPartySignOff | undefined | null): QcpPartySignOff {
-  if (so && typeof so === "object") {
+  if (so && isObject(so)) {
+    const interventionType = so.interventionType;
+    const initial = so.initial;
+    const name = so.name;
+    const signatureUrl = so.signatureUrl;
+    const date = so.date;
     return {
-      interventionType: so.interventionType || null,
-      initial: so.initial || null,
-      name: so.name || null,
-      signatureUrl: so.signatureUrl || null,
-      date: so.date || null,
+      interventionType: interventionType || null,
+      initial: initial || null,
+      name: name || null,
+      signatureUrl: signatureUrl || null,
+      date: date || null,
     };
   }
   return { interventionType: null, initial: null, name: null, signatureUrl: null, date: null };
@@ -59,14 +65,18 @@ export function QcpEditorModal(props: QcpEditorModalProps) {
   const planQcpLabel = planQcpNumberValue || `#${plan.id}`;
 
   const [activities, setActivities] = useState<QcpActivity[]>(
-    plan.activities.map((a) => ({
-      ...a,
-      documentation: (a as any).documentation || a.procedureRequired || null,
-      thirdParty: ensureSignOff((a as any).thirdParty),
-      pls: ensureSignOff(a.pls),
-      mps: ensureSignOff(a.mps),
-      client: ensureSignOff(a.client),
-    })),
+    plan.activities.map((a) => {
+      const rawDocumentation = (a as any).documentation;
+      const documentation = rawDocumentation || a.procedureRequired || null;
+      return {
+        ...a,
+        documentation,
+        thirdParty: ensureSignOff((a as any).thirdParty),
+        pls: ensureSignOff(a.pls),
+        mps: ensureSignOff(a.mps),
+        client: ensureSignOff(a.client),
+      };
+    }),
   );
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -218,8 +228,10 @@ export function QcpEditorModal(props: QcpEditorModalProps) {
                   <td className="px-1 py-1">
                     <input
                       type="text"
-                      value={a.specification || ""}
-                      onChange={(e) => updateField(idx, "specification", e.target.value || null)}
+                      value={a.specification ? a.specification : ""}
+                      onChange={(e) =>
+                        updateField(idx, "specification", e.target.value ? e.target.value : null)
+                      }
                       readOnly={readOnly}
                       className="w-full rounded border border-gray-200 px-1.5 py-0.5 text-xs"
                     />
@@ -227,25 +239,29 @@ export function QcpEditorModal(props: QcpEditorModalProps) {
                   <td className="px-1 py-1">
                     <input
                       type="text"
-                      value={a.documentation || ""}
-                      onChange={(e) => updateField(idx, "documentation", e.target.value || null)}
+                      value={a.documentation ? a.documentation : ""}
+                      onChange={(e) =>
+                        updateField(idx, "documentation", e.target.value ? e.target.value : null)
+                      }
                       readOnly={readOnly}
                       className="w-full rounded border border-gray-200 px-1.5 py-0.5 text-xs"
                     />
                   </td>
                   {PARTY_KEYS.map((pk) => {
                     const rawSo = a[pk];
-                    const so = rawSo || { interventionType: null, initial: null };
+                    const so = rawSo ? rawSo : { interventionType: null, initial: null };
+                    const interventionType = (so as QcpPartySignOff).interventionType;
+                    const initial = (so as QcpPartySignOff).initial;
                     return (
                       <td key={pk} className="px-1 py-1">
                         <div className="flex items-center gap-0.5">
                           <select
-                            value={(so as QcpPartySignOff).interventionType || ""}
+                            value={interventionType || ""}
                             onChange={(e) =>
                               updateIntervention(
                                 idx,
                                 pk,
-                                (e.target.value as InterventionType) || null,
+                                e.target.value ? (e.target.value as InterventionType) : null,
                               )
                             }
                             disabled={readOnly}
@@ -260,8 +276,10 @@ export function QcpEditorModal(props: QcpEditorModalProps) {
                           </select>
                           <input
                             type="text"
-                            value={(so as QcpPartySignOff).initial || ""}
-                            onChange={(e) => updateInitial(idx, pk, e.target.value || null)}
+                            value={initial || ""}
+                            onChange={(e) =>
+                              updateInitial(idx, pk, e.target.value ? e.target.value : null)
+                            }
                             readOnly={readOnly}
                             className="w-10 rounded border border-gray-200 px-0.5 py-0.5 text-center text-xs"
                             placeholder=""
@@ -274,8 +292,10 @@ export function QcpEditorModal(props: QcpEditorModalProps) {
                   <td className="px-1 py-1">
                     <input
                       type="text"
-                      value={a.remarks || ""}
-                      onChange={(e) => updateField(idx, "remarks", e.target.value || null)}
+                      value={a.remarks ? a.remarks : ""}
+                      onChange={(e) =>
+                        updateField(idx, "remarks", e.target.value ? e.target.value : null)
+                      }
                       readOnly={readOnly}
                       className="w-full rounded border border-gray-200 px-1.5 py-0.5 text-xs"
                     />

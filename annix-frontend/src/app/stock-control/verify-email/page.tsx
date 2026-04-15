@@ -102,19 +102,22 @@ function VerifyEmailContent() {
             : undefined;
 
           if (firstLogo || firstHero) {
+            const scrapedPrimaryColor = candidates.primaryColor;
             const processed = await stockControlApiClient.processBrandingSelection({
               logoSourceUrl: firstLogo,
               heroSourceUrl: firstHero,
-              scrapedPrimaryColor: candidates.primaryColor ?? undefined,
+              scrapedPrimaryColor: scrapedPrimaryColor ?? undefined,
             });
-            processedLogoUrl = processed.logoUrl ?? undefined;
-            processedHeroUrl = processed.heroImageUrl ?? undefined;
-            processedPrimaryColor = processed.primaryColor ?? undefined;
-            processedAccentColor = processed.accentColor ?? undefined;
+            const processedLogo = processed.logoUrl;
+            const processedHeroImage = processed.heroImageUrl;
+            const processedPrimary = processed.primaryColor;
+            const processedAccent = processed.accentColor;
+            processedLogoUrl = processedLogo ?? undefined;
+            processedHeroUrl = processedHeroImage ?? undefined;
+            processedPrimaryColor = processedPrimary ?? undefined;
+            processedAccentColor = processedAccent ?? undefined;
           }
-        } catch {
-          // Scraping is best-effort; continue saving without scraped data
-        }
+        } catch {}
       }
 
       await stockControlApiClient.setBranding({

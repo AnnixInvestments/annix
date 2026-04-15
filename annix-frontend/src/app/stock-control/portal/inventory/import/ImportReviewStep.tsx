@@ -49,19 +49,36 @@ function confidenceBadge(confidence: number): { label: string; className: string
 function initEditableRows(matched: ImportMatchRow[]): EditableRow[] {
   return matched.map((m) => {
     const hasMatch = m.match !== null;
+    const matchedItemId = m.match?.id;
+    const importedSku = m.imported.sku;
+    const matchedSku = m.match?.sku;
+    const importedName = m.imported.name;
+    const matchedName = m.match?.name;
+    const importedDescription = m.imported.description;
+    const matchedDescription = m.match?.description;
+    const importedCategory = m.imported.category;
+    const matchedCategory = m.match?.category;
+    const importedUnitOfMeasure = m.imported.unitOfMeasure;
+    const matchedUnitOfMeasure = m.match?.unitOfMeasure;
+    const importedCostPerUnit = m.imported.costPerUnit;
+    const matchedCostPerUnit = m.match?.costPerUnit;
+    const importedQuantity = m.imported.quantity;
+    const importedMinStockLevel = m.imported.minStockLevel;
+    const importedLocation = m.imported.location;
+    const matchedLocation = m.match?.location;
     return {
       index: m.index,
       action: hasMatch ? "update" : "create",
-      matchedItemId: m.match?.id || null,
-      sku: m.imported.sku || m.match?.sku || "",
-      name: m.imported.name || m.match?.name || "",
-      description: m.imported.description || m.match?.description || "",
-      category: m.imported.category || m.match?.category || "",
-      unitOfMeasure: m.imported.unitOfMeasure || m.match?.unitOfMeasure || "each",
-      costPerUnit: String(m.imported.costPerUnit ?? m.match?.costPerUnit ?? 0),
-      quantity: String(m.imported.quantity ?? ""),
-      minStockLevel: String(m.imported.minStockLevel ?? 0),
-      location: m.imported.location || m.match?.location || "",
+      matchedItemId: matchedItemId || null,
+      sku: importedSku || matchedSku || "",
+      name: importedName || matchedName || "",
+      description: importedDescription || matchedDescription || "",
+      category: importedCategory || matchedCategory || "",
+      unitOfMeasure: importedUnitOfMeasure || matchedUnitOfMeasure || "each",
+      costPerUnit: String(importedCostPerUnit ?? matchedCostPerUnit ?? 0),
+      quantity: String(importedQuantity ?? ""),
+      minStockLevel: String(importedMinStockLevel ?? 0),
+      location: importedLocation || matchedLocation || "",
       originalImported: m.imported,
       originalMatch: m.match,
       matchConfidence: m.matchConfidence,
@@ -82,39 +99,59 @@ function buildCorrections(
   const match = row.originalMatch;
 
   if (row.action === "update" && match) {
-    if (row.name !== (orig.name || match.name || "")) {
+    const importedName = orig.name;
+    const matchedName = match.name;
+    const importedDescription = orig.description;
+    const matchedDescription = match.description;
+    const importedSku = orig.sku;
+    const matchedSku = match.sku;
+    const importedCategory = orig.category;
+    const matchedCategory = match.category;
+    const originalName = importedName || matchedName || "";
+    const originalDescription = importedDescription || matchedDescription || "";
+    const originalSku = importedSku || matchedSku || "";
+    const originalCategory = importedCategory || matchedCategory || "";
+
+    const correctedName = row.name;
+    const correctedDescription = row.description;
+    const correctedSku = row.sku;
+    const correctedCategory = row.category;
+
+    if (row.name !== originalName) {
       corrections.push({
         field: "name",
-        originalValue: orig.name || match.name || null,
-        correctedValue: row.name || null,
+        originalValue: originalName || null,
+        correctedValue: correctedName || null,
       });
     }
-    if (row.description !== (orig.description || match.description || "")) {
+    if (row.description !== originalDescription) {
       corrections.push({
         field: "description",
-        originalValue: orig.description || match.description || null,
-        correctedValue: row.description || null,
+        originalValue: originalDescription || null,
+        correctedValue: correctedDescription || null,
       });
     }
-    if (row.sku !== (orig.sku || match.sku || "")) {
+    if (row.sku !== originalSku) {
       corrections.push({
         field: "sku",
-        originalValue: orig.sku || match.sku || null,
-        correctedValue: row.sku || null,
+        originalValue: originalSku || null,
+        correctedValue: correctedSku || null,
       });
     }
-    if (row.category !== (orig.category || match.category || "")) {
+    if (row.category !== originalCategory) {
       corrections.push({
         field: "category",
-        originalValue: orig.category || match.category || null,
-        correctedValue: row.category || null,
+        originalValue: originalCategory || null,
+        correctedValue: correctedCategory || null,
       });
     }
   } else if (row.action === "create" && orig.name && row.name !== orig.name) {
+    const originalName = orig.name;
+    const correctedName = row.name;
     corrections.push({
       field: "name",
-      originalValue: orig.name || null,
-      correctedValue: row.name || null,
+      originalValue: originalName || null,
+      correctedValue: correctedName || null,
     });
   }
 
@@ -183,21 +220,30 @@ export function ImportReviewStep(props: ImportReviewStepProps) {
       setIsSubmitting(true);
       setError(null);
 
-      const reviewedRows: ReviewedRow[] = rows.map((r) => ({
-        index: r.index,
-        action: r.action,
-        matchedItemId: r.action === "update" ? r.matchedItemId : null,
-        sku: r.sku,
-        name: r.name,
-        description: r.description || null,
-        category: r.category || null,
-        unitOfMeasure: r.unitOfMeasure || "each",
-        costPerUnit: Number(r.costPerUnit) || 0,
-        quantity: Number(r.quantity) || 0,
-        minStockLevel: Number(r.minStockLevel) || 0,
-        location: r.location || null,
-        corrections: buildCorrections(r),
-      }));
+      const reviewedRows: ReviewedRow[] = rows.map((r) => {
+        const description = r.description;
+        const category = r.category;
+        const unitOfMeasure = r.unitOfMeasure;
+        const costPerUnit = r.costPerUnit;
+        const quantity = r.quantity;
+        const minStockLevel = r.minStockLevel;
+        const location = r.location;
+        return {
+          index: r.index,
+          action: r.action,
+          matchedItemId: r.action === "update" ? r.matchedItemId : null,
+          sku: r.sku,
+          name: r.name,
+          description: description || null,
+          category: category || null,
+          unitOfMeasure: unitOfMeasure || "each",
+          costPerUnit: Number(costPerUnit) || 0,
+          quantity: Number(quantity) || 0,
+          minStockLevel: Number(minStockLevel) || 0,
+          location: location || null,
+          corrections: buildCorrections(r),
+        };
+      });
 
       const result = await stockControlApiClient.confirmReviewedImport(
         reviewedRows,
@@ -324,6 +370,11 @@ export function ImportReviewStep(props: ImportReviewStepProps) {
               {filteredRows.map((row) => {
                 const badge = confidenceBadge(row.matchConfidence);
                 const isSkipped = row.action === "skip";
+                const matchReason = row.matchReason;
+                const title = matchReason || "No match found";
+                const importedName = row.originalImported.name;
+                const matchedName = row.originalMatch?.name;
+                const originalName = importedName || matchedName || "";
                 return (
                   <tr
                     key={row.index}
@@ -352,7 +403,7 @@ export function ImportReviewStep(props: ImportReviewStepProps) {
                     <td className="px-2 py-1.5">
                       <span
                         className={`inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium ${badge.className}`}
-                        title={row.matchReason || "No match found"}
+                        title={title}
                       >
                         {badge.label}
                       </span>
@@ -379,13 +430,11 @@ export function ImportReviewStep(props: ImportReviewStepProps) {
                         className="w-full rounded border border-gray-200 px-1.5 py-0.5 text-xs"
                         disabled={isSkipped}
                       />
-                      {row.originalMatch &&
-                        row.name !==
-                          (row.originalImported.name || row.originalMatch.name || "") && (
-                          <div className="text-[10px] text-gray-400 mt-0.5 line-through">
-                            {row.originalMatch.name}
-                          </div>
-                        )}
+                      {row.originalMatch && row.name !== originalName && (
+                        <div className="text-[10px] text-gray-400 mt-0.5 line-through">
+                          {row.originalMatch.name}
+                        </div>
+                      )}
                     </td>
                     <td className="px-2 py-1.5">
                       <input

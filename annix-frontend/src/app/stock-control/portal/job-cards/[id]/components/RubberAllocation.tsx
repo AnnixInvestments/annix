@@ -1,5 +1,6 @@
 "use client";
 
+import { keys, values } from "es-toolkit/compat";
 import { useEffect, useState } from "react";
 import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
 import type {
@@ -64,12 +65,14 @@ function manualRollsToCuttingPlan(manualRolls: RubberPlanManualRoll[]): CuttingP
     const grouped = expandedCuts.reduce(
       (acc, cut) => {
         const key = String(cut.widthMm);
-        return { ...acc, [key]: [...(acc[key] || []), cut] };
+        const existingCuts = acc[key];
+        return { ...acc, [key]: [...(existingCuts || []), cut] };
       },
       {} as Record<string, typeof expandedCuts>,
     );
 
-    Object.entries(grouped).forEach(([widthKey, cutsInBand]) => {
+    keys(grouped).forEach((widthKey) => {
+      const cutsInBand = grouped[widthKey];
       const bandWidthMm = Number(widthKey);
       const maxLanesPerBand = Math.max(1, Math.floor(rollWidthMm / bandWidthMm));
 
@@ -515,9 +518,11 @@ function CuttingDiagram({
             const isFullRoll = rawWidth >= 95;
             const width = isFullRoll ? 100 - left : rawWidth;
             const colorClass = CUT_COLORS[colorIndexForBaseId(cut.itemId.split("-")[0])];
-            const rolls = cut.stripsPerPiece || 1;
+            const stripCount = cut.stripsPerPiece;
+            const rolls = stripCount || 1;
+            const itemNo = cut.itemNo;
             const displayLabel =
-              rolls > 1 ? `${rolls} rolls` : cut.itemNo || `${(cut.lengthMm / 1000).toFixed(1)}m`;
+              rolls > 1 ? `${rolls} rolls` : itemNo || `${(cut.lengthMm / 1000).toFixed(1)}m`;
 
             const band = bands.find((b) => b.bandIndex === cut.band);
             const laneWidthMm = band ? band.laneWidthMm : rollWidthMm;
@@ -618,7 +623,7 @@ function CuttingDiagram({
                         }}
                       >
                         <span className="text-[10px] text-white font-bold truncate px-0.5 leading-tight">
-                          {cut.itemNo || displayLabel} {p.label}
+                          {itemNo || displayLabel} {p.label}
                         </span>
                         <span className="text-[9px] text-white/80 truncate px-0.5 leading-tight">
                           {(p.rubberLengthMm / 1000).toFixed(2)}m x {p.rubberWidthMm}mm
@@ -681,6 +686,9 @@ function CuttingDiagram({
           {roll.cuts.map((cut, idx) => {
             const colorClass = CUT_COLORS[colorIndexForBaseId(cut.itemId.split("-")[0])];
             const band = bands.find((b) => b.bandIndex === cut.band);
+            const itemNo = cut.itemNo;
+            const stripCount = cut.stripsPerPiece;
+            const rolls = stripCount || 1;
             return (
               <div
                 key={cut.itemId}
@@ -688,7 +696,7 @@ function CuttingDiagram({
               >
                 <div className={`w-3 h-3 rounded flex-shrink-0 ${colorClass}`} />
                 <span className="font-mono font-semibold text-gray-800 flex-shrink-0">
-                  {cut.itemNo || "-"}
+                  {itemNo || "-"}
                   {cut.subPanels && cut.subPanels.length > 1
                     ? ` (${cut.subPanels.map((p) => p.label).join(" + ")})`
                     : ""}
@@ -703,12 +711,10 @@ function CuttingDiagram({
                     <span className="text-gray-500 flex-shrink-0">Lane {cut.lane + 1}</span>
                   </>
                 )}
-                {(cut.stripsPerPiece || 1) > 1 && (
+                {rolls > 1 && (
                   <>
                     <span className="text-gray-400 flex-shrink-0">|</span>
-                    <span className="text-orange-600 font-medium flex-shrink-0">
-                      {cut.stripsPerPiece} rolls
-                    </span>
+                    <span className="text-orange-600 font-medium flex-shrink-0">{rolls} rolls</span>
                   </>
                 )}
               </div>
@@ -873,13 +879,13 @@ function OffcutSuggestions(props: {
 
           return (
             <div
-              key={`${m.cutItemId}-${m.panelLabel || "main"}`}
+              key={`${m.cutItemId}-${m.panelLabel ? m.panelLabel : "main"}`}
               className={`flex items-center gap-2 text-xs rounded px-2 py-1.5 border ${
                 isSelected ? "bg-emerald-100 border-emerald-300" : "bg-white border-emerald-100"
               }`}
             >
               <span className="font-medium text-gray-800 shrink-0">
-                {m.cutItemNo || "-"}
+                {m.cutItemNo ? m.cutItemNo : "-"}
                 {m.panelLabel ? ` (${m.panelLabel})` : ""}
               </span>
               <span className="text-gray-500 shrink-0">
@@ -941,7 +947,8 @@ function PipeCuttingView({
     setAllocatingKey(match.cutItemId);
     setAllocateError(null);
     try {
-      const panelDesc = match.cutItemNo || match.cutDescription;
+      const cutItemNo = match.cutItemNo;
+      const panelDesc = cutItemNo || match.cutDescription;
       const label = match.panelLabel ? ` (${match.panelLabel})` : "";
       await stockControlApiClient.allocateStock(jobCardId, {
         stockItemId: match.stockItemId,
@@ -971,16 +978,22 @@ function PipeCuttingView({
 
   const offcutRolls = Array.from(offcutSelections.entries()).map(([cutItemId, match], idx) => {
     const originalCut = plan.rolls.flatMap((r) => r.cuts).find((c) => c.itemId === cutItemId);
-    return buildOffcutRoll(match, plan.rolls.length + idx + 1, originalCut || null);
+    return buildOffcutRoll(match, plan.rolls.length + idx + 1, originalCut ? originalCut : null);
   });
 
   const rollNumberForAllocation = (roll: RollAllocation): string | null => {
     if (!stockRolls || stockRolls.length === 0) return null;
-    const thickness = roll.plyThicknessMm || plan.totalThicknessMm || 0;
+    const plyThickness = roll.plyThicknessMm;
+    const totalThickness = plan.totalThicknessMm;
+    const thickness = plyThickness || totalThickness || 0;
     const matching = stockRolls.filter((sr) => sr.thicknessMm === thickness);
-    if (matching.length === 1) return matching[0].rollNumber || null;
+    if (matching.length === 1) {
+      const rollNumber = matching[0].rollNumber;
+      return rollNumber || null;
+    }
     if (matching.length > 1 && roll.rollIndex < matching.length) {
-      return matching[roll.rollIndex].rollNumber || null;
+      const rollNumber = matching[roll.rollIndex].rollNumber;
+      return rollNumber || null;
     }
     return null;
   };
@@ -989,17 +1002,15 @@ function PipeCuttingView({
   const individualRolls = standardRolls.filter((r) => !isGroupableRoll(r));
 
   const grouped = groupIdenticalRolls(groupableRolls);
-  const fallbackThickness = plan.totalThicknessMm || fallbackThicknessMm || undefined;
+  const totalThickness = plan.totalThicknessMm;
+  const fallbackThickness = totalThickness || fallbackThicknessMm || undefined;
 
   const offcutMatches =
     stockRolls && stockRolls.length > 0
-      ? plan.rolls.flatMap((roll) =>
-          matchOffcutsToPanel(
-            roll.cuts,
-            stockRolls,
-            roll.plyThicknessMm || plan.totalThicknessMm || 0,
-          ),
-        )
+      ? plan.rolls.flatMap((roll) => {
+          const rollThickness = roll.plyThicknessMm;
+          return matchOffcutsToPanel(roll.cuts, stockRolls, rollThickness || totalThickness || 0);
+        })
       : [];
 
   return (
@@ -1041,7 +1052,11 @@ function PipeCuttingView({
             key={group.representativeRoll.rollIndex}
             roll={group.representativeRoll}
             groupCount={group.count}
-            thicknessMm={group.representativeRoll.plyThicknessMm || fallbackThickness}
+            thicknessMm={
+              group.representativeRoll.plyThicknessMm
+                ? group.representativeRoll.plyThicknessMm
+                : fallbackThickness
+            }
             jobCardId={jobCardId}
             rubberColor={plan.rubberSpec?.color}
             userRole={userRole}
@@ -1052,7 +1067,7 @@ function PipeCuttingView({
           <CuttingDiagram
             key={roll.rollIndex}
             roll={roll}
-            thicknessMm={roll.plyThicknessMm || fallbackThickness}
+            thicknessMm={roll.plyThicknessMm ? roll.plyThicknessMm : fallbackThickness}
             jobCardId={jobCardId}
             rubberColor={plan.rubberSpec?.color}
             userRole={userRole}
@@ -1071,7 +1086,8 @@ function PipeCuttingView({
             is waste or offcut to return to stock.
           </p>
           {offcutRolls.map((roll) => {
-            const match = offcutSelections.get(roll.cuts[0]?.itemId || "");
+            const firstCutItemId = roll.cuts[0]?.itemId;
+            const match = offcutSelections.get(firstCutItemId || "");
             const stockLabel = match
               ? `Offcut: ${match.stockItemName} (${match.stockThicknessMm}mm)`
               : "Offcut";
@@ -1085,7 +1101,7 @@ function PipeCuttingView({
                 </div>
                 <CuttingDiagram
                   roll={roll}
-                  thicknessMm={roll.plyThicknessMm || fallbackThickness}
+                  thicknessMm={roll.plyThicknessMm ? roll.plyThicknessMm : fallbackThickness}
                   jobCardId={jobCardId}
                   rubberColor={plan.rubberSpec?.color}
                   userRole={userRole}
@@ -1319,14 +1335,14 @@ function ManualRollInput({
                   <input
                     type="number"
                     placeholder="W mm"
-                    value={cut.widthMm || ""}
+                    value={cut.widthMm ? cut.widthMm : ""}
                     onChange={(e) => updateCut(rollIdx, cutIdx, "widthMm", Number(e.target.value))}
                     className="w-20 px-2 py-1 border rounded text-xs"
                   />
                   <input
                     type="number"
                     placeholder="L mm"
-                    value={cut.lengthMm || ""}
+                    value={cut.lengthMm ? cut.lengthMm : ""}
                     onChange={(e) => updateCut(rollIdx, cutIdx, "lengthMm", Number(e.target.value))}
                     className="w-20 px-2 py-1 border rounded text-xs"
                   />
@@ -1405,7 +1421,7 @@ function RubberSOHPanel({
         : "pending",
   );
   const [manualRolls, setManualRolls] = useState<RubberPlanManualRoll[]>(
-    existingOverride?.manualRolls || [],
+    existingOverride?.manualRolls ? existingOverride.manualRolls : [],
   );
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -1439,7 +1455,7 @@ function RubberSOHPanel({
       },
       {} as Record<string, { widthMm: number; lengthMm: number; quantity: number }>,
     );
-    const mergedPanels = Object.values(merged);
+    const mergedPanels = values(merged);
 
     if (mergedPanels.length === 0) return;
 
@@ -1497,7 +1513,8 @@ function RubberSOHPanel({
     setSaving(true);
     setSaveError(null);
     try {
-      const sugId = learnedSuggestion?.id || null;
+      const learnedSuggestionId = learnedSuggestion?.id;
+      const sugId = learnedSuggestionId || null;
       const override: RubberPlanOverride = {
         status: "accepted",
         selectedPlyCombination: selectedPly,
@@ -1553,7 +1570,8 @@ function RubberSOHPanel({
       if (appliedSuggestionId) {
         suggestionOutcome = suggestionWasApplied ? "applied" : "applied_modified";
       } else if (learnedSuggestion || aiSuggestion) {
-        const sugId = learnedSuggestion?.id || null;
+        const learnedSuggestionId = learnedSuggestion?.id;
+        const sugId = learnedSuggestionId || null;
         if (sugId) {
           suggestionOutcome = "ignored";
         }
@@ -1565,7 +1583,8 @@ function RubberSOHPanel({
         manualRolls: rolls,
         dimensionOverrides: dimensionOverrides?.length ? dimensionOverrides : null,
         autoPlanSnapshot,
-        suggestionTrainingId: appliedSuggestionId || learnedSuggestion?.id || null,
+        suggestionTrainingId:
+          appliedSuggestionId || (learnedSuggestion?.id ? learnedSuggestion.id : null),
         suggestionOutcome,
         reviewedBy: null,
         reviewedAt: null,
@@ -1629,7 +1648,7 @@ function RubberSOHPanel({
             type="button"
             onClick={() => {
               const learned = learnedSuggestion.manualPlan;
-              const rolls = learned?.rolls || [];
+              const rolls = learned?.rolls ? learned.rolls : [];
               if (rolls.length > 0) {
                 setManualRolls(rolls);
                 setPlanDecision("rejected");
@@ -1666,7 +1685,7 @@ function RubberSOHPanel({
           <button
             type="button"
             onClick={() => {
-              const rolls = aiSuggestion.rolls || [];
+              const rolls = aiSuggestion.rolls ? aiSuggestion.rolls : [];
               if (rolls.length > 0) {
                 setManualRolls(rolls);
                 setPlanDecision("rejected");
@@ -1872,11 +1891,11 @@ function RubberSOHPanel({
             parsedItems={expandAndRotateItems(
               lineItems.map((li, idx) =>
                 parsePipeItem(
-                  String(li.id || idx),
-                  li.itemDescription || li.itemCode || "",
-                  Number(li.quantity || 1),
+                  String(li.id ? li.id : idx),
+                  li.itemDescription ? li.itemDescription : li.itemCode ? li.itemCode : "",
+                  Number(li.quantity ? li.quantity : 1),
                   li.m2 ? Number(li.m2) : null,
-                  li.itemNo || null,
+                  li.itemNo ? li.itemNo : null,
                 ),
               ),
             )}
@@ -1922,7 +1941,7 @@ function RubberAllocationSection({
   const [stockOptions, setStockOptions] = useState<RubberStockOptionsResponse | null>(null);
   const [override, setOverride] = useState<RubberPlanOverride | null>(rubberPlanOverride);
   const [selectedPly, setSelectedPly] = useState<number[] | null>(
-    rubberPlanOverride?.selectedPlyCombination || null,
+    rubberPlanOverride?.selectedPlyCombination ? rubberPlanOverride.selectedPlyCombination : null,
   );
 
   useEffect(() => {
@@ -1940,19 +1959,19 @@ function RubberAllocationSection({
           .map((s) => ({
             stockItemId: s.stockItemId,
             thicknessMm: s.thicknessMm as number,
-            widthMm: s.widthMm || 0,
-            lengthM: s.lengthM || 0,
+            widthMm: s.widthMm ? s.widthMm : 0,
+            lengthM: s.lengthM ? s.lengthM : 0,
             color: s.color,
             compoundCode: s.compoundCode,
             quantityAvailable: s.quantityAvailable,
-            rollNumber: s.rollNumber || null,
+            rollNumber: s.rollNumber ? s.rollNumber : null,
           })),
       }
     : null;
 
   const autoPlan = calculateCuttingPlan(
     lineItems.map((li, idx) => ({
-      id: li.id || idx,
+      id: li.id ? li.id : idx,
       itemCode: li.itemCode,
       itemDescription: li.itemDescription,
       itemNo: li.itemNo,
@@ -1972,7 +1991,7 @@ function RubberAllocationSection({
   const totalM2Required = lineItems.reduce((sum, li) => sum + (li.m2 ? Number(li.m2) : 0), 0);
 
   const lineItemsForPlan = lineItems.map((li, idx) => ({
-    id: li.id || idx,
+    id: li.id ? li.id : idx,
     itemCode: li.itemCode,
     itemDescription: li.itemDescription,
     itemNo: li.itemNo,
@@ -1981,7 +2000,7 @@ function RubberAllocationSection({
     notes: li.notes,
   }));
 
-  const plyCombos = stockOptions?.plyCombinations || [];
+  const plyCombos = stockOptions?.plyCombinations ? stockOptions.plyCombinations : [];
   const comboSummaries = plyCombos.map((combo) => {
     const comboPlan = calculateCuttingPlan(lineItemsForPlan, stockQuery, combo.thicknesses);
     return {
@@ -2068,7 +2087,7 @@ function RubberAllocationSection({
             plan={plan}
             fallbackThicknessMm={stockOptions?.rubberSpec?.thicknessMm}
             jobCardId={jobCardId}
-            userRole={scUser?.role || null}
+            userRole={scUser?.role ? scUser.role : null}
             stockRolls={stockQuery?.rolls}
           />
         ) : (
@@ -2094,7 +2113,7 @@ function RubberAllocationSection({
             selectedPly={selectedPly}
             onPlyChange={setSelectedPly}
             lineItems={lineItemsForPlan}
-            userRole={scUser?.role || null}
+            userRole={scUser?.role ? scUser.role : null}
           />
         )}
       </div>
@@ -2124,9 +2143,10 @@ export function RubberAllocationGuard({
   };
 
   const allText = [
-    jobCard.notes || "",
-    ...(jobCard.lineItems || []).map(
-      (li) => `${li.itemCode || ""} ${li.itemDescription || ""} ${li.notes || ""}`,
+    jobCard.notes ? jobCard.notes : "",
+    ...(jobCard.lineItems ? jobCard.lineItems : []).map(
+      (li) =>
+        `${li.itemCode ? li.itemCode : ""} ${li.itemDescription ? li.itemDescription : ""} ${li.notes ? li.notes : ""}`,
     ),
   ]
     .join(" ")
@@ -2143,7 +2163,7 @@ export function RubberAllocationGuard({
   const hasM2Items = validItems.some((li) => li.m2 !== null && Number(li.m2) > 0);
   if (!hasM2Items) return null;
 
-  const allLineItems = jobCard.lineItems || [];
+  const allLineItems = jobCard.lineItems ? jobCard.lineItems : [];
   const totalM2 = allLineItems.reduce((sum, li) => {
     const m2 = Number(li.m2) || 0;
     const qty = Number(li.quantity) || 1;
@@ -2188,8 +2208,12 @@ export function RubberAllocationGuard({
                   <tr key={li.id} className="border-b border-gray-100">
                     <td className="py-2 pr-4 text-gray-400">{idx + 1}</td>
                     <td className="py-2 pr-4 text-gray-700">{workTypeFromNotes(li.notes)}</td>
-                    <td className="py-2 pr-4 text-gray-900 font-medium">{li.itemNo || "—"}</td>
-                    <td className="py-2 pr-4 text-gray-700">{li.itemDescription || "—"}</td>
+                    <td className="py-2 pr-4 text-gray-900 font-medium">
+                      {li.itemNo ? li.itemNo : "—"}
+                    </td>
+                    <td className="py-2 pr-4 text-gray-700">
+                      {li.itemDescription ? li.itemDescription : "—"}
+                    </td>
                     <td className="py-2 pr-4 text-right font-semibold text-gray-900">{qty}</td>
                     <td className="py-2 pr-4 text-right text-gray-700">
                       {m2 > 0 ? m2.toFixed(2) : "—"}
@@ -2217,7 +2241,7 @@ export function RubberAllocationGuard({
       <RubberAllocationSection
         lineItems={validItems}
         jobCardId={jobCard.id}
-        rubberPlanOverride={jobCard.rubberPlanOverride || null}
+        rubberPlanOverride={jobCard.rubberPlanOverride ? jobCard.rubberPlanOverride : null}
       />
     </>
   );

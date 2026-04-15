@@ -1,5 +1,6 @@
 "use client";
 
+import { isString } from "es-toolkit/compat";
 import type { ReactNode } from "react";
 import { createContext, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { StockManagementApiClient } from "../api/stockManagementApi";
@@ -34,7 +35,8 @@ interface StockManagementProviderProps {
 
 export function StockManagementProvider(props: StockManagementProviderProps) {
   const config = props.config;
-  const authHeaders = config.authHeaders ?? EMPTY_HEADERS;
+  const configAuthHeaders = config.authHeaders;
+  const authHeaders = configAuthHeaders ?? EMPTY_HEADERS;
   const apiClientRef = useRef<StockManagementApiClient>(
     new StockManagementApiClient({ baseUrl: config.apiBaseUrl, headers: authHeaders }),
   );
@@ -116,18 +118,20 @@ export function StockManagementProvider(props: StockManagementProviderProps) {
   }, [pickerStaff, pickerJobCards, pickerCpos, pickerLoading, pickerError]);
 
   const theme = useMemo<Required<StockManagementThemeTokens>>(() => {
-    return { ...DEFAULT_STOCK_MANAGEMENT_THEME, ...(config.theme ?? {}) };
+    const configTheme = config.theme;
+    return { ...DEFAULT_STOCK_MANAGEMENT_THEME, ...(configTheme ?? {}) };
   }, [config.theme]);
 
   const labels = useMemo(() => {
-    const overrides = config.labels ?? {};
+    const configLabels = config.labels;
+    const overrides = configLabels ?? {};
     return { ...DEFAULT_STOCK_MANAGEMENT_LABELS, ...overrides };
   }, [config.labels]);
 
   const labelLookup = useCallback(
     (key: string, fallback?: string) => {
       const value = labels[key as StockManagementLabelKey];
-      if (typeof value === "string") {
+      if (isString(value)) {
         return value;
       }
       return fallback ?? key;
@@ -151,7 +155,10 @@ export function StockManagementProvider(props: StockManagementProviderProps) {
       features,
       theme,
       label: labelLookup,
-      currentUser: config.currentUser ?? EMPTY_USER,
+      currentUser: (() => {
+        const currentUser = config.currentUser;
+        return currentUser ?? EMPTY_USER;
+      })(),
       isLoadingLicense,
       refetchLicense,
       pickerData,

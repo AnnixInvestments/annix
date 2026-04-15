@@ -1,6 +1,7 @@
 "use client";
 
 import { useQueryClient } from "@tanstack/react-query";
+import { keys } from "es-toolkit/compat";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useRef, useState } from "react";
@@ -98,12 +99,28 @@ function blankDraft(): ItemEditDraft {
   return { itemCode: "", itemDescription: "", itemNo: "", jtNo: "", quantityOrdered: "", m2: "" };
 }
 
+function textOrEmpty(value: string | null | undefined): string {
+  return value || "";
+}
+
+function textOrDash(value: string | null | undefined): string {
+  return value || "-";
+}
+
+function nullIfEmpty(value: string | null | undefined): string | null {
+  return value || null;
+}
+
 function draftFromItem(item: CustomerPurchaseOrderItem): ItemEditDraft {
+  const itemCode = item.itemCode;
+  const itemDescription = item.itemDescription;
+  const itemNo = item.itemNo;
+  const jtNo = item.jtNo;
   return {
-    itemCode: item.itemCode || "",
-    itemDescription: item.itemDescription || "",
-    itemNo: item.itemNo || "",
-    jtNo: item.jtNo || "",
+    itemCode: textOrEmpty(itemCode),
+    itemDescription: textOrEmpty(itemDescription),
+    itemNo: textOrEmpty(itemNo),
+    jtNo: textOrEmpty(jtNo),
     quantityOrdered: item.quantityOrdered != null ? String(item.quantityOrdered) : "",
     m2: item.m2 != null ? String(item.m2) : "",
   };
@@ -226,7 +243,7 @@ export default function CpoDetailPage() {
         if (result.asteriskItems.length > 0) {
           setShowAllocationModal(true);
         } else {
-          const jtGroupKeys = Object.keys(result.jtGroups);
+          const jtGroupKeys = keys(result.jtGroups);
           if (jtGroupKeys.length > 0) {
             setSageConfirming(true);
             const importResult = await confirmSageJcDumpMutation.mutateAsync({
@@ -294,13 +311,17 @@ export default function CpoDetailPage() {
   };
 
   const openEditItemModal = (item: CustomerPurchaseOrderItem) => {
+    const itemCode = item.itemCode;
+    const itemDescription = item.itemDescription;
+    const itemNo = item.itemNo;
+    const jtNo = item.jtNo;
     setEditingItem(item);
     setItemForm({
-      itemCode: item.itemCode || "",
-      itemDescription: item.itemDescription || "",
-      itemNo: item.itemNo || "",
+      itemCode: textOrEmpty(itemCode),
+      itemDescription: textOrEmpty(itemDescription),
+      itemNo: textOrEmpty(itemNo),
       quantityOrdered: String(item.quantityOrdered),
-      jtNo: item.jtNo || "",
+      jtNo: textOrEmpty(jtNo),
       m2: item.m2 != null ? String(item.m2) : "",
     });
     setItemFormError(null);
@@ -315,13 +336,18 @@ export default function CpoDetailPage() {
     }
     try {
       setItemFormError(null);
+      const trimmedItemCode = itemForm.itemCode.trim();
+      const trimmedItemDescription = itemForm.itemDescription.trim();
+      const trimmedItemNo = itemForm.itemNo.trim();
+      const trimmedJtNo = itemForm.jtNo.trim();
+      const trimmedM2 = itemForm.m2.trim();
       const data = {
-        itemCode: itemForm.itemCode.trim() || null,
-        itemDescription: itemForm.itemDescription.trim() || null,
-        itemNo: itemForm.itemNo.trim() || null,
+        itemCode: nullIfEmpty(trimmedItemCode),
+        itemDescription: nullIfEmpty(trimmedItemDescription),
+        itemNo: nullIfEmpty(trimmedItemNo),
         quantityOrdered: qty,
-        jtNo: itemForm.jtNo.trim() || null,
-        m2: itemForm.m2.trim() ? parseFloat(itemForm.m2) : null,
+        jtNo: nullIfEmpty(trimmedJtNo),
+        m2: trimmedM2 ? parseFloat(trimmedM2) : null,
       };
       if (editingItem) {
         await updateCpoItemMutation.mutateAsync({ cpoId: id, itemId: editingItem.id, data });
@@ -356,14 +382,18 @@ export default function CpoDetailPage() {
     if (editingItemId === null) return;
     try {
       setItemError(null);
+      const editItemCode = editDraft.itemCode;
+      const editItemDescription = editDraft.itemDescription;
+      const editItemNo = editDraft.itemNo;
+      const editJtNo = editDraft.jtNo;
       await updateCpoItemMutation.mutateAsync({
         cpoId: id,
         itemId: editingItemId,
         data: {
-          itemCode: editDraft.itemCode || null,
-          itemDescription: editDraft.itemDescription || null,
-          itemNo: editDraft.itemNo || null,
-          jtNo: editDraft.jtNo || null,
+          itemCode: nullIfEmpty(editItemCode),
+          itemDescription: nullIfEmpty(editItemDescription),
+          itemNo: nullIfEmpty(editItemNo),
+          jtNo: nullIfEmpty(editJtNo),
           quantityOrdered: editDraft.quantityOrdered ? parseFloat(editDraft.quantityOrdered) : 0,
           m2: editDraft.m2 ? parseFloat(editDraft.m2) : null,
         },
@@ -387,13 +417,17 @@ export default function CpoDetailPage() {
   const handleAddItem = async () => {
     try {
       setItemError(null);
+      const addItemCode = addDraft.itemCode;
+      const addItemDescription = addDraft.itemDescription;
+      const addItemNo = addDraft.itemNo;
+      const addJtNo = addDraft.jtNo;
       await addCpoItemMutation.mutateAsync({
         cpoId: id,
         data: {
-          itemCode: addDraft.itemCode || null,
-          itemDescription: addDraft.itemDescription || null,
-          itemNo: addDraft.itemNo || null,
-          jtNo: addDraft.jtNo || null,
+          itemCode: nullIfEmpty(addItemCode),
+          itemDescription: nullIfEmpty(addItemDescription),
+          itemNo: nullIfEmpty(addItemNo),
+          jtNo: nullIfEmpty(addJtNo),
           quantityOrdered: addDraft.quantityOrdered ? parseFloat(addDraft.quantityOrdered) : 0,
           m2: addDraft.m2 ? parseFloat(addDraft.m2) : null,
         },
@@ -461,11 +495,24 @@ export default function CpoDetailPage() {
     );
   }
 
-  const totalQty = Number(cpo.totalQuantity) || 0;
-  const fulfilledQty = Number(cpo.fulfilledQuantity) || 0;
+  const totalQuantity = cpo.totalQuantity;
+  const fulfilledQuantity = cpo.fulfilledQuantity;
+  const cpoItems = cpo.items;
+  const versionNumber = cpo.versionNumber;
+  const customerName = cpo.customerName;
+  const poNumber = cpo.poNumber;
+  const jobName = cpo.jobName;
+  const siteLocation = cpo.siteLocation;
+  const contactPerson = cpo.contactPerson;
+  const dueDate = cpo.dueDate;
+  const notes = cpo.notes;
+  const reference = cpo.reference;
+  const coatingSpecs = cpo.coatingSpecs;
+  const totalQty = Number(totalQuantity) || 0;
+  const fulfilledQty = Number(fulfilledQuantity) || 0;
   const overallPct = totalQty > 0 ? Math.min(100, Math.round((fulfilledQty / totalQty) * 100)) : 0;
 
-  const sortedItems = [...(cpo.items || [])].sort((a, b) => a.sortOrder - b.sortOrder);
+  const sortedItems = [...(cpoItems || [])].sort((a, b) => a.sortOrder - b.sortOrder);
 
   const recordsByJobCard = calloffRecords.reduce<Record<string, CpoCalloffRecord[]>>(
     (acc, record) => {
@@ -482,21 +529,27 @@ export default function CpoDetailPage() {
   const hasPaintColumn = calloffRecords.some((r) => r.calloffType === "paint");
   const hasSolutionColumn = calloffRecords.some((r) => r.calloffType === "solution");
 
-  const calloffRows = Object.entries(recordsByJobCard)
-    .map(([key, records]) => ({
-      key,
-      jobCard: (() => {
-        const firstRecord = records[0];
-        return firstRecord ? firstRecord.jobCard : null;
-      })(),
-      rubber: records.find((r) => r.calloffType === "rubber") || null,
-      paint: records.find((r) => r.calloffType === "paint") || null,
-      solution: records.find((r) => r.calloffType === "solution") || null,
-      hasOverdue: records.some(isCalloffOverdue),
-    }))
+  const calloffRows = keys(recordsByJobCard)
+    .map((key) => {
+      const records = recordsByJobCard[key];
+      return {
+        key,
+        jobCard: (() => {
+          const firstRecord = records[0];
+          return firstRecord ? firstRecord.jobCard : null;
+        })(),
+        rubber: records.find((r) => r.calloffType === "rubber") || null,
+        paint: records.find((r) => r.calloffType === "paint") || null,
+        solution: records.find((r) => r.calloffType === "solution") || null,
+        hasOverdue: records.some(isCalloffOverdue),
+      };
+    })
     .filter((row) => row.jobCard?.parentJobCardId !== null);
 
   const overdueRecords = calloffRecords.filter(isCalloffOverdue);
+  const addItemPending = addCpoItemMutation.isPending;
+  const updateItemPending = updateCpoItemMutation.isPending;
+  const isSavingItem = addItemPending || updateItemPending;
 
   return (
     <div className="space-y-6">
@@ -511,9 +564,9 @@ export default function CpoDetailPage() {
           </div>
           <div className="flex items-center space-x-2">
             <h1 className="text-2xl font-bold text-gray-900">{cpo.cpoNumber}</h1>
-            {(cpo.versionNumber || 1) > 1 && (
+            {(versionNumber || 1) > 1 && (
               <span className="px-2 py-0.5 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
-                v{cpo.versionNumber}
+                v{versionNumber}
               </span>
             )}
           </div>
@@ -621,11 +674,11 @@ export default function CpoDetailPage() {
           </div>
           <div className="bg-white rounded-lg shadow p-4">
             <dt className="text-xs font-medium text-gray-500 uppercase">Customer</dt>
-            <dd className="mt-1 text-lg font-semibold text-gray-900">{cpo.customerName || "-"}</dd>
+            <dd className="mt-1 text-lg font-semibold text-gray-900">{textOrDash(customerName)}</dd>
           </div>
           <div className="bg-white rounded-lg shadow p-4">
             <dt className="text-xs font-medium text-gray-500 uppercase">PO Number</dt>
-            <dd className="mt-1 text-lg font-semibold text-gray-900">{cpo.poNumber || "-"}</dd>
+            <dd className="mt-1 text-lg font-semibold text-gray-900">{textOrDash(poNumber)}</dd>
           </div>
           <div className="bg-white rounded-lg shadow p-4">
             <dt className="text-xs font-medium text-gray-500 uppercase">Overall Fulfilment</dt>
@@ -643,49 +696,44 @@ export default function CpoDetailPage() {
           </div>
         </div>
 
-        {(cpo.jobName ||
-          cpo.siteLocation ||
-          cpo.contactPerson ||
-          cpo.dueDate ||
-          cpo.notes ||
-          cpo.reference) && (
+        {(jobName || siteLocation || contactPerson || dueDate || notes || reference) && (
           <div className="bg-white rounded-lg shadow p-6">
             <h2 className="text-lg font-medium text-gray-900 mb-4">Details</h2>
             <dl className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3">
-              {cpo.jobName && (
+              {jobName && (
                 <div>
                   <dt className="text-sm font-medium text-gray-500">Job Name</dt>
-                  <dd className="text-sm text-gray-900">{cpo.jobName}</dd>
+                  <dd className="text-sm text-gray-900">{jobName}</dd>
                 </div>
               )}
-              {cpo.siteLocation && (
+              {siteLocation && (
                 <div>
                   <dt className="text-sm font-medium text-gray-500">Site Location</dt>
-                  <dd className="text-sm text-gray-900">{cpo.siteLocation}</dd>
+                  <dd className="text-sm text-gray-900">{siteLocation}</dd>
                 </div>
               )}
-              {cpo.contactPerson && (
+              {contactPerson && (
                 <div>
                   <dt className="text-sm font-medium text-gray-500">Contact Person</dt>
-                  <dd className="text-sm text-gray-900">{cpo.contactPerson}</dd>
+                  <dd className="text-sm text-gray-900">{contactPerson}</dd>
                 </div>
               )}
-              {cpo.dueDate && (
+              {dueDate && (
                 <div>
                   <dt className="text-sm font-medium text-gray-500">Due Date</dt>
-                  <dd className="text-sm text-gray-900">{cpo.dueDate}</dd>
+                  <dd className="text-sm text-gray-900">{dueDate}</dd>
                 </div>
               )}
-              {cpo.reference && (
+              {reference && (
                 <div>
                   <dt className="text-sm font-medium text-gray-500">Reference</dt>
-                  <dd className="text-sm text-gray-900">{cpo.reference}</dd>
+                  <dd className="text-sm text-gray-900">{reference}</dd>
                 </div>
               )}
-              {cpo.notes && (
+              {notes && (
                 <div className="md:col-span-2">
                   <dt className="text-sm font-medium text-gray-500">Notes</dt>
-                  <dd className="text-sm text-gray-900 whitespace-pre-wrap">{cpo.notes}</dd>
+                  <dd className="text-sm text-gray-900 whitespace-pre-wrap">{notes}</dd>
                 </div>
               )}
             </dl>
@@ -699,13 +747,13 @@ export default function CpoDetailPage() {
               <button
                 type="button"
                 onClick={() => {
-                  setSpecsDraft(cpo.coatingSpecs || "");
+                  setSpecsDraft(textOrEmpty(coatingSpecs));
                   setIsEditingSpecs(true);
                   setSpecsError(null);
                 }}
                 className="text-sm text-amber-700 hover:text-amber-900 underline"
               >
-                {cpo.coatingSpecs ? "Edit" : "Add Specs"}
+                {coatingSpecs ? "Edit" : "Add Specs"}
               </button>
             )}
           </div>
@@ -983,22 +1031,28 @@ export default function CpoDetailPage() {
                       <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Ordered
                       </th>
-                      {deliveryHistory.deliveries.map((d) => (
-                        <th
-                          key={d.jobCardId}
-                          className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
-                        >
-                          <Link
-                            href={`/stock-control/portal/job-cards/${d.jobCardId}`}
-                            className="text-teal-600 hover:text-teal-800"
-                          >
-                            {d.jtDnNumber || d.jobNumber}
-                          </Link>
-                          <div className="text-[10px] text-gray-400 font-normal normal-case">
-                            {formatDateZA(d.importedAt)}
-                          </div>
-                        </th>
-                      ))}
+                      {deliveryHistory.deliveries.map((d) =>
+                        (() => {
+                          const jtDnNumber = d.jtDnNumber;
+                          const deliveryLabel = jtDnNumber || d.jobNumber;
+                          return (
+                            <th
+                              key={d.jobCardId}
+                              className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
+                            >
+                              <Link
+                                href={`/stock-control/portal/job-cards/${d.jobCardId}`}
+                                className="text-teal-600 hover:text-teal-800"
+                              >
+                                {deliveryLabel}
+                              </Link>
+                              <div className="text-[10px] text-gray-400 font-normal normal-case">
+                                {formatDateZA(d.importedAt)}
+                              </div>
+                            </th>
+                          );
+                        })(),
+                      )}
                       <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Total Fulfilled
                       </th>
@@ -1011,7 +1065,7 @@ export default function CpoDetailPage() {
                     {deliveryHistory.runningTotals.map((rt, idx) => (
                       <tr key={idx} className="hover:bg-gray-50">
                         <td className="px-6 py-3 text-sm text-gray-900">
-                          <span className="font-mono font-medium">{rt.itemCode || "-"}</span>
+                          <span className="font-mono font-medium">{textOrDash(rt.itemCode)}</span>
                           {rt.description && (
                             <span className="ml-2 text-gray-500 text-xs truncate max-w-[200px] inline-block align-bottom">
                               {rt.description}
@@ -1057,7 +1111,7 @@ export default function CpoDetailPage() {
                           key={d.jobCardId}
                           className="px-4 py-3 text-sm text-right font-semibold text-teal-700"
                         >
-                          {d.totalQuantity || "-"}
+                          {textOrDash(d.totalQuantity == null ? null : String(d.totalQuantity))}
                         </td>
                       ))}
                       <td className="px-6 py-3 text-sm text-right font-semibold text-gray-900">
@@ -1159,6 +1213,7 @@ export default function CpoDetailPage() {
                   </tr>
                 )}
                 {sortedItems.map((item, idx) => {
+                  const deletePending = deleteCpoItemMutation.isPending;
                   const ordered = Number(item.quantityOrdered) || 0;
                   const fulfilled = Number(item.quantityFulfilled) || 0;
                   const remaining = Math.max(0, ordered - fulfilled);
@@ -1293,16 +1348,16 @@ export default function CpoDetailPage() {
                         {idx + 1}
                       </td>
                       <td className="hidden sm:table-cell px-3 sm:px-4 py-3 whitespace-nowrap text-sm text-gray-500">
-                        {item.itemNo || "-"}
+                        {textOrDash(item.itemNo)}
                       </td>
                       <td className="hidden sm:table-cell px-3 sm:px-4 py-3 whitespace-nowrap text-sm font-mono text-gray-900">
-                        {item.itemCode || "-"}
+                        {textOrDash(item.itemCode)}
                       </td>
                       <td className="px-3 sm:px-4 py-3 text-sm text-gray-900 max-w-[120px] sm:max-w-xs truncate">
-                        {item.itemDescription || "-"}
+                        {textOrDash(item.itemDescription)}
                       </td>
                       <td className="hidden md:table-cell px-3 sm:px-4 py-3 whitespace-nowrap text-sm text-gray-500">
-                        {item.jtNo || "-"}
+                        {textOrDash(item.jtNo)}
                       </td>
                       <td className="px-3 sm:px-4 py-3 whitespace-nowrap text-sm text-gray-900 text-right">
                         {ordered}
@@ -1341,11 +1396,7 @@ export default function CpoDetailPage() {
                             </button>
                             <button
                               onClick={() => handleDeleteItem(item.id)}
-                              disabled={
-                                deleteCpoItemMutation.isPending ||
-                                editingItemId !== null ||
-                                addingItem
-                              }
+                              disabled={deletePending || editingItemId !== null || addingItem}
                               className="px-2 py-1 text-xs font-medium text-red-700 bg-red-50 rounded hover:bg-red-100 disabled:opacity-40"
                             >
                               Delete
@@ -1416,7 +1467,11 @@ export default function CpoDetailPage() {
                       0
                     </td>
                     <td className="px-4 py-2 whitespace-nowrap text-sm text-right text-amber-600">
-                      {addDraft.quantityOrdered ? parseFloat(addDraft.quantityOrdered) || 0 : 0}
+                      {(() => {
+                        const parsedQuantity = parseFloat(addDraft.quantityOrdered);
+                        const quantityValue = Number.isNaN(parsedQuantity) ? 0 : parsedQuantity;
+                        return quantityValue;
+                      })()}
                     </td>
                     <td className="px-4 py-2 whitespace-nowrap">
                       <span className="text-xs text-gray-400">0%</span>
@@ -1548,14 +1603,10 @@ export default function CpoDetailPage() {
                 </button>
                 <button
                   onClick={handleItemFormSubmit}
-                  disabled={addCpoItemMutation.isPending || updateCpoItemMutation.isPending}
+                  disabled={isSavingItem}
                   className="px-4 py-2 text-sm font-medium text-white bg-teal-600 rounded-md hover:bg-teal-700 disabled:opacity-50"
                 >
-                  {addCpoItemMutation.isPending || updateCpoItemMutation.isPending
-                    ? "Saving..."
-                    : editingItem
-                      ? "Save Changes"
-                      : "Add Item"}
+                  {isSavingItem ? "Saving..." : editingItem ? "Save Changes" : "Add Item"}
                 </button>
               </div>
             </div>
@@ -1599,9 +1650,9 @@ export default function CpoDetailPage() {
                       <tbody>
                         {version.items.map((item, itemIdx) => (
                           <tr key={itemIdx} className="text-gray-600">
-                            <td className="py-0.5 font-mono">{item.itemCode || "-"}</td>
+                            <td className="py-0.5 font-mono">{textOrDash(item.itemCode)}</td>
                             <td className="py-0.5 max-w-xs truncate">
-                              {item.itemDescription || "-"}
+                              {textOrDash(item.itemDescription)}
                             </td>
                             <td className="py-0.5 text-right">{item.quantityOrdered}</td>
                             <td className="py-0.5 text-right">{item.quantityFulfilled}</td>
@@ -1730,8 +1781,15 @@ export default function CpoDetailPage() {
             <h3 className="text-sm font-medium text-amber-800 mb-2">Sage JC Dump Parsed</h3>
             <div className="text-sm text-amber-700 space-y-1">
               <p>
-                New JT groups: {Object.keys(sageParseResult.jtGroups).length} (
-                {Object.keys(sageParseResult.jtGroups).join(", ") || "none"})
+                {(() => {
+                  const jtGroupKeys = keys(sageParseResult.jtGroups);
+                  const jtGroupList = jtGroupKeys.join(", ");
+                  return (
+                    <>
+                      New JT groups: {jtGroupKeys.length} ({jtGroupList || "none"})
+                    </>
+                  );
+                })()}
               </p>
               {sageParseResult.skippedJtNumbers.length > 0 && (
                 <p>Skipped (already imported): {sageParseResult.skippedJtNumbers.join(", ")}</p>
@@ -1778,8 +1836,8 @@ export default function CpoDetailPage() {
           onClose={() => setShowAllocationModal(false)}
           onConfirm={handleAllocationConfirm}
           asteriskItems={sageParseResult.asteriskItems}
-          autoJtCount={Object.keys(sageParseResult.jtGroups).length}
-          autoJtNumbers={Object.keys(sageParseResult.jtGroups)}
+          autoJtCount={keys(sageParseResult.jtGroups).length}
+          autoJtNumbers={keys(sageParseResult.jtGroups)}
           submitting={sageConfirming}
         />
       )}

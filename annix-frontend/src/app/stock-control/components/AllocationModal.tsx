@@ -1,5 +1,6 @@
 "use client";
 
+import { keys } from "es-toolkit/compat";
 import { useCallback, useState } from "react";
 import { createPortal } from "react-dom";
 import type { StockItem } from "@/app/lib/api/stockControlApi";
@@ -60,7 +61,7 @@ export function AllocationModal(props: AllocationModalProps) {
     } else if (selectedItem && qty > selectedItem.quantity) {
       newErrors.quantity = `Exceeds available stock (${selectedItem.quantity} ${selectedItem.unitOfMeasure})`;
     }
-    if (Object.keys(newErrors).length > 0) {
+    if (keys(newErrors).length > 0) {
       setErrors(newErrors);
       return;
     }
@@ -115,7 +116,10 @@ export function AllocationModal(props: AllocationModalProps) {
                 <label className="block text-sm font-medium text-gray-700 mb-1">Stock Item</label>
                 <select
                   name="stockItemId"
-                  value={form.stockItemId ?? ""}
+                  value={(() => {
+                    const stockItemId = form.stockItemId;
+                    return stockItemId ?? "";
+                  })()}
                   onChange={handleChange}
                   className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 ${errors.stockItemId ? "border-red-500" : "border-gray-300"}`}
                 >

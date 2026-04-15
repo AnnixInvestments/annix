@@ -9,12 +9,12 @@ export interface FifoValuationCardProps {
 
 export function FifoValuationCard(props: FifoValuationCardProps) {
   const valuation = useFifoCompanyValuation();
-  const title = props.title ?? "Stock Valuation (FIFO)";
+  const cardTitle = props.title;
+  const title = cardTitle ?? "Stock Valuation (FIFO)";
+  const className = props.className;
 
   return (
-    <div
-      className={`rounded-lg border border-gray-200 bg-white p-4 shadow-sm ${props.className ?? ""}`}
-    >
+    <div className={`rounded-lg border border-gray-200 bg-white p-4 shadow-sm ${className ?? ""}`}>
       <div className="text-xs font-semibold text-gray-500 uppercase">{title}</div>
       {valuation.isLoading && <div className="mt-2 text-sm text-gray-400">Loading…</div>}
       {valuation.error && (

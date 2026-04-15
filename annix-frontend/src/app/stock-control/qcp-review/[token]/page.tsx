@@ -1,5 +1,6 @@
 "use client";
 
+import { keys } from "es-toolkit/compat";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { PdfPreviewModal, usePdfPreview } from "@/app/components/PdfPreviewModal";
@@ -73,7 +74,8 @@ export default function QcpReviewPage() {
         const res = await publicApi(`/${tokenStr}`);
         if (!res.ok) {
           const data = await res.json().catch(() => null);
-          setErrorMessage(data?.message || "Invalid or expired review link");
+          const message = data?.message;
+          setErrorMessage(message || "Invalid or expired review link");
           setStatus("error");
           return;
         }
@@ -94,7 +96,10 @@ export default function QcpReviewPage() {
     client: "client",
     third_party: "thirdParty",
   };
-  const partyKey = partyKeyMap[details?.token.partyRole || "client"] || "client";
+  const partyRole = details?.token.partyRole;
+  const resolvedPartyRole = partyRole || "client";
+  const mappedPartyKey = partyKeyMap[resolvedPartyRole];
+  const partyKey = mappedPartyKey || "client";
 
   const updateIntervention = useCallback(
     (activityIndex: number, value: InterventionType | null) => {
@@ -130,9 +135,15 @@ export default function QcpReviewPage() {
       if (!signatureName.trim()) return;
       setIsSubmitting(true);
       try {
-        const remarksArray = Object.entries(lineRemarks)
-          .filter(([, v]) => v.trim())
-          .map(([k, v]) => ({ operationNumber: Number(k), remark: v }));
+        const remarksArray = keys(lineRemarks)
+          .filter((k) => {
+            const operationNumber = Number(k);
+            return lineRemarks[operationNumber].trim();
+          })
+          .map((k) => {
+            const operationNumber = Number(k);
+            return { operationNumber, remark: lineRemarks[operationNumber] };
+          });
 
         const res = await publicApi(`/${tokenStr}/submit`, {
           method: "POST",
@@ -149,7 +160,8 @@ export default function QcpReviewPage() {
 
         if (!res.ok) {
           const data = await res.json().catch(() => null);
-          setErrorMessage(data?.message || "Failed to submit approval");
+          const message = data?.message;
+          setErrorMessage(message || "Failed to submit approval");
           return;
         }
 
@@ -166,9 +178,15 @@ export default function QcpReviewPage() {
   );
 
   const handleRequestChanges = useCallback(async () => {
-    const remarksArray = Object.entries(lineRemarks)
-      .filter(([, v]) => v.trim())
-      .map(([k, v]) => ({ operationNumber: Number(k), remark: v }));
+    const remarksArray = keys(lineRemarks)
+      .filter((k) => {
+        const operationNumber = Number(k);
+        return lineRemarks[operationNumber].trim();
+      })
+      .map((k) => {
+        const operationNumber = Number(k);
+        return { operationNumber, remark: lineRemarks[operationNumber] };
+      });
 
     if (remarksArray.length === 0 && !overallComments.trim()) {
       setErrorMessage("Please add at least one remark or comment explaining the requested changes");
@@ -190,7 +208,8 @@ export default function QcpReviewPage() {
 
       if (!res.ok) {
         const data = await res.json().catch(() => null);
-        setErrorMessage(data?.message || "Failed to submit change request");
+        const message = data?.message;
+        setErrorMessage(message || "Failed to submit change request");
         return;
       }
 
@@ -241,7 +260,8 @@ export default function QcpReviewPage() {
 
       if (!res.ok) {
         const data = await res.json().catch(() => null);
-        setErrorMessage(data?.message || "Failed to forward");
+        const message = data?.message;
+        setErrorMessage(message || "Failed to forward");
         return;
       }
 
@@ -262,7 +282,8 @@ export default function QcpReviewPage() {
       });
       if (!res.ok) {
         const data = await res.json().catch(() => null);
-        setErrorMessage(data?.message || "Failed to finalize approval");
+        const message = data?.message;
+        setErrorMessage(message || "Failed to finalize approval");
         return;
       }
       setFinalizeSuccess(true);
@@ -273,7 +294,8 @@ export default function QcpReviewPage() {
     }
   }, [tokenStr]);
 
-  const primaryColor = details?.company.primaryColor || "#0d9488";
+  const companyPrimaryColor = details?.company.primaryColor;
+  const primaryColor = companyPrimaryColor || "#0d9488";
 
   if (status === "loading") {
     return (
@@ -302,6 +324,8 @@ export default function QcpReviewPage() {
 
   if (status === "submitted") {
     const isApproved = submittedAction === "approved";
+    const companyName = details?.company.name;
+    const approvalRecipient = companyName || "the team";
     return (
       <div className="flex min-h-screen items-center justify-center p-4">
         <div className="max-w-md rounded-lg bg-white p-8 shadow-sm text-center">
@@ -317,8 +341,8 @@ export default function QcpReviewPage() {
           </h2>
           <p className="mt-2 text-sm text-gray-600">
             {isApproved
-              ? `Thank you. The QCP has been approved and ${details?.company.name || "the team"} has been notified.`
-              : `Your change request has been sent to ${details?.company.name || "the team"} for revision.`}
+              ? `Thank you. The QCP has been approved and ${approvalRecipient} has been notified.`
+              : `Your change request has been sent to ${approvalRecipient} for revision.`}
           </p>
 
           {isApproved &&
@@ -396,8 +420,7 @@ export default function QcpReviewPage() {
           {finalizeSuccess && (
             <div className="mt-6 rounded-lg border border-green-200 bg-green-50 p-4 text-left">
               <p className="text-sm font-medium text-green-800">
-                QCP fully approved. {details?.company.name || "The team"} and the customer have been
-                notified.
+                QCP fully approved. {companyName || "The team"} and the customer have been notified.
               </p>
             </div>
           )}
@@ -414,20 +437,22 @@ export default function QcpReviewPage() {
     client: "Client",
     third_party: "3rd Party",
   };
-  const roleLabel = roleLabelMap[details.token.partyRole] || "Customer";
+  const reviewerPartyRole = details.token.partyRole;
+  const mappedRoleLabel = roleLabelMap[reviewerPartyRole];
+  const roleLabel = mappedRoleLabel || "Customer";
 
-  const activeParties = (plan.activeParties as string[] | null) || [
-    "pls",
-    "mps",
-    "client",
-    "thirdParty",
-  ];
+  const activePartyList = plan.activeParties as string[] | null;
+  const activeParties = activePartyList || ["pls", "mps", "client", "thirdParty"];
+  const customerName = plan.customerName;
   const partyLabelMap: Record<string, string> = {
     pls: "PLS",
-    mps: plan.customerName || "MPS",
+    mps: customerName || "MPS",
     client: "Client",
     thirdParty: "3rd Party",
   };
+  const qcpNumber = plan.qcpNumber;
+  const revision = plan.revision;
+  const jobName = plan.jobName;
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-6">
@@ -456,19 +481,19 @@ export default function QcpReviewPage() {
         <div className="grid grid-cols-2 gap-4 text-sm md:grid-cols-4">
           <div>
             <span className="text-xs font-medium text-gray-500">QCP Number</span>
-            <p className="font-semibold text-gray-900">{plan.qcpNumber || `QCP #${plan.id}`}</p>
+            <p className="font-semibold text-gray-900">{qcpNumber || `QCP #${plan.id}`}</p>
           </div>
           <div>
             <span className="text-xs font-medium text-gray-500">Revision</span>
-            <p className="text-gray-900">{plan.revision || "01"}</p>
+            <p className="text-gray-900">{revision || "01"}</p>
           </div>
           <div>
             <span className="text-xs font-medium text-gray-500">Customer</span>
-            <p className="text-gray-900">{plan.customerName || "-"}</p>
+            <p className="text-gray-900">{customerName || "-"}</p>
           </div>
           <div>
             <span className="text-xs font-medium text-gray-500">Job</span>
-            <p className="text-gray-900">{plan.jobName || "-"}</p>
+            <p className="text-gray-900">{jobName || "-"}</p>
           </div>
         </div>
         <div className="mt-2 flex items-center gap-2">
@@ -509,13 +534,14 @@ export default function QcpReviewPage() {
                 </th>
                 {activeParties.map((p) => {
                   const isReviewerCol = p === partyKey;
+                  const partyLabel = partyLabelMap[p];
                   return (
                     <th
                       key={p}
                       className={`w-20 px-2 py-2 text-center text-xs font-medium uppercase ${isReviewerCol ? "" : "text-gray-500"}`}
                       style={isReviewerCol ? { color: primaryColor } : undefined}
                     >
-                      {partyLabelMap[p] || p}
+                      {partyLabel || p}
                     </th>
                   );
                 })}
@@ -527,26 +553,28 @@ export default function QcpReviewPage() {
             <tbody className="divide-y divide-gray-200">
               {activities.map((activity, idx) => {
                 const so = activity[partyKey];
+                const specification = activity.specification;
+                const documentation = activity.documentation;
+                const remark = lineRemarks[activity.operationNumber];
                 return (
                   <tr key={idx} className="hover:bg-gray-50">
                     <td className="px-2 py-1.5 text-center font-medium text-gray-700">
                       {activity.operationNumber}
                     </td>
                     <td className="px-2 py-1.5 text-gray-900">{activity.description}</td>
-                    <td className="px-2 py-1.5 text-xs text-gray-500">
-                      {activity.specification || "-"}
-                    </td>
-                    <td className="px-2 py-1.5 text-xs text-gray-500">
-                      {activity.documentation || "-"}
-                    </td>
+                    <td className="px-2 py-1.5 text-xs text-gray-500">{specification || "-"}</td>
+                    <td className="px-2 py-1.5 text-xs text-gray-500">{documentation || "-"}</td>
                     {activeParties.map((p) => {
                       const isReviewerCol = p === partyKey;
                       const partyData = activity[p as keyof QcpActivity] as any;
+                      const partyInterventionType = partyData?.interventionType;
+                      const reviewerInterventionType = so?.interventionType;
+                      const reviewerInitial = so?.initial;
                       if (!isReviewerCol) {
                         return (
                           <td key={p} className="px-2 py-1.5 text-center">
                             <span className="font-medium text-gray-600">
-                              {partyData?.interventionType || "-"}
+                              {partyInterventionType || "-"}
                             </span>
                             {partyData?.initial && (
                               <span className="ml-1 text-xs text-gray-400">
@@ -561,7 +589,7 @@ export default function QcpReviewPage() {
                           <div className="flex flex-col items-center gap-0.5">
                             <div className="flex items-center justify-center gap-1">
                               <select
-                                value={so?.interventionType || ""}
+                                value={reviewerInterventionType ?? ""}
                                 onChange={(e) =>
                                   updateIntervention(
                                     idx,
@@ -570,7 +598,7 @@ export default function QcpReviewPage() {
                                 }
                                 className="w-11 rounded border border-gray-300 px-0.5 py-1 text-center text-xs"
                                 style={{
-                                  borderColor: so?.interventionType ? primaryColor : undefined,
+                                  borderColor: reviewerInterventionType ? primaryColor : undefined,
                                 }}
                               >
                                 <option value="">-</option>
@@ -583,7 +611,7 @@ export default function QcpReviewPage() {
                               <input
                                 type="text"
                                 ref={idx === 0 ? line1InitialRef : undefined}
-                                value={so?.initial || ""}
+                                value={reviewerInitial ?? ""}
                                 onChange={(e) => updateInitial(idx, e.target.value)}
                                 maxLength={5}
                                 placeholder="init"
@@ -602,7 +630,7 @@ export default function QcpReviewPage() {
                     <td className="px-2 py-1.5">
                       <input
                         type="text"
-                        value={lineRemarks[activity.operationNumber] || ""}
+                        value={remark ?? ""}
                         onChange={(e) =>
                           setLineRemarks((prev) => ({
                             ...prev,
@@ -665,9 +693,10 @@ export default function QcpReviewPage() {
             <button
               type="button"
               onClick={() => {
+                const previewQcpNumber = plan.qcpNumber;
                 pdfPreview.openWithFetch(
                   () => publicApi(`/${tokenStr}/pdf`).then((res) => res.blob()),
-                  `QCP-${plan?.qcpNumber || "preview"}.pdf`,
+                  `QCP-${previewQcpNumber || "preview"}.pdf`,
                 );
               }}
               className="rounded-md border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"

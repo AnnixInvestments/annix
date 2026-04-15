@@ -1,5 +1,6 @@
 "use client";
 
+import { keys } from "es-toolkit/compat";
 import { useMemo, useState } from "react";
 import type {
   BackgroundStepStatus,
@@ -66,21 +67,26 @@ export function WorkflowPreviewSection() {
     if (fgSteps.length === 0 && bgStepConfigs.length === 0) return [];
 
     const bgByTrigger = bgStepConfigs.reduce<Record<string, WorkflowStepConfig[]>>((acc, bg) => {
-      const triggerKey = bg.triggerAfterStep || "__root__";
-      return { ...acc, [triggerKey]: [...(acc[triggerKey] || []), bg] };
+      const triggerAfterStep = bg.triggerAfterStep;
+      const triggerKey = triggerAfterStep || "__root__";
+      const existingTriggerItems = acc[triggerKey];
+      const triggerItems = existingTriggerItems || [];
+      return { ...acc, [triggerKey]: [...triggerItems, bg] };
     }, {});
 
-    const sortedBgByTrigger = Object.fromEntries(
-      Object.entries(bgByTrigger).map(([k, arr]) => [
-        k,
-        [...arr].sort((a, b) => a.sortOrder - b.sortOrder),
-      ]),
+    const sortedBgByTrigger = keys(bgByTrigger).reduce<Record<string, WorkflowStepConfig[]>>(
+      (acc, k) => ({
+        ...acc,
+        [k]: [...bgByTrigger[k]].sort((a, b) => a.sortOrder - b.sortOrder),
+      }),
+      {},
     );
 
     const visited = new Set<string>();
 
     const collectBgChain = (triggerKey: string): WalkItem[] => {
-      const bgs = sortedBgByTrigger[triggerKey] || [];
+      const triggerItems = sortedBgByTrigger[triggerKey];
+      const bgs = triggerItems || [];
       return bgs.reduce<WalkItem[]>((acc, bg) => {
         if (visited.has(bg.key)) return acc;
         visited.add(bg.key);
@@ -117,7 +123,8 @@ export function WorkflowPreviewSection() {
       if (pos > totalWalk) return "file_closed";
       if (focusItem && focusItem.type === "fg") return focusItem.key;
       const precedingFgs = walkOrder.slice(0, walkIdx).filter((w) => w.type === "fg");
-      const last = precedingFgs[precedingFgs.length - 1];
+      const lastFg = precedingFgs[precedingFgs.length - 1];
+      const last = lastFg || null;
       return last ? last.key : "draft";
     })();
 

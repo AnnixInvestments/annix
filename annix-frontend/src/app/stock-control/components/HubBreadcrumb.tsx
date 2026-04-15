@@ -9,10 +9,11 @@ export function HubBreadcrumb() {
   const pathname = usePathname();
 
   const breadcrumb = useMemo(() => {
-    const matchedItem =
-      ALL_NAV_ITEMS.filter(
-        (item) => item.group && item.group !== "hidden" && pathname.startsWith(item.href),
-      ).sort((a, b) => b.href.length - a.href.length)[0] ?? null;
+    const matchedItems = ALL_NAV_ITEMS.filter(
+      (item) => item.group && item.group !== "hidden" && pathname.startsWith(item.href),
+    ).sort((a, b) => b.href.length - a.href.length);
+    const firstMatchedItem = matchedItems[0];
+    const matchedItem = firstMatchedItem ?? null;
     if (!matchedItem?.group) return null;
 
     const groupName = matchedItem.group;

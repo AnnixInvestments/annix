@@ -39,25 +39,33 @@ export function ImportPreview(props: ImportPreviewProps) {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {rows.slice(0, 100).map((row, index) => (
-                <tr key={index} className={index % 2 === 0 ? "bg-white" : "bg-gray-50"}>
-                  <td className="px-4 py-2 whitespace-nowrap text-gray-900">
-                    {String(row.sku ?? "-")}
-                  </td>
-                  <td className="px-4 py-2 whitespace-nowrap text-gray-900">
-                    {String(row.name ?? "-")}
-                  </td>
-                  <td className="px-4 py-2 whitespace-nowrap text-gray-500">
-                    {String(row.category ?? "-")}
-                  </td>
-                  <td className="px-4 py-2 whitespace-nowrap text-right text-gray-900">
-                    {String(row.quantity ?? "-")}
-                  </td>
-                  <td className="px-4 py-2 whitespace-nowrap text-right text-gray-900">
-                    {String(row.costPerUnit ?? "-")}
-                  </td>
-                </tr>
-              ))}
+              {rows.slice(0, 100).map((row, index) => {
+                const sku = row.sku;
+                const name = row.name;
+                const category = row.category;
+                const quantity = row.quantity;
+                const costPerUnit = row.costPerUnit;
+
+                return (
+                  <tr key={index} className={index % 2 === 0 ? "bg-white" : "bg-gray-50"}>
+                    <td className="px-4 py-2 whitespace-nowrap text-gray-900">
+                      {String(sku ?? "-")}
+                    </td>
+                    <td className="px-4 py-2 whitespace-nowrap text-gray-900">
+                      {String(name ?? "-")}
+                    </td>
+                    <td className="px-4 py-2 whitespace-nowrap text-gray-500">
+                      {String(category ?? "-")}
+                    </td>
+                    <td className="px-4 py-2 whitespace-nowrap text-right text-gray-900">
+                      {String(quantity ?? "-")}
+                    </td>
+                    <td className="px-4 py-2 whitespace-nowrap text-right text-gray-900">
+                      {String(costPerUnit ?? "-")}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
