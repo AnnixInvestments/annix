@@ -2,7 +2,7 @@
 
 When handling issues with the `feedback` label, this context applies.
 
-**Your role is INVESTIGATION ONLY. You must NOT edit files, create branches, or open PRs.**
+**Your goal is to fix feedback autonomously when it is safe to do so. If it is not safe or not possible, explain the blocker clearly on the issue.**
 
 ## How Feedback Issues Work
 
@@ -54,18 +54,23 @@ Screenshots show the exact state of the page when the user submitted feedback. L
 - Missing data or incorrect values
 - The URL bar showing the current page route
 
-## Investigation Guidelines
+## Execution Guidelines
 
 1. Read the feedback content and examine any screenshots
 2. Identify the relevant page/component from the app context and page URL
 3. Read the component code, tracing the data flow from frontend to backend
 4. Identify the root cause — pinpoint exact files and line numbers
-5. Determine what the fix should be and describe it in detail
-6. Post your findings as a comment on the issue
+5. Implement the fix if it is contained, safe, and testable in automation
+6. Open a PR and comment on the issue with the outcome
 
-## What to Include in Your Investigation Comment
+## What to Include in Your Issue Comment
 
-Your comment is the primary input for a developer who will fix this via CLI. Be thorough and specific:
+If you create a PR, include:
+- The PR link
+- A concise summary of the fix
+- Any follow-up action required after merge
+
+If you cannot automate the fix, be thorough and specific:
 
 - **Exact file paths and line numbers** where the problem originates
 - **Code snippets** showing the problematic logic

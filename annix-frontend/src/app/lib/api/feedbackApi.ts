@@ -1,3 +1,4 @@
+import { isUndefined } from "es-toolkit/compat";
 import { throwIfNotOk } from "@/app/lib/api/apiError";
 import { createApiClient } from "@/app/lib/api/createApiClient";
 import { customerTokenStore } from "@/app/lib/api/portalTokenStores";
@@ -7,6 +8,14 @@ export interface SubmitFeedbackDto {
   content: string;
   source: "text" | "voice";
   pageUrl?: string;
+  captureUrl?: string;
+  viewportWidth?: number;
+  viewportHeight?: number;
+  devicePixelRatio?: number;
+  userAgent?: string;
+  previewUserId?: number;
+  previewUserName?: string;
+  previewUserEmail?: string;
 }
 
 export interface SubmitFeedbackResponse {
@@ -44,11 +53,15 @@ function resolveToken(authContext: FeedbackAuthContext): string | null {
   if (usesCookieAuth(authContext)) {
     return null;
   }
-  if (typeof window === "undefined") {
+  if (isUndefined(window)) {
     return null;
   }
   const key = AUTH_TOKEN_KEYS[authContext];
-  return key ? localStorage.getItem(key) || sessionStorage.getItem(key) : null;
+  if (!key) {
+    return null;
+  }
+  const localToken = localStorage.getItem(key);
+  return localToken || sessionStorage.getItem(key);
 }
 
 const customerClient = createApiClient({
@@ -81,7 +94,32 @@ export async function submitFeedbackWithAttachments(
   if (dto.pageUrl) {
     formData.append("pageUrl", dto.pageUrl);
   }
-  formData.append("appContext", dto.appContext || authContext);
+  if (dto.captureUrl) {
+    formData.append("captureUrl", dto.captureUrl);
+  }
+  if (dto.viewportWidth) {
+    formData.append("viewportWidth", String(dto.viewportWidth));
+  }
+  if (dto.viewportHeight) {
+    formData.append("viewportHeight", String(dto.viewportHeight));
+  }
+  if (dto.devicePixelRatio) {
+    formData.append("devicePixelRatio", String(dto.devicePixelRatio));
+  }
+  if (dto.userAgent) {
+    formData.append("userAgent", dto.userAgent);
+  }
+  if (dto.previewUserId) {
+    formData.append("previewUserId", String(dto.previewUserId));
+  }
+  if (dto.previewUserName) {
+    formData.append("previewUserName", dto.previewUserName);
+  }
+  if (dto.previewUserEmail) {
+    formData.append("previewUserEmail", dto.previewUserEmail);
+  }
+  const appContext = dto.appContext;
+  formData.append("appContext", appContext || authContext);
 
   files.forEach((file) => {
     formData.append("files", file);

@@ -1,5 +1,6 @@
 "use client";
 
+import { isUndefined } from "es-toolkit/compat";
 import { toBlob } from "html-to-image";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -39,6 +40,11 @@ interface Attachment {
 
 interface FeedbackWidgetProps {
   authContext: FeedbackAuthContext;
+  submitterOverride?: {
+    userId: number;
+    name: string;
+    email: string;
+  } | null;
 }
 
 function savedGeometry(): PanelGeometry | null {
@@ -51,7 +57,7 @@ function savedGeometry(): PanelGeometry | null {
 }
 
 function defaultPosition(): { x: number; y: number } {
-  if (typeof window === "undefined") {
+  if (isUndefined(window)) {
     return { x: 0, y: 0 };
   }
   return {
@@ -62,6 +68,7 @@ function defaultPosition(): { x: number; y: number } {
 
 export function FeedbackWidget(props: FeedbackWidgetProps) {
   const authContext = props.authContext;
+  const submitterOverride = props.submitterOverride;
   const pathname = usePathname();
   const { isFeatureEnabled, isLoading: flagsLoading } = useFeatureGate();
   const [isExpanded, setIsExpanded] = useState(false);
@@ -443,12 +450,25 @@ export function FeedbackWidget(props: FeedbackWidgetProps) {
         ...(freshScreenshot ? [freshScreenshot] : []),
         ...userAttachments.map((a) => a.file),
       ];
+      const captureUrl = isUndefined(window) ? pathname : window.location.href;
+      const viewportWidth = isUndefined(window) ? undefined : window.innerWidth;
+      const viewportHeight = isUndefined(window) ? undefined : window.innerHeight;
+      const devicePixelRatio = isUndefined(window) ? undefined : window.devicePixelRatio;
+      const userAgent = isUndefined(window) ? undefined : window.navigator.userAgent;
 
       await submitFeedbackWithAttachments(
         {
           content: content.trim(),
           source: feedbackSource,
           pageUrl: pathname,
+          captureUrl,
+          viewportWidth,
+          viewportHeight,
+          devicePixelRatio,
+          userAgent,
+          previewUserId: submitterOverride?.userId,
+          previewUserName: submitterOverride?.name,
+          previewUserEmail: submitterOverride?.email,
           appContext: authContext,
         },
         userFiles,
@@ -700,46 +720,50 @@ export function FeedbackWidget(props: FeedbackWidgetProps) {
 
             {attachments.length > 0 && (
               <div className="flex gap-2 mt-2 overflow-x-auto pb-1">
-                {attachments.map((att, idx) => (
-                  <div key={att.preview || att.file.name} className="relative shrink-0 w-14 h-14">
-                    {att.file.type.startsWith("image/") ? (
-                      <img
-                        src={att.preview}
-                        alt={`Attachment ${idx + 1}`}
-                        className="w-14 h-14 object-cover rounded border border-gray-200"
-                      />
-                    ) : (
-                      <div
-                        className="w-14 h-14 rounded border border-gray-200 bg-gray-50 flex flex-col items-center justify-center"
-                        title={att.file.name}
-                      >
-                        <svg
-                          className="w-5 h-5 text-gray-400"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
+                {attachments.map((att, idx) => {
+                  const preview = att.preview;
+                  const attachmentKey = preview || att.file.name;
+                  return (
+                    <div key={attachmentKey} className="relative shrink-0 w-14 h-14">
+                      {att.file.type.startsWith("image/") ? (
+                        <img
+                          src={preview}
+                          alt={`Attachment ${idx + 1}`}
+                          className="w-14 h-14 object-cover rounded border border-gray-200"
+                        />
+                      ) : (
+                        <div
+                          className="w-14 h-14 rounded border border-gray-200 bg-gray-50 flex flex-col items-center justify-center"
+                          title={att.file.name}
                         >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                          />
-                        </svg>
-                        <span className="text-[8px] text-gray-500 mt-0.5 truncate max-w-[3rem]">
-                          {att.file.name.split(".").pop()?.toUpperCase()}
-                        </span>
-                      </div>
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveAttachment(idx)}
-                      className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600"
-                    >
-                      x
-                    </button>
-                  </div>
-                ))}
+                          <svg
+                            className="w-5 h-5 text-gray-400"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                            />
+                          </svg>
+                          <span className="text-[8px] text-gray-500 mt-0.5 truncate max-w-[3rem]">
+                            {att.file.name.split(".").pop()?.toUpperCase()}
+                          </span>
+                        </div>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveAttachment(idx)}
+                        className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600"
+                      >
+                        x
+                      </button>
+                    </div>
+                  );
+                })}
               </div>
             )}
 

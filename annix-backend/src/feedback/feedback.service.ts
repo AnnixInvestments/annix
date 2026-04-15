@@ -8,6 +8,7 @@ import { formatDateTime, now } from "../lib/datetime";
 import { ConversationType, RelatedEntityType } from "../messaging/entities";
 import { MessagingService } from "../messaging/messaging.service";
 import { PuppeteerPoolService } from "../shared/services/puppeteer-pool.service";
+import { StockControlUser } from "../stock-control/entities/stock-control-user.entity";
 import { type IStorageService, STORAGE_SERVICE, StorageArea } from "../storage/storage.interface";
 import { User } from "../user/entities/user.entity";
 import { SubmitFeedbackDto, SubmitFeedbackResponseDto } from "./dto";
@@ -28,6 +29,14 @@ interface GeneralFeedbackDto {
   content: string;
   source: "text" | "voice";
   pageUrl: string | null;
+  captureUrl: string | null;
+  viewportWidth: number | null;
+  viewportHeight: number | null;
+  devicePixelRatio: number | null;
+  userAgent: string | null;
+  previewUserId: number | null;
+  previewUserName: string | null;
+  previewUserEmail: string | null;
   appContext: string | null;
 }
 
@@ -44,6 +53,8 @@ export class FeedbackService {
     private readonly customerProfileRepository: Repository<CustomerProfile>,
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
+    @InjectRepository(StockControlUser)
+    private readonly stockControlUserRepository: Repository<StockControlUser>,
     private readonly messagingService: MessagingService,
     private readonly emailService: EmailService,
     private readonly configService: ConfigService,
@@ -113,20 +124,21 @@ export class FeedbackService {
     files: Express.Multer.File[],
     bearerToken: string | null = null,
   ): Promise<SubmitFeedbackResponseDto> {
+    const effectiveSubmitter = await this.resolveGeneralSubmitter(submitter, dto);
     const feedback = this.feedbackRepository.create({
       customerProfileId: null,
       content: dto.content,
       source: dto.source,
       pageUrl: dto.pageUrl,
-      submitterType: submitter.type as SubmitterType,
-      submitterName: submitter.displayName,
-      submitterEmail: submitter.email,
+      submitterType: effectiveSubmitter.type as SubmitterType,
+      submitterName: effectiveSubmitter.displayName,
+      submitterEmail: effectiveSubmitter.email,
       appContext: dto.appContext,
     });
 
     const savedFeedback = await this.feedbackRepository.save(feedback);
 
-    this.processGeneralFeedbackAsync(savedFeedback, submitter, dto, files, bearerToken);
+    this.processGeneralFeedbackAsync(savedFeedback, effectiveSubmitter, dto, files, bearerToken);
 
     return {
       id: savedFeedback.id,
@@ -145,10 +157,7 @@ export class FeedbackService {
       const hasAutoScreenshot = files.some((f) => f.originalname === "auto-screenshot.png");
       const allFiles = hasAutoScreenshot
         ? files
-        : [
-            ...files,
-            ...(await this.captureServerScreenshot(dto.pageUrl, dto.appContext, bearerToken)),
-          ];
+        : [...files, ...(await this.captureServerScreenshot(dto, bearerToken))];
 
       const attachments = await this.uploadAttachments(feedback.id, allFiles);
 
@@ -533,24 +542,47 @@ ${feedback.content}
   };
 
   private async captureServerScreenshot(
-    pageUrl: string | null,
-    appContext: string | null = null,
+    dto: GeneralFeedbackDto,
     bearerToken: string | null = null,
   ): Promise<Express.Multer.File[]> {
-    if (!pageUrl) {
+    const captureUrl = dto.captureUrl || dto.pageUrl;
+    if (!captureUrl) {
       return [];
     }
 
     try {
       const frontendUrl =
         this.configService.get<string>("FRONTEND_URL") || "https://annix-app.fly.dev";
-      const fullUrl = pageUrl.startsWith("http") ? pageUrl : `${frontendUrl}${pageUrl}`;
-      const tokenKey = appContext ? this.TOKEN_KEYS[appContext] || null : null;
+      const fullUrl = captureUrl.startsWith("http") ? captureUrl : `${frontendUrl}${captureUrl}`;
+      const tokenKey = dto.appContext ? this.TOKEN_KEYS[dto.appContext] || null : null;
+      const viewportWidth =
+        dto.viewportWidth && Number.isFinite(dto.viewportWidth)
+          ? Math.max(320, Math.min(Math.round(dto.viewportWidth), 1600))
+          : 1280;
+      const viewportHeight =
+        dto.viewportHeight && Number.isFinite(dto.viewportHeight)
+          ? Math.max(480, Math.min(Math.round(dto.viewportHeight), 2400))
+          : 800;
+      const deviceScaleFactor =
+        dto.devicePixelRatio && Number.isFinite(dto.devicePixelRatio)
+          ? Math.max(1, Math.min(dto.devicePixelRatio, 3))
+          : 1;
+      const isMobile = viewportWidth <= 768;
 
       const screenshotBuffer = await this.puppeteerPool.executeWithPage({
         timeout: 60000,
         execute: async (page) => {
-          await page.setViewport({ width: 1280, height: 800 });
+          await page.setViewport({
+            width: viewportWidth,
+            height: viewportHeight,
+            deviceScaleFactor,
+            isMobile,
+            hasTouch: isMobile,
+          });
+
+          if (dto.userAgent) {
+            await page.setUserAgent(dto.userAgent);
+          }
 
           if (bearerToken && tokenKey) {
             await page.evaluateOnNewDocument(
@@ -583,15 +615,49 @@ ${feedback.content}
       };
 
       this.logger.log(
-        `Server-side screenshot captured for ${pageUrl} (${screenshotBuffer.length} bytes)`,
+        `Server-side screenshot captured for ${captureUrl} (${viewportWidth}x${viewportHeight}, ${screenshotBuffer.length} bytes)`,
       );
       return [multerFile];
     } catch (error) {
       this.logger.warn(
-        `Server-side screenshot failed for ${pageUrl}: ${error instanceof Error ? error.message : "Unknown"}`,
+        `Server-side screenshot failed for ${captureUrl}: ${error instanceof Error ? error.message : "Unknown"}`,
       );
       return [];
     }
+  }
+
+  private async resolveGeneralSubmitter(
+    submitter: FeedbackSubmitter,
+    dto: GeneralFeedbackDto,
+  ): Promise<FeedbackSubmitter> {
+    if (
+      submitter.type !== "stock-control" ||
+      submitter.role !== "admin" ||
+      submitter.companyId === undefined ||
+      dto.previewUserId === null
+    ) {
+      return submitter;
+    }
+
+    const previewUser = await this.stockControlUserRepository.findOne({
+      where: {
+        id: dto.previewUserId,
+        companyId: submitter.companyId,
+      },
+    });
+
+    if (!previewUser) {
+      return submitter;
+    }
+
+    return {
+      ...submitter,
+      userId: previewUser.id,
+      displayName: previewUser.name,
+      email: previewUser.email,
+      role: previewUser.role,
+      companyId: previewUser.companyId,
+    };
   }
 
   private createGithubIssueAsync(feedbackId: number): void {

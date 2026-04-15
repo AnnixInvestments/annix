@@ -7,6 +7,8 @@ export interface FeedbackSubmitter {
   userId: number;
   displayName: string;
   email: string;
+  role?: string;
+  companyId?: number;
 }
 
 @Injectable()
@@ -37,6 +39,8 @@ export class FeedbackAuthGuard implements CanActivate {
           `${payload.firstName || ""} ${payload.lastName || ""}`.trim() ||
           payload.email,
         email: payload.email,
+        role: payload.role,
+        companyId: payload.companyId,
       };
 
       request["feedbackSubmitter"] = submitter;

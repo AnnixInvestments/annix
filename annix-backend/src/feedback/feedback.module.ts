@@ -7,6 +7,7 @@ import { CustomerProfile } from "../customer/entities/customer-profile.entity";
 import { EmailModule } from "../email/email.module";
 import { MessagingModule } from "../messaging/messaging.module";
 import { NixModule } from "../nix/nix.module";
+import { StockControlUser } from "../stock-control/entities/stock-control-user.entity";
 import { User } from "../user/entities/user.entity";
 import { CustomerFeedback } from "./entities/customer-feedback.entity";
 import { FeedbackAttachment } from "./entities/feedback-attachment.entity";
@@ -27,7 +28,13 @@ import { FeedbackAuthGuard } from "./guards/feedback-auth.guard";
         secret: configService.get<string>("JWT_SECRET"),
       }),
     }),
-    TypeOrmModule.forFeature([CustomerFeedback, FeedbackAttachment, CustomerProfile, User]),
+    TypeOrmModule.forFeature([
+      CustomerFeedback,
+      FeedbackAttachment,
+      CustomerProfile,
+      User,
+      StockControlUser,
+    ]),
     CustomerModule,
     EmailModule,
     MessagingModule,

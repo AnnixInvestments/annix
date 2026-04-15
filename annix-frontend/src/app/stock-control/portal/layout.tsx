@@ -68,7 +68,8 @@ function PageAccessGuard({ children }: { children: React.ReactNode }) {
       return pathname === itemPath || pathname.startsWith(`${itemPath}/`);
     }).sort((a, b) => b.href.split("?")[0].length - a.href.split("?")[0].length);
 
-    const matchingItem = candidates[0] ?? null;
+    const firstCandidate = candidates[0];
+    const matchingItem = firstCandidate ?? null;
 
     if (!matchingItem) {
       setAccessDenied(null);
@@ -145,6 +146,25 @@ function useHideOuterScrollbar() {
   }, []);
 }
 
+function StockControlFeedbackWidget() {
+  const { isPreviewActive, viewAsUser } = useViewAs();
+
+  return (
+    <FeedbackWidget
+      authContext="stock-control"
+      submitterOverride={
+        isPreviewActive && viewAsUser
+          ? {
+              userId: viewAsUser.id,
+              name: viewAsUser.name,
+              email: viewAsUser.email,
+            }
+          : null
+      }
+    />
+  );
+}
+
 function PortalContent({ children }: { children: React.ReactNode }) {
   useHideOuterScrollbar();
 
@@ -163,7 +183,7 @@ function PortalContent({ children }: { children: React.ReactNode }) {
               <div className="print:hidden">
                 <ChatPanel />
               </div>
-              <FeedbackWidget authContext="stock-control" />
+              <StockControlFeedbackWidget />
             </div>
           </GlossaryProvider>
         </ViewAsProvider>

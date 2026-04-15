@@ -32,7 +32,21 @@ export class GeneralFeedbackController {
     }),
   )
   async submitFeedback(
-    @Body() body: { content: string; source?: string; pageUrl?: string; appContext?: string },
+    @Body()
+    body: {
+      content: string;
+      source?: string;
+      pageUrl?: string;
+      captureUrl?: string;
+      viewportWidth?: string;
+      viewportHeight?: string;
+      devicePixelRatio?: string;
+      userAgent?: string;
+      previewUserId?: string;
+      previewUserName?: string;
+      previewUserEmail?: string;
+      appContext?: string;
+    },
     @UploadedFiles() files: Express.Multer.File[],
     @Req() req: Request,
   ): Promise<SubmitFeedbackResponseDto> {
@@ -54,6 +68,14 @@ export class GeneralFeedbackController {
         content,
         source,
         pageUrl: body.pageUrl || null,
+        captureUrl: body.captureUrl || null,
+        viewportWidth: body.viewportWidth ? Number(body.viewportWidth) : null,
+        viewportHeight: body.viewportHeight ? Number(body.viewportHeight) : null,
+        devicePixelRatio: body.devicePixelRatio ? Number(body.devicePixelRatio) : null,
+        userAgent: body.userAgent || null,
+        previewUserId: body.previewUserId ? Number(body.previewUserId) : null,
+        previewUserName: body.previewUserName || null,
+        previewUserEmail: body.previewUserEmail || null,
         appContext: body.appContext || null,
       },
       files || [],
