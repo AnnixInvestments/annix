@@ -31,6 +31,11 @@ import { AdminDashboardController } from "./admin-dashboard.controller";
 import { AdminDashboardService } from "./admin-dashboard.service";
 import { AdminFeedbackController } from "./admin-feedback.controller";
 import { AdminMessagingController } from "./admin-messaging.controller";
+import {
+  AdminPollingJobsController,
+  PublicPollingJobsController,
+} from "./admin-polling-jobs.controller";
+import { AdminPollingJobsService } from "./admin-polling-jobs.service";
 import { AdminReferenceDataController } from "./admin-reference-data.controller";
 import { AdminReferenceDataService } from "./admin-reference-data.service";
 import { AdminRfqController } from "./admin-rfq.controller";
@@ -39,6 +44,8 @@ import { AdminScheduledJobsController } from "./admin-scheduled-jobs.controller"
 import { AdminScheduledJobsService } from "./admin-scheduled-jobs.service";
 import { AdminSession } from "./entities/admin-session.entity";
 import { CompanyProfile } from "./entities/company-profile.entity";
+import { PollingJobOverride } from "./entities/polling-job-override.entity";
+import { PollingJobsGlobalSettings } from "./entities/polling-jobs-global-settings.entity";
 import { ScheduledJobOverride } from "./entities/scheduled-job-override.entity";
 import { ScheduledJobsGlobalSettings } from "./entities/scheduled-jobs-global-settings.entity";
 import { AdminAuthGuard } from "./guards/admin-auth.guard";
@@ -69,6 +76,8 @@ import { PublicCompanyProfileController } from "./public-company-profile.control
       CompanyProfile,
       ScheduledJobOverride,
       ScheduledJobsGlobalSettings,
+      PollingJobOverride,
+      PollingJobsGlobalSettings,
     ]),
     JwtModule.registerAsync({
       imports: [ConfigModule],
@@ -90,6 +99,7 @@ import { PublicCompanyProfileController } from "./public-company-profile.control
     AdminReferenceDataService,
     AdminRfqService,
     AdminScheduledJobsService,
+    AdminPollingJobsService,
   ],
   controllers: [
     AdminAiUsageController,
@@ -101,6 +111,8 @@ import { PublicCompanyProfileController } from "./public-company-profile.control
     AdminRfqController,
     AdminMessagingController,
     AdminScheduledJobsController,
+    AdminPollingJobsController,
+    PublicPollingJobsController,
     PublicCompanyProfileController,
   ],
   exports: [AdminAuthService, AdminAuthGuard, AdminCompanyProfileService, JwtModule],

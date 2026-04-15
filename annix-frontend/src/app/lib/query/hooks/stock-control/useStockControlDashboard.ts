@@ -13,84 +13,96 @@ import type {
 } from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { stockControlKeys } from "../../keys/stockControlKeys";
+import { usePollingInterval } from "../admin/usePollingJobs";
+
+const SIX_HOURS = 6 * 60 * 60 * 1000;
 
 export function useWorkflowLaneCounts() {
+  const refetchInterval = usePollingInterval("dashboard:workflow-lane-counts", SIX_HOURS);
   return useQuery<WorkflowLaneCounts>({
     queryKey: stockControlKeys.dashboard.workflowLanes(),
     queryFn: () => stockControlApiClient.workflowLaneCounts(),
-    refetchInterval: 60_000,
+    refetchInterval,
   });
 }
 
 export function useDashboardStats() {
+  const refetchInterval = usePollingInterval("dashboard:stats", SIX_HOURS);
   return useQuery<DashboardStats>({
     queryKey: stockControlKeys.dashboard.stats(),
     queryFn: () => stockControlApiClient.dashboardStats(),
     staleTime: 30_000,
-    refetchInterval: 60_000,
+    refetchInterval,
   });
 }
 
 export function useSohByLocation() {
+  const refetchInterval = usePollingInterval("dashboard:soh-by-location", SIX_HOURS);
   return useQuery<SohByLocation[]>({
     queryKey: stockControlKeys.dashboard.sohByLocation(),
     queryFn: () => stockControlApiClient.sohByLocation(),
     staleTime: 30_000,
-    refetchInterval: 60_000,
+    refetchInterval,
   });
 }
 
 export function useSohSummary() {
+  const refetchInterval = usePollingInterval("dashboard:soh-summary", SIX_HOURS);
   return useQuery<SohSummary[]>({
     queryKey: stockControlKeys.dashboard.sohSummary(),
     queryFn: () => stockControlApiClient.sohSummary(),
     staleTime: 30_000,
-    refetchInterval: 60_000,
+    refetchInterval,
   });
 }
 
 export function useRecentActivity() {
+  const refetchInterval = usePollingInterval("dashboard:recent-activity", SIX_HOURS);
   return useQuery<RecentActivity[]>({
     queryKey: stockControlKeys.dashboard.recentActivity(),
     queryFn: () => stockControlApiClient.recentActivity(),
     staleTime: 30_000,
-    refetchInterval: 60_000,
+    refetchInterval,
   });
 }
 
 export function useReorderAlerts() {
+  const refetchInterval = usePollingInterval("dashboard:reorder-alerts", SIX_HOURS);
   return useQuery<StockItem[]>({
     queryKey: stockControlKeys.dashboard.reorderAlerts(),
     queryFn: () => stockControlApiClient.reorderAlerts(),
     staleTime: 30_000,
-    refetchInterval: 60_000,
+    refetchInterval,
   });
 }
 
 export function usePendingApprovals() {
+  const refetchInterval = usePollingInterval("dashboard:pending-approvals", SIX_HOURS);
   return useQuery<JobCard[]>({
     queryKey: stockControlKeys.dashboard.pendingApprovals(),
     queryFn: () => stockControlApiClient.pendingApprovals(),
     staleTime: 30_000,
-    refetchInterval: 60_000,
+    refetchInterval,
   });
 }
 
 export function useCpoSummary() {
+  const refetchInterval = usePollingInterval("dashboard:cpo-summary", SIX_HOURS);
   return useQuery<CpoSummary>({
     queryKey: stockControlKeys.dashboard.cpoSummary(),
     queryFn: () => stockControlApiClient.cpoSummary(),
     staleTime: 30_000,
-    refetchInterval: 60_000,
+    refetchInterval,
   });
 }
 
 export function useRoleSummary(role: string) {
+  const refetchInterval = usePollingInterval("dashboard:role-summary", SIX_HOURS);
   return useQuery<RoleDashboardSummary>({
     queryKey: stockControlKeys.dashboard.roleSummary(role),
     queryFn: () => stockControlApiClient.roleDashboardSummary(role),
     staleTime: 30_000,
-    refetchInterval: 60_000,
+    refetchInterval,
     enabled: role.length > 0,
   });
 }

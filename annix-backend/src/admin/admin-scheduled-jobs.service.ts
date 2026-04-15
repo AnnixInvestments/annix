@@ -31,7 +31,7 @@ export interface ScheduledJobExportDto {
 }
 
 export interface GlobalSettingsDto {
-  suspendOnSundaysAndHolidays: boolean;
+  suspendOnWeekendsAndHolidays: boolean;
 }
 
 export interface SyncResultDto {
@@ -182,7 +182,7 @@ export class AdminScheduledJobsService implements OnApplicationBootstrap {
   private readonly syncSource: string | null;
   private readonly syncToken: string | null;
   private lastSyncTimestamp: string | null = null;
-  private suspendOnSundaysAndHolidays = true;
+  private suspendOnWeekendsAndHolidays = true;
   private nightSuspensionByJob = new Map<string, NightSuspensionHours>();
 
   constructor(
@@ -202,10 +202,10 @@ export class AdminScheduledJobsService implements OnApplicationBootstrap {
       where: { settingsKey: "default" },
     });
     if (globalSettings) {
-      this.suspendOnSundaysAndHolidays = globalSettings.suspendOnSundaysAndHolidays;
+      this.suspendOnWeekendsAndHolidays = globalSettings.suspendOnWeekendsAndHolidays;
     }
     this.logger.log(
-      `Sunday/holiday suspension: ${this.suspendOnSundaysAndHolidays ? "ENABLED" : "DISABLED"}${!globalSettings ? " (default — no global settings row found)" : ""}`,
+      `Weekend/holiday suspension: ${this.suspendOnWeekendsAndHolidays ? "ENABLED" : "DISABLED"}${!globalSettings ? " (default — no global settings row found)" : ""}`,
     );
 
     if (this.syncSource) {
@@ -302,17 +302,17 @@ export class AdminScheduledJobsService implements OnApplicationBootstrap {
   }
 
   globalSettings(): GlobalSettingsDto {
-    return { suspendOnSundaysAndHolidays: this.suspendOnSundaysAndHolidays };
+    return { suspendOnWeekendsAndHolidays: this.suspendOnWeekendsAndHolidays };
   }
 
   async updateGlobalSettings(settings: GlobalSettingsDto): Promise<GlobalSettingsDto> {
-    this.suspendOnSundaysAndHolidays = settings.suspendOnSundaysAndHolidays;
+    this.suspendOnWeekendsAndHolidays = settings.suspendOnWeekendsAndHolidays;
     await this.globalSettingsRepo.save({
       settingsKey: "default",
-      suspendOnSundaysAndHolidays: settings.suspendOnSundaysAndHolidays,
+      suspendOnWeekendsAndHolidays: settings.suspendOnWeekendsAndHolidays,
     });
     this.logger.log(
-      `Updated global settings: suspendOnSundaysAndHolidays=${settings.suspendOnSundaysAndHolidays}`,
+      `Updated global settings: suspendOnWeekendsAndHolidays=${settings.suspendOnWeekendsAndHolidays}`,
     );
     return settings;
   }
@@ -434,9 +434,9 @@ export class AdminScheduledJobsService implements OnApplicationBootstrap {
   shouldJobRun(jobName: string): boolean {
     const now = DateTime.now().setZone("Africa/Johannesburg");
 
-    if (this.suspendOnSundaysAndHolidays) {
-      if (now.weekday === 7 || isSAPublicHoliday(now)) {
-        this.logger.debug(`Skipping ${jobName}: suspended on Sundays/public holidays`);
+    if (this.suspendOnWeekendsAndHolidays) {
+      if (now.weekday >= 6 || isSAPublicHoliday(now)) {
+        this.logger.debug(`Skipping ${jobName}: suspended on weekends/public holidays`);
         return false;
       }
     }

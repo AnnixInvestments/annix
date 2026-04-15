@@ -1315,6 +1315,52 @@ class AdminApiClient {
     );
   }
 
+  async pollingJobs(): Promise<PollingJobDto[]> {
+    return this.request<PollingJobDto[]>("/admin/polling-jobs");
+  }
+
+  async pausePollingJob(name: string): Promise<PollingJobDto> {
+    return this.request<PollingJobDto>(`/admin/polling-jobs/${encodeURIComponent(name)}/pause`, {
+      method: "POST",
+    });
+  }
+
+  async resumePollingJob(name: string): Promise<PollingJobDto> {
+    return this.request<PollingJobDto>(`/admin/polling-jobs/${encodeURIComponent(name)}/resume`, {
+      method: "POST",
+    });
+  }
+
+  async updatePollingJobInterval(name: string, intervalMs: number): Promise<PollingJobDto> {
+    return this.request<PollingJobDto>(`/admin/polling-jobs/${encodeURIComponent(name)}/interval`, {
+      method: "POST",
+      body: JSON.stringify({ intervalMs }),
+    });
+  }
+
+  async updatePollingJobNightSuspension(
+    name: string,
+    nightSuspensionHours: NightSuspensionHours,
+  ): Promise<PollingJobDto> {
+    return this.request<PollingJobDto>(
+      `/admin/polling-jobs/${encodeURIComponent(name)}/night-suspension`,
+      { method: "POST", body: JSON.stringify({ nightSuspensionHours }) },
+    );
+  }
+
+  async pollingJobsGlobalSettings(): Promise<PollingJobsGlobalSettingsDto> {
+    return this.request<PollingJobsGlobalSettingsDto>("/admin/polling-jobs/global-settings");
+  }
+
+  async updatePollingJobsGlobalSettings(
+    settings: PollingJobsGlobalSettingsDto,
+  ): Promise<PollingJobsGlobalSettingsDto> {
+    return this.request<PollingJobsGlobalSettingsDto>("/admin/polling-jobs/global-settings", {
+      method: "POST",
+      body: JSON.stringify(settings),
+    });
+  }
+
   async aiUsageLogs(params?: AiUsageQueryParams): Promise<AiUsageListResponse> {
     const searchParams = new URLSearchParams();
     if (params?.app) searchParams.append("app", params.app);
@@ -1800,7 +1846,35 @@ export interface ScheduledJobDto {
 }
 
 export interface GlobalSettingsDto {
-  suspendOnSundaysAndHolidays: boolean;
+  suspendOnWeekendsAndHolidays: boolean;
+}
+
+export interface PollingJobDto {
+  name: string;
+  description: string;
+  module: string;
+  active: boolean;
+  intervalMs: number;
+  defaultIntervalMs: number;
+  nightSuspensionHours: NightSuspensionHours;
+}
+
+export interface PollingJobsGlobalSettingsDto {
+  suspendOnWeekendsAndHolidays: boolean;
+}
+
+export interface PollingJobRuntimeConfigDto {
+  jobs: Record<
+    string,
+    {
+      active: boolean;
+      intervalMs: number;
+      nightSuspensionHours: NightSuspensionHours;
+      suspendedNow: boolean;
+    }
+  >;
+  suspendOnWeekendsAndHolidays: boolean;
+  serverTime: string;
 }
 
 export interface SyncResultDto {

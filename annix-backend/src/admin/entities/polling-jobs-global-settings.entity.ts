@@ -1,7 +1,7 @@
 import { Column, Entity, PrimaryColumn } from "typeorm";
 
-@Entity("scheduled_jobs_global_settings")
-export class ScheduledJobsGlobalSettings {
+@Entity("polling_jobs_global_settings")
+export class PollingJobsGlobalSettings {
   @PrimaryColumn({ type: "varchar", length: 50, default: "default" })
   settingsKey: string;
 

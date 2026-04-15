@@ -4,6 +4,7 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { LessThan, Repository } from "typeorm";
 import { DateTime } from "../../lib/datetime";
 import { IStorageService, STORAGE_SERVICE } from "../../storage/storage.interface";
+import { isCvAssistantCronEnabled } from "../cv-assistant-cron.config";
 import { Candidate } from "../entities/candidate.entity";
 import { CandidateReference } from "../entities/candidate-reference.entity";
 
@@ -23,6 +24,7 @@ export class PopiaService {
 
   @Cron(CronExpression.EVERY_DAY_AT_2AM, { name: "cv-assistant:purge-inactive" })
   async purgeInactiveCandidates(): Promise<{ purged: number }> {
+    if (!isCvAssistantCronEnabled()) return { purged: 0 };
     const cutoffDate = DateTime.now().minus({ months: PopiaService.RETENTION_MONTHS }).toJSDate();
 
     const inactiveCandidates = await this.candidateRepo.find({

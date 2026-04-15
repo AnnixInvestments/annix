@@ -2,12 +2,16 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { GlobalSettingsDto, NightSuspensionHours } from "@/app/lib/api/adminApi";
 import { adminApiClient } from "@/app/lib/api/adminApi";
 import { adminKeys } from "@/app/lib/query/keys";
+import { usePollingInterval } from "./usePollingJobs";
+
+const TWO_MINUTES = 2 * 60 * 1000;
 
 export function useScheduledJobs() {
+  const refetchInterval = usePollingInterval("admin:scheduled-jobs-list", TWO_MINUTES);
   return useQuery({
     queryKey: adminKeys.scheduledJobs.list(),
     queryFn: () => adminApiClient.scheduledJobs(),
-    refetchInterval: 30_000,
+    refetchInterval,
   });
 }
 
@@ -64,18 +68,20 @@ export function useSyncScheduledJobs() {
 }
 
 export function useScheduledJobsSyncStatus() {
+  const refetchInterval = usePollingInterval("admin:scheduled-jobs-sync-status", TWO_MINUTES);
   return useQuery({
     queryKey: [...adminKeys.scheduledJobs.all, "sync-status"],
     queryFn: () => adminApiClient.scheduledJobsSyncStatus(),
-    refetchInterval: 30_000,
+    refetchInterval,
   });
 }
 
 export function useScheduledJobsGlobalSettings() {
+  const refetchInterval = usePollingInterval("admin:scheduled-jobs-global-settings", TWO_MINUTES);
   return useQuery({
     queryKey: [...adminKeys.scheduledJobs.all, "global-settings"],
     queryFn: () => adminApiClient.scheduledJobsGlobalSettings(),
-    refetchInterval: 30_000,
+    refetchInterval,
   });
 }
 

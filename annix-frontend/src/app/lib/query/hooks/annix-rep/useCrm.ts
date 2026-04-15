@@ -7,6 +7,7 @@ import {
 } from "@/app/lib/api/annixRepApi";
 import { cacheConfig } from "@/app/lib/query/cacheConfig";
 import { annixRepKeys } from "@/app/lib/query/keys/annixRepKeys";
+import { usePollingInterval } from "../admin/usePollingJobs";
 
 export function useCrmConfigs() {
   return useQuery({
@@ -26,11 +27,12 @@ export function useCrmConfig(configId: number) {
 }
 
 export function useCrmSyncStatus(configId: number) {
+  const refetchInterval = usePollingInterval("annix-rep:crm", 5 * 60 * 1000);
   return useQuery({
     queryKey: annixRepKeys.crm.status(configId),
     queryFn: () => annixRepApi.crm.syncStatus(configId),
     enabled: configId > 0,
-    refetchInterval: 30000,
+    refetchInterval,
   });
 }
 

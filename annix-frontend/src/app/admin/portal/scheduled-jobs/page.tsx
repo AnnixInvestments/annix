@@ -52,7 +52,8 @@ function normalizeCronToFiveField(cronTime: string): string {
     "*/1 * * * *": "* * * * *",
   };
 
-  const mapped = equivalents[fiveField] || fiveField;
+  const equivalent = equivalents[fiveField];
+  const mapped = equivalent ? equivalent : fiveField;
   return mapped.replace(/\b0(\d)\b/g, "$1");
 }
 
@@ -82,7 +83,8 @@ function friendlyCron(cron: string): string {
       "6": "Saturday",
       "7": "Sunday",
     };
-    const dayName = dayNames[dayOfWeek] || `day ${dayOfWeek}`;
+    const mappedDay = dayNames[dayOfWeek];
+    const dayName = mappedDay ? mappedDay : `day ${dayOfWeek}`;
     return `Weekly ${dayName} at ${formatHourMinute(hour, minute)}`;
   }
 
@@ -176,8 +178,10 @@ function JobRow(props: { job: ScheduledJobDto }) {
     nightSuspensionMutation.mutate({ name: job.name, nightSuspensionHours: hours });
   };
 
-  const moduleColor =
-    MODULE_COLORS[job.module] || "bg-gray-100 text-gray-700 dark:bg-gray-700/50 dark:text-gray-300";
+  const moduleColorEntry = MODULE_COLORS[job.module];
+  const moduleColor = moduleColorEntry
+    ? moduleColorEntry
+    : "bg-gray-100 text-gray-700 dark:bg-gray-700/50 dark:text-gray-300";
 
   const currentValue = currentCronToPresetValue(job.cronTime);
   const isCustomCron = !PRESET_FREQUENCIES.some((p) => p.value === currentValue);
@@ -278,10 +282,10 @@ function GlobalSettingsBar() {
   const { data: settings } = useScheduledJobsGlobalSettings();
   const updateMutation = useUpdateScheduledJobsGlobalSettings();
 
-  const checked = settings?.suspendOnSundaysAndHolidays || false;
+  const checked = settings ? settings.suspendOnWeekendsAndHolidays : false;
 
   const handleToggle = () => {
-    updateMutation.mutate({ suspendOnSundaysAndHolidays: !checked });
+    updateMutation.mutate({ suspendOnWeekendsAndHolidays: !checked });
   };
 
   return (
@@ -294,7 +298,9 @@ function GlobalSettingsBar() {
           disabled={updateMutation.isPending}
           className="h-4 w-4 rounded border-orange-300 text-orange-600 focus:ring-orange-500 disabled:opacity-50"
         />
-        <span className="font-medium">Suspend all jobs on Sundays and SA public holidays</span>
+        <span className="font-medium">
+          Suspend all jobs on weekends (Sat/Sun) and SA public holidays
+        </span>
       </label>
       {updateMutation.isPending ? <span className="text-xs text-orange-400">Saving...</span> : null}
     </div>

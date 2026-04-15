@@ -7,6 +7,7 @@ import { EmailService } from "../../email/email.service";
 import { DateTime } from "../../lib/datetime";
 import { WebPushChannel, WebPushSendResult } from "../../notifications/channels/web-push.channel";
 import { NotificationDispatcherService } from "../../notifications/notification-dispatcher.service";
+import { isCvAssistantCronEnabled } from "../cv-assistant-cron.config";
 import { Candidate } from "../entities/candidate.entity";
 import { CandidateJobMatch } from "../entities/candidate-job-match.entity";
 import { CvAssistantUser } from "../entities/cv-assistant-user.entity";
@@ -185,6 +186,7 @@ export class CvNotificationService {
 
   @Cron(CronExpression.EVERY_WEEK, { name: "cv-assistant:weekly-digests" })
   async sendWeeklyDigests(): Promise<void> {
+    if (!isCvAssistantCronEnabled()) return;
     const sevenDaysAgo = DateTime.now().minus({ days: 7 }).toJSDate();
 
     const companies = await this.userRepo
@@ -253,6 +255,7 @@ export class CvNotificationService {
 
   @Cron(CronExpression.EVERY_DAY_AT_9AM, { name: "cv-assistant:job-alerts" })
   async sendCandidateJobAlerts(): Promise<void> {
+    if (!isCvAssistantCronEnabled()) return;
     const oneDayAgo = DateTime.now().minus({ days: 1 }).toJSDate();
 
     const optedInCandidates = await this.candidateRepo.find({

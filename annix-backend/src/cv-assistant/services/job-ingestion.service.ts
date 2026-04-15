@@ -3,6 +3,7 @@ import { Cron, CronExpression } from "@nestjs/schedule";
 import { InjectRepository } from "@nestjs/typeorm";
 import { In, Repository } from "typeorm";
 import { DateTime, fromISO } from "../../lib/datetime";
+import { isCvAssistantCronEnabled } from "../cv-assistant-cron.config";
 import { ExternalJob } from "../entities/external-job.entity";
 import { JobMarketSource } from "../entities/job-market-source.entity";
 import { AdzunaJobResult, AdzunaService } from "./adzuna.service";
@@ -25,6 +26,7 @@ export class JobIngestionService {
 
   @Cron(CronExpression.EVERY_HOUR, { name: "cv-assistant:poll-job-sources" })
   async pollSources(): Promise<void> {
+    if (!isCvAssistantCronEnabled()) return;
     const sources = await this.sourceRepo.find({ where: { enabled: true } });
 
     const dueForIngestion = sources.filter((source) => this.isDueForIngestion(source));

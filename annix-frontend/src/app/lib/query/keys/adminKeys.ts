@@ -55,6 +55,12 @@ export const adminKeys = {
     all: ["admin", "scheduledJobs"] as const,
     list: () => [...adminKeys.scheduledJobs.all, "list"] as const,
   },
+  pollingJobs: {
+    all: ["admin", "pollingJobs"] as const,
+    list: () => [...adminKeys.pollingJobs.all, "list"] as const,
+    config: () => [...adminKeys.pollingJobs.all, "config"] as const,
+    globalSettings: () => [...adminKeys.pollingJobs.all, "globalSettings"] as const,
+  },
   companyProfile: {
     all: ["admin", "companyProfile"] as const,
     detail: () => [...adminKeys.companyProfile.all, "detail"] as const,
