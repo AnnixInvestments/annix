@@ -27,6 +27,10 @@ const VALID_CLASSIFICATIONS: FeedbackClassification[] = [
   "data-issue",
 ];
 
+const CLAUDE_AUTO_FIX_CLASSIFICATIONS: FeedbackClassification[] = ["bug", "ui-issue", "data-issue"];
+const FORCE_CLAUDE_LABEL = "force-claude";
+const SKIP_CLAUDE_LABEL = "skip-claude";
+
 const APP_ISSUE_MAP: Record<string, number> = {
   "au-rubber": 154,
   customer: 156,
@@ -118,8 +122,8 @@ export class FeedbackGithubService {
 
       const appContext = feedback.appContext || "admin";
       const issueNumber = APP_ISSUE_MAP[appContext] || APP_ISSUE_MAP["admin"];
-
-      const fullComment = `${commentBody}\n\n---\n@claude This feedback was classified as \`${classification}\`. Please investigate and either fix the issue (create a branch and PR) or comment explaining what you found and whether human intervention is needed. The feedback includes screenshots showing the current state.`;
+      const existingLabels = await this.getIssueLabels(issueNumber);
+      const fullComment = this.buildCommentBody(commentBody, classification, existingLabels);
 
       await this.octokit.issues.createComment({
         owner: this.owner,
@@ -133,8 +137,14 @@ export class FeedbackGithubService {
       feedback.githubIssueNumber = issueNumber;
       await this.feedbackRepository.save(feedback);
 
+      const claudeOverride = this.resolveClaudeOverride(existingLabels);
+      const claudeTriggered =
+        claudeOverride === "force" ||
+        (claudeOverride !== "skip" && CLAUDE_AUTO_FIX_CLASSIFICATIONS.includes(classification));
+      const triggerStatus = claudeTriggered ? "Claude triggered" : "Claude skipped";
+
       this.logger.log(
-        `Added comment to GitHub issue #${issueNumber} for feedback #${feedback.id} (${classification}) — Claude triggered`,
+        `Added comment to GitHub issue #${issueNumber} for feedback #${feedback.id} (${classification}) — ${triggerStatus}`,
       );
 
       return issueNumber;
@@ -177,6 +187,63 @@ export class FeedbackGithubService {
     } catch (error) {
       this.logger.warn(`Failed to update labels on issue #${issueNumber}: ${error}`);
     }
+  }
+
+  private async getIssueLabels(issueNumber: number): Promise<string[]> {
+    if (!this.octokit) {
+      return [];
+    }
+
+    try {
+      const { data: issue } = await this.octokit.issues.get({
+        owner: this.owner,
+        repo: this.repo,
+        issue_number: issueNumber,
+      });
+
+      return issue.labels
+        .map((label) => (typeof label === "string" ? label : label.name))
+        .filter((labelName): labelName is string => labelName !== undefined);
+    } catch (error) {
+      this.logger.warn(`Failed to fetch labels on issue #${issueNumber}: ${error}`);
+      return [];
+    }
+  }
+
+  private resolveClaudeOverride(labels: string[]): "force" | "skip" | null {
+    if (labels.includes(SKIP_CLAUDE_LABEL)) {
+      return "skip";
+    }
+    if (labels.includes(FORCE_CLAUDE_LABEL)) {
+      return "force";
+    }
+    return null;
+  }
+
+  private buildCommentBody(
+    commentBody: string,
+    classification: FeedbackClassification,
+    labels: string[],
+  ): string {
+    const claudeOverride = this.resolveClaudeOverride(labels);
+    const shouldTriggerClaude =
+      claudeOverride === "force" ||
+      (claudeOverride !== "skip" && CLAUDE_AUTO_FIX_CLASSIFICATIONS.includes(classification));
+
+    if (!shouldTriggerClaude) {
+      if (claudeOverride === "skip") {
+        return `${commentBody}\n\n---\nClaude auto-fix was skipped because the tracker issue has the \`${SKIP_CLAUDE_LABEL}\` label.`;
+      }
+
+      return `${commentBody}\n\n---\nNo Claude auto-fix trigger was added because this feedback was classified as \`${classification}\`.`;
+    }
+
+    const overrideNote =
+      claudeOverride === "force"
+        ? ` The tracker issue has the \`${FORCE_CLAUDE_LABEL}\` label, so Claude was triggered regardless of classification.`
+        : "";
+
+    return `${commentBody}\n\n---\n@claude This feedback was classified as \`${classification}\`. Please investigate and either fix the issue (create a branch and PR) or comment explaining what you found and whether human intervention is needed. The feedback includes screenshots showing the current state.${overrideNote}`;
   }
 
   private async formatCommentBody(

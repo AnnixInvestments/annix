@@ -1,4 +1,4 @@
-import { Inject, Injectable, Logger } from "@nestjs/common";
+import { Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { InjectRepository } from "@nestjs/typeorm";
 import { In, Repository } from "typeorm";
@@ -247,6 +247,9 @@ export class FeedbackService {
     }
 
     feedback.assignedToId = adminUserId;
+    if (feedback.status !== "resolved") {
+      feedback.status = "in_progress";
+    }
     await this.feedbackRepository.save(feedback);
 
     if (feedback.conversationId) {
@@ -273,6 +276,9 @@ export class FeedbackService {
     }
 
     feedback.assignedToId = null;
+    if (feedback.status === "in_progress") {
+      feedback.status = "triaged";
+    }
     await this.feedbackRepository.save(feedback);
 
     if (feedback.conversationId) {
@@ -305,6 +311,10 @@ export class FeedbackService {
     feedback.resolutionStatus = resolutionStatus as CustomerFeedback["resolutionStatus"];
     feedback.testCriteria = testCriteria;
 
+    if (resolutionStatus === "investigating" || resolutionStatus === "fix_in_progress") {
+      feedback.status = "in_progress";
+    }
+
     if (resolutionStatus === "verified" && !feedback.verifiedAt) {
       feedback.verifiedAt = now().toJSDate();
     } else if (resolutionStatus !== "verified") {
@@ -332,6 +342,26 @@ export class FeedbackService {
     });
   }
 
+  async feedbackStatusForSubmitter(feedbackId: number, submitter: FeedbackSubmitter) {
+    const feedback = await this.feedbackRepository.findOne({
+      where: { id: feedbackId },
+    });
+
+    if (!feedback || !this.canAccessFeedbackStatus(feedback, submitter)) {
+      throw new NotFoundException("Feedback not found");
+    }
+
+    return {
+      id: feedback.id,
+      status: feedback.status,
+      resolutionStatus: feedback.resolutionStatus,
+      aiClassification: feedback.aiClassification,
+      githubIssueNumber: feedback.githubIssueNumber,
+      appContext: feedback.appContext,
+      createdAt: feedback.createdAt.toISOString(),
+    };
+  }
+
   async markResolvedByIssue(issueNumber: number, prNumber: number): Promise<void> {
     const feedback = await this.feedbackRepository.findOne({
       where: { githubIssueNumber: issueNumber },
@@ -344,6 +374,7 @@ export class FeedbackService {
     }
 
     feedback.status = "resolved";
+    feedback.resolutionStatus = feedback.resolutionStatus || "fix_deployed";
     await this.feedbackRepository.save(feedback);
 
     if (feedback.conversationId) {
@@ -370,6 +401,7 @@ export class FeedbackService {
 
     for (const feedback of feedbacks) {
       feedback.status = "resolved";
+      feedback.resolutionStatus = feedback.resolutionStatus || "fix_deployed";
       await this.feedbackRepository.save(feedback);
 
       if (feedback.conversationId) {
@@ -485,6 +517,20 @@ ${feedback.content}
       .getMany();
 
     return adminUsers.map((u) => u.id);
+  }
+
+  private canAccessFeedbackStatus(
+    feedback: CustomerFeedback,
+    submitter: FeedbackSubmitter,
+  ): boolean {
+    if (!feedback.submitterEmail || !feedback.submitterType) {
+      return false;
+    }
+
+    return (
+      feedback.submitterEmail.toLowerCase() === submitter.email.toLowerCase() &&
+      feedback.submitterType === submitter.type
+    );
   }
 
   private async sendEmailNotification(

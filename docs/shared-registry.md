@@ -1,6 +1,6 @@
 # Shared Module Registry
 
-**Last updated:** 2026-04-13
+**Last updated:** 2026-04-16
 
 This is the canonical index of shared modules across the Annix monorepo. Every Claude session MUST consult this file before writing new constants, components, services, or utilities (see `CLAUDE.md` §"Discovery-first protocol").
 
@@ -26,6 +26,13 @@ Shared workspace package (pnpm workspace). Both `annix-backend` and `annix-front
 | RFQ shared types | `rfq/` | straight pipe, bend, tank-chute, flange, pipe dimension, weld, material, boq, coating, pt-rating, pump |
 
 **When to put new data here:** anything that is factual, static, cross-app, and not user-owned (standards data, product catalogues, engineering constants, enumerations). Tests live alongside source (`*.spec.ts`).
+
+## Shared integration packages — `packages/`
+
+| Package | Path | Use for |
+|---|---|---|
+| Feedback SDK | `packages/feedback-sdk/` | Framework-neutral feedback submission + status contract. Hosts provide auth/context; React and browser adapters build on top of this package. |
+| Feedback web embed | `packages/feedback-web/` | Plain browser JavaScript floating feedback widget for non-React or framework-agnostic web embeds. |
 
 ---
 

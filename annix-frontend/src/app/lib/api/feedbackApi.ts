@@ -1,37 +1,18 @@
+import {
+  createFeedbackClient,
+  type FeedbackAuthContext as FeedbackAuthContextContract,
+  type FeedbackStatusResponse,
+  type FeedbackSubmissionPayload,
+  type FeedbackSubmitResponse,
+} from "@annix/feedback-sdk";
 import { isUndefined } from "es-toolkit/compat";
-import { throwIfNotOk } from "@/app/lib/api/apiError";
 import { createApiClient } from "@/app/lib/api/createApiClient";
 import { customerTokenStore } from "@/app/lib/api/portalTokenStores";
 import { API_BASE_URL } from "@/lib/api-config";
 
-export interface SubmitFeedbackDto {
-  content: string;
-  source: "text" | "voice";
-  pageUrl?: string;
-  captureUrl?: string;
-  viewportWidth?: number;
-  viewportHeight?: number;
-  devicePixelRatio?: number;
-  userAgent?: string;
-  previewUserId?: number;
-  previewUserName?: string;
-  previewUserEmail?: string;
-}
-
-export interface SubmitFeedbackResponse {
-  id: number;
-  message: string;
-}
-
-export type FeedbackAuthContext =
-  | "customer"
-  | "admin"
-  | "stock-control"
-  | "au-rubber"
-  | "supplier"
-  | "cv-assistant"
-  | "annix-rep"
-  | "comply-sa";
+export type FeedbackAuthContext = FeedbackAuthContextContract;
+export type SubmitFeedbackDto = FeedbackSubmissionPayload;
+export type SubmitFeedbackResponse = FeedbackSubmitResponse;
 
 const COOKIE_AUTH_CONTEXTS: FeedbackAuthContext[] = ["comply-sa"];
 
@@ -64,6 +45,27 @@ function resolveToken(authContext: FeedbackAuthContext): string | null {
   return localToken || sessionStorage.getItem(key);
 }
 
+function resolveFeedbackAuth(authContext: FeedbackAuthContext) {
+  const isCookieAuth = usesCookieAuth(authContext);
+  const token = resolveToken(authContext);
+
+  if (!isCookieAuth && !token) {
+    throw new Error("Not authenticated");
+  }
+
+  const headers: Record<string, string> = {};
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+
+  return {
+    headers,
+    credentials: isCookieAuth
+      ? ("include" as RequestCredentials)
+      : ("same-origin" as RequestCredentials),
+  };
+}
+
 const customerClient = createApiClient({
   baseURL: API_BASE_URL,
   tokenStore: customerTokenStore,
@@ -76,68 +78,34 @@ export const customerFeedbackApi = {
   },
 };
 
+const generalFeedbackClient = createFeedbackClient({
+  apiBaseUrl: API_BASE_URL,
+  resolveAuth: resolveFeedbackAuth,
+});
+
 export async function submitFeedbackWithAttachments(
   dto: SubmitFeedbackDto & { appContext?: string },
   files: File[],
   authContext: FeedbackAuthContext,
 ): Promise<SubmitFeedbackResponse> {
-  const isCookieAuth = usesCookieAuth(authContext);
-  const token = resolveToken(authContext);
-
-  if (!isCookieAuth && !token) {
-    throw new Error("Not authenticated");
-  }
-
-  const formData = new FormData();
-  formData.append("content", dto.content);
-  formData.append("source", dto.source);
-  if (dto.pageUrl) {
-    formData.append("pageUrl", dto.pageUrl);
-  }
-  if (dto.captureUrl) {
-    formData.append("captureUrl", dto.captureUrl);
-  }
-  if (dto.viewportWidth) {
-    formData.append("viewportWidth", String(dto.viewportWidth));
-  }
-  if (dto.viewportHeight) {
-    formData.append("viewportHeight", String(dto.viewportHeight));
-  }
-  if (dto.devicePixelRatio) {
-    formData.append("devicePixelRatio", String(dto.devicePixelRatio));
-  }
-  if (dto.userAgent) {
-    formData.append("userAgent", dto.userAgent);
-  }
-  if (dto.previewUserId) {
-    formData.append("previewUserId", String(dto.previewUserId));
-  }
-  if (dto.previewUserName) {
-    formData.append("previewUserName", dto.previewUserName);
-  }
-  if (dto.previewUserEmail) {
-    formData.append("previewUserEmail", dto.previewUserEmail);
-  }
   const appContext = dto.appContext;
-  formData.append("appContext", appContext || authContext);
 
-  files.forEach((file) => {
-    formData.append("files", file);
+  return generalFeedbackClient.submitFeedback({
+    authContext,
+    payload: {
+      ...dto,
+      appContext: appContext || authContext,
+    },
+    files,
   });
+}
 
-  const headers: Record<string, string> = {};
-  if (token) {
-    headers["Authorization"] = `Bearer ${token}`;
-  }
-
-  const response = await fetch(`${API_BASE_URL}/feedback`, {
-    method: "POST",
-    headers,
-    credentials: isCookieAuth ? "include" : "same-origin",
-    body: formData,
+export async function fetchFeedbackStatus(
+  feedbackId: number,
+  authContext: FeedbackAuthContext,
+): Promise<FeedbackStatusResponse> {
+  return generalFeedbackClient.getFeedbackStatus({
+    authContext,
+    feedbackId,
   });
-
-  await throwIfNotOk(response);
-
-  return response.json();
 }

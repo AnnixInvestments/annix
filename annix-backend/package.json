@@ -34,7 +34,8 @@
     "migrate:cv-assistant-docs": "ts-node -r tsconfig-paths/register scripts/migrate-cv-assistant-docs.ts",
     "migrate:cv-assistant-docs:dry-run": "ts-node -r tsconfig-paths/register scripts/migrate-cv-assistant-docs.ts --dry-run",
     "migrate:annix-app-paths": "ts-node -r tsconfig-paths/register scripts/migrate-annix-app-paths.ts",
-    "migrate:annix-app-paths:dry-run": "ts-node -r tsconfig-paths/register scripts/migrate-annix-app-paths.ts --dry-run"
+    "migrate:annix-app-paths:dry-run": "ts-node -r tsconfig-paths/register scripts/migrate-annix-app-paths.ts --dry-run",
+    "feedback:triage-regression": "ts-node -r tsconfig-paths/register scripts/run-feedback-triage-regression.ts"
   },
   "dependencies": {
     "@annix/product-data": "workspace:*",

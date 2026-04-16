@@ -25,6 +25,8 @@ Each comment contains:
 - Screenshots (auto-captured and manually attached)
 - AI classification of the feedback type
 
+Operational notes for this pipeline live in `.github/FEEDBACK_AUTOMATION_OPS.md`.
+
 ## App-to-Code Mapping
 
 | App Context | Frontend Path | Backend Path |
@@ -61,7 +63,7 @@ Screenshots show the exact state of the page when the user submitted feedback. L
 3. Read the component code, tracing the data flow from frontend to backend
 4. Identify the root cause — pinpoint exact files and line numbers
 5. Implement the fix if it is contained, safe, and testable in automation
-6. Open a PR and comment on the issue with the outcome
+6. Open a PR, include `Ref #<tracker issue>` in the PR body, and comment on the issue with the outcome
 
 ## What to Include in Your Issue Comment
 

@@ -1,12 +1,23 @@
 "use client";
 
+import {
+  FEEDBACK_STATUS_STEPS,
+  type FeedbackStatusResponse,
+  feedbackResolutionLabel,
+  feedbackStatusLabel,
+  feedbackStepState,
+} from "@annix/feedback-sdk";
 import { isUndefined } from "es-toolkit/compat";
 import { toBlob } from "html-to-image";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useFeatureGate } from "@/app/hooks/useFeatureGate";
 import { useVoiceDictation } from "@/app/hooks/useVoiceDictation";
-import { type FeedbackAuthContext, submitFeedbackWithAttachments } from "@/app/lib/api/feedbackApi";
+import {
+  type FeedbackAuthContext,
+  fetchFeedbackStatus,
+  submitFeedbackWithAttachments,
+} from "@/app/lib/api/feedbackApi";
 import {
   displayContent as computeDisplayContent,
   contentValidationMessage,
@@ -47,6 +58,10 @@ interface FeedbackWidgetProps {
   } | null;
 }
 
+function submissionStorageKey(authContext: FeedbackAuthContext): string {
+  return `feedback-widget-last-submission:${authContext}`;
+}
+
 function savedGeometry(): PanelGeometry | null {
   try {
     const raw = localStorage.getItem(GEOMETRY_KEY);
@@ -54,6 +69,25 @@ function savedGeometry(): PanelGeometry | null {
   } catch {
     return null;
   }
+}
+
+function readLastSubmission(authContext: FeedbackAuthContext): number | null {
+  try {
+    const raw = localStorage.getItem(submissionStorageKey(authContext));
+    return raw ? Number(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeLastSubmission(authContext: FeedbackAuthContext, feedbackId: number | null): void {
+  try {
+    if (feedbackId === null) {
+      localStorage.removeItem(submissionStorageKey(authContext));
+      return;
+    }
+    localStorage.setItem(submissionStorageKey(authContext), String(feedbackId));
+  } catch {}
 }
 
 function defaultPosition(): { x: number; y: number } {
@@ -75,6 +109,11 @@ export function FeedbackWidget(props: FeedbackWidgetProps) {
   const [content, setContent] = useState("");
   const [feedbackSource, setFeedbackSource] = useState<FeedbackSource>("text");
   const [showSuccess, setShowSuccess] = useState(false);
+  const [latestFeedbackId, setLatestFeedbackId] = useState<number | null>(() =>
+    isUndefined(window) ? null : readLastSubmission(authContext),
+  );
+  const [feedbackStatus, setFeedbackStatus] = useState<FeedbackStatusResponse | null>(null);
+  const [isRefreshingStatus, setIsRefreshingStatus] = useState(false);
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -97,6 +136,26 @@ export function FeedbackWidget(props: FeedbackWidgetProps) {
   const resizeStart = useRef({ mouseX: 0, mouseY: 0, width: 0, height: 0, panelX: 0, panelY: 0 });
 
   const isInteracting = isDragging || resizeEdge !== null;
+
+  const refreshStatus = useCallback(
+    async (feedbackId: number) => {
+      setIsRefreshingStatus(true);
+      try {
+        const nextStatus = await fetchFeedbackStatus(feedbackId, authContext);
+        setFeedbackStatus(nextStatus);
+        if (nextStatus.status === "resolved") {
+          writeLastSubmission(authContext, null);
+        }
+      } catch (error) {
+        if (error instanceof Error) {
+          setSubmitError(error.message);
+        }
+      } finally {
+        setIsRefreshingStatus(false);
+      }
+    },
+    [authContext],
+  );
 
   const clampPosition = useCallback(
     (clientX: number, clientY: number) => ({
@@ -290,6 +349,27 @@ export function FeedbackWidget(props: FeedbackWidgetProps) {
     };
   }, []);
 
+  useEffect(() => {
+    if (latestFeedbackId === null) {
+      setFeedbackStatus(null);
+      return;
+    }
+
+    void refreshStatus(latestFeedbackId);
+  }, [latestFeedbackId, refreshStatus]);
+
+  useEffect(() => {
+    if (!isExpanded || latestFeedbackId === null || feedbackStatus?.status === "resolved") {
+      return;
+    }
+
+    const intervalId = window.setInterval(() => {
+      void refreshStatus(latestFeedbackId);
+    }, 10000);
+
+    return () => window.clearInterval(intervalId);
+  }, [isExpanded, latestFeedbackId, feedbackStatus?.status, refreshStatus]);
+
   const captureScreenshot = useCallback(async (): Promise<File | null> => {
     try {
       const TRANSPARENT_PIXEL =
@@ -456,7 +536,7 @@ export function FeedbackWidget(props: FeedbackWidgetProps) {
       const devicePixelRatio = isUndefined(window) ? undefined : window.devicePixelRatio;
       const userAgent = isUndefined(window) ? undefined : window.navigator.userAgent;
 
-      await submitFeedbackWithAttachments(
+      const result = await submitFeedbackWithAttachments(
         {
           content: content.trim(),
           source: feedbackSource,
@@ -479,11 +559,10 @@ export function FeedbackWidget(props: FeedbackWidgetProps) {
       setAttachments([]);
       setContent("");
       resetTranscript();
+      setLatestFeedbackId(result.id);
+      writeLastSubmission(authContext, result.id);
       setShowSuccess(true);
-      setTimeout(() => {
-        setShowSuccess(false);
-        setIsExpanded(false);
-      }, 3000);
+      void refreshStatus(result.id);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to submit feedback";
       setSubmitError(message);
@@ -543,18 +622,40 @@ export function FeedbackWidget(props: FeedbackWidgetProps) {
 
   const handleClose = () => {
     setIsExpanded(false);
-    setContent("");
-    attachments.forEach((att) => URL.revokeObjectURL(att.preview));
-    setAttachments([]);
-    resetTranscript();
+    if (!showSuccess) {
+      setContent("");
+      attachments.forEach((att) => URL.revokeObjectURL(att.preview));
+      setAttachments([]);
+      resetTranscript();
+    }
     setSubmitError(null);
     if (isListening) {
       stopListening();
     }
   };
 
+  const handleStartAnother = () => {
+    setShowSuccess(false);
+    setContent("");
+    attachments.forEach((att) => URL.revokeObjectURL(att.preview));
+    setAttachments([]);
+    resetTranscript();
+    setSubmitError(null);
+  };
+
   const displayedContent = computeDisplayContent(content, interimTranscript, isListening);
   const submitDisabled = isSubmitDisabled(content, isSubmitting, isListening);
+  const statusSummary = feedbackStatus
+    ? [
+        `Status: ${feedbackStatusLabel(feedbackStatus.status)}`,
+        feedbackResolutionLabel(feedbackStatus.resolutionStatus),
+        feedbackStatus.aiClassification
+          ? `Classification: ${feedbackStatus.aiClassification}`
+          : null,
+      ]
+        .filter(Boolean)
+        .join(" • ")
+    : null;
 
   if (flagsLoading || !isFeatureEnabled("FEEDBACK_WIDGET")) {
     return null;
@@ -690,15 +791,80 @@ export function FeedbackWidget(props: FeedbackWidgetProps) {
               />
             </svg>
             <p className="text-green-700 font-medium">Thank you for your feedback!</p>
-            <p className="text-sm text-gray-500 mt-1">
-              A screenshot of the page was included with your feedback.
-            </p>
+            <p className="text-sm text-gray-500 mt-1">Your submission is now being tracked.</p>
+            <div className="mt-4 rounded-lg border border-gray-200 bg-gray-50 p-3 text-left">
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-xs font-medium text-gray-700">
+                  Feedback #{latestFeedbackId ?? "pending"}
+                </p>
+                {isRefreshingStatus && (
+                  <span className="text-[11px] text-gray-400">Refreshing…</span>
+                )}
+              </div>
+              {statusSummary && <p className="mt-2 text-xs text-gray-600">{statusSummary}</p>}
+              <div className="mt-3 grid gap-2">
+                {FEEDBACK_STATUS_STEPS.map((step) => {
+                  const state = feedbackStatus
+                    ? feedbackStepState(feedbackStatus.status, step)
+                    : "upcoming";
+                  const colors =
+                    state === "complete"
+                      ? "border-green-200 bg-green-50 text-green-700"
+                      : state === "current"
+                        ? "border-blue-200 bg-blue-50 text-blue-700"
+                        : "border-gray-200 bg-white text-gray-400";
+
+                  return (
+                    <div
+                      key={step}
+                      className={`rounded-md border px-3 py-2 text-xs font-medium ${colors}`}
+                    >
+                      {feedbackStatusLabel(step)}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+            <div className="mt-4 flex justify-center gap-2">
+              <button
+                type="button"
+                onClick={handleStartAnother}
+                className="rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+              >
+                Send another
+              </button>
+              <button
+                type="button"
+                onClick={handleClose}
+                className="rounded-lg bg-blue-600 px-3 py-2 text-sm text-white hover:bg-blue-700"
+              >
+                Close
+              </button>
+            </div>
           </div>
         ) : (
           <>
             <p className="text-sm text-gray-600 mb-3">
               Help us improve! Share your thoughts, report issues, or suggest features.
             </p>
+
+            {feedbackStatus && latestFeedbackId !== null && (
+              <div className="mb-3 rounded-lg border border-blue-100 bg-blue-50 px-3 py-2">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-xs font-medium text-blue-900">
+                    Latest feedback #{latestFeedbackId}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => void refreshStatus(latestFeedbackId)}
+                    className="text-[11px] text-blue-700 underline"
+                  >
+                    Refresh
+                  </button>
+                </div>
+                {statusSummary && <p className="mt-1 text-xs text-blue-800">{statusSummary}</p>}
+              </div>
+            )}
 
             <div className="relative">
               <textarea

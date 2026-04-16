@@ -19,7 +19,9 @@
       }
     ],
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@annix/feedback-sdk": ["../packages/feedback-sdk/index.ts"],
+      "@annix/feedback-web": ["../packages/feedback-web/index.ts"]
     }
   },
   "include": [

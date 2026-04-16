@@ -155,7 +155,7 @@ jobs:
             1. Read the feedback content and examine any screenshots in the issue/comment
             2. Use the app context and page URL to locate the relevant code files
             3. Implement the fix completely when it is safely automatable
-            4. Create a branch, commit, push, and open a PR to `main`
+            4. Create a branch, commit, push, and open a PR to `main` with `Ref #<tracker issue>` in the PR body
             5. Comment on the issue with the PR link and a short summary of what changed
 
             If the issue is not safely automatable, comment on the issue with the root cause, the exact files involved, what blocked automation, and whether human intervention is needed.
@@ -176,10 +176,12 @@ jobs:
           fi
 
           if [ -n "$ISSUE_NUM" ]; then
+            gh issue edit "$ISSUE_NUM" --repo "${{ github.repository }}" --add-label needs-human-review || true
             gh issue comment "$ISSUE_NUM" --repo "${{ github.repository }}" --body "$(cat <<'COMMENT_EOF'
           ## Feedback Automation Failed
 
           The Claude Code workflow could not complete this feedback task automatically.
+          The tracker issue has been labeled `needs-human-review`.
           Check the workflow logs for the exact failure reason and rerun after resolving the auth or quota issue, or investigate manually.
 
           **Workflow run:** ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
@@ -216,10 +218,12 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          gh issue edit "${{ github.event.issue.number }}" --repo "${{ github.repository }}" --add-label needs-human-review || true
           gh issue comment "${{ github.event.issue.number }}" --repo "${{ github.repository }}" --body "$(cat <<'COMMENT_EOF'
           ## Claude Automation Failed
 
           The Claude Code workflow could not complete this task automatically.
+          The issue has been labeled `needs-human-review`.
           Check the workflow logs for the exact failure reason. If the logs show an auth or quota error, rerun after that is resolved.
 
           **Workflow run:** ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}

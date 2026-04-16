@@ -9,6 +9,8 @@ const nextConfig: NextConfig = {
   outputFileTracingRoot: path.join(__dirname, ".."),
   transpilePackages: [
     "@annix/product-data",
+    "@annix/feedback-sdk",
+    "@annix/feedback-web",
   ],
 
   async rewrites() {

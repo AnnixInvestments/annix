@@ -1,0 +1,20 @@
+{
+  "name": "@annix/feedback-web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./index.ts",
+  "types": "./index.ts",
+  "dependencies": {
+    "@annix/feedback-sdk": "workspace:*"
+  },
+  "exports": {
+    ".": {
+      "types": "./index.ts",
+      "default": "./index.ts"
+    }
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3"
+  }
+}

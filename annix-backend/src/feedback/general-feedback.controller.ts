@@ -1,6 +1,9 @@
 import {
   Body,
   Controller,
+  Get,
+  Param,
+  ParseIntPipe,
   Post,
   Req,
   UploadedFiles,
@@ -20,6 +23,15 @@ import { FeedbackAuthGuard, type FeedbackSubmitter } from "./guards/feedback-aut
 @ApiBearerAuth()
 export class GeneralFeedbackController {
   constructor(private readonly feedbackService: FeedbackService) {}
+
+  @Get(":id/status")
+  @ApiOperation({ summary: "Get feedback status for the authenticated submitter" })
+  @ApiResponse({ status: 200, description: "Feedback status retrieved" })
+  @ApiResponse({ status: 404, description: "Feedback not found" })
+  async feedbackStatus(@Param("id", ParseIntPipe) id: number, @Req() req: Request) {
+    const submitter = req["feedbackSubmitter"] as FeedbackSubmitter;
+    return this.feedbackService.feedbackStatusForSubmitter(id, submitter);
+  }
 
   @Post()
   @ApiOperation({ summary: "Submit feedback with optional attachments (any authenticated user)" })
