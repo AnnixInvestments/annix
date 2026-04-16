@@ -1,6 +1,9 @@
 name: Merge Feedback PR
 
 on:
+  push:
+    branches:
+      - main
   issue_comment:
     types: [created]
 
@@ -10,8 +13,14 @@ permissions:
   issues: write
 
 jobs:
+  acknowledge-push:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Feedback merge workflow is idle on push."
+
   merge-feedback-pr:
-    if: startsWith(github.event.comment.body, '/merge #')
+    if: github.event_name == 'issue_comment' && startsWith(github.event.comment.body, '/merge #')
     runs-on: ubuntu-latest
     steps:
       - name: Validate and merge
