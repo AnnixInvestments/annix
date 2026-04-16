@@ -91,7 +91,7 @@ function writeLastSubmission(authContext: FeedbackAuthContext, feedbackId: numbe
 }
 
 function defaultPosition(): { x: number; y: number } {
-  if (isUndefined(window)) {
+  if (isUndefined(globalThis.window)) {
     return { x: 0, y: 0 };
   }
   return {
@@ -110,7 +110,7 @@ export function FeedbackWidget(props: FeedbackWidgetProps) {
   const [feedbackSource, setFeedbackSource] = useState<FeedbackSource>("text");
   const [showSuccess, setShowSuccess] = useState(false);
   const [latestFeedbackId, setLatestFeedbackId] = useState<number | null>(() =>
-    isUndefined(window) ? null : readLastSubmission(authContext),
+    isUndefined(globalThis.window) ? null : readLastSubmission(authContext),
   );
   const [feedbackStatus, setFeedbackStatus] = useState<FeedbackStatusResponse | null>(null);
   const [isRefreshingStatus, setIsRefreshingStatus] = useState(false);
@@ -530,11 +530,11 @@ export function FeedbackWidget(props: FeedbackWidgetProps) {
         ...(freshScreenshot ? [freshScreenshot] : []),
         ...userAttachments.map((a) => a.file),
       ];
-      const captureUrl = isUndefined(window) ? pathname : window.location.href;
-      const viewportWidth = isUndefined(window) ? undefined : window.innerWidth;
-      const viewportHeight = isUndefined(window) ? undefined : window.innerHeight;
-      const devicePixelRatio = isUndefined(window) ? undefined : window.devicePixelRatio;
-      const userAgent = isUndefined(window) ? undefined : window.navigator.userAgent;
+      const captureUrl = isUndefined(globalThis.window) ? pathname : window.location.href;
+      const viewportWidth = isUndefined(globalThis.window) ? undefined : window.innerWidth;
+      const viewportHeight = isUndefined(globalThis.window) ? undefined : window.innerHeight;
+      const devicePixelRatio = isUndefined(globalThis.window) ? undefined : window.devicePixelRatio;
+      const userAgent = isUndefined(globalThis.window) ? undefined : window.navigator.userAgent;
 
       const result = await submitFeedbackWithAttachments(
         {

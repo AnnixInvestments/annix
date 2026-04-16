@@ -34,7 +34,7 @@ function resolveToken(authContext: FeedbackAuthContext): string | null {
   if (usesCookieAuth(authContext)) {
     return null;
   }
-  if (isUndefined(window)) {
+  if (isUndefined(globalThis.window)) {
     return null;
   }
   const key = AUTH_TOKEN_KEYS[authContext];
