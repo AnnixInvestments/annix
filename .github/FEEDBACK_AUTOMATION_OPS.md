@@ -50,9 +50,9 @@ To approve merge from GitHub:
 
 1. verify the staging build
 2. confirm checks are green
-3. review and merge the PR normally in GitHub
+3. comment `/merge #PR_NUMBER` on the feedback tracker issue
 
-The old issue-comment merge command is no longer part of the workflow.
+Only human collaborators with write-or-higher permission can use this command.
 
 ## Operational Hygiene
 
