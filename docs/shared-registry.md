@@ -107,6 +107,8 @@ The canonical frontend components directory. **App-specific components live in `
 
 Existing shared components include: `DataTable`, `TableComponents`, `ConfirmModal`, `FormModal` (reusable form-based modal shell with portal, backdrop, header, scrollable body, and footer), `AdminActionModal` (approve/suspend/reject modal for admin entity actions), `ImportModal`, `MonthYearPicker`, `FileDropzone`, `SurfaceAreaDisplay`, `WeldSummaryCard`, `CalloffInput`, `SageExportModal`, `PortalToolbar`, `PdfPreviewModal` (+ `usePdfPreview` hook — mandatory for all generated PDF documents).
 
+Shared feedback capture support lives alongside the widget in `components/feedbackCapture.ts` and is responsible for lightweight client-side action, console-error, failed-network-call, and clicked-element capture that feeds the feedback reliability pipeline.
+
 ### Stock Management frontend module (`app/modules/stock-management/`)
 
 Host-app-agnostic React module. Consumed by Stock Control (via `app/stock-control/portal/preview/stock-management/`) and AU Rubber (via `app/au-rubber/portal/stock-management/`).
