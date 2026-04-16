@@ -8,16 +8,49 @@ import { type IStorageService, STORAGE_SERVICE } from "../storage/storage.interf
 import { CustomerFeedback, type FeedbackClassification } from "./entities/customer-feedback.entity";
 import { FeedbackAttachment } from "./entities/feedback-attachment.entity";
 
-const CLASSIFICATION_PROMPT = `You are a feedback classifier for a software application suite. Classify the following user feedback into exactly one category.
+interface FeedbackTranslation {
+  classification: FeedbackClassification;
+  confidence: number;
+  likelyLocation: string | null;
+  reproductionSteps: string[];
+  likelyCause: string | null;
+  affectedSurface: string | null;
+  riskFlags: string[];
+  fixScope: string | null;
+  autoFixable: boolean;
+}
 
-Categories:
-- bug: Something is broken, not working as expected, produces errors, or crashes
-- ui-issue: Visual/layout problems, elements misaligned, hard to read, styling broken, or poor UX
-- feature-request: User wants new functionality, enhancements, or improvements
-- question: User is asking how something works or seeking help/clarification
-- data-issue: Incorrect data displayed, missing records, wrong calculations, or data sync problems
+const TRANSLATOR_PROMPT = `You are a software feedback translator.
 
-Respond with ONLY the category name, nothing else. No explanation, no punctuation.`;
+Convert the report into strict engineering JSON using only evidence from the provided report and captured context.
+
+Valid classifications:
+- bug
+- ui-issue
+- data-issue
+- feature-request
+- question
+
+Return JSON with exactly these keys:
+- classification
+- confidence
+- likelyLocation
+- reproductionSteps
+- likelyCause
+- affectedSurface
+- riskFlags
+- fixScope
+- autoFixable
+
+Rules:
+- confidence must be a number from 0 to 1
+- reproductionSteps must be an array of concise strings
+- riskFlags must be an array of concise lowercase strings
+- likelyLocation, likelyCause, affectedSurface, and fixScope must be strings or null
+- autoFixable must be true only for narrow frontend-local issues with strong context
+- do not suggest code changes
+- do not invent evidence
+- if the report is weak or risky, lower confidence and set autoFixable false`;
 
 const VALID_CLASSIFICATIONS: FeedbackClassification[] = [
   "bug",
@@ -28,6 +61,25 @@ const VALID_CLASSIFICATIONS: FeedbackClassification[] = [
 ];
 
 const CLAUDE_AUTO_FIX_CLASSIFICATIONS: FeedbackClassification[] = ["bug", "ui-issue", "data-issue"];
+const BLOCKED_RISK_FLAGS = new Set([
+  "auth",
+  "billing",
+  "permissions",
+  "backend",
+  "data-integrity",
+  "compliance",
+  "mixed-surface",
+  "unclear",
+]);
+const APPROVED_FIX_SCOPES = new Set([
+  "copy",
+  "frontend-local",
+  "frontend-ui",
+  "frontend-render",
+  "frontend-event-handler",
+  "conditional-rendering",
+  "label",
+]);
 const FORCE_CLAUDE_LABEL = "force-claude";
 const SKIP_CLAUDE_LABEL = "skip-claude";
 
@@ -77,27 +129,56 @@ export class FeedbackGithubService {
     }
   }
 
-  async classifyFeedback(content: string): Promise<FeedbackClassification> {
+  async translateFeedback(feedback: CustomerFeedback): Promise<FeedbackTranslation> {
+    const input = JSON.stringify(
+      {
+        content: feedback.content,
+        pageUrl: feedback.pageUrl,
+        appContext: feedback.appContext,
+        captureCompletenessScore: feedback.captureCompletenessScore,
+        captureContext: feedback.captureContext,
+      },
+      null,
+      2,
+    );
+
     try {
       const response = await this.aiChatService.chat(
-        [{ role: "user", content }],
-        CLASSIFICATION_PROMPT,
+        [{ role: "user", content: input }],
+        TRANSLATOR_PROMPT,
       );
-
-      const classification = response.content.trim().toLowerCase() as FeedbackClassification;
-
-      if (VALID_CLASSIFICATIONS.includes(classification)) {
-        return classification;
+      const parsed = this.parseTranslatorResponse(response.content);
+      if (parsed) {
+        return parsed;
       }
-
-      this.logger.warn(
-        `AI returned invalid classification "${response.content}", defaulting to "question"`,
-      );
-      return "question";
+      this.logger.warn(`AI returned invalid translator output for feedback #${feedback.id}`);
     } catch (error) {
-      this.logger.error(`Failed to classify feedback: ${error}`);
-      return "question";
+      this.logger.error(`Failed to translate feedback: ${error}`);
     }
+
+    return {
+      classification: "question",
+      confidence: 0,
+      likelyLocation: feedback.pageUrl || null,
+      reproductionSteps: [],
+      likelyCause: null,
+      affectedSurface: feedback.appContext || null,
+      riskFlags: ["unclear"],
+      fixScope: null,
+      autoFixable: false,
+    };
+  }
+
+  async classifyFeedback(content: string): Promise<FeedbackClassification> {
+    const translation = await this.translateFeedback({
+      id: 0,
+      content,
+      pageUrl: null,
+      appContext: null,
+      captureCompletenessScore: null,
+      captureContext: null,
+    } as CustomerFeedback);
+    return translation.classification;
   }
 
   async createIssueFromFeedback(feedback: CustomerFeedback): Promise<number | null> {
@@ -107,9 +188,18 @@ export class FeedbackGithubService {
     }
 
     try {
-      const classification = await this.classifyFeedback(feedback.content);
+      const translation = await this.translateFeedback(feedback);
+      const classification = translation.classification;
 
       feedback.aiClassification = classification;
+      feedback.translatorConfidence = translation.confidence;
+      feedback.translatorLikelyLocation = translation.likelyLocation;
+      feedback.translatorReproductionSteps = translation.reproductionSteps;
+      feedback.translatorLikelyCause = translation.likelyCause;
+      feedback.translatorAffectedSurface = translation.affectedSurface;
+      feedback.translatorRiskFlags = translation.riskFlags;
+      feedback.translatorFixScope = translation.fixScope;
+      feedback.translatorAutoFixable = translation.autoFixable;
       feedback.status = "triaged";
       await this.feedbackRepository.save(feedback);
 
@@ -118,12 +208,12 @@ export class FeedbackGithubService {
         order: { createdAt: "ASC" },
       });
 
-      const commentBody = await this.formatCommentBody(feedback, classification, attachments);
+      const commentBody = await this.formatCommentBody(feedback, translation, attachments);
 
       const appContext = feedback.appContext || "admin";
       const issueNumber = APP_ISSUE_MAP[appContext] || APP_ISSUE_MAP["admin"];
       const existingLabels = await this.getIssueLabels(issueNumber);
-      const fullComment = this.buildCommentBody(commentBody, classification, existingLabels);
+      const fullComment = this.buildCommentBody(commentBody, translation, existingLabels);
 
       await this.octokit.issues.createComment({
         owner: this.owner,
@@ -138,9 +228,7 @@ export class FeedbackGithubService {
       await this.feedbackRepository.save(feedback);
 
       const claudeOverride = this.resolveClaudeOverride(existingLabels);
-      const claudeTriggered =
-        claudeOverride === "force" ||
-        (claudeOverride !== "skip" && CLAUDE_AUTO_FIX_CLASSIFICATIONS.includes(classification));
+      const claudeTriggered = this.shouldTriggerClaude(translation, claudeOverride);
       const triggerStatus = claudeTriggered ? "Claude triggered" : "Claude skipped";
 
       this.logger.log(
@@ -222,20 +310,18 @@ export class FeedbackGithubService {
 
   private buildCommentBody(
     commentBody: string,
-    classification: FeedbackClassification,
+    translation: FeedbackTranslation,
     labels: string[],
   ): string {
     const claudeOverride = this.resolveClaudeOverride(labels);
-    const shouldTriggerClaude =
-      claudeOverride === "force" ||
-      (claudeOverride !== "skip" && CLAUDE_AUTO_FIX_CLASSIFICATIONS.includes(classification));
+    const shouldTriggerClaude = this.shouldTriggerClaude(translation, claudeOverride);
 
     if (!shouldTriggerClaude) {
       if (claudeOverride === "skip") {
         return `${commentBody}\n\n---\nClaude auto-fix was skipped because the tracker issue has the \`${SKIP_CLAUDE_LABEL}\` label.`;
       }
 
-      return `${commentBody}\n\n---\nNo Claude auto-fix trigger was added because this feedback was classified as \`${classification}\`.`;
+      return `${commentBody}\n\n---\nNo Claude auto-fix trigger was added because the translator marked this report as outside the narrow safe auto-fix path.`;
     }
 
     const overrideNote =
@@ -243,16 +329,16 @@ export class FeedbackGithubService {
         ? ` The tracker issue has the \`${FORCE_CLAUDE_LABEL}\` label, so Claude was triggered regardless of classification.`
         : "";
 
-    return `${commentBody}\n\n---\n@claude This feedback was classified as \`${classification}\`. Please investigate and either fix the issue (create a branch and PR) or comment explaining what you found and whether human intervention is needed. The feedback includes screenshots showing the current state.${overrideNote}`;
+    return `${commentBody}\n\n---\n@claude This feedback was translated as \`${translation.classification}\` with confidence ${translation.confidence.toFixed(2)}. Stay inside the structured brief and narrow safe scope. Please investigate and either fix the issue (create a branch and PR) or comment explaining what you found and whether human intervention is needed. The feedback includes screenshots showing the current state.${overrideNote}`;
   }
 
   private async formatCommentBody(
     feedback: CustomerFeedback,
-    classification: FeedbackClassification,
+    translation: FeedbackTranslation,
     attachments: FeedbackAttachment[],
   ): Promise<string> {
     const sections = [
-      `## Feedback #${feedback.id} — \`${classification}\``,
+      `## Feedback #${feedback.id} — \`${translation.classification}\``,
       "",
       "| Field | Value |",
       "|-------|-------|",
@@ -261,13 +347,35 @@ export class FeedbackGithubService {
       `| **Type** | ${feedback.submitterType || "Unknown"} |`,
       `| **Page** | ${feedback.pageUrl || "Unknown"} |`,
       `| **Source** | ${feedback.source} |`,
-      `| **Classification** | \`${classification}\` |`,
+      `| **Classification** | \`${translation.classification}\` |`,
+      `| **Confidence** | ${translation.confidence.toFixed(2)} |`,
+      `| **Auto-fixable** | ${translation.autoFixable ? "yes" : "no"} |`,
+      `| **Likely location** | ${translation.likelyLocation || "Unknown"} |`,
+      `| **Affected surface** | ${translation.affectedSurface || "Unknown"} |`,
+      `| **Fix scope** | ${translation.fixScope || "Unknown"} |`,
+      `| **Capture score** | ${feedback.captureCompletenessScore ?? 0} |`,
       "",
       "### Content",
       "",
       feedback.content,
       "",
+      "### Engineering Brief",
+      "",
     ];
+
+    sections.push(
+      `- Likely cause: ${translation.likelyCause || "Unknown"}`,
+      `- Risk flags: ${translation.riskFlags.length > 0 ? translation.riskFlags.join(", ") : "none"}`,
+    );
+
+    if (translation.reproductionSteps.length > 0) {
+      sections.push(
+        "",
+        "### Reproduction Steps",
+        "",
+        ...translation.reproductionSteps.map((step) => `- ${step}`),
+      );
+    }
 
     if (attachments.length > 0) {
       sections.push("### Attachments", "");
@@ -289,5 +397,86 @@ export class FeedbackGithubService {
     sections.push("---", `*Auto-created from feedback widget submission #${feedback.id}*`);
 
     return sections.join("\n");
+  }
+
+  private parseTranslatorResponse(content: string): FeedbackTranslation | null {
+    try {
+      const normalized = content
+        .trim()
+        .replace(/^```json\s*/i, "")
+        .replace(/^```\s*/i, "")
+        .replace(/\s*```$/, "");
+      const parsed = JSON.parse(normalized) as Partial<FeedbackTranslation>;
+      if (!parsed.classification || !VALID_CLASSIFICATIONS.includes(parsed.classification)) {
+        return null;
+      }
+      return {
+        classification: parsed.classification,
+        confidence: this.normalizeConfidence(parsed.confidence),
+        likelyLocation: this.normalizeNullableString(parsed.likelyLocation, 255),
+        reproductionSteps: this.normalizeStringArray(parsed.reproductionSteps, 6),
+        likelyCause: this.normalizeNullableString(parsed.likelyCause, 2000),
+        affectedSurface: this.normalizeNullableString(parsed.affectedSurface, 255),
+        riskFlags: this.normalizeStringArray(parsed.riskFlags, 8).map((flag) => flag.toLowerCase()),
+        fixScope: this.normalizeNullableString(parsed.fixScope, 100),
+        autoFixable: Boolean(parsed.autoFixable),
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  private normalizeConfidence(value: unknown): number {
+    if (typeof value !== "number" || Number.isNaN(value)) {
+      return 0;
+    }
+    return Math.max(0, Math.min(1, Number(value.toFixed(2))));
+  }
+
+  private normalizeNullableString(value: unknown, maxLength: number): string | null {
+    if (typeof value !== "string") {
+      return null;
+    }
+    const normalized = value.trim();
+    if (!normalized) {
+      return null;
+    }
+    return normalized.slice(0, maxLength);
+  }
+
+  private normalizeStringArray(value: unknown, limit: number): string[] {
+    if (!Array.isArray(value)) {
+      return [];
+    }
+    return value
+      .filter((item): item is string => typeof item === "string")
+      .map((item) => item.trim())
+      .filter(Boolean)
+      .slice(0, limit);
+  }
+
+  private shouldTriggerClaude(
+    translation: FeedbackTranslation,
+    claudeOverride: "force" | "skip" | null,
+  ): boolean {
+    if (claudeOverride === "skip") {
+      return false;
+    }
+    if (claudeOverride === "force") {
+      return true;
+    }
+    if (!translation.autoFixable) {
+      return false;
+    }
+    if (!CLAUDE_AUTO_FIX_CLASSIFICATIONS.includes(translation.classification)) {
+      return false;
+    }
+    if (translation.confidence < 0.7) {
+      return false;
+    }
+    if (translation.fixScope && !APPROVED_FIX_SCOPES.has(translation.fixScope)) {
+      return false;
+    }
+    return !translation.riskFlags.some((flag) => BLOCKED_RISK_FLAGS.has(flag));
   }
 }

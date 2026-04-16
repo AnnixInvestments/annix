@@ -24,6 +24,11 @@ function appendField(formData: FormData, key: string, value: unknown): void {
 
   if (typeof value === "string" && value.length > 0) {
     formData.append(key, value);
+    return;
+  }
+
+  if (Array.isArray(value) || typeof value === "object") {
+    formData.append(key, JSON.stringify(value));
   }
 }
 
@@ -61,6 +66,10 @@ export function createFeedbackClient(options: FeedbackClientOptions): FeedbackCl
       appendField(formData, "previewUserId", request.payload.previewUserId);
       appendField(formData, "previewUserName", request.payload.previewUserName);
       appendField(formData, "previewUserEmail", request.payload.previewUserEmail);
+      appendField(formData, "lastUserActions", request.payload.lastUserActions);
+      appendField(formData, "consoleErrors", request.payload.consoleErrors);
+      appendField(formData, "failedNetworkCalls", request.payload.failedNetworkCalls);
+      appendField(formData, "clickedElement", request.payload.clickedElement);
       appendField(formData, "appContext", request.payload.appContext || request.authContext);
 
       for (const file of request.files ?? []) {

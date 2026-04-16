@@ -17,6 +17,22 @@ import { SubmitFeedbackResponseDto } from "./dto";
 import { FeedbackService } from "./feedback.service";
 import { FeedbackAuthGuard, type FeedbackSubmitter } from "./guards/feedback-auth.guard";
 
+function parseJsonArray(value?: string): string[] | null {
+  if (!value) {
+    return null;
+  }
+
+  try {
+    const parsed = JSON.parse(value);
+    if (!Array.isArray(parsed)) {
+      return null;
+    }
+    return parsed.filter((item): item is string => typeof item === "string");
+  } catch {
+    return null;
+  }
+}
+
 @ApiTags("Feedback")
 @Controller("feedback")
 @UseGuards(FeedbackAuthGuard)
@@ -57,6 +73,10 @@ export class GeneralFeedbackController {
       previewUserId?: string;
       previewUserName?: string;
       previewUserEmail?: string;
+      lastUserActions?: string;
+      consoleErrors?: string;
+      failedNetworkCalls?: string;
+      clickedElement?: string;
       appContext?: string;
     },
     @UploadedFiles() files: Express.Multer.File[],
@@ -88,6 +108,10 @@ export class GeneralFeedbackController {
         previewUserId: body.previewUserId ? Number(body.previewUserId) : null,
         previewUserName: body.previewUserName || null,
         previewUserEmail: body.previewUserEmail || null,
+        lastUserActions: parseJsonArray(body.lastUserActions),
+        consoleErrors: parseJsonArray(body.consoleErrors),
+        failedNetworkCalls: parseJsonArray(body.failedNetworkCalls),
+        clickedElement: body.clickedElement || null,
         appContext: body.appContext || null,
       },
       files || [],

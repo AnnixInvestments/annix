@@ -47,6 +47,10 @@ export interface FeedbackSubmissionPayload {
   previewUserId?: number;
   previewUserName?: string;
   previewUserEmail?: string;
+  lastUserActions?: string[];
+  consoleErrors?: string[];
+  failedNetworkCalls?: string[];
+  clickedElement?: string;
   appContext?: string;
 }
 

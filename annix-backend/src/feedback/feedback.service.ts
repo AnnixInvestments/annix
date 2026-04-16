@@ -12,7 +12,11 @@ import { StockControlUser } from "../stock-control/entities/stock-control-user.e
 import { type IStorageService, STORAGE_SERVICE, StorageArea } from "../storage/storage.interface";
 import { User } from "../user/entities/user.entity";
 import { SubmitFeedbackDto, SubmitFeedbackResponseDto } from "./dto";
-import { CustomerFeedback, type SubmitterType } from "./entities/customer-feedback.entity";
+import {
+  CustomerFeedback,
+  type FeedbackCaptureContext,
+  type SubmitterType,
+} from "./entities/customer-feedback.entity";
 import { FeedbackAttachment } from "./entities/feedback-attachment.entity";
 import { FeedbackGithubService } from "./feedback-github.service";
 import type { FeedbackSubmitter } from "./guards/feedback-auth.guard";
@@ -37,6 +41,10 @@ interface GeneralFeedbackDto {
   previewUserId: number | null;
   previewUserName: string | null;
   previewUserEmail: string | null;
+  lastUserActions: string[] | null;
+  consoleErrors: string[] | null;
+  failedNetworkCalls: string[] | null;
+  clickedElement: string | null;
   appContext: string | null;
 }
 
@@ -125,6 +133,7 @@ export class FeedbackService {
     bearerToken: string | null = null,
   ): Promise<SubmitFeedbackResponseDto> {
     const effectiveSubmitter = await this.resolveGeneralSubmitter(submitter, dto);
+    const captureContext = this.buildCaptureContext(dto);
     const feedback = this.feedbackRepository.create({
       customerProfileId: null,
       content: dto.content,
@@ -134,6 +143,8 @@ export class FeedbackService {
       submitterName: effectiveSubmitter.displayName,
       submitterEmail: effectiveSubmitter.email,
       appContext: dto.appContext,
+      captureContext,
+      captureCompletenessScore: this.calculateCaptureCompletenessScore(dto),
     });
 
     const savedFeedback = await this.feedbackRepository.save(feedback);
@@ -704,6 +715,68 @@ ${feedback.content}
       role: previewUser.role,
       companyId: previewUser.companyId,
     };
+  }
+
+  private buildCaptureContext(dto: GeneralFeedbackDto): FeedbackCaptureContext | null {
+    const context: FeedbackCaptureContext = {
+      captureUrl: this.redactSensitiveValue(dto.captureUrl),
+      viewportWidth: dto.viewportWidth,
+      viewportHeight: dto.viewportHeight,
+      devicePixelRatio: dto.devicePixelRatio,
+      userAgent: this.redactSensitiveValue(dto.userAgent),
+      previewUserId: dto.previewUserId,
+      previewUserName: this.redactSensitiveValue(dto.previewUserName),
+      previewUserEmail: this.redactSensitiveValue(dto.previewUserEmail),
+      lastUserActions: this.redactStringList(dto.lastUserActions),
+      consoleErrors: this.redactStringList(dto.consoleErrors),
+      failedNetworkCalls: this.redactStringList(dto.failedNetworkCalls),
+      clickedElement: this.redactSensitiveValue(dto.clickedElement),
+    };
+
+    if (Object.values(context).every((value) => value === null || value === undefined)) {
+      return null;
+    }
+
+    return context;
+  }
+
+  private redactStringList(values: string[] | null): string[] | null {
+    if (!values || values.length === 0) {
+      return null;
+    }
+
+    return values
+      .map((value) => this.redactSensitiveValue(value))
+      .filter((value): value is string => Boolean(value))
+      .slice(0, 10);
+  }
+
+  private redactSensitiveValue(value: string | null | undefined): string | null {
+    if (!value) {
+      return null;
+    }
+
+    return value
+      .replace(/\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi, "[redacted-email]")
+      .replace(/(bearer\s+)[a-z0-9._-]+/gi, "$1[redacted-token]")
+      .replace(/([?&](token|auth|key|password|secret)=)[^&\s]+/gi, "$1[redacted]")
+      .replace(/\b\d{13,19}\b/g, "[redacted-number]");
+  }
+
+  private calculateCaptureCompletenessScore(dto: GeneralFeedbackDto): number {
+    let score = 0;
+
+    if (dto.pageUrl) score += 20;
+    if (dto.captureUrl) score += 10;
+    if (dto.viewportWidth && dto.viewportHeight) score += 10;
+    if (dto.devicePixelRatio) score += 5;
+    if (dto.userAgent) score += 5;
+    if (dto.clickedElement) score += 10;
+    if (dto.lastUserActions && dto.lastUserActions.length > 0) score += 15;
+    if (dto.consoleErrors && dto.consoleErrors.length > 0) score += 15;
+    if (dto.failedNetworkCalls && dto.failedNetworkCalls.length > 0) score += 10;
+
+    return Math.min(score, 100);
   }
 
   private createGithubIssueAsync(feedbackId: number): void {

@@ -19,6 +19,11 @@ import {
   submitFeedbackWithAttachments,
 } from "@/app/lib/api/feedbackApi";
 import {
+  getFeedbackCaptureSnapshot,
+  startFeedbackCapture,
+  stopFeedbackCapture,
+} from "./feedbackCapture";
+import {
   displayContent as computeDisplayContent,
   contentValidationMessage,
   FEEDBACK_MAX_LENGTH,
@@ -344,6 +349,11 @@ export function FeedbackWidget(props: FeedbackWidgetProps) {
   }, [transcript]);
 
   useEffect(() => {
+    startFeedbackCapture();
+    return () => stopFeedbackCapture();
+  }, []);
+
+  useEffect(() => {
     return () => {
       attachments.forEach((att) => URL.revokeObjectURL(att.preview));
     };
@@ -535,6 +545,8 @@ export function FeedbackWidget(props: FeedbackWidgetProps) {
       const viewportHeight = isUndefined(globalThis.window) ? undefined : window.innerHeight;
       const devicePixelRatio = isUndefined(globalThis.window) ? undefined : window.devicePixelRatio;
       const userAgent = isUndefined(globalThis.window) ? undefined : window.navigator.userAgent;
+      const captureSnapshot = getFeedbackCaptureSnapshot();
+      const clickedElement = captureSnapshot.clickedElement;
 
       const result = await submitFeedbackWithAttachments(
         {
@@ -549,6 +561,10 @@ export function FeedbackWidget(props: FeedbackWidgetProps) {
           previewUserId: submitterOverride?.userId,
           previewUserName: submitterOverride?.name,
           previewUserEmail: submitterOverride?.email,
+          lastUserActions: captureSnapshot.lastUserActions,
+          consoleErrors: captureSnapshot.consoleErrors,
+          failedNetworkCalls: captureSnapshot.failedNetworkCalls,
+          clickedElement: clickedElement ? clickedElement : undefined,
           appContext: authContext,
         },
         userFiles,

@@ -30,6 +30,21 @@ export type FeedbackClassification =
   | "ui-issue"
   | "data-issue";
 
+export interface FeedbackCaptureContext {
+  captureUrl?: string | null;
+  viewportWidth?: number | null;
+  viewportHeight?: number | null;
+  devicePixelRatio?: number | null;
+  userAgent?: string | null;
+  previewUserId?: number | null;
+  previewUserName?: string | null;
+  previewUserEmail?: string | null;
+  lastUserActions?: string[] | null;
+  consoleErrors?: string[] | null;
+  failedNetworkCalls?: string[] | null;
+  clickedElement?: string | null;
+}
+
 export type FeedbackStatus = "submitted" | "triaged" | "in_progress" | "resolved";
 
 export type ResolutionStatus =
@@ -94,6 +109,36 @@ export class CustomerFeedback {
 
   @Column({ name: "ai_classification", type: "varchar", length: 30, nullable: true })
   aiClassification: FeedbackClassification | null;
+
+  @Column({ name: "translator_confidence", type: "double precision", nullable: true })
+  translatorConfidence: number | null;
+
+  @Column({ name: "translator_likely_location", type: "varchar", length: 255, nullable: true })
+  translatorLikelyLocation: string | null;
+
+  @Column({ name: "translator_likely_cause", type: "text", nullable: true })
+  translatorLikelyCause: string | null;
+
+  @Column({ name: "translator_affected_surface", type: "varchar", length: 255, nullable: true })
+  translatorAffectedSurface: string | null;
+
+  @Column({ name: "translator_fix_scope", type: "varchar", length: 100, nullable: true })
+  translatorFixScope: string | null;
+
+  @Column({ name: "translator_auto_fixable", type: "boolean", nullable: true })
+  translatorAutoFixable: boolean | null;
+
+  @Column({ name: "translator_risk_flags", type: "jsonb", nullable: true })
+  translatorRiskFlags: string[] | null;
+
+  @Column({ name: "translator_reproduction_steps", type: "jsonb", nullable: true })
+  translatorReproductionSteps: string[] | null;
+
+  @Column({ name: "capture_completeness_score", type: "double precision", nullable: true })
+  captureCompletenessScore: number | null;
+
+  @Column({ name: "capture_context", type: "jsonb", nullable: true })
+  captureContext: FeedbackCaptureContext | null;
 
   @Column({ name: "status", type: "varchar", length: 20, default: "submitted" })
   status: FeedbackStatus;
