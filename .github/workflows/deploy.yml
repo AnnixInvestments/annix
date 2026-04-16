@@ -177,6 +177,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          gh label create deploy-failure --repo "${{ github.repository }}" --color D73A4A --description "Automated deploy failure tracking" 2>/dev/null || true
           EXISTING=$(gh issue list --repo "${{ github.repository }}" --label "deploy-failure" --state open --json number -q '.[0].number' 2>/dev/null || echo "")
           SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
           BODY="## Deploy Failure

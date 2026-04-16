@@ -6,6 +6,8 @@ WORKDIR /app
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY patches/ ./patches/
 COPY packages/product-data/package.json ./packages/product-data/
+COPY packages/feedback-sdk/package.json ./packages/feedback-sdk/
+COPY packages/feedback-web/package.json ./packages/feedback-web/
 COPY annix-backend/package.json ./annix-backend/
 COPY annix-frontend/package.json ./annix-frontend/
 RUN corepack enable pnpm && pnpm install --frozen-lockfile
@@ -23,6 +25,8 @@ ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
 ARG NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=__NEXT_PUBLIC_GOOGLE_MAPS_API_KEY__
 ENV NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=${NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}
 COPY --from=product-data-builder /app/packages/product-data/ ./packages/product-data/
+COPY packages/feedback-sdk/ ./packages/feedback-sdk/
+COPY packages/feedback-web/ ./packages/feedback-web/
 COPY annix-frontend/ ./annix-frontend/
 WORKDIR /app/annix-frontend
 RUN pnpm run build
@@ -81,6 +85,8 @@ WORKDIR /app
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY patches/ ./patches/
 COPY packages/product-data/package.json ./packages/product-data/
+COPY packages/feedback-sdk/package.json ./packages/feedback-sdk/
+COPY packages/feedback-web/package.json ./packages/feedback-web/
 COPY annix-backend/package.json ./annix-backend/
 COPY annix-frontend/package.json ./annix-frontend/
 RUN corepack enable pnpm && pnpm install --frozen-lockfile
