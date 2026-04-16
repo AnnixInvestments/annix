@@ -187,7 +187,7 @@ jobs:
 
           - PR: ${PR_URL}
           - Staging: ${STAGING_URL}
-          - Approval: comment \`/merge #${PR_NUM}\` on this issue once checks pass and the staging build is approved
+          - Next step: review the PR and merge it normally in GitHub once checks pass and the staging build is approved
 
           Test the fix on staging before approving merge."
 

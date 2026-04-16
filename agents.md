@@ -22,21 +22,25 @@ These rules MUST be followed in EVERY session without exception:
 
 ## Deployment
 
-GitHub Actions push triggers are disabled on `AnnixInvestments/annix` because the org owner account (`AnnixApp`) was deleted. A GitHub Support ticket is pending to transfer ownership.
-
-Workflows are triggered via the GitHub API instead:
+GitHub Actions are active on `AnnixInvestments/annix`.
 
 ### Push Flow
 1. All development happens on `AnnixInvestments/annix` (origin)
-2. The `.githooks/pre-push` hook runs checks (lint, tests, builds, migrations)
-3. After the push completes, a background `gh workflow run` API call triggers the deploy workflow
+2. The `.githooks/pre-push` hook runs local checks (lint, tests, builds, freshness checks)
+3. A push to `main` triggers `.github/workflows/deploy.yml`
+
+### PR Flow
+1. Open a PR targeting `main`
+2. `.github/workflows/deploy-staging.yml` runs on the PR
+3. The PR gets a staging deployment comment when staging succeeds
+4. Merge the PR normally in GitHub once staging and required checks pass
 
 ### Remotes
 - `origin` — `https://github.com/AnnixInvestments/annix.git` (only remote)
 
 ### Git Hooks
 - Hooks live in `.githooks/` — requires `git config core.hooksPath .githooks`
-- The pre-push hook runs all checks and schedules the deploy trigger
+- The pre-push hook runs local validation only; it does not trigger GitHub workflows directly
 
 ### Working with Claude — Two Modes
 
@@ -61,6 +65,12 @@ Example: open Claude Code and say _"implement issue #69"_ — Claude reads the i
 #### `claude remote` — Claude Code GitHub Action
 
 Claude runs on GitHub's servers. Autonomous, fire-and-forget, opens a PR for review.
+
+- **Trigger options:**
+  - comment `@claude` on an issue or PR
+  - run `./scripts/claude-issue 69`
+  - run `gh workflow run claude.yml --repo AnnixInvestments/annix -f issue_number=69`
+  - use **Run workflow** in the GitHub Actions UI
 
 - **How to trigger (terminal)**:
 
@@ -93,14 +103,7 @@ Claude runs on GitHub's servers. Autonomous, fire-and-forget, opens a PR for rev
 | Multiple issues in parallel | `claude remote` — run several at once |
 | No dev environment set up | `claude remote` — just needs a browser |
 
-**Why `workflow_dispatch` instead of `@claude` comments:**
-Webhook events (`issue_comment`, etc.) don't fire because the org owner account (`AnnixApp`) was deleted. The `workflow_dispatch` approach uses the GitHub API to trigger the workflow directly, bypassing the broken webhook system.
-
-### When This Can Be Simplified
-Once GitHub Support transfers org ownership to an active account:
-1. Enable GitHub Actions push triggers on `AnnixInvestments/annix`
-2. Remove the `gh workflow run` lines from `.githooks/pre-push` (push events will trigger deploys directly)
-3. `@claude implement this` comments on issues/PRs will work natively (the workflow already supports this trigger)
+`workflow_dispatch` remains useful for explicit issue-based runs, but it is not the only trigger path. `@claude` issue and PR comments also work.
 
 ## Dev Scripts
 
