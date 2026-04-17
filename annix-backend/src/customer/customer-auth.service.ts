@@ -135,7 +135,11 @@ export class CustomerAuthService {
       });
       const savedCompany = await queryRunner.manager.save(company);
 
-      const { hash: hashedPassword, salt } = await this.passwordService.hash(dto.user.password);
+      const {
+        hash: hashedPassword,
+        salt,
+        passwordHash,
+      } = await this.passwordService.hash(dto.user.password);
 
       let customerRole = await this.userRoleRepo.findOne({
         where: { name: "customer" },
@@ -150,6 +154,7 @@ export class CustomerAuthService {
         email: dto.user.email,
         password: hashedPassword,
         salt: salt,
+        passwordHash,
         roles: [customerRole],
       });
       const savedUser = await queryRunner.manager.save(user);
@@ -341,7 +346,10 @@ export class CustomerAuthService {
     }
 
     if (!this.authConfigService.isPasswordVerificationDisabled()) {
-      const isPasswordValid = await this.passwordService.verify(dto.password, user.password);
+      const isPasswordValid = await this.passwordService.verify(
+        dto.password,
+        user.passwordHash || user.password,
+      );
       if (!isPasswordValid) {
         await this.logLoginAttempt(
           null,

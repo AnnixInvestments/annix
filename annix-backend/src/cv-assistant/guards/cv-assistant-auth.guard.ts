@@ -2,14 +2,18 @@ import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from
 import { JwtService } from "@nestjs/jwt";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
-import { CvAssistantUser } from "../entities/cv-assistant-user.entity";
+import { UserAppAccess } from "../../rbac/entities/user-app-access.entity";
+import { User } from "../../user/entities/user.entity";
+import { CvAssistantRole } from "../entities/cv-assistant-user.entity";
 
 @Injectable()
 export class CvAssistantAuthGuard implements CanActivate {
   constructor(
     private readonly jwtService: JwtService,
-    @InjectRepository(CvAssistantUser)
-    private readonly userRepo: Repository<CvAssistantUser>,
+    @InjectRepository(User)
+    private readonly userRepo: Repository<User>,
+    @InjectRepository(UserAppAccess)
+    private readonly userAppAccessRepo: Repository<UserAppAccess>,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -30,12 +34,17 @@ export class CvAssistantAuthGuard implements CanActivate {
       }
 
       const user = await this.userRepo.findOne({ where: { id: payload.sub } });
+      if (!user) {
+        throw new UnauthorizedException("User not found");
+      }
+
+      const role = await this.resolveRole(user.id, payload.role);
 
       request.user = {
-        id: payload.sub,
-        email: payload.email,
+        id: user.id,
+        email: user.email,
         name: payload.name,
-        role: user?.role ?? payload.role,
+        role,
         companyId: payload.companyId,
       };
 
@@ -43,5 +52,23 @@ export class CvAssistantAuthGuard implements CanActivate {
     } catch {
       throw new UnauthorizedException("Invalid or expired token");
     }
+  }
+
+  private async resolveRole(userId: number, fallbackRole: string): Promise<string> {
+    const access = await this.userAppAccessRepo.findOne({
+      where: { userId, app: { code: "cv-assistant" } },
+      relations: ["role"],
+    });
+
+    if (access?.role) {
+      const roleMap: Record<string, string> = {
+        viewer: CvAssistantRole.VIEWER,
+        editor: CvAssistantRole.RECRUITER,
+        administrator: CvAssistantRole.ADMIN,
+      };
+      return roleMap[access.role.code] || fallbackRole;
+    }
+
+    return fallbackRole || CvAssistantRole.VIEWER;
   }
 }

@@ -5,7 +5,12 @@ import { MulterModule } from "@nestjs/platform-express";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { EmailModule } from "../email/email.module";
 import { NixModule } from "../nix/nix.module";
+import { Company } from "../platform/entities/company.entity";
+import { App } from "../rbac/entities/app.entity";
+import { AppRole } from "../rbac/entities/app-role.entity";
+import { UserAppAccess } from "../rbac/entities/user-app-access.entity";
 import { StorageModule } from "../storage/storage.module";
+import { User } from "../user/entities/user.entity";
 import { AnalyticsController } from "./controllers/analytics.controller";
 import { CvAssistantAuthController } from "./controllers/auth.controller";
 import { CandidateController } from "./controllers/candidate.controller";
@@ -20,6 +25,7 @@ import { Candidate } from "./entities/candidate.entity";
 import { CandidateJobMatch } from "./entities/candidate-job-match.entity";
 import { CandidateReference } from "./entities/candidate-reference.entity";
 import { CvAssistantCompany } from "./entities/cv-assistant-company.entity";
+import { CvAssistantProfile } from "./entities/cv-assistant-profile.entity";
 import { CvAssistantUser } from "./entities/cv-assistant-user.entity";
 import { CvPushSubscription } from "./entities/cv-push-subscription.entity";
 import { ExternalJob } from "./entities/external-job.entity";
@@ -51,6 +57,12 @@ import { WorkflowAutomationService } from "./services/workflow-automation.servic
     TypeOrmModule.forFeature([
       CvAssistantUser,
       CvAssistantCompany,
+      CvAssistantProfile,
+      User,
+      Company,
+      App,
+      AppRole,
+      UserAppAccess,
       JobPosting,
       Candidate,
       CandidateReference,

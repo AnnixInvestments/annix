@@ -144,7 +144,11 @@ describe("AnnixRepAuthService", () => {
     it("should register a new user and return auth response", async () => {
       userRepo.findOne.mockResolvedValue(null);
       userRoleRepo.findOne.mockResolvedValue(mockAnnixRepRole);
-      passwordService.hash.mockResolvedValue({ hash: "hashed-pw", salt: "salt-value" });
+      passwordService.hash.mockResolvedValue({
+        hash: "hashed-pw",
+        salt: "salt-value",
+        passwordHash: "hashed-pw",
+      });
       userRepo.create.mockReturnValue({ ...mockUser, email: registerDto.email } as User);
       userRepo.save.mockResolvedValue({ ...mockUser, id: 2, email: registerDto.email } as User);
       sessionRepo.create.mockReturnValue(mockSession);
@@ -175,7 +179,11 @@ describe("AnnixRepAuthService", () => {
       userRoleRepo.findOne.mockResolvedValue(null);
       userRoleRepo.create.mockReturnValue(mockAnnixRepRole);
       userRoleRepo.save.mockResolvedValue(mockAnnixRepRole);
-      passwordService.hash.mockResolvedValue({ hash: "hashed-pw", salt: "salt-value" });
+      passwordService.hash.mockResolvedValue({
+        hash: "hashed-pw",
+        salt: "salt-value",
+        passwordHash: "hashed-pw",
+      });
       userRepo.create.mockReturnValue(mockUser);
       userRepo.save.mockResolvedValue(mockUser);
       sessionRepo.create.mockReturnValue(mockSession);

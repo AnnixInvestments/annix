@@ -2,8 +2,8 @@ import { Injectable, UnauthorizedException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { JwtService } from "@nestjs/jwt";
 import { InjectRepository } from "@nestjs/typeorm";
-import * as bcrypt from "bcrypt";
 import { Repository } from "typeorm";
+import { PasswordService } from "../shared/auth/password.service";
 import { User } from "../user/entities/user.entity";
 import { JwtPayload } from "./jwt.strategy";
 
@@ -13,6 +13,7 @@ export class AuthService {
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
     @InjectRepository(User) private readonly userRepo: Repository<User>,
+    private readonly passwordService: PasswordService,
   ) {}
 
   async validateUser(email: string, password: string): Promise<any> {
@@ -24,8 +25,8 @@ export class AuthService {
       throw new UnauthorizedException("Invalid credentials");
     }
 
-    // Use bcrypt.compare for password verification instead of hash comparison
-    const isPasswordValid = await bcrypt.compare(password, user.password);
+    const passwordToCheck = user.passwordHash || user.password;
+    const isPasswordValid = await this.passwordService.verify(password, passwordToCheck);
 
     if (isPasswordValid) {
       const { password, salt, ...result } = user;
