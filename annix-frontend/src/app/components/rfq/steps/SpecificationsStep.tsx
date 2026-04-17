@@ -3014,7 +3014,7 @@ export default function SpecificationsStep(props: {
                         const damage = classifyExternalDamageMechanisms(profile);
                         const recommendation = recommendExternalCoating(profile, damage);
 
-                        const rawSystemCode = iso12944Systems.recommended.systemCode;
+                        const rawSystemCode = iso12944Systems?.recommended?.systemCode;
                         const rawRecExternalTopcoatColour = globalSpecs?.recExternalTopcoatColour;
                         const rawRecCustomColourInput = globalSpecs?.recCustomColourInput;
                         const rawRecExternalBand1Colour = globalSpecs?.recExternalBand1Colour;

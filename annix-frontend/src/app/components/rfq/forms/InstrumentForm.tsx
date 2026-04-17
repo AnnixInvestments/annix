@@ -217,7 +217,7 @@ export default function InstrumentForm(props: InstrumentFormProps) {
   const categoryColor = rawColor || "blue";
 
   const rawDescription = entry.description;
-  const rawAccuracyRange2 = selectedInstrument.accuracyRange;
+  const rawAccuracyRange2 = selectedInstrument?.accuracyRange;
   const rawLabel3 = OUTPUT_SIGNAL_OPTIONS.find((o) => o.value === outputSignal)?.label;
 
   const rawLabel4 = COMMUNICATION_PROTOCOL_OPTIONS.find(

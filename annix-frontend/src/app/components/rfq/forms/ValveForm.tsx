@@ -230,7 +230,7 @@ export default function ValveForm(props: ValveFormProps) {
   };
 
   const rawDescription = entry.description;
-  const rawApiStandard = selectedValve.apiStandard;
+  const rawApiStandard = selectedValve?.apiStandard;
 
   const rawLabel2 = PRESSURE_CLASS_OPTIONS.find(
     (p) => p.value === calculationResults.pressureClass,

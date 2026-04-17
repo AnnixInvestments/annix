@@ -164,7 +164,7 @@ export function MaterialSpecificationsSection(props: MaterialSpecificationsSecti
     );
 
     if (!suitability.isSuitable) {
-      const rawNotes = suitability.limits.notes;
+      const rawNotes = suitability.limits?.notes;
       const mappedLimits = suitability.limits
         ? {
             minTempC: suitability.limits.minTemperatureCelsius,

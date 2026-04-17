@@ -5098,12 +5098,15 @@ function BendFormComponent(props: BendFormProps) {
                   const schedule = rawScheduleNumber2 || "";
                   const pipeWallThickness = entry.calculation?.wallThicknessMm;
                   const fittingClass = scheduleToFittingClass(schedule);
-                  const rawStub1NB2 = FITTING_CLASS_WALL_THICKNESS[fittingClass]?.[stub1NB];
+                  const fittingClassWt = fittingClass
+                    ? FITTING_CLASS_WALL_THICKNESS[fittingClass]
+                    : undefined;
+                  const rawStub1NB2 = fittingClassWt?.[stub1NB];
                   const stub1RawWt =
                     isSABS719 || !fittingClass
                       ? pipeWallThickness
                       : rawStub1NB2 || pipeWallThickness;
-                  const rawStub2NB2 = FITTING_CLASS_WALL_THICKNESS[fittingClass]?.[stub2NB];
+                  const rawStub2NB2 = fittingClassWt?.[stub2NB];
                   const stub2RawWt =
                     isSABS719 || !fittingClass
                       ? pipeWallThickness

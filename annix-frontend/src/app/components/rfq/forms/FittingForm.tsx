@@ -4750,16 +4750,18 @@ function FittingFormComponent({
                       steelSpecName.includes("SABS 719") || steelSpecName.includes("SANS 719");
 
                     const fittingClass = scheduleToFittingClass(schedule);
+                    const fittingClassWt = fittingClass
+                      ? FITTING_CLASS_WALL_THICKNESS[fittingClass]
+                      : undefined;
 
-                    const rawNominalBore2 =
-                      FITTING_CLASS_WALL_THICKNESS[fittingClass]?.[nominalBore];
+                    const rawNominalBore2 = fittingClassWt?.[nominalBore];
 
                     const fittingRawThickness =
                       isSABS719 || !fittingClass
                         ? pipeWallThickness || 6
                         : rawNominalBore2 || pipeWallThickness || 6;
                     const fittingWeldThickness = roundToWeldIncrement(fittingRawThickness);
-                    const rawBranchNB = FITTING_CLASS_WALL_THICKNESS[fittingClass]?.[branchNB];
+                    const rawBranchNB = fittingClassWt?.[branchNB];
                     const branchRawThickness =
                       isSABS719 || !fittingClass
                         ? pipeWallThickness || 6
@@ -5512,7 +5514,7 @@ function FittingFormComponent({
               "45-59": 45,
               "30-44": 30,
             };
-            const rawAngleRange2 = defaultAngles[angleRange];
+            const rawAngleRange2 = angleRange ? defaultAngles[angleRange] : undefined;
             const angleDegrees = angleRange ? rawAngleRange2 || 60 : 60;
             const rawStubs15 = specs.stubs;
             const stubsForPreview = (rawStubs15 || []).map((stub: any) => {

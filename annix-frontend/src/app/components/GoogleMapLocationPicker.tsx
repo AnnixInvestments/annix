@@ -504,8 +504,8 @@ export default function GoogleMapLocationPicker(props: GoogleMapLocationPickerPr
 
   const rawContainerClassName = displayConfig.containerClassName;
   const rawAddress = addressInfo?.address;
-  const rawRegion = addressInfo.region;
-  const rawCountry = addressInfo.country;
+  const rawRegion = addressInfo?.region;
+  const rawCountry = addressInfo?.country;
 
   return (
     <div className="fixed inset-0 bg-black/10 backdrop-blur-md flex items-center justify-center z-50 p-4">

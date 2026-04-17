@@ -82,7 +82,7 @@ export default function PipeSteelWorkForm(props: PipeSteelWorkFormProps) {
 
   const rawDescription = entry.description;
   const rawMediaType = specs.mediaType;
-  const rawWeightPerUnitKg = calculationResults.weightPerUnitKg;
+  const rawWeightPerUnitKg = calculationResults?.weightPerUnitKg;
 
   return (
     <>
