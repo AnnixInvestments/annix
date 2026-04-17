@@ -4,15 +4,9 @@ import { JwtService } from "@nestjs/jwt";
 import { Test, TestingModule } from "@nestjs/testing";
 import { getRepositoryToken } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
+import { PasswordService } from "../shared/auth/password.service";
 import { User } from "../user/entities/user.entity";
 import { AuthService } from "./auth.service";
-
-jest.mock("bcrypt", () => ({
-  hash: jest.fn(),
-  compare: jest.fn(),
-}));
-
-import * as bcrypt from "bcrypt";
 
 describe("AuthService", () => {
   let service: AuthService;
@@ -33,6 +27,12 @@ describe("AuthService", () => {
     get: jest.fn(),
   };
 
+  const mockPasswordService = {
+    verify: jest.fn(),
+    hash: jest.fn(),
+    hashSimple: jest.fn(),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -40,6 +40,7 @@ describe("AuthService", () => {
         { provide: getRepositoryToken(User), useValue: mockUserRepo },
         { provide: JwtService, useValue: mockJwtService },
         { provide: ConfigService, useValue: mockConfigService },
+        { provide: PasswordService, useValue: mockPasswordService },
       ],
     }).compile();
 
@@ -62,9 +63,7 @@ describe("AuthService", () => {
       } as User;
 
       mockUserRepo.findOne.mockResolvedValue(user);
-
-      (bcrypt.hash as jest.Mock).mockResolvedValue("hashed_pass");
-      (bcrypt.compare as jest.Mock).mockResolvedValue(true);
+      mockPasswordService.verify.mockResolvedValue(true);
 
       const result = await service.validateUser("john@example.com", "123456");
 
@@ -94,8 +93,7 @@ describe("AuthService", () => {
       } as User;
 
       mockUserRepo.findOne.mockResolvedValue(user);
-
-      (bcrypt.compare as jest.Mock).mockResolvedValue(false);
+      mockPasswordService.verify.mockResolvedValue(false);
 
       await expect(service.validateUser("john@example.com", "123456")).rejects.toThrow(
         UnauthorizedException,

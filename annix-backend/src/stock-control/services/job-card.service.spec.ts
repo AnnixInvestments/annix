@@ -48,6 +48,7 @@ describe("JobCardService", () => {
   const mockAllocationRepo = {
     find: jest.fn(),
     findOne: jest.fn(),
+    findAndCount: jest.fn(),
     save: jest.fn().mockImplementation((entity) => Promise.resolve({ id: 1, ...entity })),
   };
 
@@ -781,10 +782,16 @@ describe("JobCardService", () => {
   describe("allocationsByJobCard", () => {
     it("returns allocations for a specific job card", async () => {
       const allocations = [{ id: 1, jobCard: { id: 5 } }];
-      mockAllocationRepo.find.mockResolvedValue(allocations);
+      mockAllocationRepo.findAndCount.mockResolvedValue([allocations, allocations.length]);
 
       const result = await service.allocationsByJobCard(1, 5);
-      expect(result).toEqual(allocations);
+      expect(result).toEqual({
+        data: allocations,
+        total: allocations.length,
+        page: 1,
+        limit: 20,
+        totalPages: 1,
+      });
     });
   });
 

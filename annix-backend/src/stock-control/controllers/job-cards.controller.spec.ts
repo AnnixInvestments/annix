@@ -448,7 +448,7 @@ describe("JobCardsController", () => {
 
       const result = await controller.allocations(mockReq(), 5);
 
-      expect(jobCardService.allocationsByJobCard).toHaveBeenCalledWith(1, 5);
+      expect(jobCardService.allocationsByJobCard).toHaveBeenCalledWith(1, 5, 1, 20);
       expect(result).toBe(allocations);
     });
   });
