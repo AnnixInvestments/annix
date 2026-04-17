@@ -22,6 +22,10 @@ const statusColors: Record<RequisitionStatus, string> = {
 };
 
 export default function PurchaseRequisitionDetailPage() {
+  const rawUserEmail = user?.email;
+  const rawRequisitionSupplierCompanyName = requisition.supplierCompanyName;
+  const rawRequisitionExternalPoNumber = requisition.externalPoNumber;
+  const rawRequisitionCreatedBy = requisition.createdBy;
   const params = useParams();
   const router = useRouter();
   const { showToast } = useToast();
@@ -39,7 +43,7 @@ export default function PurchaseRequisitionDetailPage() {
   const [isProcessing, setIsProcessing] = useState(false);
 
   const id = Number(params.id);
-  const userEmail = user?.email || "Unknown";
+  const userEmail = rawUserEmail || "Unknown";
 
   const fetchData = async () => {
     try {
@@ -165,11 +169,12 @@ export default function PurchaseRequisitionDetailPage() {
   }
 
   if (error || !requisition) {
+    const rawErrorMessage = error?.message;
     return (
       <div className="flex items-center justify-center min-h-96">
         <div className="text-center">
           <div className="text-red-500 text-lg font-semibold mb-2">Error Loading Requisition</div>
-          <p className="text-gray-600">{error?.message || "Requisition not found"}</p>
+          <p className="text-gray-600">{rawErrorMessage || "Requisition not found"}</p>
           <button
             onClick={() => router.push("/au-rubber/portal/purchase-requisitions")}
             className="mt-4 px-4 py-2 bg-yellow-600 text-white rounded-md hover:bg-yellow-700"
@@ -264,13 +269,13 @@ export default function PurchaseRequisitionDetailPage() {
             <div className="flex justify-between">
               <dt className="text-sm text-gray-500">Supplier</dt>
               <dd className="text-sm font-medium text-gray-900">
-                {requisition.supplierCompanyName || "-"}
+                {rawRequisitionSupplierCompanyName || "-"}
               </dd>
             </div>
             <div className="flex justify-between">
               <dt className="text-sm text-gray-500">External PO #</dt>
               <dd className="text-sm font-medium text-gray-900">
-                {requisition.externalPoNumber || "-"}
+                {rawRequisitionExternalPoNumber || "-"}
               </dd>
             </div>
             <div className="flex justify-between">
@@ -281,7 +286,9 @@ export default function PurchaseRequisitionDetailPage() {
             </div>
             <div className="flex justify-between">
               <dt className="text-sm text-gray-500">Created By</dt>
-              <dd className="text-sm font-medium text-gray-900">{requisition.createdBy || "-"}</dd>
+              <dd className="text-sm font-medium text-gray-900">
+                {rawRequisitionCreatedBy || "-"}
+              </dd>
             </div>
             <div className="flex justify-between">
               <dt className="text-sm text-gray-500">Created</dt>
@@ -400,12 +407,13 @@ export default function PurchaseRequisitionDetailPage() {
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
             {requisition.items.map((item) => {
+              const rawItemCompoundName = item.compoundName;
               const outstanding = item.quantityKg - item.quantityReceivedKg;
               return (
                 <tr key={item.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className="text-sm font-medium text-gray-900">
-                      {item.compoundName || "Unknown"}
+                      {rawItemCompoundName || "Unknown"}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
@@ -537,6 +545,7 @@ export default function PurchaseRequisitionDetailPage() {
                 {requisition.items
                   .filter((item) => item.quantityKg - item.quantityReceivedKg > 0)
                   .map((item) => {
+                    const rawReceiveAmountsByItemid = receiveAmounts[item.id];
                     const outstanding = item.quantityKg - item.quantityReceivedKg;
                     return (
                       <div key={item.id} className="flex items-center space-x-4">
@@ -549,7 +558,7 @@ export default function PurchaseRequisitionDetailPage() {
                         <div className="w-32">
                           <input
                             type="number"
-                            value={receiveAmounts[item.id] || ""}
+                            value={rawReceiveAmountsByItemid || ""}
                             onChange={(e) =>
                               setReceiveAmounts({
                                 ...receiveAmounts,

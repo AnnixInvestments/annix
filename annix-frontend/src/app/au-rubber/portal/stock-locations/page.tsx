@@ -19,6 +19,7 @@ const ITEMS_PER_PAGE = 25;
 type SortColumn = "name" | "description" | "displayOrder" | "active";
 
 export default function StockLocationsPage() {
+  const rawLocationDescription2 = location.description;
   const { showToast } = useToast();
   const [locations, setLocations] = useState<StockLocationDto[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -71,7 +72,9 @@ export default function StockLocationsPage() {
         return direction * a.name.localeCompare(b.name);
       }
       if (sortColumn === "description") {
-        return direction * (a.description || "").localeCompare(b.description || "");
+        const rawADescription = a.description;
+        const rawBDescription = b.description;
+        return direction * (rawADescription || "").localeCompare(rawBDescription || "");
       }
       if (sortColumn === "displayOrder") {
         return direction * (a.displayOrder - b.displayOrder);
@@ -113,9 +116,10 @@ export default function StockLocationsPage() {
   };
 
   const openEditModal = (location: StockLocationDto) => {
+    const rawLocationDescription = location.description;
     setEditLocation(location);
     setFormName(location.name);
-    setFormDescription(location.description || "");
+    setFormDescription(rawLocationDescription || "");
     setFormDisplayOrder(String(location.displayOrder));
     setFormActive(location.active);
     setShowModal(true);
@@ -300,7 +304,7 @@ export default function StockLocationsPage() {
                     <span className="text-sm font-medium text-gray-900">{location.name}</span>
                   </td>
                   <td className="px-6 py-4">
-                    <span className="text-sm text-gray-500">{location.description || "-"}</span>
+                    <span className="text-sm text-gray-500">{rawLocationDescription2 || "-"}</span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {location.displayOrder}

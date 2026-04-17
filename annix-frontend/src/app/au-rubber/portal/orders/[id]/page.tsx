@@ -136,6 +136,10 @@ interface OriginalState {
 }
 
 export default function AuRubberOrderDetailPage() {
+  const rawSTATUS_LABELSByEventfromstatus = STATUS_LABELS[event.fromStatus];
+  const rawSTATUS_LABELSByEventtostatus = STATUS_LABELS[event.toStatus];
+  const rawItemQuantity6 = item.quantity;
+  const rawOrderCompanyName = order.companyName;
   const params = useParams();
   const router = useRouter();
   const orderId = Number(params.id);
@@ -197,26 +201,36 @@ export default function AuRubberOrderDetailPage() {
 
   useEffect(() => {
     if (order) {
+      const rawOrderCompanyId = order.companyId;
+      const rawOrderCompanyOrderNumber = order.companyOrderNumber;
+      const rawItemProductId = item.productId;
+      const rawItemThickness = item.thickness;
+      const rawItemWidth = item.width;
+      const rawItemLength = item.length;
+      const rawItemQuantity = item.quantity;
+      const rawItemCallOffs = item.callOffs;
+      const rawOrderCompanyId2 = order.companyId;
+      const rawOrderCompanyOrderNumber2 = order.companyOrderNumber;
       setEditStatus(order.status);
-      setEditCompanyId(order.companyId || undefined);
-      setEditCompanyOrderNumber(order.companyOrderNumber || "");
+      setEditCompanyId(rawOrderCompanyId || undefined);
+      setEditCompanyOrderNumber(rawOrderCompanyOrderNumber || "");
       const mappedItems = order.items.map((item) => ({
         id: item.id,
-        productId: item.productId || undefined,
-        thickness: item.thickness || undefined,
-        width: item.width || undefined,
-        length: item.length || undefined,
-        quantity: item.quantity || undefined,
+        productId: rawItemProductId || undefined,
+        thickness: rawItemThickness || undefined,
+        width: rawItemWidth || undefined,
+        length: rawItemLength || undefined,
+        quantity: rawItemQuantity || undefined,
         cpoUnitPrice: item.cpoUnitPrice,
         pricePerKg: item.pricePerKg,
-        callOffs: item.callOffs || [],
+        callOffs: rawItemCallOffs || [],
         kgPerRoll: item.kgPerRoll,
       }));
       setEditItems(mappedItems);
       setOriginalState({
         status: order.status,
-        companyId: order.companyId || undefined,
-        companyOrderNumber: order.companyOrderNumber || "",
+        companyId: rawOrderCompanyId2 || undefined,
+        companyOrderNumber: rawOrderCompanyOrderNumber2 || "",
         items: JSON.stringify(mappedItems),
       });
     }
@@ -422,8 +436,9 @@ export default function AuRubberOrderDetailPage() {
   };
 
   const calloffSummary = (item: EditableItem) => {
+    const rawItemQuantity2 = item.quantity;
     const totalCalled = item.callOffs.reduce((sum, c) => sum + c.quantity, 0);
-    const qty = item.quantity || 0;
+    const qty = rawItemQuantity2 || 0;
     return { called: totalCalled, total: qty, remaining: qty - totalCalled };
   };
 
@@ -699,13 +714,13 @@ export default function AuRubberOrderDetailPage() {
                             <span
                               className={`px-2 py-0.5 text-xs font-medium rounded-full ${statusColor(event.fromStatus)}`}
                             >
-                              {STATUS_LABELS[event.fromStatus] || "Unknown"}
+                              {rawSTATUS_LABELSByEventfromstatus || "Unknown"}
                             </span>
                             <span className="mx-2">→</span>
                             <span
                               className={`px-2 py-0.5 text-xs font-medium rounded-full ${statusColor(event.toStatus)}`}
                             >
-                              {STATUS_LABELS[event.toStatus] || "Unknown"}
+                              {rawSTATUS_LABELSByEventtostatus || "Unknown"}
                             </span>
                           </p>
                           {event.notes && (
@@ -841,6 +856,15 @@ export default function AuRubberOrderDetailPage() {
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {editItems.map((item, index) => {
+                  const rawItemProductId2 = item.productId;
+                  const rawPTitle = p.title;
+                  const rawProductSpecificGravity = product.specificGravity;
+                  const rawItemThickness2 = item.thickness;
+                  const rawItemWidth2 = item.width;
+                  const rawItemLength2 = item.length;
+                  const rawItemQuantity3 = item.quantity;
+                  const rawItemQuantity4 = item.quantity;
+                  const rawItemQuantity5 = item.quantity;
                   const product = productById(item.productId);
                   const pricePerRoll = calculatePricePerRoll(item);
                   const totalPrice = calculateTotalPrice(item);
@@ -896,7 +920,7 @@ export default function AuRubberOrderDetailPage() {
                         </td>
                         <td className="px-3 py-3">
                           <select
-                            value={item.productId || ""}
+                            value={rawItemProductId2 || ""}
                             onChange={(e) =>
                               updateItem(index, {
                                 productId: e.target.value ? Number(e.target.value) : undefined,
@@ -907,7 +931,7 @@ export default function AuRubberOrderDetailPage() {
                             <option value="">Select product</option>
                             {products.map((p) => (
                               <option key={p.id} value={p.id}>
-                                {p.title || `Product #${p.id}`}
+                                {rawPTitle || `Product #${p.id}`}
                               </option>
                             ))}
                           </select>
@@ -926,11 +950,11 @@ export default function AuRubberOrderDetailPage() {
                           )}
                         </td>
                         <td className="px-3 py-3 text-center text-sm text-gray-900">
-                          {product ? product.specificGravity || "-" : "-"}
+                          {product ? rawProductSpecificGravity || "-" : "-"}
                         </td>
                         <td className="px-3 py-3 text-center">
                           <select
-                            value={item.thickness || ""}
+                            value={rawItemThickness2 || ""}
                             onChange={(e) =>
                               updateItem(index, {
                                 thickness: e.target.value ? Number(e.target.value) : undefined,
@@ -948,7 +972,7 @@ export default function AuRubberOrderDetailPage() {
                         </td>
                         <td className="px-3 py-3 text-center">
                           <select
-                            value={item.width || ""}
+                            value={rawItemWidth2 || ""}
                             onChange={(e) =>
                               updateItem(index, {
                                 width: e.target.value ? Number(e.target.value) : undefined,
@@ -966,7 +990,7 @@ export default function AuRubberOrderDetailPage() {
                         </td>
                         <td className="px-3 py-3 text-center">
                           <select
-                            value={item.length || ""}
+                            value={rawItemLength2 || ""}
                             onChange={(e) =>
                               updateItem(index, {
                                 length: e.target.value ? Number(e.target.value) : undefined,
@@ -1005,7 +1029,7 @@ export default function AuRubberOrderDetailPage() {
                             <button
                               onClick={() =>
                                 updateItem(index, {
-                                  quantity: Math.max(0, (item.quantity || 0) - 1),
+                                  quantity: Math.max(0, (rawItemQuantity3 || 0) - 1),
                                 })
                               }
                               className="p-1 text-gray-400 hover:text-gray-600"
@@ -1026,7 +1050,7 @@ export default function AuRubberOrderDetailPage() {
                             </button>
                             <input
                               type="number"
-                              value={item.quantity || ""}
+                              value={rawItemQuantity4 || ""}
                               onChange={(e) =>
                                 updateItem(index, {
                                   quantity: e.target.value ? Number(e.target.value) : undefined,
@@ -1037,7 +1061,7 @@ export default function AuRubberOrderDetailPage() {
                             />
                             <button
                               onClick={() =>
-                                updateItem(index, { quantity: (item.quantity || 0) + 1 })
+                                updateItem(index, { quantity: (rawItemQuantity5 || 0) + 1 })
                               }
                               className="p-1 text-gray-400 hover:text-gray-600"
                             >
@@ -1310,7 +1334,7 @@ export default function AuRubberOrderDetailPage() {
               <div className="text-sm">
                 <span className="text-gray-500">Total Quantity:</span>{" "}
                 <span className="font-medium">
-                  {editItems.reduce((sum, item) => sum + (item.quantity || 0), 0)} rolls
+                  {editItems.reduce((sum, item) => sum + (rawItemQuantity6 || 0), 0)} rolls
                 </span>
               </div>
               <div className="text-sm">
@@ -1342,7 +1366,7 @@ export default function AuRubberOrderDetailPage() {
         onClose={() => setShowConfirmationModal(false)}
         orderId={orderId}
         orderNumber={order.orderNumber}
-        customerName={order.companyName || "Unknown Customer"}
+        customerName={rawOrderCompanyName || "Unknown Customer"}
         onSent={() => showToast("Order confirmation sent", "success")}
       />
     </div>

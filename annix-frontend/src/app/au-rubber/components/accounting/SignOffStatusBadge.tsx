@@ -19,7 +19,8 @@ const STATUS_STYLES: Record<string, { bg: string; text: string; label: string }>
 };
 
 export function SignOffStatusBadge(props: SignOffStatusBadgeProps) {
-  const style = STATUS_STYLES[props.status] || {
+  const rawSTATUS_STYLESByPropsstatus = STATUS_STYLES[props.status];
+  const style = rawSTATUS_STYLESByPropsstatus || {
     bg: "bg-gray-100",
     text: "text-gray-700",
     label: props.status,

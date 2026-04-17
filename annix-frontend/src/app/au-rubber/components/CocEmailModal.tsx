@@ -122,6 +122,7 @@ interface CocEmailModalProps {
 }
 
 export function CocEmailModal(props: CocEmailModalProps) {
+  const rawPropsIsSending = props.isSending;
   const relevantCocs = useMemo(() => {
     if (props.mode === "send") {
       return props.cocs.filter((c) => c.status === "GENERATED");
@@ -132,7 +133,8 @@ export function CocEmailModal(props: CocEmailModalProps) {
   const customerOptions = useMemo(() => {
     const customerMap = new Map<string, { name: string; count: number; ids: number[] }>();
     for (const coc of relevantCocs) {
-      const name = coc.customerCompanyName || "Unknown";
+      const rawCocCustomerCompanyName = coc.customerCompanyName;
+      const name = rawCocCustomerCompanyName || "Unknown";
       const existing = customerMap.get(name);
       if (existing) {
         existing.count++;
@@ -298,7 +300,7 @@ export function CocEmailModal(props: CocEmailModalProps) {
           </button>
           <button
             onClick={handleSend}
-            disabled={props.isSending || !canSend}
+            disabled={rawPropsIsSending || !canSend}
             className={`px-4 py-2 text-sm font-medium text-white rounded-md disabled:opacity-50 ${buttonColor}`}
           >
             {props.isSending ? "Sending..." : `${buttonLabel} (${selectedCocCount})`}

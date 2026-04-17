@@ -43,6 +43,17 @@ function calculateFinalPrice(
 }
 
 export function ProductPreviewTable(props: ProductPreviewTableProps) {
+  const rawProductTitle = product.title;
+  const rawTargetValue = e.target.value;
+  const rawProductType = product.type;
+  const rawTargetValue2 = e.target.value;
+  const rawProductCompound = product.compound;
+  const rawTargetValue3 = e.target.value;
+  const rawProductColour = product.colour;
+  const rawTargetValue4 = e.target.value;
+  const rawProductHardness = product.hardness;
+  const rawTargetValue5 = e.target.value;
+  const rawProductBaseCostPerKg = product.baseCostPerKg;
   const { products, costSettings, codings, onUpdate, onDelete, onToggleSelect, onSelectAll } =
     props;
   const typeCodings = codings.filter((c) => c.codingType === "TYPE");
@@ -142,16 +153,16 @@ export function ProductPreviewTable(props: ProductPreviewTableProps) {
                 <td className="px-3 py-2">
                   <input
                     type="text"
-                    value={product.title || ""}
-                    onChange={(e) => handleFieldChange(index, "title", e.target.value || null)}
+                    value={rawProductTitle || ""}
+                    onChange={(e) => handleFieldChange(index, "title", rawTargetValue || null)}
                     className="w-full px-2 py-1 text-sm border border-gray-200 rounded focus:ring-yellow-500 focus:border-yellow-500"
                     placeholder="Product title"
                   />
                 </td>
                 <td className="px-3 py-2">
                   <select
-                    value={product.type || ""}
-                    onChange={(e) => handleFieldChange(index, "type", e.target.value || null)}
+                    value={rawProductType || ""}
+                    onChange={(e) => handleFieldChange(index, "type", rawTargetValue2 || null)}
                     className="w-full px-2 py-1 text-sm border border-gray-200 rounded focus:ring-yellow-500 focus:border-yellow-500"
                   >
                     <option value="">Select type</option>
@@ -164,8 +175,8 @@ export function ProductPreviewTable(props: ProductPreviewTableProps) {
                 </td>
                 <td className="px-3 py-2">
                   <select
-                    value={product.compound || ""}
-                    onChange={(e) => handleFieldChange(index, "compound", e.target.value || null)}
+                    value={rawProductCompound || ""}
+                    onChange={(e) => handleFieldChange(index, "compound", rawTargetValue3 || null)}
                     className="w-full px-2 py-1 text-sm border border-gray-200 rounded focus:ring-yellow-500 focus:border-yellow-500"
                   >
                     <option value="">Select compound</option>
@@ -178,8 +189,8 @@ export function ProductPreviewTable(props: ProductPreviewTableProps) {
                 </td>
                 <td className="px-3 py-2">
                   <select
-                    value={product.colour || ""}
-                    onChange={(e) => handleFieldChange(index, "colour", e.target.value || null)}
+                    value={rawProductColour || ""}
+                    onChange={(e) => handleFieldChange(index, "colour", rawTargetValue4 || null)}
                     className="w-full px-2 py-1 text-sm border border-gray-200 rounded focus:ring-yellow-500 focus:border-yellow-500"
                   >
                     <option value="">Select colour</option>
@@ -192,8 +203,8 @@ export function ProductPreviewTable(props: ProductPreviewTableProps) {
                 </td>
                 <td className="px-3 py-2">
                   <select
-                    value={product.hardness || ""}
-                    onChange={(e) => handleFieldChange(index, "hardness", e.target.value || null)}
+                    value={rawProductHardness || ""}
+                    onChange={(e) => handleFieldChange(index, "hardness", rawTargetValue5 || null)}
                     className="w-full px-2 py-1 text-sm border border-gray-200 rounded focus:ring-yellow-500 focus:border-yellow-500"
                   >
                     <option value="">Select hardness</option>
@@ -207,7 +218,7 @@ export function ProductPreviewTable(props: ProductPreviewTableProps) {
                 <td className="px-3 py-2 text-right">
                   <input
                     type="number"
-                    value={product.baseCostPerKg ?? ""}
+                    value={rawProductBaseCostPerKg ?? ""}
                     onChange={(e) =>
                       handleFieldChange(
                         index,

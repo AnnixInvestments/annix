@@ -48,6 +48,11 @@ type SortColumn =
   | "unit";
 
 export default function SupplierTaxInvoicesPage() {
+  const rawInvCompanyName = inv.companyName;
+  const rawInvProductDescription = inv.productDescription;
+  const rawInvUnit = inv.unit;
+  const rawCnOriginalInvoiceNumber = cn.originalInvoiceNumber;
+  const rawExtractedDataOriginalInvoiceRef = cn.extractedData?.originalInvoiceRef;
   const { showToast } = useToast();
   const { confirm, ConfirmDialog } = useConfirm();
   const [invoices, setInvoices] = useState<RubberTaxInvoiceDto[]>([]);
@@ -273,31 +278,49 @@ export default function SupplierTaxInvoicesPage() {
     return [...items].sort((a, b) => {
       const direction = sortDirection === "asc" ? 1 : -1;
       if (sortColumn === "invoiceNumber") {
-        return direction * (a.invoiceNumber || "").localeCompare(b.invoiceNumber || "");
+        const rawAInvoiceNumber = a.invoiceNumber;
+        const rawBInvoiceNumber = b.invoiceNumber;
+        return direction * (rawAInvoiceNumber || "").localeCompare(rawBInvoiceNumber || "");
       }
       if (sortColumn === "companyName") {
-        return direction * (a.companyName || "").localeCompare(b.companyName || "");
+        const rawACompanyName = a.companyName;
+        const rawBCompanyName = b.companyName;
+        return direction * (rawACompanyName || "").localeCompare(rawBCompanyName || "");
       }
       if (sortColumn === "status") {
         return direction * a.status.localeCompare(b.status);
       }
       if (sortColumn === "invoiceDate") {
-        return direction * (a.invoiceDate || "").localeCompare(b.invoiceDate || "");
+        const rawAInvoiceDate = a.invoiceDate;
+        const rawBInvoiceDate = b.invoiceDate;
+        return direction * (rawAInvoiceDate || "").localeCompare(rawBInvoiceDate || "");
       }
       if (sortColumn === "totalAmount") {
-        return direction * ((a.totalAmount || 0) - (b.totalAmount || 0));
+        const rawATotalAmount = a.totalAmount;
+        const rawBTotalAmount = b.totalAmount;
+        return direction * ((rawATotalAmount || 0) - (rawBTotalAmount || 0));
       }
       if (sortColumn === "productDescription") {
-        return direction * (a.productDescription || "").localeCompare(b.productDescription || "");
+        const rawAProductDescription = a.productDescription;
+        const rawBProductDescription = b.productDescription;
+        return (
+          direction * (rawAProductDescription || "").localeCompare(rawBProductDescription || "")
+        );
       }
       if (sortColumn === "numberOfRolls") {
-        return direction * ((a.numberOfRolls || 0) - (b.numberOfRolls || 0));
+        const rawANumberOfRolls = a.numberOfRolls;
+        const rawBNumberOfRolls = b.numberOfRolls;
+        return direction * ((rawANumberOfRolls || 0) - (rawBNumberOfRolls || 0));
       }
       if (sortColumn === "costPerUnit") {
-        return direction * ((a.costPerUnit || 0) - (b.costPerUnit || 0));
+        const rawACostPerUnit = a.costPerUnit;
+        const rawBCostPerUnit = b.costPerUnit;
+        return direction * ((rawACostPerUnit || 0) - (rawBCostPerUnit || 0));
       }
       if (sortColumn === "unit") {
-        return direction * (a.unit || "").localeCompare(b.unit || "");
+        const rawAUnit = a.unit;
+        const rawBUnit = b.unit;
+        return direction * (rawAUnit || "").localeCompare(rawBUnit || "");
       }
       return 0;
     });
@@ -733,19 +756,19 @@ export default function SupplierTaxInvoicesPage() {
                       </span>
                     </td>
                     <td className="px-3 py-3 whitespace-nowrap text-sm text-gray-900">
-                      {inv.companyName || "-"}
+                      {rawInvCompanyName || "-"}
                     </td>
                     <td className="px-3 py-3 whitespace-nowrap text-sm text-gray-500">
                       {inv.invoiceDate ? formatDateZA(inv.invoiceDate) : "-"}
                     </td>
                     <td className="px-3 py-3 text-sm text-gray-900 max-w-xs truncate">
-                      {inv.productDescription || "-"}
+                      {rawInvProductDescription || "-"}
                     </td>
                     <td className="px-2 py-3 whitespace-nowrap text-sm text-gray-900 text-right">
                       {inv.numberOfRolls != null ? inv.numberOfRolls : "-"}
                     </td>
                     <td className="px-2 py-3 whitespace-nowrap text-sm text-gray-500">
-                      {inv.unit || "-"}
+                      {rawInvUnit || "-"}
                     </td>
                     <td className="px-3 py-3 whitespace-nowrap text-sm text-gray-500 text-right">
                       {formatCurrency(inv.costPerUnit)}
@@ -909,11 +932,11 @@ export default function SupplierTaxInvoicesPage() {
                           href={`/au-rubber/portal/tax-invoices/${cn.originalInvoiceId}`}
                           className="text-amber-700 hover:text-amber-900"
                         >
-                          {cn.originalInvoiceNumber || `#${cn.originalInvoiceId}`}
+                          {rawCnOriginalInvoiceNumber || `#${cn.originalInvoiceId}`}
                         </Link>
                       ) : (
                         <span className="text-gray-400">
-                          {cn.extractedData?.originalInvoiceRef || "-"}
+                          {rawExtractedDataOriginalInvoiceRef || "-"}
                         </span>
                       )}
                     </td>

@@ -36,6 +36,7 @@ type SortColumn =
   | "vatAmount";
 
 export default function CustomerTaxInvoicesPage() {
+  const rawInvCompanyName = inv.companyName;
   const { showToast } = useToast();
   const { confirm, ConfirmDialog } = useConfirm();
   const [invoices, setInvoices] = useState<RubberTaxInvoiceDto[]>([]);
@@ -220,22 +221,32 @@ export default function CustomerTaxInvoicesPage() {
     return [...items].sort((a, b) => {
       const direction = sortDirection === "asc" ? 1 : -1;
       if (sortColumn === "invoiceNumber") {
-        return direction * (a.invoiceNumber || "").localeCompare(b.invoiceNumber || "");
+        const rawAInvoiceNumber = a.invoiceNumber;
+        const rawBInvoiceNumber = b.invoiceNumber;
+        return direction * (rawAInvoiceNumber || "").localeCompare(rawBInvoiceNumber || "");
       }
       if (sortColumn === "companyName") {
-        return direction * (a.companyName || "").localeCompare(b.companyName || "");
+        const rawACompanyName = a.companyName;
+        const rawBCompanyName = b.companyName;
+        return direction * (rawACompanyName || "").localeCompare(rawBCompanyName || "");
       }
       if (sortColumn === "status") {
         return direction * a.status.localeCompare(b.status);
       }
       if (sortColumn === "invoiceDate") {
-        return direction * (a.invoiceDate || "").localeCompare(b.invoiceDate || "");
+        const rawAInvoiceDate = a.invoiceDate;
+        const rawBInvoiceDate = b.invoiceDate;
+        return direction * (rawAInvoiceDate || "").localeCompare(rawBInvoiceDate || "");
       }
       if (sortColumn === "totalAmount") {
-        return direction * ((a.totalAmount || 0) - (b.totalAmount || 0));
+        const rawATotalAmount = a.totalAmount;
+        const rawBTotalAmount = b.totalAmount;
+        return direction * ((rawATotalAmount || 0) - (rawBTotalAmount || 0));
       }
       if (sortColumn === "vatAmount") {
-        return direction * ((a.vatAmount || 0) - (b.vatAmount || 0));
+        const rawAVatAmount = a.vatAmount;
+        const rawBVatAmount = b.vatAmount;
+        return direction * ((rawAVatAmount || 0) - (rawBVatAmount || 0));
       }
       return 0;
     });
@@ -604,7 +615,7 @@ export default function CustomerTaxInvoicesPage() {
                     </Link>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {inv.companyName || "-"}
+                    {rawInvCompanyName || "-"}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {inv.invoiceDate ? formatDateZA(inv.invoiceDate) : "-"}

@@ -51,14 +51,17 @@ export default function WebsitePageEditorPage() {
 
   useEffect(() => {
     if (pageQuery.data && !loaded) {
+      const rawPMetaTitle = p.metaTitle;
+      const rawPMetaDescription = p.metaDescription;
+      const rawPHeroImageUrl = p.heroImageUrl;
       const p = pageQuery.data;
       setTitle(p.title);
       setSlug(p.slug);
       setSlugManuallyEdited(true);
-      setMetaTitle(p.metaTitle || "");
-      setMetaDescription(p.metaDescription || "");
+      setMetaTitle(rawPMetaTitle || "");
+      setMetaDescription(rawPMetaDescription || "");
       setContent(p.content);
-      setHeroImageUrl(p.heroImageUrl || "");
+      setHeroImageUrl(rawPHeroImageUrl || "");
       setSortOrder(p.sortOrder);
       setIsPublished(p.isPublished);
       setIsHomePage(p.isHomePage);

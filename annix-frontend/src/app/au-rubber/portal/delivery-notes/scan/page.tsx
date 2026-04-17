@@ -11,6 +11,8 @@ import {
 } from "@/app/lib/api/auRubberApi";
 
 export default function ScanDeliveryNotePage() {
+  const rawItemUnitOfMeasure = item.unitOfMeasure;
+  const rawTotalsTotalWeightKg = result.data.totals.totalWeightKg;
   const router = useRouter();
   const { showToast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -374,7 +376,7 @@ export default function ScanDeliveryNotePage() {
                         <p className="text-xs text-gray-600 mt-1">{formatLineItem(item)}</p>
                         {item.quantity && (
                           <p className="text-xs text-gray-500 mt-1">
-                            Qty: {item.quantity} {item.unitOfMeasure || ""}
+                            Qty: {item.quantity} {rawItemUnitOfMeasure || ""}
                           </p>
                         )}
                       </div>
@@ -383,7 +385,7 @@ export default function ScanDeliveryNotePage() {
                 </div>
               )}
 
-              {(result.data.totals.totalWeightKg || result.data.totals.numberOfRolls) && (
+              {(rawTotalsTotalWeightKg || result.data.totals.numberOfRolls) && (
                 <div className="border-t pt-4">
                   <h3 className="text-sm font-medium text-gray-700 mb-2">Totals</h3>
                   <div className="grid grid-cols-3 gap-4 text-center">

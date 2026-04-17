@@ -8,6 +8,8 @@ import {
 } from "@/app/lib/api/auRubberApi";
 
 export function SageContactSyncSection() {
+  const rawCompanySageContactName = company.sageContactName;
+  const rawManualSelectionsByCompanyid = manualSelections[company.id];
   const [mappings, setMappings] = useState<SageContactMappingStatus | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSyncing, setIsSyncing] = useState(false);
@@ -167,10 +169,10 @@ export function SageContactSyncSection() {
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-700">
                     {company.sageContactId !== null ? (
-                      company.sageContactName || `ID: ${company.sageContactId}`
+                      rawCompanySageContactName || `ID: ${company.sageContactId}`
                     ) : company.suggestedMatches.length > 0 ? (
                       <select
-                        value={manualSelections[company.id] ?? ""}
+                        value={rawManualSelectionsByCompanyid ?? ""}
                         onChange={(e) =>
                           setManualSelections((prev) => ({
                             ...prev,

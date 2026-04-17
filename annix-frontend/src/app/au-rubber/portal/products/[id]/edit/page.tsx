@@ -14,6 +14,8 @@ import { auRubberApiClient } from "@/app/lib/api/auRubberApi";
 import type { CreateRubberProductDto, RubberProductDto } from "@/app/lib/api/rubberPortalApi";
 
 export default function AuRubberProductEditPage() {
+  const rawProductTitle = product.title;
+  const rawProductTitle2 = product.title;
   const params = useParams();
   const router = useRouter();
   const productId = Number(params.id);
@@ -113,7 +115,7 @@ export default function AuRubberProductEditPage() {
       <Breadcrumb
         items={[
           { label: "Products", href: "/au-rubber/portal/products" },
-          { label: product.title || `Product #${product.id}` },
+          { label: rawProductTitle || `Product #${product.id}` },
           { label: "Edit" },
         ]}
       />
@@ -122,7 +124,7 @@ export default function AuRubberProductEditPage() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Edit Product</h1>
           <p className="mt-1 text-sm text-gray-600">
-            Update the details for {product.title || `Product #${product.id}`}
+            Update the details for {rawProductTitle2 || `Product #${product.id}`}
           </p>
         </div>
       </div>

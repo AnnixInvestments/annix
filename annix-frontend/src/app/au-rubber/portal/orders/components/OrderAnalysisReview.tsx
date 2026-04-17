@@ -21,15 +21,21 @@ interface OrderAnalysisReviewProps {
 }
 
 export function OrderAnalysisReview(props: OrderAnalysisReviewProps) {
+  const rawAnalysisCompanyName = analysis.companyName;
+  const rawAnalysisCompanyVatNumber = analysis.companyVatNumber;
+  const rawAnalysisCompanyAddress = analysis.companyAddress;
+  const rawAnalysisCompanyRegistrationNumber = analysis.companyRegistrationNumber;
+  const rawAnalysisCompanyId = analysis.companyId;
+  const rawAnalysisPoNumber = analysis.poNumber;
   const { analysis, companies, products, onUpdate, onNewCompanyChange } = props;
   const [editingLineIndex, setEditingLineIndex] = useState<number | null>(null);
   const [editedLine, setEditedLine] = useState<AnalyzedOrderLine | null>(null);
   const [isCreatingNewCompany, setIsCreatingNewCompany] = useState(false);
-  const [newCompanyName, setNewCompanyName] = useState(analysis.companyName || "");
-  const [newCompanyVat, setNewCompanyVat] = useState(analysis.companyVatNumber || "");
-  const [newCompanyAddress, setNewCompanyAddress] = useState(analysis.companyAddress || "");
+  const [newCompanyName, setNewCompanyName] = useState(rawAnalysisCompanyName || "");
+  const [newCompanyVat, setNewCompanyVat] = useState(rawAnalysisCompanyVatNumber || "");
+  const [newCompanyAddress, setNewCompanyAddress] = useState(rawAnalysisCompanyAddress || "");
   const [newCompanyRegNumber, setNewCompanyRegNumber] = useState(
-    analysis.companyRegistrationNumber || "",
+    rawAnalysisCompanyRegistrationNumber || "",
   );
 
   const notifyNewCompany = (name: string, vat: string, regNum: string, addr: string) => {
@@ -43,11 +49,15 @@ export function OrderAnalysisReview(props: OrderAnalysisReviewProps) {
 
   const handleCompanyChange = (value: string) => {
     if (value === "new") {
+      const rawAnalysisCompanyName2 = analysis.companyName;
+      const rawAnalysisCompanyVatNumber2 = analysis.companyVatNumber;
+      const rawAnalysisCompanyAddress2 = analysis.companyAddress;
+      const rawAnalysisCompanyRegistrationNumber2 = analysis.companyRegistrationNumber;
       setIsCreatingNewCompany(true);
-      const name = analysis.companyName || "";
-      const vat = analysis.companyVatNumber || "";
-      const addr = analysis.companyAddress || "";
-      const regNum = analysis.companyRegistrationNumber || "";
+      const name = rawAnalysisCompanyName2 || "";
+      const vat = rawAnalysisCompanyVatNumber2 || "";
+      const addr = rawAnalysisCompanyAddress2 || "";
+      const regNum = rawAnalysisCompanyRegistrationNumber2 || "";
       setNewCompanyName(name);
       setNewCompanyVat(vat);
       setNewCompanyAddress(addr);
@@ -59,6 +69,7 @@ export function OrderAnalysisReview(props: OrderAnalysisReviewProps) {
       });
       notifyNewCompany(name, vat, regNum, addr);
     } else {
+      const rawCompanyName = company?.name;
       setIsCreatingNewCompany(false);
       onNewCompanyChange?.(null);
       const companyId = value ? Number(value) : null;
@@ -66,7 +77,7 @@ export function OrderAnalysisReview(props: OrderAnalysisReviewProps) {
       onUpdate({
         ...analysis,
         companyId,
-        companyName: company?.name || null,
+        companyName: rawCompanyName || null,
       });
     }
   };
@@ -104,6 +115,7 @@ export function OrderAnalysisReview(props: OrderAnalysisReviewProps) {
   };
 
   const handleProductChange = (productId: number | null) => {
+    const rawProductTitle = product?.title;
     if (!editedLine) {
       return;
     }
@@ -111,7 +123,7 @@ export function OrderAnalysisReview(props: OrderAnalysisReviewProps) {
     setEditedLine({
       ...editedLine,
       productId: productId,
-      productName: product?.title || editedLine.productName,
+      productName: rawProductTitle || editedLine.productName,
     });
   };
 
@@ -187,7 +199,7 @@ export function OrderAnalysisReview(props: OrderAnalysisReviewProps) {
         <div>
           <label className="block text-sm font-medium text-gray-700">Company</label>
           <select
-            value={isCreatingNewCompany ? "new" : analysis.companyId || ""}
+            value={isCreatingNewCompany ? "new" : rawAnalysisCompanyId || ""}
             onChange={(e) => handleCompanyChange(e.target.value)}
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 sm:text-sm border p-2"
           >
@@ -213,7 +225,7 @@ export function OrderAnalysisReview(props: OrderAnalysisReviewProps) {
           <label className="block text-sm font-medium text-gray-700">PO Number</label>
           <input
             type="text"
-            value={analysis.poNumber || ""}
+            value={rawAnalysisPoNumber || ""}
             onChange={(e) => handlePoNumberChange(e.target.value)}
             placeholder="Enter PO number"
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 sm:text-sm border p-2"
@@ -343,6 +355,7 @@ export function OrderAnalysisReview(props: OrderAnalysisReviewProps) {
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {analysis.lines.map((line, index) => {
+                const rawLineProductName = line.productName;
                 const lineThickness = line.thickness;
                 const lineWidth = line.width;
                 const lineLength = line.length;
@@ -470,7 +483,9 @@ export function OrderAnalysisReview(props: OrderAnalysisReviewProps) {
                           {lineProductId ? (
                             <span className="text-green-700">{line.productName}</span>
                           ) : (
-                            <span className="text-yellow-600">{line.productName || "Unknown"}</span>
+                            <span className="text-yellow-600">
+                              {rawLineProductName || "Unknown"}
+                            </span>
                           )}
                         </td>
                         <td className="px-3 py-2 text-sm text-gray-500">{lineThickness || "-"}</td>

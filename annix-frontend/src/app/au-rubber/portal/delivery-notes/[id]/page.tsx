@@ -59,6 +59,16 @@ function safeFixed(value: unknown, decimals: number): string | null {
 }
 
 export default function DeliveryNoteDetailPage() {
+  const rawNoteDeliveryNoteNumber = note.deliveryNoteNumber;
+  const rawNoteDeliveryNoteNumber2 = note.deliveryNoteNumber;
+  const rawNoteDeliveryNoteNumber3 = note.deliveryNoteNumber;
+  const rawNoteSupplierCompanyName = note.supplierCompanyName;
+  const rawNoteCustomerReference = note.customerReference;
+  const rawDnDeliveryNoteNumber = dn.deliveryNoteNumber;
+  const rawDnDeliveryDate = dn.deliveryDate;
+  const rawDnCustomerName = dn.customerName;
+  const rawDnCustomerReference = dn.customerReference;
+  const rawCocCocNumber = coc.cocNumber;
   const params = useParams();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -214,6 +224,7 @@ export default function DeliveryNoteDetailPage() {
   };
 
   const handleAddRow = (dnIdx: number) => {
+    const rawExistingRolls = existing.rolls;
     if (!editedData) return;
     const newData = [...editedData];
     const existing = newData[dnIdx];
@@ -241,7 +252,7 @@ export default function DeliveryNoteDetailPage() {
     };
     newData[dnIdx] = {
       ...existing,
-      rolls: [...(existing.rolls || []), newRoll],
+      rolls: [...(rawExistingRolls || []), newRoll],
       isEdited: true,
     };
     setEditedData(newData);
@@ -503,8 +514,9 @@ export default function DeliveryNoteDetailPage() {
   const hasExtractedData =
     note.extractedData &&
     (() => {
+      const rawItemDeliveryNoteNumber = item.deliveryNoteNumber;
       const hasFields = (item: ExtractedDeliveryNoteData) =>
-        item.deliveryNoteNumber ||
+        rawItemDeliveryNoteNumber ||
         item.deliveryDate ||
         item.supplierName ||
         item.customerName ||
@@ -547,14 +559,14 @@ export default function DeliveryNoteDetailPage() {
                 ? "/au-rubber/portal/delivery-notes/customers"
                 : "/au-rubber/portal/delivery-notes/suppliers"),
           },
-          { label: note.deliveryNoteNumber || `DN-${note.id}` },
+          { label: rawNoteDeliveryNoteNumber || `DN-${note.id}` },
         ]}
       />
 
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">
-            {note.deliveryNoteNumber || `DN-${note.id}`}
+            {rawNoteDeliveryNoteNumber2 || `DN-${note.id}`}
           </h1>
           <div className="mt-2 flex items-center space-x-3">
             {typeBadge(note.deliveryNoteType)}
@@ -636,16 +648,16 @@ export default function DeliveryNoteDetailPage() {
         <dl className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-4">
           <div>
             <dt className="text-sm font-medium text-gray-500">DN Number</dt>
-            <dd className="mt-1 text-sm text-gray-900">{note.deliveryNoteNumber || "-"}</dd>
+            <dd className="mt-1 text-sm text-gray-900">{rawNoteDeliveryNoteNumber3 || "-"}</dd>
           </div>
           <div>
             <dt className="text-sm font-medium text-gray-500">Customer</dt>
-            <dd className="mt-1 text-sm text-gray-900">{note.supplierCompanyName || "-"}</dd>
+            <dd className="mt-1 text-sm text-gray-900">{rawNoteSupplierCompanyName || "-"}</dd>
           </div>
           <div>
             <dt className="text-sm font-medium text-gray-500">PO / Ref</dt>
             <dd className="mt-1 text-sm text-gray-900 font-medium text-blue-600">
-              {note.customerReference || "-"}
+              {rawNoteCustomerReference || "-"}
             </dd>
           </div>
           <div>
@@ -904,6 +916,18 @@ export default function DeliveryNoteDetailPage() {
                     ? dn.rolls
                         .filter((r): r is EditableRoll => r != null && typeof r === "object")
                         .map((roll, rollIdx) => {
+                          const rawRollRollNumber = roll.rollNumber;
+                          const rawRollRollNumber2 = roll.rollNumber;
+                          const rawRollDeliveryNoteNumber = roll.deliveryNoteNumber;
+                          const rawRollDeliveryNoteNumber2 = roll.deliveryNoteNumber;
+                          const rawRollDeliveryDate = roll.deliveryDate;
+                          const rawNoteDeliveryDate = note.deliveryDate;
+                          const rawRollCustomerName = roll.customerName;
+                          const rawRollCustomerName2 = roll.customerName;
+                          const rawRollCustomerReference = roll.customerReference;
+                          const rawRollCustomerReference2 = roll.customerReference;
+                          const rawRollPageNumber = roll.pageNumber;
+                          const rawDnRolls = dn.rolls;
                           const areaSqM = calculateAreaSqM(roll.widthMm, roll.lengthM);
 
                           return (
@@ -915,7 +939,7 @@ export default function DeliveryNoteDetailPage() {
                                 {isEditing ? (
                                   <input
                                     type="text"
-                                    value={roll.rollNumber || ""}
+                                    value={rawRollRollNumber || ""}
                                     onChange={(e) =>
                                       handleRollFieldChange(
                                         dnIdx,
@@ -928,7 +952,7 @@ export default function DeliveryNoteDetailPage() {
                                   />
                                 ) : (
                                   <span className="font-medium text-gray-900">
-                                    {roll.rollNumber || "-"}
+                                    {rawRollRollNumber2 || "-"}
                                   </span>
                                 )}
                               </td>
@@ -1025,7 +1049,9 @@ export default function DeliveryNoteDetailPage() {
                                 {isEditing ? (
                                   <input
                                     type="text"
-                                    value={roll.deliveryNoteNumber || note.deliveryNoteNumber || ""}
+                                    value={
+                                      rawRollDeliveryNoteNumber || note.deliveryNoteNumber || ""
+                                    }
                                     onChange={(e) =>
                                       handleRollFieldChange(
                                         dnIdx,
@@ -1037,14 +1063,14 @@ export default function DeliveryNoteDetailPage() {
                                     className="w-24 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-yellow-500 focus:border-yellow-500"
                                   />
                                 ) : (
-                                  roll.deliveryNoteNumber || note.deliveryNoteNumber || "-"
+                                  rawRollDeliveryNoteNumber2 || note.deliveryNoteNumber || "-"
                                 )}
                               </td>
                               <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
                                 {isEditing ? (
                                   <input
                                     type="date"
-                                    value={roll.deliveryDate || note.deliveryDate || ""}
+                                    value={rawRollDeliveryDate || note.deliveryDate || ""}
                                     onChange={(e) =>
                                       handleRollFieldChange(
                                         dnIdx,
@@ -1056,14 +1082,14 @@ export default function DeliveryNoteDetailPage() {
                                     className="px-2 py-1 text-sm border border-gray-300 rounded focus:ring-yellow-500 focus:border-yellow-500"
                                   />
                                 ) : (
-                                  note.deliveryDate || "-"
+                                  rawNoteDeliveryDate || "-"
                                 )}
                               </td>
                               <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
                                 {isEditing ? (
                                   <input
                                     type="text"
-                                    value={roll.customerName || dn.customerName || ""}
+                                    value={rawRollCustomerName || dn.customerName || ""}
                                     onChange={(e) =>
                                       handleRollFieldChange(
                                         dnIdx,
@@ -1075,7 +1101,7 @@ export default function DeliveryNoteDetailPage() {
                                     className="w-40 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-yellow-500 focus:border-yellow-500"
                                   />
                                 ) : (
-                                  roll.customerName || dn.customerName || "-"
+                                  rawRollCustomerName2 || dn.customerName || "-"
                                 )}
                               </td>
                               <td className="px-4 py-3 whitespace-nowrap text-sm text-blue-600 font-medium">
@@ -1083,7 +1109,7 @@ export default function DeliveryNoteDetailPage() {
                                   <input
                                     type="text"
                                     value={
-                                      roll.customerReference ||
+                                      rawRollCustomerReference ||
                                       dn.customerReference ||
                                       note.customerReference ||
                                       ""
@@ -1099,20 +1125,20 @@ export default function DeliveryNoteDetailPage() {
                                     className="w-20 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-yellow-500 focus:border-yellow-500"
                                   />
                                 ) : (
-                                  roll.customerReference ||
+                                  rawRollCustomerReference2 ||
                                   dn.customerReference ||
                                   note.customerReference ||
                                   "-"
                                 )}
                               </td>
                               <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
-                                {roll.pageNumber || "-"}
+                                {rawRollPageNumber || "-"}
                               </td>
                               {isEditing && (
                                 <td className="px-2 py-3 whitespace-nowrap">
                                   <button
                                     onClick={() => handleRemoveRow(dnIdx, rollIdx)}
-                                    disabled={(dn.rolls || []).length <= 1}
+                                    disabled={(rawDnRolls || []).length <= 1}
                                     className="text-red-400 hover:text-red-600 disabled:text-gray-300 disabled:cursor-not-allowed"
                                     title="Remove row"
                                   >
@@ -1141,16 +1167,16 @@ export default function DeliveryNoteDetailPage() {
                             No rolls data
                           </td>
                           <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
-                            {dn.deliveryNoteNumber || "-"}
+                            {rawDnDeliveryNoteNumber || "-"}
                           </td>
                           <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
-                            {dn.deliveryDate || "-"}
+                            {rawDnDeliveryDate || "-"}
                           </td>
                           <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
-                            {dn.customerName || "-"}
+                            {rawDnCustomerName || "-"}
                           </td>
                           <td className="px-4 py-3 whitespace-nowrap text-sm text-blue-600 font-medium">
-                            {dn.customerReference || note.customerReference || "-"}
+                            {rawDnCustomerReference || note.customerReference || "-"}
                           </td>
                           <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">-</td>
                         </tr>,
@@ -1305,6 +1331,7 @@ export default function DeliveryNoteDetailPage() {
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {items.map((item) => {
+                const rawItemRollNumber = item.rollNumber;
                 const itemAreaSqM =
                   item.widthMm && item.lengthM ? (item.widthMm * item.lengthM) / 1000 : null;
                 const linkedBatchIds = item.linkedBatchIds;
@@ -1332,7 +1359,7 @@ export default function DeliveryNoteDetailPage() {
                     ) : (
                       <>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                          {item.rollNumber || "-"}
+                          {rawItemRollNumber || "-"}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                           {item.thicknessMm != null ? item.thicknessMm : "-"}
@@ -1412,7 +1439,7 @@ export default function DeliveryNoteDetailPage() {
                     <option value="">Select a CoC</option>
                     {unlinkedCocs.map((coc) => (
                       <option key={coc.id} value={coc.id}>
-                        {coc.cocNumber || `COC-${coc.id}`} - {coc.supplierCompanyName} (
+                        {rawCocCocNumber || `COC-${coc.id}`} - {coc.supplierCompanyName} (
                         {coc.cocTypeLabel})
                       </option>
                     ))}

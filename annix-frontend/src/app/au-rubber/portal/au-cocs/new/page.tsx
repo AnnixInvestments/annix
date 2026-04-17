@@ -8,6 +8,7 @@ import { auRubberApiClient, type RubberRollStockDto } from "@/app/lib/api/auRubb
 import type { RubberCompanyDto } from "@/app/lib/api/rubberPortalApi";
 
 export default function NewAuCocPage() {
+  const rawRollCompoundName = roll.compoundName;
   const router = useRouter();
   const searchParams = useSearchParams();
   const { showToast } = useToast();
@@ -291,7 +292,7 @@ export default function NewAuCocPage() {
                       {roll.rollNumber}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
-                      {roll.compoundName || "-"}
+                      {rawRollCompoundName || "-"}
                       {roll.compoundCode && (
                         <span className="ml-1 text-xs text-gray-400">({roll.compoundCode})</span>
                       )}

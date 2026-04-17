@@ -40,6 +40,14 @@ type SortColumn =
   | "auCocNumber";
 
 export default function CustomerDeliveryNotesPage() {
+  const rawCompaniesQueryData = companiesQuery.data;
+  const rawNotesQueryData = notesQuery.data;
+  const rawNoteDeliveryNoteNumber = note.deliveryNoteNumber;
+  const rawNoteSupplierCompanyName = note.supplierCompanyName;
+  const rawNoteCustomerReference = note.customerReference;
+  const rawNoteAuCocNumber = note.auCocNumber;
+  const rawNoteDeliveryNoteNumber2 = note.deliveryNoteNumber;
+  const rawBrandingPrimaryColor = branding?.primaryColor;
   const router = useRouter();
   const { showToast } = useToast();
   const { branding } = useAuRubberBranding();
@@ -54,9 +62,9 @@ export default function CustomerDeliveryNotesPage() {
     status: filterStatus || undefined,
   });
   const companiesQuery = useAuRubberCompanies();
-  const customers = (companiesQuery.data || []).filter((c) => c.companyType === "CUSTOMER");
+  const customers = (rawCompaniesQueryData || []).filter((c) => c.companyType === "CUSTOMER");
   const customerIds = new Set(customers.map((c) => c.id));
-  const notes = (notesQuery.data || []).filter((n) => customerIds.has(n.supplierCompanyId));
+  const notes = (rawNotesQueryData || []).filter((n) => customerIds.has(n.supplierCompanyId));
   const isLoading = notesQuery.isLoading;
   const error = notesQuery.error;
   const [currentPage, setCurrentPage] = useState(0);
@@ -101,14 +109,16 @@ export default function CustomerDeliveryNotesPage() {
   const extractedDataSingle = (
     data: ExtractedDeliveryNoteData | ExtractedDeliveryNoteData[] | null,
   ): ExtractedDeliveryNoteData | null => {
+    const rawDataAt0 = data[0];
     if (!data) return null;
-    if (Array.isArray(data)) return data[0] || null;
+    if (Array.isArray(data)) return rawDataAt0 || null;
     return data;
   };
 
   const noteRollNumbers = (note: RubberDeliveryNoteDto): string[] => {
+    const rawEdRolls = ed?.rolls;
     const ed = extractedDataSingle(note.extractedData);
-    return (ed?.rolls || []).map((r) => r.rollNumber).filter(Boolean);
+    return (rawEdRolls || []).map((r) => r.rollNumber).filter(Boolean);
   };
 
   const handleSort = (column: SortColumn) => {
@@ -124,13 +134,23 @@ export default function CustomerDeliveryNotesPage() {
     return [...notesToSort].sort((a, b) => {
       const direction = sortDirection === "asc" ? 1 : -1;
       if (sortColumn === "deliveryNoteNumber") {
-        return direction * (a.deliveryNoteNumber || "").localeCompare(b.deliveryNoteNumber || "");
+        const rawADeliveryNoteNumber = a.deliveryNoteNumber;
+        const rawBDeliveryNoteNumber = b.deliveryNoteNumber;
+        return (
+          direction * (rawADeliveryNoteNumber || "").localeCompare(rawBDeliveryNoteNumber || "")
+        );
       }
       if (sortColumn === "supplierCompanyName") {
-        return direction * (a.supplierCompanyName || "").localeCompare(b.supplierCompanyName || "");
+        const rawASupplierCompanyName = a.supplierCompanyName;
+        const rawBSupplierCompanyName = b.supplierCompanyName;
+        return (
+          direction * (rawASupplierCompanyName || "").localeCompare(rawBSupplierCompanyName || "")
+        );
       }
       if (sortColumn === "customerReference") {
-        return direction * (a.customerReference || "").localeCompare(b.customerReference || "");
+        const rawACustomerReference = a.customerReference;
+        const rawBCustomerReference = b.customerReference;
+        return direction * (rawACustomerReference || "").localeCompare(rawBCustomerReference || "");
       }
       if (sortColumn === "rollNumbers") {
         const aRolls = noteRollNumbers(a).join(", ");
@@ -144,10 +164,14 @@ export default function CustomerDeliveryNotesPage() {
         return direction * a.status.localeCompare(b.status);
       }
       if (sortColumn === "deliveryDate") {
-        return direction * (a.deliveryDate || "").localeCompare(b.deliveryDate || "");
+        const rawADeliveryDate = a.deliveryDate;
+        const rawBDeliveryDate = b.deliveryDate;
+        return direction * (rawADeliveryDate || "").localeCompare(rawBDeliveryDate || "");
       }
       if (sortColumn === "auCocNumber") {
-        return direction * (a.auCocNumber || "").localeCompare(b.auCocNumber || "");
+        const rawAAuCocNumber = a.auCocNumber;
+        const rawBAuCocNumber = b.auCocNumber;
+        return direction * (rawAAuCocNumber || "").localeCompare(rawBAuCocNumber || "");
       }
       return 0;
     });
@@ -662,14 +686,14 @@ export default function CustomerDeliveryNotesPage() {
                       href={`/au-rubber/portal/delivery-notes/${note.id}`}
                       className="text-blue-600 hover:text-blue-800 font-medium"
                     >
-                      {note.deliveryNoteNumber || `DN-${note.id}`}
+                      {rawNoteDeliveryNoteNumber || `DN-${note.id}`}
                     </Link>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {note.supplierCompanyName || "-"}
+                    {rawNoteSupplierCompanyName || "-"}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {note.customerReference || "-"}
+                    {rawNoteCustomerReference || "-"}
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-500">
                     {noteRollNumbers(note).length > 0 ? noteRollNumbers(note).join(", ") : "-"}
@@ -687,7 +711,7 @@ export default function CustomerDeliveryNotesPage() {
                         href={`/au-rubber/portal/au-cocs/${note.auCocId}`}
                         className="text-yellow-600 hover:text-yellow-800"
                       >
-                        {note.auCocNumber || "View AU CoC"}
+                        {rawNoteAuCocNumber || "View AU CoC"}
                       </Link>
                     ) : note.linkedCocId ? (
                       <span className="text-teal-600">Linked</span>
@@ -719,7 +743,7 @@ export default function CustomerDeliveryNotesPage() {
                     <button
                       type="button"
                       onClick={() =>
-                        handleDeleteNote(note.id, note.deliveryNoteNumber || `DN-${note.id}`)
+                        handleDeleteNote(note.id, rawNoteDeliveryNoteNumber2 || `DN-${note.id}`)
                       }
                       className="text-red-400 hover:text-red-600"
                       title="Delete delivery note"
@@ -880,7 +904,7 @@ export default function CustomerDeliveryNotesPage() {
         progress={analyzeProgress}
         statusMessage={analyzeStatus}
         detailMessage={analyzeDetail}
-        headerColor={branding?.primaryColor || undefined}
+        headerColor={rawBrandingPrimaryColor || undefined}
         headerContent={
           branding?.logoUrl ? (
             <img src={branding.logoUrl} alt="Company Logo" className="h-10 object-contain" />

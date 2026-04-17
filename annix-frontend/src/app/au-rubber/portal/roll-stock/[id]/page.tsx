@@ -14,6 +14,13 @@ import type { RubberCompanyDto } from "@/app/lib/api/rubberPortalApi";
 import { formatDateTimeZA } from "@/app/lib/datetime";
 
 export default function RollStockDetailPage() {
+  const rawRollCompoundName = roll.compoundName;
+  const rawAuCocCustomerCompanyName = auCoc.customerCompanyName;
+  const rawCocCocNumber = coc.cocNumber;
+  const rawBatchShoreAHardness = batch.shoreAHardness;
+  const rawBatchSpecificGravity = batch.specificGravity;
+  const rawBatchTensileStrengthMpa = batch.tensileStrengthMpa;
+  const rawBatchElongationPercent = batch.elongationPercent;
   const params = useParams();
   const router = useRouter();
   const { showToast } = useToast();
@@ -125,11 +132,12 @@ export default function RollStockDetailPage() {
   }
 
   if (error || !traceability) {
+    const rawErrorMessage = error?.message;
     return (
       <div className="flex items-center justify-center min-h-96">
         <div className="text-center">
           <div className="text-red-500 text-lg font-semibold mb-2">Error Loading Data</div>
-          <p className="text-gray-600">{error?.message || "Roll not found"}</p>
+          <p className="text-gray-600">{rawErrorMessage || "Roll not found"}</p>
           <button
             onClick={() => router.back()}
             className="mt-4 px-4 py-2 bg-yellow-600 text-white rounded-md hover:bg-yellow-700"
@@ -196,7 +204,7 @@ export default function RollStockDetailPage() {
             <div>
               <dt className="text-sm font-medium text-gray-500">Compound</dt>
               <dd className="mt-1 text-sm text-gray-900">
-                {roll.compoundName || "-"}
+                {rawRollCompoundName || "-"}
                 {roll.compoundCode && (
                   <span className="text-gray-500 ml-1">({roll.compoundCode})</span>
                 )}
@@ -250,7 +258,7 @@ export default function RollStockDetailPage() {
               </div>
               <div>
                 <dt className="text-sm font-medium text-gray-500">Customer</dt>
-                <dd className="mt-1 text-sm text-gray-900">{auCoc.customerCompanyName || "-"}</dd>
+                <dd className="mt-1 text-sm text-gray-900">{rawAuCocCustomerCompanyName || "-"}</dd>
               </div>
               <div>
                 <dt className="text-sm font-medium text-gray-500">Status</dt>
@@ -279,7 +287,7 @@ export default function RollStockDetailPage() {
                 </div>
                 <div className="ml-4 flex-1">
                   <div className="text-sm font-medium text-gray-900">
-                    Supplier CoC: {coc.cocNumber || `COC-${coc.id}`}
+                    Supplier CoC: {rawCocCocNumber || `COC-${coc.id}`}
                   </div>
                   <div className="text-sm text-gray-500">
                     {coc.cocTypeLabel} - {coc.supplierCompanyName}
@@ -399,16 +407,16 @@ export default function RollStockDetailPage() {
                     {batch.batchNumber}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {batch.shoreAHardness || "-"}
+                    {rawBatchShoreAHardness || "-"}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {batch.specificGravity || "-"}
+                    {rawBatchSpecificGravity || "-"}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {batch.tensileStrengthMpa || "-"}
+                    {rawBatchTensileStrengthMpa || "-"}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {batch.elongationPercent || "-"}
+                    {rawBatchElongationPercent || "-"}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span

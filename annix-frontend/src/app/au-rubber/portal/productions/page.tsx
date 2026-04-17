@@ -31,16 +31,19 @@ type SortColumn =
   | "createdAt";
 
 const statusColor = (status: RubberProductionStatus) => {
+  const rawColorsByStatus = colors[status];
   const colors: Record<RubberProductionStatus, string> = {
     PENDING: "bg-yellow-100 text-yellow-800",
     IN_PROGRESS: "bg-blue-100 text-blue-800",
     COMPLETED: "bg-green-100 text-green-800",
     CANCELLED: "bg-gray-100 text-gray-800",
   };
-  return colors[status] || "bg-gray-100 text-gray-800";
+  return rawColorsByStatus || "bg-gray-100 text-gray-800";
 };
 
 export default function ProductionsPage() {
+  const rawPProductTitle = p.productTitle;
+  const rawPCompoundName = p.compoundName;
   const { showToast } = useToast();
   const [productions, setProductions] = useState<RubberProductionDto[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -81,13 +84,17 @@ export default function ProductionsPage() {
 
   const sortProductions = (items: RubberProductionDto[]): RubberProductionDto[] => {
     return [...items].sort((a, b) => {
+      const rawAProductTitle = a.productTitle;
+      const rawBProductTitle = b.productTitle;
+      const rawACompoundName = a.compoundName;
+      const rawBCompoundName = b.compoundName;
       const direction = sortDirection === "asc" ? 1 : -1;
       if (sortColumn === "productionNumber")
         return direction * a.productionNumber.localeCompare(b.productionNumber);
       if (sortColumn === "productTitle")
-        return direction * (a.productTitle || "").localeCompare(b.productTitle || "");
+        return direction * (rawAProductTitle || "").localeCompare(rawBProductTitle || "");
       if (sortColumn === "compoundName")
-        return direction * (a.compoundName || "").localeCompare(b.compoundName || "");
+        return direction * (rawACompoundName || "").localeCompare(rawBCompoundName || "");
       if (sortColumn === "quantity") return direction * (a.quantity - b.quantity);
       if (sortColumn === "status") return direction * a.status.localeCompare(b.status);
       if (sortColumn === "createdAt") return direction * a.createdAt.localeCompare(b.createdAt);
@@ -276,7 +283,7 @@ export default function ProductionsPage() {
                     {p.productionNumber}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {p.productTitle || "N/A"}
+                    {rawPProductTitle || "N/A"}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {formatDimensions(p)}
@@ -286,7 +293,7 @@ export default function ProductionsPage() {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     <div>
-                      <span>{p.compoundName || "N/A"}</span>
+                      <span>{rawPCompoundName || "N/A"}</span>
                       <div className="text-xs text-gray-400">
                         {p.compoundUsedKg !== null
                           ? `Used: ${p.compoundUsedKg.toFixed(2)} kg`

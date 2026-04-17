@@ -34,6 +34,18 @@ type SortColumn =
   | "createdAt";
 
 export default function RollStockPage() {
+  const rawRollCompoundName = roll.compoundName;
+  const rawRollSoldToCompanyName = roll.soldToCompanyName;
+  const rawOpeningStockFormWeightKg = openingStockForm.weightKg;
+  const rawOpeningStockFormCostZar = openingStockForm.costZar;
+  const rawOpeningStockFormPriceZar = openingStockForm.priceZar;
+  const rawOpeningStockFormLocationId = openingStockForm.locationId;
+  const rawOpeningStockFormProductionDate = openingStockForm.productionDate;
+  const rawTargetValue = e.target.value;
+  const rawOpeningStockFormNotes = openingStockForm.notes;
+  const rawTargetValue2 = e.target.value;
+  const rawRowCostZar = row.costZar;
+  const rawRowPriceZar = row.priceZar;
   const { showToast } = useToast();
   const [rolls, setRolls] = useState<RubberRollStockDto[]>([]);
   const [companies, setCompanies] = useState<RubberCompanyDto[]>([]);
@@ -119,7 +131,9 @@ export default function RollStockPage() {
         return direction * a.rollNumber.localeCompare(b.rollNumber);
       }
       if (sortColumn === "compoundName") {
-        return direction * (a.compoundName || "").localeCompare(b.compoundName || "");
+        const rawACompoundName = a.compoundName;
+        const rawBCompoundName = b.compoundName;
+        return direction * (rawACompoundName || "").localeCompare(rawBCompoundName || "");
       }
       if (sortColumn === "weightKg") {
         return direction * (a.weightKg - b.weightKg);
@@ -128,7 +142,9 @@ export default function RollStockPage() {
         return direction * a.status.localeCompare(b.status);
       }
       if (sortColumn === "soldToCompanyName") {
-        return direction * (a.soldToCompanyName || "").localeCompare(b.soldToCompanyName || "");
+        const rawASoldToCompanyName = a.soldToCompanyName;
+        const rawBSoldToCompanyName = b.soldToCompanyName;
+        return direction * (rawASoldToCompanyName || "").localeCompare(rawBSoldToCompanyName || "");
       }
       if (sortColumn === "createdAt") {
         return direction * a.createdAt.localeCompare(b.createdAt);
@@ -257,10 +273,14 @@ export default function RollStockPage() {
       const lines = text.split("\n").filter((line) => line.trim());
       const headers = lines[0].split(",").map((h) => h.trim().toLowerCase());
       const rows: ImportOpeningStockRowDto[] = lines.slice(1).map((line) => {
+        const rawValuesByHeadersindexofrollnumber = values[headers.indexOf("roll_number")];
+        const rawValuesByHeadersindexofcompoundcode = values[headers.indexOf("compound_code")];
+        const rawValuesByHeadersindexoflocation = values[headers.indexOf("location")];
+        const rawValuesByHeadersindexofproductiondate = values[headers.indexOf("production_date")];
         const values = line.split(",").map((v) => v.trim());
         const rowData: ImportOpeningStockRowDto = {
-          rollNumber: values[headers.indexOf("roll_number")] || "",
-          compoundCode: values[headers.indexOf("compound_code")] || "",
+          rollNumber: rawValuesByHeadersindexofrollnumber || "",
+          compoundCode: rawValuesByHeadersindexofcompoundcode || "",
           weightKg: Number(values[headers.indexOf("weight_kg")]) || 0,
           costZar: values[headers.indexOf("cost_zar")]
             ? Number(values[headers.indexOf("cost_zar")])
@@ -268,8 +288,8 @@ export default function RollStockPage() {
           priceZar: values[headers.indexOf("price_zar")]
             ? Number(values[headers.indexOf("price_zar")])
             : null,
-          location: values[headers.indexOf("location")] || null,
-          productionDate: values[headers.indexOf("production_date")] || null,
+          location: rawValuesByHeadersindexoflocation || null,
+          productionDate: rawValuesByHeadersindexofproductiondate || null,
         };
         return rowData;
       });
@@ -517,7 +537,7 @@ export default function RollStockPage() {
                     </Link>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {roll.compoundName || "-"}
+                    {rawRollCompoundName || "-"}
                     {roll.compoundCode && (
                       <span className="ml-1 text-xs text-gray-500">({roll.compoundCode})</span>
                     )}
@@ -532,7 +552,7 @@ export default function RollStockPage() {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">{statusBadge(roll.status)}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {roll.soldToCompanyName || "-"}
+                    {rawRollSoldToCompanyName || "-"}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
                     <Link
@@ -767,7 +787,7 @@ export default function RollStockPage() {
                       <input
                         type="number"
                         step="0.01"
-                        value={openingStockForm.weightKg || ""}
+                        value={rawOpeningStockFormWeightKg || ""}
                         onChange={(e) =>
                           setOpeningStockForm({
                             ...openingStockForm,
@@ -783,7 +803,7 @@ export default function RollStockPage() {
                       <input
                         type="number"
                         step="0.01"
-                        value={openingStockForm.costZar || ""}
+                        value={rawOpeningStockFormCostZar || ""}
                         onChange={(e) =>
                           setOpeningStockForm({
                             ...openingStockForm,
@@ -801,7 +821,7 @@ export default function RollStockPage() {
                       <input
                         type="number"
                         step="0.01"
-                        value={openingStockForm.priceZar || ""}
+                        value={rawOpeningStockFormPriceZar || ""}
                         onChange={(e) =>
                           setOpeningStockForm({
                             ...openingStockForm,
@@ -817,7 +837,7 @@ export default function RollStockPage() {
                     <div>
                       <label className="block text-sm font-medium text-gray-700">Location</label>
                       <select
-                        value={openingStockForm.locationId || ""}
+                        value={rawOpeningStockFormLocationId || ""}
                         onChange={(e) =>
                           setOpeningStockForm({
                             ...openingStockForm,
@@ -840,11 +860,11 @@ export default function RollStockPage() {
                       </label>
                       <input
                         type="date"
-                        value={openingStockForm.productionDate || ""}
+                        value={rawOpeningStockFormProductionDate || ""}
                         onChange={(e) =>
                           setOpeningStockForm({
                             ...openingStockForm,
-                            productionDate: e.target.value || null,
+                            productionDate: rawTargetValue || null,
                           })
                         }
                         className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 sm:text-sm border p-2"
@@ -854,11 +874,11 @@ export default function RollStockPage() {
                   <div>
                     <label className="block text-sm font-medium text-gray-700">Notes</label>
                     <textarea
-                      value={openingStockForm.notes || ""}
+                      value={rawOpeningStockFormNotes || ""}
                       onChange={(e) =>
                         setOpeningStockForm({
                           ...openingStockForm,
-                          notes: e.target.value || null,
+                          notes: rawTargetValue2 || null,
                         })
                       }
                       className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 sm:text-sm border p-2"
@@ -956,10 +976,10 @@ export default function RollStockPage() {
                                 </td>
                                 <td className="px-3 py-2 text-sm text-gray-900">{row.weightKg}</td>
                                 <td className="px-3 py-2 text-sm text-gray-900">
-                                  {row.costZar || "-"}
+                                  {rawRowCostZar || "-"}
                                 </td>
                                 <td className="px-3 py-2 text-sm text-gray-900">
-                                  {row.priceZar || "-"}
+                                  {rawRowPriceZar || "-"}
                                 </td>
                               </tr>
                             ))}

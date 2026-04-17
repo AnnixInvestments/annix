@@ -447,6 +447,10 @@ function BrandingTab() {
 }
 
 function AccessControlTab() {
+  const rawUserFirstName = user.firstName;
+  const rawUserFirstName2 = user.firstName;
+  const rawUserLastName = user.lastName;
+  const rawUserRoleName = user.roleName;
   const { showToast } = useToast();
   const { confirm, ConfirmDialog } = useConfirm();
   const usersQuery = useAuRubberAccessUsers();
@@ -489,7 +493,8 @@ function AccessControlTab() {
 
   const permissionsByCategory = permissions.reduce(
     (acc, perm) => {
-      const category = perm.category || "Other";
+      const rawPermCategory = perm.category;
+      const category = rawPermCategory || "Other";
       const bucket = acc[category] ? acc[category] : [];
       return {
         ...acc,
@@ -584,8 +589,9 @@ function AccessControlTab() {
   };
 
   const handleEditUserAccess = (user: AuRubberUserAccessDto) => {
+    const rawUserRoleCode = user.roleCode;
     setEditingUserAccess(user);
-    setEditUserRole(user.roleCode || "");
+    setEditUserRole(rawUserRoleCode || "");
   };
 
   const handleSaveUserAccess = async () => {
@@ -664,14 +670,14 @@ function AccessControlTab() {
               {users.map((user) => (
                 <tr key={user.id} className="hover:bg-gray-50">
                   <td className="px-4 py-3 text-sm text-gray-900">
-                    {user.firstName || user.lastName
-                      ? `${user.firstName || ""} ${user.lastName || ""}`.trim()
+                    {rawUserFirstName || user.lastName
+                      ? `${rawUserFirstName2 || ""} ${rawUserLastName || ""}`.trim()
                       : "-"}
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-500">{user.email}</td>
                   <td className="px-4 py-3 text-sm">
                     <span className="px-2 py-1 text-xs font-medium rounded-full bg-yellow-100 text-yellow-800">
-                      {user.roleName || "No Role"}
+                      {rawUserRoleName || "No Role"}
                     </span>
                   </td>
                   <td className="px-4 py-3 text-right text-sm">

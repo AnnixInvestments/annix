@@ -36,6 +36,9 @@ type SortColumn =
   | "linkedCoc";
 
 export default function SupplierDeliveryNotesPage() {
+  const rawCompaniesQueryData = companiesQuery.data;
+  const rawNotesQueryData = notesQuery.data;
+  const rawNoteCustomerReference = note.customerReference;
   const { showToast } = useToast();
   const { branding } = useAuRubberBranding();
   const [searchQuery, setSearchQuery] = useState("");
@@ -48,10 +51,10 @@ export default function SupplierDeliveryNotesPage() {
     includeAllVersions: showAllVersions || undefined,
   });
   const companiesQuery = useAuRubberCompanies();
-  const allCompanies = companiesQuery.data || [];
+  const allCompanies = rawCompaniesQueryData || [];
   const suppliers = allCompanies.filter((c) => c.companyType === "SUPPLIER");
   const supplierIds = new Set(suppliers.map((c) => c.id));
-  const notes = (notesQuery.data || []).filter((n) => supplierIds.has(n.supplierCompanyId));
+  const notes = (rawNotesQueryData || []).filter((n) => supplierIds.has(n.supplierCompanyId));
   const isLoading = notesQuery.isLoading;
   const error = notesQuery.error;
   const [currentPage, setCurrentPage] = useState(0);
@@ -101,10 +104,18 @@ export default function SupplierDeliveryNotesPage() {
     return [...notesToSort].sort((a, b) => {
       const direction = sortDirection === "asc" ? 1 : -1;
       if (sortColumn === "deliveryNoteNumber") {
-        return direction * (a.deliveryNoteNumber || "").localeCompare(b.deliveryNoteNumber || "");
+        const rawADeliveryNoteNumber = a.deliveryNoteNumber;
+        const rawBDeliveryNoteNumber = b.deliveryNoteNumber;
+        return (
+          direction * (rawADeliveryNoteNumber || "").localeCompare(rawBDeliveryNoteNumber || "")
+        );
       }
       if (sortColumn === "supplierCompanyName") {
-        return direction * (a.supplierCompanyName || "").localeCompare(b.supplierCompanyName || "");
+        const rawASupplierCompanyName = a.supplierCompanyName;
+        const rawBSupplierCompanyName = b.supplierCompanyName;
+        return (
+          direction * (rawASupplierCompanyName || "").localeCompare(rawBSupplierCompanyName || "")
+        );
       }
       if (sortColumn === "deliveryNoteType") {
         return direction * a.deliveryNoteType.localeCompare(b.deliveryNoteType);
@@ -121,7 +132,9 @@ export default function SupplierDeliveryNotesPage() {
         );
       }
       if (sortColumn === "deliveryDate") {
-        return direction * (a.deliveryDate || "").localeCompare(b.deliveryDate || "");
+        const rawADeliveryDate = a.deliveryDate;
+        const rawBDeliveryDate = b.deliveryDate;
+        return direction * (rawADeliveryDate || "").localeCompare(rawBDeliveryDate || "");
       }
       if (sortColumn === "linkedCoc") {
         const aLinked = a.linkedCocId ? 1 : 0;
@@ -297,17 +310,19 @@ export default function SupplierDeliveryNotesPage() {
   const extractedDataSingle = (
     data: ExtractedDeliveryNoteData | ExtractedDeliveryNoteData[] | null,
   ): ExtractedDeliveryNoteData | null => {
+    const rawDataAt0 = data[0];
     if (!data) return null;
-    if (Array.isArray(data)) return data[0] || null;
+    if (Array.isArray(data)) return rawDataAt0 || null;
     return data;
   };
 
   const notePoRef = (note: RubberDeliveryNoteDto): string =>
-    note.customerReference || extractedDataSingle(note.extractedData)?.customerReference || "";
+    rawNoteCustomerReference || extractedDataSingle(note.extractedData)?.customerReference || "";
 
   const noteRollNumbers = (note: RubberDeliveryNoteDto): string[] => {
+    const rawEdRolls = ed?.rolls;
     const ed = extractedDataSingle(note.extractedData);
-    return (ed?.rolls || []).map((r) => r.rollNumber).filter(Boolean);
+    return (rawEdRolls || []).map((r) => r.rollNumber).filter(Boolean);
   };
 
   if (error) {
@@ -395,7 +410,8 @@ export default function SupplierDeliveryNotesPage() {
             accept=".pdf,.png,.jpg,.jpeg"
             className="hidden"
             onChange={(e) => {
-              const files = Array.from(e.target.files || []);
+              const rawTargetFiles = e.target.files;
+              const files = Array.from(rawTargetFiles || []);
               if (files.length > 0) handleFilesSelected(files);
               e.target.value = "";
             }}
@@ -601,6 +617,9 @@ export default function SupplierDeliveryNotesPage() {
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {paginatedNotes.map((note) => {
+                const rawNoteDeliveryNoteNumber = note.deliveryNoteNumber;
+                const rawNoteSupplierCompanyName = note.supplierCompanyName;
+                const rawNoteDeliveryNoteNumber2 = note.deliveryNoteNumber;
                 const isInactive =
                   note.versionStatus === "SUPERSEDED" || note.versionStatus === "REJECTED";
                 const isPendingAuth = note.versionStatus === "PENDING_AUTHORIZATION";
@@ -615,7 +634,7 @@ export default function SupplierDeliveryNotesPage() {
                           href={`/au-rubber/portal/delivery-notes/${note.id}`}
                           className="text-orange-600 hover:text-orange-800 font-medium"
                         >
-                          {note.deliveryNoteNumber || `DN-${note.id}`}
+                          {rawNoteDeliveryNoteNumber || `DN-${note.id}`}
                         </Link>
                         {note.version > 1 && (
                           <span className="px-1.5 py-0.5 text-xs font-semibold rounded-full bg-blue-100 text-blue-700">
@@ -630,7 +649,7 @@ export default function SupplierDeliveryNotesPage() {
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {note.supplierCompanyName || "-"}
+                      {rawNoteSupplierCompanyName || "-"}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       {typeBadge(note.deliveryNoteType)}
@@ -685,7 +704,7 @@ export default function SupplierDeliveryNotesPage() {
                       <button
                         type="button"
                         onClick={() =>
-                          handleDeleteNote(note.id, note.deliveryNoteNumber || `DN-${note.id}`)
+                          handleDeleteNote(note.id, rawNoteDeliveryNoteNumber2 || `DN-${note.id}`)
                         }
                         className="text-red-400 hover:text-red-600"
                         title="Delete delivery note"

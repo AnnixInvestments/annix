@@ -27,17 +27,25 @@ interface StatusCount {
 const ORDERS_PER_PAGE = 5;
 
 export default function AuRubberDashboard() {
+  const rawOrdersQueryData = ordersQuery.data;
+  const rawCompaniesQueryData = companiesQuery.data;
+  const rawProductsQueryData = productsQuery.data;
+  const rawPendingAuCocsQueryData = pendingAuCocsQuery.data;
+  const rawOrdersQueryIsLoading = ordersQuery.isLoading;
+  const rawOrdersQueryError = ordersQuery.error;
+  const rawOrderCompanyName = order.companyName;
+  const rawCocCustomerCompanyName = coc.customerCompanyName;
   const ordersQuery = useAuRubberOrders();
   const companiesQuery = useAuRubberCompanies();
   const productsQuery = useAuRubberProducts();
   const pendingAuCocsQuery = useAuRubberPendingAuCocs();
-  const orders = ordersQuery.data || [];
-  const companies = companiesQuery.data || [];
-  const products = productsQuery.data || [];
-  const pendingAuCocs = pendingAuCocsQuery.data || [];
+  const orders = rawOrdersQueryData || [];
+  const companies = rawCompaniesQueryData || [];
+  const products = rawProductsQueryData || [];
+  const pendingAuCocs = rawPendingAuCocsQueryData || [];
   const [generatingIds, setGeneratingIds] = useState<Set<number>>(new Set());
-  const isLoading = ordersQuery.isLoading || companiesQuery.isLoading || productsQuery.isLoading;
-  const error = ordersQuery.error || companiesQuery.error || productsQuery.error;
+  const isLoading = rawOrdersQueryIsLoading || companiesQuery.isLoading || productsQuery.isLoading;
+  const error = rawOrdersQueryError || companiesQuery.error || productsQuery.error;
   const [currentPage, setCurrentPage] = useState(0);
 
   const triggerGeneration = async (auCocId: number) => {
@@ -59,6 +67,7 @@ export default function AuRubberDashboard() {
   };
 
   const readinessLabel = (status: string | null): string => {
+    const rawLabelsByStatus = labels[status || ""];
     const labels: Record<string, string> = {
       WAITING_FOR_CALENDERER_COC: "Waiting for Calenderer CoC",
       WAITING_FOR_COMPOUNDER_COC: "Waiting for Compounder CoC",
@@ -66,10 +75,11 @@ export default function AuRubberDashboard() {
       WAITING_FOR_APPROVAL: "Waiting for Approval",
       READY_FOR_GENERATION: "Ready to Generate",
     };
-    return labels[status || ""] || status || "Unknown";
+    return rawLabelsByStatus || status || "Unknown";
   };
 
   const readinessColor = (status: string | null): string => {
+    const rawColorsByStatus = colors[status || ""];
     const colors: Record<string, string> = {
       WAITING_FOR_CALENDERER_COC: "bg-orange-100 text-orange-800",
       WAITING_FOR_COMPOUNDER_COC: "bg-orange-100 text-orange-800",
@@ -77,7 +87,7 @@ export default function AuRubberDashboard() {
       WAITING_FOR_APPROVAL: "bg-yellow-100 text-yellow-800",
       READY_FOR_GENERATION: "bg-green-100 text-green-800",
     };
-    return colors[status || ""] || "bg-gray-100 text-gray-800";
+    return rawColorsByStatus || "bg-gray-100 text-gray-800";
   };
 
   const ordersByStatus: StatusCount[] = Object.entries(RUBBER_ORDER_STATUS).map(([key, value]) => ({
@@ -405,7 +415,7 @@ export default function AuRubberDashboard() {
                       </Link>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {order.companyName || "N/A"}
+                      {rawOrderCompanyName || "N/A"}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span
@@ -508,7 +518,7 @@ export default function AuRubberDashboard() {
                         </span>
                       </div>
                       <div className="mt-1 flex items-center space-x-4 text-sm text-gray-500">
-                        <span>{coc.customerCompanyName || "Unknown Customer"}</span>
+                        <span>{rawCocCustomerCompanyName || "Unknown Customer"}</span>
                         {coc.deliveryNoteRef && <span>DN: {coc.deliveryNoteRef}</span>}
                         {coc.poNumber && <span>PO: {coc.poNumber}</span>}
                       </div>

@@ -31,6 +31,7 @@ function formatCurrency(amount: number): string {
 }
 
 export function AccountsTable(props: AccountsTableProps) {
+  const rawInvInvoiceDate = inv.invoiceDate;
   const { companies } = props;
 
   if (companies.length === 0) {
@@ -82,7 +83,7 @@ export function AccountsTable(props: AccountsTableProps) {
                       {inv.invoiceNumber}
                     </td>
                     <td className="px-4 py-2 text-gray-600 dark:text-gray-400">
-                      {inv.invoiceDate || "-"}
+                      {rawInvInvoiceDate || "-"}
                     </td>
                     <td className="px-4 py-2 text-right text-gray-900 dark:text-gray-100">
                       {inv.isCreditNote ? "-" : formatCurrency(inv.totalAmount)}

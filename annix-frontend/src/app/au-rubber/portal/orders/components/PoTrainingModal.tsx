@@ -48,6 +48,8 @@ const fieldLabels: Record<string, string> = {
 const fieldsToTrain = ["poNumber", "orderDate", "deliveryDate", "lineItemsTable"];
 
 export function PoTrainingModal(props: PoTrainingModalProps) {
+  const rawFieldLabelsBySelectedfield = fieldLabels[selectedField];
+  const rawFieldLabelsBySelectedfield2 = fieldLabels[selectedField];
   const { isOpen, file, companyId, formatHash, onClose, onTrainingComplete } = props;
   const [pages, setPages] = useState<PdfPageImage[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
@@ -117,6 +119,7 @@ export function PoTrainingModal(props: PoTrainingModalProps) {
     trainedRegions
       .filter((r) => r.valueCoordinates.pageNumber === currentPage)
       .forEach((region) => {
+        const rawFieldLabelsByRegionfieldname = fieldLabels[region.fieldName];
         if (region.labelCoordinates && region.labelCoordinates.pageNumber === currentPage) {
           ctx.strokeStyle = region.saved ? "#8b5cf6" : "#a78bfa";
           ctx.lineWidth = 2;
@@ -157,7 +160,7 @@ export function PoTrainingModal(props: PoTrainingModalProps) {
         ctx.fillStyle = region.saved ? "#22c55e" : "#f59e0b";
         ctx.font = "12px sans-serif";
         ctx.fillText(
-          fieldLabels[region.fieldName] || region.fieldName,
+          rawFieldLabelsByRegionfieldname || region.fieldName,
           region.valueCoordinates.x * scale + 4,
           region.valueCoordinates.y * scale - 4,
         );
@@ -667,7 +670,7 @@ export function PoTrainingModal(props: PoTrainingModalProps) {
                         className={`text-sm px-3 py-1 rounded ${drawingPhase === "label" ? "bg-purple-500" : "bg-green-500"}`}
                       >
                         Draw {drawingPhase === "label" ? "LABEL" : "VALUE"} for:{" "}
-                        {fieldLabels[selectedField] || selectedField}
+                        {rawFieldLabelsBySelectedfield || selectedField}
                       </div>
                     )}
                   </div>
@@ -712,6 +715,7 @@ export function PoTrainingModal(props: PoTrainingModalProps) {
               <div className="flex-1 overflow-auto p-4">
                 <div className="space-y-2">
                   {fieldsToTrain.map((fieldName) => {
+                    const rawFieldLabelsByFieldname = fieldLabels[fieldName];
                     const trained = trainedRegions.find((r) => r.fieldName === fieldName);
                     const isSelected = selectedField === fieldName;
 
@@ -736,7 +740,7 @@ export function PoTrainingModal(props: PoTrainingModalProps) {
                       >
                         <div className="flex items-center justify-between">
                           <span className="font-medium text-gray-900">
-                            {fieldLabels[fieldName] || fieldName}
+                            {rawFieldLabelsByFieldname || fieldName}
                           </span>
                           {trained?.saved ? (
                             <span className="text-green-600">
@@ -775,7 +779,7 @@ export function PoTrainingModal(props: PoTrainingModalProps) {
               {selectedField && (
                 <div className="p-4 bg-gray-50 border-t">
                   <h4 className="font-medium text-gray-900 mb-3">
-                    Training: {fieldLabels[selectedField] || selectedField}
+                    Training: {rawFieldLabelsBySelectedfield2 || selectedField}
                   </h4>
 
                   {drawingPhase === "label" && !labelRegion && (

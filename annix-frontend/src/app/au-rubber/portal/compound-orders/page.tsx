@@ -31,6 +31,7 @@ type SortColumn =
   | "createdAt";
 
 const statusColor = (status: RubberCompoundOrderStatus) => {
+  const rawColorsByStatus = colors[status];
   const colors: Record<RubberCompoundOrderStatus, string> = {
     PENDING: "bg-yellow-100 text-yellow-800",
     APPROVED: "bg-blue-100 text-blue-800",
@@ -38,10 +39,12 @@ const statusColor = (status: RubberCompoundOrderStatus) => {
     RECEIVED: "bg-green-100 text-green-800",
     CANCELLED: "bg-gray-100 text-gray-800",
   };
-  return colors[status] || "bg-gray-100 text-gray-800";
+  return rawColorsByStatus || "bg-gray-100 text-gray-800";
 };
 
 export default function CompoundOrdersPage() {
+  const rawOrderCompoundName = order.compoundName;
+  const rawOrderSupplierName = order.supplierName;
   const { showToast } = useToast();
   const [orders, setOrders] = useState<RubberCompoundOrderDto[]>([]);
   const [stocks, setStocks] = useState<RubberCompoundStockDto[]>([]);
@@ -98,15 +101,19 @@ export default function CompoundOrdersPage() {
 
   const sortOrders = (ordersToSort: RubberCompoundOrderDto[]): RubberCompoundOrderDto[] => {
     return [...ordersToSort].sort((a, b) => {
+      const rawACompoundName = a.compoundName;
+      const rawBCompoundName = b.compoundName;
+      const rawASupplierName = a.supplierName;
+      const rawBSupplierName = b.supplierName;
       const direction = sortDirection === "asc" ? 1 : -1;
       if (sortColumn === "orderNumber")
         return direction * a.orderNumber.localeCompare(b.orderNumber);
       if (sortColumn === "compoundName")
-        return direction * (a.compoundName || "").localeCompare(b.compoundName || "");
+        return direction * (rawACompoundName || "").localeCompare(rawBCompoundName || "");
       if (sortColumn === "quantityKg") return direction * (a.quantityKg - b.quantityKg);
       if (sortColumn === "status") return direction * a.status.localeCompare(b.status);
       if (sortColumn === "supplierName")
-        return direction * (a.supplierName || "").localeCompare(b.supplierName || "");
+        return direction * (rawASupplierName || "").localeCompare(rawBSupplierName || "");
       if (sortColumn === "createdAt") return direction * a.createdAt.localeCompare(b.createdAt);
       return 0;
     });
@@ -346,7 +353,7 @@ export default function CompoundOrdersPage() {
                     )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {order.compoundName || "N/A"}
+                    {rawOrderCompoundName || "N/A"}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     {order.quantityKg.toFixed(2)} kg
@@ -359,7 +366,7 @@ export default function CompoundOrdersPage() {
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {order.supplierName || "-"}
+                    {rawOrderSupplierName || "-"}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {formatDateZA(order.createdAt)}

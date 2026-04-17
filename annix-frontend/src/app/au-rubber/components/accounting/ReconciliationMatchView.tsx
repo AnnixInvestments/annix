@@ -66,7 +66,8 @@ export function ReconciliationMatchView(props: ReconciliationMatchViewProps) {
           </thead>
           <tbody>
             {matchItems.map((item, idx) => {
-              const style = RESULT_STYLES[item.matchResult] || RESULT_STYLES.MATCHED;
+              const rawRESULT_STYLESByItemmatchresult = RESULT_STYLES[item.matchResult];
+              const style = rawRESULT_STYLESByItemmatchresult || RESULT_STYLES.MATCHED;
               return (
                 <tr
                   key={`${item.invoiceNumber}-${idx}`}

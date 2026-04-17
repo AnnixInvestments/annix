@@ -300,6 +300,10 @@ const singleNavItems: SingleNavItem[] = [
 ];
 
 export function AuSidebar() {
+  const rawEmailSplitAt0 = user?.email?.split("@")[0];
+  const rawFirstNameAt0 = user?.firstName?.[0];
+  const rawLastNameAt0 = user?.lastName?.[0];
+  const rawUserEmail = user?.email;
   const pathname = usePathname();
   const { user, logout, hasPermission, isAdmin } = useAuRubberAuth();
   const { colors } = useAuRubberBranding();
@@ -357,9 +361,9 @@ export function AuSidebar() {
   const fullName =
     user?.firstName && user?.lastName
       ? `${user.firstName} ${user.lastName}`
-      : user?.email?.split("@")[0] || "AU Rubber";
-  const firstInitial = user?.firstName?.[0] || user?.email?.[0] || "A";
-  const lastInitial = user?.lastName?.[0] || user?.email?.[1] || "U";
+      : rawEmailSplitAt0 || "AU Rubber";
+  const firstInitial = rawFirstNameAt0 || user?.email?.[0] || "A";
+  const lastInitial = rawLastNameAt0 || user?.email?.[1] || "U";
   const userInitials = `${firstInitial}${lastInitial}`.toUpperCase();
 
   return (
@@ -380,7 +384,7 @@ export function AuSidebar() {
           </div>
           <div className="flex-1 min-w-0 text-left">
             <p className="text-sm font-medium text-gray-900 truncate">{fullName}</p>
-            <p className="text-xs text-gray-500 truncate">{user?.email || ""}</p>
+            <p className="text-xs text-gray-500 truncate">{rawUserEmail || ""}</p>
           </div>
           <svg
             className={`w-4 h-4 text-gray-400 transition-transform ${accountMenuOpen ? "rotate-180" : ""}`}

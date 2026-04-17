@@ -137,8 +137,10 @@ export default function SupplierStatementsPage() {
 
           <div className="space-y-4">
             {statements.map((statement) => {
+              const rawEmailConfigStatementEmail = statement.company.emailConfig?.statementEmail;
+              const rawInvoiceInvoiceDate = invoice.invoiceDate;
               const isExpanded = expandedCompanyId === statement.company.id;
-              const statementEmail = statement.company.emailConfig?.statementEmail || null;
+              const statementEmail = rawEmailConfigStatementEmail || null;
 
               return (
                 <div
@@ -240,7 +242,7 @@ export default function SupplierStatementsPage() {
                                 </Link>
                               </td>
                               <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-500">
-                                {invoice.invoiceDate || "-"}
+                                {rawInvoiceInvoiceDate || "-"}
                               </td>
                               <td className="px-6 py-3 whitespace-nowrap">
                                 <span

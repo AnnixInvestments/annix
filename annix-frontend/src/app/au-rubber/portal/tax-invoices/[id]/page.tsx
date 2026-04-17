@@ -14,6 +14,13 @@ import {
 import { formatDateTimeZA, formatDateZA } from "@/app/lib/datetime";
 
 export default function TaxInvoiceDetailPage() {
+  const rawInvoiceInvoiceNumber = invoice.invoiceNumber;
+  const rawInvoiceInvoiceNumber2 = invoice.invoiceNumber;
+  const rawInvoiceCompanyName = invoice.companyName;
+  const rawInvoiceProductDescription2 = invoice.productDescription;
+  const rawExtractedDataDeliveryNoteRef2 = invoice.extractedData.deliveryNoteRef;
+  const rawExtractedDataOrderNumber2 = invoice.extractedData.orderNumber;
+  const rawInvoiceUnit2 = invoice.unit;
   const params = useParams();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -136,13 +143,17 @@ export default function TaxInvoiceDetailPage() {
   };
 
   const startEditingSummary = () => {
+    const rawInvoiceProductDescription = invoice.productDescription;
+    const rawExtractedDataDeliveryNoteRef = invoice.extractedData?.deliveryNoteRef;
+    const rawExtractedDataOrderNumber = invoice.extractedData?.orderNumber;
+    const rawInvoiceUnit = invoice.unit;
     if (!invoice) return;
     setEditForm({
-      productDescription: invoice.productDescription || "",
-      deliveryNoteRef: invoice.extractedData?.deliveryNoteRef || "",
-      orderNumber: invoice.extractedData?.orderNumber || "",
+      productDescription: rawInvoiceProductDescription || "",
+      deliveryNoteRef: rawExtractedDataDeliveryNoteRef || "",
+      orderNumber: rawExtractedDataOrderNumber || "",
       quantity: invoice.numberOfRolls != null ? String(invoice.numberOfRolls) : "",
-      unit: invoice.unit || "",
+      unit: rawInvoiceUnit || "",
       costPerUnit: invoice.costPerUnit != null ? String(invoice.costPerUnit) : "",
       subtotal:
         invoice.extractedData?.subtotal != null ? String(invoice.extractedData.subtotal) : "",
@@ -161,6 +172,10 @@ export default function TaxInvoiceDetailPage() {
   const saveSummary = async () => {
     if (!invoice) return;
     try {
+      const rawEditFormProductDescription = editForm.productDescription;
+      const rawEditFormDeliveryNoteRef = editForm.deliveryNoteRef;
+      const rawEditFormOrderNumber = editForm.orderNumber;
+      const rawEditFormUnit = editForm.unit;
       setIsSavingSummary(true);
       const quantity = editForm.quantity ? Number(editForm.quantity) : undefined;
       const costPerUnit = editForm.costPerUnit ? Number(editForm.costPerUnit) : undefined;
@@ -169,11 +184,11 @@ export default function TaxInvoiceDetailPage() {
       const totalAmount = editForm.totalAmount ? Number(editForm.totalAmount) : undefined;
 
       const updated = await auRubberApiClient.updateTaxInvoice(invoiceId, {
-        productDescription: editForm.productDescription || undefined,
-        deliveryNoteRef: editForm.deliveryNoteRef || undefined,
-        orderNumber: editForm.orderNumber || undefined,
+        productDescription: rawEditFormProductDescription || undefined,
+        deliveryNoteRef: rawEditFormDeliveryNoteRef || undefined,
+        orderNumber: rawEditFormOrderNumber || undefined,
         quantity,
-        unit: editForm.unit || undefined,
+        unit: rawEditFormUnit || undefined,
         costPerUnit,
         subtotal,
         vatAmount,
@@ -238,11 +253,12 @@ export default function TaxInvoiceDetailPage() {
   }
 
   if (error || !invoice) {
+    const rawErrorMessage = error?.message;
     return (
       <div className="flex items-center justify-center min-h-96">
         <div className="text-center">
           <div className="text-red-500 text-lg font-semibold mb-2">Error Loading Data</div>
-          <p className="text-gray-600">{error?.message || "Invoice not found"}</p>
+          <p className="text-gray-600">{rawErrorMessage || "Invoice not found"}</p>
           <button
             onClick={() => router.back()}
             className="mt-4 px-4 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700"
@@ -272,14 +288,14 @@ export default function TaxInvoiceDetailPage() {
       <Breadcrumb
         items={[
           { label: backLabel, href: backPath },
-          { label: invoice.invoiceNumber || `INV-${invoice.id}` },
+          { label: rawInvoiceInvoiceNumber || `INV-${invoice.id}` },
         ]}
       />
 
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">
-            {invoice.invoiceNumber || `INV-${invoice.id}`}
+            {rawInvoiceInvoiceNumber2 || `INV-${invoice.id}`}
           </h1>
           <div className="mt-2 flex items-center space-x-3">
             {typeBadge(invoice.invoiceType)}
@@ -361,7 +377,7 @@ export default function TaxInvoiceDetailPage() {
           <dl className="grid grid-cols-2 gap-4">
             <div>
               <dt className="text-sm font-medium text-gray-500">Company</dt>
-              <dd className="mt-1 text-sm text-gray-900">{invoice.companyName || "-"}</dd>
+              <dd className="mt-1 text-sm text-gray-900">{rawInvoiceCompanyName || "-"}</dd>
             </div>
             <div>
               <dt className="text-sm font-medium text-gray-500">Invoice Date</dt>
@@ -596,7 +612,7 @@ export default function TaxInvoiceDetailPage() {
                 <div>
                   <dt className="text-sm font-medium text-gray-500">Product Description</dt>
                   <dd className="mt-1 text-sm text-gray-900">
-                    {invoice.productDescription || "-"}
+                    {rawInvoiceProductDescription2 || "-"}
                   </dd>
                 </div>
               )}
@@ -604,13 +620,13 @@ export default function TaxInvoiceDetailPage() {
                 <div>
                   <dt className="text-sm font-medium text-gray-500">Delivery Note Ref</dt>
                   <dd className="mt-1 text-sm text-gray-900">
-                    {invoice.extractedData.deliveryNoteRef || "-"}
+                    {rawExtractedDataDeliveryNoteRef2 || "-"}
                   </dd>
                 </div>
                 <div>
                   <dt className="text-sm font-medium text-gray-500">Order Number</dt>
                   <dd className="mt-1 text-sm text-gray-900">
-                    {invoice.extractedData.orderNumber || "-"}
+                    {rawExtractedDataOrderNumber2 || "-"}
                   </dd>
                 </div>
               </div>
@@ -625,7 +641,7 @@ export default function TaxInvoiceDetailPage() {
                   <div>
                     <dt className="text-sm font-medium text-gray-500">Unit</dt>
                     <dd className="mt-1 text-lg font-semibold text-gray-900">
-                      {invoice.unit || "-"}
+                      {rawInvoiceUnit2 || "-"}
                     </dd>
                   </div>
                   <div>

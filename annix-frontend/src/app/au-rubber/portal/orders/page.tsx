@@ -57,15 +57,21 @@ const STATUS_TABS = [
 ];
 
 export default function AuRubberOrdersPage() {
+  const rawOrdersQueryData = ordersQuery.data;
+  const rawCompaniesQueryData = companiesQuery.data;
+  const rawProductsQueryData = productsQuery.data;
+  const rawOrderCompanyOrderNumber = order.companyOrderNumber;
+  const rawOrderCompanyName = order.companyName;
+  const rawItemsLength3 = order.items?.length;
   const { showToast } = useToast();
 
   const [statusFilter, setStatusFilter] = useState<number | undefined>(undefined);
   const ordersQuery = useAuRubberOrders(statusFilter);
   const companiesQuery = useAuRubberCompanies();
   const productsQuery = useAuRubberProducts();
-  const orders = ordersQuery.data || [];
-  const companies = (companiesQuery.data || []) as RubberCompanyDto[];
-  const products = (productsQuery.data || []) as RubberProductDto[];
+  const orders = rawOrdersQueryData || [];
+  const companies = (rawCompaniesQueryData || []) as RubberCompanyDto[];
+  const products = (rawProductsQueryData || []) as RubberProductDto[];
   const isLoading = ordersQuery.isLoading;
   const error = ordersQuery.error;
 
@@ -184,17 +190,29 @@ export default function AuRubberOrdersPage() {
     return [...ordersToSort].sort((a, b) => {
       const direction = sortDirection === "asc" ? 1 : -1;
       if (sortColumn === "orderNumber") {
-        return direction * (a.orderNumber || "").localeCompare(b.orderNumber || "");
+        const rawAOrderNumber = a.orderNumber;
+        const rawBOrderNumber = b.orderNumber;
+        return direction * (rawAOrderNumber || "").localeCompare(rawBOrderNumber || "");
       } else if (sortColumn === "companyOrderNumber") {
-        return direction * (a.companyOrderNumber || "").localeCompare(b.companyOrderNumber || "");
+        const rawACompanyOrderNumber = a.companyOrderNumber;
+        const rawBCompanyOrderNumber = b.companyOrderNumber;
+        return (
+          direction * (rawACompanyOrderNumber || "").localeCompare(rawBCompanyOrderNumber || "")
+        );
       } else if (sortColumn === "company") {
-        return direction * (a.companyName || "").localeCompare(b.companyName || "");
+        const rawACompanyName = a.companyName;
+        const rawBCompanyName = b.companyName;
+        return direction * (rawACompanyName || "").localeCompare(rawBCompanyName || "");
       } else if (sortColumn === "items") {
-        return direction * ((a.items?.length || 0) - (b.items?.length || 0));
+        const rawItemsLength = a.items?.length;
+        const rawItemsLength2 = b.items?.length;
+        return direction * ((rawItemsLength || 0) - (rawItemsLength2 || 0));
       } else if (sortColumn === "status") {
         return direction * (a.status - b.status);
       } else if (sortColumn === "createdAt") {
-        return direction * (a.createdAt || "").localeCompare(b.createdAt || "");
+        const rawACreatedAt = a.createdAt;
+        const rawBCreatedAt = b.createdAt;
+        return direction * (rawACreatedAt || "").localeCompare(rawBCreatedAt || "");
       }
       return 0;
     });
@@ -236,9 +254,10 @@ export default function AuRubberOrdersPage() {
   }) => {
     setIsCreating(true);
     try {
+      const rawDataCompanyOrderNumber = data.companyOrderNumber;
       const result = await auRubberApiClient.createOrder({
         companyId: data.companyId,
-        companyOrderNumber: data.companyOrderNumber || undefined,
+        companyOrderNumber: rawDataCompanyOrderNumber || undefined,
         items: data.items,
       });
       showToast(`Order ${result.orderNumber} created`, "success");
@@ -479,13 +498,13 @@ export default function AuRubberOrdersPage() {
                         </Link>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {order.companyOrderNumber || "-"}
+                        {rawOrderCompanyOrderNumber || "-"}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {order.companyName || "-"}
+                        {rawOrderCompanyName || "-"}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {order.items?.length || 0}
+                        {rawItemsLength3 || 0}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span

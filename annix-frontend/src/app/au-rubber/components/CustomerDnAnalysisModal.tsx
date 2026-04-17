@@ -43,13 +43,17 @@ function allPartItems(lineItems: CustomerDnLineItem[]): boolean {
 }
 
 export function CustomerDnAnalysisModal(props: CustomerDnAnalysisModalProps) {
+  const rawGroupCustomerId = group.customerId;
+  const rawGroupCustomerReference = group.customerReference;
+  const rawGroupDeliveryDate = group.deliveryDate;
+  const rawOverridesByIndexCustomerId = overrides[index]?.customerId;
   const { analysis, files, customers, onClose, onConfirm, isCreating } = props;
   const [overrides, setOverrides] = useState<CustomerDnOverride[]>(
     analysis.groups.map((group) => ({
       deliveryNoteNumber: group.deliveryNoteNumber,
-      customerId: group.customerId || null,
-      customerReference: group.customerReference || null,
-      deliveryDate: group.deliveryDate || null,
+      customerId: rawGroupCustomerId || null,
+      customerReference: rawGroupCustomerReference || null,
+      deliveryDate: rawGroupDeliveryDate || null,
       stockCategory: allPartItems(group.allLineItems) ? "Pump Parts" : null,
       lineItems: group.allLineItems.map((item) => ({ ...item })),
     })),
@@ -80,8 +84,9 @@ export function CustomerDnAnalysisModal(props: CustomerDnAnalysisModalProps) {
   ) => {
     setOverrides((prev) =>
       prev.map((o, gi) => {
+        const rawOLineItems = o.lineItems;
         if (gi !== groupIndex) return o;
-        const items = [...(o.lineItems || [])];
+        const items = [...(rawOLineItems || [])];
         items[itemIndex] = { ...items[itemIndex], [field]: value === "" ? null : value };
         return { ...o, lineItems: items };
       }),
@@ -91,16 +96,21 @@ export function CustomerDnAnalysisModal(props: CustomerDnAnalysisModalProps) {
   const addLineItem = (groupIndex: number, category: string) => {
     setOverrides((prev) =>
       prev.map((o, gi) => {
+        const rawOLineItems2 = o.lineItems;
+        const rawLastItemCompoundType = lastItem?.compoundType;
+        const rawLastItemThicknessMm = lastItem?.thicknessMm;
+        const rawLastItemWidthMm = lastItem?.widthMm;
+        const rawLastItemLengthM = lastItem?.lengthM;
         if (gi !== groupIndex) return o;
-        const items = [...(o.lineItems || [])];
+        const items = [...(rawOLineItems2 || [])];
         const lastItem = items[items.length - 1];
         const isPart = category === "PART";
         const newItem: CustomerDnLineItem = {
           lineNumber: items.length + 1,
-          compoundType: lastItem?.compoundType || null,
-          thicknessMm: isPart ? null : lastItem?.thicknessMm || null,
-          widthMm: isPart ? null : lastItem?.widthMm || null,
-          lengthM: isPart ? null : lastItem?.lengthM || null,
+          compoundType: rawLastItemCompoundType || null,
+          thicknessMm: isPart ? null : rawLastItemThicknessMm || null,
+          widthMm: isPart ? null : rawLastItemWidthMm || null,
+          lengthM: isPart ? null : rawLastItemLengthM || null,
           quantity: 1,
           rollWeightKg: null,
           rollNumber: null,
@@ -116,15 +126,16 @@ export function CustomerDnAnalysisModal(props: CustomerDnAnalysisModalProps) {
   const removeLineItem = (groupIndex: number, itemIndex: number) => {
     setOverrides((prev) =>
       prev.map((o, gi) => {
+        const rawOLineItems3 = o.lineItems;
         if (gi !== groupIndex) return o;
-        const items = (o.lineItems || []).filter((_, idx) => idx !== itemIndex);
+        const items = (rawOLineItems3 || []).filter((_, idx) => idx !== itemIndex);
         return { ...o, lineItems: items };
       }),
     );
   };
 
   const validGroups = analysis.groups.filter(
-    (group, index) => overrides[index]?.customerId || group.customerName,
+    (group, index) => rawOverridesByIndexCustomerId || group.customerName,
   );
 
   const handleConfirm = async () => {
@@ -263,6 +274,13 @@ interface GroupCardProps {
 }
 
 function GroupCard(props: GroupCardProps) {
+  const rawOverrideLineItems = override.lineItems;
+  const rawOverrideDeliveryNoteNumber = override.deliveryNoteNumber;
+  const rawOverrideDeliveryNoteNumber2 = override.deliveryNoteNumber;
+  const rawOverrideCustomerId = override.customerId;
+  const rawOverrideStockCategory = override.stockCategory;
+  const rawOverrideCustomerReference = override.customerReference;
+  const rawOverrideDeliveryDate = override.deliveryDate;
   const group = props.group;
   const override = props.override;
   const customers = props.customers;
@@ -276,7 +294,7 @@ function GroupCard(props: GroupCardProps) {
   const onRemoveLineItem = props.onRemoveLineItem;
   const isValid = !!override.customerId || !!group.customerName;
   const willCreateNewCustomer = !override.customerId && !!group.customerName;
-  const lineItems = override.lineItems || group.allLineItems;
+  const lineItems = rawOverrideLineItems || group.allLineItems;
   const [customCategory, setCustomCategory] = useState("");
 
   const partItems = lineItems.filter((item) => item.itemCategory === "PART");
@@ -302,7 +320,7 @@ function GroupCard(props: GroupCardProps) {
             <div className="flex items-center">
               <FileText className="h-5 w-5 text-blue-500 mr-2" />
               <span className="font-medium text-gray-900">
-                {override.deliveryNoteNumber || group.deliveryNoteNumber}
+                {rawOverrideDeliveryNoteNumber || group.deliveryNoteNumber}
               </span>
             </div>
             {override.customerReference && (
@@ -375,7 +393,7 @@ function GroupCard(props: GroupCardProps) {
               <label className="block text-sm font-medium text-gray-700 mb-1">DN Number</label>
               <input
                 type="text"
-                value={override.deliveryNoteNumber || ""}
+                value={rawOverrideDeliveryNoteNumber2 || ""}
                 onChange={(e) => onUpdateOverride("deliveryNoteNumber", e.target.value)}
                 className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm border p-2"
               />
@@ -383,7 +401,7 @@ function GroupCard(props: GroupCardProps) {
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Customer *</label>
               <select
-                value={override.customerId || ""}
+                value={rawOverrideCustomerId || ""}
                 onChange={(e) =>
                   onUpdateOverride("customerId", e.target.value ? Number(e.target.value) : null)
                 }
@@ -415,7 +433,7 @@ function GroupCard(props: GroupCardProps) {
                 </label>
                 <div className="flex space-x-2">
                   <select
-                    value={override.stockCategory || ""}
+                    value={rawOverrideStockCategory || ""}
                     onChange={(e) => onUpdateOverride("stockCategory", e.target.value)}
                     className="block w-full rounded-md border-purple-300 shadow-sm focus:border-purple-500 focus:ring-purple-500 sm:text-sm border p-2"
                   >
@@ -466,7 +484,7 @@ function GroupCard(props: GroupCardProps) {
               </label>
               <input
                 type="text"
-                value={override.customerReference || ""}
+                value={rawOverrideCustomerReference || ""}
                 onChange={(e) => onUpdateOverride("customerReference", e.target.value)}
                 className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm border p-2"
                 placeholder="e.g., PL7776/PO6719"
@@ -476,7 +494,7 @@ function GroupCard(props: GroupCardProps) {
               <label className="block text-sm font-medium text-gray-700 mb-1">Delivery Date</label>
               <input
                 type="date"
-                value={override.deliveryDate || ""}
+                value={rawOverrideDeliveryDate || ""}
                 onChange={(e) => onUpdateOverride("deliveryDate", e.target.value)}
                 className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm border p-2"
               />
@@ -526,13 +544,18 @@ function GroupCard(props: GroupCardProps) {
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
                     {lineItems.map((item, itemIndex) => {
+                      const rawItemRollNumber = item.rollNumber;
+                      const rawItemDescription = item.description;
+                      const rawItemCompoundType = item.compoundType;
+                      const rawItemQuantity = item.quantity;
+                      const rawItemRollWeightKg = item.rollWeightKg;
                       if (item.itemCategory !== "PART") return null;
                       return (
                         <tr key={itemIndex} className="hover:bg-purple-50/30">
                           <td className="px-2 py-1.5 w-36">
                             <input
                               type="text"
-                              value={item.rollNumber || ""}
+                              value={rawItemRollNumber || ""}
                               onChange={(e) =>
                                 onUpdateLineItem(itemIndex, "rollNumber", e.target.value)
                               }
@@ -543,7 +566,7 @@ function GroupCard(props: GroupCardProps) {
                           <td className="px-2 py-1.5">
                             <input
                               type="text"
-                              value={item.description || ""}
+                              value={rawItemDescription || ""}
                               onChange={(e) =>
                                 onUpdateLineItem(itemIndex, "description", e.target.value)
                               }
@@ -554,7 +577,7 @@ function GroupCard(props: GroupCardProps) {
                           <td className="px-2 py-1.5 w-28">
                             <input
                               type="text"
-                              value={item.compoundType || ""}
+                              value={rawItemCompoundType || ""}
                               onChange={(e) =>
                                 onUpdateLineItem(itemIndex, "compoundType", e.target.value)
                               }
@@ -565,7 +588,7 @@ function GroupCard(props: GroupCardProps) {
                           <td className="px-2 py-1.5 w-16">
                             <input
                               type="number"
-                              value={item.quantity || ""}
+                              value={rawItemQuantity || ""}
                               onChange={(e) =>
                                 onUpdateLineItem(
                                   itemIndex,
@@ -580,7 +603,7 @@ function GroupCard(props: GroupCardProps) {
                           <td className="px-2 py-1.5 w-20">
                             <input
                               type="number"
-                              value={item.rollWeightKg || ""}
+                              value={rawItemRollWeightKg || ""}
                               onChange={(e) =>
                                 onUpdateLineItem(
                                   itemIndex,
@@ -662,13 +685,20 @@ function GroupCard(props: GroupCardProps) {
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
                     {lineItems.map((item, itemIndex) => {
+                      const rawItemRollNumber2 = item.rollNumber;
+                      const rawItemCompoundType2 = item.compoundType;
+                      const rawItemThicknessMm = item.thicknessMm;
+                      const rawItemWidthMm = item.widthMm;
+                      const rawItemLengthM = item.lengthM;
+                      const rawItemQuantity2 = item.quantity;
+                      const rawItemRollWeightKg2 = item.rollWeightKg;
                       if (item.itemCategory === "PART") return null;
                       return (
                         <tr key={itemIndex} className="hover:bg-gray-50">
                           <td className="px-2 py-1.5">
                             <input
                               type="text"
-                              value={item.rollNumber || ""}
+                              value={rawItemRollNumber2 || ""}
                               onChange={(e) =>
                                 onUpdateLineItem(itemIndex, "rollNumber", e.target.value)
                               }
@@ -679,7 +709,7 @@ function GroupCard(props: GroupCardProps) {
                           <td className="px-2 py-1.5">
                             <input
                               type="text"
-                              value={item.compoundType || ""}
+                              value={rawItemCompoundType2 || ""}
                               onChange={(e) =>
                                 onUpdateLineItem(itemIndex, "compoundType", e.target.value)
                               }
@@ -690,7 +720,7 @@ function GroupCard(props: GroupCardProps) {
                           <td className="px-2 py-1.5 w-16">
                             <input
                               type="number"
-                              value={item.thicknessMm || ""}
+                              value={rawItemThicknessMm || ""}
                               onChange={(e) =>
                                 onUpdateLineItem(
                                   itemIndex,
@@ -705,7 +735,7 @@ function GroupCard(props: GroupCardProps) {
                           <td className="px-2 py-1.5 w-20">
                             <input
                               type="number"
-                              value={item.widthMm || ""}
+                              value={rawItemWidthMm || ""}
                               onChange={(e) =>
                                 onUpdateLineItem(
                                   itemIndex,
@@ -720,7 +750,7 @@ function GroupCard(props: GroupCardProps) {
                           <td className="px-2 py-1.5 w-20">
                             <input
                               type="number"
-                              value={item.lengthM || ""}
+                              value={rawItemLengthM || ""}
                               onChange={(e) =>
                                 onUpdateLineItem(
                                   itemIndex,
@@ -735,7 +765,7 @@ function GroupCard(props: GroupCardProps) {
                           <td className="px-2 py-1.5 w-16">
                             <input
                               type="number"
-                              value={item.quantity || ""}
+                              value={rawItemQuantity2 || ""}
                               onChange={(e) =>
                                 onUpdateLineItem(
                                   itemIndex,
@@ -750,7 +780,7 @@ function GroupCard(props: GroupCardProps) {
                           <td className="px-2 py-1.5 w-20">
                             <input
                               type="number"
-                              value={item.rollWeightKg || ""}
+                              value={rawItemRollWeightKg2 || ""}
                               onChange={(e) =>
                                 onUpdateLineItem(
                                   itemIndex,

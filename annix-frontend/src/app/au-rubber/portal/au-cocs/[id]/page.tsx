@@ -14,6 +14,11 @@ import {
 import { formatDateTimeZA } from "@/app/lib/datetime";
 
 export default function AuCocDetailPage() {
+  const rawCocCustomerCompanyName = coc.customerCompanyName;
+  const rawItemsLength = coc.items?.length;
+  const rawRollThicknessMm = roll.thicknessMm;
+  const rawRollWidthMm = roll.widthMm;
+  const rawRollLengthM = roll.lengthM;
   const params = useParams();
   const router = useRouter();
   const { showToast } = useToast();
@@ -132,11 +137,12 @@ export default function AuCocDetailPage() {
   }
 
   if (error || !coc) {
+    const rawErrorMessage = error?.message;
     return (
       <div className="flex items-center justify-center min-h-96">
         <div className="text-center">
           <div className="text-red-500 text-lg font-semibold mb-2">Error Loading Data</div>
-          <p className="text-gray-600">{error?.message || "Certificate not found"}</p>
+          <p className="text-gray-600">{rawErrorMessage || "Certificate not found"}</p>
           <button
             onClick={() => router.back()}
             className="mt-4 px-4 py-2 bg-yellow-600 text-white rounded-md hover:bg-yellow-700"
@@ -263,7 +269,7 @@ export default function AuCocDetailPage() {
             </div>
             <div>
               <dt className="text-sm font-medium text-gray-500">Customer</dt>
-              <dd className="mt-1 text-sm text-gray-900">{coc.customerCompanyName || "-"}</dd>
+              <dd className="mt-1 text-sm text-gray-900">{rawCocCustomerCompanyName || "-"}</dd>
             </div>
             {coc.poNumber && (
               <div>
@@ -308,7 +314,7 @@ export default function AuCocDetailPage() {
             <div>
               <dt className="text-sm font-medium text-gray-500">Number of Rolls</dt>
               <dd className="mt-1 text-2xl font-semibold text-gray-900">
-                {coc.items?.length || coc.extractedRollData?.length || 0}
+                {rawItemsLength || coc.extractedRollData?.length || 0}
               </dd>
             </div>
             <div>
@@ -325,8 +331,9 @@ export default function AuCocDetailPage() {
                       .toFixed(2);
                   }
                   if (coc.extractedRollData && coc.extractedRollData.length > 0) {
+                    const rawRollWeightKg = roll.weightKg;
                     return coc.extractedRollData
-                      .reduce((sum, roll) => sum + (roll.weightKg || 0), 0)
+                      .reduce((sum, roll) => sum + (rawRollWeightKg || 0), 0)
                       .toFixed(2);
                   }
                   return "0.00";
@@ -461,13 +468,13 @@ export default function AuCocDetailPage() {
                       {roll.rollNumber}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {roll.thicknessMm || "-"}
+                      {rawRollThicknessMm || "-"}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {roll.widthMm || "-"}
+                      {rawRollWidthMm || "-"}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {roll.lengthM || "-"}
+                      {rawRollLengthM || "-"}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {roll.weightKg != null ? roll.weightKg.toFixed(2) : "-"}
@@ -530,11 +537,12 @@ export default function AuCocDetailPage() {
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {coc.items.map((item) => {
+                const rawItemRollNumber = item.rollNumber;
                 const testData = item.testDataSummary as Record<string, unknown> | null;
                 return (
                   <tr key={item.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                      {item.rollNumber || "-"}
+                      {rawItemRollNumber || "-"}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {(testData?.avgShoreA as number)?.toFixed(1) || "-"}

@@ -322,6 +322,10 @@ interface AuHeaderProps {
 }
 
 export function AuHeader(props: AuHeaderProps) {
+  const rawEmailSplitAt0 = user?.email?.split("@")[0];
+  const rawFirstNameAt0 = user?.firstName?.[0];
+  const rawLastNameAt0 = user?.lastName?.[0];
+  const rawUserEmail = user?.email;
   const { onSearch } = props;
   const pathname = usePathname();
   const [searchQuery, setSearchQuery] = useState("");
@@ -427,9 +431,9 @@ export function AuHeader(props: AuHeaderProps) {
   const fullName =
     user?.firstName && user?.lastName
       ? `${user.firstName} ${user.lastName}`
-      : user?.email?.split("@")[0] || "AU Rubber";
-  const firstInitial = user?.firstName?.[0] || user?.email?.[0] || "A";
-  const lastInitial = user?.lastName?.[0] || user?.email?.[1] || "U";
+      : rawEmailSplitAt0 || "AU Rubber";
+  const firstInitial = rawFirstNameAt0 || user?.email?.[0] || "A";
+  const lastInitial = rawLastNameAt0 || user?.email?.[1] || "U";
   const userInitials = `${firstInitial}${lastInitial}`.toUpperCase();
 
   return (
@@ -561,7 +565,7 @@ export function AuHeader(props: AuHeaderProps) {
               <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
                 <div className="px-4 py-3 border-b border-gray-100">
                   <p className="text-sm font-medium text-gray-900 truncate">{fullName}</p>
-                  <p className="text-xs text-gray-500 truncate">{user?.email || ""}</p>
+                  <p className="text-xs text-gray-500 truncate">{rawUserEmail || ""}</p>
                 </div>
                 <div className="py-1">
                   <Link

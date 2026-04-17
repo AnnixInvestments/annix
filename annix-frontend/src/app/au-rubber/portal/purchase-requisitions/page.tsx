@@ -49,6 +49,7 @@ const sourceColors: Record<RequisitionSourceType, string> = {
 };
 
 export default function PurchaseRequisitionsPage() {
+  const rawItemCompoundStockId2 = item.compoundStockId;
   const { showToast } = useToast();
   const [requisitions, setRequisitions] = useState<RequisitionDto[]>([]);
   const [compoundStocks, setCompoundStocks] = useState<RubberCompoundStockDto[]>([]);
@@ -217,12 +218,14 @@ export default function PurchaseRequisitionsPage() {
         expectedDeliveryDate: formExpectedDeliveryDate || undefined,
         notes: formNotes || undefined,
         items: validItems.map((item) => {
+          const rawItemCompoundStockId = item.compoundStockId;
+          const rawStockCompoundName = stock?.compoundName;
           const stock = compoundStocks.find((s) => s.id === item.compoundStockId);
           return {
             itemType: "COMPOUND" as const,
-            compoundStockId: item.compoundStockId || undefined,
+            compoundStockId: rawItemCompoundStockId || undefined,
             compoundCodingId: stock?.compoundCodingId,
-            compoundName: stock?.compoundName || undefined,
+            compoundName: rawStockCompoundName || undefined,
             quantityKg: Number(item.quantityKg),
           };
         }),
@@ -572,7 +575,7 @@ export default function PurchaseRequisitionsPage() {
                     {formItems.map((item, index) => (
                       <div key={index} className="flex items-center space-x-2">
                         <select
-                          value={item.compoundStockId || ""}
+                          value={rawItemCompoundStockId2 || ""}
                           onChange={(e) =>
                             updateFormItem(
                               index,

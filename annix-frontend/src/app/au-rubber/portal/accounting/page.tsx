@@ -27,6 +27,10 @@ interface AccountData {
 }
 
 export default function AccountingDashboardPage() {
+  const rawPayableSummaryGrandPayable = payableSummary?.grandPayable;
+  const rawCompaniesLength = payableSummary?.companies.length;
+  const rawReceivableSummaryGrandPayable = receivableSummary?.grandPayable;
+  const rawCompaniesLength2 = receivableSummary?.companies.length;
   const { showToast } = useToast();
   const [recentAccounts, setRecentAccounts] = useState<MonthlyAccountSummary[]>([]);
   const [payableSummary, setPayableSummary] = useState<AccountData | null>(null);
@@ -91,12 +95,12 @@ export default function AccountingDashboardPage() {
                 <div className="mt-4 flex items-baseline gap-2">
                   <span className="text-2xl font-bold text-gray-900 dark:text-gray-100">
                     R{" "}
-                    {(payableSummary?.grandPayable || 0).toLocaleString("en-ZA", {
+                    {(rawPayableSummaryGrandPayable || 0).toLocaleString("en-ZA", {
                       minimumFractionDigits: 2,
                     })}
                   </span>
                   <span className="text-sm text-gray-500 dark:text-gray-400">
-                    ({payableSummary?.companies.length || 0} suppliers)
+                    ({rawCompaniesLength || 0} suppliers)
                   </span>
                 </div>
               </Link>
@@ -114,12 +118,12 @@ export default function AccountingDashboardPage() {
                 <div className="mt-4 flex items-baseline gap-2">
                   <span className="text-2xl font-bold text-gray-900 dark:text-gray-100">
                     R{" "}
-                    {(receivableSummary?.grandPayable || 0).toLocaleString("en-ZA", {
+                    {(rawReceivableSummaryGrandPayable || 0).toLocaleString("en-ZA", {
                       minimumFractionDigits: 2,
                     })}
                   </span>
                   <span className="text-sm text-gray-500 dark:text-gray-400">
-                    ({receivableSummary?.companies.length || 0} customers)
+                    ({rawCompaniesLength2 || 0} customers)
                   </span>
                 </div>
               </Link>

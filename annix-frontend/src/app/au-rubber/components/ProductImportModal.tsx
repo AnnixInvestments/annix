@@ -39,6 +39,7 @@ function parseExcelClientSide(file: File): Promise<AnalyzedProductLine[]> {
     const reader = new FileReader();
     reader.onload = (e) => {
       try {
+        const rawLineTitle = line.title;
         const data = e.target?.result;
         const workbook = XLSX.read(data, { type: "array" });
         const firstSheetName = workbook.SheetNames[0];
@@ -77,7 +78,7 @@ function parseExcelClientSide(file: File): Promise<AnalyzedProductLine[]> {
               rawText: JSON.stringify(row),
             };
           })
-          .filter((line) => line.title || line.compound || line.baseCostPerKg !== null);
+          .filter((line) => rawLineTitle || line.compound || line.baseCostPerKg !== null);
 
         resolve(lines);
       } catch (err) {

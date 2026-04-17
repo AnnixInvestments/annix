@@ -111,7 +111,8 @@ function specLimitsForMetric(
     tensile: { specMin: config.tensileMin, specMax: config.tensileMax },
     elongation: { specMin: config.elongationMin, specMax: config.elongationMax },
   };
-  return map[metricKey] || { specMin: null, specMax: null };
+  const rawMapByMetrickey = map[metricKey];
+  return rawMapByMetrickey || { specMin: null, specMax: null };
 }
 
 function MetricChart(props: { batches: BatchMetricData[]; metric: MetricDef }) {
@@ -152,8 +153,9 @@ function MetricChart(props: { batches: BatchMetricData[]; metric: MetricDef }) {
             ];
           }}
           labelFormatter={(label: unknown, payload: readonly unknown[]) => {
+            const rawPayloadDate = first?.payload?.date;
             const first = payload[0] as { payload?: { date?: string } } | undefined;
-            return `Batch ${String(label)} (${first?.payload?.date || ""})`;
+            return `Batch ${String(label)} (${rawPayloadDate || ""})`;
           }}
           contentStyle={{ fontSize: 12 }}
         />

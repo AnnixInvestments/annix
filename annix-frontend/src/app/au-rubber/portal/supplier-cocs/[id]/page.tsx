@@ -47,6 +47,12 @@ interface ExtractedSpecs {
 }
 
 export default function SupplierCocDetailPage() {
+  const rawCocCocNumber2 = coc.cocNumber;
+  const rawCocCocNumber3 = coc.cocNumber;
+  const rawCocSupplierCompanyName = coc.supplierCompanyName;
+  const rawCocCompoundCode2 = coc.compoundCode;
+  const rawCocOrderNumber2 = coc.orderNumber;
+  const rawCocTicketNumber2 = coc.ticketNumber;
   const params = useParams();
   const router = useRouter();
   const { showToast } = useToast();
@@ -175,14 +181,18 @@ export default function SupplierCocDetailPage() {
   };
 
   const startEditing = () => {
+    const rawCocCocNumber = coc.cocNumber;
+    const rawCocCompoundCode = coc.compoundCode;
+    const rawCocOrderNumber = coc.orderNumber;
+    const rawCocTicketNumber = coc.ticketNumber;
     if (!coc) return;
     setEditFields({
       cocType: coc.cocType,
-      cocNumber: coc.cocNumber || "",
-      compoundCode: coc.compoundCode || "",
+      cocNumber: rawCocCocNumber || "",
+      compoundCode: rawCocCompoundCode || "",
       productionDate: coc.productionDate ? coc.productionDate.split("T")[0] : "",
-      orderNumber: coc.orderNumber || "",
-      ticketNumber: coc.ticketNumber || "",
+      orderNumber: rawCocOrderNumber || "",
+      ticketNumber: rawCocTicketNumber || "",
       createdAt: coc.createdAt ? coc.createdAt.split("T")[0] : "",
     });
     setIsEditing(true);
@@ -191,15 +201,22 @@ export default function SupplierCocDetailPage() {
   const handleSaveDetails = async () => {
     if (!coc) return;
     try {
+      const rawEditFieldsCocType = editFields.cocType;
+      const rawEditFieldsCocNumber = editFields.cocNumber;
+      const rawEditFieldsCompoundCode = editFields.compoundCode;
+      const rawEditFieldsProductionDate = editFields.productionDate;
+      const rawEditFieldsOrderNumber = editFields.orderNumber;
+      const rawEditFieldsTicketNumber = editFields.ticketNumber;
+      const rawEditFieldsCreatedAt = editFields.createdAt;
       setIsSaving(true);
       await auRubberApiClient.updateSupplierCoc(cocId, {
-        cocType: editFields.cocType || undefined,
-        cocNumber: editFields.cocNumber || null,
-        compoundCode: editFields.compoundCode || null,
-        productionDate: editFields.productionDate || null,
-        orderNumber: editFields.orderNumber || null,
-        ticketNumber: editFields.ticketNumber || null,
-        createdAt: editFields.createdAt || null,
+        cocType: rawEditFieldsCocType || undefined,
+        cocNumber: rawEditFieldsCocNumber || null,
+        compoundCode: rawEditFieldsCompoundCode || null,
+        productionDate: rawEditFieldsProductionDate || null,
+        orderNumber: rawEditFieldsOrderNumber || null,
+        ticketNumber: rawEditFieldsTicketNumber || null,
+        createdAt: rawEditFieldsCreatedAt || null,
       });
       showToast("CoC details updated", "success");
       setIsEditing(false);
@@ -212,9 +229,10 @@ export default function SupplierCocDetailPage() {
   };
 
   const startEditingBatch = (batch: RubberCompoundBatchDto) => {
+    const rawBatchBatchNumber = batch.batchNumber;
     setEditingBatchId(batch.id);
     setEditBatchFields({
-      batchNumber: batch.batchNumber || "",
+      batchNumber: rawBatchBatchNumber || "",
       shoreAHardness: batch.shoreAHardness != null ? String(batch.shoreAHardness) : "",
       specificGravity: batch.specificGravity != null ? String(batch.specificGravity) : "",
       tensileStrengthMpa: batch.tensileStrengthMpa != null ? String(batch.tensileStrengthMpa) : "",
@@ -226,10 +244,11 @@ export default function SupplierCocDetailPage() {
   const handleSaveBatch = async () => {
     if (editingBatchId === null) return;
     try {
+      const rawEditBatchFieldsBatchNumber = editBatchFields.batchNumber;
       setIsSavingBatch(true);
       const parseNum = (val: string): number | null => (val.trim() === "" ? null : Number(val));
       await auRubberApiClient.updateCompoundBatch(editingBatchId, {
-        batchNumber: editBatchFields.batchNumber || undefined,
+        batchNumber: rawEditBatchFieldsBatchNumber || undefined,
         shoreAHardness: parseNum(editBatchFields.shoreAHardness),
         specificGravity: parseNum(editBatchFields.specificGravity),
         tensileStrengthMpa: parseNum(editBatchFields.tensileStrengthMpa),
@@ -257,15 +276,21 @@ export default function SupplierCocDetailPage() {
   };
 
   const startEditingExtracted = useCallback(() => {
+    const rawExtractedBatches = extracted?.batches;
+    const rawExtractedCompoundCode = extracted?.compoundCode;
+    const rawExtractedCocNumber = extracted?.cocNumber;
+    const rawExtractedProductionDate = extracted?.productionDate;
+    const rawExtractedOrderNumber = extracted?.orderNumber;
+    const rawExtractedTicketNumber = extracted?.ticketNumber;
     const extracted = coc?.extractedData as Record<string, unknown> | null;
-    const rawBatches = (extracted?.batches || []) as ExtractedBatch[];
+    const rawBatches = (rawExtractedBatches || []) as ExtractedBatch[];
     setEditedBatches(rawBatches.map((b) => ({ ...b })));
     setEditedExtractedFields({
-      compoundCode: String(extracted?.compoundCode || extracted?.compoundDescription || ""),
-      cocNumber: String(extracted?.cocNumber || ""),
-      productionDate: String(extracted?.productionDate || ""),
-      orderNumber: String(extracted?.orderNumber || ""),
-      ticketNumber: String(extracted?.ticketNumber || ""),
+      compoundCode: String(rawExtractedCompoundCode || extracted?.compoundDescription || ""),
+      cocNumber: String(rawExtractedCocNumber || ""),
+      productionDate: String(rawExtractedProductionDate || ""),
+      orderNumber: String(rawExtractedOrderNumber || ""),
+      ticketNumber: String(rawExtractedTicketNumber || ""),
     });
     setIsEditingExtracted(true);
   }, [coc]);
@@ -293,16 +318,22 @@ export default function SupplierCocDetailPage() {
   const handleSaveExtracted = useCallback(async () => {
     if (!coc) return;
     try {
+      const rawCocExtractedData = coc.extractedData;
+      const rawEditedExtractedFieldsCompoundCode = editedExtractedFields.compoundCode;
+      const rawEditedExtractedFieldsCocNumber = editedExtractedFields.cocNumber;
+      const rawEditedExtractedFieldsProductionDate = editedExtractedFields.productionDate;
+      const rawEditedExtractedFieldsOrderNumber = editedExtractedFields.orderNumber;
+      const rawEditedExtractedFieldsTicketNumber = editedExtractedFields.ticketNumber;
       setIsSavingExtracted(true);
-      const existing = (coc.extractedData || {}) as Record<string, unknown>;
+      const existing = (rawCocExtractedData || {}) as Record<string, unknown>;
       const updatedData = {
         ...existing,
         batches: editedBatches,
-        compoundCode: editedExtractedFields.compoundCode || null,
-        cocNumber: editedExtractedFields.cocNumber || null,
-        productionDate: editedExtractedFields.productionDate || null,
-        orderNumber: editedExtractedFields.orderNumber || null,
-        ticketNumber: editedExtractedFields.ticketNumber || null,
+        compoundCode: rawEditedExtractedFieldsCompoundCode || null,
+        cocNumber: rawEditedExtractedFieldsCocNumber || null,
+        productionDate: rawEditedExtractedFieldsProductionDate || null,
+        orderNumber: rawEditedExtractedFieldsOrderNumber || null,
+        ticketNumber: rawEditedExtractedFieldsTicketNumber || null,
       };
       await auRubberApiClient.reviewSupplierCoc(cocId, { extractedData: updatedData });
       showToast("Extracted data updated", "success");
@@ -361,11 +392,12 @@ export default function SupplierCocDetailPage() {
   }
 
   if (error || !coc) {
+    const rawErrorMessage = error?.message;
     return (
       <div className="flex items-center justify-center min-h-96">
         <div className="text-center">
           <div className="text-red-500 text-lg font-semibold mb-2">Error Loading Data</div>
-          <p className="text-gray-600">{error?.message || "CoC not found"}</p>
+          <p className="text-gray-600">{rawErrorMessage || "CoC not found"}</p>
           <button
             onClick={() => router.back()}
             className="mt-4 px-4 py-2 bg-yellow-600 text-white rounded-md hover:bg-yellow-700"
@@ -382,13 +414,15 @@ export default function SupplierCocDetailPage() {
       <Breadcrumb
         items={[
           { label: "Supplier CoCs", href: "/au-rubber/portal/supplier-cocs" },
-          { label: coc.cocNumber || `COC-${coc.id}` },
+          { label: rawCocCocNumber2 || `COC-${coc.id}` },
         ]}
       />
 
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">{coc.cocNumber || `COC-${coc.id}`}</h1>
+          <h1 className="text-2xl font-bold text-gray-900">
+            {rawCocCocNumber3 || `COC-${coc.id}`}
+          </h1>
           <div className="mt-2 flex items-center space-x-3">
             {typeBadge(coc.cocType)}
             {statusBadge(coc.processingStatus)}
@@ -589,7 +623,7 @@ export default function SupplierCocDetailPage() {
             <dl className="grid grid-cols-2 gap-4">
               <div>
                 <dt className="text-sm font-medium text-gray-500">Supplier</dt>
-                <dd className="mt-1 text-sm text-gray-900">{coc.supplierCompanyName || "-"}</dd>
+                <dd className="mt-1 text-sm text-gray-900">{rawCocSupplierCompanyName || "-"}</dd>
               </div>
               <div>
                 <dt className="text-sm font-medium text-gray-500">CoC Type</dt>
@@ -597,7 +631,7 @@ export default function SupplierCocDetailPage() {
               </div>
               <div>
                 <dt className="text-sm font-medium text-gray-500">Compound Code</dt>
-                <dd className="mt-1 text-sm text-gray-900">{coc.compoundCode || "-"}</dd>
+                <dd className="mt-1 text-sm text-gray-900">{rawCocCompoundCode2 || "-"}</dd>
               </div>
               <div>
                 <dt className="text-sm font-medium text-gray-500">Production Date</dt>
@@ -609,11 +643,11 @@ export default function SupplierCocDetailPage() {
                 <>
                   <div>
                     <dt className="text-sm font-medium text-gray-500">Order Number</dt>
-                    <dd className="mt-1 text-sm text-gray-900">{coc.orderNumber || "-"}</dd>
+                    <dd className="mt-1 text-sm text-gray-900">{rawCocOrderNumber2 || "-"}</dd>
                   </div>
                   <div>
                     <dt className="text-sm font-medium text-gray-500">Ticket Number</dt>
-                    <dd className="mt-1 text-sm text-gray-900">{coc.ticketNumber || "-"}</dd>
+                    <dd className="mt-1 text-sm text-gray-900">{rawCocTicketNumber2 || "-"}</dd>
                   </div>
                 </>
               )}
@@ -676,17 +710,42 @@ export default function SupplierCocDetailPage() {
             </div>
 
             {(() => {
+              const rawExtractedSpecifications = extracted.specifications;
+              const rawExtractedBatches2 = extracted.batches;
+              const rawExtractedCompoundCode2 = extracted.compoundCode;
+              const rawEditedExtractedFieldsByFkey = editedExtractedFields[f.key];
+              const rawBatchBatchNumber2 = batch.batchNumber;
+              const rawBatchShoreA = batch.shoreA;
+              const rawBatchSpecificGravity = batch.specificGravity;
+              const rawBatchTensileStrengthMpa = batch.tensileStrengthMpa;
+              const rawBatchElongationPercent = batch.elongationPercent;
+              const rawBatchTearStrengthKnM = batch.tearStrengthKnM;
+              const rawBatchReboundPercent = batch.reboundPercent;
+              const rawBatchRheometerSMin = batch.rheometerSMin;
+              const rawBatchRheometerSMax = batch.rheometerSMax;
+              const rawBatchRheometerTs2 = batch.rheometerTs2;
+              const rawBatchRheometerTc90 = batch.rheometerTc90;
+              const rawBatchShoreA2 = batch.shoreA;
+              const rawBatchSpecificGravity2 = batch.specificGravity;
+              const rawBatchTensileStrengthMpa2 = batch.tensileStrengthMpa;
+              const rawBatchElongationPercent2 = batch.elongationPercent;
+              const rawBatchTearStrengthKnM2 = batch.tearStrengthKnM;
+              const rawBatchReboundPercent2 = batch.reboundPercent;
+              const rawBatchRheometerSMin2 = batch.rheometerSMin;
+              const rawBatchRheometerSMax2 = batch.rheometerSMax;
+              const rawBatchRheometerTs22 = batch.rheometerTs2;
+              const rawBatchRheometerTc902 = batch.rheometerTc90;
               const extracted = coc.extractedData as Record<string, unknown>;
-              const specs = (extracted.specifications || {}) as ExtractedSpecs;
+              const specs = (rawExtractedSpecifications || {}) as ExtractedSpecs;
               const rawBatches = isEditingExtracted
                 ? editedBatches
-                : ((extracted.batches || []) as ExtractedBatch[]);
+                : ((rawExtractedBatches2 || []) as ExtractedBatch[]);
 
               const editableFields = [
                 {
                   label: "Compound",
                   key: "compoundCode",
-                  value: extracted.compoundCode || extracted.compoundDescription,
+                  value: rawExtractedCompoundCode2 || extracted.compoundDescription,
                 },
                 { label: "CoC Number", key: "cocNumber", value: extracted.cocNumber },
                 {
@@ -712,7 +771,7 @@ export default function SupplierCocDetailPage() {
                           {isEditingExtracted ? (
                             <input
                               type="text"
-                              value={editedExtractedFields[f.key] || ""}
+                              value={rawEditedExtractedFieldsByFkey || ""}
                               onChange={(e) =>
                                 setEditedExtractedFields((prev) => ({
                                   ...prev,
@@ -735,8 +794,10 @@ export default function SupplierCocDetailPage() {
                   </div>
 
                   {(() => {
-                    const rolls = (extracted.rollNumbers || []) as string[];
-                    const rejected = coc.rejectedRollNumbers || [];
+                    const rawExtractedRollNumbers = extracted.rollNumbers;
+                    const rawCocRejectedRollNumbers = coc.rejectedRollNumbers;
+                    const rolls = (rawExtractedRollNumbers || []) as string[];
+                    const rejected = rawCocRejectedRollNumbers || [];
                     if (rolls.length === 0) return null;
                     return (
                       <div className="mb-4">
@@ -852,7 +913,7 @@ export default function SupplierCocDetailPage() {
                                 <td className="px-3 py-1.5">
                                   <input
                                     type="text"
-                                    value={batch.batchNumber || ""}
+                                    value={rawBatchBatchNumber2 || ""}
                                     onChange={(e) =>
                                       handleExtractedBatchChange(
                                         bIdx,
@@ -867,7 +928,7 @@ export default function SupplierCocDetailPage() {
                                   <input
                                     type="number"
                                     step="0.1"
-                                    value={batch.shoreA || ""}
+                                    value={rawBatchShoreA || ""}
                                     onChange={(e) =>
                                       handleExtractedBatchChange(bIdx, "shoreA", e.target.value)
                                     }
@@ -878,7 +939,7 @@ export default function SupplierCocDetailPage() {
                                   <input
                                     type="number"
                                     step="0.001"
-                                    value={batch.specificGravity || ""}
+                                    value={rawBatchSpecificGravity || ""}
                                     onChange={(e) =>
                                       handleExtractedBatchChange(
                                         bIdx,
@@ -893,7 +954,7 @@ export default function SupplierCocDetailPage() {
                                   <input
                                     type="number"
                                     step="0.01"
-                                    value={batch.tensileStrengthMpa || ""}
+                                    value={rawBatchTensileStrengthMpa || ""}
                                     onChange={(e) =>
                                       handleExtractedBatchChange(
                                         bIdx,
@@ -908,7 +969,7 @@ export default function SupplierCocDetailPage() {
                                   <input
                                     type="number"
                                     step="0.1"
-                                    value={batch.elongationPercent || ""}
+                                    value={rawBatchElongationPercent || ""}
                                     onChange={(e) =>
                                       handleExtractedBatchChange(
                                         bIdx,
@@ -923,7 +984,7 @@ export default function SupplierCocDetailPage() {
                                   <input
                                     type="number"
                                     step="0.1"
-                                    value={batch.tearStrengthKnM || ""}
+                                    value={rawBatchTearStrengthKnM || ""}
                                     onChange={(e) =>
                                       handleExtractedBatchChange(
                                         bIdx,
@@ -938,7 +999,7 @@ export default function SupplierCocDetailPage() {
                                   <input
                                     type="number"
                                     step="0.1"
-                                    value={batch.reboundPercent || ""}
+                                    value={rawBatchReboundPercent || ""}
                                     onChange={(e) =>
                                       handleExtractedBatchChange(
                                         bIdx,
@@ -953,7 +1014,7 @@ export default function SupplierCocDetailPage() {
                                   <input
                                     type="number"
                                     step="0.01"
-                                    value={batch.rheometerSMin || ""}
+                                    value={rawBatchRheometerSMin || ""}
                                     onChange={(e) =>
                                       handleExtractedBatchChange(
                                         bIdx,
@@ -968,7 +1029,7 @@ export default function SupplierCocDetailPage() {
                                   <input
                                     type="number"
                                     step="0.01"
-                                    value={batch.rheometerSMax || ""}
+                                    value={rawBatchRheometerSMax || ""}
                                     onChange={(e) =>
                                       handleExtractedBatchChange(
                                         bIdx,
@@ -983,7 +1044,7 @@ export default function SupplierCocDetailPage() {
                                   <input
                                     type="number"
                                     step="0.01"
-                                    value={batch.rheometerTs2 || ""}
+                                    value={rawBatchRheometerTs2 || ""}
                                     onChange={(e) =>
                                       handleExtractedBatchChange(
                                         bIdx,
@@ -998,7 +1059,7 @@ export default function SupplierCocDetailPage() {
                                   <input
                                     type="number"
                                     step="0.01"
-                                    value={batch.rheometerTc90 || ""}
+                                    value={rawBatchRheometerTc90 || ""}
                                     onChange={(e) =>
                                       handleExtractedBatchChange(
                                         bIdx,
@@ -1025,33 +1086,35 @@ export default function SupplierCocDetailPage() {
                                 <td className="px-3 py-2 font-medium text-gray-900">
                                   {batch.batchNumber}
                                 </td>
-                                <td className="px-3 py-2 text-gray-500">{batch.shoreA || "-"}</td>
                                 <td className="px-3 py-2 text-gray-500">
-                                  {batch.specificGravity || "-"}
+                                  {rawBatchShoreA2 || "-"}
                                 </td>
                                 <td className="px-3 py-2 text-gray-500">
-                                  {batch.tensileStrengthMpa || "-"}
+                                  {rawBatchSpecificGravity2 || "-"}
                                 </td>
                                 <td className="px-3 py-2 text-gray-500">
-                                  {batch.elongationPercent || "-"}
+                                  {rawBatchTensileStrengthMpa2 || "-"}
                                 </td>
                                 <td className="px-3 py-2 text-gray-500">
-                                  {batch.tearStrengthKnM || "-"}
+                                  {rawBatchElongationPercent2 || "-"}
                                 </td>
                                 <td className="px-3 py-2 text-gray-500">
-                                  {batch.reboundPercent || "-"}
+                                  {rawBatchTearStrengthKnM2 || "-"}
                                 </td>
                                 <td className="px-3 py-2 text-gray-500">
-                                  {batch.rheometerSMin || "-"}
+                                  {rawBatchReboundPercent2 || "-"}
                                 </td>
                                 <td className="px-3 py-2 text-gray-500">
-                                  {batch.rheometerSMax || "-"}
+                                  {rawBatchRheometerSMin2 || "-"}
                                 </td>
                                 <td className="px-3 py-2 text-gray-500">
-                                  {batch.rheometerTs2 || "-"}
+                                  {rawBatchRheometerSMax2 || "-"}
                                 </td>
                                 <td className="px-3 py-2 text-gray-500">
-                                  {batch.rheometerTc90 || "-"}
+                                  {rawBatchRheometerTs22 || "-"}
+                                </td>
+                                <td className="px-3 py-2 text-gray-500">
+                                  {rawBatchRheometerTc902 || "-"}
                                 </td>
                               </tr>
                             ),
@@ -1139,8 +1202,15 @@ export default function SupplierCocDetailPage() {
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {batches.map((batch) => {
+                  const rawBatchShoreAHardness = batch.shoreAHardness;
+                  const rawBatchSpecificGravity3 = batch.specificGravity;
+                  const rawBatchTensileStrengthMpa3 = batch.tensileStrengthMpa;
+                  const rawBatchElongationPercent3 = batch.elongationPercent;
+                  const rawBatchTearStrengthKnM3 = batch.tearStrengthKnM;
+                  const rawBatchSupplierCocNumber = batch.supplierCocNumber;
                   const isEditingRow = editingBatchId === batch.id;
                   if (isEditingRow) {
+                    const rawBatchPassFailStatusLabel = batch.passFailStatusLabel;
                     return (
                       <tr key={batch.id} className="bg-yellow-50">
                         <td className="px-4 py-2">
@@ -1227,7 +1297,7 @@ export default function SupplierCocDetailPage() {
                           />
                         </td>
                         <td className="px-4 py-2 text-sm text-gray-500">
-                          {batch.passFailStatusLabel || "-"}
+                          {rawBatchPassFailStatusLabel || "-"}
                         </td>
                         {coc.cocType === "CALENDARER" && (
                           <td className="px-4 py-2 text-sm text-gray-500">-</td>
@@ -1257,19 +1327,19 @@ export default function SupplierCocDetailPage() {
                         {batch.batchNumber}
                       </td>
                       <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {batch.shoreAHardness || "-"}
+                        {rawBatchShoreAHardness || "-"}
                       </td>
                       <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {batch.specificGravity || "-"}
+                        {rawBatchSpecificGravity3 || "-"}
                       </td>
                       <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {batch.tensileStrengthMpa || "-"}
+                        {rawBatchTensileStrengthMpa3 || "-"}
                       </td>
                       <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {batch.elongationPercent || "-"}
+                        {rawBatchElongationPercent3 || "-"}
                       </td>
                       <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {batch.tearStrengthKnM || "-"}
+                        {rawBatchTearStrengthKnM3 || "-"}
                       </td>
                       <td className="px-4 py-4 whitespace-nowrap">
                         <span
@@ -1291,7 +1361,7 @@ export default function SupplierCocDetailPage() {
                               href={`/au-rubber/portal/supplier-cocs/${batch.supplierCocId}`}
                               className="text-yellow-600 hover:text-yellow-800 font-medium"
                             >
-                              {batch.supplierCocNumber || `CoC-${batch.supplierCocId}`}
+                              {rawBatchSupplierCocNumber || `CoC-${batch.supplierCocId}`}
                             </Link>
                           ) : (
                             "-"

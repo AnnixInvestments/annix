@@ -67,27 +67,43 @@ const EMPTY_FORM: CustomerFormData = {
 };
 
 function formFromCompany(company: RubberCompanyDto): CustomerFormData {
+  const rawCode = company.code;
+  const rawPricingTierId = company.pricingTierId;
+  const rawVatNumber = company.vatNumber;
+  const rawRegistrationNumber = company.registrationNumber;
+  const rawNotes = company.notes;
+  const rawPhone = company.phone;
+  const rawContactPerson = company.contactPerson;
+  const rawStreet = company.address?.street;
+  const rawCity = company.address?.city;
+  const rawProvince = company.address?.province;
+  const rawPostalCode = company.address?.postalCode;
+  const rawAvailableProducts = company.availableProducts;
+  const rawIncomingPoEmail = company.emailConfig?.incomingPoEmail;
+  const rawOutgoingCocEmail = company.emailConfig?.outgoingCocEmail;
+  const rawOutgoingCtiEmail = company.emailConfig?.outgoingCtiEmail;
+  const rawOutgoingStatementEmail = company.emailConfig?.outgoingStatementEmail;
   return {
     name: company.name,
-    code: company.code || "",
-    pricingTierId: company.pricingTierId || null,
-    vatNumber: company.vatNumber || "",
-    registrationNumber: company.registrationNumber || "",
+    code: rawCode || "",
+    pricingTierId: rawPricingTierId || null,
+    vatNumber: rawVatNumber || "",
+    registrationNumber: rawRegistrationNumber || "",
     isCompoundOwner: company.isCompoundOwner,
-    notes: company.notes || "",
-    phone: company.phone || "",
-    contactPerson: company.contactPerson || "",
+    notes: rawNotes || "",
+    phone: rawPhone || "",
+    contactPerson: rawContactPerson || "",
     address: {
-      street: company.address?.street || "",
-      city: company.address?.city || "",
-      province: company.address?.province || "",
-      postalCode: company.address?.postalCode || "",
+      street: rawStreet || "",
+      city: rawCity || "",
+      province: rawProvince || "",
+      postalCode: rawPostalCode || "",
     },
-    availableProducts: company.availableProducts || [],
-    incomingPoEmail: company.emailConfig?.incomingPoEmail || "",
-    outgoingCocEmail: company.emailConfig?.outgoingCocEmail || "",
-    outgoingCtiEmail: company.emailConfig?.outgoingCtiEmail || "",
-    outgoingStatementEmail: company.emailConfig?.outgoingStatementEmail || "",
+    availableProducts: rawAvailableProducts || [],
+    incomingPoEmail: rawIncomingPoEmail || "",
+    outgoingCocEmail: rawOutgoingCocEmail || "",
+    outgoingCtiEmail: rawOutgoingCtiEmail || "",
+    outgoingStatementEmail: rawOutgoingStatementEmail || "",
   };
 }
 
@@ -107,6 +123,7 @@ function CustomerDetailForm(props: {
   const inputClass =
     "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 sm:text-sm border p-2";
   const labelClass = "block text-sm font-medium text-gray-700";
+  const rawPricingTierId = formData.pricingTierId;
 
   return (
     <div className="bg-white shadow rounded-lg p-6">
@@ -160,7 +177,7 @@ function CustomerDetailForm(props: {
                 <div>
                   <label className={labelClass}>Pricing Tier</label>
                   <select
-                    value={formData.pricingTierId || ""}
+                    value={rawPricingTierId || ""}
                     onChange={(e) =>
                       onFormChange({
                         ...formData,
@@ -369,25 +386,30 @@ function CustomerDetailForm(props: {
               {products.length === 0 ? (
                 <p className="text-sm text-gray-500 italic">No products available</p>
               ) : (
-                products.map((product) => (
-                  <label
-                    key={product.firebaseUid}
-                    className="flex items-center space-x-2 hover:bg-gray-50 p-1 rounded cursor-pointer"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={formData.availableProducts.includes(product.firebaseUid)}
-                      onChange={(e) => {
-                        const updated = e.target.checked
-                          ? [...formData.availableProducts, product.firebaseUid]
-                          : formData.availableProducts.filter((uid) => uid !== product.firebaseUid);
-                        onFormChange({ ...formData, availableProducts: updated });
-                      }}
-                      className="h-4 w-4 text-yellow-600 focus:ring-yellow-500 border-gray-300 rounded"
-                    />
-                    <span className="text-sm text-gray-900">{product.title || "Untitled"}</span>
-                  </label>
-                ))
+                products.map((product) => {
+                  const rawTitle = product.title;
+                  return (
+                    <label
+                      key={product.firebaseUid}
+                      className="flex items-center space-x-2 hover:bg-gray-50 p-1 rounded cursor-pointer"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={formData.availableProducts.includes(product.firebaseUid)}
+                        onChange={(e) => {
+                          const updated = e.target.checked
+                            ? [...formData.availableProducts, product.firebaseUid]
+                            : formData.availableProducts.filter(
+                                (uid) => uid !== product.firebaseUid,
+                              );
+                          onFormChange({ ...formData, availableProducts: updated });
+                        }}
+                        className="h-4 w-4 text-yellow-600 focus:ring-yellow-500 border-gray-300 rounded"
+                      />
+                      <span className="text-sm text-gray-900">{rawTitle || "Untitled"}</span>
+                    </label>
+                  );
+                })
               )}
             </div>
           </div>
@@ -460,36 +482,41 @@ function CompanyActivity(props: { companyId: number }) {
               <p className="text-sm text-gray-500">No orders</p>
             ) : (
               <div className="space-y-2 max-h-64 overflow-y-auto">
-                {orders.map((order) => (
-                  <Link
-                    key={order.id}
-                    href={`/au-rubber/portal/orders/${order.id}`}
-                    className="block p-3 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors"
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium text-gray-900">{order.orderNumber}</span>
-                      <span
-                        className={`px-2 text-xs font-semibold rounded-full ${
-                          order.status >= 5
-                            ? "bg-green-100 text-green-800"
-                            : order.status >= 3
-                              ? "bg-blue-100 text-blue-800"
-                              : order.status === 1
-                                ? "bg-red-100 text-red-800"
-                                : "bg-yellow-100 text-yellow-800"
-                        }`}
-                      >
-                        {order.statusLabel}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between mt-1">
-                      <span className="text-xs text-gray-500">
-                        {order.companyOrderNumber || "No PO ref"}
-                      </span>
-                      <span className="text-xs text-gray-500">{order.items.length} items</span>
-                    </div>
-                  </Link>
-                ))}
+                {orders.map((order) => {
+                  const rawCompanyOrderNumber = order.companyOrderNumber;
+                  return (
+                    <Link
+                      key={order.id}
+                      href={`/au-rubber/portal/orders/${order.id}`}
+                      className="block p-3 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors"
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium text-gray-900">
+                          {order.orderNumber}
+                        </span>
+                        <span
+                          className={`px-2 text-xs font-semibold rounded-full ${
+                            order.status >= 5
+                              ? "bg-green-100 text-green-800"
+                              : order.status >= 3
+                                ? "bg-blue-100 text-blue-800"
+                                : order.status === 1
+                                  ? "bg-red-100 text-red-800"
+                                  : "bg-yellow-100 text-yellow-800"
+                          }`}
+                        >
+                          {order.statusLabel}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between mt-1">
+                        <span className="text-xs text-gray-500">
+                          {rawCompanyOrderNumber || "No PO ref"}
+                        </span>
+                        <span className="text-xs text-gray-500">{order.items.length} items</span>
+                      </div>
+                    </Link>
+                  );
+                })}
               </div>
             )}
           </div>
@@ -502,39 +529,44 @@ function CompanyActivity(props: { companyId: number }) {
               <p className="text-sm text-gray-500">No tax invoices</p>
             ) : (
               <div className="space-y-2 max-h-64 overflow-y-auto">
-                {taxInvoices.map((ti) => (
-                  <Link
-                    key={ti.id}
-                    href={`/au-rubber/portal/tax-invoices/${ti.id}`}
-                    className="block p-3 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors"
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium text-gray-900">{ti.invoiceNumber}</span>
-                      <span
-                        className={`px-2 text-xs font-semibold rounded-full ${
-                          ti.status === "APPROVED"
-                            ? "bg-green-100 text-green-800"
-                            : ti.status === "EXTRACTED"
-                              ? "bg-blue-100 text-blue-800"
-                              : "bg-yellow-100 text-yellow-800"
-                        }`}
-                      >
-                        {ti.statusLabel}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between mt-1">
-                      <span className="text-xs text-gray-500">{ti.invoiceDate || "No date"}</span>
-                      {ti.totalAmount !== null && (
-                        <span className="text-xs font-medium text-gray-700">
-                          R{" "}
-                          {Number(ti.totalAmount).toLocaleString("en-ZA", {
-                            minimumFractionDigits: 2,
-                          })}
+                {taxInvoices.map((ti) => {
+                  const rawInvoiceDate = ti.invoiceDate;
+                  return (
+                    <Link
+                      key={ti.id}
+                      href={`/au-rubber/portal/tax-invoices/${ti.id}`}
+                      className="block p-3 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors"
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium text-gray-900">
+                          {ti.invoiceNumber}
                         </span>
-                      )}
-                    </div>
-                  </Link>
-                ))}
+                        <span
+                          className={`px-2 text-xs font-semibold rounded-full ${
+                            ti.status === "APPROVED"
+                              ? "bg-green-100 text-green-800"
+                              : ti.status === "EXTRACTED"
+                                ? "bg-blue-100 text-blue-800"
+                                : "bg-yellow-100 text-yellow-800"
+                          }`}
+                        >
+                          {ti.statusLabel}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between mt-1">
+                        <span className="text-xs text-gray-500">{rawInvoiceDate || "No date"}</span>
+                        {ti.totalAmount !== null && (
+                          <span className="text-xs font-medium text-gray-700">
+                            R{" "}
+                            {Number(ti.totalAmount).toLocaleString("en-ZA", {
+                              minimumFractionDigits: 2,
+                            })}
+                          </span>
+                        )}
+                      </div>
+                    </Link>
+                  );
+                })}
               </div>
             )}
           </div>
@@ -587,15 +619,23 @@ export default function CustomersPage() {
 
   const sortedCustomers = [...customers].sort((a, b) => {
     const direction = sortDirection === "asc" ? 1 : -1;
+    const aCode = a.code;
+    const bCode = b.code;
+    const aTierName = a.pricingTierName;
+    const bTierName = b.pricingTierName;
+    const aPhone = a.phone;
+    const bPhone = b.phone;
+    const aEmailConfig = a.emailConfig;
+    const bEmailConfig = b.emailConfig;
     if (sortColumn === "name") return direction * a.name.localeCompare(b.name);
-    if (sortColumn === "code") return direction * (a.code || "").localeCompare(b.code || "");
+    if (sortColumn === "code") return direction * (aCode || "").localeCompare(bCode || "");
     if (sortColumn === "pricingTier")
-      return direction * (a.pricingTierName || "").localeCompare(b.pricingTierName || "");
-    if (sortColumn === "contact") return direction * (a.phone || "").localeCompare(b.phone || "");
+      return direction * (aTierName || "").localeCompare(bTierName || "");
+    if (sortColumn === "contact") return direction * (aPhone || "").localeCompare(bPhone || "");
     if (sortColumn === "emailConfig")
       return (
         direction *
-        (Object.keys(a.emailConfig || {}).length - Object.keys(b.emailConfig || {}).length)
+        (Object.keys(aEmailConfig || {}).length - Object.keys(bEmailConfig || {}).length)
       );
     if (sortColumn === "isCompoundOwner")
       return direction * (Number(a.isCompoundOwner) - Number(b.isCompoundOwner));
@@ -641,17 +681,24 @@ export default function CustomersPage() {
       if (formData.outgoingStatementEmail.trim())
         emailConfig.outgoingStatementEmail = formData.outgoingStatementEmail.trim();
 
+      const rawPayloadCode = formData.code;
+      const rawPayloadPricingTierId = formData.pricingTierId;
+      const rawPayloadVatNumber = formData.vatNumber;
+      const rawPayloadRegistrationNumber = formData.registrationNumber;
+      const rawPayloadNotes = formData.notes;
+      const rawPayloadPhone = formData.phone;
+      const rawPayloadContactPerson = formData.contactPerson;
       const payload = {
         name: formData.name,
         companyType: "CUSTOMER" as const,
-        code: formData.code || undefined,
-        pricingTierId: formData.pricingTierId || undefined,
-        vatNumber: formData.vatNumber || undefined,
-        registrationNumber: formData.registrationNumber || undefined,
+        code: rawPayloadCode || undefined,
+        pricingTierId: rawPayloadPricingTierId || undefined,
+        vatNumber: rawPayloadVatNumber || undefined,
+        registrationNumber: rawPayloadRegistrationNumber || undefined,
         isCompoundOwner: formData.isCompoundOwner,
-        notes: formData.notes || undefined,
-        phone: formData.phone || undefined,
-        contactPerson: formData.contactPerson || undefined,
+        notes: rawPayloadNotes || undefined,
+        phone: rawPayloadPhone || undefined,
+        contactPerson: rawPayloadContactPerson || undefined,
         address: cleanedAddress || undefined,
         availableProducts: formData.availableProducts,
         emailConfig: Object.keys(emailConfig).length > 0 ? emailConfig : undefined,
@@ -828,7 +875,10 @@ export default function CustomersPage() {
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {sortedCustomers.map((customer) => {
-                const emailCount = Object.keys(customer.emailConfig || {}).length;
+                const rawEmailConfig = customer.emailConfig;
+                const rawCustomerCode = customer.code;
+                const rawCustomerPhone = customer.phone;
+                const emailCount = Object.keys(rawEmailConfig || {}).length;
                 return (
                   <tr key={customer.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap">
@@ -840,7 +890,7 @@ export default function CustomersPage() {
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {customer.code || "-"}
+                      {rawCustomerCode || "-"}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       {customer.pricingTierName ? (
@@ -852,7 +902,7 @@ export default function CustomersPage() {
                       )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-500">{customer.phone || "-"}</div>
+                      <div className="text-sm text-gray-500">{rawCustomerPhone || "-"}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       {emailCount > 0 ? (

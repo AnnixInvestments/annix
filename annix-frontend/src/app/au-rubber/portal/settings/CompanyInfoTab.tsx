@@ -52,6 +52,7 @@ function TextAreaField(props: {
   placeholder?: string;
   rows?: number;
 }) {
+  const rawPropsRows = props.rows;
   return (
     <div>
       <label className="block text-sm font-medium text-gray-700 mb-1">{props.label}</label>
@@ -59,7 +60,7 @@ function TextAreaField(props: {
         value={props.value}
         onChange={(e) => props.onChange(e.target.value)}
         placeholder={props.placeholder}
-        rows={props.rows || 3}
+        rows={rawPropsRows || 3}
         className="w-full rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 text-sm border p-2"
       />
     </div>
@@ -67,6 +68,20 @@ function TextAreaField(props: {
 }
 
 export function CompanyInfoTab() {
+  const rawProfileLegalName = profile.legalName;
+  const rawProfileTradingName = profile.tradingName;
+  const rawProfileVatNumber = profile.vatNumber;
+  const rawProfileRegistrationNumber = profile.registrationNumber;
+  const rawProfileStreetAddress = profile.streetAddress;
+  const rawProfileCity = profile.city;
+  const rawProfileProvince = profile.province;
+  const rawProfilePostalCode = profile.postalCode;
+  const rawProfilePhone = profile.phone;
+  const rawProfileEmail = profile.email;
+  const rawProfilePostalAddress = profile.postalAddress;
+  const rawProfileDeliveryAddress = profile.deliveryAddress;
+  const rawProfileWebsiteUrl = profile.websiteUrl;
+  const rawProfileLogoUrl = profile.logoUrl;
   const { showToast } = useToast();
   const { branding } = useAuRubberBranding();
   const [profile, setProfile] = useState<RubberAppProfileDto>(EMPTY_PROFILE);
@@ -149,13 +164,13 @@ export function CompanyInfoTab() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <TextField
             label="Legal Name"
-            value={profile.legalName || ""}
+            value={rawProfileLegalName || ""}
             onChange={(v) => updateField("legalName", v)}
             placeholder="AU Industries (Pty) Ltd"
           />
           <TextField
             label="Trading Name"
-            value={profile.tradingName || ""}
+            value={rawProfileTradingName || ""}
             onChange={(v) => updateField("tradingName", v)}
             placeholder="AU Industries"
           />
@@ -164,12 +179,12 @@ export function CompanyInfoTab() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <TextField
             label="VAT Number"
-            value={profile.vatNumber || ""}
+            value={rawProfileVatNumber || ""}
             onChange={(v) => updateField("vatNumber", v)}
           />
           <TextField
             label="Registration Number"
-            value={profile.registrationNumber || ""}
+            value={rawProfileRegistrationNumber || ""}
             onChange={(v) => updateField("registrationNumber", v)}
           />
         </div>
@@ -179,18 +194,18 @@ export function CompanyInfoTab() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <TextField
             label="Street Address"
-            value={profile.streetAddress || ""}
+            value={rawProfileStreetAddress || ""}
             onChange={(v) => updateField("streetAddress", v)}
           />
           <div className="grid grid-cols-2 gap-4">
             <TextField
               label="City"
-              value={profile.city || ""}
+              value={rawProfileCity || ""}
               onChange={(v) => updateField("city", v)}
             />
             <TextField
               label="Province"
-              value={profile.province || ""}
+              value={rawProfileProvince || ""}
               onChange={(v) => updateField("province", v)}
             />
           </div>
@@ -199,17 +214,17 @@ export function CompanyInfoTab() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <TextField
             label="Postal Code"
-            value={profile.postalCode || ""}
+            value={rawProfilePostalCode || ""}
             onChange={(v) => updateField("postalCode", v)}
           />
           <TextField
             label="Phone"
-            value={profile.phone || ""}
+            value={rawProfilePhone || ""}
             onChange={(v) => updateField("phone", v)}
           />
           <TextField
             label="Email"
-            value={profile.email || ""}
+            value={rawProfileEmail || ""}
             onChange={(v) => updateField("email", v)}
           />
         </div>
@@ -235,7 +250,7 @@ export function CompanyInfoTab() {
               </label>
             </div>
             <textarea
-              value={profile.postalAddress || ""}
+              value={rawProfilePostalAddress || ""}
               onChange={(e) => updateField("postalAddress", e.target.value)}
               placeholder={"PO Box 1234\nCity\nProvince\n1234"}
               rows={3}
@@ -262,7 +277,7 @@ export function CompanyInfoTab() {
               </label>
             </div>
             <textarea
-              value={profile.deliveryAddress || ""}
+              value={rawProfileDeliveryAddress || ""}
               onChange={(e) => updateField("deliveryAddress", e.target.value)}
               placeholder={"123 Street Name\nCity\nProvince\n1234"}
               rows={3}
@@ -276,12 +291,12 @@ export function CompanyInfoTab() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <TextField
             label="Website URL"
-            value={profile.websiteUrl || ""}
+            value={rawProfileWebsiteUrl || ""}
             onChange={(v) => updateField("websiteUrl", v)}
           />
           <TextField
             label="Logo URL"
-            value={profile.logoUrl || ""}
+            value={rawProfileLogoUrl || ""}
             onChange={(v) => updateField("logoUrl", v)}
             placeholder="https://... (from branding extraction)"
           />

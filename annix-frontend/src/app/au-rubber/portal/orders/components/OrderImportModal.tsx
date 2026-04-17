@@ -96,6 +96,13 @@ export function OrderImportModal(props: OrderImportModalProps) {
     setError(null);
 
     try {
+      const rawAnalysisCompanyId = analysis.companyId;
+      const rawAnalysisPoNumber = analysis.poNumber;
+      const rawLineProductId = line.productId;
+      const rawLineThickness = line.thickness;
+      const rawLineWidth = line.width;
+      const rawLineLength = line.length;
+      const rawLineQuantity = line.quantity;
       const newCompany: NewCompanyFromAnalysis | undefined =
         !analysis.companyId && newCompanyDetails?.name
           ? {
@@ -109,14 +116,14 @@ export function OrderImportModal(props: OrderImportModalProps) {
       const result = await auRubberApiClient.createOrderFromAnalysis({
         analysis,
         overrides: {
-          companyId: analysis.companyId || undefined,
-          poNumber: analysis.poNumber || undefined,
+          companyId: rawAnalysisCompanyId || undefined,
+          poNumber: rawAnalysisPoNumber || undefined,
           lines: analysis.lines.map((line) => ({
-            productId: line.productId || undefined,
-            thickness: line.thickness || undefined,
-            width: line.width || undefined,
-            length: line.length || undefined,
-            quantity: line.quantity || undefined,
+            productId: rawLineProductId || undefined,
+            thickness: rawLineThickness || undefined,
+            width: rawLineWidth || undefined,
+            length: rawLineLength || undefined,
+            quantity: rawLineQuantity || undefined,
             unitPrice: line.unitPrice,
           })),
           newCompany,

@@ -13,6 +13,8 @@ import {
 import type { RubberProductDto } from "@/app/lib/api/rubberPortalApi";
 
 export default function NewProductionPage() {
+  const rawSelectedStockLocation = selectedStock.location;
+  const rawCalculationCompoundRequiredKg = calculation?.compoundRequiredKg;
   const router = useRouter();
   const { showToast } = useToast();
   const { confirm, ConfirmDialog } = useConfirm();
@@ -307,7 +309,7 @@ export default function NewProductionPage() {
                   </div>
                   <div className="flex justify-between">
                     <span className="text-sm text-gray-600">Location:</span>
-                    <span className="font-medium">{selectedStock.location || "-"}</span>
+                    <span className="font-medium">{rawSelectedStockLocation || "-"}</span>
                   </div>
                   {insufficientStock && (
                     <div className="mt-4 p-3 bg-red-100 rounded-md">
@@ -328,7 +330,7 @@ export default function NewProductionPage() {
                         <span className="text-sm font-medium text-red-800">
                           Insufficient stock - need{" "}
                           {(
-                            (calculation?.compoundRequiredKg || 0) - selectedStock.quantityKg
+                            (rawCalculationCompoundRequiredKg || 0) - selectedStock.quantityKg
                           ).toFixed(2)}{" "}
                           kg more
                         </span>

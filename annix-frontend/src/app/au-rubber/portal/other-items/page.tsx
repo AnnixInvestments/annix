@@ -40,6 +40,23 @@ const UNIT_OF_MEASURE_OPTIONS: { value: OtherStockUnitOfMeasure; label: string }
 ];
 
 export default function OtherItemsPage() {
+  const rawItemCategory = item.category;
+  const rawItemLocation = item.location;
+  const rawItemFormCategory = itemForm.category;
+  const rawTargetValue = e.target.value;
+  const rawItemFormQuantity = itemForm.quantity;
+  const rawItemFormMinStockLevel = itemForm.minStockLevel;
+  const rawItemFormReorderPoint = itemForm.reorderPoint;
+  const rawItemFormLocationId = itemForm.locationId;
+  const rawItemFormCostPerUnit = itemForm.costPerUnit;
+  const rawItemFormPricePerUnit = itemForm.pricePerUnit;
+  const rawItemFormSupplier = itemForm.supplier;
+  const rawTargetValue2 = e.target.value;
+  const rawItemFormDescription = itemForm.description;
+  const rawTargetValue3 = e.target.value;
+  const rawItemFormNotes = itemForm.notes;
+  const rawTargetValue4 = e.target.value;
+  const rawRowCategory = row.category;
   const { showToast } = useToast();
   const [items, setItems] = useState<RubberOtherStockDto[]>([]);
   const [locations, setLocations] = useState<StockLocationDto[]>([]);
@@ -131,13 +148,19 @@ export default function OtherItemsPage() {
         return direction * (a.quantity - b.quantity);
       }
       if (sortColumn === "category") {
-        return direction * (a.category || "").localeCompare(b.category || "");
+        const rawACategory = a.category;
+        const rawBCategory = b.category;
+        return direction * (rawACategory || "").localeCompare(rawBCategory || "");
       }
       if (sortColumn === "reorderPoint") {
-        return direction * ((a.reorderPoint || 0) - (b.reorderPoint || 0));
+        const rawAReorderPoint = a.reorderPoint;
+        const rawBReorderPoint = b.reorderPoint;
+        return direction * ((rawAReorderPoint || 0) - (rawBReorderPoint || 0));
       }
       if (sortColumn === "location") {
-        return direction * (a.location || "").localeCompare(b.location || "");
+        const rawALocation = a.location;
+        const rawBLocation = b.location;
+        return direction * (rawALocation || "").localeCompare(rawBLocation || "");
       }
       return 0;
     });
@@ -221,13 +244,21 @@ export default function OtherItemsPage() {
       const lines = text.split("\n").filter((line) => line.trim());
       const headers = lines[0].split(",").map((h) => h.trim().toLowerCase());
       const rows: ImportOtherStockRowDto[] = lines.slice(1).map((line) => {
+        const rawValuesByHeadersindexofitemcode = values[headers.indexOf("item_code")];
+        const rawValuesByHeadersindexofitemname = values[headers.indexOf("item_name")];
+        const rawValuesByHeadersindexofdescription = values[headers.indexOf("description")];
+        const rawValuesByHeadersindexofcategory = values[headers.indexOf("category")];
+        const rawValuesByHeadersindexofunitofmeasure = values[headers.indexOf("unit_of_measure")];
+        const rawValuesByHeadersindexoflocation = values[headers.indexOf("location")];
+        const rawValuesByHeadersindexofsupplier = values[headers.indexOf("supplier")];
+        const rawValuesByHeadersindexofnotes = values[headers.indexOf("notes")];
         const values = line.split(",").map((v) => v.trim());
         const rowData: ImportOtherStockRowDto = {
-          itemCode: values[headers.indexOf("item_code")] || "",
-          itemName: values[headers.indexOf("item_name")] || "",
-          description: values[headers.indexOf("description")] || null,
-          category: values[headers.indexOf("category")] || null,
-          unitOfMeasure: values[headers.indexOf("unit_of_measure")] || null,
+          itemCode: rawValuesByHeadersindexofitemcode || "",
+          itemName: rawValuesByHeadersindexofitemname || "",
+          description: rawValuesByHeadersindexofdescription || null,
+          category: rawValuesByHeadersindexofcategory || null,
+          unitOfMeasure: rawValuesByHeadersindexofunitofmeasure || null,
           quantity: Number(values[headers.indexOf("quantity")]) || 0,
           minStockLevel: values[headers.indexOf("min_stock_level")]
             ? Number(values[headers.indexOf("min_stock_level")])
@@ -241,9 +272,9 @@ export default function OtherItemsPage() {
           pricePerUnit: values[headers.indexOf("price_per_unit")]
             ? Number(values[headers.indexOf("price_per_unit")])
             : null,
-          location: values[headers.indexOf("location")] || null,
-          supplier: values[headers.indexOf("supplier")] || null,
-          notes: values[headers.indexOf("notes")] || null,
+          location: rawValuesByHeadersindexoflocation || null,
+          supplier: rawValuesByHeadersindexofsupplier || null,
+          notes: rawValuesByHeadersindexofnotes || null,
         };
         return rowData;
       });
@@ -517,7 +548,7 @@ export default function OtherItemsPage() {
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {item.category || "-"}
+                    {rawItemCategory || "-"}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-right">
                     <span
@@ -535,7 +566,7 @@ export default function OtherItemsPage() {
                     {item.reorderPoint}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {item.location || "-"}
+                    {rawItemLocation || "-"}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
                     <button
@@ -650,9 +681,9 @@ export default function OtherItemsPage() {
                       <label className="block text-sm font-medium text-gray-700">Category</label>
                       <input
                         type="text"
-                        value={itemForm.category || ""}
+                        value={rawItemFormCategory || ""}
                         onChange={(e) =>
-                          setItemForm({ ...itemForm, category: e.target.value || null })
+                          setItemForm({ ...itemForm, category: rawTargetValue || null })
                         }
                         className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 sm:text-sm border p-2"
                         placeholder="e.g., Tools, PPE"
@@ -692,7 +723,7 @@ export default function OtherItemsPage() {
                       <input
                         type="number"
                         step="0.001"
-                        value={itemForm.quantity || ""}
+                        value={rawItemFormQuantity || ""}
                         onChange={(e) =>
                           setItemForm({ ...itemForm, quantity: Number(e.target.value) })
                         }
@@ -709,7 +740,7 @@ export default function OtherItemsPage() {
                       <input
                         type="number"
                         step="0.001"
-                        value={itemForm.minStockLevel || ""}
+                        value={rawItemFormMinStockLevel || ""}
                         onChange={(e) =>
                           setItemForm({ ...itemForm, minStockLevel: Number(e.target.value) })
                         }
@@ -724,7 +755,7 @@ export default function OtherItemsPage() {
                       <input
                         type="number"
                         step="0.001"
-                        value={itemForm.reorderPoint || ""}
+                        value={rawItemFormReorderPoint || ""}
                         onChange={(e) =>
                           setItemForm({ ...itemForm, reorderPoint: Number(e.target.value) })
                         }
@@ -735,7 +766,7 @@ export default function OtherItemsPage() {
                     <div>
                       <label className="block text-sm font-medium text-gray-700">Location</label>
                       <select
-                        value={itemForm.locationId || ""}
+                        value={rawItemFormLocationId || ""}
                         onChange={(e) =>
                           setItemForm({
                             ...itemForm,
@@ -761,7 +792,7 @@ export default function OtherItemsPage() {
                       <input
                         type="number"
                         step="0.01"
-                        value={itemForm.costPerUnit || ""}
+                        value={rawItemFormCostPerUnit || ""}
                         onChange={(e) =>
                           setItemForm({
                             ...itemForm,
@@ -779,7 +810,7 @@ export default function OtherItemsPage() {
                       <input
                         type="number"
                         step="0.01"
-                        value={itemForm.pricePerUnit || ""}
+                        value={rawItemFormPricePerUnit || ""}
                         onChange={(e) =>
                           setItemForm({
                             ...itemForm,
@@ -794,9 +825,9 @@ export default function OtherItemsPage() {
                       <label className="block text-sm font-medium text-gray-700">Supplier</label>
                       <input
                         type="text"
-                        value={itemForm.supplier || ""}
+                        value={rawItemFormSupplier || ""}
                         onChange={(e) =>
-                          setItemForm({ ...itemForm, supplier: e.target.value || null })
+                          setItemForm({ ...itemForm, supplier: rawTargetValue2 || null })
                         }
                         className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 sm:text-sm border p-2"
                         placeholder="Supplier name"
@@ -806,9 +837,9 @@ export default function OtherItemsPage() {
                   <div>
                     <label className="block text-sm font-medium text-gray-700">Description</label>
                     <textarea
-                      value={itemForm.description || ""}
+                      value={rawItemFormDescription || ""}
                       onChange={(e) =>
-                        setItemForm({ ...itemForm, description: e.target.value || null })
+                        setItemForm({ ...itemForm, description: rawTargetValue3 || null })
                       }
                       className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 sm:text-sm border p-2"
                       rows={2}
@@ -818,8 +849,8 @@ export default function OtherItemsPage() {
                   <div>
                     <label className="block text-sm font-medium text-gray-700">Notes</label>
                     <textarea
-                      value={itemForm.notes || ""}
-                      onChange={(e) => setItemForm({ ...itemForm, notes: e.target.value || null })}
+                      value={rawItemFormNotes || ""}
+                      onChange={(e) => setItemForm({ ...itemForm, notes: rawTargetValue4 || null })}
                       className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 sm:text-sm border p-2"
                       rows={2}
                       placeholder="Optional notes"
@@ -909,7 +940,7 @@ export default function OtherItemsPage() {
                                 <td className="px-3 py-2 text-sm text-gray-900">{row.itemName}</td>
                                 <td className="px-3 py-2 text-sm text-gray-900">{row.quantity}</td>
                                 <td className="px-3 py-2 text-sm text-gray-900">
-                                  {row.category || "-"}
+                                  {rawRowCategory || "-"}
                                 </td>
                               </tr>
                             ))}

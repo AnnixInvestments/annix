@@ -20,6 +20,7 @@ interface SageConnectionStatus {
 }
 
 export function SageConfigSection() {
+  const rawStatusSageCompanyName = status.sageCompanyName;
   const [status, setStatus] = useState<SageConnectionStatus | null>(null);
   const [expanded, setExpanded] = useState(false);
   const [username, setUsername] = useState("");
@@ -84,12 +85,13 @@ export function SageConfigSection() {
     setError("");
     setSuccess("");
     try {
+      const rawSelectedName = selected?.Name;
       const selected = companies.find((c) => c.ID === selectedCompanyId);
       await auRubberApiClient.updateSageConfig({
         sageUsername: username,
         sagePassword: password,
         sageCompanyId: selectedCompanyId,
-        sageCompanyName: selected?.Name || null,
+        sageCompanyName: rawSelectedName || null,
       });
       setSuccess("Sage connection saved successfully.");
       setPassword("");
@@ -122,7 +124,7 @@ export function SageConfigSection() {
   };
 
   const connectedSummary = status?.connected
-    ? `Connected to ${status.sageCompanyName ?? "Sage"} as ${status.sageUsername}`
+    ? `Connected to ${rawStatusSageCompanyName ?? "Sage"} as ${status.sageUsername}`
     : "Not connected";
 
   return (
@@ -182,8 +184,9 @@ export function SageConfigSection() {
                 <button
                   type="button"
                   onClick={() => {
+                    const rawStatusSageUsername = status.sageUsername;
                     setStep("credentials");
-                    setUsername(status.sageUsername ?? "");
+                    setUsername(rawStatusSageUsername ?? "");
                     setPassword("");
                     setSuccess("");
                     setError("");

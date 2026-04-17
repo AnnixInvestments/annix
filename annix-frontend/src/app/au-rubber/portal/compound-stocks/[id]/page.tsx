@@ -13,6 +13,9 @@ import {
 import { formatDateZA } from "@/app/lib/datetime";
 
 export default function CompoundStockDetailPage() {
+  const rawStockCompoundName = stock.compoundName;
+  const rawStockLocation2 = stock.location;
+  const rawMovementNotes = movement.notes;
   const params = useParams();
   const router = useRouter();
   const { showToast } = useToast();
@@ -126,9 +129,10 @@ export default function CompoundStockDetailPage() {
 
   const openEditModal = () => {
     if (stock) {
+      const rawStockLocation = stock.location;
       setEditMinLevel(stock.minStockLevelKg.toString());
       setEditReorderPoint(stock.reorderPointKg.toString());
-      setEditLocation(stock.location || "");
+      setEditLocation(rawStockLocation || "");
       setShowEditModal(true);
     }
   };
@@ -162,6 +166,7 @@ export default function CompoundStockDetailPage() {
   }
 
   if (error || !stock) {
+    const rawErrorMessage = error?.message;
     return (
       <div className="flex items-center justify-center min-h-96">
         <div className="text-center">
@@ -169,7 +174,7 @@ export default function CompoundStockDetailPage() {
             {error ? "Error Loading Data" : "Stock Not Found"}
           </div>
           <p className="text-gray-600">
-            {error?.message || "The requested compound stock was not found."}
+            {rawErrorMessage || "The requested compound stock was not found."}
           </p>
           <button
             onClick={() => router.push("/au-rubber/portal/compound-stocks")}
@@ -187,7 +192,7 @@ export default function CompoundStockDetailPage() {
       <Breadcrumb
         items={[
           { label: "Compound Inventory", href: "/au-rubber/portal/compound-stocks" },
-          { label: stock.compoundName || "Stock Details" },
+          { label: rawStockCompoundName || "Stock Details" },
         ]}
       />
 
@@ -242,7 +247,7 @@ export default function CompoundStockDetailPage() {
         </div>
         <div className="bg-white shadow rounded-lg p-4">
           <p className="text-sm font-medium text-gray-500">Location</p>
-          <p className="text-2xl font-bold text-gray-900">{stock.location || "-"}</p>
+          <p className="text-2xl font-bold text-gray-900">{rawStockLocation2 || "-"}</p>
           {stock.batchNumber && (
             <p className="text-xs text-gray-500 mt-1">Batch: {stock.batchNumber}</p>
           )}
@@ -299,7 +304,7 @@ export default function CompoundStockDetailPage() {
                     {movement.referenceType}
                     {movement.batchNumber && <span className="ml-2">({movement.batchNumber})</span>}
                   </td>
-                  <td className="px-6 py-4 text-sm text-gray-500">{movement.notes || "-"}</td>
+                  <td className="px-6 py-4 text-sm text-gray-500">{rawMovementNotes || "-"}</td>
                 </tr>
               ))}
             </tbody>

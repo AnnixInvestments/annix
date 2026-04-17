@@ -26,12 +26,16 @@ interface ProductFormProps {
 }
 
 export function ProductForm(props: ProductFormProps) {
+  const rawCodingsQueryIsLoading = codingsQuery.isLoading;
+  const rawCodingsQueryData = codingsQuery.data;
+  const rawCompaniesQueryData = companiesQuery.data;
+  const rawSpecificationsQueryData = specificationsQuery.data;
   const codingsQuery = useAuRubberCodings();
   const companiesQuery = useAuRubberCompanies();
   const specificationsQuery = useAuRubberSpecifications();
 
   const isLoadingData =
-    codingsQuery.isLoading || companiesQuery.isLoading || specificationsQuery.isLoading;
+    rawCodingsQueryIsLoading || companiesQuery.isLoading || specificationsQuery.isLoading;
   const loadError =
     (codingsQuery.error as Error | null) ||
     (companiesQuery.error as Error | null) ||
@@ -46,9 +50,9 @@ export function ProductForm(props: ProductFormProps) {
       submitLabel={props.submitLabel}
       isSaving={props.isSaving}
       colorVariant="yellow"
-      codings={codingsQuery.data ?? []}
-      companies={companiesQuery.data ?? []}
-      specifications={specificationsQuery.data ?? null}
+      codings={rawCodingsQueryData ?? []}
+      companies={rawCompaniesQueryData ?? []}
+      specifications={rawSpecificationsQueryData ?? null}
       isLoadingData={isLoadingData}
       loadError={loadError}
       sansMode={true}

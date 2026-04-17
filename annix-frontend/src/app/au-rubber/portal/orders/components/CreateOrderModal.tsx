@@ -91,12 +91,13 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
   );
 
   const addLineItem = (product: RubberProductDto) => {
+    const rawProductTitle = product.title;
     const isRubber = isRubberProduct(product);
     setLineItems((prev) => [
       ...prev,
       {
         productId: product.id,
-        productTitle: product.title || "Untitled",
+        productTitle: rawProductTitle || "Untitled",
         thickness: isRubber ? THICKNESS_OPTIONS[0] : null,
         width: isRubber ? WIDTH_OPTIONS[0] : null,
         length: isRubber ? LENGTH_OPTIONS[0] : null,
@@ -114,15 +115,18 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
   };
 
   const handleSubmit = async () => {
+    const rawItemThickness = item.thickness;
+    const rawItemWidth = item.width;
+    const rawItemLength = item.length;
     if (!selectedCompanyId || lineItems.length === 0) return;
     await onCreateOrder({
       companyId: selectedCompanyId,
       companyOrderNumber,
       items: lineItems.map((item) => ({
         productId: item.productId,
-        thickness: item.thickness || undefined,
-        width: item.width || undefined,
-        length: item.length || undefined,
+        thickness: rawItemThickness || undefined,
+        width: rawItemWidth || undefined,
+        length: rawItemLength || undefined,
         quantity: item.quantity,
       })),
     });
@@ -236,6 +240,7 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                   ) : (
                     <div className="border border-gray-200 rounded-lg divide-y divide-gray-100 max-h-48 overflow-y-auto">
                       {filteredProducts.map((product) => {
+                        const rawProductTitle2 = product.title;
                         const alreadyAdded = lineItems.some((li) => li.productId === product.id);
                         return (
                           <div
@@ -244,7 +249,7 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                           >
                             <div className="flex-1 min-w-0">
                               <div className="text-sm font-medium text-gray-900 truncate">
-                                {product.title || "Untitled"}
+                                {rawProductTitle2 || "Untitled"}
                               </div>
                               <div className="flex gap-2 mt-0.5">
                                 {product.typeName && (
@@ -310,6 +315,9 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                         </thead>
                         <tbody className="divide-y divide-gray-100">
                           {lineItems.map((item, index) => {
+                            const rawItemThickness2 = item.thickness;
+                            const rawItemWidth2 = item.width;
+                            const rawItemLength2 = item.length;
                             const isRubber = item.thickness !== null;
                             return (
                               <tr key={`${item.productId}-${index}`} className="bg-white">
@@ -319,7 +327,7 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                                 <td className="px-4 py-2">
                                   {isRubber ? (
                                     <select
-                                      value={item.thickness || ""}
+                                      value={rawItemThickness2 || ""}
                                       onChange={(e) =>
                                         updateLineItem(index, {
                                           thickness: Number(e.target.value),
@@ -340,7 +348,7 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                                 <td className="px-4 py-2">
                                   {isRubber ? (
                                     <select
-                                      value={item.width || ""}
+                                      value={rawItemWidth2 || ""}
                                       onChange={(e) =>
                                         updateLineItem(index, { width: Number(e.target.value) })
                                       }
@@ -359,7 +367,7 @@ export function CreateOrderModal(props: CreateOrderModalProps) {
                                 <td className="px-4 py-2">
                                   {isRubber ? (
                                     <select
-                                      value={item.length || ""}
+                                      value={rawItemLength2 || ""}
                                       onChange={(e) =>
                                         updateLineItem(index, { length: Number(e.target.value) })
                                       }

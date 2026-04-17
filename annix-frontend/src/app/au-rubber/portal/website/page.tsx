@@ -21,10 +21,11 @@ import { PAGE_PERMISSIONS } from "../../config/pagePermissions";
 const ITEMS_PER_PAGE = 25;
 
 export default function WebsitePagesListPage() {
+  const rawPagesQueryData = pagesQuery.data;
   const { showToast } = useToast();
   const queryClient = useQueryClient();
   const pagesQuery = useAuRubberWebsitePages();
-  const pages = pagesQuery.data || [];
+  const pages = rawPagesQueryData || [];
 
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(0);

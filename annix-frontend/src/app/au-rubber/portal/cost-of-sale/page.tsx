@@ -62,6 +62,13 @@ function ProfitBadge(props: { profitLossZar: number | null }) {
 }
 
 export default function CostOfSalePage() {
+  const rawRTotalCos = r.totalCos;
+  const rawRPriceZar = r.priceZar;
+  const rawRProfitLossZar = r.profitLossZar;
+  const rawRateCompoundCode = rate.compoundCode;
+  const rawRateCompoundName = rate.compoundName;
+  const rawRateNotes = rate.notes;
+  const rawRollCompoundCode = roll.compoundCode;
   const { showToast } = useToast();
   const [activeTab, setActiveTab] = useState<ActiveTab>("rates");
 
@@ -228,9 +235,9 @@ export default function CostOfSalePage() {
     (rollPage + 1) * effectiveRollPageSize,
   );
 
-  const totalCosSum = rollCosData.reduce((sum, r) => sum + (r.totalCos || 0), 0);
-  const totalRevenueSum = rollCosData.reduce((sum, r) => sum + (r.priceZar || 0), 0);
-  const totalProfitSum = rollCosData.reduce((sum, r) => sum + (r.profitLossZar || 0), 0);
+  const totalCosSum = rollCosData.reduce((sum, r) => sum + (rawRTotalCos || 0), 0);
+  const totalRevenueSum = rollCosData.reduce((sum, r) => sum + (rawRPriceZar || 0), 0);
+  const totalProfitSum = rollCosData.reduce((sum, r) => sum + (rawRProfitLossZar || 0), 0);
   const anomalyCount = rollCosData.filter(
     (r) => r.anomalyZar !== null && Math.abs(r.anomalyZar) >= 0.01,
   ).length;
@@ -435,10 +442,10 @@ export default function CostOfSalePage() {
                     {compoundRates.map((rate) => (
                       <tr key={rate.id} className="hover:bg-gray-50">
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                          {rate.compoundCode || "—"}
+                          {rawRateCompoundCode || "—"}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                          {rate.compoundName || "—"}
+                          {rawRateCompoundName || "—"}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm">
                           {editingId === rate.id ? (
@@ -467,7 +474,7 @@ export default function CostOfSalePage() {
                               placeholder="Notes"
                             />
                           ) : (
-                            rate.notes || "—"
+                            rawRateNotes || "—"
                           )}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
@@ -496,9 +503,10 @@ export default function CostOfSalePage() {
                             <div className="flex items-center space-x-2">
                               <button
                                 onClick={() => {
+                                  const rawRateNotes2 = rate.notes;
                                   setEditingId(rate.id);
                                   setEditValue(String(rate.costPerKgZar));
-                                  setEditNotes(rate.notes || "");
+                                  setEditNotes(rawRateNotes2 || "");
                                 }}
                                 className="text-yellow-600 hover:text-yellow-800"
                                 title="Edit"
@@ -615,7 +623,7 @@ export default function CostOfSalePage() {
                             {roll.rollNumber}
                           </td>
                           <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
-                            {roll.compoundCode || "—"}
+                            {rawRollCompoundCode || "—"}
                           </td>
                           <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
                             {roll.weightKg.toFixed(1)}

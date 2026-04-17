@@ -64,6 +64,8 @@ type SortColumn =
   | "createdAt";
 
 export default function SupplierCocsPage() {
+  const rawCocsQueryData = cocsQuery.data;
+  const rawCompaniesQueryData = companiesQuery.data;
   const { showToast } = useToast();
   const { isAdmin } = useAuRubberAuth();
   const { colors, branding } = useAuRubberBranding();
@@ -87,8 +89,8 @@ export default function SupplierCocsPage() {
   const authorizeVersionMutation = useAuRubberAuthorizeVersion();
   const rejectVersionMutation = useAuRubberRejectVersion();
   const documentUrlMutation = useAuRubberDocumentUrl();
-  const cocs = cocsQuery.data || [];
-  const companies = companiesQuery.data || [];
+  const cocs = rawCocsQueryData || [];
+  const companies = rawCompaniesQueryData || [];
   const isLoading = cocsQuery.isLoading;
   const error = cocsQuery.error;
   const [compounderPage, setCompounderPage] = useState(0);
@@ -175,13 +177,19 @@ export default function SupplierCocsPage() {
     return [...cocsToSort].sort((a, b) => {
       const direction = sort.direction === "asc" ? 1 : -1;
       if (sort.column === "productionDate") {
-        return direction * (a.productionDate || "").localeCompare(b.productionDate || "");
+        const rawAProductionDate = a.productionDate;
+        const rawBProductionDate = b.productionDate;
+        return direction * (rawAProductionDate || "").localeCompare(rawBProductionDate || "");
       }
       if (sort.column === "cocNumber") {
-        return direction * (a.cocNumber || "").localeCompare(b.cocNumber || "");
+        const rawACocNumber = a.cocNumber;
+        const rawBCocNumber = b.cocNumber;
+        return direction * (rawACocNumber || "").localeCompare(rawBCocNumber || "");
       }
       if (sort.column === "compoundCode") {
-        return direction * (a.compoundCode || "").localeCompare(b.compoundCode || "");
+        const rawACompoundCode = a.compoundCode;
+        const rawBCompoundCode = b.compoundCode;
+        return direction * (rawACompoundCode || "").localeCompare(rawBCompoundCode || "");
       }
       if (sort.column === "processingStatus") {
         return direction * a.processingStatus.localeCompare(b.processingStatus);
@@ -760,6 +768,9 @@ export default function SupplierCocsPage() {
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
                     {group.paginated.map((coc) => {
+                      const rawCocCocNumber = coc.cocNumber;
+                      const rawCocCompoundCode = coc.compoundCode;
+                      const rawCocSupplierCompanyName = coc.supplierCompanyName;
                       const isInactive =
                         coc.versionStatus === "SUPERSEDED" || coc.versionStatus === "REJECTED";
                       const isPendingAuth = coc.versionStatus === "PENDING_AUTHORIZATION";
@@ -789,7 +800,7 @@ export default function SupplierCocsPage() {
                                 href={`/au-rubber/portal/supplier-cocs/${coc.id}`}
                                 className="text-yellow-600 hover:text-yellow-800 font-medium"
                               >
-                                {coc.cocNumber || `COC-${coc.id}`}
+                                {rawCocCocNumber || `COC-${coc.id}`}
                               </Link>
                               {coc.version > 1 && (
                                 <span className="px-1.5 py-0.5 text-xs font-semibold rounded-full bg-blue-100 text-blue-700">
@@ -817,10 +828,10 @@ export default function SupplierCocsPage() {
                             )}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {coc.compoundCode || "-"}
+                            {rawCocCompoundCode || "-"}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {coc.supplierCompanyName || "-"}
+                            {rawCocSupplierCompanyName || "-"}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             {statusBadge(coc.processingStatus)}

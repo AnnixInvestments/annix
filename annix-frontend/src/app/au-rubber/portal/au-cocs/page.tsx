@@ -34,6 +34,12 @@ type SortColumn =
   | "createdAt";
 
 export default function AuCocsPage() {
+  const rawCocsQueryData = cocsQuery.data;
+  const rawCocCustomerCompanyName = coc.customerCompanyName;
+  const rawCocPoNumber = coc.poNumber;
+  const rawCocDeliveryNoteRef = coc.deliveryNoteRef;
+  const rawCocDeliveryNoteRef2 = coc.deliveryNoteRef;
+  const rawCocItemCount = coc.itemCount;
   const { showToast } = useToast();
   const { isAdmin } = useAuRubberAuth();
   const [searchQuery, setSearchQuery] = useState("");
@@ -41,7 +47,7 @@ export default function AuCocsPage() {
   const cocsQuery = useAuRubberAuCocs({
     status: filterStatus || undefined,
   });
-  const cocs = cocsQuery.data || [];
+  const cocs = rawCocsQueryData || [];
   const isLoading = cocsQuery.isLoading;
   const error = cocsQuery.error;
   const [currentPage, setCurrentPage] = useState(0);
@@ -247,19 +253,29 @@ export default function AuCocsPage() {
         return direction * a.cocNumber.localeCompare(b.cocNumber);
       }
       if (sortColumn === "customerCompanyName") {
-        return direction * (a.customerCompanyName || "").localeCompare(b.customerCompanyName || "");
+        const rawACustomerCompanyName = a.customerCompanyName;
+        const rawBCustomerCompanyName = b.customerCompanyName;
+        return (
+          direction * (rawACustomerCompanyName || "").localeCompare(rawBCustomerCompanyName || "")
+        );
       }
       if (sortColumn === "status") {
         return direction * a.status.localeCompare(b.status);
       }
       if (sortColumn === "poNumber") {
-        return direction * (a.poNumber || "").localeCompare(b.poNumber || "");
+        const rawAPoNumber = a.poNumber;
+        const rawBPoNumber = b.poNumber;
+        return direction * (rawAPoNumber || "").localeCompare(rawBPoNumber || "");
       }
       if (sortColumn === "deliveryNoteRef") {
-        return direction * (a.deliveryNoteRef || "").localeCompare(b.deliveryNoteRef || "");
+        const rawADeliveryNoteRef = a.deliveryNoteRef;
+        const rawBDeliveryNoteRef = b.deliveryNoteRef;
+        return direction * (rawADeliveryNoteRef || "").localeCompare(rawBDeliveryNoteRef || "");
       }
       if (sortColumn === "rolls") {
-        return direction * ((a.itemCount || 0) - (b.itemCount || 0));
+        const rawAItemCount = a.itemCount;
+        const rawBItemCount = b.itemCount;
+        return direction * ((rawAItemCount || 0) - (rawBItemCount || 0));
       }
       if (sortColumn === "createdAt") {
         return direction * a.createdAt.localeCompare(b.createdAt);
@@ -392,6 +408,8 @@ export default function AuCocsPage() {
   };
 
   const readinessBadge = (coc: RubberAuCocDto) => {
+    const rawReadinessColorsByCocreadinessstatus = readinessColors[coc.readinessStatus];
+    const rawReadinessLabelsByCocreadinessstatus = readinessLabels[coc.readinessStatus];
     if (!coc.readinessStatus || coc.readinessStatus === "NOT_TRACKED") return null;
 
     const readinessColors: Record<string, string> = {
@@ -415,14 +433,14 @@ export default function AuCocsPage() {
 
     return (
       <span
-        className={`ml-1 px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${readinessColors[coc.readinessStatus] || "bg-gray-100 text-gray-600"}`}
+        className={`ml-1 px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${rawReadinessColorsByCocreadinessstatus || "bg-gray-100 text-gray-600"}`}
         title={
           coc.readinessDetails?.missingDocuments?.length
             ? `Missing: ${coc.readinessDetails.missingDocuments.join(", ")}`
             : undefined
         }
       >
-        {readinessLabels[coc.readinessStatus] || coc.readinessStatus}
+        {rawReadinessLabelsByCocreadinessstatus || coc.readinessStatus}
       </span>
     );
   };
@@ -699,10 +717,10 @@ export default function AuCocsPage() {
                     </Link>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {coc.customerCompanyName || "-"}
+                    {rawCocCustomerCompanyName || "-"}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {coc.poNumber || "-"}
+                    {rawCocPoNumber || "-"}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {coc.sourceDeliveryNoteId ? (
@@ -716,14 +734,14 @@ export default function AuCocsPage() {
                         }
                         className="text-yellow-600 hover:text-yellow-800 hover:underline"
                       >
-                        {coc.deliveryNoteRef || coc.sourceDeliveryNoteId}
+                        {rawCocDeliveryNoteRef || coc.sourceDeliveryNoteId}
                       </button>
                     ) : (
-                      coc.deliveryNoteRef || "-"
+                      rawCocDeliveryNoteRef2 || "-"
                     )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {coc.itemCount || 0}
+                    {rawCocItemCount || 0}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     {statusBadge(coc.status)}

@@ -42,6 +42,7 @@ interface ReconciliationDetail {
 }
 
 export default function ReconciliationDetailPage() {
+  const rawLineInvoiceDate = line.invoiceDate;
   const params = useParams();
   const id = Number(params.id);
   const { showToast } = useToast();
@@ -237,7 +238,7 @@ export default function ReconciliationDetailPage() {
                         {line.invoiceNumber}
                       </td>
                       <td className="px-4 py-2 text-gray-600 dark:text-gray-400">
-                        {line.invoiceDate || "-"}
+                        {rawLineInvoiceDate || "-"}
                       </td>
                       <td className="px-4 py-2 text-right text-gray-900 dark:text-gray-100">
                         R {line.amount.toLocaleString("en-ZA", { minimumFractionDigits: 2 })}

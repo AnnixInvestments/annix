@@ -32,24 +32,27 @@ type SortColumn =
   | "createdAt";
 
 const typeColor = (type: CompoundMovementType) => {
+  const rawColorsByType = colors[type];
   const colors: Record<CompoundMovementType, string> = {
     IN: "bg-green-100 text-green-800",
     OUT: "bg-red-100 text-red-800",
     ADJUSTMENT: "bg-blue-100 text-blue-800",
   };
-  return colors[type] || "bg-gray-100 text-gray-800";
+  return rawColorsByType || "bg-gray-100 text-gray-800";
 };
 
 const typeLabel = (type: CompoundMovementType) => {
+  const rawLabelsByType = labels[type];
   const labels: Record<CompoundMovementType, string> = {
     IN: "In",
     OUT: "Out",
     ADJUSTMENT: "Adjustment",
   };
-  return labels[type] || type;
+  return rawLabelsByType || type;
 };
 
 const referenceLabel = (type: CompoundMovementReferenceType) => {
+  const rawLabelsByType2 = labels[type];
   const labels: Record<CompoundMovementReferenceType, string> = {
     PURCHASE: "Purchase Order",
     PRODUCTION: "Production",
@@ -61,10 +64,14 @@ const referenceLabel = (type: CompoundMovementReferenceType) => {
     INVOICE_RECEIPT: "Invoice Receipt",
     DELIVERY_DEDUCTION: "Delivery Deduction",
   };
-  return labels[type] || type;
+  return rawLabelsByType2 || type;
 };
 
 export default function StockMovementsPage() {
+  const rawMCompoundName = m.compoundName;
+  const rawMBatchNumber = m.batchNumber;
+  const rawMNotes = m.notes;
+  const rawMNotes2 = m.notes;
   const { showToast } = useToast();
   const [movements, setMovements] = useState<RubberCompoundMovementDto[]>([]);
   const [stocks, setStocks] = useState<RubberCompoundStockDto[]>([]);
@@ -114,17 +121,24 @@ export default function StockMovementsPage() {
 
   const sortMovements = (items: RubberCompoundMovementDto[]): RubberCompoundMovementDto[] => {
     return [...items].sort((a, b) => {
+      const rawACompoundName = a.compoundName;
+      const rawBCompoundName = b.compoundName;
+      const rawABatchNumber = a.batchNumber;
+      const rawBBatchNumber = b.batchNumber;
+      const rawANotes = a.notes;
+      const rawBNotes = b.notes;
       const direction = sortDirection === "asc" ? 1 : -1;
       if (sortColumn === "compoundName")
-        return direction * (a.compoundName || "").localeCompare(b.compoundName || "");
+        return direction * (rawACompoundName || "").localeCompare(rawBCompoundName || "");
       if (sortColumn === "movementType")
         return direction * a.movementType.localeCompare(b.movementType);
       if (sortColumn === "quantityKg") return direction * (a.quantityKg - b.quantityKg);
       if (sortColumn === "referenceType")
         return direction * a.referenceType.localeCompare(b.referenceType);
       if (sortColumn === "batchNumber")
-        return direction * (a.batchNumber || "").localeCompare(b.batchNumber || "");
-      if (sortColumn === "notes") return direction * (a.notes || "").localeCompare(b.notes || "");
+        return direction * (rawABatchNumber || "").localeCompare(rawBBatchNumber || "");
+      if (sortColumn === "notes")
+        return direction * (rawANotes || "").localeCompare(rawBNotes || "");
       if (sortColumn === "createdAt") return direction * a.createdAt.localeCompare(b.createdAt);
       return 0;
     });
@@ -304,7 +318,7 @@ export default function StockMovementsPage() {
                     {formatDateZA(m.createdAt)}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {m.compoundName || "N/A"}
+                    {rawMCompoundName || "N/A"}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span
@@ -334,13 +348,13 @@ export default function StockMovementsPage() {
                     )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {m.batchNumber || "-"}
+                    {rawMBatchNumber || "-"}
                   </td>
                   <td
                     className="px-6 py-4 text-sm text-gray-500 max-w-xs truncate"
-                    title={m.notes || ""}
+                    title={rawMNotes || ""}
                   >
-                    {m.notes || "-"}
+                    {rawMNotes2 || "-"}
                   </td>
                 </tr>
               ))}

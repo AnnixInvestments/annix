@@ -38,10 +38,12 @@ interface MetricCardProps {
 }
 
 function MetricCard(props: MetricCardProps) {
+  const rawPropsUnit = props.unit;
+  const rawPropsDecimals = props.decimals;
   const label = props.label;
   const stats = props.stats;
-  const unit = props.unit || "";
-  const decimals = props.decimals || 2;
+  const unit = rawPropsUnit || "";
+  const decimals = rawPropsDecimals || 2;
   const specMin = props.specMin;
   const specMax = props.specMax;
   const specNominal = props.specNominal;
@@ -115,6 +117,13 @@ function MetricCard(props: MetricCardProps) {
 }
 
 export default function QualityTrackingDetailPage() {
+  const rawConfigFormWindowSize = configForm.windowSize;
+  const rawConfigFormShoreADriftThreshold = configForm.shoreADriftThreshold;
+  const rawConfigFormSpecificGravityDriftThreshold = configForm.specificGravityDriftThreshold;
+  const rawConfigFormTensileStrengthDropPercent = configForm.tensileStrengthDropPercent;
+  const rawConfigFormTearStrengthDropPercent = configForm.tearStrengthDropPercent;
+  const rawConfigFormElongationDropPercent = configForm.elongationDropPercent;
+  const rawConfigFormTc90CvThreshold = configForm.tc90CvThreshold;
   const params = useParams();
   const router = useRouter();
   const { showToast } = useToast();
@@ -206,11 +215,12 @@ export default function QualityTrackingDetailPage() {
   }
 
   if (error || !detail) {
+    const rawErrorMessage = error?.message;
     return (
       <div className="flex items-center justify-center min-h-96">
         <div className="text-center">
           <div className="text-red-500 text-lg font-semibold mb-2">Error Loading Data</div>
-          <p className="text-gray-600">{error?.message || "Compound not found"}</p>
+          <p className="text-gray-600">{rawErrorMessage || "Compound not found"}</p>
           <button
             onClick={() => router.back()}
             className="mt-4 px-4 py-2 bg-yellow-600 text-white rounded-md hover:bg-yellow-700"
@@ -495,7 +505,7 @@ export default function QualityTrackingDetailPage() {
                   </label>
                   <input
                     type="number"
-                    value={configForm.windowSize || 10}
+                    value={rawConfigFormWindowSize || 10}
                     onChange={(e) =>
                       setConfigForm({ ...configForm, windowSize: Number(e.target.value) })
                     }
@@ -510,7 +520,7 @@ export default function QualityTrackingDetailPage() {
                     <input
                       type="number"
                       step="0.1"
-                      value={configForm.shoreADriftThreshold || 3}
+                      value={rawConfigFormShoreADriftThreshold || 3}
                       onChange={(e) =>
                         setConfigForm({
                           ...configForm,
@@ -527,7 +537,7 @@ export default function QualityTrackingDetailPage() {
                     <input
                       type="number"
                       step="0.001"
-                      value={configForm.specificGravityDriftThreshold || 0.02}
+                      value={rawConfigFormSpecificGravityDriftThreshold || 0.02}
                       onChange={(e) =>
                         setConfigForm({
                           ...configForm,
@@ -545,7 +555,7 @@ export default function QualityTrackingDetailPage() {
                     </label>
                     <input
                       type="number"
-                      value={configForm.tensileStrengthDropPercent || 10}
+                      value={rawConfigFormTensileStrengthDropPercent || 10}
                       onChange={(e) =>
                         setConfigForm({
                           ...configForm,
@@ -561,7 +571,7 @@ export default function QualityTrackingDetailPage() {
                     </label>
                     <input
                       type="number"
-                      value={configForm.tearStrengthDropPercent || 15}
+                      value={rawConfigFormTearStrengthDropPercent || 15}
                       onChange={(e) =>
                         setConfigForm({
                           ...configForm,
@@ -579,7 +589,7 @@ export default function QualityTrackingDetailPage() {
                     </label>
                     <input
                       type="number"
-                      value={configForm.elongationDropPercent || 15}
+                      value={rawConfigFormElongationDropPercent || 15}
                       onChange={(e) =>
                         setConfigForm({
                           ...configForm,
@@ -595,7 +605,7 @@ export default function QualityTrackingDetailPage() {
                     </label>
                     <input
                       type="number"
-                      value={configForm.tc90CvThreshold || 15}
+                      value={rawConfigFormTc90CvThreshold || 15}
                       onChange={(e) =>
                         setConfigForm({
                           ...configForm,

@@ -34,6 +34,7 @@ const STATUS_COLORS: Record<RollRejectionStatus, string> = {
 };
 
 export function RollRejectionsPanel(props: RollRejectionsPanelProps) {
+  const rawRejectionReplacementCocNumber = rejection.replacementCocNumber;
   const { supplierCoc, onRejectionCreated } = props;
   const { showToast } = useToast();
   const [rejections, setRejections] = useState<RollRejectionDto[]>([]);
@@ -79,13 +80,14 @@ export function RollRejectionsPanel(props: RollRejectionsPanelProps) {
     }
 
     try {
+      const rawRejectFormNotes = rejectForm.notes;
       setIsSubmitting(true);
       await auRubberApiClient.createRollRejection({
         originalSupplierCocId: supplierCoc.id,
         rollNumber: rejectForm.rollNumber,
         rejectionReason: rejectForm.rejectionReason,
         rejectedBy: rejectForm.rejectedBy,
-        notes: rejectForm.notes || null,
+        notes: rawRejectFormNotes || null,
       });
       showToast("Roll rejection created", "success");
       setShowRejectForm(false);
@@ -157,8 +159,9 @@ export function RollRejectionsPanel(props: RollRejectionsPanelProps) {
   };
 
   const extractedRollNumbers = (() => {
+    const rawDataRollNumbers = data?.rollNumbers;
     const data = supplierCoc.extractedData as Record<string, unknown> | null;
-    const rolls = (data?.rollNumbers || []) as string[];
+    const rolls = (rawDataRollNumbers || []) as string[];
     return rolls;
   })();
 
@@ -304,7 +307,7 @@ export function RollRejectionsPanel(props: RollRejectionsPanelProps) {
                       >
                         <Link2 className="w-3.5 h-3.5 mr-1" />
                         Replacement:{" "}
-                        {rejection.replacementCocNumber ||
+                        {rawRejectionReplacementCocNumber ||
                           `CoC-${rejection.replacementSupplierCocId}`}
                         {rejection.replacementRollNumber &&
                           ` (Roll ${rejection.replacementRollNumber})`}

@@ -26,6 +26,8 @@ function PropertyBadge({ label, color }: { label: string; color: string }) {
 }
 
 export default function AuRubberProductDetailPage() {
+  const rawProductTitle = product.title;
+  const rawProductTitle2 = product.title;
   const params = useParams();
   const router = useRouter();
   const productId = Number(params.id);
@@ -103,14 +105,14 @@ export default function AuRubberProductDetailPage() {
       <Breadcrumb
         items={[
           { label: "Products", href: "/au-rubber/portal/products" },
-          { label: product.title || "Untitled Product" },
+          { label: rawProductTitle || "Untitled Product" },
         ]}
       />
 
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">
-            {product.title || "Untitled Product"}
+            {rawProductTitle2 || "Untitled Product"}
           </h1>
           {product.description && (
             <p className="mt-1 text-sm text-gray-600">{product.description}</p>

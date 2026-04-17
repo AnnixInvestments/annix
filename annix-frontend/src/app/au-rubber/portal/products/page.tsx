@@ -28,6 +28,14 @@ import { PAGE_PERMISSIONS } from "../../config/pagePermissions";
 type SortColumn = "title" | "type" | "costPerKg" | "markup" | "pricePerKg" | "specificGravity";
 
 const exportProductsToCSV = (products: RubberProductDto[]) => {
+  const rawProductTitle = product.title;
+  const rawProductDescription = product.description;
+  const rawProductTypeName = product.typeName;
+  const rawProductCompoundName = product.compoundName;
+  const rawProductColourName = product.colourName;
+  const rawProductHardnessName = product.hardnessName;
+  const rawProductGradeName = product.gradeName;
+  const rawProductCuringMethodName = product.curingMethodName;
   const headers = [
     "Title",
     "Description",
@@ -43,14 +51,14 @@ const exportProductsToCSV = (products: RubberProductDto[]) => {
     "Specific Gravity",
   ];
   const rows = products.map((product) => [
-    product.title || "",
-    product.description || "",
-    product.typeName || "",
-    product.compoundName || "",
-    product.colourName || "",
-    product.hardnessName || "",
-    product.gradeName || "",
-    product.curingMethodName || "",
+    rawProductTitle || "",
+    rawProductDescription || "",
+    rawProductTypeName || "",
+    rawProductCompoundName || "",
+    rawProductColourName || "",
+    rawProductHardnessName || "",
+    rawProductGradeName || "",
+    rawProductCuringMethodName || "",
     product.costPerKg?.toString() || "",
     product.markup?.toString() || "",
     product.pricePerKg?.toString() || "",
@@ -74,12 +82,17 @@ const exportProductsToCSV = (products: RubberProductDto[]) => {
 };
 
 export default function AuRubberProductsPage() {
+  const rawProductsQueryData = productsQuery.data;
+  const rawCodingsQueryData = codingsQuery.data;
+  const rawProductTitle2 = product.title;
+  const rawProductTypeName2 = product.typeName;
+  const rawProductCompoundName2 = product.compoundName;
   const { showToast } = useToast();
 
   const productsQuery = useAuRubberProducts();
   const codingsQuery = useAuRubberCodings();
-  const products = productsQuery.data || [];
-  const codings = codingsQuery.data || [];
+  const products = rawProductsQueryData || [];
+  const codings = rawCodingsQueryData || [];
   const isLoading = productsQuery.isLoading;
   const error = productsQuery.error;
 
@@ -100,21 +113,33 @@ export default function AuRubberProductsPage() {
     return [...productsToSort].sort((a, b) => {
       const direction = sortDirection === "asc" ? 1 : -1;
       if (sortColumn === "title") {
-        const aVal = a.title || "";
-        const bVal = b.title || "";
+        const rawATitle = a.title;
+        const rawBTitle = b.title;
+        const aVal = rawATitle || "";
+        const bVal = rawBTitle || "";
         return direction * aVal.localeCompare(bVal);
       } else if (sortColumn === "type") {
-        const aVal = a.typeName || "";
-        const bVal = b.typeName || "";
+        const rawATypeName = a.typeName;
+        const rawBTypeName = b.typeName;
+        const aVal = rawATypeName || "";
+        const bVal = rawBTypeName || "";
         return direction * aVal.localeCompare(bVal);
       } else if (sortColumn === "costPerKg") {
-        return direction * ((a.costPerKg || 0) - (b.costPerKg || 0));
+        const rawACostPerKg = a.costPerKg;
+        const rawBCostPerKg = b.costPerKg;
+        return direction * ((rawACostPerKg || 0) - (rawBCostPerKg || 0));
       } else if (sortColumn === "markup") {
-        return direction * ((a.markup || 0) - (b.markup || 0));
+        const rawAMarkup = a.markup;
+        const rawBMarkup = b.markup;
+        return direction * ((rawAMarkup || 0) - (rawBMarkup || 0));
       } else if (sortColumn === "pricePerKg") {
-        return direction * ((a.pricePerKg || 0) - (b.pricePerKg || 0));
+        const rawAPricePerKg = a.pricePerKg;
+        const rawBPricePerKg = b.pricePerKg;
+        return direction * ((rawAPricePerKg || 0) - (rawBPricePerKg || 0));
       } else if (sortColumn === "specificGravity") {
-        return direction * ((a.specificGravity || 0) - (b.specificGravity || 0));
+        const rawASpecificGravity = a.specificGravity;
+        const rawBSpecificGravity = b.specificGravity;
+        return direction * ((rawASpecificGravity || 0) - (rawBSpecificGravity || 0));
       }
       return 0;
     });
@@ -500,7 +525,7 @@ export default function AuRubberProductsPage() {
                           href={`/au-rubber/portal/products/${product.id}/edit`}
                           className="text-sm font-medium text-yellow-600 hover:text-yellow-900"
                         >
-                          {product.title || "Untitled"}
+                          {rawProductTitle2 || "Untitled"}
                         </Link>
                         {product.description && (
                           <div className="text-sm text-gray-500 truncate max-w-xs">
@@ -509,8 +534,10 @@ export default function AuRubberProductsPage() {
                         )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">{product.typeName || "-"}</div>
-                        <div className="text-sm text-gray-500">{product.compoundName || "-"}</div>
+                        <div className="text-sm text-gray-900">{rawProductTypeName2 || "-"}</div>
+                        <div className="text-sm text-gray-500">
+                          {rawProductCompoundName2 || "-"}
+                        </div>
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex flex-wrap gap-1">

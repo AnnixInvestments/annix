@@ -32,13 +32,17 @@ type SortColumn =
   | "status";
 
 export default function QualityTrackingPage() {
+  const rawSummaryQueryData = summaryQuery.data;
+  const rawAlertsQueryData = alertsQuery.data;
+  const rawSummaryQueryIsLoading = summaryQuery.isLoading;
+  const rawSummaryQueryError = summaryQuery.error;
   const { showToast } = useToast();
   const summaryQuery = useAuRubberQualityTrackingSummary();
   const alertsQuery = useAuRubberQualityAlerts();
-  const summaries = summaryQuery.data || [];
-  const alerts = alertsQuery.data || [];
-  const isLoading = summaryQuery.isLoading || alertsQuery.isLoading;
-  const error = summaryQuery.error || alertsQuery.error;
+  const summaries = rawSummaryQueryData || [];
+  const alerts = rawAlertsQueryData || [];
+  const isLoading = rawSummaryQueryIsLoading || alertsQuery.isLoading;
+  const error = rawSummaryQueryError || alertsQuery.error;
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState<QualityStatus | "">("");
   const [currentPage, setCurrentPage] = useState(0);
@@ -76,18 +80,26 @@ export default function QualityTrackingPage() {
         return direction * (a.batchCount - b.batchCount);
       }
       if (sortColumn === "lastBatchDate") {
-        const dateA = a.lastBatchDate || "";
-        const dateB = b.lastBatchDate || "";
+        const rawALastBatchDate = a.lastBatchDate;
+        const rawBLastBatchDate = b.lastBatchDate;
+        const dateA = rawALastBatchDate || "";
+        const dateB = rawBLastBatchDate || "";
         return direction * dateA.localeCompare(dateB);
       }
       if (sortColumn === "shoreA") {
-        return direction * ((a.shoreA?.latestValue || 0) - (b.shoreA?.latestValue || 0));
+        const rawShoreALatestValue = a.shoreA?.latestValue;
+        const rawShoreALatestValue2 = b.shoreA?.latestValue;
+        return direction * ((rawShoreALatestValue || 0) - (rawShoreALatestValue2 || 0));
       }
       if (sortColumn === "tc90") {
-        return direction * ((a.tc90?.latestValue || 0) - (b.tc90?.latestValue || 0));
+        const rawTc90LatestValue = a.tc90?.latestValue;
+        const rawTc90LatestValue2 = b.tc90?.latestValue;
+        return direction * ((rawTc90LatestValue || 0) - (rawTc90LatestValue2 || 0));
       }
       if (sortColumn === "tensile") {
-        return direction * ((a.tensile?.latestValue || 0) - (b.tensile?.latestValue || 0));
+        const rawTensileLatestValue = a.tensile?.latestValue;
+        const rawTensileLatestValue2 = b.tensile?.latestValue;
+        return direction * ((rawTensileLatestValue || 0) - (rawTensileLatestValue2 || 0));
       }
       if (sortColumn === "status") {
         const statusOrder: Record<QualityStatus, number> = { critical: 0, warning: 1, normal: 2 };
