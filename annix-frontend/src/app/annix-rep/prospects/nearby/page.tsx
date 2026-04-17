@@ -1,5 +1,6 @@
 "use client";
 
+import { keys } from "es-toolkit/compat";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
@@ -483,7 +484,7 @@ export default function NearbyProspectsPage() {
           <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-gray-200 dark:border-slate-700 p-4">
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">Legend</h2>
             <div className="space-y-2">
-              {(Object.keys(statusLabels) as ProspectStatus[]).map((status) => (
+              {(keys(statusLabels) as ProspectStatus[]).map((status) => (
                 <div key={status} className="flex items-center gap-2">
                   <div
                     className="w-4 h-4 rounded-full"

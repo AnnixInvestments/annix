@@ -1,14 +1,18 @@
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
+import { log } from "@/app/lib/logger";
 
-const VOICE_FILTER_BACKEND_URL = process.env.VOICE_FILTER_BACKEND_URL || "http://localhost:47823";
-const FRONTEND_URL = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
+const rawVOICE_FILTER_BACKEND_URLValue = process.env.VOICE_FILTER_BACKEND_URL;
+const VOICE_FILTER_BACKEND_URL = rawVOICE_FILTER_BACKEND_URLValue || "http://localhost:47823";
+const rawNEXT_PUBLIC_BASE_URL = process.env.NEXT_PUBLIC_BASE_URL;
+const FRONTEND_URL = rawNEXT_PUBLIC_BASE_URL || "http://localhost:3000";
 const OAUTH_CALLBACK_URL = `${FRONTEND_URL}/api/auth/oauth/callback`;
 
 function parseState(state: string): { provider: string; mode: string; returnUrl: string } {
   const parts = state.split(":");
   if (parts.length < 3) {
-    const provider = parts[0] || "";
+    const rawParts = parts[0];
+    const provider = rawParts || "";
     const returnUrl = parts[1] ? decodeURIComponent(parts[1]) : "/";
     return { provider, mode: "login", returnUrl };
   }
@@ -29,7 +33,7 @@ async function handleOAuthCallback(
     const headers: Record<string, string> = { "Content-Type": "application/json" };
     const effectiveMode = mode === "connect" && existingToken ? "connect" : "login";
 
-    console.log("OAuth callback:", { mode, effectiveMode, hasToken: !!existingToken, provider });
+    log.info("OAuth callback:", { mode, effectiveMode, hasToken: !!existingToken, provider });
 
     if (effectiveMode === "connect") {
       headers["Authorization"] = `Bearer ${existingToken}`;

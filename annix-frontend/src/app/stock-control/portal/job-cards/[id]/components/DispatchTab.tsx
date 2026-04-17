@@ -291,39 +291,45 @@ export default function DispatchTab(props: DispatchTabProps) {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {cdns.flatMap((cdn) =>
-                (cdn.lineMatches || ([] as CdnLineMatch[])).map((match, idx) => (
-                  <tr key={`${cdn.id}-${idx}`}>
-                    <td className="px-3 sm:px-6 py-4 text-sm text-gray-900 max-w-[150px] sm:max-w-xs truncate">
-                      {match.cdnDescription}
-                    </td>
-                    <td className="px-3 sm:px-6 py-4 text-sm text-gray-900 text-right">
-                      {match.cdnQuantity || "-"}
-                    </td>
-                    <td className="hidden sm:table-cell px-3 sm:px-6 py-4 text-sm text-gray-600 max-w-xs truncate">
-                      {match.matchedDescription || (
-                        <span className="text-orange-500 italic">No match</span>
-                      )}
-                    </td>
-                    <td className="hidden sm:table-cell px-3 sm:px-6 py-4 text-sm text-gray-600 text-right">
-                      {match.matchedQuantity || "-"}
-                    </td>
-                    <td className="px-3 sm:px-6 py-4 text-center">
-                      <span
-                        className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-                          match.confidence >= 0.7
-                            ? "bg-green-100 text-green-800"
-                            : match.confidence >= 0.4
-                              ? "bg-yellow-100 text-yellow-800"
-                              : "bg-red-100 text-red-800"
-                        }`}
-                      >
-                        {Math.round(match.confidence * 100)}%
-                      </span>
-                    </td>
-                  </tr>
-                )),
-              )}
+              {cdns.flatMap((cdn) => {
+                const rawLineMatches = cdn.lineMatches;
+                return (rawLineMatches || ([] as CdnLineMatch[])).map((match, idx) => {
+                  const rawCdnQuantity = match.cdnQuantity;
+                  const rawMatchedDescription = match.matchedDescription;
+                  const rawMatchedQuantity = match.matchedQuantity;
+                  return (
+                    <tr key={`${cdn.id}-${idx}`}>
+                      <td className="px-3 sm:px-6 py-4 text-sm text-gray-900 max-w-[150px] sm:max-w-xs truncate">
+                        {match.cdnDescription}
+                      </td>
+                      <td className="px-3 sm:px-6 py-4 text-sm text-gray-900 text-right">
+                        {rawCdnQuantity || "-"}
+                      </td>
+                      <td className="hidden sm:table-cell px-3 sm:px-6 py-4 text-sm text-gray-600 max-w-xs truncate">
+                        {rawMatchedDescription || (
+                          <span className="text-orange-500 italic">No match</span>
+                        )}
+                      </td>
+                      <td className="hidden sm:table-cell px-3 sm:px-6 py-4 text-sm text-gray-600 text-right">
+                        {rawMatchedQuantity || "-"}
+                      </td>
+                      <td className="px-3 sm:px-6 py-4 text-center">
+                        <span
+                          className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                            match.confidence >= 0.7
+                              ? "bg-green-100 text-green-800"
+                              : match.confidence >= 0.4
+                                ? "bg-yellow-100 text-yellow-800"
+                                : "bg-red-100 text-red-800"
+                          }`}
+                        >
+                          {Math.round(match.confidence * 100)}%
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                });
+              })}
             </tbody>
           </table>
         </div>
@@ -368,39 +374,42 @@ export default function DispatchTab(props: DispatchTabProps) {
 
         {loadPhotos.length > 0 && (
           <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-            {loadPhotos.map((photo) => (
-              <div
-                key={photo.id}
-                className="relative group rounded-lg overflow-hidden border border-gray-200"
-              >
+            {loadPhotos.map((photo) => {
+              const rawPhotoUploadedByName = photo.uploadedByName;
+              return (
                 <div
-                  className="aspect-square bg-gray-100 cursor-pointer"
-                  onClick={() => setShowPhotoPreview(photo)}
+                  key={photo.id}
+                  className="relative group rounded-lg overflow-hidden border border-gray-200"
                 >
-                  {photo.mimeType.startsWith("image/") ? (
-                    <img
-                      src={photo.filePath}
-                      alt={photo.originalFilename}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center">
-                      <ImageIcon className="w-12 h-12 text-gray-400" />
-                    </div>
-                  )}
+                  <div
+                    className="aspect-square bg-gray-100 cursor-pointer"
+                    onClick={() => setShowPhotoPreview(photo)}
+                  >
+                    {photo.mimeType.startsWith("image/") ? (
+                      <img
+                        src={photo.filePath}
+                        alt={photo.originalFilename}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <ImageIcon className="w-12 h-12 text-gray-400" />
+                      </div>
+                    )}
+                  </div>
+                  <div className="p-2">
+                    <p className="text-xs text-gray-600 truncate">{photo.originalFilename}</p>
+                    <p className="text-xs text-gray-400">{rawPhotoUploadedByName || "Unknown"}</p>
+                  </div>
+                  <button
+                    onClick={() => handleDeletePhoto(photo.id)}
+                    className="absolute top-1 right-1 p-1 bg-white bg-opacity-80 rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-50"
+                  >
+                    <Trash2 className="w-3 h-3 text-red-500" />
+                  </button>
                 </div>
-                <div className="p-2">
-                  <p className="text-xs text-gray-600 truncate">{photo.originalFilename}</p>
-                  <p className="text-xs text-gray-400">{photo.uploadedByName || "Unknown"}</p>
-                </div>
-                <button
-                  onClick={() => handleDeletePhoto(photo.id)}
-                  className="absolute top-1 right-1 p-1 bg-white bg-opacity-80 rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-50"
-                >
-                  <Trash2 className="w-3 h-3 text-red-500" />
-                </button>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>

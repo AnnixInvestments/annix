@@ -24,7 +24,10 @@ function userDisplayName(user: RbacUserWithAccessSummary): string {
 }
 
 function userInitial(user: RbacUserWithAccessSummary): string {
-  return (user.firstName?.[0] || user.email[0]).toUpperCase();
+  return (() => {
+    const rawFirstName = user.firstName?.[0];
+    return rawFirstName || user.email[0];
+  })().toUpperCase();
 }
 
 export function UserSelector(props: UserSelectorProps) {
@@ -126,7 +129,10 @@ export function UserSelector(props: UserSelectorProps) {
               </div>
             ) : (
               filteredUsers.map((user) => {
-                const statusColors = STATUS_COLORS[user.status] ?? STATUS_COLORS.deactivated;
+                const statusColors = (() => {
+                  const rawSTATUS_COLORS = STATUS_COLORS[user.status];
+                  return rawSTATUS_COLORS ?? STATUS_COLORS.deactivated;
+                })();
                 const isSelected = user.id === selectedUserId;
                 return (
                   <button

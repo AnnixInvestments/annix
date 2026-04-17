@@ -1,5 +1,6 @@
 "use client";
 
+import { isArray } from "es-toolkit/compat";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { PdfPreviewModal, usePdfPreview } from "@/app/components/PdfPreviewModal";
@@ -46,7 +47,7 @@ export function CpoReleaseDocumentGenerator(props: CpoReleaseDocumentGeneratorPr
       ]);
       const items = releasable.items;
       setReleasableItems(items || []);
-      setExistingReleases(Array.isArray(releases) ? releases : []);
+      setExistingReleases(isArray(releases) ? releases : []);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load releasable items");
     } finally {
@@ -101,6 +102,7 @@ export function CpoReleaseDocumentGenerator(props: CpoReleaseDocumentGeneratorPr
 
   const handleRegenerate = async (release: QcItemsReleaseRecord) => {
     if (
+      // eslint-disable-next-line no-restricted-globals -- legacy sync confirm pending modal migration (issue #175)
       !confirm(
         `Re-generate release #${release.id}? The old release will be deleted and replaced with a new one containing the same items, using the latest data.`,
       )
@@ -158,6 +160,7 @@ export function CpoReleaseDocumentGenerator(props: CpoReleaseDocumentGeneratorPr
 
   const handleEdit = async (release: QcItemsReleaseRecord) => {
     if (
+      // eslint-disable-next-line no-restricted-globals -- legacy sync confirm pending modal migration (issue #175)
       !confirm(
         `Edit release #${release.id}? The old release will be deleted and the items will be loaded into the form above so you can modify quantities or add/remove items.`,
       )
@@ -195,6 +198,7 @@ export function CpoReleaseDocumentGenerator(props: CpoReleaseDocumentGeneratorPr
 
   const handleDelete = async (release: QcItemsReleaseRecord) => {
     if (
+      // eslint-disable-next-line no-restricted-globals -- legacy sync confirm pending modal migration (issue #175)
       !confirm(
         `Delete release #${release.id}? This cannot be undone. The released items will become available again for a new release.`,
       )

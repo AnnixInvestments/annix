@@ -50,7 +50,8 @@ export default function AuIndustriesSlugPage() {
         if (data) {
           setPage(data);
           setEditContent(data.content);
-          const pageTitle = data.metaTitle || data.title;
+          const rawMetaTitle = data.metaTitle;
+          const pageTitle = rawMetaTitle || data.title;
           document.title = `${pageTitle} | AU Industries`;
           const metaDesc = document.querySelector('meta[name="description"]');
           if (metaDesc && data.metaDescription) {

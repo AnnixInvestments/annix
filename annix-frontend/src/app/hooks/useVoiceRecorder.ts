@@ -151,8 +151,14 @@ export function useVoiceRecorder(
     worker.postMessage({
       type: "configure",
       data: {
-        threshold: vadConfig.threshold ?? 0.01,
-        smoothingFrames: vadConfig.smoothingFrames ?? 5,
+        threshold: (() => {
+          const rawThreshold = vadConfig.threshold;
+          return rawThreshold ?? 0.01;
+        })(),
+        smoothingFrames: (() => {
+          const rawSmoothingFrames = vadConfig.smoothingFrames;
+          return rawSmoothingFrames ?? 5;
+        })(),
       },
     });
 

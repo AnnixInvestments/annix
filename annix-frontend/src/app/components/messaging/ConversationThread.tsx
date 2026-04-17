@@ -41,6 +41,8 @@ function ConversationThreadComponent(props: ConversationThreadProps) {
     }
   };
 
+  const groupedMessages = useMemo(() => groupMessagesByDate(messages), [messages]);
+
   if (messages.length === 0) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center p-8 text-gray-500 dark:text-gray-400">
@@ -57,8 +59,6 @@ function ConversationThreadComponent(props: ConversationThreadProps) {
       </div>
     );
   }
-
-  const groupedMessages = useMemo(() => groupMessagesByDate(messages), [messages]);
 
   return (
     <div ref={containerRef} onScroll={handleScroll} className="flex-1 overflow-y-auto p-4">

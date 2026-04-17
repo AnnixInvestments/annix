@@ -1,5 +1,6 @@
 "use client";
 
+import { toPairs as entries } from "es-toolkit/compat";
 import { useEffect, useRef, useState } from "react";
 import { generateUniqueId } from "@/app/lib/datetime";
 import { useDisclosure } from "@/app/lib/hooks/useDisclosure";
@@ -218,7 +219,7 @@ export function SmartNotesDropdown(props: SmartNotesDropdownProps) {
               </p>
             </div>
 
-            {Object.entries(groupedNotes).map(([category, notes]) => {
+            {entries(groupedNotes).map(([category, notes]) => {
               const rawCategory2 = CATEGORY_LABELS[category];
 
               return (

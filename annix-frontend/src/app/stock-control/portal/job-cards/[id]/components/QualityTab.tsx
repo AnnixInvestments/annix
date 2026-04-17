@@ -1,5 +1,6 @@
 "use client";
 
+import { isArray, isNumber } from "es-toolkit/compat";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type {
   BackgroundStepStatus,
@@ -16,6 +17,7 @@ import type {
 } from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { formatDateZA, fromISO, now } from "@/app/lib/datetime";
+import { log } from "@/app/lib/logger";
 import { BatchAssignmentSection } from "./BatchAssignmentSection";
 import BlastProfileForm from "./BlastProfileForm";
 import { DataBookCompletenessPanel } from "./DataBookCompletenessPanel";
@@ -102,12 +104,10 @@ export function QualityTab(props: QualityTabProps) {
       setError(null);
       const overallStart = performance.now();
       const bundle = await stockControlApiClient.qualityTabBundle(jobCardId);
-      console.log(
-        `[QualityTab] qualityTabBundle ${(performance.now() - overallStart).toFixed(0)}ms`,
-      );
-      setCertificates(Array.isArray(bundle.certificates) ? bundle.certificates : []);
-      setCalibrationCerts(Array.isArray(bundle.calibrationCerts) ? bundle.calibrationCerts : []);
-      setBatchRecords(Array.isArray(bundle.batchRecords) ? bundle.batchRecords : []);
+      log.info(`[QualityTab] qualityTabBundle ${(performance.now() - overallStart).toFixed(0)}ms`);
+      setCertificates(isArray(bundle.certificates) ? bundle.certificates : []);
+      setCalibrationCerts(isArray(bundle.calibrationCerts) ? bundle.calibrationCerts : []);
+      setBatchRecords(isArray(bundle.batchRecords) ? bundle.batchRecords : []);
       setDataBookStatus(bundle.dataBookStatus);
       setQcData(bundle.qcMeasurements);
       setCompleteness(bundle.completeness);
@@ -337,7 +337,7 @@ export function QualityTab(props: QualityTabProps) {
                 <div className="divide-y divide-gray-200">
                   {blastProfiles.map((rec) => {
                     const avgMicrons = rec.averageMicrons;
-                    const avgDisplay = typeof avgMicrons === "number" ? avgMicrons.toFixed(1) : "-";
+                    const avgDisplay = isNumber(avgMicrons) ? avgMicrons.toFixed(1) : "-";
                     return (
                       <div
                         key={`bp-${rec.id}`}
@@ -392,8 +392,7 @@ export function QualityTab(props: QualityTabProps) {
                     const rawCoatLabel = rec.coatLabel;
                     const label = rawCoatLabel || "Paint";
                     const paintAvg = rec.averageMicrons;
-                    const paintAvgDisplay =
-                      typeof paintAvg === "number" ? paintAvg.toFixed(1) : "-";
+                    const paintAvgDisplay = isNumber(paintAvg) ? paintAvg.toFixed(1) : "-";
                     return (
                       <div
                         key={`pp-${rec.id}`}
@@ -449,8 +448,7 @@ export function QualityTab(props: QualityTabProps) {
                   {shoreHardnessList.map((rec) => {
                     const rawOverall = rec.averages ? rec.averages.overall : null;
                     const overallAvg = rawOverall;
-                    const overallDisplay =
-                      typeof overallAvg === "number" ? overallAvg.toFixed(1) : "-";
+                    const overallDisplay = isNumber(overallAvg) ? overallAvg.toFixed(1) : "-";
                     return (
                       <div
                         key={`sh-${rec.id}`}
@@ -466,12 +464,11 @@ export function QualityTab(props: QualityTabProps) {
                           <span className="text-sm text-gray-500">
                             Avg: {overallDisplay} / Required: {rec.requiredShore}
                           </span>
-                          {typeof overallAvg === "number" &&
-                            Math.abs(overallAvg - rec.requiredShore) > 5 && (
-                              <span className="inline-flex items-center rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-800">
-                                Out of spec
-                              </span>
-                            )}
+                          {isNumber(overallAvg) && Math.abs(overallAvg - rec.requiredShore) > 5 && (
+                            <span className="inline-flex items-center rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-800">
+                              Out of spec
+                            </span>
+                          )}
                           <span className="text-xs text-gray-400">{rec.readingDate}</span>
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
@@ -497,11 +494,10 @@ export function QualityTab(props: QualityTabProps) {
 
                   {dftReadingsList.map((rec) => {
                     const dftAvg = rec.averageMicrons;
-                    const dftAvgDisplay = typeof dftAvg === "number" ? dftAvg.toFixed(1) : "-";
+                    const dftAvgDisplay = isNumber(dftAvg) ? dftAvg.toFixed(1) : "-";
                     const specMin = rec.specMinMicrons;
                     const specMax = rec.specMaxMicrons;
-                    const outOfSpec =
-                      typeof dftAvg === "number" && (dftAvg < specMin || dftAvg > specMax);
+                    const outOfSpec = isNumber(dftAvg) && (dftAvg < specMin || dftAvg > specMax);
                     return (
                       <div
                         key={`dft-${rec.id}`}

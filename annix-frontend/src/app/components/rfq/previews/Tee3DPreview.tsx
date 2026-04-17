@@ -9,6 +9,7 @@ import {
   Text,
 } from "@react-three/drei";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
+import { isNumber, keys } from "es-toolkit/compat";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import {
@@ -60,13 +61,19 @@ interface Tee3DPreviewProps {
   nominalBore: number;
   outerDiameter?: number;
   wallThickness?: number;
-  teeType: Sabs719TeeType; // 'short' or 'gusset'
-  branchNominalBore?: number; // For reducing tees (optional)
+  // 'short' or 'gusset'
+  teeType: Sabs719TeeType;
+  // For reducing tees (optional)
+  branchNominalBore?: number;
   branchOuterDiameter?: number;
-  teeNominalBore?: number; // For unequal tees - branch pipe size
-  teeFlangeSpecs?: FlangeSpecData | null; // For unequal tees - separate flange specs for tee
-  runLength?: number; // Total length of run pipe (optional)
-  branchPositionMm?: number; // Distance from left flange to center of branch (optional)
+  // For unequal tees - branch pipe size
+  teeNominalBore?: number;
+  // For unequal tees - separate flange specs for tee
+  teeFlangeSpecs?: FlangeSpecData | null;
+  // Total length of run pipe (optional)
+  runLength?: number;
+  // Distance from left flange to center of branch (optional)
+  branchPositionMm?: number;
   materialName?: string;
   hasInletFlange?: boolean;
   hasOutletFlange?: boolean;
@@ -80,7 +87,8 @@ interface Tee3DPreviewProps {
   // Blank flange options
   addBlankFlange?: boolean;
   blankFlangeCount?: number;
-  blankFlangePositions?: string[]; // ['inlet', 'outlet', 'branch']
+  // ['inlet', 'outlet', 'branch']
+  blankFlangePositions?: string[];
   // Camera persistence
   savedCameraPosition?: [number, number, number];
   savedCameraTarget?: [number, number, number];
@@ -370,7 +378,7 @@ const getFlangeSpecs = (
       boltLength: 145,
     },
   };
-  const sizes = Object.keys(flangeData)
+  const sizes = keys(flangeData)
     .map(Number)
     .sort((a, b) => a - b);
   let closestSize = sizes[0];
@@ -457,7 +465,8 @@ function RetainingRingComponent({
   thickness: number;
 }) {
   // Ring OD should be larger than pipe OD but smaller than the flange
-  const ringOuterRadius = pipeOuterRadius * 1.15; // 15% larger than pipe OD
+  // 15% larger than pipe OD
+  const ringOuterRadius = pipeOuterRadius * 1.15;
 
   const geometry = useMemo(() => {
     const shape = new THREE.Shape();
@@ -496,7 +505,8 @@ function RotatingFlangeComponent({
   position: [number, number, number];
   rotation?: [number, number, number];
   outerDiameter: number;
-  pipeOuterDiameter: number; // The flange hole must be larger than this
+  // The flange hole must be larger than this
+  pipeOuterDiameter: number;
   thickness: number;
   pcd: number;
   boltHoles: number;
@@ -614,7 +624,8 @@ function GussetPlate({
   branchOffsetX: number;
 }) {
   const geometry = useMemo(() => {
-    const segments = 48; // Higher resolution for smooth gusset shape
+    // Higher resolution for smooth gusset shape
+    const segments = 48;
     const vertices: number[] = [];
     const indices: number[] = [];
 
@@ -725,7 +736,8 @@ function GussetWeld({
 }) {
   const weldRadius = gussetLength * 0.015;
   const xDir = side === "left" ? -1 : 1;
-  const segments = 32; // Higher resolution for smooth weld curve
+  // Higher resolution for smooth weld curve
+  const segments = 32;
   const halfWidth = gussetLength / 2;
 
   // Extend slightly beyond branchRadius to reach V-weld points
@@ -814,13 +826,15 @@ function SaddleWeld({
       points.push(new THREE.Vector3(x, y, z));
     }
 
-    const curve = new THREE.CatmullRomCurve3(points, true); // true = closed curve
+    // true = closed curve
+    const curve = new THREE.CatmullRomCurve3(points, true);
 
     // Create a custom weld bead cross-section (V-groove fillet profile)
     // This gives the characteristic welding bead appearance
     const weldProfile = new THREE.Shape();
     const w = weldThickness;
-    const h = weldThickness * 1.2; // Height slightly more than width for V profile
+    // Height slightly more than width for V profile
+    const h = weldThickness * 1.2;
 
     // Create a rounded triangular profile for the fillet weld
     weldProfile.moveTo(0, -h * 0.3);
@@ -944,7 +958,8 @@ function TeeScene(props: Tee3DPreviewProps) {
   // For reducing/unequal tees, use the effective branch NB dimensions; otherwise use same as run
   const branchOD = effectiveBranchNB
     ? getOuterDiameter(effectiveBranchNB, branchOuterDiameter || branchDims?.outsideDiameterMm || 0)
-    : od; // Same as run for equal tee
+    : // Same as run for equal tee
+      od;
   const branchWT = effectiveBranchNB ? getWallThickness(effectiveBranchNB) : wt;
   const branchID = branchOD - 2 * branchWT;
 
@@ -970,7 +985,8 @@ function TeeScene(props: Tee3DPreviewProps) {
   // branchPositionMm is distance from left flange to center of branch
   // Convert to offset from center: offset = branchPositionMm - (totalRunLength / 2)
   const branchOffsetX =
-    branchPositionMm !== undefined ? (branchPositionMm - totalRunLength / 2) / scaleFactor : 0; // Default to center if not specified
+    // Default to center if not specified
+    branchPositionMm !== undefined ? (branchPositionMm - totalRunLength / 2) / scaleFactor : 0;
 
   // Create pipe geometry (cylinder with hole)
   const createPipeGeometry = (outerR: number, innerR: number, length: number) => {
@@ -1153,7 +1169,8 @@ function TeeScene(props: Tee3DPreviewProps) {
     const indices: number[] = [];
     const normals: number[] = [];
 
-    const lengthSegments = 512; // Very high resolution for smooth gusset hole edge
+    // Very high resolution for smooth gusset hole edge
+    const lengthSegments = 512;
     const radialSegments = 512;
     const halfLength = runLength / 2;
 
@@ -1162,7 +1179,8 @@ function TeeScene(props: Tee3DPreviewProps) {
     const isInBranchHole = (x: number, angle: number, radius: number): boolean => {
       const z = radius * Math.sin(angle);
       const y = radius * Math.cos(angle);
-      if (y <= 0) return false; // Only cut hole on top half of run pipe
+      // Only cut hole on top half of run pipe
+      if (y <= 0) return false;
 
       const zSq = z * z;
       const branchRSq = branchOuterR * branchOuterR;
@@ -1229,7 +1247,8 @@ function TeeScene(props: Tee3DPreviewProps) {
       const x = -halfLength + (li / lengthSegments) * runLength;
       const angle = (ri / radialSegments) * Math.PI * 2;
 
-      if (isInBranchHole(x, angle, runOuterR)) return -1; // Skip vertices in hole
+      // Skip vertices in hole
+      if (isInBranchHole(x, angle, runOuterR)) return -1;
 
       const y = runOuterR * Math.cos(angle);
       const z = runOuterR * Math.sin(angle);
@@ -1320,8 +1339,10 @@ function TeeScene(props: Tee3DPreviewProps) {
       }
     };
 
-    addEndCap(-halfLength, -1); // Left end
-    addEndCap(halfLength, 1); // Right end
+    // Left end
+    addEndCap(-halfLength, -1);
+    // Right end
+    addEndCap(halfLength, 1);
 
     // Hole edge surface is covered by the branch pipe's saddle-cut geometry
     // The saddle weld visually covers any minor gap at the junction
@@ -2094,10 +2115,12 @@ function TeeScene(props: Tee3DPreviewProps) {
         {/* Branch C/F dimension (vertical) - from top of main pipe to branch top/flange face */}
         {/* Positioned away from model with dotted extension lines */}
         {(() => {
-          const dimOffset = 0.25; // Offset from branch edge for dimension line
+          // Offset from branch edge for dimension line
+          const dimOffset = 0.25;
           const dimX = branchOffsetX + branchOuterRadius + dimOffset;
           const extendX = branchOffsetX + branchOuterRadius + dimOffset + 0.15;
-          const branchCF = teeHeight - od / 2 / (scaleFactor / 2); // C/F is from run OD to branch top
+          // C/F is from run OD to branch top
+          const branchCF = teeHeight - od / 2 / (scaleFactor / 2);
           return (
             <>
               {/* Main dimension line - from top of run pipe to top of branch */}
@@ -2179,7 +2202,8 @@ function TeeScene(props: Tee3DPreviewProps) {
 
         {/* Total run pipe length dimension - at bottom of main pipe */}
         {(() => {
-          const dimOffset = 0.25; // Offset below pipe
+          // Offset below pipe
+          const dimOffset = 0.25;
           const dimY = -outerRadius - dimOffset;
           return (
             <>
@@ -2250,7 +2274,8 @@ function TeeScene(props: Tee3DPreviewProps) {
         {/* Branch position dimension line (horizontal from left end to branch center) */}
         {branchPositionMm !== undefined &&
           (() => {
-            const dimOffset = 0.4; // Offset below pipe (below the length dimension)
+            // Offset below pipe (below the length dimension)
+            const dimOffset = 0.4;
             const dimY = -outerRadius - dimOffset;
             return (
               <>
@@ -2324,7 +2349,8 @@ function TeeScene(props: Tee3DPreviewProps) {
         {teeType === "gusset" &&
           gussetSize > 0 &&
           (() => {
-            const dimOffset = 0.15; // Offset from gusset surface (150mm scaled)
+            // Offset from gusset surface (150mm scaled)
+            const dimOffset = 0.15;
             // Gusset inner edge at z=0: X = branchOffsetX + branchOuterRadius, Y = outerRadius + gussetSize/2
             // Gusset outer edge at z=0: X = branchOffsetX + branchOuterRadius + gussetSize/2, Y = outerRadius
             const innerX = branchOffsetX + branchOuterRadius;
@@ -2332,7 +2358,8 @@ function TeeScene(props: Tee3DPreviewProps) {
             const outerX = branchOffsetX + branchOuterRadius + gussetSize / 2;
             const outerY = outerRadius;
             // Offset dimension line perpendicular to the gusset surface (45 degrees, so offset in both X and Y)
-            const offsetDir = Math.SQRT1_2; // 1/sqrt(2) for 45 degree offset
+            // 1/sqrt(2) for 45 degree offset
+            const offsetDir = Math.SQRT1_2;
             const dimInnerX = innerX + dimOffset * offsetDir;
             const dimInnerY = innerY + dimOffset * offsetDir;
             const dimOuterX = outerX + dimOffset * offsetDir;
@@ -2439,9 +2466,9 @@ const CameraTracker = ({
     );
     const hasValidPosition =
       savedPosition &&
-      typeof savedPosition[0] === "number" &&
-      typeof savedPosition[1] === "number" &&
-      typeof savedPosition[2] === "number";
+      isNumber(savedPosition[0]) &&
+      isNumber(savedPosition[1]) &&
+      isNumber(savedPosition[2]);
     if (hasValidPosition && controls && !hasRestoredRef.current) {
       log.debug(
         "Tee CameraTracker restoring camera position",
@@ -2453,9 +2480,9 @@ const CameraTracker = ({
       camera.position.set(savedPosition[0], savedPosition[1], savedPosition[2]);
       if (
         savedTarget &&
-        typeof savedTarget[0] === "number" &&
-        typeof savedTarget[1] === "number" &&
-        typeof savedTarget[2] === "number"
+        isNumber(savedTarget[0]) &&
+        isNumber(savedTarget[1]) &&
+        isNumber(savedTarget[2])
       ) {
         const orbitControls = controls as any;
         if (orbitControls.target) {

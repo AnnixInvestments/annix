@@ -32,8 +32,10 @@ export default function SupplierMessagesPage() {
   const archiveMutation = useArchiveSupplierConversation();
   const markBroadcastReadMutation = useMarkSupplierBroadcastRead();
 
-  const conversations = conversationsQuery.data?.conversations || [];
-  const broadcasts = broadcastsQuery.data?.broadcasts || [];
+  const rawConversationsValue = conversationsQuery.data?.conversations;
+  const conversations = rawConversationsValue || [];
+  const rawBroadcastsValue = broadcastsQuery.data?.broadcasts;
+  const broadcasts = rawBroadcastsValue || [];
 
   const [selectedConversation, setSelectedConversation] = useState<ConversationDetail | null>(null);
   const [currentUserId, setCurrentUserId] = useState<number>(0);
@@ -45,7 +47,8 @@ export default function SupplierMessagesPage() {
       await supplierMessagingApi.markAsRead(conversation.id);
       conversationsQuery.refetch();
     } catch (error: any) {
-      showToast(error.message || "Failed to load conversation", "error");
+      const rawMessage = error.message;
+      showToast(rawMessage || "Failed to load conversation", "error");
     }
   };
 
@@ -66,7 +69,8 @@ export default function SupplierMessagesPage() {
         prev ? { ...prev, messages: [...prev.messages, newMessage] } : null,
       );
     } catch (error: any) {
-      showToast(error.message || "Failed to send message", "error");
+      const rawMessage2 = error.message;
+      showToast(rawMessage2 || "Failed to send message", "error");
     }
   };
 
@@ -78,7 +82,8 @@ export default function SupplierMessagesPage() {
       }
       showToast("Conversation archived", "success");
     } catch (error: any) {
-      showToast(error.message || "Failed to archive conversation", "error");
+      const rawMessage3 = error.message;
+      showToast(rawMessage3 || "Failed to archive conversation", "error");
     }
   };
 
@@ -86,11 +91,13 @@ export default function SupplierMessagesPage() {
     try {
       await markBroadcastReadMutation.mutateAsync(broadcastId);
     } catch (error: any) {
-      showToast(error.message || "Failed to mark broadcast as read", "error");
+      const rawMessage4 = error.message;
+      showToast(rawMessage4 || "Failed to mark broadcast as read", "error");
     }
   };
 
-  if (conversationsQuery.isLoading || broadcastsQuery.isLoading) {
+  const rawIsLoading = conversationsQuery.isLoading;
+  if (rawIsLoading || broadcastsQuery.isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>

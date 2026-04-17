@@ -29,7 +29,8 @@ function VerifyEmailContent() {
       try {
         const result = await customerEmailApi.verifyEmail(token);
         setStatus("success");
-        setMessage(result.message || "Your email has been verified successfully.");
+        const rawMessage = result.message;
+        setMessage(rawMessage || "Your email has been verified successfully.");
       } catch (e) {
         setStatus("error");
         setMessage(

@@ -5,6 +5,7 @@ import {
   PumpComparisonResult,
   PumpQuote,
 } from "@annix/product-data/pumps/pumpComparison";
+import { isNumber } from "es-toolkit/compat";
 import { useMemo, useState } from "react";
 
 interface PumpQuoteComparisonProps {
@@ -289,12 +290,9 @@ export function PumpQuoteComparison(props: PumpQuoteComparisonProps) {
                   {quotes.map((quote, idx) => {
                     const value = metric.values[idx];
                     const isBest = metric.bestIndex === idx;
-                    const numericValues = metric.values.filter(
-                      (v): v is number => typeof v === "number",
-                    );
+                    const numericValues = metric.values.filter((v): v is number => isNumber(v));
                     const maxVal = numericValues.length > 0 ? Math.max(...numericValues) : 1;
-                    const pct =
-                      typeof value === "number" && maxVal > 0 ? (value / maxVal) * 100 : 0;
+                    const pct = isNumber(value) && maxVal > 0 ? (value / maxVal) * 100 : 0;
 
                     return (
                       <div key={quote.supplierId} className="flex-1">

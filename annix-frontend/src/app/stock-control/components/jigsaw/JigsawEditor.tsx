@@ -511,16 +511,20 @@ export function JigsawEditor(props: {
         </div>
 
         <DragOverlay>
-          {activePanelData && (
-            <div
-              className={`${CUT_COLORS[activePanelData.colorIndex % CUT_COLORS.length]} rounded px-2 py-1 text-white text-xs font-bold shadow-lg opacity-90`}
-            >
-              {activePanelData.itemNo || activePanelData.panelId}
-              <span className="ml-1 text-[10px] opacity-80">
-                {effectiveWidth(activePanelData)}x{effectiveLength(activePanelData)}
-              </span>
-            </div>
-          )}
+          {activePanelData &&
+            (() => {
+              const rawActiveItemNo = activePanelData.itemNo;
+              return (
+                <div
+                  className={`${CUT_COLORS[activePanelData.colorIndex % CUT_COLORS.length]} rounded px-2 py-1 text-white text-xs font-bold shadow-lg opacity-90`}
+                >
+                  {rawActiveItemNo || activePanelData.panelId}
+                  <span className="ml-1 text-[10px] opacity-80">
+                    {effectiveWidth(activePanelData)}x{effectiveLength(activePanelData)}
+                  </span>
+                </div>
+              );
+            })()}
         </DragOverlay>
       </DndContext>
     </div>

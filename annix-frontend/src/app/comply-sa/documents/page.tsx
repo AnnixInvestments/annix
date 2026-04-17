@@ -1,5 +1,6 @@
 "use client";
 
+import { isArray } from "es-toolkit/compat";
 import {
   ChevronDown,
   ChevronRight,
@@ -286,8 +287,8 @@ export default function DocumentsPage() {
     });
   }
 
-  const docsList = Array.isArray(docs) ? docs : [];
-  const reqsList = Array.isArray(reqs) ? reqs : [];
+  const docsList = isArray(docs) ? docs : [];
+  const reqsList = isArray(reqs) ? reqs : [];
   const filteredDocs =
     filterReqId === "all"
       ? docsList

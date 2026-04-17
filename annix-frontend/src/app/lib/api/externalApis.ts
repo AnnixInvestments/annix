@@ -10,6 +10,7 @@
  * - OpenWeatherMap: Temperature & Humidity (Global, requires API key)
  */
 
+import { toPairs as entries } from "es-toolkit/compat";
 import { throwIfNotOk } from "@/app/lib/api/apiError";
 import { generateUniqueId, nowMillis } from "@/app/lib/datetime";
 import { log } from "@/app/lib/logger";
@@ -258,7 +259,8 @@ export function classifyUsdaSoilTexture(clay: number, sand: number, silt: number
     return "Sandy Loam";
   }
 
-  return "Loam"; // Default
+  // Default
+  return "Loam";
 }
 
 // ============================================================================
@@ -474,9 +476,12 @@ export function isInAfrica(lat: number, lng: number): boolean {
 
 export interface AgromonitoringSoilResponse {
   dt: number;
-  t10: number; // Soil temperature at 10cm depth
-  moisture: number; // Soil moisture (volumetric water content)
-  t0: number; // Surface temperature
+  // Soil temperature at 10cm depth
+  t10: number;
+  // Soil moisture (volumetric water content)
+  moisture: number;
+  // Surface temperature
+  t0: number;
 }
 
 /**
@@ -497,7 +502,8 @@ export async function fetchAgromonitoringSoilMoisture(
 
   try {
     // Create a polygon around the point (required by API)
-    const delta = 0.01; // ~1km
+    // ~1km
+    const delta = 0.01;
     const polygon = [
       [lng - delta, lat - delta],
       [lng + delta, lat - delta],
@@ -553,7 +559,8 @@ export async function fetchAgromonitoringSoilMoisture(
     // Clean up: delete the temporary polygon
     fetch(`${AGROMONITORING_BASE}/polygons/${polyId}?appid=${AGROMONITORING_API_KEY}`, {
       method: "DELETE",
-    }).catch(() => {}); // Ignore cleanup errors
+      // Ignore cleanup errors
+    }).catch(() => {});
 
     if (!soilResponse.ok) {
       throw new Error(`Agromonitoring Soil API error: ${soilResponse.status}`);
@@ -788,11 +795,13 @@ export function extractOpenMeteoWeatherData(data: OpenMeteoResponse): WeatherDat
     windSpeed =
       data.daily.wind_speed_10m_max.reduce((a, b) => a + b, 0) /
       data.daily.wind_speed_10m_max.length;
-    windSpeed = windSpeed / 3.6; // Convert km/h to m/s
+    // Convert km/h to m/s
+    windSpeed = windSpeed / 3.6;
   } else if (data.hourly?.wind_speed_10m?.length) {
     const winds = data.hourly.wind_speed_10m;
     windSpeed = winds.reduce((a, b) => a + b, 0) / winds.length;
-    windSpeed = windSpeed / 3.6; // Convert km/h to m/s
+    // Convert km/h to m/s
+    windSpeed = windSpeed / 3.6;
   }
   if (data.daily?.wind_direction_10m_dominant?.length) {
     windDeg =
@@ -961,7 +970,7 @@ export function wrbToHumanReadable(wrbClass: string | null): string {
   }
 
   // Try partial match
-  for (const [key, value] of Object.entries(WRB_SOIL_CLASSES)) {
+  for (const [key, value] of entries(WRB_SOIL_CLASSES)) {
     if (wrbClass.toLowerCase().includes(key.toLowerCase())) {
       return value;
     }
@@ -1066,7 +1075,7 @@ export function deriveTextureFromWrb(wrbClass: string): {
   };
 
   // Find matching WRB class
-  for (const [key, value] of Object.entries(wrbTextureMap)) {
+  for (const [key, value] of entries(wrbTextureMap)) {
     if (wrbLower.includes(key)) {
       return {
         texture: value.texture,
@@ -1160,20 +1169,27 @@ export interface WeatherData {
     mean: number;
   };
   // Wind data
-  windSpeed?: number; // Mean wind speed in m/s
-  windDirection?: string; // Prevailing direction (N, NE, E, SE, S, SW, W, NW)
-  windDirectionDegrees?: number; // Raw degrees for reference
+  // Mean wind speed in m/s
+  windSpeed?: number;
+  // Prevailing direction (N, NE, E, SE, S, SW, W, NW)
+  windDirection?: string;
+  // Raw degrees for reference
+  windDirectionDegrees?: number;
   // Precipitation data
-  annualRainfall?: string; // Estimated annual rainfall category
-  dailyRainfall?: number; // Daily rainfall in mm (for estimation)
+  // Estimated annual rainfall category
+  annualRainfall?: string;
+  // Daily rainfall in mm (for estimation)
+  dailyRainfall?: number;
   // UV and solar
-  uvIndex?: number; // UV index
+  // UV index
+  uvIndex?: number;
   uvExposure?: "Low" | "Moderate" | "High" | "Very High";
   // Snow/Ice exposure
   snowExposure?: "None" | "Low" | "Moderate" | "High";
   // Fog/Condensation
   fogFrequency?: "Low" | "Moderate" | "High";
-  cloudCover?: number; // Cloud cover percentage
+  // Cloud cover percentage
+  cloudCover?: number;
   source: "OpenWeatherMap" | "Open-Meteo";
 }
 
@@ -1416,7 +1432,8 @@ export function extractWeatherData(data: OpenWeatherOneCallResponse | null): Wea
 
       avgWindSpeed = windSpeeds.reduce((a, b) => a + b, 0) / windSpeeds.length;
       avgWindDeg = windDegs.reduce((a, b) => a + b, 0) / windDegs.length;
-      avgUvi = Math.max(...uvis); // Use max UV for the day
+      // Use max UV for the day
+      avgUvi = Math.max(...uvis);
       avgClouds = clouds.reduce((a, b) => a + b, 0) / clouds.length;
 
       // Sum up rainfall from hourly
@@ -1525,17 +1542,26 @@ export interface AirPollutionResponse {
   list: Array<{
     dt: number;
     main: {
-      aqi: number; // Air Quality Index: 1=Good, 2=Fair, 3=Moderate, 4=Poor, 5=Very Poor
+      // Air Quality Index: 1=Good, 2=Fair, 3=Moderate, 4=Poor, 5=Very Poor
+      aqi: number;
     };
     components: {
-      co: number; // Carbon monoxide (μg/m³)
-      no: number; // Nitrogen monoxide (μg/m³)
-      no2: number; // Nitrogen dioxide (μg/m³)
-      o3: number; // Ozone (μg/m³)
-      so2: number; // Sulphur dioxide (μg/m³)
-      pm2_5: number; // Fine particles (μg/m³)
-      pm10: number; // Coarse particles (μg/m³)
-      nh3: number; // Ammonia (μg/m³)
+      // Carbon monoxide (μg/m³)
+      co: number;
+      // Nitrogen monoxide (μg/m³)
+      no: number;
+      // Nitrogen dioxide (μg/m³)
+      no2: number;
+      // Ozone (μg/m³)
+      o3: number;
+      // Sulphur dioxide (μg/m³)
+      so2: number;
+      // Fine particles (μg/m³)
+      pm2_5: number;
+      // Coarse particles (μg/m³)
+      pm10: number;
+      // Ammonia (μg/m³)
+      nh3: number;
     };
   }>;
 }

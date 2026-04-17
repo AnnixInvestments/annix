@@ -1,5 +1,6 @@
 "use client";
 
+import { keys } from "es-toolkit/compat";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
@@ -56,7 +57,8 @@ export default function EditUserAccessPage() {
     if (!appDetails) return {};
     return appDetails.permissions.reduce(
       (acc, perm) => {
-        const category = perm.category ?? "General";
+        const rawCategoryValue = perm.category;
+        const category = rawCategoryValue ?? "General";
         if (!acc[category]) acc[category] = [];
         acc[category].push(perm);
         return acc;
@@ -65,13 +67,14 @@ export default function EditUserAccessPage() {
     );
   }, [appDetails]);
 
-  const categories = useMemo(() => Object.keys(permissionsByCategory), [permissionsByCategory]);
+  const categories = useMemo(() => keys(permissionsByCategory), [permissionsByCategory]);
 
   const isRfqPlatform = appCode === "rfq-platform";
 
   const rfqFlags = useMemo(() => {
     if (!isRfqPlatform || !flagsQuery.data) return { typeFlags: [], otherFlags: [] };
-    const allFlags = flagsQuery.data.flags ?? [];
+    const rawFlags = flagsQuery.data.flags;
+    const allFlags = rawFlags ?? [];
     return {
       typeFlags: allFlags.filter((f) => f.flagKey.startsWith("RFQ_TYPE_")),
       otherFlags: allFlags.filter((f) =>
@@ -84,12 +87,16 @@ export default function EditUserAccessPage() {
     if (existingAccess) {
       setUseCustomPermissions(existingAccess.useCustomPermissions);
       setSelectedRoleCode(existingAccess.roleCode);
-      setSelectedPermissions(existingAccess.permissionCodes ?? []);
-      setSelectedProducts(existingAccess.productKeys ?? []);
-      setExpiresAt(existingAccess.expiresAt ?? "");
+      const rawPermissionCodes = existingAccess.permissionCodes;
+      setSelectedPermissions(rawPermissionCodes ?? []);
+      const rawProductKeys = existingAccess.productKeys;
+      setSelectedProducts(rawProductKeys ?? []);
+      const rawExpiresAt = existingAccess.expiresAt;
+      setExpiresAt(rawExpiresAt ?? "");
     } else if (appDetails) {
       setUseCustomPermissions(false);
-      setSelectedRoleCode(appDetails.roles.find((r) => r.isDefault)?.code || null);
+      const rawCode = appDetails.roles.find((r) => r.isDefault)?.code;
+      setSelectedRoleCode(rawCode || null);
       setSelectedPermissions([]);
       setExpiresAt("");
     }
@@ -180,14 +187,16 @@ export default function EditUserAccessPage() {
   };
 
   const categoryPermissions = (category: string) => {
-    return permissionsByCategory[category] ?? [];
+    const rawPermissionsByCategory = permissionsByCategory[category];
+    return rawPermissionsByCategory ?? [];
   };
 
   const enabledInCategory = (category: string) => {
     return categoryPermissions(category).filter((p) => selectedPermissions.includes(p.code)).length;
   };
 
-  const isSaving = assignMutation.isPending || updateMutation.isPending;
+  const rawIsPending = assignMutation.isPending;
+  const isSaving = rawIsPending || updateMutation.isPending;
 
   if (appLoading) {
     return (
@@ -281,7 +290,14 @@ export default function EditUserAccessPage() {
           <div className="px-6 py-4">
             <select
               value={selectedRoleCode ?? ""}
-              onChange={(e) => setSelectedRoleCode(e.target.value || null)}
+              onChange={(e) =>
+                setSelectedRoleCode(
+                  (() => {
+                    const rawValue = e.target.value;
+                    return rawValue || null;
+                  })(),
+                )
+              }
               className="block w-full max-w-md rounded-md border-gray-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
             >
               <option value="">Select a role...</option>
@@ -453,7 +469,10 @@ export default function EditUserAccessPage() {
                               : "text-gray-400 dark:text-gray-500"
                           }`}
                         >
-                          {meta?.label || flag.flagKey}
+                          {(() => {
+                            const rawLabel = meta?.label;
+                            return rawLabel || flag.flagKey;
+                          })()}
                         </span>
                       </button>
                     );

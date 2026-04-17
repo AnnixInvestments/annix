@@ -1,5 +1,6 @@
 "use client";
 
+import { isArray } from "es-toolkit/compat";
 import { useCallback, useEffect, useState } from "react";
 import { PdfPreviewModal, usePdfPreview } from "@/app/components/PdfPreviewModal";
 import type { QcReleaseCertificateRecord } from "@/app/lib/api/stockControlApi";
@@ -67,7 +68,7 @@ export function QcReleaseCertificateSection({ jobCardId }: QcReleaseCertificateS
       setIsLoading(true);
       setError(null);
       const result = await stockControlApiClient.releaseCertificatesForJobCard(jobCardId);
-      setCertificates(Array.isArray(result) ? result : []);
+      setCertificates(isArray(result) ? result : []);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load release certificates");
     } finally {

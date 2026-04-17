@@ -25,7 +25,8 @@ export default function AdminConversationDetailPage() {
   const conversationQuery = useAdminConversationDetail(conversationId);
   const sendMutation = useSendAdminMessage();
 
-  const conversation = conversationQuery.data ?? null;
+  const rawData = conversationQuery.data;
+  const conversation = rawData ?? null;
 
   const isFeedbackConversation = conversation?.relatedEntityType === RelatedEntityType.FEEDBACK;
 
@@ -35,7 +36,8 @@ export default function AdminConversationDetailPage() {
     enabled: isFeedbackConversation && !!conversation,
   });
 
-  const feedback = feedbackQuery.data ?? null;
+  const rawFeedbackData = feedbackQuery.data;
+  const feedback = rawFeedbackData ?? null;
 
   const handleAssignToMe = async () => {
     if (!feedback) return;

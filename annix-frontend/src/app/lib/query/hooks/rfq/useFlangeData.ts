@@ -1,6 +1,7 @@
 import { RETAINING_RING_CONFIG } from "@annix/product-data/pipe";
 import { STEEL_DENSITY_KG_M3 } from "@annix/product-data/steel";
 import { useQuery } from "@tanstack/react-query";
+import { keys } from "es-toolkit/compat";
 import {
   type BnwSetWeightRecord,
   type FlangeType,
@@ -153,7 +154,7 @@ export function outerDiameterFromNB(
 ): number {
   if (providedOD && providedOD > 0) return providedOD;
   if (nbToOdMap[nb]) return nbToOdMap[nb];
-  const sizes = Object.keys(nbToOdMap)
+  const sizes = keys(nbToOdMap)
     .map(Number)
     .sort((a, b) => a - b);
   let closest = sizes[0];

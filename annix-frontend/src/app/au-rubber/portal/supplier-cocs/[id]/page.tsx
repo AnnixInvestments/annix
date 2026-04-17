@@ -1,5 +1,6 @@
 "use client";
 
+import { isArray, keys, values } from "es-toolkit/compat";
 import { Check, Download, FileText, Pencil, RefreshCw, Trash2, X } from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
@@ -128,7 +129,7 @@ export default function SupplierCocDetailPage() {
         auRubberApiClient.compoundBatchesByCocId(cocId),
       ]);
       setCoc(cocData);
-      setBatches(Array.isArray(batchesData) ? batchesData : []);
+      setBatches(isArray(batchesData) ? batchesData : []);
 
       if (cocData.documentPath) {
         const url = await auRubberApiClient.documentUrl(cocData.documentPath);
@@ -692,7 +693,7 @@ export default function SupplierCocDetailPage() {
           <div className="w-0.5 h-8 bg-gray-300 group-hover:bg-teal-500 rounded-full transition-colors" />
         </div>
 
-        {coc.extractedData && Object.keys(coc.extractedData).length > 0 && (
+        {coc.extractedData && keys(coc.extractedData).length > 0 && (
           <div
             className="bg-white shadow rounded-lg p-6 overflow-auto flex-1"
             style={{ width: `calc(${100 - splitPercent}% - 4px)` }}
@@ -806,7 +807,7 @@ export default function SupplierCocDetailPage() {
                     );
                   })()}
 
-                  {Object.values(specs).some((v) => v != null) && (
+                  {values(specs).some((v) => v != null) && (
                     <div className="mb-4">
                       <h3 className="text-sm font-medium text-gray-700 mb-2">Specifications</h3>
                       <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">

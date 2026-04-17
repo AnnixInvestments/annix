@@ -29,11 +29,19 @@ export default function AdminCustomerDetailPage() {
   const [showResetDeviceModal, setShowResetDeviceModal] = useState(false);
   const [actionReason, setActionReason] = useState("");
 
-  const mutationError =
-    suspendMutation.error ?? reactivateMutation.error ?? resetDeviceMutation.error;
+  const mutationError = (() => {
+    const rawError = suspendMutation.error;
+    const rawReactivateError = reactivateMutation.error;
+    const rawResetDeviceError = resetDeviceMutation.error;
+    return rawError ?? rawReactivateError ?? rawResetDeviceError;
+  })();
   const error = mutationError instanceof Error ? mutationError.message : null;
-  const isPerformingAction =
-    suspendMutation.isPending || reactivateMutation.isPending || resetDeviceMutation.isPending;
+  const isPerformingAction = (() => {
+    const rawIsPending = suspendMutation.isPending;
+    const rawReactivatePending = reactivateMutation.isPending;
+    const rawResetDevicePending = resetDeviceMutation.isPending;
+    return rawIsPending || rawReactivatePending || rawResetDevicePending;
+  })();
 
   const handleSuspend = () => {
     if (!actionReason.trim()) return;
@@ -178,18 +186,29 @@ export default function AdminCustomerDetailPage() {
                 </div>
                 <div>
                   <dt className="text-sm font-medium text-gray-500">Job Title</dt>
-                  <dd className="mt-1 text-sm text-gray-900">{customer.jobTitle || "Not set"}</dd>
+                  <dd className="mt-1 text-sm text-gray-900">
+                    {(() => {
+                      const rawJobTitle = customer.jobTitle;
+                      return rawJobTitle || "Not set";
+                    })()}
+                  </dd>
                 </div>
                 <div>
                   <dt className="text-sm font-medium text-gray-500">Direct Phone</dt>
                   <dd className="mt-1 text-sm text-gray-900">
-                    {customer.directPhone || "Not set"}
+                    {(() => {
+                      const rawDirectPhone = customer.directPhone;
+                      return rawDirectPhone || "Not set";
+                    })()}
                   </dd>
                 </div>
                 <div>
                   <dt className="text-sm font-medium text-gray-500">Mobile Phone</dt>
                   <dd className="mt-1 text-sm text-gray-900">
-                    {customer.mobilePhone || "Not set"}
+                    {(() => {
+                      const rawMobilePhone = customer.mobilePhone;
+                      return rawMobilePhone || "Not set";
+                    })()}
                   </dd>
                 </div>
                 <div>
@@ -236,37 +255,48 @@ export default function AdminCustomerDetailPage() {
                   <div>
                     <dt className="text-sm font-medium text-gray-500">Registration Number</dt>
                     <dd className="mt-1 text-sm text-gray-900 font-mono">
-                      {customer.company.registrationNumber || "Not set"}
+                      {(() => {
+                        const rawRegistrationNumber = customer.company.registrationNumber;
+                        return rawRegistrationNumber || "Not set";
+                      })()}
                     </dd>
                   </div>
                   <div>
                     <dt className="text-sm font-medium text-gray-500">VAT Number</dt>
                     <dd className="mt-1 text-sm text-gray-900 font-mono">
-                      {customer.company.vatNumber || "Not registered"}
+                      {(() => {
+                        const rawVatNumber = customer.company.vatNumber;
+                        return rawVatNumber || "Not registered";
+                      })()}
                     </dd>
                   </div>
-                  {(customer.company.address ||
-                    customer.company.city ||
-                    customer.company.province) && (
-                    <div className="md:col-span-2">
-                      <dt className="text-sm font-medium text-gray-500">Address</dt>
-                      <dd className="mt-1 text-sm text-gray-900">
-                        {customer.company.address && (
-                          <>
-                            {customer.company.address}
-                            <br />
-                          </>
-                        )}
-                        {[
-                          customer.company.city,
-                          customer.company.province,
-                          customer.company.postalCode,
-                        ]
-                          .filter(Boolean)
-                          .join(", ")}
-                      </dd>
-                    </div>
-                  )}
+                  {(() => {
+                    const rawAddress = customer.company.address;
+                    const rawCity = customer.company.city;
+                    const rawProvince = customer.company.province;
+                    const hasAnyAddress = rawAddress || rawCity || rawProvince;
+                    if (!hasAnyAddress) return null;
+                    return (
+                      <div className="md:col-span-2">
+                        <dt className="text-sm font-medium text-gray-500">Address</dt>
+                        <dd className="mt-1 text-sm text-gray-900">
+                          {customer.company.address && (
+                            <>
+                              {customer.company.address}
+                              <br />
+                            </>
+                          )}
+                          {[
+                            customer.company.city,
+                            customer.company.province,
+                            customer.company.postalCode,
+                          ]
+                            .filter(Boolean)
+                            .join(", ")}
+                        </dd>
+                      </div>
+                    );
+                  })()}
                 </dl>
               </div>
             </div>
@@ -301,33 +331,37 @@ export default function AdminCustomerDetailPage() {
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {loginHistory.map((login) => (
-                      <tr key={login.id}>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {formatDateTimeZA(login.timestamp)}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          {login.success ? (
-                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                              Success
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                              Failed
-                            </span>
-                          )}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-mono">
-                          {login.ipAddress}
-                        </td>
-                        <td className="px-6 py-4 text-sm text-gray-500 max-w-xs truncate">
-                          {login.userAgent || "-"}
-                        </td>
-                        <td className="px-6 py-4 text-sm text-gray-500">
-                          {login.failureReason || "-"}
-                        </td>
-                      </tr>
-                    ))}
+                    {loginHistory.map((login) => {
+                      const rawUserAgent = login.userAgent;
+                      const rawFailureReason = login.failureReason;
+                      return (
+                        <tr key={login.id}>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {formatDateTimeZA(login.timestamp)}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            {login.success ? (
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                Success
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                Failed
+                              </span>
+                            )}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-mono">
+                            {login.ipAddress}
+                          </td>
+                          <td className="px-6 py-4 text-sm text-gray-500 max-w-xs truncate">
+                            {rawUserAgent || "-"}
+                          </td>
+                          <td className="px-6 py-4 text-sm text-gray-500">
+                            {rawFailureReason || "-"}
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               )}

@@ -1,3 +1,4 @@
+import { keys } from "es-toolkit/compat";
 import type { FlangeSpecData } from "@/app/lib/hooks/useFlangeSpecs";
 
 export interface FlangeDataEntry {
@@ -256,7 +257,7 @@ export function resolveFlangeData(
     };
   }
 
-  const availableNBs = Object.keys(FLANGE_DATA)
+  const availableNBs = keys(FLANGE_DATA)
     .map(Number)
     .filter((k) => k <= nb);
   const closestNB = availableNBs.pop() || 200;

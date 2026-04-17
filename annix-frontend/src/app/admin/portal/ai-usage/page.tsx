@@ -41,7 +41,8 @@ function appBadgeColor(app: string): string {
     "stock-control": "bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300",
     "comply-sa": "bg-rose-100 text-rose-700 dark:bg-rose-900/50 dark:text-rose-300",
   };
-  return colors[app] ?? "bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300";
+  const rawColors = colors[app];
+  return rawColors ?? "bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300";
 }
 
 function providerBadgeColor(provider: string): string {
@@ -65,7 +66,8 @@ export default function AiUsagePage() {
 
   const { data, isLoading } = useAiUsageLogs(filters);
 
-  const groups = data?.data ?? [];
+  const rawData = data?.data;
+  const groups = rawData ?? [];
 
   const updateFilter = (key: keyof AiUsageQueryParams, value: string | number) => {
     setFilters((prev) => ({
@@ -76,10 +78,14 @@ export default function AiUsagePage() {
   };
 
   const totalPages = data ? Math.ceil(data.total / data.limit) : 0;
-  const filterApp = filters.app ?? "";
-  const filterProvider = filters.provider ?? "";
-  const filterFrom = filters.from ?? "";
-  const filterTo = filters.to ?? "";
+  const rawApp = filters.app;
+  const filterApp = rawApp ?? "";
+  const rawProvider = filters.provider;
+  const filterProvider = rawProvider ?? "";
+  const rawFrom = filters.from;
+  const filterFrom = rawFrom ?? "";
+  const rawTo = filters.to;
+  const filterTo = rawTo ?? "";
 
   return (
     <div className="space-y-6">
@@ -220,19 +226,35 @@ export default function AiUsagePage() {
                       </span>
                     </td>
                     <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-500 dark:text-gray-400">
-                      {group.model ?? "-"}
+                      {(() => {
+                        const rawModel = group.model;
+                        return rawModel ?? "-";
+                      })()}
                     </td>
                     <td className="whitespace-nowrap px-4 py-3 text-sm font-medium text-gray-900 dark:text-gray-200">
                       {group.totalCalls}
                     </td>
                     <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-700 dark:text-gray-300">
-                      {group.totalPages || "-"}
+                      {(() => {
+                        const rawTotalPages = group.totalPages;
+                        return rawTotalPages || "-";
+                      })()}
                     </td>
                     <td className="whitespace-nowrap px-4 py-3 text-sm font-mono font-medium text-gray-900 dark:text-gray-200">
-                      {formatTokens(group.totalTokens || null)}
+                      {formatTokens(
+                        (() => {
+                          const rawTotalTokens = group.totalTokens;
+                          return rawTotalTokens || null;
+                        })(),
+                      )}
                     </td>
                     <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-500 dark:text-gray-400">
-                      {formatMs(group.totalTimeMs || null)}
+                      {formatMs(
+                        (() => {
+                          const rawTotalTimeMs = group.totalTimeMs;
+                          return rawTotalTimeMs || null;
+                        })(),
+                      )}
                     </td>
                   </tr>
                 ))
@@ -248,14 +270,30 @@ export default function AiUsagePage() {
             </p>
             <div className="flex gap-2">
               <button
-                onClick={() => updateFilter("page", (data?.page || 1) - 1)}
+                onClick={() =>
+                  updateFilter(
+                    "page",
+                    (() => {
+                      const rawPage = data?.page;
+                      return rawPage || 1;
+                    })() - 1,
+                  )
+                }
                 disabled={!data || data.page <= 1}
                 className="rounded-md border border-gray-300 px-3 py-1 text-sm disabled:opacity-50 dark:border-slate-600 dark:text-gray-300"
               >
                 Previous
               </button>
               <button
-                onClick={() => updateFilter("page", (data?.page || 1) + 1)}
+                onClick={() =>
+                  updateFilter(
+                    "page",
+                    (() => {
+                      const rawPage = data?.page;
+                      return rawPage || 1;
+                    })() + 1,
+                  )
+                }
                 disabled={!data || data.page >= totalPages}
                 className="rounded-md border border-gray-300 px-3 py-1 text-sm disabled:opacity-50 dark:border-slate-600 dark:text-gray-300"
               >

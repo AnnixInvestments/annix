@@ -40,8 +40,14 @@ const exportOrdersToCSV = (orders: RubberOrderDto[]) => {
   const headers = ["Order Number", "Company Order #", "Company", "Status", "Items", "Created"];
   const rows = orders.map((order) => [
     order.orderNumber,
-    order.companyOrderNumber || "",
-    order.companyName || "",
+    (() => {
+      const rawCompanyOrderNumber = order.companyOrderNumber;
+      return rawCompanyOrderNumber || "";
+    })(),
+    (() => {
+      const rawCompanyName = order.companyName;
+      return rawCompanyName || "";
+    })(),
     order.statusLabel,
     order.items.length.toString(),
     order.createdAt,
@@ -87,9 +93,18 @@ export default function RubberOrdersPage() {
   const createMutation = useCreateRubberOrder();
   const deleteMutation = useDeleteRubberOrder();
 
-  const orders = ordersQuery.data ?? [];
-  const companies = companiesQuery.data ?? [];
-  const statuses = statusesQuery.data ?? [];
+  const orders = (() => {
+    const rawData = ordersQuery.data;
+    return rawData ?? [];
+  })();
+  const companies = (() => {
+    const rawData = companiesQuery.data;
+    return rawData ?? [];
+  })();
+  const statuses = (() => {
+    const rawData = statusesQuery.data;
+    return rawData ?? [];
+  })();
 
   const sortOrders = (ordersToSort: RubberOrderDto[]): RubberOrderDto[] => {
     return [...ordersToSort].sort((a, b) => {
@@ -97,12 +112,24 @@ export default function RubberOrdersPage() {
       if (sortColumn === "orderNumber") {
         return direction * a.orderNumber.localeCompare(b.orderNumber);
       } else if (sortColumn === "companyOrderNumber") {
-        const aVal = a.companyOrderNumber || "";
-        const bVal = b.companyOrderNumber || "";
+        const aVal = (() => {
+          const rawCompanyOrderNumber = a.companyOrderNumber;
+          return rawCompanyOrderNumber || "";
+        })();
+        const bVal = (() => {
+          const rawCompanyOrderNumber = b.companyOrderNumber;
+          return rawCompanyOrderNumber || "";
+        })();
         return direction * aVal.localeCompare(bVal);
       } else if (sortColumn === "companyName") {
-        const aVal = a.companyName || "";
-        const bVal = b.companyName || "";
+        const aVal = (() => {
+          const rawCompanyName = a.companyName;
+          return rawCompanyName || "";
+        })();
+        const bVal = (() => {
+          const rawCompanyName = b.companyName;
+          return rawCompanyName || "";
+        })();
         return direction * aVal.localeCompare(bVal);
       } else if (sortColumn === "status") {
         return direction * (a.status - b.status);

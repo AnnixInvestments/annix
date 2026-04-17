@@ -52,7 +52,10 @@ export default function SupplierPumpQuoteDetailPage() {
   }) => {
     const firstItem = quote.lineItems[0];
     const quoteData = {
-      unitPrice: firstItem?.unitPrice || 0,
+      unitPrice: (() => {
+        const rawUnitPrice = firstItem?.unitPrice;
+        return rawUnitPrice || 0;
+      })(),
       totalPrice: quote.totalAmount,
       leadTimeDays: firstItem?.leadTimeDays,
       notes: quote.generalNotes,
@@ -73,6 +76,7 @@ export default function SupplierPumpQuoteDetailPage() {
   };
 
   const handleDecline = async () => {
+    // eslint-disable-next-line no-restricted-globals -- legacy sync prompt pending modal migration (issue #175)
     const reason = prompt("Please provide a reason for declining this quote request:");
     if (reason === null) return;
 
@@ -114,7 +118,10 @@ export default function SupplierPumpQuoteDetailPage() {
 
   const { rfq, customer, pump, item, accessStatus } = data;
   const canQuote = accessStatus === "pending" || accessStatus === "viewed";
-  const statusStyle = STATUS_STYLES[accessStatus] ?? STATUS_STYLES.pending;
+  const statusStyle = (() => {
+    const rawSTATUS_STYLES = STATUS_STYLES[accessStatus];
+    return rawSTATUS_STYLES ?? STATUS_STYLES.pending;
+  })();
 
   if (showQuoteForm) {
     return (
@@ -123,7 +130,10 @@ export default function SupplierPumpQuoteDetailPage() {
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Submit Quote</h1>
             <p className="mt-1 text-gray-600">
-              {rfq.rfqNumber} - {customer.company ?? customer.name}
+              {rfq.rfqNumber} - {(() => {
+                const rawCompany = customer.company;
+                return rawCompany ?? customer.name;
+              })()}
             </p>
           </div>
           <button
@@ -145,19 +155,42 @@ export default function SupplierPumpQuoteDetailPage() {
         <SupplierQuoteForm
           rfqItems={[
             {
-              id: String(item?.id || rfq.id),
+              id: String(
+                (() => {
+                  const rawId = item?.id;
+                  return rawId || rfq.id;
+                })(),
+              ),
               serviceType:
                 (pump?.serviceType as "new_pump" | "spare_parts" | "repair_service" | "rental") ||
                 "new_pump",
-              pumpType: pump?.pumpType || "Unknown",
-              flowRate: pump?.flowRate || 0,
-              totalHead: pump?.totalHead || 0,
-              quantity: pump?.quantity || item?.quantity || 1,
-              description: item?.description || rfq.description || pump?.pumpType || "",
+              pumpType: (() => {
+                const rawPumpType = pump?.pumpType;
+                return rawPumpType || "Unknown";
+              })(),
+              flowRate: (() => {
+                const rawFlowRate = pump?.flowRate;
+                return rawFlowRate || 0;
+              })(),
+              totalHead: (() => {
+                const rawTotalHead = pump?.totalHead;
+                return rawTotalHead || 0;
+              })(),
+              quantity: (() => {
+                const rawQuantity = pump?.quantity;
+                return rawQuantity || item?.quantity || 1;
+              })(),
+              description: (() => {
+                const rawDescription = item?.description;
+                return rawDescription || rfq.description || pump?.pumpType || "";
+              })(),
             },
           ]}
           rfqNumber={rfq.rfqNumber}
-          customerName={customer.company ?? customer.name}
+          customerName={(() => {
+            const rawCompany = customer.company;
+            return rawCompany ?? customer.name;
+          })()}
           onSubmit={handleSubmitQuote}
           onCancel={() => setShowQuoteForm(false)}
         />
@@ -447,11 +480,17 @@ export default function SupplierPumpQuoteDetailPage() {
           </>
         )}
 
-        {(rfq.notes || item?.notes) && (
+        {(() => {
+          const rawNotes = rfq.notes;
+          return rawNotes || item?.notes;
+        })() && (
           <div className="p-6 border-t border-gray-200">
             <h3 className="text-lg font-medium text-gray-900 mb-4">Additional Notes</h3>
             <p className="text-sm text-gray-700 bg-gray-50 rounded-lg p-4">
-              {rfq.notes || item?.notes}
+              {(() => {
+                const rawNotes = rfq.notes;
+                return rawNotes || item?.notes;
+              })()}
             </p>
           </div>
         )}

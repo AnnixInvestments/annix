@@ -34,6 +34,7 @@ export function DraggablePanel(props: {
   isPlaced: boolean;
 }) {
   const { panel, scale, onRotate, onEditDimensions, rotateFailed, isPlaced } = props;
+  const rawPanelItemNo = panel.itemNo;
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: panel.panelId,
   });
@@ -192,7 +193,7 @@ export function DraggablePanel(props: {
       className={`${colorClass} rounded cursor-grab active:cursor-grabbing ${overridden ? "border-2 border-yellow-300" : "border border-white/40"} p-2 text-white select-none flex items-center gap-2 ${isDragging ? "opacity-50 shadow-lg" : "shadow-sm"}`}
     >
       <div className="flex-1 min-w-0">
-        <div className="text-xs font-bold truncate">{panel.itemNo || panel.panelId}</div>
+        <div className="text-xs font-bold truncate">{rawPanelItemNo || panel.panelId}</div>
         <div
           className="text-[10px] opacity-80 truncate cursor-pointer hover:opacity-100 hover:underline"
           onPointerDown={onEditDimensions ? handleStartEdit : undefined}

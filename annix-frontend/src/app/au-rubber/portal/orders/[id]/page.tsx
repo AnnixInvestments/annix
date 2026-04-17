@@ -20,6 +20,7 @@ import {
   statusLabel,
   validNextStatuses,
 } from "@annix/product-data/rubber/orderStatus";
+import { isArray } from "es-toolkit/compat";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
@@ -167,7 +168,7 @@ export default function AuRubberOrderDetailPage() {
   const fetchProducts = async () => {
     try {
       const data = await auRubberApiClient.products();
-      setProducts(Array.isArray(data) ? data : []);
+      setProducts(isArray(data) ? data : []);
     } catch (err) {
       console.error("Failed to load products:", err);
     }
@@ -176,7 +177,7 @@ export default function AuRubberOrderDetailPage() {
   const fetchCompanies = async () => {
     try {
       const data = await auRubberApiClient.companies();
-      setCompanies(Array.isArray(data) ? data : []);
+      setCompanies(isArray(data) ? data : []);
     } catch (err) {
       console.error("Failed to load companies:", err);
     }

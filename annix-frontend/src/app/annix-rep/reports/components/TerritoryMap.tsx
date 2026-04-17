@@ -1,5 +1,6 @@
 "use client";
 
+import { toPairs as entries } from "es-toolkit/compat";
 import type { Map as LeafletMap, Marker as LeafletMarker } from "leaflet";
 import { useEffect, useRef } from "react";
 import type { TerritoryCoverageReport } from "@/app/lib/api/annixRepApi";
@@ -33,6 +34,7 @@ export default function TerritoryMap(props: TerritoryMapProps) {
   const mapInstanceRef = useRef<LeafletMap | null>(null);
 
   useEffect(() => {
+    // eslint-disable-next-line no-restricted-syntax -- SSR guard; isUndefined(window) would throw
     if (typeof window === "undefined" || !mapContainerRef.current) return;
 
     const initMap = async () => {
@@ -170,7 +172,7 @@ export default function TerritoryMap(props: TerritoryMapProps) {
       <div className="absolute bottom-4 left-4 bg-white dark:bg-slate-800 rounded-lg p-3 shadow-lg z-[1000]">
         <p className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">Legend</p>
         <div className="space-y-1">
-          {Object.entries(statusLabels).map(([status, label]) => (
+          {entries(statusLabels).map(([status, label]) => (
             <div key={status} className="flex items-center gap-2">
               <div
                 className="w-3 h-3 rounded-full"

@@ -4,7 +4,8 @@ import React, { useCallback, useState } from "react";
 
 interface PendingDocument {
   file: File;
-  id: string; // Unique ID for React key
+  // Unique ID for React key
+  id: string;
 }
 
 interface RfqDocumentUploadProps {

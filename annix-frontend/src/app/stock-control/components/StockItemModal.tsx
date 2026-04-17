@@ -1,5 +1,6 @@
 "use client";
 
+import { keys } from "es-toolkit/compat";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import type { StockItem } from "@/app/lib/api/stockControlApi";
@@ -90,7 +91,7 @@ export function StockItemModal(props: StockItemModalProps) {
       newErrors.minStockLevel = "Must be a non-negative number";
     }
 
-    if (Object.keys(newErrors).length > 0) {
+    if (keys(newErrors).length > 0) {
       setFieldErrors(newErrors);
       return;
     }

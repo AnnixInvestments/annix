@@ -1,5 +1,6 @@
 "use client";
 
+import { isArray } from "es-toolkit/compat";
 import { useCallback, useEffect, useState } from "react";
 import type { IssuanceBatchRecord, StockAllocation } from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
@@ -25,7 +26,7 @@ export function StockIssuesTab(props: StockIssuesTabProps) {
   const fetchBatchRecords = useCallback(async () => {
     try {
       const records = await stockControlApiClient.batchRecordsForJobCard(jobId);
-      setBatchRecords(Array.isArray(records) ? records : []);
+      setBatchRecords(isArray(records) ? records : []);
     } catch {
       setBatchRecords([]);
     }

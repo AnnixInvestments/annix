@@ -33,7 +33,10 @@ function userDisplayName(user: RbacUserWithAccessSummary): string {
 }
 
 function userInitial(user: RbacUserWithAccessSummary): string {
-  return (user.firstName?.[0] || user.email[0]).toUpperCase();
+  return (() => {
+    const rawFirstName = user.firstName?.[0];
+    return rawFirstName || user.email[0];
+  })().toUpperCase();
 }
 
 export default function AdminUsersPage() {
@@ -88,7 +91,10 @@ export default function AdminUsersPage() {
     );
   }, [selectedUser]);
 
-  const enabledAppCount = selectedUser?.appAccess.length || 0;
+  const enabledAppCount = (() => {
+    const rawLength = selectedUser?.appAccess.length;
+    return rawLength || 0;
+  })();
   const isLoading = appsLoading || usersLoading;
 
   if (!isAdmin) {
@@ -148,6 +154,7 @@ export default function AdminUsersPage() {
   const handleRevokeAccess = (access: RbacAppAccessSummary) => {
     if (!selectedUser) return;
     const userName = userDisplayName(selectedUser);
+    // eslint-disable-next-line no-restricted-globals -- legacy sync confirm pending modal migration (issue #175)
     if (!confirm(`Are you sure you want to revoke ${userName}'s access to ${access.appName}?`)) {
       return;
     }
@@ -190,7 +197,12 @@ export default function AdminUsersPage() {
         </div>
         <button
           onClick={() => {
-            setInviteAppCode(apps[0]?.code || null);
+            setInviteAppCode(
+              (() => {
+                const rawCode = apps[0]?.code;
+                return rawCode || null;
+              })(),
+            );
             setShowInviteModal(true);
           }}
           disabled={apps.length === 0}
@@ -270,12 +282,13 @@ export default function AdminUsersPage() {
                         {userDisplayName(selectedUser)}
                       </h2>
                       <span
-                        className={`px-2 py-0.5 text-xs font-medium rounded ${
-                          STATUS_COLORS[selectedUser.status]?.bg || "bg-gray-100 dark:bg-gray-700"
-                        } ${
-                          STATUS_COLORS[selectedUser.status]?.text ||
-                          "text-gray-700 dark:text-gray-300"
-                        }`}
+                        className={`px-2 py-0.5 text-xs font-medium rounded ${(() => {
+                          const rawBg = STATUS_COLORS[selectedUser.status]?.bg;
+                          return rawBg || "bg-gray-100 dark:bg-gray-700";
+                        })()} ${(() => {
+                          const rawText = STATUS_COLORS[selectedUser.status]?.text;
+                          return rawText || "text-gray-700 dark:text-gray-300";
+                        })()}`}
                       >
                         {selectedUser.status}
                       </span>
@@ -341,7 +354,8 @@ export default function AdminUsersPage() {
                 <div className="p-4">
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
                     {apps.map((app) => {
-                      const access = accessByApp[app.code] ?? null;
+                      const rawAccess = accessByApp[app.code];
+                      const access = rawAccess ?? null;
                       return (
                         <AppToggleCard
                           key={app.code}

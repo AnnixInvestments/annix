@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { isArray } from "es-toolkit/compat";
 import type {
   BlastProfileWithJobCard,
   DataBookStatus,
@@ -17,7 +18,7 @@ export function usePositectorDevices() {
     queryKey: stockControlKeys.positector.devices(),
     queryFn: async () => {
       const data = await stockControlApiClient.positectorDevices({ active: true });
-      return Array.isArray(data) ? data : [];
+      return isArray(data) ? data : [];
     },
   });
 }
@@ -27,7 +28,7 @@ export function useAllShoreHardnessRecords() {
     queryKey: stockControlKeys.shoreHardness.list(),
     queryFn: async () => {
       const data = await stockControlApiClient.allShoreHardnessRecords();
-      return Array.isArray(data) ? data : [];
+      return isArray(data) ? data : [];
     },
   });
 }
@@ -47,7 +48,7 @@ export function useAllEnvironmentalRecords() {
     queryKey: stockControlKeys.environmentalRecords.list(),
     queryFn: async () => {
       const data = await stockControlApiClient.allEnvironmentalRecords();
-      return Array.isArray(data) ? data : [];
+      return isArray(data) ? data : [];
     },
   });
 }
@@ -67,7 +68,7 @@ export function useAllBlastProfiles() {
     queryKey: stockControlKeys.blastProfiles.list(),
     queryFn: async () => {
       const data = await stockControlApiClient.allBlastProfiles();
-      return Array.isArray(data) ? data : [];
+      return isArray(data) ? data : [];
     },
   });
 }
@@ -87,7 +88,7 @@ export function useAllDftReadings() {
     queryKey: stockControlKeys.dftReadings.list(),
     queryFn: async () => {
       const data = await stockControlApiClient.allDftReadings();
-      return Array.isArray(data) ? data : [];
+      return isArray(data) ? data : [];
     },
   });
 }

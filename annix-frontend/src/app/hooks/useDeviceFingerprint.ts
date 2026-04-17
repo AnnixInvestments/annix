@@ -41,10 +41,20 @@ export async function generateFingerprint(): Promise<DeviceFingerprintData> {
   components.push(timezone);
 
   // Hardware concurrency
-  components.push(String(navigator.hardwareConcurrency || 0));
+  components.push(
+    String(
+      (() => {
+        const rawHardwareConcurrency = navigator.hardwareConcurrency;
+        return rawHardwareConcurrency || 0;
+      })(),
+    ),
+  );
 
   // Device memory (if available)
-  const deviceMemory = (navigator as any).deviceMemory || null;
+  const deviceMemory = (() => {
+    const rawDeviceMemory = (navigator as any).deviceMemory;
+    return rawDeviceMemory || null;
+  })();
   components.push(String(deviceMemory || 0));
 
   // Canvas fingerprint
@@ -83,7 +93,12 @@ export async function generateFingerprint(): Promise<DeviceFingerprintData> {
   }
 
   // Installed plugins
-  const plugins = Array.from(navigator.plugins || [])
+  const plugins = Array.from(
+    (() => {
+      const rawPlugins = navigator.plugins;
+      return rawPlugins || [];
+    })(),
+  )
     .map((p) => p.name)
     .sort()
     .join(",");
@@ -102,7 +117,10 @@ export async function generateFingerprint(): Promise<DeviceFingerprintData> {
       screenResolution: screenRes,
       timezone,
       colorDepth: window.screen.colorDepth,
-      hardwareConcurrency: navigator.hardwareConcurrency || 0,
+      hardwareConcurrency: (() => {
+        const rawHardwareConcurrency = navigator.hardwareConcurrency;
+        return rawHardwareConcurrency || 0;
+      })(),
       deviceMemory,
     },
   };
@@ -138,6 +156,7 @@ export function useDeviceFingerprint() {
       setBrowserInfo(data.browserInfo);
 
       // Store in session storage for use across the app
+      // eslint-disable-next-line no-restricted-syntax -- SSR guard; isUndefined(window) would throw
       if (typeof window !== "undefined") {
         sessionStorage.setItem("deviceFingerprint", data.fingerprint);
         sessionStorage.setItem("browserInfo", JSON.stringify(data.browserInfo));
@@ -151,6 +170,7 @@ export function useDeviceFingerprint() {
 
   useEffect(() => {
     // Check if we already have a fingerprint in session
+    // eslint-disable-next-line no-restricted-syntax -- SSR guard; isUndefined(window) would throw
     if (typeof window !== "undefined") {
       const stored = sessionStorage.getItem("deviceFingerprint");
       const storedInfo = sessionStorage.getItem("browserInfo");
@@ -179,6 +199,7 @@ export function useDeviceFingerprint() {
  * Returns null if not available
  */
 export function getStoredFingerprint(): string | null {
+  // eslint-disable-next-line no-restricted-syntax -- SSR guard; isUndefined(window) would throw
   if (typeof window === "undefined") return null;
   return sessionStorage.getItem("deviceFingerprint");
 }

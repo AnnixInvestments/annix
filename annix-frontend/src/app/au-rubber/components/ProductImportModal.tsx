@@ -1,5 +1,6 @@
 "use client";
 
+import { keys } from "es-toolkit/compat";
 import { Loader2 } from "lucide-react";
 import { useState } from "react";
 import * as XLSX from "xlsx";
@@ -94,9 +95,9 @@ function parseExcelClientSide(file: File): Promise<AnalyzedProductLine[]> {
 }
 
 function detectHeaders(firstRow: Record<string, unknown>): Record<string, string[]> {
-  const keys = Object.keys(firstRow);
+  const rowKeys = keys(firstRow);
   const findKeys = (patterns: string[]) =>
-    keys.filter((key) => {
+    rowKeys.filter((key) => {
       const normalizedKey = key
         .toLowerCase()
         .replace(/[_\-\s]+/g, " ")

@@ -22,11 +22,26 @@ export default function SupplierProfilePage() {
   useEffect(() => {
     if (profile) {
       setEditData({
-        firstName: profile.firstName || "",
-        lastName: profile.lastName || "",
-        jobTitle: profile.jobTitle || "",
-        directPhone: profile.directPhone || "",
-        mobilePhone: profile.mobilePhone || "",
+        firstName: (() => {
+          const rawFirstName = profile.firstName;
+          return rawFirstName || "";
+        })(),
+        lastName: (() => {
+          const rawLastName = profile.lastName;
+          return rawLastName || "";
+        })(),
+        jobTitle: (() => {
+          const rawJobTitle = profile.jobTitle;
+          return rawJobTitle || "";
+        })(),
+        directPhone: (() => {
+          const rawDirectPhone = profile.directPhone;
+          return rawDirectPhone || "";
+        })(),
+        mobilePhone: (() => {
+          const rawMobilePhone = profile.mobilePhone;
+          return rawMobilePhone || "";
+        })(),
       });
     }
   }, [profile]);
@@ -69,7 +84,10 @@ export default function SupplierProfilePage() {
         <div className="flex items-center justify-between">
           <div className="flex items-center">
             <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 text-2xl font-bold">
-              {(profile?.firstName?.[0] || supplier?.email?.[0] || "S").toUpperCase()}
+              {(() => {
+                const rawFirstName = profile?.firstName?.[0];
+                return rawFirstName || supplier?.email?.[0] || "S";
+              })().toUpperCase()}
             </div>
             <div className="ml-4">
               <h1 className="text-2xl font-bold text-gray-900">
@@ -77,7 +95,12 @@ export default function SupplierProfilePage() {
                   ? `${profile.firstName} ${profile.lastName}`
                   : "Your Profile"}
               </h1>
-              <p className="text-gray-600">{profile?.email || supplier?.email}</p>
+              <p className="text-gray-600">
+                {(() => {
+                  const rawEmail = profile?.email;
+                  return rawEmail || supplier?.email;
+                })()}
+              </p>
             </div>
           </div>
           {!isEditing && (
@@ -113,12 +136,20 @@ export default function SupplierProfilePage() {
               <input
                 type="text"
                 name="firstName"
-                value={editData.firstName || ""}
+                value={(() => {
+                  const rawFirstName = editData.firstName;
+                  return rawFirstName || "";
+                })()}
                 onChange={handleChange}
                 className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
               />
             ) : (
-              <p className="mt-1 text-gray-900">{profile?.firstName || "-"}</p>
+              <p className="mt-1 text-gray-900">
+                {(() => {
+                  const rawFirstName = profile?.firstName;
+                  return rawFirstName || "-";
+                })()}
+              </p>
             )}
           </div>
           <div>
@@ -127,12 +158,20 @@ export default function SupplierProfilePage() {
               <input
                 type="text"
                 name="lastName"
-                value={editData.lastName || ""}
+                value={(() => {
+                  const rawLastName = editData.lastName;
+                  return rawLastName || "";
+                })()}
                 onChange={handleChange}
                 className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
               />
             ) : (
-              <p className="mt-1 text-gray-900">{profile?.lastName || "-"}</p>
+              <p className="mt-1 text-gray-900">
+                {(() => {
+                  const rawLastName = profile?.lastName;
+                  return rawLastName || "-";
+                })()}
+              </p>
             )}
           </div>
           <div>
@@ -141,17 +180,30 @@ export default function SupplierProfilePage() {
               <input
                 type="text"
                 name="jobTitle"
-                value={editData.jobTitle || ""}
+                value={(() => {
+                  const rawJobTitle = editData.jobTitle;
+                  return rawJobTitle || "";
+                })()}
                 onChange={handleChange}
                 className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
               />
             ) : (
-              <p className="mt-1 text-gray-900">{profile?.jobTitle || "-"}</p>
+              <p className="mt-1 text-gray-900">
+                {(() => {
+                  const rawJobTitle = profile?.jobTitle;
+                  return rawJobTitle || "-";
+                })()}
+              </p>
             )}
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700">Email</label>
-            <p className="mt-1 text-gray-900">{profile?.email || supplier?.email}</p>
+            <p className="mt-1 text-gray-900">
+              {(() => {
+                const rawEmail = profile?.email;
+                return rawEmail || supplier?.email;
+              })()}
+            </p>
             <p className="text-xs text-gray-500 mt-1">Email cannot be changed</p>
           </div>
         </div>
@@ -167,12 +219,20 @@ export default function SupplierProfilePage() {
               <input
                 type="tel"
                 name="directPhone"
-                value={editData.directPhone || ""}
+                value={(() => {
+                  const rawDirectPhone = editData.directPhone;
+                  return rawDirectPhone || "";
+                })()}
                 onChange={handleChange}
                 className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
               />
             ) : (
-              <p className="mt-1 text-gray-900">{profile?.directPhone || "-"}</p>
+              <p className="mt-1 text-gray-900">
+                {(() => {
+                  const rawDirectPhone = profile?.directPhone;
+                  return rawDirectPhone || "-";
+                })()}
+              </p>
             )}
           </div>
           <div>
@@ -181,12 +241,20 @@ export default function SupplierProfilePage() {
               <input
                 type="tel"
                 name="mobilePhone"
-                value={editData.mobilePhone || ""}
+                value={(() => {
+                  const rawMobilePhone = editData.mobilePhone;
+                  return rawMobilePhone || "";
+                })()}
                 onChange={handleChange}
                 className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
               />
             ) : (
-              <p className="mt-1 text-gray-900">{profile?.mobilePhone || "-"}</p>
+              <p className="mt-1 text-gray-900">
+                {(() => {
+                  const rawMobilePhone = profile?.mobilePhone;
+                  return rawMobilePhone || "-";
+                })()}
+              </p>
             )}
           </div>
         </div>

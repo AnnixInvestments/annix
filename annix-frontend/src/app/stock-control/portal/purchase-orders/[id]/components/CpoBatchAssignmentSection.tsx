@@ -1,5 +1,6 @@
 "use client";
 
+import { keys } from "es-toolkit/compat";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type {
   CoatingAnalysis,
@@ -361,7 +362,7 @@ export function CpoBatchAssignmentSection(props: CpoBatchAssignmentSectionProps)
         {fields.map((field) => {
           const rawFieldGroups = assignmentsByField[field.fieldKey];
           const fieldGroups = rawFieldGroups || {};
-          const batchKeys = Object.keys(fieldGroups);
+          const batchKeys = keys(fieldGroups);
           const rawAssignedIds = assignedItemIdsByField[field.fieldKey];
           const assignedIds = rawAssignedIds || new Set<number>();
           const unassignedItems = allLineItems.filter((li) => !assignedIds.has(li.id));

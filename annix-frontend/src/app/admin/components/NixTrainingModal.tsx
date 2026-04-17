@@ -1,5 +1,6 @@
 "use client";
 
+import { isNumber, keys } from "es-toolkit/compat";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
@@ -55,7 +56,7 @@ function valuesMatch(
   expected: string | number | null | undefined,
 ): boolean {
   if (!extracted || expected === null || expected === undefined) return false;
-  const expectedStr = typeof expected === "number" ? String(expected) : expected;
+  const expectedStr = isNumber(expected) ? String(expected) : expected;
   return normalizeForComparison(extracted) === normalizeForComparison(expectedStr);
 }
 
@@ -136,8 +137,9 @@ export function NixTrainingModal(props: NixTrainingModalProps) {
   const imageRef = useRef<HTMLImageElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const relevantFieldNames =
-    fieldsPerDocumentType[documentType] || fieldsPerDocumentType["registration"] || [];
+  const rawTypeFields = fieldsPerDocumentType[documentType];
+  const rawRegistrationFields = fieldsPerDocumentType["registration"];
+  const relevantFieldNames = rawTypeFields || rawRegistrationFields || [];
   const allFieldNames = [...relevantFieldNames, ...customFields];
 
   const fieldsToTrain: FieldComparisonResult[] =
@@ -154,7 +156,7 @@ export function NixTrainingModal(props: NixTrainingModalProps) {
             }
           );
         })
-      : Object.keys(fieldLabels).map((fieldName) => ({
+      : keys(fieldLabels).map((fieldName) => ({
           field: fieldName,
           expected: null,
           extracted: null,
@@ -258,8 +260,10 @@ export function NixTrainingModal(props: NixTrainingModalProps) {
 
         ctx.fillStyle = region.saved ? "#22c55e" : "#f59e0b";
         ctx.font = "12px sans-serif";
+        const rawFieldLabel = fieldLabels[region.fieldName];
+        const fieldLabel = rawFieldLabel || region.fieldName;
         ctx.fillText(
-          fieldLabels[region.fieldName] || region.fieldName,
+          fieldLabel,
           region.valueCoordinates.x * scale + 4,
           region.valueCoordinates.y * scale - 4,
         );
@@ -546,6 +550,8 @@ export function NixTrainingModal(props: NixTrainingModalProps) {
       }
 
       const fieldData = fieldComparison.find((f) => f.field === selectedField);
+      const rawExpected = fieldData?.expected;
+      const expectedValue = rawExpected || null;
       setTrainedRegions((prev) => [
         ...prev.filter((r) => r.fieldName !== selectedField),
         {
@@ -556,7 +562,7 @@ export function NixTrainingModal(props: NixTrainingModalProps) {
           extractedText,
           confidence: extractionConfidence,
           saved: true,
-          expectedValue: fieldData?.expected || null,
+          expectedValue,
         },
       ]);
 
@@ -822,14 +828,18 @@ export function NixTrainingModal(props: NixTrainingModalProps) {
                       </button>
                     </div>
 
-                    {selectedField && drawingPhase && (
-                      <div
-                        className={`text-sm px-3 py-1 rounded ${drawingPhase === "label" ? "bg-purple-500" : "bg-green-500"}`}
-                      >
-                        Draw {drawingPhase === "label" ? "LABEL" : "VALUE"} for:{" "}
-                        {fieldLabels[selectedField] || selectedField}
-                      </div>
-                    )}
+                    {(() => {
+                      if (!selectedField || !drawingPhase) return null;
+                      const rawSelectedLabel = fieldLabels[selectedField];
+                      const selectedLabel = rawSelectedLabel || selectedField;
+                      return (
+                        <div
+                          className={`text-sm px-3 py-1 rounded ${drawingPhase === "label" ? "bg-purple-500" : "bg-green-500"}`}
+                        >
+                          Draw {drawingPhase === "label" ? "LABEL" : "VALUE"} for: {selectedLabel}
+                        </div>
+                      );
+                    })()}
                   </div>
 
                   <div ref={containerRef} className="flex-1 overflow-auto">
@@ -877,6 +887,12 @@ export function NixTrainingModal(props: NixTrainingModalProps) {
                     const trainedMatchesExpected =
                       trained?.saved && valuesMatch(trained.extractedText, field.expected);
                     const isCustomField = customFields.includes(field.field);
+                    const rawFieldLabel = fieldLabels[field.field];
+                    const fieldLabel = rawFieldLabel || field.field;
+                    const rawExpected = field.expected;
+                    const expectedDisplay = rawExpected ?? "-";
+                    const rawExtracted = field.extracted;
+                    const extractedDisplay = rawExtracted ?? "-";
 
                     return (
                       <button
@@ -907,7 +923,7 @@ export function NixTrainingModal(props: NixTrainingModalProps) {
                                 : "text-gray-900"
                             }`}
                           >
-                            {fieldLabels[field.field] || field.field}
+                            {fieldLabel}
                             {isCustomField && (
                               <span className="ml-2 text-xs text-indigo-500 font-normal">
                                 (custom)
@@ -956,7 +972,7 @@ export function NixTrainingModal(props: NixTrainingModalProps) {
                                     : "text-gray-500"
                                 }
                               >
-                                Expected: {field.expected ?? "-"}
+                                Expected: {expectedDisplay}
                               </div>
                               <div
                                 className={
@@ -965,7 +981,7 @@ export function NixTrainingModal(props: NixTrainingModalProps) {
                                     : "text-gray-500"
                                 }
                               >
-                                Extracted: {field.extracted ?? "-"}
+                                Extracted: {extractedDisplay}
                               </div>
                             </>
                           )}
@@ -1068,173 +1084,178 @@ export function NixTrainingModal(props: NixTrainingModalProps) {
                 </div>
               </div>
 
-              {selectedField && (
-                <div className="p-4 bg-gray-50 border-t">
-                  <h4 className="font-medium text-gray-900 mb-3">
-                    Training: {fieldLabels[selectedField] || selectedField}
-                  </h4>
+              {(() => {
+                if (!selectedField) return null;
+                const rawHeaderLabel = fieldLabels[selectedField];
+                const headerLabel = rawHeaderLabel || selectedField;
+                return (
+                  <div className="p-4 bg-gray-50 border-t">
+                    <h4 className="font-medium text-gray-900 mb-3">Training: {headerLabel}</h4>
 
-                  {drawingPhase === "label" && !labelRegion && (
-                    <div className="space-y-3">
-                      <div className="p-3 bg-purple-50 border border-purple-200 rounded-lg">
-                        <p className="text-sm text-purple-800 font-medium">
-                          Step 1: Draw LABEL box
-                        </p>
-                        <p className="text-xs text-purple-600 mt-1">
-                          Draw a box around the field label (e.g., &quot;Tax Number:&quot;,
-                          &quot;VAT No:&quot;)
-                        </p>
-                      </div>
-                      <button
-                        onClick={handleSkipLabel}
-                        className="w-full py-2 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded"
-                      >
-                        Skip label → Draw value only
-                      </button>
-                    </div>
-                  )}
-
-                  {drawingPhase === "label" && labelRegion && (
-                    <div className="space-y-3">
-                      <div className="p-3 bg-purple-50 border border-purple-200 rounded-lg">
-                        <p className="text-sm text-purple-800 font-medium flex items-center gap-2">
-                          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                            <path
-                              fillRule="evenodd"
-                              d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                              clipRule="evenodd"
-                            />
-                          </svg>
-                          Label box drawn
-                        </p>
-                      </div>
-                      <p className="text-xs text-gray-500">
-                        Click &quot;Next&quot; to draw the value box, or redraw the label.
-                      </p>
-                      <div className="flex gap-2">
+                    {drawingPhase === "label" && !labelRegion && (
+                      <div className="space-y-3">
+                        <div className="p-3 bg-purple-50 border border-purple-200 rounded-lg">
+                          <p className="text-sm text-purple-800 font-medium">
+                            Step 1: Draw LABEL box
+                          </p>
+                          <p className="text-xs text-purple-600 mt-1">
+                            Draw a box around the field label (e.g., &quot;Tax Number:&quot;,
+                            &quot;VAT No:&quot;)
+                          </p>
+                        </div>
                         <button
-                          onClick={() => setDrawingPhase("value")}
-                          className="flex-1 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
+                          onClick={handleSkipLabel}
+                          className="w-full py-2 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded"
                         >
-                          Next → Draw Value
-                        </button>
-                        <button
-                          onClick={() => setLabelRegion(null)}
-                          className="py-2 px-3 text-gray-600 hover:bg-gray-200 rounded-md"
-                        >
-                          Redraw
+                          Skip label → Draw value only
                         </button>
                       </div>
-                    </div>
-                  )}
+                    )}
 
-                  {drawingPhase === "value" && !valueRegion && (
-                    <div className="space-y-3">
-                      {labelRegion && (
-                        <div className="p-2 bg-purple-50 border border-purple-200 rounded text-xs text-purple-700">
-                          Label box: ✓ Set
-                        </div>
-                      )}
-                      <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
-                        <p className="text-sm text-green-800 font-medium">Step 2: Draw VALUE box</p>
-                        <p className="text-xs text-green-600 mt-1">
-                          Draw a box around the actual value (e.g., &quot;9013884284&quot;)
-                        </p>
-                      </div>
-                    </div>
-                  )}
-
-                  {valueRegion && extractedText === null && (
-                    <div className="space-y-3">
-                      {labelRegion && (
-                        <div className="p-2 bg-purple-50 border border-purple-200 rounded text-xs text-purple-700">
-                          Label box: ✓ Set
-                        </div>
-                      )}
-                      <div className="p-2 bg-green-50 border border-green-200 rounded text-xs text-green-700">
-                        Value box: ✓ Set
-                      </div>
-                      <button
-                        onClick={handleExtractBoth}
-                        disabled={extracting}
-                        className="w-full py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
-                      >
-                        {extracting ? (
-                          <span className="flex items-center justify-center gap-2">
-                            <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                              <circle
-                                className="opacity-25"
-                                cx="12"
-                                cy="12"
-                                r="10"
-                                stroke="currentColor"
-                                strokeWidth="4"
-                              ></circle>
+                    {drawingPhase === "label" && labelRegion && (
+                      <div className="space-y-3">
+                        <div className="p-3 bg-purple-50 border border-purple-200 rounded-lg">
+                          <p className="text-sm text-purple-800 font-medium flex items-center gap-2">
+                            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                               <path
-                                className="opacity-75"
-                                fill="currentColor"
-                                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                              ></path>
+                                fillRule="evenodd"
+                                d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                clipRule="evenodd"
+                              />
                             </svg>
-                            Extracting...
-                          </span>
-                        ) : (
-                          "Extract Text from Regions"
-                        )}
-                      </button>
-                    </div>
-                  )}
+                            Label box drawn
+                          </p>
+                        </div>
+                        <p className="text-xs text-gray-500">
+                          Click &quot;Next&quot; to draw the value box, or redraw the label.
+                        </p>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => setDrawingPhase("value")}
+                            className="flex-1 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
+                          >
+                            Next → Draw Value
+                          </button>
+                          <button
+                            onClick={() => setLabelRegion(null)}
+                            className="py-2 px-3 text-gray-600 hover:bg-gray-200 rounded-md"
+                          >
+                            Redraw
+                          </button>
+                        </div>
+                      </div>
+                    )}
 
-                  {extractedText !== null && (
-                    <div className="space-y-3">
-                      {labelText && (
+                    {drawingPhase === "value" && !valueRegion && (
+                      <div className="space-y-3">
+                        {labelRegion && (
+                          <div className="p-2 bg-purple-50 border border-purple-200 rounded text-xs text-purple-700">
+                            Label box: ✓ Set
+                          </div>
+                        )}
+                        <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
+                          <p className="text-sm text-green-800 font-medium">
+                            Step 2: Draw VALUE box
+                          </p>
+                          <p className="text-xs text-green-600 mt-1">
+                            Draw a box around the actual value (e.g., &quot;9013884284&quot;)
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    {valueRegion && extractedText === null && (
+                      <div className="space-y-3">
+                        {labelRegion && (
+                          <div className="p-2 bg-purple-50 border border-purple-200 rounded text-xs text-purple-700">
+                            Label box: ✓ Set
+                          </div>
+                        )}
+                        <div className="p-2 bg-green-50 border border-green-200 rounded text-xs text-green-700">
+                          Value box: ✓ Set
+                        </div>
+                        <button
+                          onClick={handleExtractBoth}
+                          disabled={extracting}
+                          className="w-full py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
+                        >
+                          {extracting ? (
+                            <span className="flex items-center justify-center gap-2">
+                              <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                                <circle
+                                  className="opacity-25"
+                                  cx="12"
+                                  cy="12"
+                                  r="10"
+                                  stroke="currentColor"
+                                  strokeWidth="4"
+                                ></circle>
+                                <path
+                                  className="opacity-75"
+                                  fill="currentColor"
+                                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                                ></path>
+                              </svg>
+                              Extracting...
+                            </span>
+                          ) : (
+                            "Extract Text from Regions"
+                          )}
+                        </button>
+                      </div>
+                    )}
+
+                    {extractedText !== null && (
+                      <div className="space-y-3">
+                        {labelText && (
+                          <div>
+                            <div className="text-xs text-purple-600 mb-1">Label Text:</div>
+                            <div className="p-2 bg-purple-50 rounded border border-purple-200 font-mono text-xs">
+                              {labelText || "(empty)"}
+                            </div>
+                          </div>
+                        )}
                         <div>
-                          <div className="text-xs text-purple-600 mb-1">Label Text:</div>
-                          <div className="p-2 bg-purple-50 rounded border border-purple-200 font-mono text-xs">
-                            {labelText || "(empty)"}
+                          <div className="text-sm text-green-700 mb-1">Extracted Value:</div>
+                          <input
+                            type="text"
+                            value={extractedText}
+                            onChange={(e) => setExtractedText(e.target.value)}
+                            className="w-full p-2 bg-white rounded border border-green-300 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                            placeholder="Enter or correct the value"
+                          />
+                          <div className="text-xs text-gray-500 mt-1 flex items-center justify-between">
+                            <span>Confidence: {Math.round(extractionConfidence * 100)}%</span>
+                            <span className="text-green-600">Edit to correct OCR errors</span>
                           </div>
                         </div>
-                      )}
-                      <div>
-                        <div className="text-sm text-green-700 mb-1">Extracted Value:</div>
-                        <input
-                          type="text"
-                          value={extractedText}
-                          onChange={(e) => setExtractedText(e.target.value)}
-                          className="w-full p-2 bg-white rounded border border-green-300 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                          placeholder="Enter or correct the value"
-                        />
-                        <div className="text-xs text-gray-500 mt-1 flex items-center justify-between">
-                          <span>Confidence: {Math.round(extractionConfidence * 100)}%</span>
-                          <span className="text-green-600">Edit to correct OCR errors</span>
+
+                        <div className="flex gap-2">
+                          <button
+                            onClick={handleAccept}
+                            disabled={saving}
+                            className="flex-1 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50"
+                          >
+                            {saving ? "Saving..." : "Accept & Save"}
+                          </button>
+                          <button
+                            onClick={handleRetry}
+                            className="flex-1 py-2 bg-yellow-500 text-white rounded-md hover:bg-yellow-600"
+                          >
+                            Retry
+                          </button>
+                          <button
+                            onClick={handleSkip}
+                            className="flex-1 py-2 bg-gray-400 text-white rounded-md hover:bg-gray-500"
+                          >
+                            Skip
+                          </button>
                         </div>
                       </div>
-
-                      <div className="flex gap-2">
-                        <button
-                          onClick={handleAccept}
-                          disabled={saving}
-                          className="flex-1 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50"
-                        >
-                          {saving ? "Saving..." : "Accept & Save"}
-                        </button>
-                        <button
-                          onClick={handleRetry}
-                          className="flex-1 py-2 bg-yellow-500 text-white rounded-md hover:bg-yellow-600"
-                        >
-                          Retry
-                        </button>
-                        <button
-                          onClick={handleSkip}
-                          className="flex-1 py-2 bg-gray-400 text-white rounded-md hover:bg-gray-500"
-                        >
-                          Skip
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
+                    )}
+                  </div>
+                );
+              })()}
             </div>
           </div>
 

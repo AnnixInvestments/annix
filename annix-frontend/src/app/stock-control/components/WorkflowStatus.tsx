@@ -1,5 +1,6 @@
 "use client";
 
+import { values } from "es-toolkit/compat";
 import { Check, ChevronDown, ChevronUp, Circle, Clock, Minus, RefreshCw, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -504,7 +505,7 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
     }, {});
   }, [branches]);
 
-  const laneCount = belowBranches.length > 0 ? Math.max(...Object.values(branchLanes)) + 1 : 0;
+  const laneCount = belowBranches.length > 0 ? Math.max(...values(branchLanes)) + 1 : 0;
 
   useEffect(() => {
     const container = containerRef.current;
@@ -598,7 +599,7 @@ function DesktopTransitMap(props: DesktopTransitMapProps) {
         return { ...acc, [groupKey]: { ...existing, steps: [...existing.steps, bp] } };
       }, {});
 
-      Object.values(bypassGroups).forEach((group) => {
+      values(bypassGroups).forEach((group) => {
         const count = group.steps.length;
         group.steps.forEach((bp, idx) => {
           const fraction = (idx + 1) / (count + 1);

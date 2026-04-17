@@ -1,5 +1,6 @@
 "use client";
 
+import { isNumber, keys } from "es-toolkit/compat";
 import { z } from "zod";
 
 const emailSchema = z.string().email("Please enter a valid email address");
@@ -119,7 +120,7 @@ export function validateSpecifications(
     }
   }
 
-  if (Object.keys(errors).length > 0) {
+  if (keys(errors).length > 0) {
     return { success: false, errors };
   }
 
@@ -134,7 +135,7 @@ export function validatePipeEntries(entries: unknown): ValidationResult {
   const errors: Record<string, string> = {};
   result.error.issues.forEach((issue) => {
     const path = issue.path;
-    if (path.length >= 2 && typeof path[0] === "number") {
+    if (path.length >= 2 && isNumber(path[0])) {
       const index = path[0];
       const field = path.slice(1).join("_");
       errors[`pipe_${index}_${field}`] = issue.message;

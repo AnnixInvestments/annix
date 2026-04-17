@@ -28,7 +28,8 @@ const DOCUMENT_TYPES = [
 ];
 
 function documentTypeLabel(type: string): string {
-  return DOCUMENT_TYPES.find((dt) => dt.value === type)?.label || type;
+  const rawLabel = DOCUMENT_TYPES.find((dt) => dt.value === type)?.label;
+  return rawLabel || type;
 }
 
 function confidenceDisplay(confidence: number | null): string {
@@ -188,6 +189,8 @@ function EmailRow({
 }) {
   const STATUS_BADGESProcessingStatus = STATUS_BADGES[email.processingStatus];
   const badge = STATUS_BADGESProcessingStatus || STATUS_BADGES.pending;
+  const rawFromName = email.fromName;
+  const rawSubject = email.subject;
   const date = email.receivedAt
     ? new Date(email.receivedAt).toLocaleString("en-ZA", {
         day: "2-digit",
@@ -216,7 +219,7 @@ function EmailRow({
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
             <span className="text-sm font-medium text-gray-900 truncate">
-              {email.fromName ?? email.fromEmail}
+              {rawFromName ?? email.fromEmail}
             </span>
             <span
               className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${badge.className}`}
@@ -224,7 +227,7 @@ function EmailRow({
               {badge.label}
             </span>
           </div>
-          <p className="text-sm text-gray-600 truncate">{email.subject || "(no subject)"}</p>
+          <p className="text-sm text-gray-600 truncate">{rawSubject || "(no subject)"}</p>
         </div>
         <div className="flex items-center gap-4 flex-shrink-0">
           <span className="text-xs text-gray-400">
@@ -284,6 +287,7 @@ function AttachmentRow({
 
   const extractionBadgeExtractionStatus = extractionBadge[attachment.extractionStatus];
   const ext = extractionBadgeExtractionStatus || extractionBadge.pending;
+  const rawClassificationSource = attachment.classificationSource;
 
   return (
     <tr>
@@ -298,7 +302,7 @@ function AttachmentRow({
       <td className="py-2 pr-3 text-gray-600">
         {confidenceDisplay(attachment.classificationConfidence)}
       </td>
-      <td className="py-2 pr-3 text-gray-500 text-xs">{attachment.classificationSource ?? "-"}</td>
+      <td className="py-2 pr-3 text-gray-500 text-xs">{rawClassificationSource ?? "-"}</td>
       <td className="py-2 pr-3 text-gray-600 text-xs">
         {attachment.linkedEntityType
           ? `${attachment.linkedEntityType} #${attachment.linkedEntityId}`

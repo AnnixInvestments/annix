@@ -1,5 +1,6 @@
 "use client";
 
+import { isArray } from "es-toolkit/compat";
 import { useEffect, useState } from "react";
 import {
   Pagination,
@@ -95,8 +96,8 @@ export default function OtherItemsPage() {
         auRubberApiClient.otherStocks(),
         auRubberApiClient.stockLocations(),
       ]);
-      setItems(Array.isArray(itemsData) ? itemsData : []);
-      setLocations(Array.isArray(locationsData) ? locationsData : []);
+      setItems(isArray(itemsData) ? itemsData : []);
+      setLocations(isArray(locationsData) ? locationsData : []);
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err : new Error("Failed to load data"));

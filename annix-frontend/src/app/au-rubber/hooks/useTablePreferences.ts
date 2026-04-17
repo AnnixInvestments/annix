@@ -1,3 +1,4 @@
+import { isNumber, isString } from "es-toolkit/compat";
 import { useCallback, useState } from "react";
 import type { SortDirection } from "@/app/components/shared/TableComponents";
 
@@ -10,14 +11,15 @@ interface TablePreferences {
 const STORAGE_PREFIX = "auRubber_table_";
 
 function loadPreferences(pageKey: string, defaults: TablePreferences): TablePreferences {
+  // eslint-disable-next-line no-restricted-syntax -- SSR guard; isUndefined(window) would throw
   if (typeof window === "undefined") return defaults;
   try {
     const stored = localStorage.getItem(`${STORAGE_PREFIX}${pageKey}`);
     if (!stored) return defaults;
     const parsed = JSON.parse(stored) as Partial<TablePreferences>;
     return {
-      pageSize: typeof parsed.pageSize === "number" ? parsed.pageSize : defaults.pageSize,
-      sortColumn: typeof parsed.sortColumn === "string" ? parsed.sortColumn : defaults.sortColumn,
+      pageSize: isNumber(parsed.pageSize) ? parsed.pageSize : defaults.pageSize,
+      sortColumn: isString(parsed.sortColumn) ? parsed.sortColumn : defaults.sortColumn,
       sortDirection:
         parsed.sortDirection === "asc" || parsed.sortDirection === "desc"
           ? parsed.sortDirection

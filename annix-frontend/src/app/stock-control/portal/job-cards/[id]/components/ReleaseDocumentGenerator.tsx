@@ -1,5 +1,6 @@
 "use client";
 
+import { isArray } from "es-toolkit/compat";
 import { Download } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { PdfPreviewModal, usePdfPreview } from "@/app/components/PdfPreviewModal";
@@ -73,7 +74,7 @@ export function ReleaseDocumentGenerator(props: ReleaseDocumentGeneratorProps) {
         (li) => !li.itemCode?.startsWith("Sage ") && !li.itemDescription?.startsWith("Sage "),
       );
       setLineItems(validItems);
-      setExistingReleases(Array.isArray(releases) ? releases : []);
+      setExistingReleases(isArray(releases) ? releases : []);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load line items");
     } finally {
@@ -100,6 +101,16 @@ export function ReleaseDocumentGenerator(props: ReleaseDocumentGeneratorProps) {
     setSelectedIndices(new Set());
   }, [lineItems, remainingByIndex]);
 
+  const availableIndices = useMemo(
+    () =>
+      lineItems.reduce((acc, _li, idx) => {
+        const info = remainingByIndex[idx];
+        if (info && info.remaining > 0) return [...acc, idx];
+        return acc;
+      }, [] as number[]),
+    [lineItems, remainingByIndex],
+  );
+
   if (!isVisible) {
     return null;
   }
@@ -110,16 +121,6 @@ export function ReleaseDocumentGenerator(props: ReleaseDocumentGeneratorProps) {
       const info = remainingByIndex[idx];
       return info ? info.remaining <= 0 : false;
     });
-
-  const availableIndices = useMemo(
-    () =>
-      lineItems.reduce((acc, _li, idx) => {
-        const info = remainingByIndex[idx];
-        if (info && info.remaining > 0) return [...acc, idx];
-        return acc;
-      }, [] as number[]),
-    [lineItems, remainingByIndex],
-  );
 
   const allAvailableSelected =
     availableIndices.length > 0 && availableIndices.every((idx) => selectedIndices.has(idx));
@@ -195,7 +196,7 @@ export function ReleaseDocumentGenerator(props: ReleaseDocumentGeneratorProps) {
       setSelectedIndices(new Set());
       onGenerated();
       const releases = await stockControlApiClient.itemsReleasesForJobCard(jobCardId);
-      setExistingReleases(Array.isArray(releases) ? releases : []);
+      setExistingReleases(isArray(releases) ? releases : []);
       if (result.itemsRelease?.id) {
         pdfPreview.openWithFetch(
           () => stockControlApiClient.openItemsReleasePdf(jobCardId, result.itemsRelease.id),
@@ -257,23 +258,26 @@ export function ReleaseDocumentGenerator(props: ReleaseDocumentGeneratorProps) {
             </p>
             {existingReleases.length > 0 && (
               <div className="mt-3 flex flex-wrap justify-center gap-2">
-                {existingReleases.map((release, idx) => (
-                  <button
-                    key={release.id}
-                    type="button"
-                    onClick={() =>
-                      pdfPreview.openWithFetch(
-                        () => stockControlApiClient.openItemsReleasePdf(jobCardId, release.id),
-                        `items-release-${release.id}.pdf`,
-                      )
-                    }
-                    className="inline-flex items-center gap-1.5 rounded-md bg-white border border-green-300 px-3 py-1.5 text-xs font-medium text-green-800 hover:bg-green-100 transition-colors"
-                  >
-                    <Download className="h-3.5 w-3.5" />
-                    Release {existingReleases.length > 1 ? `#${idx + 1}` : ""} (v
-                    {release.version || 1}) PDF
-                  </button>
-                ))}
+                {existingReleases.map((release, idx) => {
+                  const rawVersion = release.version;
+                  return (
+                    <button
+                      key={release.id}
+                      type="button"
+                      onClick={() =>
+                        pdfPreview.openWithFetch(
+                          () => stockControlApiClient.openItemsReleasePdf(jobCardId, release.id),
+                          `items-release-${release.id}.pdf`,
+                        )
+                      }
+                      className="inline-flex items-center gap-1.5 rounded-md bg-white border border-green-300 px-3 py-1.5 text-xs font-medium text-green-800 hover:bg-green-100 transition-colors"
+                    >
+                      <Download className="h-3.5 w-3.5" />
+                      Release {existingReleases.length > 1 ? `#${idx + 1}` : ""} (v
+                      {rawVersion || 1}) PDF
+                    </button>
+                  );
+                })}
               </div>
             )}
           </div>
@@ -443,11 +447,18 @@ export function ReleaseDocumentGenerator(props: ReleaseDocumentGeneratorProps) {
             <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <span className="text-sm text-teal-700">
                 {selectedIndices.size} of{" "}
-                {lineItems.filter((_li, idx) => (remainingByIndex[idx]?.remaining || 0) > 0).length}{" "}
+                {
+                  lineItems.filter((_li, idx) => {
+                    const rawRemainingAt = remainingByIndex[idx]?.remaining;
+                    return (rawRemainingAt || 0) > 0;
+                  }).length
+                }{" "}
                 available items selected
-                {Array.from(selectedIndices).some(
-                  (idx) => (releaseQuantities[idx] || 0) < (remainingByIndex[idx]?.remaining || 0),
-                ) && (
+                {Array.from(selectedIndices).some((idx) => {
+                  const rawReleaseQ = releaseQuantities[idx];
+                  const rawRemainingQ = remainingByIndex[idx]?.remaining;
+                  return (rawReleaseQ || 0) < (rawRemainingQ || 0);
+                }) && (
                   <span className="ml-2 text-xs text-amber-600 font-medium">(partial release)</span>
                 )}
               </span>

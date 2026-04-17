@@ -31,6 +31,7 @@
  * - Soil Corrosivity
  */
 
+import { keys } from "es-toolkit/compat";
 import { nowISO } from "@/app/lib/datetime";
 import { log } from "@/app/lib/logger";
 import {
@@ -58,7 +59,6 @@ import {
   isInAfrica,
   wrbToHumanReadable,
 } from "../api/externalApis";
-
 import {
   type AirSaltContentResult,
   type FloodRiskLevel,
@@ -75,41 +75,61 @@ export interface EnvironmentalData {
   ecpIndustrialPollution?: "None" | "Low" | "Moderate" | "High" | "Very High";
 
   // Marine & Special Conditions (auto-populated from coastline calculation)
-  distanceToCoast?: number; // Distance in km
-  distanceToCoastFormatted?: string; // Formatted string (e.g., "500 m" or "2.50 km")
+  // Distance in km
+  distanceToCoast?: number;
+  // Formatted string (e.g., "500 m" or "2.50 km")
+  distanceToCoastFormatted?: string;
   detailedMarineInfluence?:
     | "Extreme Marine"
     | "Severe Marine"
     | "High Marine"
     | "Moderate Marine"
     | "Low / Non-Marine";
-  airSaltContent?: AirSaltContentResult; // Chloride deposition classification
-  timeOfWetness?: TimeOfWetnessResult; // TOW classification (ISO 9223)
-  floodRisk?: FloodRiskLevel; // Flooding / Water Table Risk
+  // Chloride deposition classification
+  airSaltContent?: AirSaltContentResult;
+  // TOW classification (ISO 9223)
+  timeOfWetness?: TimeOfWetnessResult;
+  // Flooding / Water Table Risk
+  floodRisk?: FloodRiskLevel;
 
   // Soil data (auto-populated from APIs)
-  soilType?: string; // WRB classification (human-readable)
-  soilTexture?: string; // USDA soil texture classification
-  soilMoisture?: string; // Percentage value
+  // WRB classification (human-readable)
+  soilType?: string;
+  // USDA soil texture classification
+  soilTexture?: string;
+  // Percentage value
+  soilMoisture?: string;
   soilMoistureClass?: "Low" | "Moderate" | "High";
-  soilDrainage?: string; // Drainage class description
-  soilDrainageSource?: string; // 'USDA SSURGO' or 'model-derived'
+  // Drainage class description
+  soilDrainage?: string;
+  // 'USDA SSURGO' or 'model-derived'
+  soilDrainageSource?: string;
 
   // Temperature data (auto-populated from OpenWeatherMap)
-  tempMin?: number; // Minimum temperature (°C)
-  tempMax?: number; // Maximum temperature (°C)
-  tempMean?: number; // Mean/average temperature (°C)
+  // Minimum temperature (°C)
+  tempMin?: number;
+  // Maximum temperature (°C)
+  tempMax?: number;
+  // Mean/average temperature (°C)
+  tempMean?: number;
 
   // Relative Humidity data (auto-populated from OpenWeatherMap)
-  humidityMin?: number; // Minimum relative humidity (%)
-  humidityMax?: number; // Maximum relative humidity (%)
-  humidityMean?: number; // Mean/average relative humidity (%)
+  // Minimum relative humidity (%)
+  humidityMin?: number;
+  // Maximum relative humidity (%)
+  humidityMax?: number;
+  // Mean/average relative humidity (%)
+  humidityMean?: number;
 
   // Additional Atmospheric Conditions (auto-populated from OpenWeatherMap)
-  annualRainfall?: string; // Rainfall category (<250, 250-500, 500-1000, 1000-2000, >2000)
-  windSpeed?: number; // Mean wind speed in m/s
-  windDirection?: string; // Prevailing direction (N, NE, E, SE, S, SW, W, NW)
-  uvIndex?: number; // UV index value
+  // Rainfall category (<250, 250-500, 500-1000, 1000-2000, >2000)
+  annualRainfall?: string;
+  // Mean wind speed in m/s
+  windSpeed?: number;
+  // Prevailing direction (N, NE, E, SE, S, SW, W, NW)
+  windDirection?: string;
+  // UV index value
+  uvIndex?: number;
   uvExposure?: "Low" | "Moderate" | "High" | "Very High";
   snowExposure?: "None" | "Low" | "Moderate" | "High";
   fogFrequency?: "Low" | "Moderate" | "High";
@@ -405,7 +425,8 @@ export async function fetchEnvironmentalData(
         sand: iSDAsoilData.sand,
         silt: iSDAsoilData.silt,
         bulkDensity: iSDAsoilData.bulkDensity,
-        organicCarbon: null, // iSDAsoil doesn't provide this
+        // iSDAsoil doesn't provide this
+        organicCarbon: null,
       };
       metadata.soilTexture = soilTextureData;
 
@@ -753,9 +774,7 @@ export async function fetchEnvironmentalData(
     data.soilDrainage !== undefined;
 
   log.debug("[Environmental] Final data to apply:", {
-    fieldsPopulated: Object.keys(data).filter(
-      (k) => data[k as keyof EnvironmentalData] !== undefined,
-    ),
+    fieldsPopulated: keys(data).filter((k) => data[k as keyof EnvironmentalData] !== undefined),
     dataSources,
     errors,
     sampleData: {

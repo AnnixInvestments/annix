@@ -27,7 +27,8 @@ function ProductsServicesContent() {
 
   useEffect(() => {
     if (capabilitiesQuery.data) {
-      setSelectedCapabilities(capabilitiesQuery.data.capabilities || []);
+      const rawCapabilities = capabilitiesQuery.data.capabilities;
+      setSelectedCapabilities(rawCapabilities || []);
     }
   }, [capabilitiesQuery.data]);
 

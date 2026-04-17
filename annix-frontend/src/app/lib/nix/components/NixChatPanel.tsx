@@ -1,5 +1,6 @@
 "use client";
 
+import { isString } from "es-toolkit/compat";
 import { useCallback, useEffect, useRef, useState } from "react";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -212,7 +213,7 @@ const parseNixActions = (content: string): NixAction[] => {
   for (const match of matches) {
     try {
       const parsed = JSON.parse(match[1]) as NixAction;
-      if (parsed && typeof parsed.action === "string") {
+      if (parsed && isString(parsed.action)) {
         actions.push(parsed);
       }
     } catch {
@@ -333,6 +334,7 @@ const GEOMETRY_STORAGE_KEY = "nix-chat-panel-geometry";
 type ResizeEdge = "n" | "e" | "w" | "s" | "nw" | "ne" | "sw" | "se" | null;
 
 const defaultPosition = (): { x: number; y: number } => {
+  // eslint-disable-next-line no-restricted-syntax -- SSR guard; isUndefined(window) would throw
   if (typeof window === "undefined") return { x: 0, y: 0 };
   return {
     x: window.innerWidth - DEFAULT_WIDTH - EDGE_PADDING,
@@ -342,6 +344,7 @@ const defaultPosition = (): { x: number; y: number } => {
 
 const loadSavedGeometry = (saved?: PanelGeometry | null): PanelGeometry | null => {
   if (saved) return saved;
+  // eslint-disable-next-line no-restricted-syntax -- SSR guard; isUndefined(window) would throw
   if (typeof window === "undefined") return null;
   try {
     const stored = localStorage.getItem(GEOMETRY_STORAGE_KEY);
@@ -353,6 +356,7 @@ const loadSavedGeometry = (saved?: PanelGeometry | null): PanelGeometry | null =
 };
 
 const loadPersistedSessionId = (): number | null => {
+  // eslint-disable-next-line no-restricted-syntax -- SSR guard; isUndefined(window) would throw
   if (typeof window === "undefined") return null;
   try {
     const stored = localStorage.getItem(NIX_SESSION_STORAGE_KEY);
@@ -367,6 +371,7 @@ const loadPersistedSessionId = (): number | null => {
 };
 
 const persistSessionId = (sessionId: number | null): void => {
+  // eslint-disable-next-line no-restricted-syntax -- SSR guard; isUndefined(window) would throw
   if (typeof window === "undefined") return;
   try {
     if (sessionId === null) {

@@ -130,25 +130,29 @@ export default function PumpOrderDetailPage() {
 
   const serviceTypeLabel = (value: string): string => {
     const category = PUMPS_MODULE.categories.find((c) => c.value === value);
-    return category?.label || value;
+    const rawLabel = category?.label;
+    return rawLabel || value;
   };
 
   const pumpTypeLabel = (value: string): string => {
     const type = PUMP_TYPES.find((t) => t.value === value);
-    return type?.label || value.replace(/_/g, " ");
+    const rawLabel = type?.label;
+    return rawLabel || value.replace(/_/g, " ");
   };
 
   const materialLabel = (type: "casing" | "impeller" | "shaft", value: string): string => {
     const materials = PUMP_SPECIFICATIONS.materials[type === "shaft" ? "shaft" : type];
     const material = materials?.find((m) => m.value === value);
-    return material?.label || value.replace(/_/g, " ");
+    const rawLabel = material?.label;
+    return rawLabel || value.replace(/_/g, " ");
   };
 
   const sealTypeLabel = (value: string): string => {
     const seal = PUMP_SPECIFICATIONS.materials.seal.find(
       (s: { value: string; label: string }) => s.value === value,
     );
-    return seal?.label || value.replace(/_/g, " ");
+    const rawLabel = seal?.label;
+    return rawLabel || value.replace(/_/g, " ");
   };
 
   if (!order) {

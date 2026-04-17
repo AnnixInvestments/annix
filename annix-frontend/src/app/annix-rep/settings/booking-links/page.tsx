@@ -485,6 +485,7 @@ export default function BookingLinksSettingsPage() {
   };
 
   const handleDelete = async (link: BookingLink) => {
+    // eslint-disable-next-line no-restricted-globals -- legacy sync confirm pending modal migration (issue #175)
     if (!confirm(`Are you sure you want to delete "${link.name}"?`)) return;
     await deleteBookingLink.mutateAsync(link.id);
   };

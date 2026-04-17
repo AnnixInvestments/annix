@@ -650,7 +650,14 @@ function UploadVersionModal({
             <input
               type="file"
               accept=".pdf,.dwg,.dxf,.png,.jpg,.jpeg"
-              onChange={(e) => setFile(e.target.files?.[0] || null)}
+              onChange={(e) =>
+                setFile(
+                  (() => {
+                    const rawFiles = e.target.files?.[0];
+                    return rawFiles || null;
+                  })(),
+                )
+              }
               className="w-full text-gray-700"
               required
             />

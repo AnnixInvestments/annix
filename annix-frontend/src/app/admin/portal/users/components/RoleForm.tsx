@@ -46,7 +46,8 @@ export function RoleForm(props: RoleFormProps) {
     if (role) {
       setCode(role.code);
       setName(role.name);
-      setDescription(role.description ?? "");
+      const rawDescription = role.description;
+      setDescription(rawDescription ?? "");
       setIsDefault(role.isDefault);
       setAutoCode(false);
     } else {

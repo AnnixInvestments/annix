@@ -230,13 +230,11 @@ fi
 STAGED_FRONTEND_TS=$(echo "$STAGED_TS_FILES" | grep -E '^annix-frontend/src/.*\.(ts|tsx)$' || true)
 
 if [ -n "$STAGED_FRONTEND_TS" ]; then
-    # Frontend ESLint is still deferred. The hoist-fallout TypeScript errors
-    # have been resolved, but the same files still carry a large pre-existing
-    # ESLint backlog (Object.keys, typeof, inline comments, console statements,
-    # rules-of-hooks) — ~2100 errors repo-wide. Tracked under ref #195 cleanup
-    # phase 2; the SWC-landmine check below still runs and blocks new landmines.
+    # Frontend ESLint still deferred. Phase 2 has cleared the SWC-landmine
+    # bulk but pre-existing native-Date, imperative-for-loop, and
+    # no-restricted-imports errors remain. Tracked for ref #195 phase 3.
     echo ""
-    echo "Frontend ESLint skipped (deferred pending ref #195 phase 2)."
+    echo "Frontend ESLint skipped (deferred pending ref #195 phase 3)."
 
     # Sync the stale prod typed-route cache with the current dev cache before tsc.
     # Next.js maintains .next/types/routes.d.ts (updated by `next build`) and
@@ -291,11 +289,10 @@ if [ -n "$STAGED_FRONTEND_TS" ]; then
     SWC_LANDMINES=0
     SWC_REPORT=""
 
-    # Pass A (full-file high-signal patterns) is deferred pending ref #195.
-    # The mass SWC-hoist passes in April 2026 left many pre-existing landmines
-    # of this exact shape in stock-control and au-rubber files; a full-file
-    # scan would block every cleanup commit. Pass B below still runs and
-    # prevents NEW landmines from being added during cleanup.
+    # Pass A: full-file high-signal patterns — will be re-enabled in ref #195
+    # phase 3. The phase 2 cleanup cleared ~988 of ~1000 landmines; the rest
+    # (5 surviving + any new ones) are better caught after the remaining
+    # ESLint cleanup is done.
 
     # Pass B: added-lines-only check for plain `.prop ?? / .prop ||`
     for f in $STAGED_FRONTEND_TS; do

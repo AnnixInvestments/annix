@@ -6,6 +6,7 @@ import {
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
+import { isArray } from "es-toolkit/compat";
 
 type QueryOptions = {
   staleTime?: number;
@@ -31,6 +32,7 @@ export function createQueryHook<TData, TArgs extends unknown[] = []>(
       ...(enabledFn ? { enabled: enabledFn(...args) } : {}),
       ...(staleTime !== undefined ? { staleTime } : {}),
       ...(gcTime !== undefined ? { gcTime } : {}),
+      // eslint-disable-next-line no-restricted-syntax -- generic factory; callers supply the validated interval
       ...(refetchInterval !== undefined ? { refetchInterval } : {}),
     };
     return useQuery<TData>(queryOptions);
@@ -53,11 +55,12 @@ export function createArrayQueryHook<TItem, TArgs extends unknown[] = []>(
       queryKey: keyFn(...args),
       queryFn: async () => {
         const data = await queryFn(...args);
-        return Array.isArray(data) ? data : [];
+        return isArray(data) ? data : [];
       },
       ...(enabledFn ? { enabled: enabledFn(...args) } : {}),
       ...(staleTime !== undefined ? { staleTime } : {}),
       ...(gcTime !== undefined ? { gcTime } : {}),
+      // eslint-disable-next-line no-restricted-syntax -- generic factory; callers supply the validated interval
       ...(refetchInterval !== undefined ? { refetchInterval } : {}),
     };
     return useQuery<TItem[]>(queryOptions);

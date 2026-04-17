@@ -16,6 +16,7 @@ const ThemeContext = createContext<ThemeContextType | null>(null);
 const STORAGE_KEY = "annix-theme";
 
 function resolveSystemTheme(): "light" | "dark" {
+  // eslint-disable-next-line no-restricted-syntax -- SSR guard; isUndefined(window) would throw
   if (typeof window === "undefined") {
     return "light";
   }

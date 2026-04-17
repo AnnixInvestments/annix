@@ -1,5 +1,6 @@
 "use client";
 
+import { toPairs as entries, keys } from "es-toolkit/compat";
 import Link from "next/link";
 import { useRef, useState } from "react";
 import type {
@@ -159,7 +160,7 @@ export default function ImportPage() {
   };
 
   const previewRowCount = importFormat === "excel" ? importRawRows.length : parsedRows.length;
-  const columnHeaders = parsedRows.length > 0 ? Object.keys(parsedRows[0]) : [];
+  const columnHeaders = parsedRows.length > 0 ? keys(parsedRows[0]) : [];
 
   return (
     <div className="space-y-6">
@@ -310,7 +311,10 @@ export default function ImportPage() {
                     <input
                       type="date"
                       value={stockTakeDate ?? ""}
-                      onChange={(e) => setStockTakeDate(e.target.value || null)}
+                      onChange={(e) => {
+                        const targetValue = e.target.value;
+                        setStockTakeDate(targetValue || null);
+                      }}
                       className="block w-48 px-3 py-1.5 text-sm border border-amber-300 rounded-md focus:ring-amber-500 focus:border-amber-500 text-amber-900"
                       style={{ colorScheme: "light" }}
                     />
@@ -325,7 +329,7 @@ export default function ImportPage() {
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
                   <p className="text-sm text-blue-700">
                     AI mapped columns:{" "}
-                    {Object.entries(importMapping)
+                    {entries(importMapping)
                       .filter(([, v]) => v !== null)
                       .map(([field, colIdx]) => `${field} -> "${importHeaders[colIdx as number]}"`)
 

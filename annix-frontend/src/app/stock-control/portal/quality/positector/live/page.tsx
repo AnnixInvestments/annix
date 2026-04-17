@@ -1,5 +1,6 @@
 "use client";
 
+import { isArray } from "es-toolkit/compat";
 import { Camera } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
@@ -81,7 +82,7 @@ export default function PositectorLiveStreamingPage() {
   const checkForActiveSessions = useCallback(async () => {
     try {
       const sessions = await sessionsMutation.mutateAsync();
-      if (Array.isArray(sessions) && sessions.length > 0) {
+      if (isArray(sessions) && sessions.length > 0) {
         const activeSession = sessions[0];
         const details = await sessionDetailMutation.mutateAsync(activeSession.sessionId);
         const readings = details.readings;

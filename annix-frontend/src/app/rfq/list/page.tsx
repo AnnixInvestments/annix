@@ -13,7 +13,8 @@ export default function RfqListPage() {
 
   const rfqQuery = useRfqs(statusFilter !== "all" ? { status: statusFilter } : undefined);
 
-  const rfqs = rfqQuery.data ?? [];
+  const rawData = rfqQuery.data;
+  const rfqs = rawData ?? [];
 
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {

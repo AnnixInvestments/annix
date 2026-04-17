@@ -51,8 +51,10 @@ export function isValidLineItem(li: {
   quantity: number | null;
   jtNo: string | null;
 }): boolean {
-  const itemCode = (li.itemCode || "").trim();
-  const description = (li.itemDescription || "").trim();
+  const rawItemCode = li.itemCode;
+  const rawItemDescription = li.itemDescription;
+  const itemCode = (rawItemCode || "").trim();
+  const description = (rawItemDescription || "").trim();
   const textToCheck = itemCode || description;
 
   if (!textToCheck) {

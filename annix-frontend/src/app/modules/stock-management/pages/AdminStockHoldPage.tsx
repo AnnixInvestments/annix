@@ -115,7 +115,12 @@ export function AdminStockHoldPage() {
               <tr key={item.id}>
                 <td className="px-4 py-3 text-xs">{item.reason}</td>
                 <td className="px-4 py-3 text-sm">#{item.productId}</td>
-                <td className="px-4 py-3 text-xs">{item.quantity ?? "—"}</td>
+                <td className="px-4 py-3 text-xs">
+                  {(() => {
+                    const rawQuantity = item.quantity;
+                    return rawQuantity ?? "—";
+                  })()}
+                </td>
                 <td className="px-4 py-3 text-xs font-mono">R {item.writeOffValueR.toFixed(2)}</td>
                 <td className="px-4 py-3 text-xs text-gray-600">{item.reasonNotes}</td>
                 <td className="px-4 py-3 text-xs text-gray-500">
@@ -180,7 +185,10 @@ export function AdminStockHoldPage() {
               <div>
                 <label className="block text-xs font-medium text-gray-700">Notes</label>
                 <textarea
-                  value={draft.notes ?? ""}
+                  value={(() => {
+                    const rawNotes = draft.notes;
+                    return rawNotes ?? "";
+                  })()}
                   onChange={(e) => setDraft({ ...draft, notes: e.target.value })}
                   rows={2}
                   className="mt-1 w-full border border-gray-300 rounded px-3 py-2 text-sm"
@@ -198,7 +206,10 @@ export function AdminStockHoldPage() {
               <button
                 type="button"
                 onClick={handleResolve}
-                disabled={mutations.isPending || !draft.action.trim()}
+                disabled={(() => {
+                  const rawIsPending = mutations.isPending;
+                  return rawIsPending || !draft.action.trim();
+                })()}
                 className="px-4 py-2 text-sm bg-teal-600 text-white rounded font-medium disabled:opacity-50"
               >
                 {config.label("common.confirm")}

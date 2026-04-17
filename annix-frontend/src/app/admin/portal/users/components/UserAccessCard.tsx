@@ -61,11 +61,17 @@ export function UserAccessCard(props: UserAccessCardProps) {
       <div className="mt-3 flex flex-wrap items-center gap-2">
         {access.useCustomPermissions ? (
           <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
-            Custom ({access.permissionCount ?? 0} permissions)
+            Custom ({(() => {
+              const rawPermissionCount = access.permissionCount;
+              return rawPermissionCount ?? 0;
+            })()} permissions)
           </span>
         ) : (
           <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-            {access.roleName ?? "No Role"}
+            {(() => {
+              const rawRoleName = access.roleName;
+              return rawRoleName ?? "No Role";
+            })()}
           </span>
         )}
 

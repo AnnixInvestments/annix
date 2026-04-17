@@ -1,5 +1,6 @@
 "use client";
 
+import { keys } from "es-toolkit/compat";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useDisclosure } from "@/app/lib/hooks/useDisclosure";
 import { useViewAs } from "../context/ViewAsContext";
@@ -48,7 +49,7 @@ export function HeaderViewSwitcher() {
         });
       }
     });
-    Object.keys(grouped).forEach((roleKey) => {
+    keys(grouped).forEach((roleKey) => {
       if (!roleOrder.includes(roleKey)) {
         groups.push({
           roleKey,

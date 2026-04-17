@@ -1,5 +1,6 @@
 "use client";
 
+import { keys } from "es-toolkit/compat";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
@@ -281,6 +282,7 @@ export default function ProspectDetailPage() {
   };
 
   const handleDelete = async () => {
+    // eslint-disable-next-line no-restricted-globals -- legacy sync confirm pending modal migration (issue #175)
     if (confirm("Are you sure you want to delete this prospect?")) {
       await deleteProspect.mutateAsync(id);
       router.push("/annix-rep/prospects");
@@ -906,7 +908,7 @@ export default function ProspectDetailPage() {
                 disabled={updateProspect.isPending}
                 className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-700 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
-                {(Object.keys(recurrenceLabels) as FollowUpRecurrence[]).map((rec) => (
+                {(keys(recurrenceLabels) as FollowUpRecurrence[]).map((rec) => (
                   <option key={rec} value={rec}>
                     {recurrenceLabels[rec]}
                   </option>
@@ -959,7 +961,7 @@ export default function ProspectDetailPage() {
               Update Status
             </h2>
             <div className="space-y-2">
-              {(Object.keys(statusLabels) as ProspectStatus[]).map((status) => (
+              {(keys(statusLabels) as ProspectStatus[]).map((status) => (
                 <button
                   key={status}
                   onClick={() => handleStatusChange(status)}

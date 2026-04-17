@@ -1,5 +1,6 @@
 "use client";
 
+import { toPairs as entries } from "es-toolkit/compat";
 import { useMemo, useState } from "react";
 import type { NightSuspensionHours, PollingJobDto } from "@/app/lib/api/adminApi";
 import {
@@ -245,7 +246,7 @@ export default function PollingJobsPage() {
       acc[job.module] = list;
       return acc;
     }, {});
-    return Object.entries(groups).sort(([a], [b]) => a.localeCompare(b));
+    return entries(groups).sort(([a], [b]) => a.localeCompare(b));
   }, [jobs]);
 
   return (

@@ -108,7 +108,8 @@ export default function InventoryDetailPage() {
     movements
       .filter((m) => m.movementType === "out" && m.notes)
       .forEach((m) => {
-        const name = recipientFromNotes(m.notes || "");
+        const rawNotes = m.notes;
+        const name = recipientFromNotes(rawNotes || "");
         if (!name || name === "-") return;
         const existing = map.get(name) || { totalQty: 0, count: 0 };
         map.set(name, {
@@ -332,7 +333,12 @@ export default function InventoryDetailPage() {
                 </div>
                 <div>
                   <dt className="text-sm font-medium text-gray-500">Category</dt>
-                  <dd className="mt-1 text-sm text-gray-900">{item.category || "-"}</dd>
+                  <dd className="mt-1 text-sm text-gray-900">
+                    {(() => {
+                      const rawCategory = item.category;
+                      return rawCategory || "-";
+                    })()}
+                  </dd>
                 </div>
                 <div>
                   <dt className="text-sm font-medium text-gray-500">Unit of Measure</dt>
@@ -604,39 +610,42 @@ export default function InventoryDetailPage() {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {movements.map((movement) => (
-                <tr key={movement.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {formatDateTimeZA(movement.createdAt)}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span
-                      className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${movementTypeBadge(movement.movementType)}`}
-                    >
-                      {movement.movementType}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-medium text-gray-900">
-                    {movement.quantity}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {movement.referenceType
-                      ? `${movement.referenceType} #${movement.referenceId}`
-                      : "-"}
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-500 max-w-xs truncate">
-                    {(() => {
-                      const notes = movement.notes;
-                      const raw = notes || "-";
-                      const match = raw.match(/^Issued to\s+(.+?)\s+by\s+.+$/i);
-                      return match ? match[1] : raw;
-                    })()}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {movement.createdBy || "System"}
-                  </td>
-                </tr>
-              ))}
+              {movements.map((movement) => {
+                const rawCreatedBy = movement.createdBy;
+                return (
+                  <tr key={movement.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {formatDateTimeZA(movement.createdAt)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span
+                        className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${movementTypeBadge(movement.movementType)}`}
+                      >
+                        {movement.movementType}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-medium text-gray-900">
+                      {movement.quantity}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {movement.referenceType
+                        ? `${movement.referenceType} #${movement.referenceId}`
+                        : "-"}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-500 max-w-xs truncate">
+                      {(() => {
+                        const notes = movement.notes;
+                        const raw = notes || "-";
+                        const match = raw.match(/^Issued to\s+(.+?)\s+by\s+.+$/i);
+                        return match ? match[1] : raw;
+                      })()}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {rawCreatedBy || "System"}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         )}
@@ -828,23 +837,28 @@ export default function InventoryDetailPage() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Location</label>
-                  <select
-                    value={modalForm.locationId ?? ""}
-                    onChange={(e) =>
-                      setModalForm({
-                        ...modalForm,
-                        locationId: e.target.value ? parseInt(e.target.value, 10) : null,
-                      })
-                    }
-                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm"
-                  >
-                    <option value="">No location</option>
-                    {locations.map((loc) => (
-                      <option key={loc.id} value={loc.id}>
-                        {loc.name}
-                      </option>
-                    ))}
-                  </select>
+                  {(() => {
+                    const rawLocationId = modalForm.locationId;
+                    return (
+                      <select
+                        value={rawLocationId ?? ""}
+                        onChange={(e) =>
+                          setModalForm({
+                            ...modalForm,
+                            locationId: e.target.value ? parseInt(e.target.value, 10) : null,
+                          })
+                        }
+                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm"
+                      >
+                        <option value="">No location</option>
+                        {locations.map((loc) => (
+                          <option key={loc.id} value={loc.id}>
+                            {loc.name}
+                          </option>
+                        ))}
+                      </select>
+                    );
+                  })()}
                 </div>
               </div>
               <div className="mt-6 flex justify-end space-x-3">

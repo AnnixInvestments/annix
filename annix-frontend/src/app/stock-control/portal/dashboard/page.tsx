@@ -11,6 +11,7 @@ import {
   useSensors,
 } from "@dnd-kit/core";
 import { arrayMove, SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
+import { isArray } from "es-toolkit/compat";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
 import type { WorkflowNotification } from "@/app/lib/api/stockControlApi";
@@ -69,7 +70,7 @@ export default function StockControlDashboard() {
   useEffect(() => {
     stockControlApiClient
       .workflowNotifications(10)
-      .then((data) => setNotifications(Array.isArray(data) ? data : []))
+      .then((data) => setNotifications(isArray(data) ? data : []))
       .catch(() => setNotifications([]));
   }, []);
 

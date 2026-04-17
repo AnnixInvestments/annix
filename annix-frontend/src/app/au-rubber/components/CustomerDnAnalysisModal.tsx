@@ -1,5 +1,6 @@
 "use client";
 
+import { isArray } from "es-toolkit/compat";
 import {
   AlertTriangle,
   Check,
@@ -193,7 +194,7 @@ export function CustomerDnAnalysisModal(props: CustomerDnAnalysisModalProps) {
                   onAddLineItem={(category) => addLineItem(groupIndex, category)}
                   onRemoveLineItem={(itemIndex) => removeLineItem(groupIndex, itemIndex)}
                   isExisting={
-                    Array.isArray(analysis.existingDnNumbers) &&
+                    isArray(analysis.existingDnNumbers) &&
                     analysis.existingDnNumbers.includes(group.deliveryNoteNumber)
                   }
                 />

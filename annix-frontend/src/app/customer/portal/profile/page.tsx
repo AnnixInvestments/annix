@@ -9,7 +9,8 @@ import { useCustomerProfile } from "@/app/lib/query/hooks";
 export default function CustomerProfilePage() {
   const { refreshProfile } = useCustomerAuth();
   const profileQuery = useCustomerProfile();
-  const profile = profileQuery.data ?? null;
+  const rawData = profileQuery.data;
+  const profile = rawData ?? null;
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
@@ -33,9 +34,18 @@ export default function CustomerProfilePage() {
   useEffect(() => {
     if (profile) {
       setProfileForm({
-        jobTitle: profile.jobTitle || "",
-        directPhone: profile.directPhone || "",
-        mobilePhone: profile.mobilePhone || "",
+        jobTitle: (() => {
+          const rawJobTitle = profile.jobTitle;
+          return rawJobTitle || "";
+        })(),
+        directPhone: (() => {
+          const rawDirectPhone = profile.directPhone;
+          return rawDirectPhone || "";
+        })(),
+        mobilePhone: (() => {
+          const rawMobilePhone = profile.mobilePhone;
+          return rawMobilePhone || "";
+        })(),
       });
     }
   }, [profile]);
@@ -166,7 +176,10 @@ export default function CustomerProfilePage() {
                   <label className="block text-sm font-medium text-gray-700">First Name</label>
                   <input
                     type="text"
-                    value={profile?.firstName || ""}
+                    value={(() => {
+                      const rawFirstName = profile?.firstName;
+                      return rawFirstName || "";
+                    })()}
                     disabled
                     className="mt-1 block w-full rounded-md border-gray-300 bg-gray-100 shadow-sm"
                   />
@@ -176,7 +189,10 @@ export default function CustomerProfilePage() {
                   <label className="block text-sm font-medium text-gray-700">Last Name</label>
                   <input
                     type="text"
-                    value={profile?.lastName || ""}
+                    value={(() => {
+                      const rawLastName = profile?.lastName;
+                      return rawLastName || "";
+                    })()}
                     disabled
                     className="mt-1 block w-full rounded-md border-gray-300 bg-gray-100 shadow-sm"
                   />
@@ -185,7 +201,10 @@ export default function CustomerProfilePage() {
                   <label className="block text-sm font-medium text-gray-700">Email</label>
                   <input
                     type="email"
-                    value={profile?.email || ""}
+                    value={(() => {
+                      const rawEmail = profile?.email;
+                      return rawEmail || "";
+                    })()}
                     disabled
                     className="mt-1 block w-full rounded-md border-gray-300 bg-gray-100 shadow-sm"
                   />
@@ -228,9 +247,18 @@ export default function CustomerProfilePage() {
                   onClick={() => {
                     setIsEditingProfile(false);
                     setProfileForm({
-                      jobTitle: profile?.jobTitle || "",
-                      directPhone: profile?.directPhone || "",
-                      mobilePhone: profile?.mobilePhone || "",
+                      jobTitle: (() => {
+                        const rawJobTitle = profile?.jobTitle;
+                        return rawJobTitle || "";
+                      })(),
+                      directPhone: (() => {
+                        const rawDirectPhone = profile?.directPhone;
+                        return rawDirectPhone || "";
+                      })(),
+                      mobilePhone: (() => {
+                        const rawMobilePhone = profile?.mobilePhone;
+                        return rawMobilePhone || "";
+                      })(),
                     });
                   }}
                   className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
@@ -260,15 +288,30 @@ export default function CustomerProfilePage() {
               </div>
               <div>
                 <dt className="text-sm font-medium text-gray-500">Job Title</dt>
-                <dd className="mt-1 text-sm text-gray-900">{profile?.jobTitle || "Not set"}</dd>
+                <dd className="mt-1 text-sm text-gray-900">
+                  {(() => {
+                    const rawJobTitle = profile?.jobTitle;
+                    return rawJobTitle || "Not set";
+                  })()}
+                </dd>
               </div>
               <div>
                 <dt className="text-sm font-medium text-gray-500">Direct Phone</dt>
-                <dd className="mt-1 text-sm text-gray-900">{profile?.directPhone || "Not set"}</dd>
+                <dd className="mt-1 text-sm text-gray-900">
+                  {(() => {
+                    const rawDirectPhone = profile?.directPhone;
+                    return rawDirectPhone || "Not set";
+                  })()}
+                </dd>
               </div>
               <div>
                 <dt className="text-sm font-medium text-gray-500">Mobile Phone</dt>
-                <dd className="mt-1 text-sm text-gray-900">{profile?.mobilePhone || "Not set"}</dd>
+                <dd className="mt-1 text-sm text-gray-900">
+                  {(() => {
+                    const rawMobilePhone = profile?.mobilePhone;
+                    return rawMobilePhone || "Not set";
+                  })()}
+                </dd>
               </div>
               <div>
                 <dt className="text-sm font-medium text-gray-500">Account Status</dt>

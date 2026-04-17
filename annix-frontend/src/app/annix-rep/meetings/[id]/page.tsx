@@ -132,6 +132,7 @@ export default function MeetingDetailPage() {
   };
 
   const handleCancel = async () => {
+    // eslint-disable-next-line no-restricted-globals -- legacy sync confirm pending modal migration (issue #175)
     if (confirm("Are you sure you want to cancel this meeting?")) {
       await cancelMeeting.mutateAsync(meetingId);
     }
@@ -139,6 +140,7 @@ export default function MeetingDetailPage() {
 
   const handleDeleteRecording = async () => {
     if (!recording) return;
+    // eslint-disable-next-line no-restricted-globals -- legacy sync confirm pending modal migration (issue #175)
     if (confirm("Are you sure you want to delete this recording? This cannot be undone.")) {
       await deleteRecording.mutateAsync(recording.id);
     }
@@ -152,6 +154,7 @@ export default function MeetingDetailPage() {
 
   const handleConfirmJoinBot = async () => {
     if (!teamsUrl || !isTeamsUrl(teamsUrl)) {
+      // eslint-disable-next-line no-restricted-globals -- legacy sync alert pending modal migration (issue #175)
       alert("Please enter a valid Microsoft Teams meeting URL");
       return;
     }
@@ -166,6 +169,7 @@ export default function MeetingDetailPage() {
 
   const handleLeaveBot = async () => {
     if (!activeBotSession) return;
+    // eslint-disable-next-line no-restricted-globals -- legacy sync confirm pending modal migration (issue #175)
     if (confirm("Are you sure you want to remove the bot from this meeting?")) {
       await leaveTeamsMeeting.mutateAsync(activeBotSession.sessionId);
     }

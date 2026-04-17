@@ -63,7 +63,10 @@ export function CustomerAuthProvider(props: { children: ReactNode }) {
           email: profile.email,
           firstName: profile.firstName,
           lastName: profile.lastName,
-          companyName: profile.company.tradingName || profile.company.legalName,
+          companyName: (() => {
+            const rawTradingName = profile.company.tradingName;
+            return rawTradingName || profile.company.legalName;
+          })(),
           accountStatus: profile.accountStatus,
         },
         profile,
@@ -135,8 +138,10 @@ export function CustomerAuthProvider(props: { children: ReactNode }) {
           email: profile.email,
           firstName: profile.firstName,
           lastName: profile.lastName,
-          companyName:
-            profile.company?.tradingName || profile.company?.legalName || response.companyName,
+          companyName: (() => {
+            const rawTradingName = profile.company?.tradingName;
+            return rawTradingName || profile.company?.legalName || response.companyName;
+          })(),
           accountStatus: profile.accountStatus,
         },
         profile,

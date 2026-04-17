@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
+import { log } from "@/app/lib/logger";
 
 interface NotificationCountResult {
   count: number;
@@ -18,7 +19,7 @@ export function useNotificationCount(): NotificationCountResult {
       const result = await stockControlApiClient.notificationCount();
       setCount(result.count);
     } catch (error) {
-      console.debug("Failed to fetch notification count:", error);
+      log.debug("Failed to fetch notification count:", error);
     } finally {
       setIsLoading(false);
     }

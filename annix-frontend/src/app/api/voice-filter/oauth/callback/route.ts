@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const VOICE_FILTER_BACKEND_URL = process.env.VOICE_FILTER_BACKEND_URL || "http://localhost:47823";
-const FRONTEND_URL = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
+const rawVOICE_FILTER_BACKEND_URLValue = process.env.VOICE_FILTER_BACKEND_URL;
+const VOICE_FILTER_BACKEND_URL = rawVOICE_FILTER_BACKEND_URLValue || "http://localhost:47823";
+const rawNEXT_PUBLIC_BASE_URL = process.env.NEXT_PUBLIC_BASE_URL;
+const FRONTEND_URL = rawNEXT_PUBLIC_BASE_URL || "http://localhost:3000";
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;

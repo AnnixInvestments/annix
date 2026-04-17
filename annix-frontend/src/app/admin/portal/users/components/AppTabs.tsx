@@ -29,6 +29,8 @@ export function AppTabs(props: AppTabsProps) {
       <nav className="-mb-px flex space-x-8 overflow-x-auto" aria-label="Apps">
         {apps.map((app) => {
           const isSelected = app.code === selectedAppCode;
+          const rawIcon = appIcons[app.code];
+          const iconPath = rawIcon || "M4 6h16M4 12h16M4 18h16";
           return (
             <button
               key={app.code}
@@ -43,12 +45,7 @@ export function AppTabs(props: AppTabsProps) {
               `}
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d={appIcons[app.code] ?? "M4 6h16M4 12h16M4 18h16"}
-                />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={iconPath} />
               </svg>
               {app.name}
             </button>

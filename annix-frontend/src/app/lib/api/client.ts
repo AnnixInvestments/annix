@@ -151,6 +151,7 @@ export class SessionExpiredError extends Error {
 }
 
 function authToken(): string | null {
+  // eslint-disable-next-line no-restricted-syntax -- SSR guard; isUndefined(window) would throw
   if (typeof window === "undefined") return null;
 
   const customerToken = localStorage.getItem("customerAccessToken");
@@ -182,12 +183,14 @@ class ApiClient {
   }
 
   setToken(token: string) {
+    // eslint-disable-next-line no-restricted-syntax -- SSR guard; isUndefined(window) would throw
     if (typeof window !== "undefined") {
       localStorage.setItem("authToken", token);
     }
   }
 
   clearToken() {
+    // eslint-disable-next-line no-restricted-syntax -- SSR guard; isUndefined(window) would throw
     if (typeof window !== "undefined") {
       localStorage.removeItem("authToken");
     }
@@ -195,6 +198,7 @@ class ApiClient {
 
   // Attempt to refresh the customer access token using the refresh token
   private async refreshCustomerToken(): Promise<boolean> {
+    // eslint-disable-next-line no-restricted-syntax -- SSR guard; isUndefined(window) would throw
     if (typeof window === "undefined") return false;
 
     const refreshToken = localStorage.getItem("customerRefreshToken");

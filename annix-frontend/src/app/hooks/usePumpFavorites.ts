@@ -31,6 +31,7 @@ interface UsePumpFavoritesReturn {
 }
 
 function loadFromStorage<T>(key: string, defaultValue: T): T {
+  // eslint-disable-next-line no-restricted-syntax -- SSR guard; isUndefined(window) would throw
   if (typeof window === "undefined") {
     return defaultValue;
   }
@@ -43,6 +44,7 @@ function loadFromStorage<T>(key: string, defaultValue: T): T {
 }
 
 function saveToStorage<T>(key: string, value: T): void {
+  // eslint-disable-next-line no-restricted-syntax -- SSR guard; isUndefined(window) would throw
   if (typeof window === "undefined") {
     return;
   }

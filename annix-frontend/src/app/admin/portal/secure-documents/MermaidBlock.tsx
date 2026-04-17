@@ -1,5 +1,6 @@
 "use client";
 
+import { keys } from "es-toolkit/compat";
 import { useEffect, useRef, useState } from "react";
 import { log } from "@/app/lib/logger";
 import { annixIconPack } from "./custom-icon-pack";
@@ -28,7 +29,7 @@ export default function MermaidBlock({ chart }: MermaidBlockProps) {
         });
 
         if (!iconsRegistered && mermaid.registerIconPacks) {
-          log.info("[MermaidBlock] registering annix icon pack:", Object.keys(annixIconPack.icons));
+          log.info("[MermaidBlock] registering annix icon pack:", keys(annixIconPack.icons));
           mermaid.registerIconPacks([{ name: "annix", icons: annixIconPack }]);
           try {
             const logosModule = await import("@iconify-json/logos");

@@ -10,7 +10,8 @@ export default function CustomerRfqDetailPage() {
   const rfqId = Number(params.id);
 
   const rfqQuery = useCustomerRfqDetail(rfqId);
-  const rfq = rfqQuery.data ?? null;
+  const rawData = rfqQuery.data;
+  const rfq = rawData ?? null;
 
   const getStatusBadgeClass = (status: string) => {
     switch (status.toLowerCase()) {
@@ -39,7 +40,8 @@ export default function CustomerRfqDetailPage() {
     );
   }
 
-  if (rfqQuery.error || !rfq) {
+  const rawError = rfqQuery.error;
+  if (rawError || !rfq) {
     return (
       <div className="space-y-4">
         <div className="bg-red-50 border border-red-200 rounded-lg p-4">
@@ -101,11 +103,20 @@ export default function CustomerRfqDetailPage() {
             <div className="divide-y divide-gray-200">
               {rfq.items && rfq.items.length > 0 ? (
                 rfq.items.map((item: any, index: number) => (
-                  <div key={item.id || index} className="p-6">
+                  <div
+                    key={(() => {
+                      const rawId = item.id;
+                      return rawId || index;
+                    })()}
+                    className="p-6"
+                  >
                     <div className="flex justify-between items-start">
                       <div>
                         <h3 className="text-sm font-medium text-gray-900">
-                          {item.itemDescription || `Item ${index + 1}`}
+                          {(() => {
+                            const rawItemDescription = item.itemDescription;
+                            return rawItemDescription || `Item ${index + 1}`;
+                          })()}
                         </h3>
                         <p className="text-sm text-gray-500 mt-1">
                           {item.itemType === "straight_pipe" && "Straight Pipe"}

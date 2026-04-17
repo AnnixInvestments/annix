@@ -1,6 +1,7 @@
 "use client";
 
 import { CODING_TYPES, CodingType } from "@annix/product-data/rubber/codingTypes";
+import { toPairs as entries } from "es-toolkit/compat";
 import { useEffect, useState } from "react";
 import { Pagination, TableLoadingState } from "@/app/components/shared/TableComponents";
 import { useToast } from "@/app/components/Toast";
@@ -68,7 +69,7 @@ function SpecificationsTable({
           </tr>
         </thead>
         <tbody className="bg-white divide-y divide-gray-200">
-          {Object.entries(groupedByType).map(([key, typeSpecs]) => {
+          {entries(groupedByType).map(([key, typeSpecs]) => {
             const typeName = key.split("-").slice(1).join("-");
             const typeNumber = key.split("-")[0];
             return [

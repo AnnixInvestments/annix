@@ -148,8 +148,24 @@ export default function HdpePipeCalculator(props: HdpePipeCalculatorProps) {
     });
   };
 
-  const totalWeight = results.reduce((sum, r) => sum + (r?.totalWeight || 0), 0);
-  const totalCost = results.reduce((sum, r) => sum + (r?.totalCost || 0), 0);
+  const totalWeight = results.reduce(
+    (sum, r) =>
+      sum +
+      (() => {
+        const rawTotalWeight = r?.totalWeight;
+        return rawTotalWeight || 0;
+      })(),
+    0,
+  );
+  const totalCost = results.reduce(
+    (sum, r) =>
+      sum +
+      (() => {
+        const rawTotalCost = r?.totalCost;
+        return rawTotalCost || 0;
+      })(),
+    0,
+  );
 
   return (
     <div className="bg-white dark:bg-slate-800 rounded-lg shadow-md p-6">
@@ -159,7 +175,10 @@ export default function HdpePipeCalculator(props: HdpePipeCalculatorProps) {
 
       <div className="space-y-4">
         {entries.map((entry, index) => {
-          const sdrsForNb = availableSdrs[entry.nominalBore] || SDR_VALUES;
+          const sdrsForNb = (() => {
+            const rawAvailableSdrs = availableSdrs[entry.nominalBore];
+            return rawAvailableSdrs || SDR_VALUES;
+          })();
           const pressureRating = calculatePressureRating(entry.sdr);
           const result = results[index];
           const error = errors[index];

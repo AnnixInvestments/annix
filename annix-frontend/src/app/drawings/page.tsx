@@ -18,11 +18,21 @@ export default function DrawingsListPage() {
     limit: 20,
   });
 
-  const drawings = data?.data || [];
+  const rawData = data?.data;
+  const drawings = rawData || [];
   const pagination = {
-    page: data?.page || 1,
-    totalPages: data?.totalPages || 1,
-    total: data?.total || 0,
+    page: (() => {
+      const rawPage = data?.page;
+      return rawPage || 1;
+    })(),
+    totalPages: (() => {
+      const rawTotalPages = data?.totalPages;
+      return rawTotalPages || 1;
+    })(),
+    total: (() => {
+      const rawTotal = data?.total;
+      return rawTotal || 0;
+    })(),
   };
 
   const handleSearch = () => {

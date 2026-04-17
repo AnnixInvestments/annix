@@ -55,6 +55,7 @@ export default function SupplierDetailPage() {
   };
 
   const handleReactivate = async () => {
+    // eslint-disable-next-line no-restricted-globals -- legacy sync confirm pending modal migration (issue #175)
     if (!confirm("Are you sure you want to reactivate this supplier account?")) {
       return;
     }
@@ -248,7 +249,8 @@ export default function SupplierDetailPage() {
     );
   }
 
-  if (supplierQuery.error || !supplier) {
+  const rawError = supplierQuery.error;
+  if (rawError || !supplier) {
     return (
       <div className="flex items-center justify-center min-h-96">
         <div className="text-center">

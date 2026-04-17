@@ -1,5 +1,6 @@
 "use client";
 
+import { isArray } from "es-toolkit/compat";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { PdfPreviewModal, usePdfPreview } from "@/app/components/PdfPreviewModal";
 import type {
@@ -242,7 +243,7 @@ export function QcpSection(props: QcpSectionProps) {
       const result = isCpoMode
         ? await stockControlApiClient.controlPlansForCpo(cpoId)
         : await stockControlApiClient.controlPlansForJobCard(jobCardId!);
-      setPlans(Array.isArray(result) ? result : []);
+      setPlans(isArray(result) ? result : []);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load control plans");
     } finally {

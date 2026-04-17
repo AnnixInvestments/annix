@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { isArray } from "es-toolkit/compat";
 import { useEffect, useState } from "react";
 import type {
   AddCpoItemRequest,
@@ -53,7 +54,7 @@ export function useJobCards(status?: string) {
     queryKey: stockControlKeys.jobCards.list(status),
     queryFn: async () => {
       const data = await stockControlApiClient.jobCards(status === "all" ? undefined : status);
-      return Array.isArray(data) ? data : [];
+      return isArray(data) ? data : [];
     },
   });
 }
@@ -207,7 +208,7 @@ export function useInspectionBookingsForRange(startDate: string, endDate: string
     queryKey: stockControlKeys.inspections.forRange(startDate, endDate),
     queryFn: async () => {
       const data = await stockControlApiClient.inspectionBookingsForRange(startDate, endDate);
-      return Array.isArray(data) ? data : [];
+      return isArray(data) ? data : [];
     },
     enabled: startDate.length > 0 && endDate.length > 0,
   });
@@ -325,7 +326,7 @@ export function useWorkflowNotifications(filter: string) {
         filter === "unread"
           ? await stockControlApiClient.unreadNotifications()
           : await stockControlApiClient.workflowNotifications(100);
-      return Array.isArray(data) ? data : [];
+      return isArray(data) ? data : [];
     },
   });
 }
@@ -351,7 +352,7 @@ export function useCpos(status?: string) {
     queryKey: stockControlKeys.cpos.list(status),
     queryFn: async () => {
       const data = await stockControlApiClient.cpos(status === "all" ? undefined : status);
-      return Array.isArray(data) ? data : [];
+      return isArray(data) ? data : [];
     },
   });
 }
@@ -366,7 +367,7 @@ export function useCustomerDeliveries() {
     queryKey: [...stockControlKeys.deliveries.all, "customer"] as const,
     queryFn: async () => {
       const data = await stockControlApiClient.deliveryNotes();
-      return (Array.isArray(data) ? data : []).filter((dn) => {
+      return (isArray(data) ? data : []).filter((dn) => {
         const extracted = dn.extractedData as { documentType?: string } | null;
         return extracted?.documentType === "CUSTOMER_DELIVERY";
       });
@@ -395,7 +396,7 @@ export function useCalibrationCertificates(filterActive: string) {
       if (filterActive === "true") filters.active = true;
       if (filterActive === "false") filters.active = false;
       const data = await stockControlApiClient.calibrationCertificates(filters);
-      return Array.isArray(data) ? data : [];
+      return isArray(data) ? data : [];
     },
   });
 }
@@ -502,7 +503,7 @@ export function useJobCardApprovals(jobId: number) {
     queryFn: async () => {
       try {
         const data = await stockControlApiClient.approvalHistory(jobId);
-        return Array.isArray(data) ? data : [];
+        return isArray(data) ? data : [];
       } catch {
         return [];
       }
@@ -662,7 +663,7 @@ export function useReportStaffMembers() {
     queryKey: stockControlKeys.reports.staffMembers(),
     queryFn: async () => {
       const data = await stockControlApiClient.staffMembers({ active: "true" });
-      return Array.isArray(data) ? data : [];
+      return isArray(data) ? data : [];
     },
     staleTime: 60_000,
   });
@@ -673,7 +674,7 @@ export function useReportDepartments() {
     queryKey: stockControlKeys.reports.departments(),
     queryFn: async () => {
       const data = await stockControlApiClient.departments();
-      return Array.isArray(data) ? data : [];
+      return isArray(data) ? data : [];
     },
     staleTime: 60_000,
   });
@@ -684,7 +685,7 @@ export function useReportStockItems() {
     queryKey: stockControlKeys.reports.stockItems(),
     queryFn: async () => {
       const result = await stockControlApiClient.stockItems({ limit: "1000" });
-      return Array.isArray(result.items) ? result.items : [];
+      return isArray(result.items) ? result.items : [];
     },
     staleTime: 60_000,
   });
@@ -709,7 +710,7 @@ export function useCertificateStockItems() {
     queryKey: stockControlKeys.certificates.stockItems(),
     queryFn: async () => {
       const data = await stockControlApiClient.stockItems();
-      return Array.isArray(data) ? data : [];
+      return isArray(data) ? data : [];
     },
     staleTime: 60_000,
   });
@@ -742,7 +743,7 @@ export function useIssueStockStaffMembers() {
     queryKey: stockControlKeys.issueStock.staffMembers(),
     queryFn: async () => {
       const data = await stockControlApiClient.staffMembers({ active: "true" });
-      return Array.isArray(data) ? data : [];
+      return isArray(data) ? data : [];
     },
     staleTime: 60_000,
   });
@@ -777,7 +778,7 @@ export function useQcpLog(search: string) {
     queryKey: stockControlKeys.qcpLog.list(search),
     queryFn: async () => {
       const data = await stockControlApiClient.qcpLog(search || undefined);
-      return Array.isArray(data) ? data : [];
+      return isArray(data) ? data : [];
     },
   });
 }
@@ -912,7 +913,7 @@ export function useStockControlSuppliers() {
     queryKey: stockControlKeys.suppliers.list(),
     queryFn: async () => {
       const data = await stockControlApiClient.suppliers();
-      return Array.isArray(data) ? data : [];
+      return isArray(data) ? data : [];
     },
     staleTime: 60_000,
   });

@@ -39,14 +39,20 @@ export function UserRow(props: UserRowProps) {
           <div className="flex items-center gap-3">
             <div className="flex-shrink-0">
               <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-600 font-medium">
-                {(user.firstName?.[0] || user.email[0]).toUpperCase()}
+                {(() => {
+                  const rawFirstName = user.firstName?.[0];
+                  return rawFirstName || user.email[0];
+                })().toUpperCase()}
               </div>
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
                 <p className="text-sm font-medium text-gray-900 truncate">{displayName}</p>
                 <span
-                  className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${statusColors[user.status] ?? "bg-gray-100 text-gray-800"}`}
+                  className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${(() => {
+                    const rawStatusColors = statusColors[user.status];
+                    return rawStatusColors ?? "bg-gray-100 text-gray-800";
+                  })()}`}
                 >
                   {user.status}
                 </span>

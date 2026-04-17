@@ -1,5 +1,6 @@
 "use client";
 
+import { keys } from "es-toolkit/compat";
 import { useCallback, useState } from "react";
 import { createPortal } from "react-dom";
 import type { AsteriskAllocation, AsteriskItem } from "@/app/lib/api/stock-control-api/types";
@@ -113,7 +114,7 @@ export function AsteriskAllocationModal(props: AsteriskAllocationModalProps) {
     });
 
     setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    return keys(newErrors).length === 0;
   }, [asteriskItems, itemStates]);
 
   const handleConfirm = useCallback(() => {

@@ -1,5 +1,6 @@
 "use client";
 
+import { isArray } from "es-toolkit/compat";
 import { CheckCircle, Download, FileText, Send, Trash2, X } from "lucide-react";
 import Link from "next/link";
 import { lazy, Suspense, useEffect, useState } from "react";
@@ -190,10 +191,10 @@ export default function CustomerTaxInvoicesPage() {
         auRubberApiClient.companies(),
       ]);
 
-      const allCompanies = Array.isArray(companiesData) ? companiesData : [];
+      const allCompanies = isArray(companiesData) ? companiesData : [];
       const customerCompanies = allCompanies.filter((c) => c.companyType === "CUSTOMER");
 
-      setInvoices(Array.isArray(invoiceData) ? invoiceData : []);
+      setInvoices(isArray(invoiceData) ? invoiceData : []);
       setCustomers(customerCompanies);
       setError(null);
     } catch (err) {

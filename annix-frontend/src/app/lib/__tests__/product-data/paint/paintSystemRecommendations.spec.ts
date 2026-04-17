@@ -24,6 +24,7 @@ import {
   systemDftSummary,
   validateMultiCoatCompatibility,
 } from "@annix/product-data/paint/paintSystemRecommendations";
+import { isArray } from "es-toolkit/compat";
 import { describe, expect, it } from "vitest";
 
 describe("paintSystemRecommendations", () => {
@@ -92,7 +93,7 @@ describe("paintSystemRecommendations", () => {
       };
       const result = recommendCoatingSystem(requirements);
 
-      expect(Array.isArray(result.alternativePrimers)).toBe(true);
+      expect(isArray(result.alternativePrimers)).toBe(true);
     });
 
     it("should provide alternative topcoats", () => {
@@ -101,7 +102,7 @@ describe("paintSystemRecommendations", () => {
       };
       const result = recommendCoatingSystem(requirements);
 
-      expect(Array.isArray(result.alternativeTopcoats)).toBe(true);
+      expect(isArray(result.alternativeTopcoats)).toBe(true);
     });
 
     it("should calculate correct total DFT range", () => {
@@ -146,7 +147,7 @@ describe("paintSystemRecommendations", () => {
 
       categories.forEach((category) => {
         const primers = recommendPrimersForCategory(category);
-        expect(Array.isArray(primers)).toBe(true);
+        expect(isArray(primers)).toBe(true);
       });
     });
 
@@ -175,7 +176,7 @@ describe("paintSystemRecommendations", () => {
       const primer = primers[0];
       const topcoats = recommendTopcoatsForPrimer(primer);
 
-      expect(Array.isArray(topcoats)).toBe(true);
+      expect(isArray(topcoats)).toBe(true);
     });
 
     it("should prefer UV-resistant topcoats when uvExposure is true", () => {
@@ -213,8 +214,8 @@ describe("paintSystemRecommendations", () => {
       const result = highTempSystemRecommendation(200);
 
       if (result) {
-        expect(Array.isArray(result.alternativePrimers)).toBe(true);
-        expect(Array.isArray(result.alternativeTopcoats)).toBe(true);
+        expect(isArray(result.alternativePrimers)).toBe(true);
+        expect(isArray(result.alternativeTopcoats)).toBe(true);
       }
     });
   });
@@ -329,7 +330,7 @@ describe("paintSystemRecommendations", () => {
   describe("allSurfacePrepStandards", () => {
     it("should return array of all standards", () => {
       const standards = allSurfacePrepStandards();
-      expect(Array.isArray(standards)).toBe(true);
+      expect(isArray(standards)).toBe(true);
       expect(standards.length).toBeGreaterThan(0);
     });
 
@@ -384,20 +385,20 @@ describe("paintSystemRecommendations", () => {
 
     it("should include test requirements", () => {
       const system = generateNORSOKSystem(1);
-      expect(Array.isArray(system.testRequirements)).toBe(true);
+      expect(isArray(system.testRequirements)).toBe(true);
       expect(system.testRequirements.length).toBeGreaterThan(0);
     });
 
     it("should match products when available", () => {
       const system = generateNORSOKSystem(1, paintProducts);
-      expect(Array.isArray(system.matchedProducts)).toBe(true);
+      expect(isArray(system.matchedProducts)).toBe(true);
     });
   });
 
   describe("allNORSOKSystems", () => {
     it("should return array of systems", () => {
       const systems = allNORSOKSystems();
-      expect(Array.isArray(systems)).toBe(true);
+      expect(isArray(systems)).toBe(true);
       expect(systems.length).toBeGreaterThan(0);
     });
 
@@ -567,7 +568,7 @@ describe("paintSystemRecommendations", () => {
 
       const result = calculateCoverage(input);
 
-      expect(Array.isArray(result.notes)).toBe(true);
+      expect(isArray(result.notes)).toBe(true);
       expect(result.notes.length).toBeGreaterThan(0);
     });
   });
@@ -594,8 +595,8 @@ describe("paintSystemRecommendations", () => {
       const result = validateMultiCoatCompatibility([primer, topcoat]);
 
       expect(result).toBeDefined();
-      expect(Array.isArray(result.issues)).toBe(true);
-      expect(Array.isArray(result.warnings)).toBe(true);
+      expect(isArray(result.issues)).toBe(true);
+      expect(isArray(result.warnings)).toBe(true);
     });
 
     it("should detect incompatible sequences", () => {
@@ -699,7 +700,7 @@ describe("paintSystemRecommendations", () => {
 
       const result = checkOvercoatWindow(input);
 
-      expect(Array.isArray(result.recommendations)).toBe(true);
+      expect(isArray(result.recommendations)).toBe(true);
       expect(result.recommendations.length).toBeGreaterThan(0);
     });
   });

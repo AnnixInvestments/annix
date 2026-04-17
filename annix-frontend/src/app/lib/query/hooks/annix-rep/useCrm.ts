@@ -32,6 +32,7 @@ export function useCrmSyncStatus(configId: number) {
     queryKey: annixRepKeys.crm.status(configId),
     queryFn: () => annixRepApi.crm.syncStatus(configId),
     enabled: configId > 0,
+    // eslint-disable-next-line no-restricted-syntax -- value sourced from usePollingInterval() above
     refetchInterval,
   });
 }

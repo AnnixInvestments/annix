@@ -18,6 +18,7 @@ import {
   getInstrumentsByCategory,
   InstrumentCategory,
 } from "@annix/product-data/valves-instruments/instrumentTypes";
+import { isArray } from "es-toolkit/compat";
 import { useEffect, useMemo, useState } from "react";
 import { SmartNotesDropdown } from "@/app/components/rfq/selectors/SmartNotesDropdown";
 import SplitPaneLayout from "@/app/components/rfq/shared/SplitPaneLayout";
@@ -688,7 +689,7 @@ export default function InstrumentForm(props: InstrumentFormProps) {
               </h4>
               <SmartNotesDropdown
                 selectedNotes={
-                  entry.notes ? (Array.isArray(entry.notes) ? entry.notes : [entry.notes]) : []
+                  entry.notes ? (isArray(entry.notes) ? entry.notes : [entry.notes]) : []
                 }
                 onNotesChange={(newNotes) =>
                   onUpdateEntry(entry.id, { notes: newNotes.join("\n") })

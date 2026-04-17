@@ -2,8 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { log } from "@/app/lib/logger";
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL?.startsWith("/")
-  ? `http://localhost:${process.env.PORT || "4000"}${process.env.NEXT_PUBLIC_API_URL}`
-  : process.env.NEXT_PUBLIC_API_URL || "http://localhost:4001/api";
+  ? `http://localhost:${(() => {
+      const rawPORT = process.env.PORT;
+      return rawPORT || "4000";
+    })()}${process.env.NEXT_PUBLIC_API_URL}`
+  : (() => {
+      const rawNEXT_PUBLIC_API_URL = process.env.NEXT_PUBLIC_API_URL;
+      return rawNEXT_PUBLIC_API_URL || "http://localhost:4001/api";
+    })();
 
 export async function POST(request: NextRequest) {
   log.info("[API Route] Nix upload starting, backend URL:", BACKEND_URL);

@@ -25,8 +25,10 @@ export default function AdminMessagesPage() {
   const detailQuery = useAdminConversationDetail(selectedConversationId ?? 0);
   const sendMutation = useSendAdminMessage();
 
-  const conversations = conversationsQuery.data?.conversations || [];
-  const selectedConversation = detailQuery.data ?? null;
+  const rawConversationsValue = conversationsQuery.data?.conversations;
+  const conversations = rawConversationsValue || [];
+  const rawData = detailQuery.data;
+  const selectedConversation = rawData ?? null;
 
   const handleSelectConversation = (conversation: ConversationSummary) => {
     setSelectedConversationId(conversation.id);

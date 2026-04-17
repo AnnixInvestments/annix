@@ -258,8 +258,6 @@ export const ChainDimension = ({
   totalOffset = 0.3,
   useHtml = false,
 }: ChainDimensionProps) => {
-  if (points.length < 2) return null;
-
   const offsetVector = useMemo(() => {
     if (offsetDirection instanceof THREE.Vector3) {
       return offsetDirection.clone().normalize().multiplyScalar(offset);
@@ -314,6 +312,8 @@ export const ChainDimension = ({
     vec[offsetDirection] = offset + totalOffset;
     return vec;
   }, [offset, totalOffset, offsetDirection]);
+
+  if (points.length < 2) return null;
 
   return (
     <group>
@@ -582,8 +582,6 @@ export const BaselineDimension = ({
   lineWeight = "normal",
   useHtml = false,
 }: BaselineDimensionProps) => {
-  if (points.length < 1) return null;
-
   const baseOffsetVector = useMemo(() => {
     if (offsetDirection instanceof THREE.Vector3) {
       return offsetDirection.clone().normalize();
@@ -603,6 +601,8 @@ export const BaselineDimension = ({
       return distA - distB;
     });
   }, [points, baseline]);
+
+  if (points.length < 1) return null;
 
   return (
     <group>

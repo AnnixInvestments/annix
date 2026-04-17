@@ -51,7 +51,8 @@ function statusBadgeColor(status: FeedbackStatus): string {
     in_progress: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/50 dark:text-yellow-300",
     resolved: "bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300",
   };
-  return colors[status] || colors.submitted;
+  const rawColors = colors[status];
+  return rawColors || colors.submitted;
 }
 
 function classificationBadgeColor(classification: FeedbackClassification | null): string {
@@ -63,7 +64,8 @@ function classificationBadgeColor(classification: FeedbackClassification | null)
     question: "bg-sky-100 text-sky-700 dark:bg-sky-900/50 dark:text-sky-300",
     "data-issue": "bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300",
   };
-  return colors[classification] || colors.question;
+  const rawColors = colors[classification];
+  return rawColors || colors.question;
 }
 
 const RESOLUTION_OPTIONS: Array<{ value: ResolutionStatus | ""; label: string }> = [
@@ -90,13 +92,15 @@ function resolutionBadgeColor(status: ResolutionStatus | null): string {
     wont_fix: "bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400",
     duplicate: "bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300",
   };
-  return colors[status] || colors.needs_investigation;
+  const rawColors = colors[status];
+  return rawColors || colors.needs_investigation;
 }
 
 function resolutionLabel(status: ResolutionStatus | null): string {
   if (!status) return "-";
   const option = RESOLUTION_OPTIONS.find((o) => o.value === status);
-  return option?.label || status;
+  const rawLabel = option?.label;
+  return rawLabel || status;
 }
 
 function appBadgeColor(app: string | null): string {
@@ -110,7 +114,8 @@ function appBadgeColor(app: string | null): string {
     "cv-assistant": "bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300",
     "annix-rep": "bg-rose-100 text-rose-700 dark:bg-rose-900/50 dark:text-rose-300",
   };
-  return colors[app] || "bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400";
+  const rawColors = colors[app];
+  return rawColors || "bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400";
 }
 
 function FeedbackDetailPanel(props: { feedback: FeedbackItem; onClose: () => void }) {
@@ -120,9 +125,17 @@ function FeedbackDetailPanel(props: { feedback: FeedbackItem; onClose: () => voi
   const unassignMutation = useUnassignFeedback();
   const resolutionMutation = useUpdateFeedbackResolution();
   const [editResolution, setEditResolution] = useState<ResolutionStatus | "">(
-    feedback.resolutionStatus || "",
+    (() => {
+      const rawResolutionStatus = feedback.resolutionStatus;
+      return rawResolutionStatus || "";
+    })(),
   );
-  const [editTestCriteria, setEditTestCriteria] = useState(feedback.testCriteria || "");
+  const [editTestCriteria, setEditTestCriteria] = useState(
+    (() => {
+      const rawTestCriteria = feedback.testCriteria;
+      return rawTestCriteria || "";
+    })(),
+  );
 
   const githubUrl = feedback.githubIssueNumber
     ? `https://github.com/AnnixInvestments/annix/issues/${feedback.githubIssueNumber}`
@@ -166,12 +179,18 @@ function FeedbackDetailPanel(props: { feedback: FeedbackItem; onClose: () => voi
             <span
               className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${classificationBadgeColor(feedback.aiClassification)}`}
             >
-              {feedback.aiClassification || "unclassified"}
+              {(() => {
+                const rawAiClassification = feedback.aiClassification;
+                return rawAiClassification || "unclassified";
+              })()}
             </span>
             <span
               className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${appBadgeColor(feedback.appContext)}`}
             >
-              {feedback.appContext || "unknown"}
+              {(() => {
+                const rawAppContext = feedback.appContext;
+                return rawAppContext || "unknown";
+              })()}
             </span>
           </div>
 
@@ -179,19 +198,28 @@ function FeedbackDetailPanel(props: { feedback: FeedbackItem; onClose: () => voi
             <div className="flex justify-between">
               <span className="text-gray-500 dark:text-gray-400">Submitter</span>
               <span className="text-gray-900 dark:text-white">
-                {feedback.submitterName || "Unknown"}
+                {(() => {
+                  const rawSubmitterName = feedback.submitterName;
+                  return rawSubmitterName || "Unknown";
+                })()}
               </span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-500 dark:text-gray-400">Email</span>
               <span className="text-gray-900 dark:text-white">
-                {feedback.submitterEmail || "Unknown"}
+                {(() => {
+                  const rawSubmitterEmail = feedback.submitterEmail;
+                  return rawSubmitterEmail || "Unknown";
+                })()}
               </span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-500 dark:text-gray-400">Type</span>
               <span className="text-gray-900 dark:text-white">
-                {feedback.submitterType || "Unknown"}
+                {(() => {
+                  const rawSubmitterType = feedback.submitterType;
+                  return rawSubmitterType || "Unknown";
+                })()}
               </span>
             </div>
             <div className="flex justify-between">
@@ -364,7 +392,11 @@ export default function FeedbackDashboardPage() {
 
   const statusCounts = (feedbackList || []).reduce(
     (acc, item) => {
-      acc[item.status] = (acc[item.status] || 0) + 1;
+      acc[item.status] =
+        (() => {
+          const rawAcc = acc[item.status];
+          return rawAcc || 0;
+        })() + 1;
       return acc;
     },
     {} as Record<string, number>,
@@ -372,14 +404,24 @@ export default function FeedbackDashboardPage() {
 
   const classificationCounts = (feedbackList || []).reduce(
     (acc, item) => {
-      const key = item.aiClassification || "unclassified";
-      acc[key] = (acc[key] || 0) + 1;
+      const key = (() => {
+        const rawAiClassification = item.aiClassification;
+        return rawAiClassification || "unclassified";
+      })();
+      acc[key] =
+        (() => {
+          const rawAcc = acc[key];
+          return rawAcc || 0;
+        })() + 1;
       return acc;
     },
     {} as Record<string, number>,
   );
 
-  const total = feedbackList?.length || 0;
+  const total = (() => {
+    const rawLength = feedbackList?.length;
+    return rawLength || 0;
+  })();
   const autoFixCount = (feedbackList || []).filter(
     (f) =>
       f.githubIssueNumber !== null &&
@@ -403,15 +445,27 @@ export default function FeedbackDashboardPage() {
         <div className="rounded-lg bg-white p-4 shadow dark:bg-slate-800">
           <p className="text-sm text-gray-500 dark:text-gray-400">Open</p>
           <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-            {(statusCounts.submitted || 0) +
-              (statusCounts.triaged || 0) +
-              (statusCounts.in_progress || 0)}
+            {(() => {
+              const rawSubmitted = statusCounts.submitted;
+              return rawSubmitted || 0;
+            })() +
+              (() => {
+                const rawTriaged = statusCounts.triaged;
+                return rawTriaged || 0;
+              })() +
+              (() => {
+                const rawIn_progress = statusCounts.in_progress;
+                return rawIn_progress || 0;
+              })()}
           </p>
         </div>
         <div className="rounded-lg bg-white p-4 shadow dark:bg-slate-800">
           <p className="text-sm text-gray-500 dark:text-gray-400">Resolved</p>
           <p className="text-2xl font-bold text-green-600 dark:text-green-400">
-            {statusCounts.resolved || 0}
+            {(() => {
+              const rawResolved = statusCounts.resolved;
+              return rawResolved || 0;
+            })()}
           </p>
         </div>
         <div className="rounded-lg bg-white p-4 shadow dark:bg-slate-800">
@@ -429,7 +483,10 @@ export default function FeedbackDashboardPage() {
               {cls}
             </span>
             <p className="mt-1 text-lg font-semibold text-gray-900 dark:text-white">
-              {classificationCounts[cls] || 0}
+              {(() => {
+                const rawClassificationCounts = classificationCounts[cls];
+                return rawClassificationCounts || 0;
+              })()}
             </p>
           </div>
         ))}
@@ -535,20 +592,29 @@ export default function FeedbackDashboardPage() {
                       {formatDateZA(item.createdAt)}
                     </td>
                     <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-700 dark:text-gray-300">
-                      {item.submitterName || "Unknown"}
+                      {(() => {
+                        const rawSubmitterName = item.submitterName;
+                        return rawSubmitterName || "Unknown";
+                      })()}
                     </td>
                     <td className="whitespace-nowrap px-4 py-3 text-sm">
                       <span
                         className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${appBadgeColor(item.appContext)}`}
                       >
-                        {item.appContext || "unknown"}
+                        {(() => {
+                          const rawAppContext = item.appContext;
+                          return rawAppContext || "unknown";
+                        })()}
                       </span>
                     </td>
                     <td className="whitespace-nowrap px-4 py-3 text-sm">
                       <span
                         className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${classificationBadgeColor(item.aiClassification)}`}
                       >
-                        {item.aiClassification || "pending"}
+                        {(() => {
+                          const rawAiClassification = item.aiClassification;
+                          return rawAiClassification || "pending";
+                        })()}
                       </span>
                     </td>
                     <td className="whitespace-nowrap px-4 py-3 text-sm">

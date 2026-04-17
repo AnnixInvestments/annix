@@ -1,5 +1,6 @@
 "use client";
 
+import { keys, values } from "es-toolkit/compat";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Fragment, useCallback, useEffect, useRef, useState } from "react";
@@ -281,9 +282,7 @@ function extractMappedRows(
   customFields: CustomFieldDef[],
   customRegions: Record<string, CellRegion | null>,
 ): JobCardImportRow[] {
-  const allRegions = [...Object.values(regions), ...Object.values(customRegions)].filter(
-    Boolean,
-  ) as CellRegion[];
+  const allRegions = [...values(regions), ...values(customRegions)].filter(Boolean) as CellRegion[];
   if (allRegions.length === 0) return [];
 
   const minRow = Math.min(...allRegions.map((r) => r.startRow));
@@ -380,7 +379,7 @@ function extractMappedRows(
             }, {})
           : {};
 
-        if (Object.keys(lineItem).length > 0) {
+        if (keys(lineItem).length > 0) {
           acc.grouped.get(currentJobNumber)!.lines.push(lineItem);
         }
 
@@ -479,7 +478,7 @@ function extractMappedRows(
         dueDate: meta.dueDate,
         notes: combinedNotes,
         reference: meta.reference,
-        customFields: cfParsed && Object.keys(cfParsed).length > 0 ? cfParsed : undefined,
+        customFields: cfParsed && keys(cfParsed).length > 0 ? cfParsed : undefined,
         lineItems: lines.length > 0 ? lines : undefined,
       };
     });
@@ -518,7 +517,7 @@ function extractMappedRows(
       dueDate: cellVal("dueDate"),
       notes: cellVal("notes"),
       reference: cellVal("reference"),
-      customFields: Object.keys(cfValues).length > 0 ? cfValues : undefined,
+      customFields: keys(cfValues).length > 0 ? cfValues : undefined,
     };
   });
 }
@@ -2197,6 +2196,7 @@ export default function JobCardImportPage() {
                                                           : "Auto-calculated — click to override"
                                                       }
                                                       onClick={() => {
+                                                        // eslint-disable-next-line no-restricted-globals -- legacy sync prompt pending modal migration (issue #175)
                                                         const input = prompt(
                                                           "Enter m² value:",
                                                           displayVal.toFixed(2),

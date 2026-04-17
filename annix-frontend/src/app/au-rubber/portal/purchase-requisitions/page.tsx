@@ -1,5 +1,6 @@
 "use client";
 
+import { isArray } from "es-toolkit/compat";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import {
@@ -85,9 +86,9 @@ export default function PurchaseRequisitionsPage() {
         auRubberApiClient.compoundStocks(),
         auRubberApiClient.companies(),
       ]);
-      setRequisitions(Array.isArray(reqData) ? reqData : []);
-      setCompoundStocks(Array.isArray(stocksData) ? stocksData : []);
-      setCompanies(Array.isArray(companiesData) ? companiesData : []);
+      setRequisitions(isArray(reqData) ? reqData : []);
+      setCompoundStocks(isArray(stocksData) ? stocksData : []);
+      setCompanies(isArray(companiesData) ? companiesData : []);
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err : new Error("Failed to load data"));

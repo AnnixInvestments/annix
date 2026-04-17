@@ -2,6 +2,7 @@
 
 import type { ColumnDef, PaginationState, SortingState } from "@tanstack/react-table";
 import {
+  isArray,
   isBoolean,
   isFunction,
   isNumber,
@@ -43,7 +44,8 @@ function toKebab(value: string): string {
 }
 
 function fromKebab(kebab: string, modules: ReferenceDataModuleInfo[]): string | null {
-  return modules.find((m) => toKebab(m.entityName) === kebab)?.entityName || null;
+  const rawEntityName = modules.find((m) => toKebab(m.entityName) === kebab)?.entityName;
+  return rawEntityName || null;
 }
 
 interface InlineEditContext {
@@ -107,14 +109,18 @@ function formatCellValue(value: any, col: ColumnSchemaInfo): React.ReactNode {
     );
   }
 
-  if (Array.isArray(value)) {
+  if (isArray(value)) {
     if (value.length === 0) return <span className="text-gray-400">-</span>;
     return <span className="text-gray-700">{value.join(", ")}</span>;
   }
 
   if (isObject(value)) {
     const obj = value as Record<string, any>;
-    const displayField = obj.name ?? obj.code ?? obj.displayName ?? obj.title;
+    const rawName = obj.name;
+    const rawCode = obj.code;
+    const rawDisplayName = obj.displayName;
+    const rawTitle = obj.title;
+    const displayField = rawName ?? rawCode ?? rawDisplayName ?? rawTitle;
     if (displayField !== null && displayField !== undefined) {
       return <span className="text-blue-600">{displayField}</span>;
     }
@@ -272,7 +278,8 @@ function groupModulesByCategory(
   modules: ReferenceDataModuleInfo[],
 ): Record<string, ReferenceDataModuleInfo[]> {
   return modules.reduce<Record<string, ReferenceDataModuleInfo[]>>((acc, mod) => {
-    const existing = acc[mod.category] ?? [];
+    const rawAcc = acc[mod.category];
+    const existing = rawAcc ?? [];
     return { ...acc, [mod.category]: [...existing, mod] };
   }, {});
 }
@@ -393,7 +400,10 @@ export default function ReferenceDataPage() {
   const recordsQuery = useReferenceDataRecords(selectedEntity, {
     page: pagination.pageIndex + 1,
     limit: pagination.pageSize,
-    sortBy: sorting[0]?.id || undefined,
+    sortBy: (() => {
+      const rawId = sorting[0]?.id;
+      return rawId || undefined;
+    })(),
     sortOrder: sorting[0] ? (sorting[0].desc ? "DESC" : "ASC") : undefined,
     search: activeSearch || undefined,
   });
@@ -402,15 +412,39 @@ export default function ReferenceDataPage() {
   const updateMutation = useUpdateReferenceData(selectedEntity ?? "");
   const deleteMutation = useDeleteReferenceData(selectedEntity ?? "");
 
-  const modules = useMemo(() => modulesQuery.data ?? [], [modulesQuery.data]);
+  const modules = useMemo(
+    () =>
+      (() => {
+        const rawData = modulesQuery.data;
+        return rawData ?? [];
+      })(),
+    [modulesQuery.data],
+  );
   const selectedModule = modules.find((m) => m.entityName === selectedEntity);
-  const schemaColumns = useMemo(() => schemaQuery.data?.columns || [], [schemaQuery.data?.columns]);
+  const schemaColumns = useMemo(
+    () =>
+      (() => {
+        const rawColumns = schemaQuery.data?.columns;
+        return rawColumns || [];
+      })(),
+    [schemaQuery.data?.columns],
+  );
   const schemaRelations = useMemo(
-    () => schemaQuery.data?.relations || [],
+    () =>
+      (() => {
+        const rawRelations = schemaQuery.data?.relations;
+        return rawRelations || [];
+      })(),
     [schemaQuery.data?.relations],
   );
-  const records = recordsQuery.data?.items || [];
-  const totalRows = recordsQuery.data?.total || 0;
+  const records = (() => {
+    const rawItems = recordsQuery.data?.items;
+    return rawItems || [];
+  })();
+  const totalRows = (() => {
+    const rawTotal = recordsQuery.data?.total;
+    return rawTotal || 0;
+  })();
 
   useEffect(() => {
     if (initializedFromUrl || modules.length === 0) return;
@@ -599,9 +633,14 @@ export default function ReferenceDataPage() {
       const flat: Record<string, any> = {};
       exportColumns.forEach(({ accessorKey }) => {
         const val = row[accessorKey];
-        if (val !== null && isObject(val)) {
+        if (isObject(val)) {
           const obj = val as Record<string, any>;
-          flat[accessorKey] = obj.name ?? obj.code ?? obj.id ?? "";
+          flat[accessorKey] = (() => {
+            const rawName = obj.name;
+            const rawCode = obj.code;
+            const rawId = obj.id;
+            return rawName ?? rawCode ?? rawId ?? "";
+          })();
         } else {
           flat[accessorKey] = val ?? "";
         }
@@ -845,7 +884,10 @@ export default function ReferenceDataPage() {
                   onPaginationChange={handlePaginationChange}
                   sorting={sorting}
                   onSortingChange={handleSortingChange}
-                  isLoading={recordsQuery.isLoading || schemaQuery.isLoading}
+                  isLoading={(() => {
+                    const rawIsLoading = recordsQuery.isLoading;
+                    return rawIsLoading || schemaQuery.isLoading;
+                  })()}
                   emptyMessage={`No records in ${selectedModule.displayName}`}
                   pageSizeOptions={[10, 25, 50, 100]}
                   onRowDoubleClick={handleRowDoubleClick}
@@ -880,11 +922,17 @@ export default function ReferenceDataPage() {
 
       {formModal.open && schemaQuery.data && (
         <ReferenceDataFormModal
-          entityDisplayName={selectedModule?.displayName || ""}
+          entityDisplayName={(() => {
+            const rawDisplayName = selectedModule?.displayName;
+            return rawDisplayName || "";
+          })()}
           columns={schemaQuery.data.columns}
           relations={schemaQuery.data.relations}
           initialData={formModal.editRecord}
-          isSaving={createMutation.isPending || updateMutation.isPending}
+          isSaving={(() => {
+            const rawIsPending = createMutation.isPending;
+            return rawIsPending || updateMutation.isPending;
+          })()}
           onSave={handleFormSave}
           onCancel={() => setFormModal({ open: false, editRecord: null })}
         />
@@ -892,7 +940,10 @@ export default function ReferenceDataPage() {
 
       {deleteModal.open && deleteModal.record && (
         <DeleteConfirmationModal
-          entityName={selectedModule?.displayName || ""}
+          entityName={(() => {
+            const rawDisplayName = selectedModule?.displayName;
+            return rawDisplayName || "";
+          })()}
           recordId={deleteModal.record.id}
           recordSummary={recordSummary(deleteModal.record)}
           isDeleting={deleteMutation.isPending}

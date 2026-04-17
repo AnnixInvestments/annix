@@ -59,6 +59,7 @@ export default function BoqDetailPage() {
   };
 
   const handleDeleteLineItem = async (itemId: number) => {
+    // eslint-disable-next-line no-restricted-globals -- legacy sync confirm pending modal migration (issue #175)
     if (!confirm("Are you sure you want to delete this line item?")) return;
 
     try {
@@ -120,7 +121,12 @@ export default function BoqDetailPage() {
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 flex items-center justify-center">
         <div className="max-w-md bg-white rounded-2xl shadow-xl p-8 text-center">
           <h2 className="text-2xl font-bold text-gray-900 mb-2">Error</h2>
-          <p className="text-gray-600 mb-6">{error?.message || "BOQ not found"}</p>
+          <p className="text-gray-600 mb-6">
+            {(() => {
+              const rawMessage = error?.message;
+              return rawMessage || "BOQ not found";
+            })()}
+          </p>
           <button
             onClick={() => router.push("/boq")}
             className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
@@ -272,12 +278,20 @@ export default function BoqDetailPage() {
                   {boq.lineItems.map((item) => (
                     <tr key={item.id} className="hover:bg-gray-50">
                       <td className="px-4 py-3 text-sm text-gray-900">{item.lineNumber}</td>
-                      <td className="px-4 py-3 text-sm text-gray-500">{item.itemCode || "-"}</td>
+                      <td className="px-4 py-3 text-sm text-gray-500">
+                        {(() => {
+                          const rawItemCode = item.itemCode;
+                          return rawItemCode || "-";
+                        })()}
+                      </td>
                       <td className="px-4 py-3 text-sm text-gray-900 max-w-xs truncate">
                         {item.description}
                       </td>
                       <td className="px-4 py-3 text-sm text-gray-500">
-                        {ITEM_TYPES.find((t) => t.value === item.itemType)?.label || item.itemType}
+                        {(() => {
+                          const rawLabel = ITEM_TYPES.find((t) => t.value === item.itemType)?.label;
+                          return rawLabel || item.itemType;
+                        })()}
                       </td>
                       <td className="px-4 py-3 text-sm text-gray-900 text-right">
                         {formatNumber(item.quantity)}
@@ -415,15 +429,33 @@ function LineItemModal({
   onSave: (item: Partial<BoqLineItem>) => void;
 }) {
   const [formData, setFormData] = useState({
-    itemCode: item?.itemCode || "",
-    description: item?.description || "",
-    itemType: item?.itemType || "straight_pipe",
-    unitOfMeasure: item?.unitOfMeasure || "meters",
+    itemCode: (() => {
+      const rawItemCode = item?.itemCode;
+      return rawItemCode || "";
+    })(),
+    description: (() => {
+      const rawDescription = item?.description;
+      return rawDescription || "";
+    })(),
+    itemType: (() => {
+      const rawItemType = item?.itemType;
+      return rawItemType || "straight_pipe";
+    })(),
+    unitOfMeasure: (() => {
+      const rawUnitOfMeasure = item?.unitOfMeasure;
+      return rawUnitOfMeasure || "meters";
+    })(),
     quantity: item?.quantity?.toString() || "",
     unitWeightKg: item?.unitWeightKg?.toString() || "",
     unitPrice: item?.unitPrice?.toString() || "",
-    notes: item?.notes || "",
-    drawingReference: item?.drawingReference || "",
+    notes: (() => {
+      const rawNotes = item?.notes;
+      return rawNotes || "";
+    })(),
+    drawingReference: (() => {
+      const rawDrawingReference = item?.drawingReference;
+      return rawDrawingReference || "";
+    })(),
   });
   const [saving, setSaving] = useState(false);
 

@@ -39,14 +39,38 @@ const exportProductsToCSV = (products: RubberProductDto[]) => {
     "Specific Gravity",
   ];
   const rows = products.map((product) => [
-    product.title || "",
-    product.description || "",
-    product.typeName || "",
-    product.compoundName || "",
-    product.colourName || "",
-    product.hardnessName || "",
-    product.gradeName || "",
-    product.curingMethodName || "",
+    (() => {
+      const rawTitle = product.title;
+      return rawTitle || "";
+    })(),
+    (() => {
+      const rawDescription = product.description;
+      return rawDescription || "";
+    })(),
+    (() => {
+      const rawTypeName = product.typeName;
+      return rawTypeName || "";
+    })(),
+    (() => {
+      const rawCompoundName = product.compoundName;
+      return rawCompoundName || "";
+    })(),
+    (() => {
+      const rawColourName = product.colourName;
+      return rawColourName || "";
+    })(),
+    (() => {
+      const rawHardnessName = product.hardnessName;
+      return rawHardnessName || "";
+    })(),
+    (() => {
+      const rawGradeName = product.gradeName;
+      return rawGradeName || "";
+    })(),
+    (() => {
+      const rawCuringMethodName = product.curingMethodName;
+      return rawCuringMethodName || "";
+    })(),
     product.costPerKg?.toString() || "",
     product.markup?.toString() || "",
     product.pricePerKg?.toString() || "",
@@ -73,7 +97,10 @@ export default function RubberProductsPage() {
   const { showToast } = useToast();
   const productsQuery = useRubberProducts();
   const deleteMutation = useDeleteRubberProduct();
-  const products = productsQuery.data ?? [];
+  const products = (() => {
+    const rawData = productsQuery.data;
+    return rawData ?? [];
+  })();
 
   const [searchQuery, setSearchQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState("");
@@ -91,21 +118,73 @@ export default function RubberProductsPage() {
     return [...productsToSort].sort((a, b) => {
       const direction = sortDirection === "asc" ? 1 : -1;
       if (sortColumn === "title") {
-        const aVal = a.title || "";
-        const bVal = b.title || "";
+        const aVal = (() => {
+          const rawTitle = a.title;
+          return rawTitle || "";
+        })();
+        const bVal = (() => {
+          const rawTitle = b.title;
+          return rawTitle || "";
+        })();
         return direction * aVal.localeCompare(bVal);
       } else if (sortColumn === "type") {
-        const aVal = a.typeName || "";
-        const bVal = b.typeName || "";
+        const aVal = (() => {
+          const rawTypeName = a.typeName;
+          return rawTypeName || "";
+        })();
+        const bVal = (() => {
+          const rawTypeName = b.typeName;
+          return rawTypeName || "";
+        })();
         return direction * aVal.localeCompare(bVal);
       } else if (sortColumn === "costPerKg") {
-        return direction * ((a.costPerKg || 0) - (b.costPerKg || 0));
+        return (
+          direction *
+          ((() => {
+            const rawCostPerKg = a.costPerKg;
+            return rawCostPerKg || 0;
+          })() -
+            (() => {
+              const rawCostPerKg = b.costPerKg;
+              return rawCostPerKg || 0;
+            })())
+        );
       } else if (sortColumn === "markup") {
-        return direction * ((a.markup || 0) - (b.markup || 0));
+        return (
+          direction *
+          ((() => {
+            const rawMarkup = a.markup;
+            return rawMarkup || 0;
+          })() -
+            (() => {
+              const rawMarkup = b.markup;
+              return rawMarkup || 0;
+            })())
+        );
       } else if (sortColumn === "pricePerKg") {
-        return direction * ((a.pricePerKg || 0) - (b.pricePerKg || 0));
+        return (
+          direction *
+          ((() => {
+            const rawPricePerKg = a.pricePerKg;
+            return rawPricePerKg || 0;
+          })() -
+            (() => {
+              const rawPricePerKg = b.pricePerKg;
+              return rawPricePerKg || 0;
+            })())
+        );
       } else if (sortColumn === "specificGravity") {
-        return direction * ((a.specificGravity || 0) - (b.specificGravity || 0));
+        return (
+          direction *
+          ((() => {
+            const rawSpecificGravity = a.specificGravity;
+            return rawSpecificGravity || 0;
+          })() -
+            (() => {
+              const rawSpecificGravity = b.specificGravity;
+              return rawSpecificGravity || 0;
+            })())
+        );
       }
       return 0;
     });
@@ -491,7 +570,10 @@ export default function RubberProductsPage() {
                         href={`/admin/portal/rubber/products/${product.id}/edit`}
                         className="text-sm font-medium text-blue-600 hover:text-blue-900"
                       >
-                        {product.title || "Untitled"}
+                        {(() => {
+                          const rawTitle = product.title;
+                          return rawTitle || "Untitled";
+                        })()}
                       </Link>
                       {product.description && (
                         <div className="text-sm text-gray-500 truncate max-w-xs">
@@ -500,8 +582,18 @@ export default function RubberProductsPage() {
                       )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{product.typeName || "-"}</div>
-                      <div className="text-sm text-gray-500">{product.compoundName || "-"}</div>
+                      <div className="text-sm text-gray-900">
+                        {(() => {
+                          const rawTypeName = product.typeName;
+                          return rawTypeName || "-";
+                        })()}
+                      </div>
+                      <div className="text-sm text-gray-500">
+                        {(() => {
+                          const rawCompoundName = product.compoundName;
+                          return rawCompoundName || "-";
+                        })()}
+                      </div>
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex flex-wrap gap-1">

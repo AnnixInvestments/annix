@@ -6,6 +6,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { stockControlApiClient, WorkflowNotification } from "@/app/lib/api/stockControlApi";
 import { formatDateTimeZA } from "@/app/lib/datetime";
 import { useDisclosure } from "@/app/lib/hooks/useDisclosure";
+import { log } from "@/app/lib/logger";
 import { useNotificationCount } from "../hooks/useNotificationCount";
 
 export function NotificationBell() {
@@ -21,7 +22,7 @@ export function NotificationBell() {
       const notifs = await stockControlApiClient.unreadNotifications();
       setNotifications(notifs);
     } catch (error) {
-      console.debug("Failed to fetch notifications:", error);
+      log.debug("Failed to fetch notifications:", error);
     }
   }, []);
 

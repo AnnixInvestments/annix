@@ -1,5 +1,6 @@
 "use client";
 
+import { isString } from "es-toolkit/compat";
 import { useCallback, useMemo, useState } from "react";
 import { PdfPreviewModal, usePdfPreview } from "@/app/components/PdfPreviewModal";
 import type { QcControlPlanRecord } from "@/app/lib/api/stockControlApi";
@@ -34,14 +35,16 @@ type SortKey =
 type SortDir = "asc" | "desc";
 
 function sortValue(plan: QcControlPlanRecord, key: SortKey): string {
-  if (key === "qcpNumber") return (plan.qcpNumber || `QCP #${plan.id}`).toLowerCase();
+  const rawQcpNumber = plan.qcpNumber;
+  const rawCreatedAt = plan.createdAt;
+  if (key === "qcpNumber") return (rawQcpNumber || `QCP #${plan.id}`).toLowerCase();
   if (key === "planType") {
     const typeLabel = PLAN_TYPE_LABELS[plan.planType];
     return (typeLabel ? typeLabel : plan.planType).toLowerCase();
   }
-  if (key === "createdAt") return plan.createdAt || "";
+  if (key === "createdAt") return rawCreatedAt || "";
   const val = plan[key as keyof QcControlPlanRecord];
-  return (typeof val === "string" ? val : "").toLowerCase();
+  return (isString(val) ? val : "").toLowerCase();
 }
 
 function SortIcon(props: { active: boolean; direction: SortDir }) {

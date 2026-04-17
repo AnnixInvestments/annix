@@ -22,7 +22,8 @@ export default function ProductEditPage() {
   const productQuery = useRubberProductDetail(productId);
   const updateMutation = useUpdateRubberProduct();
 
-  const product = productQuery.data ?? null;
+  const rawData = productQuery.data;
+  const product = rawData ?? null;
   const [isSaving, setIsSaving] = useState(false);
 
   const initialData = useMemo(() => {
@@ -101,7 +102,12 @@ export default function ProductEditPage() {
       <Breadcrumb
         items={[
           { label: "Products", href: "/admin/portal/rubber/products" },
-          { label: product.title || `Product #${product.id}` },
+          {
+            label: (() => {
+              const rawTitle = product.title;
+              return rawTitle || `Product #${product.id}`;
+            })(),
+          },
           { label: "Edit" },
         ]}
       />
@@ -110,7 +116,10 @@ export default function ProductEditPage() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Edit Product</h1>
           <p className="mt-1 text-sm text-gray-600">
-            Update the details for {product.title || `Product #${product.id}`}
+            Update the details for {(() => {
+              const rawTitle = product.title;
+              return rawTitle || `Product #${product.id}`;
+            })()}
           </p>
         </div>
       </div>

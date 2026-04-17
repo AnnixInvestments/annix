@@ -1,5 +1,6 @@
 "use client";
 
+import { toPairs as entries } from "es-toolkit/compat";
 import Link from "next/link";
 import { useState } from "react";
 import {
@@ -90,11 +91,11 @@ export default function ColorsSettingsPage() {
     const colors: Array<{ colorType: CalendarColorType; colorKey: string; colorValue: string }> =
       [];
 
-    Object.entries(meetingTypes).forEach(([key, value]) => {
+    entries(meetingTypes).forEach(([key, value]) => {
       colors.push({ colorType: "meeting_type", colorKey: key, colorValue: value });
     });
 
-    Object.entries(statuses).forEach(([key, value]) => {
+    entries(statuses).forEach(([key, value]) => {
       colors.push({ colorType: "status", colorKey: key, colorValue: value });
     });
 
@@ -186,7 +187,7 @@ export default function ColorsSettingsPage() {
             Meeting Types
           </h2>
           <div className="space-y-1">
-            {Object.entries(MEETING_TYPE_LABELS).map(([key, label]) => {
+            {entries(MEETING_TYPE_LABELS).map(([key, label]) => {
               const current = meetingTypes[key];
               const defaultColor = DEFAULT_MEETING_TYPE_COLORS[key];
               const value = current ? current : defaultColor;
@@ -208,7 +209,7 @@ export default function ColorsSettingsPage() {
             Meeting Statuses
           </h2>
           <div className="space-y-1">
-            {Object.entries(STATUS_LABELS).map(([key, label]) => {
+            {entries(STATUS_LABELS).map(([key, label]) => {
               const current = statuses[key];
               const defaultColor = DEFAULT_STATUS_COLORS[key];
               const value = current ? current : defaultColor;
@@ -234,7 +235,7 @@ export default function ColorsSettingsPage() {
               Meeting Types
             </h3>
             <div className="flex flex-wrap gap-2">
-              {Object.entries(MEETING_TYPE_LABELS).map(([key, label]) => {
+              {entries(MEETING_TYPE_LABELS).map(([key, label]) => {
                 const current = meetingTypes[key];
                 const bg = current ? current : DEFAULT_MEETING_TYPE_COLORS[key];
                 return (
@@ -252,7 +253,7 @@ export default function ColorsSettingsPage() {
           <div>
             <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Statuses</h3>
             <div className="flex flex-wrap gap-2">
-              {Object.entries(STATUS_LABELS).map(([key, label]) => {
+              {entries(STATUS_LABELS).map(([key, label]) => {
                 const current = statuses[key];
                 const bg = current ? current : DEFAULT_STATUS_COLORS[key];
                 return (

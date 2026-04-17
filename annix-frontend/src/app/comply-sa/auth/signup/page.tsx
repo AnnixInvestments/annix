@@ -1,5 +1,6 @@
 "use client";
 
+import { keys } from "es-toolkit/compat";
 import {
   Building2,
   CheckCircle2,
@@ -736,7 +737,7 @@ export default function SignupPage() {
 
   function handleNext() {
     const errs = currentStep === 1 ? validateStep1() : validateStep2();
-    if (Object.keys(errs).length > 0) {
+    if (keys(errs).length > 0) {
       setFieldErrors(errs);
     } else {
       setFieldErrors({});
@@ -795,7 +796,7 @@ export default function SignupPage() {
 
   async function handleSubmit() {
     const errs = validateStep3();
-    if (Object.keys(errs).length > 0) {
+    if (keys(errs).length > 0) {
       setFieldErrors(errs);
     } else {
       setError(null);
@@ -813,7 +814,7 @@ export default function SignupPage() {
 
   async function handleSaveAndContinue() {
     const step1Errs = validateStep1();
-    if (Object.keys(step1Errs).length > 0) {
+    if (keys(step1Errs).length > 0) {
       setCurrentStep(1);
       setFieldErrors(step1Errs);
     } else {

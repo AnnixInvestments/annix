@@ -1,5 +1,6 @@
 "use client";
 
+import { keys } from "es-toolkit/compat";
 import { useMemo, useState } from "react";
 import type {
   SupplierDocument,
@@ -149,6 +150,7 @@ export default function SupplierDocumentsPage() {
       }
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Failed to generate download link";
+      // eslint-disable-next-line no-restricted-globals -- legacy sync alert pending modal migration (issue #175)
       alert(msg);
     }
   };
@@ -163,6 +165,7 @@ export default function SupplierDocumentsPage() {
       await deleteDocMutation.mutateAsync(doc.id);
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Failed to delete document";
+      // eslint-disable-next-line no-restricted-globals -- legacy sync alert pending modal migration (issue #175)
       alert(msg);
     }
   };
@@ -180,7 +183,7 @@ export default function SupplierDocumentsPage() {
   }, [documents]);
 
   const sortedSupplierIds = useMemo(() => {
-    return Object.keys(groupedBySupplier)
+    return keys(groupedBySupplier)
       .map((k) => Number(k))
       .sort((a, b) => {
         const rawA = supplierMap[a];

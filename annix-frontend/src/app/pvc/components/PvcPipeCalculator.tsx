@@ -142,8 +142,24 @@ export default function PvcPipeCalculator(props: PvcPipeCalculatorProps) {
     });
   };
 
-  const totalWeight = results.reduce((sum, r) => sum + (r?.totalWeight || 0), 0);
-  const totalCost = results.reduce((sum, r) => sum + (r?.totalCost || 0), 0);
+  const totalWeight = results.reduce(
+    (sum, r) =>
+      sum +
+      (() => {
+        const rawTotalWeight = r?.totalWeight;
+        return rawTotalWeight || 0;
+      })(),
+    0,
+  );
+  const totalCost = results.reduce(
+    (sum, r) =>
+      sum +
+      (() => {
+        const rawTotalCost = r?.totalCost;
+        return rawTotalCost || 0;
+      })(),
+    0,
+  );
 
   return (
     <div className="bg-white dark:bg-slate-800 rounded-lg shadow-md p-6">
@@ -153,7 +169,10 @@ export default function PvcPipeCalculator(props: PvcPipeCalculatorProps) {
 
       <div className="space-y-4">
         {entries.map((entry, index) => {
-          const pnsForDn = availablePNs[entry.nominalDiameter] || PN_VALUES;
+          const pnsForDn = (() => {
+            const rawAvailablePNs = availablePNs[entry.nominalDiameter];
+            return rawAvailablePNs || PN_VALUES;
+          })();
           const result = results[index];
           const error = errors[index];
           const isLoading = loading[index];

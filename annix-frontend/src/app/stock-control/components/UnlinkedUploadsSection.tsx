@@ -1,5 +1,6 @@
 "use client";
 
+import { isArray } from "es-toolkit/compat";
 import { useCallback, useEffect, useState } from "react";
 import { PdfPreviewModal, usePdfPreview } from "@/app/components/PdfPreviewModal";
 import type { PositectorUploadRecord } from "@/app/lib/api/stockControlApi";
@@ -24,7 +25,7 @@ export function UnlinkedUploadsSection(props: UnlinkedUploadsSectionProps) {
     try {
       setIsLoading(true);
       const all = await stockControlApiClient.positectorUploads();
-      const filtered = (Array.isArray(all) ? all : []).filter((u) => {
+      const filtered = (isArray(all) ? all : []).filter((u) => {
         const matchesType = u.entityType === entityType;
         return matchesType;
       });

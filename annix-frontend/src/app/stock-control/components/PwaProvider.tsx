@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { nowMillis } from "@/app/lib/datetime";
+import { log } from "@/app/lib/logger";
 
 interface BeforeInstallPromptEvent extends Event {
   readonly platforms: string[];
@@ -60,7 +61,7 @@ async function resyncExistingPushSubscription(
     const existingSub = await registration.pushManager.getSubscription();
     if (existingSub) {
       await sendSubscriptionToBackend(existingSub);
-      console.log("Push: Re-synced existing subscription to backend");
+      log.info("Push: Re-synced existing subscription to backend");
     }
   } catch (error) {
     console.error("Push re-sync failed:", error);
@@ -82,6 +83,7 @@ export function PwaProvider(props: { children: React.ReactNode }) {
   const [isStandalone, setIsStandalone] = useState(false);
 
   useEffect(() => {
+    // eslint-disable-next-line no-restricted-syntax -- SSR guard; isUndefined(window) would throw
     if (typeof window === "undefined" || !("serviceWorker" in navigator)) {
       return;
     }
@@ -96,8 +98,9 @@ export function PwaProvider(props: { children: React.ReactNode }) {
     }
 
     const isIosDevice = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    const standaloneMatch = window.matchMedia("(display-mode: standalone)").matches;
     const isInStandaloneMode =
-      window.matchMedia("(display-mode: standalone)").matches ||
+      standaloneMatch ||
       (window.navigator as Navigator & { standalone?: boolean }).standalone === true;
 
     setIsIos(isIosDevice);

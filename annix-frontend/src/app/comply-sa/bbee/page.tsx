@@ -1,5 +1,6 @@
 "use client";
 
+import { isArray } from "es-toolkit/compat";
 import { Award, FileText, Info, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
@@ -147,7 +148,7 @@ export default function BbeePage() {
   const { data: scorecardElements } = useBbeeScorecardElements();
   const calculateMutation = useBbeeCalculate();
 
-  const elements: ScorecardElement[] = Array.isArray(scorecardElements) ? scorecardElements : [];
+  const elements: ScorecardElement[] = isArray(scorecardElements) ? scorecardElements : [];
   const mutationData = calculateMutation.data;
   const result: BbeeResult | null = mutationData || null;
 

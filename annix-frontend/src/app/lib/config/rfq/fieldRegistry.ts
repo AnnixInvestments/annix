@@ -1,3 +1,4 @@
+import { values } from "es-toolkit/compat";
 export type FieldType =
   | "text"
   | "email"
@@ -258,7 +259,7 @@ export const RFQ_FIELD_REGISTRY: Record<string, FieldDefinition> = {
 };
 
 export const fieldsByStep = (step: number): FieldDefinition[] =>
-  Object.values(RFQ_FIELD_REGISTRY)
+  values(RFQ_FIELD_REGISTRY)
     .filter((field) => field.step === step)
     .sort((a, b) => a.order - b.order);
 

@@ -2028,6 +2028,7 @@ export const annixRepApi = {
     },
 
     streamUrl: (recordingId: number): string | null => {
+      // eslint-disable-next-line no-restricted-syntax -- SSR guard; isUndefined(window) would throw
       if (typeof window === "undefined") return null;
       const token = localStorage.getItem("annixRepAccessToken");
       if (!token) return null;

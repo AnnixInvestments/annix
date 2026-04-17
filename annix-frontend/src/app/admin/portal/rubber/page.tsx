@@ -5,6 +5,7 @@ import {
   statusColor,
   statusLabel,
 } from "@annix/product-data/rubber/orderStatus";
+import { toPairs as entries } from "es-toolkit/compat";
 import Link from "next/link";
 import { useState } from "react";
 import { formatDateZA } from "@/app/lib/datetime";
@@ -25,18 +26,27 @@ export default function RubberLiningDashboard() {
 
   const [currentPage, setCurrentPage] = useState(0);
 
-  const orders = ordersQuery.data ?? [];
-  const companies = companiesQuery.data ?? [];
-  const products = productsQuery.data ?? [];
+  const rawOrdersData = ordersQuery.data;
+  const orders = rawOrdersData ?? [];
+  const rawCompaniesData = companiesQuery.data;
+  const companies = rawCompaniesData ?? [];
+  const rawProductsData = productsQuery.data;
+  const products = rawProductsData ?? [];
 
-  const ordersByStatus: StatusCount[] = Object.entries(RUBBER_ORDER_STATUS).map(([key, value]) => ({
+  const ordersByStatus: StatusCount[] = entries(RUBBER_ORDER_STATUS).map(([key, value]) => ({
     status: value,
     label: statusLabel(value),
     count: orders.filter((o) => o.status === value).length,
   }));
 
-  const isLoading = ordersQuery.isLoading || companiesQuery.isLoading || productsQuery.isLoading;
-  const error = ordersQuery.error || companiesQuery.error || productsQuery.error;
+  const rawIsLoadingValue = ordersQuery.isLoading;
+  const rawCompaniesIsLoading = companiesQuery.isLoading;
+  const rawProductsIsLoading = productsQuery.isLoading;
+  const isLoading = rawIsLoadingValue || rawCompaniesIsLoading || rawProductsIsLoading;
+  const rawErrorValue = ordersQuery.error;
+  const rawCompaniesError = companiesQuery.error;
+  const rawProductsError = productsQuery.error;
+  const error = rawErrorValue || rawCompaniesError || rawProductsError;
 
   const totalPages = Math.ceil(orders.length / ORDERS_PER_PAGE);
   const paginatedOrders = orders.slice(
@@ -347,7 +357,10 @@ export default function RubberLiningDashboard() {
                     </Link>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {order.companyName || "N/A"}
+                    {(() => {
+                      const rawCompanyName = order.companyName;
+                      return rawCompanyName || "N/A";
+                    })()}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span

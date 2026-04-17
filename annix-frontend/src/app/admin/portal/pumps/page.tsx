@@ -137,7 +137,10 @@ export default function PumpsDashboard() {
                           strokeLinecap="round"
                           strokeLinejoin="round"
                           strokeWidth={2}
-                          d={SERVICE_TYPE_ICONS[category.value] || "M12 6v6m0 0v6m0-6h6m-6 0H6"}
+                          d={(() => {
+                            const rawSERVICE_TYPE_ICONS = SERVICE_TYPE_ICONS[category.value];
+                            return rawSERVICE_TYPE_ICONS || "M12 6v6m0 0v6m0-6h6m-6 0H6";
+                          })()}
                         />
                       </svg>
                     </div>
@@ -202,14 +205,19 @@ export default function PumpsDashboard() {
                   {manufacturer.description}
                 </p>
                 <div className="mt-2 flex flex-wrap justify-center gap-1">
-                  {(manufacturer.productsOffered ?? []).slice(0, 2).map((product) => (
-                    <span
-                      key={product}
-                      className="px-1.5 py-0.5 text-xs rounded bg-blue-50 text-blue-600"
-                    >
-                      {product}
-                    </span>
-                  ))}
+                  {(() => {
+                    const rawProductsOffered = manufacturer.productsOffered;
+                    return rawProductsOffered ?? [];
+                  })()
+                    .slice(0, 2)
+                    .map((product) => (
+                      <span
+                        key={product}
+                        className="px-1.5 py-0.5 text-xs rounded bg-blue-50 text-blue-600"
+                      >
+                        {product}
+                      </span>
+                    ))}
                 </div>
               </div>
             ))}

@@ -22,6 +22,7 @@ export function useWorkflowLaneCounts() {
   return useQuery<WorkflowLaneCounts>({
     queryKey: stockControlKeys.dashboard.workflowLanes(),
     queryFn: () => stockControlApiClient.workflowLaneCounts(),
+    // eslint-disable-next-line no-restricted-syntax -- value sourced from usePollingInterval() above
     refetchInterval,
   });
 }
@@ -32,6 +33,7 @@ export function useDashboardStats() {
     queryKey: stockControlKeys.dashboard.stats(),
     queryFn: () => stockControlApiClient.dashboardStats(),
     staleTime: 30_000,
+    // eslint-disable-next-line no-restricted-syntax -- value sourced from usePollingInterval() above
     refetchInterval,
   });
 }
@@ -42,6 +44,7 @@ export function useSohByLocation() {
     queryKey: stockControlKeys.dashboard.sohByLocation(),
     queryFn: () => stockControlApiClient.sohByLocation(),
     staleTime: 30_000,
+    // eslint-disable-next-line no-restricted-syntax -- value sourced from usePollingInterval() above
     refetchInterval,
   });
 }
@@ -52,6 +55,7 @@ export function useSohSummary() {
     queryKey: stockControlKeys.dashboard.sohSummary(),
     queryFn: () => stockControlApiClient.sohSummary(),
     staleTime: 30_000,
+    // eslint-disable-next-line no-restricted-syntax -- value sourced from usePollingInterval() above
     refetchInterval,
   });
 }
@@ -62,6 +66,7 @@ export function useRecentActivity() {
     queryKey: stockControlKeys.dashboard.recentActivity(),
     queryFn: () => stockControlApiClient.recentActivity(),
     staleTime: 30_000,
+    // eslint-disable-next-line no-restricted-syntax -- value sourced from usePollingInterval() above
     refetchInterval,
   });
 }
@@ -72,6 +77,7 @@ export function useReorderAlerts() {
     queryKey: stockControlKeys.dashboard.reorderAlerts(),
     queryFn: () => stockControlApiClient.reorderAlerts(),
     staleTime: 30_000,
+    // eslint-disable-next-line no-restricted-syntax -- value sourced from usePollingInterval() above
     refetchInterval,
   });
 }
@@ -82,6 +88,7 @@ export function usePendingApprovals() {
     queryKey: stockControlKeys.dashboard.pendingApprovals(),
     queryFn: () => stockControlApiClient.pendingApprovals(),
     staleTime: 30_000,
+    // eslint-disable-next-line no-restricted-syntax -- value sourced from usePollingInterval() above
     refetchInterval,
   });
 }
@@ -92,6 +99,7 @@ export function useCpoSummary() {
     queryKey: stockControlKeys.dashboard.cpoSummary(),
     queryFn: () => stockControlApiClient.cpoSummary(),
     staleTime: 30_000,
+    // eslint-disable-next-line no-restricted-syntax -- value sourced from usePollingInterval() above
     refetchInterval,
   });
 }
@@ -102,6 +110,7 @@ export function useRoleSummary(role: string) {
     queryKey: stockControlKeys.dashboard.roleSummary(role),
     queryFn: () => stockControlApiClient.roleDashboardSummary(role),
     staleTime: 30_000,
+    // eslint-disable-next-line no-restricted-syntax -- value sourced from usePollingInterval() above
     refetchInterval,
     enabled: role.length > 0,
   });

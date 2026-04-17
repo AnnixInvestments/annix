@@ -24,7 +24,10 @@ function Field(props: {
     <div>
       <label className={labelClass}>{props.label}</label>
       <input
-        type={props.type || "text"}
+        type={(() => {
+          const rawType = props.type;
+          return rawType || "text";
+        })()}
         className={inputClass}
         value={props.value}
         onChange={(e) => props.onChange(e.target.value)}
@@ -124,24 +127,72 @@ function formStateFromProfile(
     legalName: profile.legalName,
     tradingName: profile.tradingName,
     registrationNumber: profile.registrationNumber,
-    vatNumber: profile.vatNumber || "",
-    entityType: profile.entityType || "",
-    streetAddress: profile.streetAddress || "",
-    city: profile.city || "",
-    province: profile.province || "",
-    postalCode: profile.postalCode || "",
+    vatNumber: (() => {
+      const rawVatNumber = profile.vatNumber;
+      return rawVatNumber || "";
+    })(),
+    entityType: (() => {
+      const rawEntityType = profile.entityType;
+      return rawEntityType || "";
+    })(),
+    streetAddress: (() => {
+      const rawStreetAddress = profile.streetAddress;
+      return rawStreetAddress || "";
+    })(),
+    city: (() => {
+      const rawCity = profile.city;
+      return rawCity || "";
+    })(),
+    province: (() => {
+      const rawProvince = profile.province;
+      return rawProvince || "";
+    })(),
+    postalCode: (() => {
+      const rawPostalCode = profile.postalCode;
+      return rawPostalCode || "";
+    })(),
     country: profile.country,
-    phone: profile.phone || "",
-    generalEmail: profile.generalEmail || "",
-    supportEmail: profile.supportEmail || "",
-    privacyEmail: profile.privacyEmail || "",
-    websiteUrl: profile.websiteUrl || "",
-    informationOfficerName: profile.informationOfficerName || "",
-    informationOfficerEmail: profile.informationOfficerEmail || "",
+    phone: (() => {
+      const rawPhone = profile.phone;
+      return rawPhone || "";
+    })(),
+    generalEmail: (() => {
+      const rawGeneralEmail = profile.generalEmail;
+      return rawGeneralEmail || "";
+    })(),
+    supportEmail: (() => {
+      const rawSupportEmail = profile.supportEmail;
+      return rawSupportEmail || "";
+    })(),
+    privacyEmail: (() => {
+      const rawPrivacyEmail = profile.privacyEmail;
+      return rawPrivacyEmail || "";
+    })(),
+    websiteUrl: (() => {
+      const rawWebsiteUrl = profile.websiteUrl;
+      return rawWebsiteUrl || "";
+    })(),
+    informationOfficerName: (() => {
+      const rawInformationOfficerName = profile.informationOfficerName;
+      return rawInformationOfficerName || "";
+    })(),
+    informationOfficerEmail: (() => {
+      const rawInformationOfficerEmail = profile.informationOfficerEmail;
+      return rawInformationOfficerEmail || "";
+    })(),
     jurisdiction: profile.jurisdiction,
-    primaryDomain: profile.primaryDomain || "",
-    noReplyEmail: profile.noReplyEmail || "",
-    mailerName: profile.mailerName || "",
+    primaryDomain: (() => {
+      const rawPrimaryDomain = profile.primaryDomain;
+      return rawPrimaryDomain || "";
+    })(),
+    noReplyEmail: (() => {
+      const rawNoReplyEmail = profile.noReplyEmail;
+      return rawNoReplyEmail || "";
+    })(),
+    mailerName: (() => {
+      const rawMailerName = profile.mailerName;
+      return rawMailerName || "";
+    })(),
     directors: profile.directors.map((d) => ({ ...d })),
   };
 }
@@ -218,27 +269,42 @@ export default function CompanyProfilePage() {
       <SectionCard title="Core Identity">
         <Field
           label="Legal Name"
-          value={form.legalName || ""}
+          value={(() => {
+            const rawLegalName = form.legalName;
+            return rawLegalName || "";
+          })()}
           onChange={updateField("legalName")}
         />
         <Field
           label="Trading Name"
-          value={form.tradingName || ""}
+          value={(() => {
+            const rawTradingName = form.tradingName;
+            return rawTradingName || "";
+          })()}
           onChange={updateField("tradingName")}
         />
         <Field
           label="Registration Number"
-          value={form.registrationNumber || ""}
+          value={(() => {
+            const rawRegistrationNumber = form.registrationNumber;
+            return rawRegistrationNumber || "";
+          })()}
           onChange={updateField("registrationNumber")}
         />
         <Field
           label="VAT Number"
-          value={form.vatNumber || ""}
+          value={(() => {
+            const rawVatNumber = form.vatNumber;
+            return rawVatNumber || "";
+          })()}
           onChange={updateField("vatNumber")}
         />
         <Field
           label="Entity Type"
-          value={form.entityType || ""}
+          value={(() => {
+            const rawEntityType = form.entityType;
+            return rawEntityType || "";
+          })()}
           onChange={updateField("entityType")}
           placeholder="e.g. Private Company (Pty) Ltd"
         />
@@ -248,40 +314,87 @@ export default function CompanyProfilePage() {
         <div className="md:col-span-2">
           <Field
             label="Street Address"
-            value={form.streetAddress || ""}
+            value={(() => {
+              const rawStreetAddress = form.streetAddress;
+              return rawStreetAddress || "";
+            })()}
             onChange={updateField("streetAddress")}
           />
         </div>
-        <Field label="City" value={form.city || ""} onChange={updateField("city")} />
-        <Field label="Province" value={form.province || ""} onChange={updateField("province")} />
+        <Field
+          label="City"
+          value={(() => {
+            const rawCity = form.city;
+            return rawCity || "";
+          })()}
+          onChange={updateField("city")}
+        />
+        <Field
+          label="Province"
+          value={(() => {
+            const rawProvince = form.province;
+            return rawProvince || "";
+          })()}
+          onChange={updateField("province")}
+        />
         <Field
           label="Postal Code"
-          value={form.postalCode || ""}
+          value={(() => {
+            const rawPostalCode = form.postalCode;
+            return rawPostalCode || "";
+          })()}
           onChange={updateField("postalCode")}
         />
-        <Field label="Country" value={form.country || ""} onChange={updateField("country")} />
-        <Field label="Phone" value={form.phone || ""} onChange={updateField("phone")} type="tel" />
+        <Field
+          label="Country"
+          value={(() => {
+            const rawCountry = form.country;
+            return rawCountry || "";
+          })()}
+          onChange={updateField("country")}
+        />
+        <Field
+          label="Phone"
+          value={(() => {
+            const rawPhone = form.phone;
+            return rawPhone || "";
+          })()}
+          onChange={updateField("phone")}
+          type="tel"
+        />
         <Field
           label="Website URL"
-          value={form.websiteUrl || ""}
+          value={(() => {
+            const rawWebsiteUrl = form.websiteUrl;
+            return rawWebsiteUrl || "";
+          })()}
           onChange={updateField("websiteUrl")}
           type="url"
         />
         <Field
           label="General Email"
-          value={form.generalEmail || ""}
+          value={(() => {
+            const rawGeneralEmail = form.generalEmail;
+            return rawGeneralEmail || "";
+          })()}
           onChange={updateField("generalEmail")}
           type="email"
         />
         <Field
           label="Support Email"
-          value={form.supportEmail || ""}
+          value={(() => {
+            const rawSupportEmail = form.supportEmail;
+            return rawSupportEmail || "";
+          })()}
           onChange={updateField("supportEmail")}
           type="email"
         />
         <Field
           label="Privacy Email"
-          value={form.privacyEmail || ""}
+          value={(() => {
+            const rawPrivacyEmail = form.privacyEmail;
+            return rawPrivacyEmail || "";
+          })()}
           onChange={updateField("privacyEmail")}
           type="email"
         />
@@ -290,18 +403,27 @@ export default function CompanyProfilePage() {
       <SectionCard title="Legal & Compliance">
         <Field
           label="Information Officer Name"
-          value={form.informationOfficerName || ""}
+          value={(() => {
+            const rawInformationOfficerName = form.informationOfficerName;
+            return rawInformationOfficerName || "";
+          })()}
           onChange={updateField("informationOfficerName")}
         />
         <Field
           label="Information Officer Email"
-          value={form.informationOfficerEmail || ""}
+          value={(() => {
+            const rawInformationOfficerEmail = form.informationOfficerEmail;
+            return rawInformationOfficerEmail || "";
+          })()}
           onChange={updateField("informationOfficerEmail")}
           type="email"
         />
         <Field
           label="Jurisdiction"
-          value={form.jurisdiction || ""}
+          value={(() => {
+            const rawJurisdiction = form.jurisdiction;
+            return rawJurisdiction || "";
+          })()}
           onChange={updateField("jurisdiction")}
         />
       </SectionCard>
@@ -309,19 +431,28 @@ export default function CompanyProfilePage() {
       <SectionCard title="Email Configuration">
         <Field
           label="Primary Domain"
-          value={form.primaryDomain || ""}
+          value={(() => {
+            const rawPrimaryDomain = form.primaryDomain;
+            return rawPrimaryDomain || "";
+          })()}
           onChange={updateField("primaryDomain")}
           placeholder="e.g. annix.co.za"
         />
         <Field
           label="No-Reply Email"
-          value={form.noReplyEmail || ""}
+          value={(() => {
+            const rawNoReplyEmail = form.noReplyEmail;
+            return rawNoReplyEmail || "";
+          })()}
           onChange={updateField("noReplyEmail")}
           type="email"
         />
         <Field
           label="Mailer Name"
-          value={form.mailerName || ""}
+          value={(() => {
+            const rawMailerName = form.mailerName;
+            return rawMailerName || "";
+          })()}
           onChange={updateField("mailerName")}
           placeholder="Display name in outgoing emails"
         />

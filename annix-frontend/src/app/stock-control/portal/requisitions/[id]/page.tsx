@@ -1,6 +1,7 @@
 "use client";
 
 import { useQueryClient } from "@tanstack/react-query";
+import { keys } from "es-toolkit/compat";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
@@ -165,7 +166,7 @@ export default function RequisitionDetailPage() {
       payload.reqNumber = reqNumVal === "" ? null : reqNumVal;
     }
 
-    if (Object.keys(payload).length === 0) {
+    if (keys(payload).length === 0) {
       setSavingRowId(null);
       setSavedRows((prev) => new Set(prev).add(itemId));
       setTimeout(() => {

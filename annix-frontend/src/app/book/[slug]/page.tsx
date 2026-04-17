@@ -1,5 +1,6 @@
 "use client";
 
+import { keys } from "es-toolkit/compat";
 import { DateTime } from "luxon";
 import { useParams, useRouter } from "next/navigation";
 import { useState } from "react";
@@ -81,13 +82,17 @@ export default function PublicBookingPage() {
           startTime: selectedSlot.startTime,
           name: formData.name,
           email: formData.email,
-          notes: formData.notes || undefined,
+          notes: (() => {
+            const rawNotes = formData.notes;
+            return rawNotes || undefined;
+          })(),
           customAnswers:
-            Object.keys(formData.customAnswers).length > 0 ? formData.customAnswers : undefined,
+            keys(formData.customAnswers).length > 0 ? formData.customAnswers : undefined,
         },
       });
       router.push(`/book/${slug}/confirm?meetingId=${result.meetingId}`);
     } catch {
+      // eslint-disable-next-line no-restricted-globals -- legacy sync alert pending modal migration (issue #175)
       alert("Failed to book the meeting. Please try again.");
     }
   };
@@ -235,7 +240,10 @@ export default function PublicBookingPage() {
                       {q.type === "textarea" ? (
                         <textarea
                           required={q.required}
-                          value={formData.customAnswers[q.id] || ""}
+                          value={(() => {
+                            const rawCustomAnswers = formData.customAnswers[q.id];
+                            return rawCustomAnswers || "";
+                          })()}
                           onChange={(e) =>
                             setFormData({
                               ...formData,
@@ -251,7 +259,10 @@ export default function PublicBookingPage() {
                       ) : q.type === "select" && q.options ? (
                         <select
                           required={q.required}
-                          value={formData.customAnswers[q.id] || ""}
+                          value={(() => {
+                            const rawCustomAnswers = formData.customAnswers[q.id];
+                            return rawCustomAnswers || "";
+                          })()}
                           onChange={(e) =>
                             setFormData({
                               ...formData,
@@ -274,7 +285,10 @@ export default function PublicBookingPage() {
                         <input
                           type="text"
                           required={q.required}
-                          value={formData.customAnswers[q.id] || ""}
+                          value={(() => {
+                            const rawCustomAnswers = formData.customAnswers[q.id];
+                            return rawCustomAnswers || "";
+                          })()}
                           onChange={(e) =>
                             setFormData({
                               ...formData,

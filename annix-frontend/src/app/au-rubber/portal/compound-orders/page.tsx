@@ -1,5 +1,6 @@
 "use client";
 
+import { isArray } from "es-toolkit/compat";
 import { useEffect, useState } from "react";
 import {
   Pagination,
@@ -74,8 +75,8 @@ export default function CompoundOrdersPage() {
         auRubberApiClient.compoundOrders(statusFilter || null),
         auRubberApiClient.compoundStocks(),
       ]);
-      setOrders(Array.isArray(ordersData) ? ordersData : []);
-      setStocks(Array.isArray(stocksData) ? stocksData : []);
+      setOrders(isArray(ordersData) ? ordersData : []);
+      setStocks(isArray(stocksData) ? stocksData : []);
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err : new Error("Failed to load data"));

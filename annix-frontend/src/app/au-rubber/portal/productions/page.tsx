@@ -1,5 +1,6 @@
 "use client";
 
+import { isArray } from "es-toolkit/compat";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import {
@@ -58,7 +59,7 @@ export default function ProductionsPage() {
     try {
       setIsLoading(true);
       const data = await auRubberApiClient.productions(statusFilter || undefined);
-      setProductions(Array.isArray(data) ? data : []);
+      setProductions(isArray(data) ? data : []);
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err : new Error("Failed to load data"));

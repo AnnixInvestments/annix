@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { isArray } from "es-toolkit/compat";
 import type { CreateLeaveRequest, StaffLeaveRecord } from "@/app/lib/api/stock-control-api/types";
 import type { StaffMember, StockControlDepartment } from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
@@ -9,7 +10,7 @@ export function useStaffMembers(params: { search?: string; active?: string }) {
     queryKey: stockControlKeys.staff.list(params),
     queryFn: async () => {
       const data = await stockControlApiClient.staffMembers(params);
-      return Array.isArray(data) ? data : [];
+      return isArray(data) ? data : [];
     },
   });
 }
@@ -19,7 +20,7 @@ export function useStaffDepartments() {
     queryKey: stockControlKeys.staff.departments(),
     queryFn: async () => {
       const data = await stockControlApiClient.departments();
-      return Array.isArray(data) ? data : [];
+      return isArray(data) ? data : [];
     },
     staleTime: 60_000,
   });
@@ -35,7 +36,7 @@ export function useLeaveRecords(year: number, month: number) {
     queryKey: stockControlKeys.leave.month(year, month),
     queryFn: async () => {
       const data = await stockControlApiClient.leaveRecordsForMonth(year, month);
-      return Array.isArray(data) ? data : [];
+      return isArray(data) ? data : [];
     },
   });
 }

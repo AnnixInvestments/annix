@@ -130,7 +130,10 @@ export default function RfqDetailPage() {
           <div className="bg-white rounded-xl shadow-md p-6">
             <p className="text-sm text-gray-500 mb-1">Customer</p>
             <p className="text-lg font-semibold text-gray-900">
-              {rfq.customerName || "Not specified"}
+              {(() => {
+                const rawCustomerName = rfq.customerName;
+                return rawCustomerName || "Not specified";
+              })()}
             </p>
             {rfq.customerEmail && <p className="text-sm text-gray-500">{rfq.customerEmail}</p>}
           </div>
@@ -163,7 +166,10 @@ export default function RfqDetailPage() {
                     : "text-gray-600 hover:bg-gray-100"
                 }`}
               >
-                Line Items ({rfq.items?.length || 0})
+                Line Items ({(() => {
+                  const rawLength = rfq.items?.length;
+                  return rawLength || 0;
+                })()})
               </button>
               <button
                 onClick={() => setActiveTab("drawings")}
@@ -173,7 +179,10 @@ export default function RfqDetailPage() {
                     : "text-gray-600 hover:bg-gray-100"
                 }`}
               >
-                Drawings ({rfq.drawings?.length || 0})
+                Drawings ({(() => {
+                  const rawLength = rfq.drawings?.length;
+                  return rawLength || 0;
+                })()})
               </button>
               <button
                 onClick={() => setActiveTab("boqs")}
@@ -183,7 +192,10 @@ export default function RfqDetailPage() {
                     : "text-gray-600 hover:bg-gray-100"
                 }`}
               >
-                BOQs ({rfq.boqs?.length || 0})
+                BOQs ({(() => {
+                  const rawLength = rfq.boqs?.length;
+                  return rawLength || 0;
+                })()})
               </button>
             </div>
           </div>

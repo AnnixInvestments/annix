@@ -1,3 +1,4 @@
+import { keys } from "es-toolkit/compat";
 // 3D Rendering Standards for Pipe Fabrication Previews
 // Based on: ASME Y14.5, ISO 129-1:2018, AWS D1.1, Three.js PBR best practices
 
@@ -226,7 +227,7 @@ export const SABS_719_WALL_THICKNESS: Record<number, number> = {
 export const wallThicknessFromNB = (nb: number, providedWT: number = 0): number => {
   if (providedWT && providedWT > 0) return providedWT;
   if (SABS_719_WALL_THICKNESS[nb]) return SABS_719_WALL_THICKNESS[nb];
-  const sizes = Object.keys(SABS_719_WALL_THICKNESS)
+  const sizes = keys(SABS_719_WALL_THICKNESS)
     .map(Number)
     .sort((a, b) => a - b);
   let closest = sizes[0];

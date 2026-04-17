@@ -1,6 +1,7 @@
 "use client";
 
 import { FLANGE_OD } from "@annix/product-data/pipe";
+import { isNumber, toPairs } from "es-toolkit/compat";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import React, { memo, useCallback, useEffect, useRef, useState } from "react";
@@ -596,7 +597,7 @@ export default function ItemUploadStep(props: {
     const standardsToFetch = new Set<number>();
 
     // Check global flange standard
-    if (globalSpecs?.flangeStandardId && typeof globalSpecs.flangeStandardId === "number") {
+    if (globalSpecs?.flangeStandardId && isNumber(globalSpecs.flangeStandardId)) {
       standardsToFetch.add(globalSpecs.flangeStandardId);
     }
 
@@ -685,7 +686,7 @@ export default function ItemUploadStep(props: {
     if (!steelSpecName) return null;
 
     // Check each key pattern
-    for (const [pattern, nbs] of Object.entries(STEEL_SPEC_NB_FALLBACK)) {
+    for (const [pattern, nbs] of toPairs(STEEL_SPEC_NB_FALLBACK)) {
       if (steelSpecName.includes(pattern)) {
         return nbs;
       }
@@ -712,7 +713,8 @@ export default function ItemUploadStep(props: {
           15, 20, 25, 32, 40, 50, 65, 80, 100, 125, 150, 200, 250, 300, 350, 400, 450, 500, 600,
           700, 800, 900, 1000, 1200, 1400, 1600, 1800, 2000,
         ]
-  ) as number[]; // fallback values
+  ) as number[];
+  // fallback values
 
   // Filter available NB sizes based on the selected steel specification
   // Uses the STEEL_SPEC_NB_FALLBACK mapping to ensure correct NB ranges for each steel type
@@ -2729,7 +2731,8 @@ export default function ItemUploadStep(props: {
                       if (entry.itemType === "fitting") {
                         const nb = entry.specs?.nominalDiameterMm;
                         const rawBranchNominalDiameterMm = entry.specs?.branchNominalDiameterMm;
-                        const branchNb = rawBranchNominalDiameterMm || nb; // Equal tee if no branch NB
+                        // Equal tee if no branch NB
+                        const branchNb = rawBranchNominalDiameterMm || nb;
                         const rawWallThicknessMm7 = entry.specs?.wallThicknessMm;
                         const wt = rawWallThicknessMm7 || 10;
                         const rawPipeLengthAMm = entry.specs?.pipeLengthAMm;
@@ -2798,7 +2801,8 @@ export default function ItemUploadStep(props: {
                           entry.specs.wallThicknessMm,
                         ),
                         individualPipeLengthM: rawIndividualPipeLength || 0,
-                        numberOfPipes: 1, // Per unit
+                        // Per unit
+                        numberOfPipes: 1,
                         hasFlangeEnd1: (rawPipeEndConfiguration6 || "PE") !== "PE",
                         hasFlangeEnd2: ["FBE", "FOE_RF", "2X_RF"].includes(
                           rawPipeEndConfiguration7 || "PE",
@@ -3367,9 +3371,11 @@ export default function ItemUploadStep(props: {
                             const stubCount = entry.specs.stubs.filter(
                               (s: any) => s?.nominalBoreMm,
                             ).length;
-                            totalQty += stubCount * qty; // Stub BNW sets
+                            // Stub BNW sets
+                            totalQty += stubCount * qty;
                             if (globalSpecs?.gasketType) {
-                              totalQty += stubCount * qty; // Stub gaskets
+                              // Stub gaskets
+                              totalQty += stubCount * qty;
                             }
                           }
 

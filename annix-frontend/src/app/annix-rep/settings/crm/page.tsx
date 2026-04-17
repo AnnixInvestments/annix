@@ -158,6 +158,7 @@ function CrmConfigCard({
 
   const handleDisconnect = async () => {
     if (
+      // eslint-disable-next-line no-restricted-globals -- legacy sync confirm pending modal migration (issue #175)
       confirm(
         `Are you sure you want to disconnect "${config.name}"? This will revoke the OAuth tokens.`,
       )
@@ -400,6 +401,7 @@ function OAuthProviderCard({
 
       if (!popup) {
         setIsConnecting(false);
+        // eslint-disable-next-line no-restricted-globals -- legacy sync alert pending modal migration (issue #175)
         alert("Popup blocked. Please allow popups for this site.");
         return;
       }
@@ -745,6 +747,7 @@ export default function CrmSettingsPage() {
   const [editingConfig, setEditingConfig] = useState<CrmConfig | null>(null);
 
   const handleDelete = async (config: CrmConfig) => {
+    // eslint-disable-next-line no-restricted-globals -- legacy sync confirm pending modal migration (issue #175)
     if (confirm(`Are you sure you want to delete "${config.name}"?`)) {
       await deleteConfig.mutateAsync(config.id);
     }

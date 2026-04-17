@@ -393,6 +393,7 @@ export default function GoalsPage() {
 
   function handleDelete(period: GoalPeriod) {
     if (
+      // eslint-disable-next-line no-restricted-globals -- legacy sync confirm pending modal migration (issue #175)
       confirm(
         `Are you sure you want to delete your ${goalPeriodLabels[period].toLowerCase()} goals?`,
       )

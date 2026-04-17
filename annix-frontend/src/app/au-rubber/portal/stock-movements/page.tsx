@@ -1,5 +1,6 @@
 "use client";
 
+import { isArray } from "es-toolkit/compat";
 import { useEffect, useState } from "react";
 import {
   Pagination,
@@ -92,8 +93,8 @@ export default function StockMovementsPage() {
         }),
         auRubberApiClient.compoundStocks(),
       ]);
-      setMovements(Array.isArray(movementsData) ? movementsData : []);
-      setStocks(Array.isArray(stocksData) ? stocksData : []);
+      setMovements(isArray(movementsData) ? movementsData : []);
+      setStocks(isArray(stocksData) ? stocksData : []);
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err : new Error("Failed to load data"));

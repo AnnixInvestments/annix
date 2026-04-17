@@ -59,6 +59,7 @@ export function TeamManagementSection({ companyRoles }: TeamManagementSectionPro
       await loadTeamData();
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Failed to update role";
+      // eslint-disable-next-line no-restricted-globals -- legacy sync alert pending modal migration (issue #175)
       alert(msg);
     }
   };
@@ -67,9 +68,11 @@ export function TeamManagementSection({ companyRoles }: TeamManagementSectionPro
     setSendingAppLinkId(memberId);
     try {
       await stockControlApiClient.sendAppLink(memberId);
+      // eslint-disable-next-line no-restricted-globals -- legacy sync alert pending modal migration (issue #175)
       alert("App link sent successfully");
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Failed to send app link";
+      // eslint-disable-next-line no-restricted-globals -- legacy sync alert pending modal migration (issue #175)
       alert(msg);
     } finally {
       setSendingAppLinkId(null);
@@ -109,6 +112,7 @@ export function TeamManagementSection({ companyRoles }: TeamManagementSectionPro
       await loadTeamData();
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Failed to cancel invitation";
+      // eslint-disable-next-line no-restricted-globals -- legacy sync alert pending modal migration (issue #175)
       alert(msg);
     }
   };
@@ -119,6 +123,7 @@ export function TeamManagementSection({ companyRoles }: TeamManagementSectionPro
       await loadTeamData();
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Failed to resend invitation";
+      // eslint-disable-next-line no-restricted-globals -- legacy sync alert pending modal migration (issue #175)
       alert(msg);
     }
   };

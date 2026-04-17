@@ -305,9 +305,18 @@ export function use3DSceneSetup(props: Use3DSceneSetupProps): Use3DSceneSetupRet
           innerR: (sOd - 2 * sWt) / SCALE / 2,
           length: s.length! / SCALE,
           nb: s.nominalBoreMm!,
-          orientation: s.orientation || ("outside" as StubOrientation),
-          angleDegrees: s.angleDegrees ?? 0,
-          hasFlange: s.hasFlange ?? true,
+          orientation: (() => {
+            const rawOrientation = s.orientation;
+            return rawOrientation || ("outside" as StubOrientation);
+          })(),
+          angleDegrees: (() => {
+            const rawAngleDegrees = s.angleDegrees;
+            return rawAngleDegrees ?? 0;
+          })(),
+          hasFlange: (() => {
+            const rawHasFlange = s.hasFlange;
+            return rawHasFlange ?? true;
+          })(),
         };
       });
   }, [stubs, wtMm]);

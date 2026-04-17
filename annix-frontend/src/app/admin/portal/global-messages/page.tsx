@@ -18,7 +18,10 @@ function ConversationCard({
   isSelected: boolean;
   onToggle: (id: number) => void;
 }) {
-  const participantNames = (conversation.participantNames || []).join(", ");
+  const participantNames = (() => {
+    const rawParticipantNames = conversation.participantNames;
+    return rawParticipantNames || [];
+  })().join(", ");
 
   const cardContent = (
     <div className="flex items-start justify-between gap-4">
@@ -106,7 +109,10 @@ function BroadcastCard({ broadcast }: { broadcast: BroadcastDetailDto }) {
             {broadcast.title}
           </h3>
           <p className="text-sm text-gray-600 dark:text-gray-300 line-clamp-2 mb-2">
-            {broadcast.contentPreview || broadcast.content}
+            {(() => {
+              const rawContentPreview = broadcast.contentPreview;
+              return rawContentPreview || broadcast.content;
+            })()}
           </p>
           <div className="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400">
             <span className="flex items-center gap-1">
@@ -228,8 +234,18 @@ export default function GlobalMessagesPage() {
         adminApiClient.broadcasts({ limit: 50 }),
       ]);
 
-      setConversations(conversationsRes?.conversations || []);
-      setBroadcasts(broadcastsRes?.broadcasts || []);
+      setConversations(
+        (() => {
+          const rawConversations = conversationsRes?.conversations;
+          return rawConversations || [];
+        })(),
+      );
+      setBroadcasts(
+        (() => {
+          const rawBroadcasts = broadcastsRes?.broadcasts;
+          return rawBroadcasts || [];
+        })(),
+      );
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load messages");
     } finally {

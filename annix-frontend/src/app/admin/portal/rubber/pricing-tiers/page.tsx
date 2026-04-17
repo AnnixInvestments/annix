@@ -24,9 +24,12 @@ export default function RubberPricingTiersPage() {
   const saveMutation = useSaveRubberPricingTier();
   const deleteMutation = useDeleteRubberPricingTier();
 
-  const tiers = tiersQuery.data ?? [];
-  const companies = companiesQuery.data ?? [];
-  const isLoading = tiersQuery.isLoading || companiesQuery.isLoading;
+  const rawTiersData = tiersQuery.data;
+  const tiers = rawTiersData ?? [];
+  const rawCompaniesData = companiesQuery.data;
+  const companies = rawCompaniesData ?? [];
+  const rawIsLoadingValue = tiersQuery.isLoading;
+  const isLoading = rawIsLoadingValue || companiesQuery.isLoading;
 
   const [showModal, setShowModal] = useState(false);
   const [editingTier, setEditingTier] = useState<RubberPricingTierDto | null>(null);
@@ -282,7 +285,10 @@ export default function RubberPricingTiersPage() {
                 </button>
                 <button
                   onClick={handleSave}
-                  disabled={saveMutation.isPending || !formData.name}
+                  disabled={(() => {
+                    const rawIsPending = saveMutation.isPending;
+                    return rawIsPending || !formData.name;
+                  })()}
                   className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50"
                 >
                   {saveMutation.isPending ? "Saving..." : "Save"}

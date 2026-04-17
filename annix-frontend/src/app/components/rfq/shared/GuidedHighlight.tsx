@@ -266,6 +266,7 @@ export function GuidedHighlight(props: GuidedHighlightProps) {
     </>
   );
 
+  // eslint-disable-next-line no-restricted-syntax -- SSR guard; isUndefined(document) would throw
   if (typeof document === "undefined") {
     return null;
   }

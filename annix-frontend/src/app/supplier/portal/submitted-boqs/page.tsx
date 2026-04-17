@@ -33,7 +33,8 @@ export default function SubmittedBoqsPage() {
 
 function SubmittedBoqsContent() {
   const boqsQuery = useSupplierBoqs("quoted");
-  const boqs = boqsQuery.data ?? [];
+  const rawData = boqsQuery.data;
+  const boqs = rawData ?? [];
   const [searchTerm, setSearchTerm] = useState("");
 
   const filteredBoqs = boqs.filter((boq) => {
@@ -162,7 +163,10 @@ function SubmittedBoqsContent() {
                       </td>
                       <td className="px-4 py-4">
                         <div className="text-sm text-gray-900 dark:text-white">
-                          {boq.customerInfo?.company || boq.customerInfo?.name || "-"}
+                          {(() => {
+                            const rawCompany = boq.customerInfo?.company;
+                            return rawCompany || boq.customerInfo?.name || "-";
+                          })()}
                         </div>
                         {boq.customerInfo?.email && (
                           <div className="text-xs text-gray-500 dark:text-gray-400">
@@ -172,7 +176,11 @@ function SubmittedBoqsContent() {
                       </td>
                       <td className="px-4 py-4">
                         <div className="text-sm text-gray-900 dark:text-white">
-                          {boq.projectInfo?.name || boq.title || "-"}
+                          {(() => {
+                            const rawName = boq.projectInfo?.name;
+                            const rawTitle = boq.title;
+                            return rawName || rawTitle || "-";
+                          })()}
                         </div>
                       </td>
                       <td className="px-4 py-4 whitespace-nowrap">

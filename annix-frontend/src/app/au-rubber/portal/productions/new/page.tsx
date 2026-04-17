@@ -1,5 +1,6 @@
 "use client";
 
+import { isArray } from "es-toolkit/compat";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Breadcrumb } from "@/app/au-rubber/components/Breadcrumb";
@@ -40,8 +41,8 @@ export default function NewProductionPage() {
           auRubberApiClient.products(),
           auRubberApiClient.compoundStocks(),
         ]);
-        setProducts(Array.isArray(productsData) ? productsData : []);
-        setStocks(Array.isArray(stocksData) ? stocksData : []);
+        setProducts(isArray(productsData) ? productsData : []);
+        setStocks(isArray(stocksData) ? stocksData : []);
       } catch (err) {
         showToast(err instanceof Error ? err.message : "Failed to load data", "error");
       } finally {

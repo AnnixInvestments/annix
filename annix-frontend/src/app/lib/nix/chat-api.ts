@@ -1,6 +1,7 @@
 import { browserBaseUrl } from "@/lib/api-config";
 
 const chatAuthHeaders = (): Record<string, string> => {
+  // eslint-disable-next-line no-restricted-syntax -- SSR guard; isUndefined(window) would throw
   if (typeof window === "undefined") return {};
   const token =
     localStorage.getItem("adminAccessToken") ||

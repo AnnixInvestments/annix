@@ -48,6 +48,7 @@ export function AdminProductCategoriesPage() {
   };
 
   const handleDelete = async (cat: ProductCategoryDto) => {
+    // eslint-disable-next-line no-restricted-globals -- legacy sync confirm pending modal migration (issue #175)
     if (!confirm(`Deactivate category "${cat.name}"?`)) return;
     try {
       await mutations.deleteProductCategory(cat.id);
@@ -193,7 +194,10 @@ export function AdminProductCategoriesPage() {
               <div>
                 <label className="block text-xs font-medium text-gray-700">Description</label>
                 <textarea
-                  value={draft.description ?? ""}
+                  value={(() => {
+                    const rawDescription = draft.description;
+                    return rawDescription ?? "";
+                  })()}
                   onChange={(e) => setDraft({ ...draft, description: e.target.value })}
                   rows={2}
                   className="mt-1 w-full border border-gray-300 rounded px-3 py-2 text-sm"

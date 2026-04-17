@@ -1,5 +1,6 @@
 "use client";
 
+import { isObject } from "es-toolkit/compat";
 import { ConfirmModal } from "@/app/components/modals/ConfirmModal";
 import { PdfPreviewModal, usePdfPreview } from "@/app/components/PdfPreviewModal";
 import type { StockItem } from "@/app/lib/api/stockControlApi";
@@ -369,9 +370,7 @@ export default function InventoryPage() {
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
                       {state.printPreviewItems
-                        .filter(
-                          (item): item is StockItem => item != null && typeof item === "object",
-                        )
+                        .filter((item): item is StockItem => item != null && isObject(item))
                         .map((item) => {
                           const category = item.category;
                           const location = item.location;

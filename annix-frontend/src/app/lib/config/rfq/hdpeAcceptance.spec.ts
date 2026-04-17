@@ -1,3 +1,4 @@
+import { keys } from "es-toolkit/compat";
 import { describe, expect, it } from "vitest";
 import {
   calculatePipeWeight,
@@ -482,8 +483,8 @@ describe("Acceptance Criteria Tests", () => {
         {} as Record<string, MockRfqItem[]>,
       );
 
-      expect(Object.keys(grouped)).toContain("steel");
-      expect(Object.keys(grouped)).toContain("hdpe");
+      expect(keys(grouped)).toContain("steel");
+      expect(keys(grouped)).toContain("hdpe");
       expect(grouped.steel.length).toBe(2);
       expect(grouped.hdpe.length).toBe(2);
     });

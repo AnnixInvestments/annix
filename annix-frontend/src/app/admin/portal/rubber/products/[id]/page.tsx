@@ -29,7 +29,8 @@ export default function RubberProductDetailPage() {
   const productId = Number(params.id);
 
   const productQuery = useRubberProductDetail(productId);
-  const product = productQuery.data ?? null;
+  const rawData = productQuery.data;
+  const product = rawData ?? null;
 
   if (productQuery.isLoading) {
     return (
@@ -87,14 +88,22 @@ export default function RubberProductDetailPage() {
       <Breadcrumb
         items={[
           { label: "Products", href: "/admin/portal/rubber/products" },
-          { label: product.title || "Untitled Product" },
+          {
+            label: (() => {
+              const rawTitle = product.title;
+              return rawTitle || "Untitled Product";
+            })(),
+          },
         ]}
       />
 
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">
-            {product.title || "Untitled Product"}
+            {(() => {
+              const rawTitle = product.title;
+              return rawTitle || "Untitled Product";
+            })()}
           </h1>
           {product.description && (
             <p className="mt-1 text-sm text-gray-600">{product.description}</p>

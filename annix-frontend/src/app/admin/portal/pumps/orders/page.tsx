@@ -1,6 +1,7 @@
 "use client";
 
 import { PUMPS_MODULE } from "@annix/product-data/pumps";
+import { toPairs as entries, keys } from "es-toolkit/compat";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { formatCurrency } from "@/app/lib/utils/currency";
@@ -196,11 +197,12 @@ export default function PumpOrdersPage() {
 
   const serviceTypeLabel = (value: string): string => {
     const category = PUMPS_MODULE.categories.find((c) => c.value === value);
-    return category?.label || value;
+    const rawLabel = category?.label;
+    return rawLabel || value;
   };
 
   const statusCounts = useMemo(() => {
-    return Object.keys(STATUS_LABELS).reduce(
+    return keys(STATUS_LABELS).reduce(
       (acc, status) => {
         acc[status as MockPumpOrder["status"]] = MOCK_ORDERS.filter(
           (o) => o.status === status,
@@ -255,7 +257,7 @@ export default function PumpOrdersPage() {
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-        {Object.entries(STATUS_LABELS).map(([status, label]) => (
+        {entries(STATUS_LABELS).map(([status, label]) => (
           <button
             key={status}
             onClick={() => {

@@ -6,7 +6,8 @@ import { useCustomerCompany } from "@/app/lib/query/hooks";
 
 export default function CustomerCompanyPage() {
   const companyQuery = useCustomerCompany();
-  const company = companyQuery.data ?? null;
+  const rawData = companyQuery.data;
+  const company = rawData ?? null;
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
@@ -14,11 +15,26 @@ export default function CustomerCompanyPage() {
   const [isSaving, setIsSaving] = useState(false);
 
   const addressForm = {
-    streetAddress: company?.streetAddress || "",
-    city: company?.city || "",
-    provinceState: company?.provinceState || "",
-    postalCode: company?.postalCode || "",
-    primaryPhone: company?.primaryPhone || "",
+    streetAddress: (() => {
+      const rawStreetAddress = company?.streetAddress;
+      return rawStreetAddress || "";
+    })(),
+    city: (() => {
+      const rawCity = company?.city;
+      return rawCity || "";
+    })(),
+    provinceState: (() => {
+      const rawProvinceState = company?.provinceState;
+      return rawProvinceState || "";
+    })(),
+    postalCode: (() => {
+      const rawPostalCode = company?.postalCode;
+      return rawPostalCode || "";
+    })(),
+    primaryPhone: (() => {
+      const rawPrimaryPhone = company?.primaryPhone;
+      return rawPrimaryPhone || "";
+    })(),
   };
   const [editAddressForm, setEditAddressForm] = useState(addressForm);
 
@@ -82,7 +98,10 @@ export default function CustomerCompanyPage() {
             <div>
               <dt className="text-sm font-medium text-gray-500">Trading Name</dt>
               <dd className="mt-1 text-sm text-gray-900">
-                {company?.tradingName || "Same as legal name"}
+                {(() => {
+                  const rawTradingName = company?.tradingName;
+                  return rawTradingName || "Same as legal name";
+                })()}
               </dd>
             </div>
             <div>
@@ -94,22 +113,38 @@ export default function CustomerCompanyPage() {
             <div>
               <dt className="text-sm font-medium text-gray-500">VAT Number</dt>
               <dd className="mt-1 text-sm text-gray-900 font-mono">
-                {company?.vatNumber || "Not registered"}
+                {(() => {
+                  const rawVatNumber = company?.vatNumber;
+                  return rawVatNumber || "Not registered";
+                })()}
               </dd>
             </div>
             <div>
               <dt className="text-sm font-medium text-gray-500">Industry</dt>
-              <dd className="mt-1 text-sm text-gray-900">{company?.industry || "Not specified"}</dd>
+              <dd className="mt-1 text-sm text-gray-900">
+                {(() => {
+                  const rawIndustry = company?.industry;
+                  return rawIndustry || "Not specified";
+                })()}
+              </dd>
             </div>
             <div>
               <dt className="text-sm font-medium text-gray-500">Company Size</dt>
               <dd className="mt-1 text-sm text-gray-900">
-                {company?.companySize || "Not specified"}
+                {(() => {
+                  const rawCompanySize = company?.companySize;
+                  return rawCompanySize || "Not specified";
+                })()}
               </dd>
             </div>
             <div>
               <dt className="text-sm font-medium text-gray-500">General Email</dt>
-              <dd className="mt-1 text-sm text-gray-900">{company?.generalEmail || "Not set"}</dd>
+              <dd className="mt-1 text-sm text-gray-900">
+                {(() => {
+                  const rawGeneralEmail = company?.generalEmail;
+                  return rawGeneralEmail || "Not set";
+                })()}
+              </dd>
             </div>
             <div>
               <dt className="text-sm font-medium text-gray-500">Website</dt>
@@ -140,11 +175,26 @@ export default function CustomerCompanyPage() {
             <button
               onClick={() => {
                 setEditAddressForm({
-                  streetAddress: company?.streetAddress || "",
-                  city: company?.city || "",
-                  provinceState: company?.provinceState || "",
-                  postalCode: company?.postalCode || "",
-                  primaryPhone: company?.primaryPhone || "",
+                  streetAddress: (() => {
+                    const rawStreetAddress = company?.streetAddress;
+                    return rawStreetAddress || "";
+                  })(),
+                  city: (() => {
+                    const rawCity = company?.city;
+                    return rawCity || "";
+                  })(),
+                  provinceState: (() => {
+                    const rawProvinceState = company?.provinceState;
+                    return rawProvinceState || "";
+                  })(),
+                  postalCode: (() => {
+                    const rawPostalCode = company?.postalCode;
+                    return rawPostalCode || "";
+                  })(),
+                  primaryPhone: (() => {
+                    const rawPrimaryPhone = company?.primaryPhone;
+                    return rawPrimaryPhone || "";
+                  })(),
                 });
                 setIsEditingAddress(true);
               }}
@@ -217,7 +267,10 @@ export default function CustomerCompanyPage() {
                   <label className="block text-sm font-medium text-gray-700">Country</label>
                   <input
                     type="text"
-                    value={company?.country || ""}
+                    value={(() => {
+                      const rawCountry = company?.country;
+                      return rawCountry || "";
+                    })()}
                     disabled
                     className="mt-1 block w-full rounded-md border-gray-300 bg-gray-100 shadow-sm"
                   />
@@ -229,11 +282,26 @@ export default function CustomerCompanyPage() {
                   onClick={() => {
                     setIsEditingAddress(false);
                     setEditAddressForm({
-                      streetAddress: company?.streetAddress || "",
-                      city: company?.city || "",
-                      provinceState: company?.provinceState || "",
-                      postalCode: company?.postalCode || "",
-                      primaryPhone: company?.primaryPhone || "",
+                      streetAddress: (() => {
+                        const rawStreetAddress = company?.streetAddress;
+                        return rawStreetAddress || "";
+                      })(),
+                      city: (() => {
+                        const rawCity = company?.city;
+                        return rawCity || "";
+                      })(),
+                      provinceState: (() => {
+                        const rawProvinceState = company?.provinceState;
+                        return rawProvinceState || "";
+                      })(),
+                      postalCode: (() => {
+                        const rawPostalCode = company?.postalCode;
+                        return rawPostalCode || "";
+                      })(),
+                      primaryPhone: (() => {
+                        const rawPrimaryPhone = company?.primaryPhone;
+                        return rawPrimaryPhone || "";
+                      })(),
                     });
                   }}
                   className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
@@ -277,7 +345,12 @@ export default function CustomerCompanyPage() {
               </div>
               <div>
                 <dt className="text-sm font-medium text-gray-500">Fax Number</dt>
-                <dd className="mt-1 text-sm text-gray-900">{company?.faxNumber || "Not set"}</dd>
+                <dd className="mt-1 text-sm text-gray-900">
+                  {(() => {
+                    const rawFaxNumber = company?.faxNumber;
+                    return rawFaxNumber || "Not set";
+                  })()}
+                </dd>
               </div>
             </dl>
           )}

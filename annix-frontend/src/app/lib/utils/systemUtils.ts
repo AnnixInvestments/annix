@@ -155,7 +155,8 @@ export async function calculateScheduleFromPressureAndNB(
     const result = await masterDataApi.getRecommendedSpecs(
       nominalBore,
       pressureMpa,
-      20, // Standard temperature
+      // Standard temperature
+      20,
       steelSpecId,
     );
 
@@ -195,7 +196,8 @@ export async function calculateWallThicknessFromPressureAndNB(
     const result = await masterDataApi.getRecommendedSpecs(
       nominalBore,
       pressureMpa,
-      20, // Standard temperature
+      // Standard temperature
+      20,
       steelSpecId,
     );
 
@@ -283,7 +285,8 @@ export async function getSteelSpecFromConditions(
     const pressureMpa = workingPressure * 0.1;
 
     const result = await masterDataApi.getRecommendedSpecs(
-      nominalBore || 100, // Default NB if not provided
+      // Default NB if not provided
+      nominalBore || 100,
       pressureMpa,
       workingTemp,
     );

@@ -235,40 +235,32 @@ export function LineItemsTab(props: LineItemsTabProps) {
               Add Line
             </button>
           )}
-          {attachments.some(
-            (a) =>
-              a.extractionStatus === "analysed" &&
-              ((a.extractedData as { totalExternalM2?: number })
-                ? (a.extractedData as { totalExternalM2?: number }).totalExternalM2 || 0
-                : 0) > 0,
-          ) && (
+          {attachments.some((a) => {
+            const extData = a.extractedData as { totalExternalM2?: number };
+            const rawTotalExternalM2 = extData ? extData.totalExternalM2 : null;
+            return a.extractionStatus === "analysed" && (rawTotalExternalM2 || 0) > 0;
+          }) && (
             <div className="flex items-center space-x-4 text-sm">
               <span className="text-gray-500">From drawings:</span>
               <span className="font-semibold text-teal-700">
                 Ext:{" "}
                 {attachments
-                  .reduce(
-                    (sum, a) =>
-                      sum +
-                      ((a.extractedData as { totalExternalM2?: number })
-                        ? (a.extractedData as { totalExternalM2?: number }).totalExternalM2 || 0
-                        : 0),
-                    0,
-                  )
+                  .reduce((sum, a) => {
+                    const extData = a.extractedData as { totalExternalM2?: number };
+                    const rawExternalValue = extData ? extData.totalExternalM2 : null;
+                    return sum + (rawExternalValue || 0);
+                  }, 0)
                   .toFixed(2)}{" "}
                 m²
               </span>
               <span className="font-semibold text-blue-700">
                 Int:{" "}
                 {attachments
-                  .reduce(
-                    (sum, a) =>
-                      sum +
-                      ((a.extractedData as { totalInternalM2?: number })
-                        ? (a.extractedData as { totalInternalM2?: number }).totalInternalM2 || 0
-                        : 0),
-                    0,
-                  )
+                  .reduce((sum, a) => {
+                    const intData = a.extractedData as { totalInternalM2?: number };
+                    const rawInternalValue = intData ? intData.totalInternalM2 : null;
+                    return sum + (rawInternalValue || 0);
+                  }, 0)
                   .toFixed(2)}{" "}
                 m²
               </span>

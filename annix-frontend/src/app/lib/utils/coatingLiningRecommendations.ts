@@ -1,6 +1,7 @@
 import type { CeramicProduct } from "@annix/product-data/ceramic/ceramicProducts";
 import type { PaintProduct } from "@annix/product-data/paint/paintProducts";
 import type { RubberProduct } from "@annix/product-data/rubber/rubberProducts";
+import { toPairs as entries } from "es-toolkit/compat";
 
 export interface MaterialProperties {
   particleSize: "Fine" | "Medium" | "Coarse" | "VeryCoarse";
@@ -1047,13 +1048,13 @@ export function supplierInfo(supplierName: string): SupplierInfo | null {
 }
 
 export function allSuppliersByRegion(region: SupplierRegion): string[] {
-  return Object.entries(SUPPLIER_INFO)
+  return entries(SUPPLIER_INFO)
     .filter(([_, info]) => info.region === region || info.region === "global")
     .map(([name]) => name);
 }
 
 export function allSuppliersByTier(tier: BudgetTier): string[] {
-  return Object.entries(SUPPLIER_INFO)
+  return entries(SUPPLIER_INFO)
     .filter(([_, info]) => info.tier === tier)
     .map(([name]) => name);
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import { toPairs as entries } from "es-toolkit/compat";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type {
   CoatingAnalysis,
@@ -806,7 +807,7 @@ export function QcpForm({ jobCardId, existingPlan, onSaved, onCancel }: QcpFormP
             disabled={isEditing}
             className="mt-1 w-full rounded border border-gray-300 px-3 py-2 text-sm disabled:bg-gray-100"
           >
-            {Object.entries(PLAN_TYPE_LABELS).map(([value, label]) => (
+            {entries(PLAN_TYPE_LABELS).map(([value, label]) => (
               <option key={value} value={value}>
                 {label}
               </option>
@@ -931,146 +932,156 @@ export function QcpForm({ jobCardId, existingPlan, onSaved, onCancel }: QcpFormP
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
-            {activities.map((activity, idx) => (
-              <tr key={idx} className="hover:bg-gray-50">
-                <td className="px-2 py-1.5 text-center font-medium text-gray-700">
-                  <input
-                    type="number"
-                    value={activity.operationNumber}
-                    onChange={(e) => {
-                      const newNum = parseInt(e.target.value, 10);
-                      if (Number.isNaN(newNum)) return;
-                      updateActivity(idx, "operationNumber", newNum);
-                    }}
-                    onBlur={() => {
-                      setActivities((prev) =>
-                        [...prev].sort((a, b) => a.operationNumber - b.operationNumber),
-                      );
-                    }}
-                    className="w-10 rounded border border-gray-300 px-1 py-1 text-center text-sm"
-                    min={1}
-                  />
-                </td>
-                <td className="px-2 py-1.5">
-                  <input
-                    type="text"
-                    value={activity.description}
-                    onChange={(e) => updateActivity(idx, "description", e.target.value)}
-                    className="w-full rounded border border-gray-300 px-2 py-1 text-sm"
-                    placeholder="Activity description"
-                  />
-                </td>
-                <td className="px-2 py-1.5">
-                  {isBlastingRow(activity.description) ? (
-                    <select
-                      value={activity.specification || ""}
+            {activities.map((activity, idx) => {
+              const rawSpecification = activity.specification;
+              const rawDocumentation = activity.documentation;
+              return (
+                <tr key={idx} className="hover:bg-gray-50">
+                  <td className="px-2 py-1.5 text-center font-medium text-gray-700">
+                    <input
+                      type="number"
+                      value={activity.operationNumber}
                       onChange={(e) => {
-                        const value = e.target.value;
-                        const val = value || null;
-                        updateActivity(idx, "specification", val);
-                        if (val === "NO BLASTING") {
-                          updateActivity(idx, "description", "Surface Preparation");
-                          updateActivity(idx, "documentation", "N/A");
-                        } else if (
-                          activity.description === "Surface Preparation" &&
-                          val &&
-                          val !== "NO BLASTING"
-                        ) {
-                          updateActivity(idx, "description", "Blasting");
-                          updateActivity(idx, "documentation", "RECORD READINGS");
-                        }
+                        const newNum = parseInt(e.target.value, 10);
+                        if (Number.isNaN(newNum)) return;
+                        updateActivity(idx, "operationNumber", newNum);
                       }}
-                      disabled={approvalStatus === "approved"}
-                      className="w-full rounded border border-gray-300 px-2 py-1 text-sm disabled:bg-gray-100"
-                    >
-                      <option value="">Select...</option>
-                      {BLAST_SPEC_OPTIONS.map((opt) => (
-                        <option key={opt.value} value={opt.value}>
-                          {opt.label}
-                        </option>
-                      ))}
-                    </select>
-                  ) : (
+                      onBlur={() => {
+                        setActivities((prev) =>
+                          [...prev].sort((a, b) => a.operationNumber - b.operationNumber),
+                        );
+                      }}
+                      className="w-10 rounded border border-gray-300 px-1 py-1 text-center text-sm"
+                      min={1}
+                    />
+                  </td>
+                  <td className="px-2 py-1.5">
                     <input
                       type="text"
-                      value={activity.specification || ""}
-                      onChange={(e) => updateActivity(idx, "specification", e.target.value || null)}
+                      value={activity.description}
+                      onChange={(e) => updateActivity(idx, "description", e.target.value)}
                       className="w-full rounded border border-gray-300 px-2 py-1 text-sm"
-                      placeholder="Spec ref"
+                      placeholder="Activity description"
                     />
-                  )}
-                </td>
-                <td className="px-2 py-1.5">
-                  <input
-                    type="text"
-                    value={activity.documentation || ""}
-                    onChange={(e) => updateActivity(idx, "documentation", e.target.value || null)}
-                    className="w-full rounded border border-gray-300 px-2 py-1 text-sm"
-                    placeholder="Doc ref"
-                  />
-                </td>
-                {visiblePartyKeys.map((partyKey) => {
-                  const activityPartyKey = activity[partyKey];
-                  const signOff = activityPartyKey || emptyPartySignOff();
-                  const interventionType = signOff.interventionType;
-                  const initial = signOff.initial;
-                  return (
-                    <td key={partyKey} className="px-1 py-1.5">
-                      <div className="flex items-center gap-1">
-                        <select
-                          value={interventionType || ""}
-                          onChange={(e) =>
-                            updateActivityIntervention(
-                              idx,
-                              partyKey,
-                              (e.target.value as InterventionType) || null,
-                            )
+                  </td>
+                  <td className="px-2 py-1.5">
+                    {isBlastingRow(activity.description) ? (
+                      <select
+                        value={rawSpecification || ""}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          const val = value || null;
+                          updateActivity(idx, "specification", val);
+                          if (val === "NO BLASTING") {
+                            updateActivity(idx, "description", "Surface Preparation");
+                            updateActivity(idx, "documentation", "N/A");
+                          } else if (
+                            activity.description === "Surface Preparation" &&
+                            val &&
+                            val !== "NO BLASTING"
+                          ) {
+                            updateActivity(idx, "description", "Blasting");
+                            updateActivity(idx, "documentation", "RECORD READINGS");
                           }
-                          title={
-                            signOff.interventionType
-                              ? `${signOff.interventionType} - ${INTERVENTION_LABELS[signOff.interventionType]}`
-                              : ""
-                          }
-                          className="w-11 overflow-hidden text-ellipsis rounded border border-gray-300 px-0.5 py-1 text-center text-xs"
-                        >
-                          <option value="">-</option>
-                          {INTERVENTION_TYPES.map((t) => (
-                            <option key={t} value={t}>
-                              {t} - {INTERVENTION_LABELS[t]}
-                            </option>
-                          ))}
-                        </select>
-                        <button
-                          type="button"
-                          ref={idx === 0 && partyKey === "pls" ? line1InitialRef : undefined}
-                          onClick={() => setInitialsTarget({ activityIdx: idx, party: partyKey })}
-                          className={`w-12 rounded border px-1 py-1 text-center text-xs ${line1InitialError && idx === 0 && partyKey === "pls" ? "border-2 border-red-500 bg-red-50 text-red-700 ring-2 ring-red-200" : signOff.initial ? "border-teal-300 bg-teal-50 font-medium text-teal-800" : "border-gray-300 text-gray-400 hover:border-teal-400 hover:bg-teal-50"}`}
-                          title="Initial"
-                        >
-                          {initial || "init"}
-                        </button>
-                        {line1InitialError && idx === 0 && partyKey === "pls" && (
-                          <p className="mt-0.5 text-[10px] leading-tight text-red-600">
-                            Must initial before sending
-                          </p>
-                        )}
-                      </div>
-                    </td>
-                  );
-                })}
-                <td className="px-2 py-1.5 text-center">
-                  {activities.length > 1 && (
-                    <button
-                      type="button"
-                      onClick={() => removeActivity(idx)}
-                      className="text-xs text-red-500 hover:text-red-700"
-                    >
-                      X
-                    </button>
-                  )}
-                </td>
-              </tr>
-            ))}
+                        }}
+                        disabled={approvalStatus === "approved"}
+                        className="w-full rounded border border-gray-300 px-2 py-1 text-sm disabled:bg-gray-100"
+                      >
+                        <option value="">Select...</option>
+                        {BLAST_SPEC_OPTIONS.map((opt) => (
+                          <option key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <input
+                        type="text"
+                        value={rawSpecification || ""}
+                        onChange={(e) => {
+                          const targetValue = e.target.value;
+                          updateActivity(idx, "specification", targetValue || null);
+                        }}
+                        className="w-full rounded border border-gray-300 px-2 py-1 text-sm"
+                        placeholder="Spec ref"
+                      />
+                    )}
+                  </td>
+                  <td className="px-2 py-1.5">
+                    <input
+                      type="text"
+                      value={rawDocumentation || ""}
+                      onChange={(e) => {
+                        const targetValue = e.target.value;
+                        updateActivity(idx, "documentation", targetValue || null);
+                      }}
+                      className="w-full rounded border border-gray-300 px-2 py-1 text-sm"
+                      placeholder="Doc ref"
+                    />
+                  </td>
+                  {visiblePartyKeys.map((partyKey) => {
+                    const activityPartyKey = activity[partyKey];
+                    const signOff = activityPartyKey || emptyPartySignOff();
+                    const interventionType = signOff.interventionType;
+                    const initial = signOff.initial;
+                    return (
+                      <td key={partyKey} className="px-1 py-1.5">
+                        <div className="flex items-center gap-1">
+                          <select
+                            value={interventionType || ""}
+                            onChange={(e) =>
+                              updateActivityIntervention(
+                                idx,
+                                partyKey,
+                                (e.target.value as InterventionType) || null,
+                              )
+                            }
+                            title={
+                              signOff.interventionType
+                                ? `${signOff.interventionType} - ${INTERVENTION_LABELS[signOff.interventionType]}`
+                                : ""
+                            }
+                            className="w-11 overflow-hidden text-ellipsis rounded border border-gray-300 px-0.5 py-1 text-center text-xs"
+                          >
+                            <option value="">-</option>
+                            {INTERVENTION_TYPES.map((t) => (
+                              <option key={t} value={t}>
+                                {t} - {INTERVENTION_LABELS[t]}
+                              </option>
+                            ))}
+                          </select>
+                          <button
+                            type="button"
+                            ref={idx === 0 && partyKey === "pls" ? line1InitialRef : undefined}
+                            onClick={() => setInitialsTarget({ activityIdx: idx, party: partyKey })}
+                            className={`w-12 rounded border px-1 py-1 text-center text-xs ${line1InitialError && idx === 0 && partyKey === "pls" ? "border-2 border-red-500 bg-red-50 text-red-700 ring-2 ring-red-200" : signOff.initial ? "border-teal-300 bg-teal-50 font-medium text-teal-800" : "border-gray-300 text-gray-400 hover:border-teal-400 hover:bg-teal-50"}`}
+                            title="Initial"
+                          >
+                            {initial || "init"}
+                          </button>
+                          {line1InitialError && idx === 0 && partyKey === "pls" && (
+                            <p className="mt-0.5 text-[10px] leading-tight text-red-600">
+                              Must initial before sending
+                            </p>
+                          )}
+                        </div>
+                      </td>
+                    );
+                  })}
+                  <td className="px-2 py-1.5 text-center">
+                    {activities.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => removeActivity(idx)}
+                        className="text-xs text-red-500 hover:text-red-700"
+                      >
+                        X
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>

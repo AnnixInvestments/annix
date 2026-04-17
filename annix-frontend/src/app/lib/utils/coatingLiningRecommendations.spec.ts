@@ -1,3 +1,4 @@
+import { isArray } from "es-toolkit/compat";
 import { describe, expect, it } from "vitest";
 import type {
   ExternalEnvironmentProfile,
@@ -317,7 +318,7 @@ describe("coatingLiningRecommendations", () => {
       const damage = classifyDamageMechanisms(profile);
       const recommendation = recommendLining(profile, damage);
 
-      expect(Array.isArray(recommendation.engineeringNotes)).toBe(true);
+      expect(isArray(recommendation.engineeringNotes)).toBe(true);
       expect(recommendation.engineeringNotes.length).toBeGreaterThan(0);
     });
 
@@ -334,7 +335,7 @@ describe("coatingLiningRecommendations", () => {
       const damage = classifyDamageMechanisms(profile);
       const recommendation = recommendLining(profile, damage);
 
-      expect(Array.isArray(recommendation.standardsBasis)).toBe(true);
+      expect(isArray(recommendation.standardsBasis)).toBe(true);
       expect(recommendation.standardsBasis.length).toBeGreaterThan(0);
     });
   });

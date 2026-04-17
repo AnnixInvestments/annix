@@ -155,11 +155,12 @@ function JobRow(props: { job: ScheduledJobDto }) {
   const frequencyMutation = useUpdateJobFrequency();
   const nightSuspensionMutation = useUpdateJobNightSuspension();
 
+  const pauseIsPending = pauseMutation.isPending;
+  const resumeIsPending = resumeMutation.isPending;
+  const frequencyIsPending = frequencyMutation.isPending;
+  const nightSuspensionIsPending = nightSuspensionMutation.isPending;
   const isMutating =
-    pauseMutation.isPending ||
-    resumeMutation.isPending ||
-    frequencyMutation.isPending ||
-    nightSuspensionMutation.isPending;
+    pauseIsPending || resumeIsPending || frequencyIsPending || nightSuspensionIsPending;
 
   const handleToggle = () => {
     if (job.active) {
@@ -374,9 +375,12 @@ function jobSortValue(job: ScheduledJobDto, key: SortKey): string {
   if (key === "description") return job.description.toLowerCase();
   if (key === "status") return job.active ? "active" : "paused";
   if (key === "frequency") return friendlyCron(job.cronTime).toLowerCase();
-  if (key === "nightSuspension") return String(job.nightSuspensionHours || 0);
-  if (key === "lastRun") return job.lastExecution || "";
-  if (key === "nextRun") return job.nextExecution || "";
+  const rawNightSuspensionHours = job.nightSuspensionHours;
+  const rawLastExecution = job.lastExecution;
+  const rawNextExecution = job.nextExecution;
+  if (key === "nightSuspension") return String(rawNightSuspensionHours || 0);
+  if (key === "lastRun") return rawLastExecution || "";
+  if (key === "nextRun") return rawNextExecution || "";
   return "";
 }
 

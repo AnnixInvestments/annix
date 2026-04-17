@@ -143,10 +143,14 @@ export default function RubberOrderDetailPage() {
   const statusesQuery = useRubberOrderStatuses();
   const updateOrderMutation = useUpdateRubberOrder();
 
-  const order = orderQuery.data ?? null;
-  const products = productsQuery.data ?? [];
-  const companies = companiesQuery.data ?? [];
-  const statuses = statusesQuery.data ?? [];
+  const rawOrderData = orderQuery.data;
+  const order = rawOrderData ?? null;
+  const rawProductsData = productsQuery.data;
+  const products = rawProductsData ?? [];
+  const rawCompaniesData = companiesQuery.data;
+  const companies = rawCompaniesData ?? [];
+  const rawStatusesData = statusesQuery.data;
+  const statuses = rawStatusesData ?? [];
 
   const [isSaving, setIsSaving] = useState(false);
 
@@ -160,23 +164,49 @@ export default function RubberOrderDetailPage() {
   useEffect(() => {
     if (order) {
       setEditStatus(order.status);
-      setEditCompanyId(order.companyId || undefined);
-      setEditCompanyOrderNumber(order.companyOrderNumber || "");
+      const rawCompanyId = order.companyId;
+      setEditCompanyId(rawCompanyId || undefined);
+      const rawCompanyOrderNumber = order.companyOrderNumber;
+      setEditCompanyOrderNumber(rawCompanyOrderNumber || "");
       const mappedItems = order.items.map((item) => ({
         id: item.id,
-        productId: item.productId || undefined,
-        thickness: item.thickness || undefined,
-        width: item.width || undefined,
-        length: item.length || undefined,
-        quantity: item.quantity || undefined,
-        callOffs: item.callOffs || [],
+        productId: (() => {
+          const rawProductId = item.productId;
+          return rawProductId || undefined;
+        })(),
+        thickness: (() => {
+          const rawThickness = item.thickness;
+          return rawThickness || undefined;
+        })(),
+        width: (() => {
+          const rawWidth = item.width;
+          return rawWidth || undefined;
+        })(),
+        length: (() => {
+          const rawLength = item.length;
+          return rawLength || undefined;
+        })(),
+        quantity: (() => {
+          const rawQuantity = item.quantity;
+          return rawQuantity || undefined;
+        })(),
+        callOffs: (() => {
+          const rawCallOffs = item.callOffs;
+          return rawCallOffs || [];
+        })(),
         kgPerRoll: item.kgPerRoll,
       }));
       setEditItems(mappedItems);
       setOriginalState({
         status: order.status,
-        companyId: order.companyId || undefined,
-        companyOrderNumber: order.companyOrderNumber || "",
+        companyId: (() => {
+          const rawCompanyId = order.companyId;
+          return rawCompanyId || undefined;
+        })(),
+        companyOrderNumber: (() => {
+          const rawCompanyOrderNumber = order.companyOrderNumber;
+          return rawCompanyOrderNumber || "";
+        })(),
         items: JSON.stringify(mappedItems),
       });
     }
@@ -207,6 +237,7 @@ export default function RubberOrderDetailPage() {
     (e: React.MouseEvent) => {
       if (hasUnsavedChanges) {
         e.preventDefault();
+        // eslint-disable-next-line no-restricted-globals -- legacy sync confirm pending modal migration (issue #175)
         if (confirm("You have unsaved changes. Are you sure you want to leave?")) {
           router.push("/admin/portal/rubber/orders");
         }
@@ -258,6 +289,7 @@ export default function RubberOrderDetailPage() {
     const validationIssues = validateItems();
     if (validationIssues.length > 0) {
       const message = `Warning:\n- ${validationIssues.join("\n- ")}\n\nDo you want to continue saving?`;
+      // eslint-disable-next-line no-restricted-globals -- legacy sync confirm pending modal migration (issue #175)
       if (!confirm(message)) {
         return;
       }
@@ -366,7 +398,10 @@ export default function RubberOrderDetailPage() {
 
   const calloffSummary = (item: EditableItem) => {
     const totalCalled = item.callOffs.reduce((sum, c) => sum + c.quantity, 0);
-    const qty = item.quantity || 0;
+    const qty = (() => {
+      const rawQuantity = item.quantity;
+      return rawQuantity || 0;
+    })();
     return { called: totalCalled, total: qty, remaining: qty - totalCalled };
   };
 
@@ -637,13 +672,19 @@ export default function RubberOrderDetailPage() {
                             <span
                               className={`px-2 py-0.5 text-xs font-medium rounded-full ${statusColor(event.fromStatus)}`}
                             >
-                              {STATUS_LABELS[event.fromStatus] || "Unknown"}
+                              {(() => {
+                                const rawSTATUS_LABELS = STATUS_LABELS[event.fromStatus];
+                                return rawSTATUS_LABELS || "Unknown";
+                              })()}
                             </span>
                             <span className="mx-2">→</span>
                             <span
                               className={`px-2 py-0.5 text-xs font-medium rounded-full ${statusColor(event.toStatus)}`}
                             >
-                              {STATUS_LABELS[event.toStatus] || "Unknown"}
+                              {(() => {
+                                const rawSTATUS_LABELS = STATUS_LABELS[event.toStatus];
+                                return rawSTATUS_LABELS || "Unknown";
+                              })()}
                             </span>
                           </p>
                           {event.notes && (
@@ -828,7 +869,10 @@ export default function RubberOrderDetailPage() {
                         </td>
                         <td className="px-3 py-3">
                           <select
-                            value={item.productId ?? ""}
+                            value={(() => {
+                              const rawProductId = item.productId;
+                              return rawProductId ?? "";
+                            })()}
                             onChange={(e) =>
                               updateItem(index, {
                                 productId: e.target.value ? Number(e.target.value) : undefined,
@@ -839,7 +883,10 @@ export default function RubberOrderDetailPage() {
                             <option value="">Select product</option>
                             {products.map((p) => (
                               <option key={p.id} value={p.id}>
-                                {p.title || `Product #${p.id}`}
+                                {(() => {
+                                  const rawTitle = p.title;
+                                  return rawTitle || `Product #${p.id}`;
+                                })()}
                               </option>
                             ))}
                           </select>
@@ -858,11 +905,17 @@ export default function RubberOrderDetailPage() {
                           )}
                         </td>
                         <td className="px-3 py-3 text-center text-sm text-gray-900">
-                          {product?.specificGravity || "-"}
+                          {(() => {
+                            const rawSpecificGravity = product?.specificGravity;
+                            return rawSpecificGravity || "-";
+                          })()}
                         </td>
                         <td className="px-3 py-3 text-center">
                           <select
-                            value={item.thickness ?? ""}
+                            value={(() => {
+                              const rawThickness = item.thickness;
+                              return rawThickness ?? "";
+                            })()}
                             onChange={(e) =>
                               updateItem(index, {
                                 thickness: e.target.value ? Number(e.target.value) : undefined,
@@ -880,7 +933,10 @@ export default function RubberOrderDetailPage() {
                         </td>
                         <td className="px-3 py-3 text-center">
                           <select
-                            value={item.width ?? ""}
+                            value={(() => {
+                              const rawWidth = item.width;
+                              return rawWidth ?? "";
+                            })()}
                             onChange={(e) =>
                               updateItem(index, {
                                 width: e.target.value ? Number(e.target.value) : undefined,
@@ -898,7 +954,10 @@ export default function RubberOrderDetailPage() {
                         </td>
                         <td className="px-3 py-3 text-center">
                           <select
-                            value={item.length ?? ""}
+                            value={(() => {
+                              const rawLength = item.length;
+                              return rawLength ?? "";
+                            })()}
                             onChange={(e) =>
                               updateItem(index, {
                                 length: e.target.value ? Number(e.target.value) : undefined,
@@ -925,7 +984,13 @@ export default function RubberOrderDetailPage() {
                             <button
                               onClick={() =>
                                 updateItem(index, {
-                                  quantity: Math.max(0, (item.quantity || 0) - 1),
+                                  quantity: Math.max(
+                                    0,
+                                    (() => {
+                                      const rawQuantity = item.quantity;
+                                      return rawQuantity || 0;
+                                    })() - 1,
+                                  ),
                                 })
                               }
                               className="p-1 text-gray-400 hover:text-gray-600"
@@ -946,7 +1011,10 @@ export default function RubberOrderDetailPage() {
                             </button>
                             <input
                               type="number"
-                              value={item.quantity ?? ""}
+                              value={(() => {
+                                const rawQuantity = item.quantity;
+                                return rawQuantity ?? "";
+                              })()}
                               onChange={(e) =>
                                 updateItem(index, {
                                   quantity: e.target.value ? Number(e.target.value) : undefined,
@@ -957,7 +1025,13 @@ export default function RubberOrderDetailPage() {
                             />
                             <button
                               onClick={() =>
-                                updateItem(index, { quantity: (item.quantity || 0) + 1 })
+                                updateItem(index, {
+                                  quantity:
+                                    (() => {
+                                      const rawQuantity = item.quantity;
+                                      return rawQuantity || 0;
+                                    })() + 1,
+                                })
                               }
                               className="p-1 text-gray-400 hover:text-gray-600"
                             >
@@ -1214,7 +1288,16 @@ export default function RubberOrderDetailPage() {
               <div className="text-sm">
                 <span className="text-gray-500">Total Quantity:</span>{" "}
                 <span className="font-medium">
-                  {editItems.reduce((sum, item) => sum + (item.quantity || 0), 0)} rolls
+                  {editItems.reduce(
+                    (sum, item) =>
+                      sum +
+                      (() => {
+                        const rawQuantity = item.quantity;
+                        return rawQuantity || 0;
+                      })(),
+                    0,
+                  )}{" "}
+                  rolls
                 </span>
               </div>
               <div className="text-sm">

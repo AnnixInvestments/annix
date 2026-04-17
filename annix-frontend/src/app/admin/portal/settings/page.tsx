@@ -139,7 +139,10 @@ function RfqFlagGrid({
                         : "text-gray-400 dark:text-gray-500"
                     }`}
                   >
-                    {meta?.label || flag.flagKey}
+                    {(() => {
+                      const rawLabel = meta?.label;
+                      return rawLabel || flag.flagKey;
+                    })()}
                   </span>
                 </button>
               );
@@ -206,7 +209,10 @@ function RfqFlagGrid({
                             : "text-gray-400 dark:text-gray-500"
                         }`}
                       >
-                        {meta?.label || flag.flagKey}
+                        {(() => {
+                          const rawLabel = meta?.label;
+                          return rawLabel || flag.flagKey;
+                        })()}
                       </span>
                       {meta?.comingSoon && (
                         <span className="px-1.5 py-0.5 text-[10px] font-medium rounded bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300">
@@ -290,12 +296,18 @@ export default function SettingsPage() {
   const toggleMutation = useToggleFeatureFlag();
   const [activeTab, setActiveTab] = useState<string>("customer");
 
-  const flags = flagsQuery.data?.flags || [];
+  const flags = (() => {
+    const rawFlags = flagsQuery.data?.flags;
+    return rawFlags || [];
+  })();
 
   const groupedFlags = useMemo(() => {
     const groups: Record<string, typeof flags> = {};
     flags.forEach((flag) => {
-      const category = flag.category || "system";
+      const category = (() => {
+        const rawCategory = flag.category;
+        return rawCategory || "system";
+      })();
       if (!groups[category]) {
         groups[category] = [];
       }
@@ -354,7 +366,10 @@ export default function SettingsPage() {
                 const categoryFlags = groupedFlags[category];
                 if (!categoryFlags || categoryFlags.length === 0) return null;
 
-                const config = CATEGORY_CONFIG[category] || CATEGORY_CONFIG.system;
+                const config = (() => {
+                  const rawCATEGORY_CONFIG = CATEGORY_CONFIG[category];
+                  return rawCATEGORY_CONFIG || CATEGORY_CONFIG.system;
+                })();
                 const isActive = activeTab === category;
 
                 return (
@@ -387,7 +402,10 @@ export default function SettingsPage() {
             const categoryFlags = groupedFlags[activeTab];
             if (!categoryFlags || categoryFlags.length === 0) return null;
 
-            const config = CATEGORY_CONFIG[activeTab] || CATEGORY_CONFIG.system;
+            const config = (() => {
+              const rawCATEGORY_CONFIG = CATEGORY_CONFIG[activeTab];
+              return rawCATEGORY_CONFIG || CATEGORY_CONFIG.system;
+            })();
 
             return (
               <div className="bg-white dark:bg-slate-800 shadow rounded-lg overflow-hidden">

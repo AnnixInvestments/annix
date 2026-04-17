@@ -800,7 +800,8 @@ export function recommendWallThicknessCarbonPipe(
     // No standard schedule can handle this - find the maximum available
     const allForDn = CARBON_STEEL_PIPES.filter((p) => p.dn === dn);
     if (allForDn.length === 0) {
-      return null; // DN not found
+      // DN not found
+      return null;
     }
 
     // Return the thickest available with a warning

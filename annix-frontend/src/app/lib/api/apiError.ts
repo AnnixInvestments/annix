@@ -1,3 +1,5 @@
+import { isArray, isObject, isString } from "es-toolkit/compat";
+
 export interface ApiErrorPayload {
   status: number;
   code?: string;
@@ -65,19 +67,19 @@ export async function throwIfNotOk(response: Response): Promise<void> {
   }
 
   const message =
-    parsed && typeof parsed.message === "string"
+    parsed && isString(parsed.message)
       ? parsed.message
-      : parsed && Array.isArray(parsed.message)
+      : parsed && isArray(parsed.message)
         ? (parsed.message as string[]).join(", ")
         : fallbackMessage;
 
   throw new ApiError({
     status: response.status,
-    code: parsed && typeof parsed.code === "string" ? (parsed.code as string) : undefined,
+    code: parsed && isString(parsed.code) ? (parsed.code as string) : undefined,
     message,
-    detail: parsed && typeof parsed.detail === "string" ? (parsed.detail as string) : undefined,
+    detail: parsed && isString(parsed.detail) ? (parsed.detail as string) : undefined,
     fieldErrors:
-      parsed?.fieldErrors && typeof parsed.fieldErrors === "object"
+      parsed?.fieldErrors && isObject(parsed.fieldErrors)
         ? (parsed.fieldErrors as Record<string, string[]>)
         : undefined,
   });

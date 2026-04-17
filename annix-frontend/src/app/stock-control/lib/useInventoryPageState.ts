@@ -1,5 +1,6 @@
 "use client";
 
+import { toPairs as entries, isArray, isNumber, isObject, values } from "es-toolkit/compat";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { usePdfPreview } from "@/app/components/PdfPreviewModal";
 import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
@@ -35,6 +36,7 @@ const VIEW_MODE_KEY = "asca-inventory-view-mode";
 const THUMB_SIZE_KEY = "asca-inventory-thumb-size";
 
 function savedPageSize(): PageSize {
+  // eslint-disable-next-line no-restricted-syntax -- SSR guard; isUndefined(window) would throw
   if (typeof window === "undefined") return 25;
   const stored = Number(localStorage.getItem(PAGE_SIZE_KEY));
   if ((PAGE_SIZE_OPTIONS as readonly number[]).includes(stored)) return stored as PageSize;
@@ -42,6 +44,7 @@ function savedPageSize(): PageSize {
 }
 
 function savedViewMode(): ViewMode {
+  // eslint-disable-next-line no-restricted-syntax -- SSR guard; isUndefined(window) would throw
   if (typeof window === "undefined") return "cards";
   const stored = localStorage.getItem(VIEW_MODE_KEY);
   if (stored === "list" || stored === "grouped" || stored === "cards") return stored;
@@ -49,6 +52,7 @@ function savedViewMode(): ViewMode {
 }
 
 function savedThumbSize(): ThumbnailSize {
+  // eslint-disable-next-line no-restricted-syntax -- SSR guard; isUndefined(window) would throw
   if (typeof window === "undefined") return "M";
   const stored = localStorage.getItem(THUMB_SIZE_KEY);
   if (stored === "S" || stored === "M" || stored === "L" || stored === "XL") return stored;
@@ -212,8 +216,7 @@ export function useInventoryPageState(pdfPreview?: ReturnType<typeof usePdfPrevi
   }
 
   const listQuery = useInventoryItems(isGroupedView ? {} : listParams);
-  const numericLocationFilter =
-    typeof state.locationFilter === "number" ? state.locationFilter : undefined;
+  const numericLocationFilter = isNumber(state.locationFilter) ? state.locationFilter : undefined;
   const groupedQuery = useInventoryGrouped(
     isGroupedView ? debouncedSearch || undefined : undefined,
     isGroupedView ? numericLocationFilter : undefined,
@@ -253,7 +256,7 @@ export function useInventoryPageState(pdfPreview?: ReturnType<typeof usePdfPrevi
       const list = existing || [];
       return { ...acc, [key]: [...list, item] };
     }, {});
-    return Object.entries(byLocation)
+    return entries(byLocation)
       .map(([key, locationItems]) => {
         const locationId = key === "null" ? null : Number(key);
         const locationName =
@@ -317,9 +320,9 @@ export function useInventoryPageState(pdfPreview?: ReturnType<typeof usePdfPrevi
     if (state.viewMode === "grouped" || state.viewMode === "cards") {
       return groupedData
         .flatMap((g) => g.items)
-        .filter((item): item is StockItem => item != null && typeof item === "object");
+        .filter((item): item is StockItem => item != null && isObject(item));
     }
-    return items.filter((item): item is StockItem => item != null && typeof item === "object");
+    return items.filter((item): item is StockItem => item != null && isObject(item));
   }, [state.viewMode, groupedData, items]);
 
   const changeViewMode = useCallback(
@@ -760,9 +763,7 @@ export function useInventoryPageState(pdfPreview?: ReturnType<typeof usePdfPrevi
         } else {
           updateState({
             importFormat: response.format,
-            parsedRows: Array.isArray(response.rows)
-              ? (response.rows as Record<string, unknown>[])
-              : [],
+            parsedRows: isArray(response.rows) ? (response.rows as Record<string, unknown>[]) : [],
             importHeaders: [],
             importRawRows: [],
             importMapping: null,
@@ -814,9 +815,7 @@ export function useInventoryPageState(pdfPreview?: ReturnType<typeof usePdfPrevi
           }
         });
         if (mapping.name === null) {
-          const mappedIndices = new Set(
-            Object.values(mapping).filter((v): v is number => v !== null),
-          );
+          const mappedIndices = new Set(values(mapping).filter((v): v is number => v !== null));
           if (!mappedIndices.has(0)) {
             mapping.name = 0;
           }
@@ -832,7 +831,7 @@ export function useInventoryPageState(pdfPreview?: ReturnType<typeof usePdfPrevi
         if (headersEmpty && state.importRawRows.length > 0) {
           effectiveMapping = buildFallbackMapping(state.importRawRows[0]);
           dataRows = state.importRawRows.slice(1);
-        } else if (effectiveMapping && Object.values(effectiveMapping).every((v) => v === null)) {
+        } else if (effectiveMapping && values(effectiveMapping).every((v) => v === null)) {
           effectiveMapping = buildFallbackMapping(state.importHeaders);
         }
       }

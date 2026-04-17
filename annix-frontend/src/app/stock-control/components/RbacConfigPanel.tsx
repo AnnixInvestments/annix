@@ -1,5 +1,6 @@
 "use client";
 
+import { toPairs as entries } from "es-toolkit/compat";
 import { useCallback, useEffect, useState } from "react";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { ALL_NAV_ITEMS, ALL_ROLES, resolveNavItemRoles } from "../config/navItems";
@@ -19,7 +20,7 @@ export function RbacConfigPanel(props: RbacConfigPanelProps) {
   useEffect(() => {
     if (isOpen) {
       setLocalConfig(
-        Object.entries(rbacConfig).reduce<Record<string, string[]>>((acc, [key, roles]) => {
+        entries(rbacConfig).reduce<Record<string, string[]>>((acc, [key, roles]) => {
           acc[key] = [...roles];
           return acc;
         }, {}),

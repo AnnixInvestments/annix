@@ -2,6 +2,7 @@
 
 import { Html5Qrcode, Html5QrcodeScannerState } from "html5-qrcode";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { log } from "@/app/lib/logger";
 
 interface QrScannerProps {
   onScan: (result: string) => void;
@@ -24,7 +25,7 @@ export function QrScanner(props: QrScannerProps) {
           await scannerRef.current.stop();
         }
       } catch (error) {
-        console.debug(
+        log.debug(
           "Scanner stop error (non-fatal):",
           error instanceof Error ? error.message : error,
         );

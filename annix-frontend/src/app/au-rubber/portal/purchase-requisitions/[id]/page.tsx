@@ -1,5 +1,6 @@
 "use client";
 
+import { toPairs as entries } from "es-toolkit/compat";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Breadcrumb } from "@/app/au-rubber/components/Breadcrumb";
@@ -118,7 +119,7 @@ export default function PurchaseRequisitionDetailPage() {
   };
 
   const handleReceive = async () => {
-    const itemReceipts = Object.entries(receiveAmounts)
+    const itemReceipts = entries(receiveAmounts)
       .filter(([, qty]) => qty && Number(qty) > 0)
       .map(([itemId, qty]) => ({
         itemId: Number(itemId),

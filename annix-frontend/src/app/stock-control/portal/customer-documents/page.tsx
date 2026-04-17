@@ -1,5 +1,7 @@
 "use client";
 
+import { keys } from "es-toolkit/compat";
+
 const DOC_TYPES = [
   "NDA",
   "Master Service Agreement",
@@ -129,7 +131,7 @@ export default function CustomerDocumentsPage() {
     {} as Record<string, typeof MOCK_DOCS>,
   );
 
-  const customerNames = Object.keys(groupedByCustomer).sort();
+  const customerNames = keys(groupedByCustomer).sort();
 
   return (
     <div className="max-w-7xl mx-auto p-6">

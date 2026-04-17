@@ -26,6 +26,7 @@ interface CompanyProfile {
 const GA_MEASUREMENT_ID = "G-SSG705PB3R";
 
 function hasAuRubberToken(): boolean {
+  // eslint-disable-next-line no-restricted-syntax -- SSR guard; isUndefined(window) would throw
   if (typeof window === "undefined") return false;
   const token =
     localStorage.getItem("auRubberAccessToken") || sessionStorage.getItem("auRubberAccessToken");
@@ -52,9 +53,12 @@ export function AuIndustriesLayoutClient(props: { children: React.ReactNode }) {
       .catch(() => {});
   }, []);
 
-  const companyName = profile?.tradingName || "AU Industries";
-  const phone = profile?.phone || "+27 11 000 0000";
-  const email = profile?.generalEmail || "info@example.com";
+  const rawTradingName = profile?.tradingName;
+  const companyName = rawTradingName || "AU Industries";
+  const rawPhoneValue = profile?.phone;
+  const phone = rawPhoneValue || "+27 11 000 0000";
+  const rawGeneralEmail = profile?.generalEmail;
+  const email = rawGeneralEmail || "info@example.com";
   const address = profile ? `${profile.streetAddress}, ${profile.city}, ${profile.province}` : "";
 
   const jsonLd = {

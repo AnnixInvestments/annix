@@ -1,5 +1,6 @@
 "use client";
 
+import { toPairs as entries } from "es-toolkit/compat";
 import { useCallback, useState } from "react";
 import {
   type EnvironmentalData,
@@ -65,7 +66,7 @@ export function useEnvironmentalIntelligence(): UseEnvironmentalIntelligenceResu
 
         // Track which fields were populated
         const fieldsApplied = new Set<string>();
-        Object.entries(result.data).forEach(([key, value]) => {
+        entries(result.data).forEach(([key, value]) => {
           if (value !== undefined && value !== null) {
             fieldsApplied.add(key);
           }

@@ -1,3 +1,5 @@
+import { isArray, isNumber, isString } from "es-toolkit/compat";
+
 export interface ParsedFrontmatter {
   data: Record<string, unknown>;
   body: string;
@@ -32,10 +34,10 @@ export const parseFrontmatter = (raw: string): ParsedFrontmatter => {
 };
 
 export const asString = (value: unknown, fallback = ""): string =>
-  typeof value === "string" ? value : fallback;
+  isString(value) ? value : fallback;
 
 export const asNumber = (value: unknown, fallback = 0): number =>
-  typeof value === "number" ? value : fallback;
+  isNumber(value) ? value : fallback;
 
 export const asStringArray = (value: unknown): string[] =>
-  Array.isArray(value) ? value.filter((v): v is string => typeof v === "string") : [];
+  isArray(value) ? value.filter((v): v is string => isString(v)) : [];

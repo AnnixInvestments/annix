@@ -1,5 +1,6 @@
 "use client";
 
+import { toPairs as entries, keys } from "es-toolkit/compat";
 import { useCallback, useRef, useState } from "react";
 import { PdfPreviewModal, usePdfPreview } from "@/app/components/PdfPreviewModal";
 import type {
@@ -95,7 +96,7 @@ function CertificatesTab() {
     const f: Record<string, string | number> = {};
     if (filterSupplierState) f.supplierId = parseInt(filterSupplierState, 10);
     if (filterTypeState) f.certificateType = filterTypeState;
-    return Object.keys(f).length > 0 ? f : undefined;
+    return keys(f).length > 0 ? f : undefined;
   })();
   const certsQuery = useCertificates(certFilters);
   const certsData = certsQuery.data;
@@ -480,7 +481,7 @@ function CertificatesTab() {
             </div>
           </div>
 
-          {Object.entries(supplierGroupedCerts).map(([supplierName, items]) => (
+          {entries(supplierGroupedCerts).map(([supplierName, items]) => (
             <div
               key={supplierName}
               className="rounded-lg border border-gray-200 bg-white shadow-sm overflow-hidden"

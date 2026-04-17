@@ -17,6 +17,7 @@ export const cacheConfig = {
   dashboard: {
     staleTime: 60 * 1000,
     gcTime: 5 * 60 * 1000,
+    // eslint-disable-next-line no-restricted-syntax -- static cache preset; callers wire usePollingInterval at hook site
     refetchInterval: 5 * 60 * 1000,
   },
 

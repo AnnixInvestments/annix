@@ -1,5 +1,6 @@
 "use client";
 
+import { isArray } from "es-toolkit/compat";
 import { useCallback, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import type {
@@ -38,7 +39,7 @@ export function ItemsReleaseSection({ jobCardId }: ItemsReleaseSectionProps) {
       setIsLoading(true);
       setError(null);
       const result = await stockControlApiClient.itemsReleasesForJobCard(jobCardId);
-      setReleases(Array.isArray(result) ? result : []);
+      setReleases(isArray(result) ? result : []);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load items releases");
     } finally {

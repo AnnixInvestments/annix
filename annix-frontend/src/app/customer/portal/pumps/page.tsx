@@ -126,7 +126,10 @@ function mapApiProductToCardData(product: PumpProduct): PumpProductCardData {
       | "centrifugal"
       | "positive_displacement"
       | "specialty",
-    status: statusMap[product.status] || "active",
+    status: (() => {
+      const rawStatusMap = statusMap[product.status];
+      return rawStatusMap || "active";
+    })(),
     manufacturer: product.manufacturer,
     modelNumber: product.modelNumber,
     flowRateMin: product.flowRateMin,
@@ -334,8 +337,10 @@ function CustomerPumpsContent() {
                   <p className="text-sm text-blue-700">
                     {requirements.api610
                       ? `API 610 Category: ${requirements.api610.categoryRecommendation}`
-                      : requirements.recommendedTypes?.[0]?.type?.label ||
-                        "Based on your application requirements"}
+                      : (() => {
+                          const rawLabel = requirements.recommendedTypes?.[0]?.type?.label;
+                          return rawLabel || "Based on your application requirements";
+                        })()}
                   </p>
                 </div>
               )}

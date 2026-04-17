@@ -1,5 +1,6 @@
 "use client";
 
+import { toPairs as entries } from "es-toolkit/compat";
 import {
   ChevronDown,
   ChevronRight,
@@ -130,7 +131,7 @@ export function ReconciliationTab(props: ReconciliationTabProps) {
     try {
       setIsRecording(true);
       const eventType: ReconciliationEventType = recordModal;
-      const eventItems = Object.entries(recordEntries)
+      const eventItems = entries(recordEntries)
         .filter(([_, qty]) => Number(qty) > 0)
         .map(([id, qty]) => ({
           reconciliationItemId: Number(id),
@@ -284,67 +285,70 @@ export function ReconciliationTab(props: ReconciliationTabProps) {
           </div>
         ) : (
           <div className="divide-y divide-gray-100">
-            {documents.map((doc) => (
-              <div key={doc.id} className="flex items-center justify-between px-5 py-2.5">
-                <div className="flex items-center gap-2">
-                  <FileText className="h-4 w-4 text-gray-400" />
-                  <span className="inline-flex rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700">
-                    {CATEGORY_LABELS[doc.documentCategory] || doc.documentCategory}
-                  </span>
-                  <span className="max-w-[200px] truncate text-xs text-gray-600">
-                    {doc.originalFilename}
-                  </span>
-                  {doc.extractionStatus === "completed" && doc.extractedItems && (
-                    <span className="text-xs text-green-600">
-                      {doc.extractedItems.length} items extracted
+            {documents.map((doc) => {
+              const rawCategoryLabel = CATEGORY_LABELS[doc.documentCategory];
+              return (
+                <div key={doc.id} className="flex items-center justify-between px-5 py-2.5">
+                  <div className="flex items-center gap-2">
+                    <FileText className="h-4 w-4 text-gray-400" />
+                    <span className="inline-flex rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700">
+                      {rawCategoryLabel || doc.documentCategory}
                     </span>
-                  )}
-                  {doc.extractionStatus === "processing" && (
-                    <Loader2 className="h-3 w-3 animate-spin text-blue-500" />
-                  )}
-                  {doc.extractionStatus === "failed" && (
-                    <button
-                      onClick={() =>
-                        stockControlApiClient
-                          .retryReconciliationExtraction(props.jobCardId, doc.id)
-                          .then(() => setTimeout(refresh, 2000))
-                      }
-                      className="text-xs text-red-500 hover:text-red-700"
-                    >
-                      <RefreshCw className="inline h-3 w-3" /> Retry
-                    </button>
-                  )}
-                </div>
-                <div className="flex items-center gap-1">
-                  <button
-                    onClick={() => handleViewDoc(doc.id)}
-                    className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
-                    title="View"
-                  >
-                    <Eye className="h-4 w-4" />
-                  </button>
-                  <a
-                    href={stockControlApiClient.reconciliationDocumentDownloadUrl(
-                      props.jobCardId,
-                      doc.id,
+                    <span className="max-w-[200px] truncate text-xs text-gray-600">
+                      {doc.originalFilename}
+                    </span>
+                    {doc.extractionStatus === "completed" && doc.extractedItems && (
+                      <span className="text-xs text-green-600">
+                        {doc.extractedItems.length} items extracted
+                      </span>
                     )}
-                    className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
-                    title="Download"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    <Download className="h-4 w-4" />
-                  </a>
-                  <button
-                    onClick={() => handleDeleteDoc(doc.id)}
-                    className="rounded p-1 text-red-400 hover:bg-red-50 hover:text-red-600"
-                    title="Delete"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
+                    {doc.extractionStatus === "processing" && (
+                      <Loader2 className="h-3 w-3 animate-spin text-blue-500" />
+                    )}
+                    {doc.extractionStatus === "failed" && (
+                      <button
+                        onClick={() =>
+                          stockControlApiClient
+                            .retryReconciliationExtraction(props.jobCardId, doc.id)
+                            .then(() => setTimeout(refresh, 2000))
+                        }
+                        className="text-xs text-red-500 hover:text-red-700"
+                      >
+                        <RefreshCw className="inline h-3 w-3" /> Retry
+                      </button>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => handleViewDoc(doc.id)}
+                      className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+                      title="View"
+                    >
+                      <Eye className="h-4 w-4" />
+                    </button>
+                    <a
+                      href={stockControlApiClient.reconciliationDocumentDownloadUrl(
+                        props.jobCardId,
+                        doc.id,
+                      )}
+                      className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+                      title="Download"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <Download className="h-4 w-4" />
+                    </a>
+                    <button
+                      onClick={() => handleDeleteDoc(doc.id)}
+                      className="rounded p-1 text-red-400 hover:bg-red-50 hover:text-red-600"
+                      title="Delete"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
@@ -568,26 +572,29 @@ export function ReconciliationTab(props: ReconciliationTabProps) {
                   </tr>
                 </thead>
                 <tbody className="divide-y">
-                  {items.map((item) => (
-                    <tr key={item.id}>
-                      <td className="px-2 py-1.5">{item.itemDescription}</td>
-                      <td className="px-2 py-1.5 text-right text-gray-500">
-                        {item.quantityOrdered}
-                      </td>
-                      <td className="px-2 py-1.5">
-                        <input
-                          type="number"
-                          min="0"
-                          value={recordEntries[item.id] || ""}
-                          onChange={(e) =>
-                            setRecordEntries({ ...recordEntries, [item.id]: e.target.value })
-                          }
-                          className="w-full rounded border border-gray-300 px-2 py-1 text-right text-xs"
-                          placeholder="0"
-                        />
-                      </td>
-                    </tr>
-                  ))}
+                  {items.map((item) => {
+                    const rawRecordEntry = recordEntries[item.id];
+                    return (
+                      <tr key={item.id}>
+                        <td className="px-2 py-1.5">{item.itemDescription}</td>
+                        <td className="px-2 py-1.5 text-right text-gray-500">
+                          {item.quantityOrdered}
+                        </td>
+                        <td className="px-2 py-1.5">
+                          <input
+                            type="number"
+                            min="0"
+                            value={rawRecordEntry || ""}
+                            onChange={(e) =>
+                              setRecordEntries({ ...recordEntries, [item.id]: e.target.value })
+                            }
+                            className="w-full rounded border border-gray-300 px-2 py-1 text-right text-xs"
+                            placeholder="0"
+                          />
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

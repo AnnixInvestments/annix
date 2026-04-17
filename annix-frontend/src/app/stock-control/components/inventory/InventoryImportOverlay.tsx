@@ -1,3 +1,4 @@
+import { toPairs as entries, keys } from "es-toolkit/compat";
 import type { ImportResult, InventoryColumnMapping } from "@/app/lib/api/stockControlApi";
 import {
   formatRandCell,
@@ -236,7 +237,7 @@ function ImportPreviewModal({
             <div className="mx-6 mt-4 bg-blue-50 border border-blue-200 rounded-lg p-3">
               <p className="text-sm text-blue-700">
                 AI mapped columns:{" "}
-                {Object.entries(importMapping)
+                {entries(importMapping)
                   .filter(([, v]) => v !== null)
                   .map(([field, colIdx]) => `${field} -> "${importHeaders[colIdx as number]}"`)
                   .join(", ") || "No columns mapped"}
@@ -328,7 +329,7 @@ interface GenericPreviewTableProps {
 function GenericPreviewTable({ parsedRows }: GenericPreviewTableProps) {
   if (parsedRows.length === 0) return null;
 
-  const headers = Object.keys(parsedRows[0]);
+  const headers = keys(parsedRows[0]);
 
   return (
     <table className="min-w-full divide-y divide-gray-200">

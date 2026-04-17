@@ -126,6 +126,7 @@ export function LiveTranscriptViewer(props: LiveTranscriptViewerProps) {
   };
 
   const handleLeave = async () => {
+    // eslint-disable-next-line no-restricted-globals -- legacy sync confirm pending modal migration (issue #175)
     if (confirm("Are you sure you want to remove the bot from this meeting?")) {
       await leaveTeamsMeeting.mutateAsync(sessionId);
     }

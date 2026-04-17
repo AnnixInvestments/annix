@@ -40,6 +40,7 @@ export function AdminLocationMigrationPage(props: AdminLocationMigrationPageProp
     }));
     try {
       const result = await mutations.applyLocationClassifications(decisionList);
+      // eslint-disable-next-line no-restricted-globals -- legacy sync alert pending modal migration (issue #175)
       alert(`Applied ${result.updated} location assignments`);
       setSuggestions([]);
       setDecisions(new Map());
@@ -71,7 +72,10 @@ export function AdminLocationMigrationPage(props: AdminLocationMigrationPageProp
           <button
             type="button"
             onClick={runClassification}
-            disabled={mutations.isPending || props.locations.length === 0}
+            disabled={(() => {
+              const rawIsPending = mutations.isPending;
+              return rawIsPending || props.locations.length === 0;
+            })()}
             className="px-4 py-2 bg-teal-600 text-white rounded text-sm font-medium disabled:opacity-50"
           >
             Run AI Classification
@@ -80,7 +84,10 @@ export function AdminLocationMigrationPage(props: AdminLocationMigrationPageProp
           <button
             type="button"
             onClick={applyDecisions}
-            disabled={mutations.isPending || decisions.size === 0}
+            disabled={(() => {
+              const rawIsPending = mutations.isPending;
+              return rawIsPending || decisions.size === 0;
+            })()}
             className="px-4 py-2 bg-teal-600 text-white rounded text-sm font-medium disabled:opacity-50"
           >
             Apply {decisions.size} Decisions

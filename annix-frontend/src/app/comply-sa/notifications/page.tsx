@@ -1,5 +1,6 @@
 "use client";
 
+import { isArray } from "es-toolkit/compat";
 import { AlertTriangle, Bell, BellOff, CheckCircle, Clock, Info } from "lucide-react";
 import { useState } from "react";
 import { formatDateTimeZA } from "@/app/lib/datetime";
@@ -47,7 +48,7 @@ export default function NotificationsPage() {
   const markRead = useMarkNotificationRead();
   const [visibleCount, setVisibleCount] = useState(ITEMS_PER_PAGE);
 
-  const notifications: Notification[] = Array.isArray(items) ? items : [];
+  const notifications: Notification[] = isArray(items) ? items : [];
   const unreadCount = notifications.filter((n) => !n.read).length;
 
   if (isLoading) {

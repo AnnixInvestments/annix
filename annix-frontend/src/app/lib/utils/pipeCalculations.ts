@@ -6,6 +6,7 @@
  * and surface area calculations.
  */
 
+import { toPairs as entries, keys } from "es-toolkit/compat";
 import { log } from "@/app/lib/logger";
 
 /**
@@ -17,9 +18,12 @@ import { log } from "@/app/lib/logger";
  * @returns Weight per meter in kg/m
  *
  * @example
- * // For a 500NB Sch40 pipe (OD=508mm, WT=15.09mm):
- * // (508 - 15.09) * 15.09 * 0.02466 = 183.42 kg/m
- * calculatePipeWeightPerMeter(508, 15.09) // Returns 183.42
+ // For a 500NB Sch40 pipe (OD=508mm, WT=15.09mm):
+ *
+ // (508 - 15.09) * 15.09 * 0.02466 = 183.42 kg/m
+ *
+ // Returns 183.42
+ * calculatePipeWeightPerMeter(508, 15.09)
  */
 export function calculatePipeWeightPerMeter(
   outsideDiameterMm: number,
@@ -37,9 +41,12 @@ export function calculatePipeWeightPerMeter(
  * @returns Bend radius in millimeters
  *
  * @example
- * // For a 200NB (8") 3D bend:
- * // 8 * 25.4 * 3 = 609.6mm
- * calculateBendRadius(8, 3) // Returns 609.6
+ // For a 200NB (8") 3D bend:
+ *
+ // 8 * 25.4 * 3 = 609.6mm
+ *
+ // Returns 609.6
+ * calculateBendRadius(8, 3)
  */
 export function calculateBendRadius(nominalBoreInches: number, bendTypeMultiplier: number): number {
   return nominalBoreInches * 25.4 * bendTypeMultiplier;
@@ -92,9 +99,12 @@ export function nbMmToInches(nbMm: number): number {
  * @returns Surface area in square meters
  *
  * @example
- * // For a 450NB pipe 6m long (OD ≈ 457.2mm):
- * // (0.4572 * 3.14159) * 6 = 8.62 m²
- * calculateExternalPaintArea(457.2, 6) // Returns ~8.62
+ // For a 450NB pipe 6m long (OD ≈ 457.2mm):
+ *
+ // (0.4572 * 3.14159) * 6 = 8.62 m²
+ *
+ // Returns ~8.62
+ * calculateExternalPaintArea(457.2, 6)
  */
 export function calculateExternalPaintArea(
   outsideDiameterMm: number,
@@ -114,9 +124,12 @@ export function calculateExternalPaintArea(
  * @returns Surface area in square meters
  *
  * @example
- * // For a 450NB pipe 6m long with 2 flanges (ID ≈ 438mm):
- * // (0.438 * 3.14159) * (6 + 0.2) = 8.53 m²
- * calculateInternalLiningArea(438, 6, 2) // Returns ~8.53
+ // For a 450NB pipe 6m long with 2 flanges (ID ≈ 438mm):
+ *
+ // (0.438 * 3.14159) * (6 + 0.2) = 8.53 m²
+ *
+ // Returns ~8.53
+ * calculateInternalLiningArea(438, 6, 2)
  */
 export function calculateInternalLiningArea(
   insideDiameterMm: number,
@@ -139,10 +152,14 @@ export function calculateInternalLiningArea(
  * @returns Weight in kilograms
  *
  * @example
- * // For AU 40 Shore Red Natural Rubber (SG 1.05):
- * // 6mm x 1.2m x 12m = ((6/1000) * 1.2) * 12 * 1.05 = 90.72 kg
- * // Note: thickness must be in meters for this calculation
- * calculateRubberWeight(6, 1.2, 12, 1.05) // Returns ~90.72
+ // For AU 40 Shore Red Natural Rubber (SG 1.05):
+ *
+ // 6mm x 1.2m x 12m = ((6/1000) * 1.2) * 12 * 1.05 = 90.72 kg
+ *
+ // Note: thickness must be in meters for this calculation
+ *
+ // Returns ~90.72
+ * calculateRubberWeight(6, 1.2, 12, 1.05)
  */
 export function calculateRubberWeight(
   thicknessMm: number,
@@ -194,7 +211,8 @@ export const MATERIAL_ALLOWABLE_STRESS: Record<
   {
     stressMPa: number;
     description: string;
-    temperatureLimit: number; // Max temp in °C before significant derating
+    // Max temp in °C before significant derating
+    temperatureLimit: number;
   }
 > = {
   ASTM_A53_Grade_B: {
@@ -229,22 +247,31 @@ export const MATERIAL_ALLOWABLE_STRESS: Record<
  * Values are approximate - actual values should be from code tables
  */
 export const TEMPERATURE_DERATING: Record<number, number> = {
-  20: 1.0, // Ambient - no derating
-  50: 1.0, // Still within ambient range
-  100: 0.98, // Slight reduction
-  150: 0.95, // 5% reduction
-  200: 0.92, // 8% reduction
-  250: 0.88, // 12% reduction
-  300: 0.83, // 17% reduction
-  350: 0.77, // 23% reduction
-  400: 0.7, // 30% reduction
+  // Ambient - no derating
+  20: 1.0,
+  // Still within ambient range
+  50: 1.0,
+  // Slight reduction
+  100: 0.98,
+  // 5% reduction
+  150: 0.95,
+  // 8% reduction
+  200: 0.92,
+  // 12% reduction
+  250: 0.88,
+  // 17% reduction
+  300: 0.83,
+  // 23% reduction
+  350: 0.77,
+  // 30% reduction
+  400: 0.7,
 };
 
 /**
  * Get temperature derating factor with interpolation
  */
 export function temperatureDerating(temperatureC: number): number {
-  const temps = Object.keys(TEMPERATURE_DERATING)
+  const temps = keys(TEMPERATURE_DERATING)
     .map(Number)
     .sort((a, b) => a - b);
 
@@ -286,9 +313,12 @@ export function temperatureDerating(temperatureC: number): number {
  * @returns Maximum allowable pressure in bar
  *
  * @example
- * // 500NB Sch 10 (OD=508mm, WT=6.35mm) ASTM A106 Grade B:
- * // P = (2 × 138 × 1.0 × 6.35) / 508 = 3.45 MPa = 34.5 bar
- * calculateMaxAllowablePressure(508, 6.35, 'ASTM_A106_Grade_B') // Returns ~34.5 bar
+ // 500NB Sch 10 (OD=508mm, WT=6.35mm) ASTM A106 Grade B:
+ *
+ // P = (2 × 138 × 1.0 × 6.35) / 508 = 3.45 MPa = 34.5 bar
+ *
+ // Returns ~34.5 bar
+ * calculateMaxAllowablePressure(508, 6.35, 'ASTM_A106_Grade_B')
  */
 export function calculateMaxAllowablePressure(
   outsideDiameterMm: number,
@@ -330,9 +360,12 @@ export function calculateMaxAllowablePressure(
  * @returns Minimum required wall thickness in mm
  *
  * @example
- * // 500NB at 16 bar, ASTM A106 Grade B:
- * // t = (1.6 × 508) / (2 × 138 × 1.0) = 2.94 mm
- * calculateMinWallThickness(508, 16, 'ASTM_A106_Grade_B') // Returns ~2.94 mm
+ // 500NB at 16 bar, ASTM A106 Grade B:
+ *
+ // t = (1.6 × 508) / (2 × 138 × 1.0) = 2.94 mm
+ *
+ // Returns ~2.94 mm
+ * calculateMinWallThickness(508, 16, 'ASTM_A106_Grade_B')
  */
 export function calculateMinWallThickness(
   outsideDiameterMm: number,
@@ -541,8 +574,10 @@ const NB_TO_OD_INTERNAL: Record<number, number> = {
  * @returns Minimum wall thickness in millimeters
  *
  * @example
- * getMinWallThicknessForNB(500, 16) // Returns min WT for 500NB at 16 bar
- * getMinWallThicknessForNB(300, 25, 150) // Returns min WT at 25 bar, 150°C
+ // Returns min WT for 500NB at 16 bar
+ * getMinWallThicknessForNB(500, 16)
+ // Returns min WT at 25 bar, 150°C
+ * getMinWallThicknessForNB(300, 25, 150)
  */
 export function getMinWallThicknessForNB(
   nominalBoreMm: number,
@@ -598,9 +633,12 @@ export const JOINT_EFFICIENCY: Record<string, number> = {
  */
 export const TEMPERATURE_COEFFICIENT_Y: Record<string, number> = {
   // Temperature ranges in °F for ferritic steels
-  below_900F: 0.4, // Below 482°C
-  "950F": 0.5, // 510°C
-  "1050F_and_above": 0.7, // 566°C and above
+  // Below 482°C
+  below_900F: 0.4,
+  // 510°C
+  "950F": 0.5,
+  // 566°C and above
+  "1050F_and_above": 0.7,
   // Celsius equivalents
   below_482C: 0.4,
   "510C": 0.5,
@@ -831,7 +869,7 @@ export function getAllowableStressKsi(materialCode: string, temperatureF: number
   const stressTable = material.allowableStressKsi;
 
   // Parse temperature ranges and find applicable stress
-  const entries = Object.entries(stressTable)
+  const stressEntries = entries(stressTable)
     .map(([key, value]) => {
       if (key.includes("_to_")) {
         const [low, high] = key.split("_to_").map(Number);
@@ -842,8 +880,8 @@ export function getAllowableStressKsi(materialCode: string, temperatureF: number
     .sort((a, b) => a.high - b.high);
 
   // Find matching range or interpolate
-  for (let i = 0; i < entries.length; i++) {
-    const entry = entries[i];
+  for (let i = 0; i < stressEntries.length; i++) {
+    const entry = stressEntries[i];
     if (temperatureF <= entry.high) {
       // Check if within range
       if (temperatureF >= entry.low) {
@@ -854,14 +892,14 @@ export function getAllowableStressKsi(materialCode: string, temperatureF: number
         return entry.value;
       }
       // Interpolate between previous and current
-      const prev = entries[i - 1];
+      const prev = stressEntries[i - 1];
       const ratio = (temperatureF - prev.high) / (entry.low - prev.high);
       return prev.value + ratio * (entry.value - prev.value);
     }
   }
 
   // Beyond last temperature, return last value (or could throw error)
-  return entries[entries.length - 1].value;
+  return stressEntries[stressEntries.length - 1].value;
 }
 
 /**
@@ -879,11 +917,16 @@ export function getAllowableStressMPa(materialCode: string, temperatureC: number
  * Wall thickness in inches, OD in inches
  */
 export interface PipeDimension {
-  npsIn: string; // NPS in inches (e.g., "20" for NPS 20)
-  nbMm: number; // Nominal bore in mm
-  odIn: number; // Outside diameter in inches
-  odMm: number; // Outside diameter in mm
-  schedulesWallIn: Record<string, number>; // Schedule -> wall thickness in inches
+  // NPS in inches (e.g., "20" for NPS 20)
+  npsIn: string;
+  // Nominal bore in mm
+  nbMm: number;
+  // Outside diameter in inches
+  odIn: number;
+  // Outside diameter in mm
+  odMm: number;
+  // Schedule -> wall thickness in inches
+  schedulesWallIn: Record<string, number>;
 }
 
 export const PIPE_DIMENSIONS: PipeDimension[] = [
@@ -1540,8 +1583,10 @@ export function calculateMAWP(params: {
   }
 
   // Convert to bar and psi
-  const mawpBar = mawpMPa * 10; // 1 MPa = 10 bar
-  const mawpPsi = mawpBar * 14.504; // 1 bar = 14.504 psi
+  // 1 MPa = 10 bar
+  const mawpBar = mawpMPa * 10;
+  // 1 bar = 14.504 psi
+  const mawpPsi = mawpBar * 14.504;
 
   return {
     mawpBar,
@@ -1600,7 +1645,7 @@ export function findSuitableSchedules(params: {
   }> = [];
 
   // Test each available schedule
-  for (const [schedule, wallIn] of Object.entries(pipe.schedulesWallIn)) {
+  for (const [schedule, wallIn] of entries(pipe.schedulesWallIn)) {
     // Skip duplicate schedule names (e.g., '40' and '40S')
     if (schedule.endsWith("S") && pipe.schedulesWallIn[schedule.slice(0, -1)]) continue;
 

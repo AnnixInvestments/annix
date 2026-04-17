@@ -1,5 +1,6 @@
 "use client";
 
+import { toPairs as entries } from "es-toolkit/compat";
 import { useEffect, useState } from "react";
 import {
   Pagination,
@@ -34,10 +35,16 @@ export default function RubberCompaniesPage() {
   const saveMutation = useSaveRubberCompany();
   const deleteMutation = useDeleteRubberCompany();
 
-  const companies = companiesQuery.data ?? [];
-  const pricingTiers = tiersQuery.data ?? [];
-  const products = productsQuery.data ?? [];
-  const isLoading = companiesQuery.isLoading || tiersQuery.isLoading || productsQuery.isLoading;
+  const rawCompaniesData = companiesQuery.data;
+  const companies = rawCompaniesData ?? [];
+  const rawTiersData = tiersQuery.data;
+  const pricingTiers = rawTiersData ?? [];
+  const rawProductsData = productsQuery.data;
+  const products = rawProductsData ?? [];
+  const rawIsLoadingValue = companiesQuery.isLoading;
+  const rawTiersIsLoading = tiersQuery.isLoading;
+  const rawProductsIsLoading = productsQuery.isLoading;
+  const isLoading = rawIsLoadingValue || rawTiersIsLoading || rawProductsIsLoading;
 
   const [showModal, setShowModal] = useState(false);
   const [editingCompany, setEditingCompany] = useState<RubberCompanyDto | null>(null);
@@ -71,16 +78,22 @@ export default function RubberCompaniesPage() {
       if (sortColumn === "name") {
         return direction * a.name.localeCompare(b.name);
       } else if (sortColumn === "code") {
-        const aVal = a.code || "";
-        const bVal = b.code || "";
+        const rawCodeA = a.code;
+        const aVal = rawCodeA || "";
+        const rawCodeB = b.code;
+        const bVal = rawCodeB || "";
         return direction * aVal.localeCompare(bVal);
       } else if (sortColumn === "pricingTier") {
-        const aVal = a.pricingTierName || "";
-        const bVal = b.pricingTierName || "";
+        const rawPricingTierNameA = a.pricingTierName;
+        const aVal = rawPricingTierNameA || "";
+        const rawPricingTierNameB = b.pricingTierName;
+        const bVal = rawPricingTierNameB || "";
         return direction * aVal.localeCompare(bVal);
       } else if (sortColumn === "vatNumber") {
-        const aVal = a.vatNumber || "";
-        const bVal = b.vatNumber || "";
+        const rawVatNumberA = a.vatNumber;
+        const aVal = rawVatNumberA || "";
+        const rawVatNumberB = b.vatNumber;
+        const bVal = rawVatNumberB || "";
         return direction * aVal.localeCompare(bVal);
       } else if (sortColumn === "isCompoundOwner") {
         return direction * (Number(a.isCompoundOwner) - Number(b.isCompoundOwner));
@@ -193,30 +206,51 @@ export default function RubberCompaniesPage() {
     const postalCode = address?.postalCode;
     setFormData({
       name: company.name,
-      code: company.code || "",
-      pricingTierId: company.pricingTierId || null,
-      vatNumber: company.vatNumber || "",
-      registrationNumber: company.registrationNumber || "",
+      code: (() => {
+        const rawCode = company.code;
+        return rawCode || "";
+      })(),
+      pricingTierId: (() => {
+        const rawPricingTierId = company.pricingTierId;
+        return rawPricingTierId || null;
+      })(),
+      vatNumber: (() => {
+        const rawVatNumber = company.vatNumber;
+        return rawVatNumber || "";
+      })(),
+      registrationNumber: (() => {
+        const rawRegistrationNumber = company.registrationNumber;
+        return rawRegistrationNumber || "";
+      })(),
       isCompoundOwner: company.isCompoundOwner,
-      notes: company.notes || "",
+      notes: (() => {
+        const rawNotes = company.notes;
+        return rawNotes || "";
+      })(),
       address: {
         street: street ? street : "",
         city: city ? city : "",
         province: province ? province : "",
         postalCode: postalCode ? postalCode : "",
       },
-      availableProducts: company.availableProducts || [],
+      availableProducts: (() => {
+        const rawAvailableProducts = company.availableProducts;
+        return rawAvailableProducts || [];
+      })(),
     });
     setShowModal(true);
   };
 
   const handleSave = () => {
-    const addressEntries = Object.entries(formData.address).filter(([, v]) => v.trim() !== "");
+    const addressEntries = entries(formData.address).filter(([, v]) => v.trim() !== "");
     const cleanedAddress =
       addressEntries.length > 0 ? Object.fromEntries(addressEntries) : undefined;
     const payload = {
       ...formData,
-      pricingTierId: formData.pricingTierId ?? undefined,
+      pricingTierId: (() => {
+        const rawPricingTierId = formData.pricingTierId;
+        return rawPricingTierId ?? undefined;
+      })(),
       address: cleanedAddress,
     };
     saveMutation.mutate(
@@ -448,7 +482,10 @@ export default function RubberCompaniesPage() {
                     )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {company.code || "-"}
+                    {(() => {
+                      const rawCode = company.code;
+                      return rawCode || "-";
+                    })()}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     {company.pricingTierName ? (
@@ -460,7 +497,10 @@ export default function RubberCompaniesPage() {
                     )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {company.vatNumber || "-"}
+                    {(() => {
+                      const rawVatNumber = company.vatNumber;
+                      return rawVatNumber || "-";
+                    })()}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     {company.isCompoundOwner ? (
@@ -545,7 +585,10 @@ export default function RubberCompaniesPage() {
                   <div>
                     <label className="block text-sm font-medium text-gray-700">Pricing Tier</label>
                     <select
-                      value={formData.pricingTierId ?? ""}
+                      value={(() => {
+                        const rawPricingTierId = formData.pricingTierId;
+                        return rawPricingTierId ?? "";
+                      })()}
                       onChange={(e) =>
                         setFormData({
                           ...formData,
@@ -671,7 +714,10 @@ export default function RubberCompaniesPage() {
                             className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                           />
                           <span className="text-sm text-gray-900">
-                            {product.title || "Untitled"}
+                            {(() => {
+                              const rawTitle = product.title;
+                              return rawTitle || "Untitled";
+                            })()}
                           </span>
                           {product.typeName && (
                             <span className="text-xs text-gray-500">({product.typeName})</span>
@@ -715,7 +761,10 @@ export default function RubberCompaniesPage() {
                 </button>
                 <button
                   onClick={handleSave}
-                  disabled={saveMutation.isPending || !formData.name}
+                  disabled={(() => {
+                    const rawIsPending = saveMutation.isPending;
+                    return rawIsPending || !formData.name;
+                  })()}
                   className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50"
                 >
                   {saveMutation.isPending ? "Saving..." : "Save"}

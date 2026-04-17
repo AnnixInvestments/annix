@@ -1,5 +1,6 @@
 "use client";
 
+import { toPairs as entries, keys, values } from "es-toolkit/compat";
 import {
   boltSetCountPerBend as getBoltSetCountPerBend,
   boltSetCountPerFitting as getBoltSetCountPerFitting,
@@ -510,11 +511,14 @@ export default function ReviewSubmitStep(props: {
                         // Estimate: for FFF (3 flanges) = 3 welds, distribute proportionally
                         let linearWeldMm = 0;
                         if (weldCount >= 3) {
-                          linearWeldMm = 2 * mainCirc + branchCirc; // 2 main + 1 branch
+                          // 2 main + 1 branch
+                          linearWeldMm = 2 * mainCirc + branchCirc;
                         } else if (weldCount === 2) {
-                          linearWeldMm = 2 * mainCirc; // 2 main welds
+                          // 2 main welds
+                          linearWeldMm = 2 * mainCirc;
                         } else {
-                          linearWeldMm = mainCirc; // 1 main weld
+                          // 1 main weld
+                          linearWeldMm = mainCirc;
                         }
                         return (
                           <div className="text-purple-600 col-span-2">
@@ -631,7 +635,8 @@ export default function ReviewSubmitStep(props: {
                         const wt = entry.specs?.wallThicknessMm;
                         const rawPipeEndConfiguration4 = entry.specs?.pipeEndConfiguration;
                         const pipeEndConfig = rawPipeEndConfiguration4 || "PE";
-                        const flangeConnections = getWeldCountPerPipe(pipeEndConfig); // Number of flanged connections
+                        // Number of flanged connections
+                        const flangeConnections = getWeldCountPerPipe(pipeEndConfig);
                         if (!nb || !wt || flangeConnections === 0) return null;
                         const rawNb6 = nbToOdMap[nb];
                         const od = rawNb6 || nb * 1.05;
@@ -977,10 +982,7 @@ export default function ReviewSubmitStep(props: {
                   }
                 }
               });
-              const totalFlanges = Object.values(flangesBySize).reduce(
-                (sum, count) => sum + count,
-                0,
-              );
+              const totalFlanges = values(flangesBySize).reduce((sum, count) => sum + count, 0);
               if (totalFlanges === 0) return null;
               const rawPressureClassDesignation5 = rfqData.globalSpecs?.pressureClassDesignation;
               const pressureClass = rawPressureClassDesignation5 || "PN16";
@@ -1034,13 +1036,13 @@ export default function ReviewSubmitStep(props: {
             </button>
           </div>
 
-          {Object.keys(errors).length > 0 && (
+          {keys(errors).length > 0 && (
             <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
               <p className="text-sm font-medium text-red-800 mb-2">
                 Please fix the following errors:
               </p>
               <ul className="text-sm text-red-600 space-y-1">
-                {Object.entries(errors).map(([key, message]) => (
+                {entries(errors).map(([key, message]) => (
                   <li key={key}>• {message as string}</li>
                 ))}
               </ul>

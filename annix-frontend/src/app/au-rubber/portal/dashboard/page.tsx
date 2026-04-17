@@ -5,6 +5,7 @@ import {
   statusColor,
   statusLabel,
 } from "@annix/product-data/rubber/orderStatus";
+import { toPairs as entries } from "es-toolkit/compat";
 import Link from "next/link";
 import { useState } from "react";
 import { auRubberApiClient } from "@/app/lib/api/auRubberApi";
@@ -88,7 +89,7 @@ export default function AuRubberDashboard() {
     return rawColorsByStatus || "bg-gray-100 text-gray-800";
   };
 
-  const ordersByStatus: StatusCount[] = Object.entries(RUBBER_ORDER_STATUS).map(([key, value]) => ({
+  const ordersByStatus: StatusCount[] = entries(RUBBER_ORDER_STATUS).map(([key, value]) => ({
     status: value,
     label: statusLabel(value),
     count: orders.filter((o) => o.status === value).length,

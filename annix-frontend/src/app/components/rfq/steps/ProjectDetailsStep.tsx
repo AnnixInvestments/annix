@@ -1,6 +1,6 @@
 "use client";
 
-import { isNumber } from "es-toolkit/compat";
+import { isNumber, keys } from "es-toolkit/compat";
 import Link from "next/link";
 import React, { useCallback, useEffect, useState } from "react";
 import GoogleMapLocationPicker from "@/app/components/GoogleMapLocationPicker";
@@ -1627,7 +1627,7 @@ export default function ProjectDetailsStep() {
         updates.customerPhone = true;
       }
 
-      if (Object.keys(updates).length > 0) {
+      if (keys(updates).length > 0) {
         setCustomerAutoFilled((prev) => ({ ...prev, ...updates }));
       }
     }

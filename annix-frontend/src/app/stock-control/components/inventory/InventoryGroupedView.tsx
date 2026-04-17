@@ -1,3 +1,4 @@
+import { isObject } from "es-toolkit/compat";
 import Link from "next/link";
 import type { StockControlLocation, StockItem } from "@/app/lib/api/stockControlApi";
 import { formatZAR } from "../../lib/currency";
@@ -262,7 +263,7 @@ function LocationGroupCard({
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {group.items
-                .filter((item): item is StockItem => item != null && typeof item === "object")
+                .filter((item): item is StockItem => item != null && isObject(item))
                 .map((item) => (
                   <GroupedTableRow
                     key={item.id}

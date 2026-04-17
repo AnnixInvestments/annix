@@ -1,6 +1,7 @@
 "use client";
 
 import { Autocomplete, GoogleMap, Marker, useJsApiLoader } from "@react-google-maps/api";
+import { isString } from "es-toolkit/compat";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useToast } from "@/app/components/Toast";
 import {
@@ -41,7 +42,7 @@ function resolveConfig(config?: GoogleMapPreset | GoogleMapDisplayConfig): Googl
     return GOOGLE_MAP_PRESETS.default;
   }
 
-  if (typeof config === "string") {
+  if (isString(config)) {
     return GOOGLE_MAP_PRESETS[config];
   }
 
@@ -64,7 +65,8 @@ export default function GoogleMapLocationPicker(props: GoogleMapLocationPickerPr
   const [showManualInput, setShowManualInput] = useState(false);
 
   const { isLoaded, loadError } = useJsApiLoader({
-    googleMapsApiKey: apiKey || "placeholder", // Prevent hook error with placeholder
+    // Prevent hook error with placeholder
+    googleMapsApiKey: apiKey || "placeholder",
     libraries,
   });
 
@@ -82,42 +84,6 @@ export default function GoogleMapLocationPicker(props: GoogleMapLocationPickerPr
     !apiKey ||
     apiKey === "your_google_maps_api_key_here" ||
     apiKey === "test_key_replacement_needed";
-
-  if (invalidApiKey) {
-    return (
-      <div className="p-6 bg-red-50 border border-red-200 rounded-lg">
-        <div className="text-red-600 font-semibold mb-2">Google Maps Configuration Required</div>
-        <div className="text-red-600 text-sm mb-4">
-          A valid Google Maps API key is required to use this feature. Please configure
-          NEXT_PUBLIC_GOOGLE_MAPS_API_KEY in your environment variables.
-        </div>
-        <div className="bg-blue-50 p-4 rounded mb-4">
-          <p className="text-blue-700 font-semibold mb-2">Alternative: Manual Location Entry</p>
-          <p className="text-blue-600 text-sm">
-            You can enter the location manually by providing latitude and longitude coordinates.
-          </p>
-        </div>
-        <div className="flex gap-3">
-          <button
-            onClick={() => setShowManualInput(true)}
-            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-          >
-            Enter Location Manually
-          </button>
-          <button
-            onClick={onClose}
-            className="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400"
-          >
-            Close
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  if (showManualInput) {
-    return <ManualLocationInput onLocationSelect={onLocationSelect} onClose={onClose} />;
-  }
 
   const rawMapHeight = displayConfig.mapHeight;
   const rawMapHeight2 = displayConfig.mapHeight;
@@ -301,6 +267,42 @@ export default function GoogleMapLocationPicker(props: GoogleMapLocationPickerPr
     const location: Location = { lat, lng };
     onLocationSelect(location, undefined);
   }, [manualLat, manualLng, onLocationSelect]);
+
+  if (invalidApiKey) {
+    return (
+      <div className="p-6 bg-red-50 border border-red-200 rounded-lg">
+        <div className="text-red-600 font-semibold mb-2">Google Maps Configuration Required</div>
+        <div className="text-red-600 text-sm mb-4">
+          A valid Google Maps API key is required to use this feature. Please configure
+          NEXT_PUBLIC_GOOGLE_MAPS_API_KEY in your environment variables.
+        </div>
+        <div className="bg-blue-50 p-4 rounded mb-4">
+          <p className="text-blue-700 font-semibold mb-2">Alternative: Manual Location Entry</p>
+          <p className="text-blue-600 text-sm">
+            You can enter the location manually by providing latitude and longitude coordinates.
+          </p>
+        </div>
+        <div className="flex gap-3">
+          <button
+            onClick={() => setShowManualInput(true)}
+            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+          >
+            Enter Location Manually
+          </button>
+          <button
+            onClick={onClose}
+            className="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (showManualInput) {
+    return <ManualLocationInput onLocationSelect={onLocationSelect} onClose={onClose} />;
+  }
 
   // Show manual entry form when requested or when API key is missing
   if (showManualEntry || isApiKeyMissing) {

@@ -1,5 +1,6 @@
 "use client";
 
+import { isArray } from "es-toolkit/compat";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Breadcrumb } from "@/app/au-rubber/components/Breadcrumb";
@@ -40,8 +41,8 @@ export default function NewAuCocPage() {
         auRubberApiClient.companies(),
         auRubberApiClient.rollStock({ status: "IN_STOCK" }),
       ]);
-      setCompanies(Array.isArray(companiesData) ? companiesData : []);
-      setAvailableRolls(Array.isArray(rollsData) ? rollsData : []);
+      setCompanies(isArray(companiesData) ? companiesData : []);
+      setAvailableRolls(isArray(rollsData) ? rollsData : []);
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err : new Error("Failed to load data"));

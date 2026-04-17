@@ -24,6 +24,7 @@ export function useRemoteAccessPolling(props: UseRemoteAccessPollingOptions = {}
   const checkPendingRequests = useCallback(async () => {
     if (!enabled) return;
 
+    // eslint-disable-next-line no-restricted-syntax -- SSR guard; isUndefined(window) would throw
     if (typeof window === "undefined") return;
     const token = localStorage.getItem("customerAccessToken");
     if (!token) return;

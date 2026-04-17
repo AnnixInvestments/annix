@@ -1,5 +1,6 @@
 "use client";
 
+import { isArray } from "es-toolkit/compat";
 import {
   CheckCircle,
   Download,
@@ -241,10 +242,10 @@ export default function SupplierTaxInvoicesPage() {
         auRubberApiClient.companies(),
       ]);
 
-      const allCompanies = Array.isArray(companiesData) ? companiesData : [];
+      const allCompanies = isArray(companiesData) ? companiesData : [];
       const supplierCompanies = allCompanies.filter((c) => c.companyType === "SUPPLIER");
 
-      const allInvoices = Array.isArray(invoiceData) ? invoiceData : [];
+      const allInvoices = isArray(invoiceData) ? invoiceData : [];
       setInvoices(allInvoices.filter((inv) => !inv.isCreditNote));
       setCreditNotes(allInvoices.filter((inv) => inv.isCreditNote));
       setSuppliers(supplierCompanies);

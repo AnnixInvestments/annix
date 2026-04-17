@@ -1,6 +1,7 @@
 "use client";
 
 import { NACE_MAX_HARDNESS_HRC } from "@annix/product-data/steel";
+import { toPairs as entries, keys } from "es-toolkit/compat";
 import Link from "next/link";
 import React, { memo, useCallback, useEffect, useRef, useState } from "react";
 import { TangentExtensionsSection } from "@/app/components/rfq/sections/TangentExtensionsSection";
@@ -1301,7 +1302,7 @@ function BendFormComponent(props: BendFormProps) {
                         }));
                       }
 
-                      const fallbackNBs = Object.entries(STEEL_SPEC_NB_FALLBACK).find(([pattern]) =>
+                      const fallbackNBs = entries(STEEL_SPEC_NB_FALLBACK).find(([pattern]) =>
                         steelSpecName.includes(pattern),
                       )?.[1];
                       const nbs = fallbackNBs || [
@@ -3371,8 +3372,8 @@ function BendFormComponent(props: BendFormProps) {
                         );
                         const rawSteelSpecName10 = stub1SteelSpec?.steelSpecName;
                         const stub1SteelSpecName = rawSteelSpecName10 || "";
-                        const stub1FallbackNBs = Object.entries(STEEL_SPEC_NB_FALLBACK).find(
-                          ([pattern]) => stub1SteelSpecName.includes(pattern),
+                        const stub1FallbackNBs = entries(STEEL_SPEC_NB_FALLBACK).find(([pattern]) =>
+                          stub1SteelSpecName.includes(pattern),
                         )?.[1];
                         const allStub1Nbs = stub1FallbackNBs || [
                           15, 20, 25, 32, 40, 50, 65, 80, 100, 125, 150, 200, 250, 300,
@@ -3468,7 +3469,7 @@ function BendFormComponent(props: BendFormProps) {
                           300: 10.31,
                         };
                         const getSabs719Wt = (nb: number): number => {
-                          const sizes = Object.keys(SABS_719_WT)
+                          const sizes = keys(SABS_719_WT)
                             .map(Number)
                             .sort((a, b) => a - b);
                           let closest = sizes[0];
@@ -4078,7 +4079,7 @@ function BendFormComponent(props: BendFormProps) {
                           );
                           const rawSteelSpecName12 = stub2SteelSpec?.steelSpecName;
                           const stub2SteelSpecName = rawSteelSpecName12 || "";
-                          const stub2FallbackNBs = Object.entries(STEEL_SPEC_NB_FALLBACK).find(
+                          const stub2FallbackNBs = entries(STEEL_SPEC_NB_FALLBACK).find(
                             ([pattern]) => stub2SteelSpecName.includes(pattern),
                           )?.[1];
                           const allStub2Nbs = stub2FallbackNBs || [
@@ -4184,7 +4185,7 @@ function BendFormComponent(props: BendFormProps) {
                           };
 
                           const getSabs719Wt = (nb: number): number => {
-                            const sizes = Object.keys(SABS_719_WT)
+                            const sizes = keys(SABS_719_WT)
                               .map(Number)
                               .sort((a, b) => a - b);
                             let closest = sizes[0];

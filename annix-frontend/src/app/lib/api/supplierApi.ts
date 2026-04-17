@@ -57,7 +57,8 @@ export interface SupplierCompanyDto {
   industryType?: string;
   companySize?: "micro" | "small" | "medium" | "large" | "enterprise";
   // BEE fields
-  beeLevel?: number; // 1-8
+  // 1-8
+  beeLevel?: number;
   beeCertificateExpiry?: string;
   beeVerificationAgency?: string;
   isExemptMicroEnterprise?: boolean;

@@ -1,5 +1,6 @@
 "use client";
 
+import { isArray } from "es-toolkit/compat";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -36,7 +37,7 @@ export default function RollStockDetailPage() {
         auRubberApiClient.companies(),
       ]);
       setTraceability(traceabilityData);
-      setCompanies(Array.isArray(companiesData) ? companiesData : []);
+      setCompanies(isArray(companiesData) ? companiesData : []);
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err : new Error("Failed to load data"));

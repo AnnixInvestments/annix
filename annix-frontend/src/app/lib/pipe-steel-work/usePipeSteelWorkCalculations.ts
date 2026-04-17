@@ -1,5 +1,6 @@
 "use client";
 
+import { isArray } from "es-toolkit/compat";
 import { useCallback, useEffect, useState } from "react";
 import { log } from "@/app/lib/logger";
 import { pipeSteelWorkApi } from "./api";
@@ -194,7 +195,7 @@ export function usePipeSteelWorkCalculations(
         bracketType.toUpperCase(),
         nominalDiameterMm,
       );
-      if (Array.isArray(dimensions)) {
+      if (isArray(dimensions)) {
         const rawItem0 = dimensions[0];
         setBracketDimensions(rawItem0 || null);
       } else {

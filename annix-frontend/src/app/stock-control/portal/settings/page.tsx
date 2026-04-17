@@ -1,5 +1,6 @@
 "use client";
 
+import { toPairs as entries, keys } from "es-toolkit/compat";
 import { useRouter } from "next/navigation";
 import { Fragment, useCallback, useEffect, useState } from "react";
 import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
@@ -109,7 +110,7 @@ function MenuVisibilitySection({
 
   useEffect(() => {
     setLocalConfig(
-      Object.entries(rbacConfig).reduce<Record<string, string[]>>((acc, [key, r]) => {
+      entries(rbacConfig).reduce<Record<string, string[]>>((acc, [key, r]) => {
         acc[key] = [...r];
         return acc;
       }, {}),
@@ -198,7 +199,7 @@ function MenuVisibilitySection({
 
   const handleReset = useCallback(() => {
     setLocalConfig(
-      Object.entries(rbacConfig).reduce<Record<string, string[]>>((acc, [key, r]) => {
+      entries(rbacConfig).reduce<Record<string, string[]>>((acc, [key, r]) => {
         acc[key] = [...r];
         return acc;
       }, {}),
@@ -768,7 +769,7 @@ function ActionPermissionsSection({
 
   const roleKeys = roles.map((r) => r.key);
 
-  const actionKeys = Object.keys(labels);
+  const actionKeys = keys(labels);
   const groups = actionKeys.reduce<Record<string, string[]>>((acc, key) => {
     const labelEntry = labels[key];
     const groupVal = labelEntry ? labelEntry.group : null;
@@ -779,7 +780,7 @@ function ActionPermissionsSection({
     acc[group].push(key);
     return acc;
   }, {});
-  const groupNames = Object.keys(groups);
+  const groupNames = keys(groups);
 
   const handleToggle = useCallback((actionKey: string, role: string) => {
     if (role === "admin") return;

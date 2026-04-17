@@ -9,6 +9,7 @@ import {
   Text,
 } from "@react-three/drei";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
+import { isNumber } from "es-toolkit/compat";
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import {
@@ -154,9 +155,9 @@ const CameraTracker = ({
     );
     const hasValidPosition =
       savedPosition &&
-      typeof savedPosition[0] === "number" &&
-      typeof savedPosition[1] === "number" &&
-      typeof savedPosition[2] === "number";
+      isNumber(savedPosition[0]) &&
+      isNumber(savedPosition[1]) &&
+      isNumber(savedPosition[2]);
     if (hasValidPosition && controls && !hasRestoredRef.current) {
       log.debug(
         "CameraTracker restoring camera position",
@@ -168,9 +169,9 @@ const CameraTracker = ({
       camera.position.set(savedPosition[0], savedPosition[1], savedPosition[2]);
       if (
         savedTarget &&
-        typeof savedTarget[0] === "number" &&
-        typeof savedTarget[1] === "number" &&
-        typeof savedTarget[2] === "number"
+        isNumber(savedTarget[0]) &&
+        isNumber(savedTarget[1]) &&
+        isNumber(savedTarget[2])
       ) {
         const orbitControls = asOrbitControls(controls);
         if (orbitControls) {
@@ -405,7 +406,8 @@ const Scene = (props: Props) => {
   // After rotation, the 90° bend sits with inlet horizontal and outlet vertical
   // The extrados at 45° (midpoint) is the reference for steelwork positioning
   const extradosR = bendR + outerR;
-  const midAngle = Math.PI / 4; // 45 degrees - midpoint of the 90° bend
+  // 45 degrees - midpoint of the 90° bend
+  const midAngle = Math.PI / 4;
   // At 45°, the extrados point in rotated coordinates:
   // X offset: how far from origin the midpoint of the bend is horizontally
   const duckfootExtradosMidX = -extradosR * Math.sin(midAngle);
@@ -2282,7 +2284,8 @@ const Scene = (props: Props) => {
           // Calculate steelwork position based on bend geometry
           // The extrados at 45° determines where the gussets meet the pipe
           const extradosR = bendR + outerR;
-          const midAngle = Math.PI / 4; // 45 degrees
+          // 45 degrees
+          const midAngle = Math.PI / 4;
           const bendMidpointX = -extradosR * Math.sin(midAngle);
           const bendMidpointY = bendR - extradosR * Math.cos(midAngle);
           const gussetRefX = bendMidpointX;
@@ -2359,12 +2362,14 @@ const Scene = (props: Props) => {
               {/* Has semicircular cutout at top to cradle the pipe */}
               {(() => {
                 const gusset2Shape = new THREE.Shape();
-                const gusset2Width = basePlateYDim; // W to Y spans basePlateYDim (Z direction)
+                // W to Y spans basePlateYDim (Z direction)
+                const gusset2Width = basePlateYDim;
 
                 // Calculate the pipe center position at 45° (middle of bend) in local coordinates
                 // This is where the yellow gusset intersects the blue gusset
                 const extradosR = bendR + outerR;
-                const midAngleRad = Math.PI / 4; // 45 degrees
+                // 45 degrees
+                const midAngleRad = Math.PI / 4;
                 const extradosAt45Y =
                   bendR - extradosR * Math.cos(midAngleRad) + duckfootYOffset - steelworkY;
 
@@ -2389,9 +2394,12 @@ const Scene = (props: Props) => {
                 // Arc goes from 0 (right) to PI (left) - this creates a downward-facing semicircle
                 const arcSegments = 24;
                 for (let i = 0; i <= arcSegments; i++) {
-                  const angle = (i / arcSegments) * Math.PI; // 0 to PI
-                  const arcX = cutoutRadius * Math.cos(angle); // Goes from +radius to -radius
-                  const arcY = cutoutCenterY - cutoutRadius * Math.sin(angle); // Dips down by radius at center
+                  // 0 to PI
+                  const angle = (i / arcSegments) * Math.PI;
+                  // Goes from +radius to -radius
+                  const arcX = cutoutRadius * Math.cos(angle);
+                  // Dips down by radius at center
+                  const arcY = cutoutCenterY - cutoutRadius * Math.sin(angle);
                   gusset2Shape.lineTo(arcX, arcY);
                 }
 
@@ -2446,8 +2454,10 @@ const Scene = (props: Props) => {
                 // Bottom corners A and B span the base plate width in X direction
                 // Centered at X=0 in local coords
                 const halfPlateX = basePlateXDim / 2;
-                const aBottomX = halfPlateX; // Right side (positive X)
-                const bBottomX = -halfPlateX; // Left side (negative X)
+                // Right side (positive X)
+                const aBottomX = halfPlateX;
+                // Left side (negative X)
+                const bBottomX = -halfPlateX;
 
                 // Build shape in XY plane - will be extruded in Z
                 const yellowShape = new THREE.Shape();
@@ -2542,7 +2552,8 @@ const Scene = (props: Props) => {
                     </Text>
                     {/* MM markers along right edge (A to C/D) */}
                     {(() => {
-                      const mmInterval = 20 / SCALE; // 20mm intervals
+                      // 20mm intervals
+                      const mmInterval = 20 / SCALE;
                       const rightEdgeStartX = aBottomX;
                       const rightEdgeStartY = 0;
                       const rightEdgeEndX = rightTopX;
@@ -2560,7 +2571,8 @@ const Scene = (props: Props) => {
                         const dist = i * mmInterval;
                         const markerX = rightEdgeStartX + rightDirX * dist;
                         const markerY = rightEdgeStartY + rightDirY * dist;
-                        const tickOffsetX = rightDirY * 0.15; // Perpendicular offset
+                        // Perpendicular offset
+                        const tickOffsetX = rightDirY * 0.15;
                         const tickOffsetY = -rightDirX * 0.15;
                         const mmValue = i * 20;
 
@@ -2595,7 +2607,8 @@ const Scene = (props: Props) => {
                     })()}
                     {/* MM markers along left edge (B to D/C) */}
                     {(() => {
-                      const mmInterval = 20 / SCALE; // 20mm intervals
+                      // 20mm intervals
+                      const mmInterval = 20 / SCALE;
                       const leftEdgeStartX = bBottomX;
                       const leftEdgeStartY = 0;
                       const leftEdgeEndX = leftTopX;
@@ -2612,7 +2625,8 @@ const Scene = (props: Props) => {
                         const dist = i * mmInterval;
                         const markerX = leftEdgeStartX + leftDirX * dist;
                         const markerY = leftEdgeStartY + leftDirY * dist;
-                        const tickOffsetX = -leftDirY * 0.15; // Perpendicular offset
+                        // Perpendicular offset
+                        const tickOffsetX = -leftDirY * 0.15;
                         const tickOffsetY = leftDirX * 0.15;
                         const mmValue = i * 20;
 

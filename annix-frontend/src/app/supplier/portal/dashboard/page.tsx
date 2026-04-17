@@ -40,8 +40,10 @@ function SupplierDashboardContent() {
   const markViewedMutation = useMarkBoqViewed();
   const setReminderMutation = useSetBoqReminder();
 
-  const onboardingStatus = onboardingQuery.data ?? null;
-  const boqs = boqsQuery.data ?? [];
+  const rawOnboardingData = onboardingQuery.data;
+  const onboardingStatus = rawOnboardingData ?? null;
+  const rawBoqsData = boqsQuery.data;
+  const boqs = rawBoqsData ?? [];
   const [declineReason, setDeclineReason] = useState("");
   const [showDeclineModal, setShowDeclineModal] = useState(false);
   const [selectedBoqForDecline, setSelectedBoqForDecline] = useState<SupplierBoqListItem | null>(
@@ -163,7 +165,13 @@ function SupplierDashboardContent() {
       `DTSTART:${eventStart}`,
       `DTEND:${eventEnd}`,
       `SUMMARY:RFQ Closing - ${boq.boqNumber}`,
-      `DESCRIPTION:RFQ ${boq.boqNumber} closing date for ${boq.projectInfo?.name || "Project"}\\nCustomer: ${boq.customerInfo?.company || boq.customerInfo?.name || "N/A"}`,
+      `DESCRIPTION:RFQ ${boq.boqNumber} closing date for ${(() => {
+        const rawName = boq.projectInfo?.name;
+        return rawName || "Project";
+      })()}\\nCustomer: ${(() => {
+        const rawCompany = boq.customerInfo?.company;
+        return rawCompany || boq.customerInfo?.name || "N/A";
+      })()}`,
       "END:VEVENT",
       "END:VCALENDAR",
     ].join("\r\n");
@@ -229,7 +237,10 @@ function SupplierDashboardContent() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">
-              Welcome, {supplier?.firstName || supplier?.companyName || "Supplier"}
+              Welcome, {(() => {
+                const rawFirstName = supplier?.firstName;
+                return rawFirstName || supplier?.companyName || "Supplier";
+              })()}
             </h1>
             <p className="mt-1 text-gray-600">{dashboard?.profile.email}</p>
           </div>
@@ -369,7 +380,10 @@ function SupplierDashboardContent() {
                                 d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
                               />
                             </svg>
-                            {boq.customerInfo?.company || boq.customerInfo?.name || "Customer"}
+                            {(() => {
+                              const rawCompany = boq.customerInfo?.company;
+                              return rawCompany || boq.customerInfo?.name || "Customer";
+                            })()}
                           </span>
                           <span className="flex items-center gap-1">
                             <svg
@@ -385,7 +399,10 @@ function SupplierDashboardContent() {
                                 d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
                               />
                             </svg>
-                            {boq.projectInfo?.name || "Project"}
+                            {(() => {
+                              const rawName = boq.projectInfo?.name;
+                              return rawName || "Project";
+                            })()}
                           </span>
                           <span className="flex items-center gap-1">
                             <svg
@@ -528,7 +545,12 @@ function SupplierDashboardContent() {
         <>
           {/* Status Banner */}
           <div
-            className={`rounded-lg border p-4 ${getStatusColor(onboardingStatus?.status || "draft")}`}
+            className={`rounded-lg border p-4 ${getStatusColor(
+              (() => {
+                const rawStatus = onboardingStatus?.status;
+                return rawStatus || "draft";
+              })(),
+            )}`}
           >
             <div className="flex items-start">
               <div className="flex-shrink-0">
@@ -552,10 +574,21 @@ function SupplierDashboardContent() {
               </div>
               <div className="ml-3">
                 <h3 className="text-sm font-medium">
-                  Status: {(onboardingStatus?.status || "draft").replace(/_/g, " ").toUpperCase()}
+                  Status:{" "}
+                  {(() => {
+                    const rawStatus = onboardingStatus?.status;
+                    return rawStatus || "draft";
+                  })()
+                    .replace(/_/g, " ")
+                    .toUpperCase()}
                 </h3>
                 <p className="mt-1 text-sm">
-                  {getStatusMessage(onboardingStatus?.status || "draft")}
+                  {getStatusMessage(
+                    (() => {
+                      const rawStatus = onboardingStatus?.status;
+                      return rawStatus || "draft";
+                    })(),
+                  )}
                 </p>
               </div>
             </div>
@@ -567,12 +600,18 @@ function SupplierDashboardContent() {
             <div className="space-y-3">
               <ChecklistItem
                 label="Company Details"
-                complete={onboardingStatus?.companyDetailsComplete || false}
+                complete={(() => {
+                  const rawCompanyDetailsComplete = onboardingStatus?.companyDetailsComplete;
+                  return rawCompanyDetailsComplete || false;
+                })()}
                 href="/supplier/portal/onboarding"
               />
               <ChecklistItem
                 label="Required Documents"
-                complete={onboardingStatus?.documentsComplete || false}
+                complete={(() => {
+                  const rawDocumentsComplete = onboardingStatus?.documentsComplete;
+                  return rawDocumentsComplete || false;
+                })()}
                 href="/supplier/portal/documents"
                 subtext={
                   onboardingStatus?.missingDocuments?.length
@@ -719,11 +758,14 @@ function SupplierDashboardContent() {
                   type="button"
                   onClick={handleConfirmDecline}
                   className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 disabled:opacity-50"
-                  disabled={
-                    declineMutation.isPending ||
-                    !selectedDeclineReason ||
-                    (selectedDeclineReason === "other" && !declineReason.trim())
-                  }
+                  disabled={(() => {
+                    const rawIsPending = declineMutation.isPending;
+                    return (
+                      rawIsPending ||
+                      !selectedDeclineReason ||
+                      (selectedDeclineReason === "other" && !declineReason.trim())
+                    );
+                  })()}
                 >
                   {declineMutation.isPending ? "Declining..." : "Confirm Decline"}
                 </button>

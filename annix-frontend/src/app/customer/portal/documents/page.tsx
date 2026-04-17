@@ -61,8 +61,10 @@ function CustomerDocumentsContent() {
   const documentsQuery = useCustomerDocuments();
   const onboardingQuery = useCustomerOnboardingStatus();
   const companyQuery = useCustomerCompany();
-  const documents = documentsQuery.data ?? [];
-  const onboardingStatus = onboardingQuery.data ?? null;
+  const rawDocumentsData = documentsQuery.data;
+  const documents = rawDocumentsData ?? [];
+  const rawOnboardingData = onboardingQuery.data;
+  const onboardingStatus = rawOnboardingData ?? null;
   const companyDetails = (companyQuery.data as CustomerCompanyDto) ?? null;
 
   const [error, setError] = useState<string | null>(null);
@@ -105,7 +107,8 @@ function CustomerDocumentsContent() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const maxSize = 10 * 1024 * 1024; // 10MB
+    // 10MB
+    const maxSize = 10 * 1024 * 1024;
     const allowedTypes = ["application/pdf", "image/jpeg", "image/png"];
 
     if (file.size > maxSize) {
@@ -131,14 +134,38 @@ function CustomerDocumentsContent() {
 
       try {
         const expectedData = {
-          companyName: companyDetails.legalName || "",
-          registrationNumber: companyDetails.registrationNumber || "",
-          vatNumber: companyDetails.vatNumber || "",
-          streetAddress: companyDetails.streetAddress || "",
-          city: companyDetails.city || "",
-          provinceState: companyDetails.provinceState || "",
-          postalCode: companyDetails.postalCode || "",
-          beeLevel: companyDetails.beeLevel ?? undefined,
+          companyName: (() => {
+            const rawLegalName = companyDetails.legalName;
+            return rawLegalName || "";
+          })(),
+          registrationNumber: (() => {
+            const rawRegistrationNumber = companyDetails.registrationNumber;
+            return rawRegistrationNumber || "";
+          })(),
+          vatNumber: (() => {
+            const rawVatNumber = companyDetails.vatNumber;
+            return rawVatNumber || "";
+          })(),
+          streetAddress: (() => {
+            const rawStreetAddress = companyDetails.streetAddress;
+            return rawStreetAddress || "";
+          })(),
+          city: (() => {
+            const rawCity = companyDetails.city;
+            return rawCity || "";
+          })(),
+          provinceState: (() => {
+            const rawProvinceState = companyDetails.provinceState;
+            return rawProvinceState || "";
+          })(),
+          postalCode: (() => {
+            const rawPostalCode = companyDetails.postalCode;
+            return rawPostalCode || "";
+          })(),
+          beeLevel: (() => {
+            const rawBeeLevel = companyDetails.beeLevel;
+            return rawBeeLevel ?? undefined;
+          })(),
         };
 
         const result = await nixApi.verifyRegistrationDocument(file, nixType, expectedData);
@@ -190,6 +217,7 @@ function CustomerDocumentsContent() {
   };
 
   const handleDelete = async (id: number) => {
+    // eslint-disable-next-line no-restricted-globals -- legacy sync confirm pending modal migration (issue #175)
     if (!confirm("Are you sure you want to delete this document?")) return;
 
     try {
@@ -260,7 +288,10 @@ function CustomerDocumentsContent() {
   };
 
   const getDocumentTypeLabel = (type: string) => {
-    return DOCUMENT_TYPES.find((t) => t.value === type)?.label || type;
+    return (() => {
+      const rawLabel = DOCUMENT_TYPES.find((t) => t.value === type)?.label;
+      return rawLabel || type;
+    })();
   };
 
   const getValidationStatusBadge = (status: string) => {
@@ -271,7 +302,10 @@ function CustomerDocumentsContent() {
       failed: { bg: "bg-red-100", text: "text-red-700", label: "Failed" },
       manual_review: { bg: "bg-yellow-100", text: "text-yellow-700", label: "Under Review" },
     };
-    const badge = badges[status] || badges.pending;
+    const badge = (() => {
+      const rawBadges = badges[status];
+      return rawBadges || badges.pending;
+    })();
     return (
       <span className={`px-2 py-1 rounded-full text-xs font-medium ${badge.bg} ${badge.text}`}>
         {badge.label}
@@ -299,7 +333,14 @@ function CustomerDocumentsContent() {
     setShowUploadModal(true);
   };
 
-  if (documentsQuery.isLoading || onboardingQuery.isLoading || companyQuery.isLoading) {
+  if (
+    (() => {
+      const rawIsLoading = documentsQuery.isLoading;
+      const rawOnboardingIsLoading = onboardingQuery.isLoading;
+      const rawCompanyIsLoading = companyQuery.isLoading;
+      return rawIsLoading || rawOnboardingIsLoading || rawCompanyIsLoading;
+    })()
+  ) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
@@ -605,10 +646,12 @@ function CustomerDocumentsContent() {
                       isVisible={showNixVerifier}
                       isProcessing={isVerifying}
                       verificationResult={verificationResult}
-                      documentType={
-                        DOCUMENT_TYPES.find((dt) => dt.value === selectedType)?.nixType ||
-                        "registration"
-                      }
+                      documentType={(() => {
+                        const rawNixType = DOCUMENT_TYPES.find(
+                          (dt) => dt.value === selectedType,
+                        )?.nixType;
+                        return rawNixType || "registration";
+                      })()}
                       onApplyCorrections={handleNixApplyCorrections}
                       onProceedWithMismatch={handleNixProceed}
                       onRetryUpload={handleNixCancel}

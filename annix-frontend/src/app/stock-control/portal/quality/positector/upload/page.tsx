@@ -1,5 +1,6 @@
 "use client";
 
+import { toPairs as entries } from "es-toolkit/compat";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
@@ -702,7 +703,7 @@ export default function PositectorUploadPage() {
                 )}
               </div>
               <div className="flex flex-wrap gap-3">
-                {Object.entries(
+                {entries(
                   bundleAnalysis.reports.reduce<Record<string, number>>(
                     (acc, r) => ({
                       ...acc,

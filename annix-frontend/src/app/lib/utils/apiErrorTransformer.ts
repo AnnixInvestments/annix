@@ -1,3 +1,5 @@
+import { isArray, isObject } from "es-toolkit/compat";
+
 interface ApiErrorResponse {
   message?: string | string[];
   statusCode?: number;
@@ -33,10 +35,10 @@ export function friendlyErrorMessage(error: unknown): string {
     return error.message;
   }
 
-  if (typeof error === "object" && error !== null) {
+  if (isObject(error)) {
     const apiError = error as ApiErrorResponse;
     if (apiError.message) {
-      if (Array.isArray(apiError.message)) {
+      if (isArray(apiError.message)) {
         return apiError.message.join(". ");
       }
       return apiError.message;

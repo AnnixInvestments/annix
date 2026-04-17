@@ -1,3 +1,4 @@
+import { isObject } from "es-toolkit/compat";
 import Link from "next/link";
 import { useState } from "react";
 import type { StockControlLocation, StockItem } from "@/app/lib/api/stockControlApi";
@@ -37,9 +38,7 @@ interface InventoryListViewProps {
 
 function buildCategoryGroups(items: StockItem[]): { category: string; items: StockItem[] }[] {
   const map = new Map<string, StockItem[]>();
-  const validItems = items.filter(
-    (item): item is StockItem => item != null && typeof item === "object",
-  );
+  const validItems = items.filter((item): item is StockItem => item != null && isObject(item));
   for (const item of validItems) {
     const category = item.category;
     const cat = category || "Uncategorized";
@@ -221,7 +220,7 @@ export function InventoryListView(props: InventoryListViewProps) {
                     );
                   })
                 : items
-                    .filter((item): item is StockItem => item != null && typeof item === "object")
+                    .filter((item): item is StockItem => item != null && isObject(item))
                     .map((item) => (
                       <ListTableRow
                         key={item.id}

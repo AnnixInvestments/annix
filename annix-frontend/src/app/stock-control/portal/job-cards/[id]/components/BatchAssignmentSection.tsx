@@ -1,5 +1,6 @@
 "use client";
 
+import { isArray, keys } from "es-toolkit/compat";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { PdfPreviewModal, usePdfPreview } from "@/app/components/PdfPreviewModal";
 import type {
@@ -111,7 +112,7 @@ export function BatchAssignmentSection(props: BatchAssignmentSectionProps) {
     try {
       setIsLoading(true);
       const result = await stockControlApiClient.batchAssignmentsForJobCard(jobCardId);
-      setAssignments(Array.isArray(result) ? result : []);
+      setAssignments(isArray(result) ? result : []);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load batch assignments");
     } finally {
@@ -122,7 +123,7 @@ export function BatchAssignmentSection(props: BatchAssignmentSectionProps) {
   const fetchDefelskoBatches = useCallback(async () => {
     try {
       const result = await stockControlApiClient.defelskoBatchesForJobCard(jobCardId);
-      setDefelskoBatches(Array.isArray(result) ? result : []);
+      setDefelskoBatches(isArray(result) ? result : []);
     } catch {
       setDefelskoBatches([]);
     }
@@ -172,7 +173,7 @@ export function BatchAssignmentSection(props: BatchAssignmentSectionProps) {
     return map;
   }, [defelskoBatches]);
 
-  const hasDefelskoBatches = Object.keys(defelskoBatchMap).length > 0;
+  const hasDefelskoBatches = keys(defelskoBatchMap).length > 0;
 
   const allFieldsAssigned = useMemo(() => {
     if (fields.length === 0) return false;
@@ -385,7 +386,7 @@ export function BatchAssignmentSection(props: BatchAssignmentSectionProps) {
           {fields.map((field) => {
             const rawFieldGroups = assignmentsByField[field.fieldKey];
             const fieldGroups = rawFieldGroups || {};
-            const batchKeys = Object.keys(fieldGroups);
+            const batchKeys = keys(fieldGroups);
             const rawAssignedIds = assignedItemIdsByField[field.fieldKey];
             const assignedIds = rawAssignedIds || new Set<number>();
             const unassignedCount = lineItems.filter((li) => !assignedIds.has(li.id)).length;

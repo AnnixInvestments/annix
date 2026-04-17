@@ -1,5 +1,6 @@
 "use client";
 
+import { keys } from "es-toolkit/compat";
 import Link from "next/link";
 import { useState } from "react";
 import type { CreateCustomFieldDto, CustomFieldType } from "@/app/lib/api/annixRepApi";
@@ -585,7 +586,7 @@ export default function CustomFieldsSettingsPage() {
                   }
                   className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-700 dark:text-white"
                 >
-                  {(Object.keys(fieldTypeLabels) as CustomFieldType[]).map((type) => (
+                  {(keys(fieldTypeLabels) as CustomFieldType[]).map((type) => (
                     <option key={type} value={type}>
                       {fieldTypeLabels[type]}
                     </option>

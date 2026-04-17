@@ -1,5 +1,6 @@
 "use client";
 
+import { isArray } from "es-toolkit/compat";
 import { Calendar, ExternalLink, Globe, Newspaper } from "lucide-react";
 import { useState } from "react";
 import { formatDateZA, fromISO } from "@/app/lib/datetime";
@@ -171,7 +172,7 @@ export default function RegulatoryPage() {
   );
 
   const activeQuery = activeCategory === "all" ? allUpdates : categoryUpdates;
-  const updates: RegulatoryUpdate[] = Array.isArray(activeQuery.data) ? activeQuery.data : [];
+  const updates: RegulatoryUpdate[] = isArray(activeQuery.data) ? activeQuery.data : [];
   const isLoading = activeQuery.isLoading;
   const error = activeQuery.error;
 

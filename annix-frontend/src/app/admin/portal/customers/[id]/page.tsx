@@ -84,6 +84,7 @@ export default function CustomerDetailPage() {
   };
 
   const handleReactivate = async () => {
+    // eslint-disable-next-line no-restricted-globals -- legacy sync confirm pending modal migration (issue #175)
     if (!confirm("Are you sure you want to reactivate this customer account?")) {
       return;
     }
@@ -101,6 +102,7 @@ export default function CustomerDetailPage() {
   };
 
   const handleResetDevice = async () => {
+    // eslint-disable-next-line no-restricted-globals -- legacy sync prompt pending modal migration (issue #175)
     const reason = prompt("Please provide a reason for resetting device binding:");
     if (!reason) return;
 
@@ -269,7 +271,8 @@ export default function CustomerDetailPage() {
     );
   }
 
-  if (customerQuery.error || !customer) {
+  const customerQueryError = customerQuery.error;
+  if (customerQueryError || !customer) {
     return (
       <div className="flex items-center justify-center min-h-96">
         <div className="text-center">

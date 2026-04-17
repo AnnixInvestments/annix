@@ -1,6 +1,7 @@
 "use client";
 
 import { useQueryClient } from "@tanstack/react-query";
+import { toPairs as entries, keys } from "es-toolkit/compat";
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type {
   EligibleUser,
@@ -147,7 +148,10 @@ export function WorkflowConfigurationSection({ teamMembers }: WorkflowConfigurat
     [allSteps],
   );
 
-  const triggerKey = (s: WorkflowStepConfig) => s.triggerAfterStep || "";
+  const triggerKey = (s: WorkflowStepConfig) => {
+    const rawTriggerAfterStep = s.triggerAfterStep;
+    return rawTriggerAfterStep || "";
+  };
 
   const followersByKey = useMemo(
     () =>
@@ -724,6 +728,7 @@ export function WorkflowConfigurationSection({ teamMembers }: WorkflowConfigurat
                   const branchColor = step.branchColor;
                   const actionLabel = step.actionLabel;
                   const rejoinAtStep = step.rejoinAtStep;
+                  const rawBranchType = step.branchType;
                   const assignment = assignmentsByStep[step.key];
                   const primaryUserId = assignment?.primaryUserId;
                   const secondaryUserId = assignment?.secondaryUserId;
@@ -940,15 +945,14 @@ export function WorkflowConfigurationSection({ teamMembers }: WorkflowConfigurat
                           {(() => {
                             const outcomes = resolvedOutcomes(step);
                             const phaseLabels = step.phaseActionLabels;
-                            const hasPhases =
-                              !isBg && phaseLabels && Object.keys(phaseLabels).length > 0;
+                            const hasPhases = !isBg && phaseLabels && keys(phaseLabels).length > 0;
                             const hasOutcomes = outcomes && outcomes.length > 0;
 
                             if (hasPhases || hasOutcomes) {
                               return (
                                 <div className="flex flex-wrap gap-1">
                                   {hasPhases &&
-                                    Object.entries(phaseLabels).map(([phase, label]) => (
+                                    entries(phaseLabels).map(([phase, label]) => (
                                       <span
                                         key={`phase-${phase}`}
                                         className="inline-flex items-center px-1.5 py-0.5 rounded border text-[10px] font-medium bg-teal-100 text-teal-700 border-teal-300"
@@ -1574,7 +1578,7 @@ export function WorkflowConfigurationSection({ teamMembers }: WorkflowConfigurat
                                             Branch Type:
                                           </span>
                                           <select
-                                            value={step.branchType || "loop"}
+                                            value={rawBranchType || "loop"}
                                             onChange={async (e) => {
                                               const val = e.target.value as "loop" | "connect";
                                               setSaving(true);

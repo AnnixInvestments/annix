@@ -237,13 +237,18 @@ function FieldComparisonRow({ comparison }: { comparison: FieldComparisonResult 
     beeLevel: "BEE Level",
   };
 
+  const rawFieldLabel = fieldLabels[comparison.field];
+  const fieldLabel = rawFieldLabel || comparison.field;
+  const rawExpected = comparison.expected;
+  const expectedDisplay = rawExpected ?? "-";
+  const rawExtracted = comparison.extracted;
+  const extractedDisplay = rawExtracted ?? "-";
+
   return (
     <tr className={comparison.matches ? "bg-white" : "bg-red-50"}>
-      <td className="px-4 py-3 text-sm font-medium text-gray-900">
-        {fieldLabels[comparison.field] || comparison.field}
-      </td>
-      <td className="px-4 py-3 text-sm text-gray-600">{comparison.expected ?? "-"}</td>
-      <td className="px-4 py-3 text-sm text-gray-600">{comparison.extracted ?? "-"}</td>
+      <td className="px-4 py-3 text-sm font-medium text-gray-900">{fieldLabel}</td>
+      <td className="px-4 py-3 text-sm text-gray-600">{expectedDisplay}</td>
+      <td className="px-4 py-3 text-sm text-gray-600">{extractedDisplay}</td>
       <td className="px-4 py-3">
         <MatchIndicator matches={comparison.matches} similarity={comparison.similarity} />
       </td>
@@ -687,29 +692,40 @@ export function DocumentReviewModal(props: DocumentReviewModalProps) {
                           </tr>
                         </thead>
                         <tbody className="bg-white divide-y divide-gray-200">
-                          {data.fieldComparison.map((comparison) =>
-                            isLikelyXfaPdf ? (
+                          {data.fieldComparison.map((comparison) => {
+                            if (!isLikelyXfaPdf) {
+                              return (
+                                <FieldComparisonRow
+                                  key={comparison.field}
+                                  comparison={comparison}
+                                />
+                              );
+                            }
+                            const fieldLabelMap: Record<string, string> = {
+                              companyName: "Company Name",
+                              registrationNumber: "Registration No.",
+                              vatNumber: "VAT Number",
+                              streetAddress: "Street Address",
+                              city: "City",
+                              provinceState: "Province",
+                              postalCode: "Postal Code",
+                              beeLevel: "BEE Level",
+                            };
+                            const rawFieldLabel = fieldLabelMap[comparison.field];
+                            const fieldLabel = rawFieldLabel || comparison.field;
+                            const rawExpected = comparison.expected;
+                            const expectedDisplay = rawExpected ?? "-";
+                            return (
                               <tr key={comparison.field} className="bg-white">
                                 <td className="px-4 py-3 text-sm font-medium text-gray-900">
-                                  {{
-                                    companyName: "Company Name",
-                                    registrationNumber: "Registration No.",
-                                    vatNumber: "VAT Number",
-                                    streetAddress: "Street Address",
-                                    city: "City",
-                                    provinceState: "Province",
-                                    postalCode: "Postal Code",
-                                    beeLevel: "BEE Level",
-                                  }[comparison.field] || comparison.field}
+                                  {fieldLabel}
                                 </td>
                                 <td className="px-4 py-3 text-sm text-gray-900 font-medium">
-                                  {comparison.expected ?? "-"}
+                                  {expectedDisplay}
                                 </td>
                               </tr>
-                            ) : (
-                              <FieldComparisonRow key={comparison.field} comparison={comparison} />
-                            ),
-                          )}
+                            );
+                          })}
                         </tbody>
                       </table>
                     </div>
@@ -840,21 +856,29 @@ export function DocumentReviewModal(props: DocumentReviewModalProps) {
             </div>
           )}
 
-          {data && showTrainingModal && (
-            <NixTrainingModal
-              isOpen={showTrainingModal}
-              documentId={data.documentId}
-              entityId={entityType === "supplier" ? data.supplier?.id || 0 : data.customer?.id || 0}
-              entityType={entityType}
-              documentType={data.documentType}
-              fieldComparison={data.fieldComparison}
-              onClose={() => setShowTrainingModal(false)}
-              onTrainingComplete={() => {
-                setShowTrainingModal(false);
-                onReVerify();
-              }}
-            />
-          )}
+          {(() => {
+            if (!data || !showTrainingModal) return null;
+            const rawSupplierId = data.supplier?.id;
+            const rawCustomerId = data.customer?.id;
+            const resolvedSupplierId = rawSupplierId || 0;
+            const resolvedCustomerId = rawCustomerId || 0;
+            const entityId = entityType === "supplier" ? resolvedSupplierId : resolvedCustomerId;
+            return (
+              <NixTrainingModal
+                isOpen={showTrainingModal}
+                documentId={data.documentId}
+                entityId={entityId}
+                entityType={entityType}
+                documentType={data.documentType}
+                fieldComparison={data.fieldComparison}
+                onClose={() => setShowTrainingModal(false)}
+                onTrainingComplete={() => {
+                  setShowTrainingModal(false);
+                  onReVerify();
+                }}
+              />
+            );
+          })()}
         </div>
       </div>
     </div>,

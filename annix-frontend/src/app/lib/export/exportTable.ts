@@ -11,6 +11,7 @@ import {
   TextRun,
   WidthType,
 } from "docx";
+import { toPairs as entries } from "es-toolkit/compat";
 import { saveAs } from "file-saver";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -97,7 +98,7 @@ export function exportToPDF(
 
   if (metadata) {
     doc.setFontSize(10);
-    Object.entries(metadata).forEach(([key, value]) => {
+    entries(metadata).forEach(([key, value]) => {
       doc.text(`${key}: ${value}`, 14, startY);
       startY += 6;
     });
@@ -171,7 +172,7 @@ export async function exportToWord(
   }
 
   if (metadata) {
-    Object.entries(metadata).forEach(([key, value]) => {
+    entries(metadata).forEach(([key, value]) => {
       docChildren.push(
         new Paragraph({
           children: [new TextRun({ text: `${key}: `, bold: true }), new TextRun({ text: value })],

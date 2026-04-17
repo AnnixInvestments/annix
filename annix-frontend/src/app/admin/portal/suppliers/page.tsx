@@ -41,8 +41,10 @@ export default function AdminSuppliersPage() {
 
   const inviteMutation = useInviteSupplier();
 
-  const supplierList = suppliersQuery.data?.items || suppliersQuery.data?.suppliers || [];
-  const total = suppliersQuery.data?.total || 0;
+  const rawItems = suppliersQuery.data?.items;
+  const supplierList = rawItems || suppliersQuery.data?.suppliers || [];
+  const rawTotalValue = suppliersQuery.data?.total;
+  const total = rawTotalValue || 0;
 
   const stats = {
     total,
@@ -84,8 +86,14 @@ export default function AdminSuppliersPage() {
           <div className="flex items-center">
             <div className="flex-shrink-0 h-10 w-10">
               <div className="h-10 w-10 rounded-full bg-purple-500 flex items-center justify-center text-white font-semibold">
-                {row.original.firstName?.[0] || "S"}
-                {row.original.lastName?.[0] || "P"}
+                {(() => {
+                  const rawFirstName = row.original.firstName?.[0];
+                  return rawFirstName || "S";
+                })()}
+                {(() => {
+                  const rawLastName = row.original.lastName?.[0];
+                  return rawLastName || "P";
+                })()}
               </div>
             </div>
             <div className="ml-4">

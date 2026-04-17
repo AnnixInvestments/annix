@@ -1,5 +1,6 @@
 "use client";
 
+import { toPairs as entries, isArray, isString } from "es-toolkit/compat";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { guideVisibleToRole, type HowToGuideFrontmatter, isAdminOnly } from "../types";
@@ -86,8 +87,8 @@ export default function HowToIndexClient(props: HowToIndexClientProps) {
       const raw = localStorage.getItem(props.recentKey);
       if (raw) {
         const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed)) {
-          setRecent(parsed.filter((v) => typeof v === "string"));
+        if (isArray(parsed)) {
+          setRecent(parsed.filter((v) => isString(v)));
         }
       }
     } catch (e) {
@@ -216,7 +217,7 @@ export default function HowToIndexClient(props: HowToIndexClientProps) {
         </div>
       )}
       <div className="space-y-8">
-        {Object.entries(grouped).map(([category, guides]) => (
+        {entries(grouped).map(([category, guides]) => (
           <section key={category}>
             <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">
               {category}

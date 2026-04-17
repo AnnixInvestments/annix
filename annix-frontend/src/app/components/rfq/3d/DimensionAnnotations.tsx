@@ -101,6 +101,33 @@ export const DimensionLine = (props: DimensionLineProps) => {
     [startOffset, endOffset],
   );
 
+  const extensionGap = DIMENSION_STANDARDS.extensionGap;
+  const extensionOvershoot = DIMENSION_STANDARDS.extensionOvershoot;
+
+  const extStartGap = useMemo(() => {
+    const gapDir = offsetVector.clone().normalize();
+    return start.clone().add(gapDir.multiplyScalar(extensionGap * Math.sign(offset)));
+  }, [start, offsetVector, offset, extensionGap]);
+
+  const extEndGap = useMemo(() => {
+    const gapDir = offsetVector.clone().normalize();
+    return end.clone().add(gapDir.multiplyScalar(extensionGap * Math.sign(offset)));
+  }, [end, offsetVector, offset, extensionGap]);
+
+  const extStartOvershoot = useMemo(() => {
+    const overshootDir = offsetVector.clone().normalize();
+    return startOffset
+      .clone()
+      .add(overshootDir.multiplyScalar(extensionOvershoot * Math.sign(offset)));
+  }, [startOffset, offsetVector, offset, extensionOvershoot]);
+
+  const extEndOvershoot = useMemo(() => {
+    const overshootDir = offsetVector.clone().normalize();
+    return endOffset
+      .clone()
+      .add(overshootDir.multiplyScalar(extensionOvershoot * Math.sign(offset)));
+  }, [endOffset, offsetVector, offset, extensionOvershoot]);
+
   if (length < 0.01) return null;
 
   const textRotationY = -Math.atan2(direction.z, direction.x);
@@ -118,33 +145,6 @@ export const DimensionLine = (props: DimensionLineProps) => {
     Math.max(DIMENSION_STANDARDS.arrowMinLength, length * DIMENSION_STANDARDS.arrowLengthRatio),
   );
   const arrowAngle = DIMENSION_STANDARDS.arrowAngle;
-
-  const extensionGap = DIMENSION_STANDARDS.extensionGap;
-  const extensionOvershoot = DIMENSION_STANDARDS.extensionOvershoot;
-
-  const extStartGap = useMemo(() => {
-    const gapDir = offsetVector.clone().normalize();
-    return start.clone().add(gapDir.multiplyScalar(extensionGap * Math.sign(offset)));
-  }, [start, offsetVector, offset]);
-
-  const extEndGap = useMemo(() => {
-    const gapDir = offsetVector.clone().normalize();
-    return end.clone().add(gapDir.multiplyScalar(extensionGap * Math.sign(offset)));
-  }, [end, offsetVector, offset]);
-
-  const extStartOvershoot = useMemo(() => {
-    const overshootDir = offsetVector.clone().normalize();
-    return startOffset
-      .clone()
-      .add(overshootDir.multiplyScalar(extensionOvershoot * Math.sign(offset)));
-  }, [startOffset, offsetVector, offset]);
-
-  const extEndOvershoot = useMemo(() => {
-    const overshootDir = offsetVector.clone().normalize();
-    return endOffset
-      .clone()
-      .add(overshootDir.multiplyScalar(extensionOvershoot * Math.sign(offset)));
-  }, [endOffset, offsetVector, offset]);
 
   const createArrowPoints = (
     tip: THREE.Vector3,

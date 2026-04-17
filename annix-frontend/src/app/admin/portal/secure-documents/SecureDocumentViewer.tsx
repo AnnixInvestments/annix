@@ -1,5 +1,6 @@
 "use client";
 
+import { isArray, isBoolean, isNumber, isString } from "es-toolkit/compat";
 import dynamic from "next/dynamic";
 import React, { type ReactElement, useCallback, useEffect, useState } from "react";
 import * as XLSX from "xlsx";
@@ -21,10 +22,10 @@ function authorName(doc: SecureDocumentWithContent): string {
 }
 
 function extractText(node: React.ReactNode): string {
-  if (typeof node === "string") return node;
-  if (typeof node === "number") return String(node);
-  if (node === null || node === undefined || typeof node === "boolean") return "";
-  if (Array.isArray(node)) return node.map(extractText).join("");
+  if (isString(node)) return node;
+  if (isNumber(node)) return String(node);
+  if (node === null || node === undefined || isBoolean(node)) return "";
+  if (isArray(node)) return node.map(extractText).join("");
   if (React.isValidElement(node)) {
     const props = node.props as { children?: React.ReactNode };
     return extractText(props.children);
@@ -163,7 +164,10 @@ function ExcelPreview({ documentId }: ExcelPreviewProps) {
       </div>
 
       <div className="text-sm text-gray-500 dark:text-gray-400">
-        {currentSheet.data.length - 1} rows × {currentSheet.data[0]?.length || 0} columns
+        {currentSheet.data.length - 1} rows × {(() => {
+          const rawLength = currentSheet.data[0]?.length;
+          return rawLength || 0;
+        })()} columns
       </div>
     </div>
   );
@@ -360,7 +364,10 @@ export default function SecureDocumentViewer(props: SecureDocumentViewerProps) {
                       React.isValidElement(child) && child.type === "code",
                   );
                   if (codeChild) {
-                    const className = (codeChild.props as { className?: string }).className || "";
+                    const className = (() => {
+                      const rawClassName = (codeChild.props as { className?: string }).className;
+                      return rawClassName || "";
+                    })();
                     if (/language-mermaid/.test(className)) {
                       const text = extractText(codeChild.props.children);
                       return <MermaidBlock chart={text} />;

@@ -170,9 +170,11 @@ export function useBendCalculations(
     const calculation = entry.calculation;
 
     const dn = specs?.nominalBoreMm;
-    const schedule = specs?.scheduleNumber || "";
+    const rawScheduleNumber = specs?.scheduleNumber;
+    const schedule = rawScheduleNumber || "";
     const pipeWallThickness = calculation?.wallThicknessMm;
-    const steelSpecId = specs?.steelSpecificationId || globalSpecs?.steelSpecificationId;
+    const rawSteelSpecificationId = specs?.steelSpecificationId;
+    const steelSpecId = rawSteelSpecificationId || globalSpecs?.steelSpecificationId;
     const isSABS719 = steelSpecId === 8;
 
     const scheduleUpper = schedule.toUpperCase();
@@ -196,24 +198,30 @@ export function useBendCalculations(
     const rawEffectiveWt = fittingWt || pipeWallThickness;
     const effectiveWt = rawEffectiveWt ? roundToWeldIncrement(rawEffectiveWt) : null;
 
-    const mainOdMm = dn ? nbToOdMap[dn] || dn * 1.05 : 0;
+    const rawMainOd = dn ? nbToOdMap[dn] : null;
+    const mainOdMm = dn ? rawMainOd || dn * 1.05 : 0;
     const mainIdMm = mainOdMm - 2 * (pipeWallThickness || 0);
     const mainCircumference = mainOdMm > 0 ? Math.PI * mainOdMm : 0;
     const mainCrossSection =
       mainOdMm > 0 ? (Math.PI * (mainOdMm * mainOdMm - mainIdMm * mainIdMm)) / 4 : 0;
 
-    const bendEndConfig = specs?.bendEndConfiguration || "PE";
+    const rawBendEndConfiguration = specs?.bendEndConfiguration;
+    const bendEndConfig = rawBendEndConfiguration || "PE";
     const isSweepTee = specs?.bendItemType === "SWEEP_TEE";
     const isPulledBend = specs?.bendStyle === "pulled" || (!specs?.bendStyle && !isSABS719);
 
-    const stubs = specs?.stubs || [];
+    const rawStubs = specs?.stubs;
+    const stubs = rawStubs || [];
     const stub1NB = stubs[0]?.nominalBoreMm;
     const stub2NB = stubs[1]?.nominalBoreMm;
-    const stub1Length = stubs[0]?.lengthMm || stubs[0]?.length || 0;
-    const stub2Length = stubs[1]?.lengthMm || stubs[1]?.length || 0;
+    const rawLengthMm = stubs[0]?.lengthMm;
+    const stub1Length = rawLengthMm || stubs[0]?.length || 0;
+    const rawLengthMm2 = stubs[1]?.lengthMm;
+    const stub2Length = rawLengthMm2 || stubs[1]?.length || 0;
     const stub1HasFlange = !!stub1NB;
     const stub2HasFlange = !!stub2NB;
-    const numStubs = specs?.numberOfStubs || 0;
+    const rawNumberOfStubs = specs?.numberOfStubs;
+    const numStubs = rawNumberOfStubs || 0;
 
     const bendFlangeCount = isSweepTee
       ? getFlangeCountPerFitting(bendEndConfig)
@@ -233,14 +241,26 @@ export function useBendCalculations(
       totalFlanges,
     };
 
-    const flangeStandardId = specs?.flangeStandardId || globalSpecs?.flangeStandardId;
-    const flangePressureClassId =
-      specs?.flangePressureClassId || globalSpecs?.flangePressureClassId;
+    const rawFlangeStandardId = specs?.flangeStandardId;
+    const flangeStandardId = rawFlangeStandardId || globalSpecs?.flangeStandardId;
+    const flangePressureClassId = (() => {
+      const rawFlangePressureClassId = specs?.flangePressureClassId;
+      return rawFlangePressureClassId || globalSpecs?.flangePressureClassId;
+    })();
     const flangeStandard = masterData.flangeStandards?.find((s) => s.id === flangeStandardId);
-    const flangeStandardCode = flangeStandard?.code || "";
+    const flangeStandardCode = (() => {
+      const rawCode = flangeStandard?.code;
+      return rawCode || "";
+    })();
     const pressureClass = masterData.pressureClasses?.find((p) => p.id === flangePressureClassId);
-    const pressureClassDesignation = pressureClass?.designation || "";
-    const flangeTypeCode = specs?.flangeTypeCode || globalSpecs?.flangeTypeCode;
+    const pressureClassDesignation = (() => {
+      const rawDesignation = pressureClass?.designation;
+      return rawDesignation || "";
+    })();
+    const flangeTypeCode = (() => {
+      const rawFlangeTypeCode = specs?.flangeTypeCode;
+      return rawFlangeTypeCode || globalSpecs?.flangeTypeCode;
+    })();
 
     const mainFlangeWeightPerUnit =
       dn && pressureClassDesignation
@@ -251,7 +271,10 @@ export function useBendCalculations(
             flangeStandardCode || null,
             flangeTypeCode || "",
           )
-        : calculation?.flangeWeightPerUnit || 0;
+        : (() => {
+            const rawFlangeWeightPerUnit = calculation?.flangeWeightPerUnit;
+            return rawFlangeWeightPerUnit || 0;
+          })();
     const mainFlangesWeight = bendFlangeCount * mainFlangeWeightPerUnit;
 
     const stub1FlangeWeightPerUnit =
@@ -280,8 +303,14 @@ export function useBendCalculations(
 
     const totalFlangeWeight = mainFlangesWeight + stub1FlangesWeight + stub2FlangesWeight;
 
-    const bendQuantity = specs?.quantityValue || 1;
-    const blankPositions = specs?.blankFlangePositions || [];
+    const bendQuantity = (() => {
+      const rawQuantityValue = specs?.quantityValue;
+      return rawQuantityValue || 1;
+    })();
+    const blankPositions = (() => {
+      const rawBlankFlangePositions = specs?.blankFlangePositions;
+      return rawBlankFlangePositions || [];
+    })();
     const blankFlangeCount = blankPositions.length * bendQuantity;
     const isSans1123 =
       flangeStandardCode.includes("SABS 1123") || flangeStandardCode.includes("SANS 1123");
@@ -294,18 +323,25 @@ export function useBendCalculations(
     const totalBlankFlangeWeight = blankFlangeCount * blankWeightPerUnit;
 
     const bendEndOption = BEND_END_OPTIONS.find((o) => o.value === specs?.bendEndConfiguration);
-    const tackWeldEnds = (bendEndOption as any)?.tackWeldEnds || 0;
+    const tackWeldEnds = (() => {
+      const rawTackWeldEnds = (bendEndOption as any)?.tackWeldEnds;
+      return rawTackWeldEnds || 0;
+    })();
     const tackWeldTotalWeight =
       dn && tackWeldEnds > 0 ? getTackWeldWeight(dn, tackWeldEnds) * bendQuantity : 0;
 
-    const closureLengthMm = specs?.closureLengthMm || 0;
+    const closureLengthMm = (() => {
+      const rawClosureLengthMm = specs?.closureLengthMm;
+      return rawClosureLengthMm || 0;
+    })();
     const closureWallThickness = pipeWallThickness || 5;
     const closureTotalWeight =
       dn && closureLengthMm > 0 && closureWallThickness > 0
         ? getClosureWeight(dn, closureLengthMm, closureWallThickness, nbToOdMap) * bendQuantity
         : 0;
 
-    const stub1OD = stub1NB ? nbToOdMap[stub1NB] || stub1NB * 1.05 : 0;
+    const rawStub1Od = stub1NB ? nbToOdMap[stub1NB] : null;
+    const stub1OD = stub1NB ? rawStub1Od || stub1NB * 1.05 : 0;
     const stub1ID = stub1OD - 2 * (pipeWallThickness || 0);
     const stub1CrossSection =
       stub1OD > 0 ? (Math.PI * (stub1OD * stub1OD - stub1ID * stub1ID)) / 4 : 0;
@@ -314,7 +350,8 @@ export function useBendCalculations(
         ? (stub1CrossSection / 1000000) * (stub1Length / 1000) * STEEL_DENSITY_KG_M3
         : 0;
 
-    const stub2OD = stub2NB ? nbToOdMap[stub2NB] || stub2NB * 1.05 : 0;
+    const rawStub2Od = stub2NB ? nbToOdMap[stub2NB] : null;
+    const stub2OD = stub2NB ? rawStub2Od || stub2NB * 1.05 : 0;
     const stub2ID = stub2OD - 2 * (pipeWallThickness || 0);
     const stub2CrossSection =
       stub2OD > 0 ? (Math.PI * (stub2OD * stub2OD - stub2ID * stub2ID)) / 4 : 0;
@@ -323,21 +360,25 @@ export function useBendCalculations(
         ? (stub2CrossSection / 1000000) * (stub2Length / 1000) * STEEL_DENSITY_KG_M3
         : 0;
 
-    const tangent1 = specs?.tangentLengths?.[0] || 0;
-    const tangent2 = specs?.tangentLengths?.[1] || 0;
+    const rawTangent1 = specs?.tangentLengths?.[0];
+    const tangent1 = rawTangent1 || 0;
+    const rawTangent2 = specs?.tangentLengths?.[1];
+    const tangent2 = rawTangent2 || 0;
     const tangentTotalLength = tangent1 + tangent2;
     const tangentWeight =
       mainCrossSection > 0 && tangentTotalLength > 0
         ? (mainCrossSection / 1000000) * (tangentTotalLength / 1000) * STEEL_DENSITY_KG_M3
         : 0;
 
-    const pipeALengthMm = isSweepTee ? specs?.sweepTeePipeALengthMm || 0 : 0;
+    const rawSweepTeePipeALengthMm = specs?.sweepTeePipeALengthMm;
+    const pipeALengthMm = isSweepTee ? rawSweepTeePipeALengthMm || 0 : 0;
     const pipeAWeight =
       mainCrossSection > 0 && pipeALengthMm > 0
         ? (mainCrossSection / 1000000) * (pipeALengthMm / 1000) * STEEL_DENSITY_KG_M3
         : 0;
 
-    const bendWeightFromCalc = calculation?.bendWeight || 0;
+    const rawBendWeight = calculation?.bendWeight;
+    const bendWeightFromCalc = rawBendWeight || 0;
     const bendWeightOnly =
       bendWeightFromCalc > tangentWeight ? bendWeightFromCalc - tangentWeight : bendWeightFromCalc;
     const totalWeight =
@@ -366,7 +407,8 @@ export function useBendCalculations(
       totalWeight,
     };
 
-    const numSegments = specs?.numberOfSegments || 0;
+    const rawNumberOfSegments = specs?.numberOfSegments;
+    const numSegments = rawNumberOfSegments || 0;
     const mitreWeldCount = numSegments > 1 ? numSegments - 1 : 0;
     const mitreWeldLinear = mitreWeldCount * mainCircumference;
 
@@ -376,7 +418,7 @@ export function useBendCalculations(
     const stub1FlangeWeldLinear = stub1FlangeCount * 2 * stub1Circ;
     const stub2FlangeWeldLinear = stub2FlangeCount * 2 * stub2Circ;
 
-    const hasBranchConnection = (specs?.sweepTeePipeALengthMm || 0) > 0;
+    const hasBranchConnection = (rawSweepTeePipeALengthMm || 0) > 0;
     const branchFlangeConfig = hasBranchConnection ? getFittingFlangeConfig(bendEndConfig) : null;
     const branchHasWeldableFlange =
       branchFlangeConfig?.hasBranch && branchFlangeConfig?.branchType !== "loose";
@@ -469,7 +511,8 @@ export function useBendCalculations(
     };
 
     const cf = Number(specs?.centerToFaceMm) || 0;
-    const numTangents = specs?.numberOfTangents || 0;
+    const rawNumberOfTangents = specs?.numberOfTangents;
+    const numTangents = rawNumberOfTangents || 0;
     const end1 = cf + tangent1;
     const end2 = cf + tangent2;
 

@@ -8,6 +8,7 @@ import {
   Text,
 } from "@react-three/drei";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
+import { isNumber, keys } from "es-toolkit/compat";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import { asOrbitControls } from "@/app/lib/3d";
@@ -286,7 +287,7 @@ const getFlangeSpecs = (
   };
 
   // Find closest match
-  const sizes = Object.keys(flangeData)
+  const sizes = keys(flangeData)
     .map(Number)
     .sort((a, b) => a - b);
   let closestSize = sizes[0];
@@ -923,7 +924,7 @@ const DimensionLine = ({
 };
 
 const isValidNumber = (value: number): boolean => {
-  return typeof value === "number" && !Number.isNaN(value) && Number.isFinite(value) && value > 0;
+  return isNumber(value) && !Number.isNaN(value) && Number.isFinite(value) && value > 0;
 };
 
 const HollowPipeScene = ({
@@ -998,8 +999,10 @@ const HollowPipeScene = ({
     : odSceneUnits * 0.15;
 
   // Closure and gap dimensions
-  const closureLength = (closureLengthMm || 150) / 1000; // Convert mm to scene units
-  const gapLength = 0.1; // 100mm in scene units (meters)
+  // Convert mm to scene units
+  const closureLength = (closureLengthMm || 150) / 1000;
+  // 100mm in scene units (meters)
+  const gapLength = 0.1;
 
   const outerRadius = Math.max(0.01, odSceneUnits / 2);
   const rawInnerRadius = (odSceneUnits - 2 * wtSceneUnits) / 2;
@@ -1435,10 +1438,13 @@ const HollowPipeScene = ({
           const spigotWtMm = spigotOdMm < 100 ? 3.2 : spigotOdMm < 200 ? 4.5 : 6.0;
           const spigotOuterRadius = spigotOdMm / 1000 / 2;
           const spigotInnerRadius = (spigotOdMm - 2 * spigotWtMm) / 1000 / 2;
-          const spigotLength = (spigotHeightMm || 150) / 1000; // Convert mm to scene units (meters)
+          // Convert mm to scene units (meters)
+          const spigotLength = (spigotHeightMm || 150) / 1000;
 
-          const dimLineY = -outerRadius - 0.15; // Position below pipe
-          const dimLineY2 = -outerRadius - 0.3; // Second row for spacing
+          // Position below pipe
+          const dimLineY = -outerRadius - 0.15;
+          // Second row for spacing
+          const dimLineY2 = -outerRadius - 0.3;
 
           return (
             <>
@@ -1713,9 +1719,9 @@ const CameraTracker = ({
     );
     const hasValidPosition =
       savedPosition &&
-      typeof savedPosition[0] === "number" &&
-      typeof savedPosition[1] === "number" &&
-      typeof savedPosition[2] === "number";
+      isNumber(savedPosition[0]) &&
+      isNumber(savedPosition[1]) &&
+      isNumber(savedPosition[2]);
     if (hasValidPosition && controls && !hasRestoredRef.current) {
       log.debug(
         "Pipe CameraTracker restoring camera position",
@@ -1727,9 +1733,9 @@ const CameraTracker = ({
       camera.position.set(savedPosition[0], savedPosition[1], savedPosition[2]);
       if (
         savedTarget &&
-        typeof savedTarget[0] === "number" &&
-        typeof savedTarget[1] === "number" &&
-        typeof savedTarget[2] === "number"
+        isNumber(savedTarget[0]) &&
+        isNumber(savedTarget[1]) &&
+        isNumber(savedTarget[2])
       ) {
         const orbitControls = asOrbitControls(controls);
         if (orbitControls) {
@@ -1809,7 +1815,8 @@ const CameraTracker = ({
 };
 
 export default function Pipe3DPreview(props: Pipe3DPreviewProps) {
-  const [viewMode, setViewMode] = useState(props.savedCameraPosition ? "free" : "iso"); //'iso', 'inlet', 'outlet', 'free'
+  //'iso', 'inlet', 'outlet', 'free'
+  const [viewMode, setViewMode] = useState(props.savedCameraPosition ? "free" : "iso");
   const [isExpanded, setIsExpanded] = useState(false);
   const [isHidden, setIsHidden] = useState(false);
   const captureRef = useRef<(() => string | null) | null>(null);
@@ -1989,7 +1996,8 @@ export default function Pipe3DPreview(props: Pipe3DPreviewProps) {
         // These require longer bolts to accommodate the backing ring
         // Only R/F (rotating flange) configurations require backing rings
         const hasRotatingFlange = ["FOE_RF", "2X_RF"].includes(configUpper);
-        const backingRingThickness = 10; // Standard backing ring thickness in mm
+        // Standard backing ring thickness in mm
+        const backingRingThickness = 10;
         const adjustedBoltLength = flangeSpecs
           ? flangeSpecs.boltLength + (hasRotatingFlange ? backingRingThickness : 0)
           : 0;
@@ -1998,14 +2006,19 @@ export default function Pipe3DPreview(props: Pipe3DPreviewProps) {
         // Ring: OD = Flange OD - 10mm, ID = Pipe OD, Thickness = 10mm
         const calculateBackingRingWeight = () => {
           if (!hasRotatingFlange || !flangeSpecs) return 0;
-          const ringOD = flangeSpecs.flangeOD - 10; // mm
-          const ringID = props.outerDiameter; // mm
-          const ringThickness = backingRingThickness; // mm
-          const steelDensity = 7.85; // kg/dm³ = g/cm³
+          // mm
+          const ringOD = flangeSpecs.flangeOD - 10;
+          // mm
+          const ringID = props.outerDiameter;
+          // mm
+          const ringThickness = backingRingThickness;
+          // kg/dm³ = g/cm³
+          const steelDensity = 7.85;
           // Volume = π × (R²outer - R²inner) × thickness in cm³
           const volumeCm3 =
             Math.PI * ((ringOD / 20) ** 2 - (ringID / 20) ** 2) * (ringThickness / 10);
-          return (volumeCm3 * steelDensity) / 1000; // kg
+          // kg
+          return (volumeCm3 * steelDensity) / 1000;
         };
         const backingRingWeight = calculateBackingRingWeight();
 

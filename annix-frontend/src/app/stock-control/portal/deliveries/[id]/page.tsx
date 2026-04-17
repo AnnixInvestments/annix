@@ -275,7 +275,12 @@ export default function DeliveryDetailPage() {
             </div>
             <div>
               <dt className="text-sm font-medium text-gray-500">Received By</dt>
-              <dd className="mt-1 text-sm text-gray-900">{delivery.receivedBy || "-"}</dd>
+              <dd className="mt-1 text-sm text-gray-900">
+                {(() => {
+                  const rawReceivedBy = delivery.receivedBy;
+                  return rawReceivedBy || "-";
+                })()}
+              </dd>
             </div>
             <div>
               <dt className="text-sm font-medium text-gray-500">Created</dt>
@@ -284,7 +289,10 @@ export default function DeliveryDetailPage() {
             <div>
               <dt className="text-sm font-medium text-gray-500">Items Count</dt>
               <dd className="mt-1 text-sm text-gray-900">
-                {delivery.items ? delivery.items.length : extractedLineItems(delivery).length || 0}
+                {(() => {
+                  const extractedLength = extractedLineItems(delivery).length;
+                  return delivery.items ? delivery.items.length : extractedLength || 0;
+                })()}
               </dd>
             </div>
             {delivery.notes && (

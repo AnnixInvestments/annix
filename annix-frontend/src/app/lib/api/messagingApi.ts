@@ -1,5 +1,6 @@
 "use client";
 
+import { toPairs as entries } from "es-toolkit/compat";
 import { type ApiClient, createApiClient } from "@/app/lib/api/createApiClient";
 import {
   adminTokenStore,
@@ -221,7 +222,7 @@ const portalClients: Record<PortalType, ApiClient> = {
 
 function buildQueryString(filters: Record<string, any>): string {
   const params = new URLSearchParams();
-  Object.entries(filters).forEach(([key, value]) => {
+  entries(filters).forEach(([key, value]) => {
     if (value !== undefined && value !== null) {
       params.append(key, String(value));
     }

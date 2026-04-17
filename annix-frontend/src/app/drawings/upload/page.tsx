@@ -6,7 +6,8 @@ import { useUploadDrawing } from "@/app/lib/query/hooks";
 
 const ACCEPTED_FILE_TYPES = ["application/pdf", "image/png", "image/jpeg", "image/jpg"];
 const ACCEPTED_EXTENSIONS = [".pdf", ".png", ".jpg", ".jpeg", ".dwg", ".dxf"];
-const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
+// 50MB
+const MAX_FILE_SIZE = 50 * 1024 * 1024;
 
 function UploadDrawingContent() {
   const router = useRouter();

@@ -157,7 +157,10 @@ export default function HdpePage() {
                   <span
                     key={std.id}
                     className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300"
-                    title={std.description ?? undefined}
+                    title={(() => {
+                      const rawDescription = std.description;
+                      return rawDescription ?? undefined;
+                    })()}
                   >
                     {std.name}
                   </span>

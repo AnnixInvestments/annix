@@ -23,6 +23,7 @@ const TOKEN_FALLBACK_ORDER: string[] = [
 ];
 
 const nixAuthHeaders = (portalContext?: PortalContext): Record<string, string> => {
+  // eslint-disable-next-line no-restricted-syntax -- SSR guard; isUndefined(window) would throw
   if (typeof window === "undefined") return {};
 
   let token: string | null = null;

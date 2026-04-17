@@ -1,5 +1,6 @@
 "use client";
 
+import { isArray } from "es-toolkit/compat";
 import { useCallback, useEffect, useState } from "react";
 import { PdfPreviewModal, usePdfPreview } from "@/app/components/PdfPreviewModal";
 import type {
@@ -122,8 +123,8 @@ export function QcMeasurementChecklist(props: QcMeasurementChecklistProps) {
         stockControlApiClient.defelskoBatchesForJobCard(jobCardId),
         stockControlApiClient.positectorUploadsForJobCard(jobCardId),
       ]);
-      setBatches(Array.isArray(batchRes) ? batchRes : []);
-      setUploads(Array.isArray(uploadRes) ? uploadRes : []);
+      setBatches(isArray(batchRes) ? batchRes : []);
+      setUploads(isArray(uploadRes) ? uploadRes : []);
     } catch {
       setBatches([]);
       setUploads([]);

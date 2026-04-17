@@ -138,7 +138,10 @@ export default function PvcPage() {
                   <span
                     key={std.id}
                     className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-gray-100 dark:bg-slate-600 text-gray-800 dark:text-gray-200"
-                    title={std.description ?? undefined}
+                    title={(() => {
+                      const rawDescription = std.description;
+                      return rawDescription ?? undefined;
+                    })()}
                   >
                     {std.name}
                   </span>

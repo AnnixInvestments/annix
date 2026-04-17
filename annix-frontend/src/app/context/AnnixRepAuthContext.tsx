@@ -47,7 +47,10 @@ export function AnnixRepAuthProvider(props: { children: React.ReactNode }) {
           email: refreshed.email,
           firstName: refreshed.firstName,
           lastName: refreshed.lastName,
-          setupCompleted: refreshed.setupCompleted ?? false,
+          setupCompleted: (() => {
+            const rawSetupCompleted = refreshed.setupCompleted;
+            return rawSetupCompleted ?? false;
+          })(),
         });
       } else {
         setUser(null);
@@ -83,7 +86,10 @@ export function AnnixRepAuthProvider(props: { children: React.ReactNode }) {
         email: response.email,
         firstName: response.firstName,
         lastName: response.lastName,
-        setupCompleted: response.setupCompleted ?? false,
+        setupCompleted: (() => {
+          const rawSetupCompleted = response.setupCompleted;
+          return rawSetupCompleted ?? false;
+        })(),
       });
       return response;
     },
@@ -97,7 +103,10 @@ export function AnnixRepAuthProvider(props: { children: React.ReactNode }) {
       email: response.email,
       firstName: response.firstName,
       lastName: response.lastName,
-      setupCompleted: response.setupCompleted ?? false,
+      setupCompleted: (() => {
+        const rawSetupCompleted = response.setupCompleted;
+        return rawSetupCompleted ?? false;
+      })(),
     });
     return response;
   }, []);

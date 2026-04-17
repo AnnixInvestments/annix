@@ -1,5 +1,6 @@
 "use client";
 
+import { isArray, isString } from "es-toolkit/compat";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
@@ -51,8 +52,8 @@ export default function HowToViewerClient(props: HowToViewerClientProps) {
     try {
       const raw = localStorage.getItem(props.recentKey);
       const parsed: string[] = raw ? JSON.parse(raw) : [];
-      const filtered = Array.isArray(parsed)
-        ? parsed.filter((s) => typeof s === "string" && s !== props.guide.slug)
+      const filtered = isArray(parsed)
+        ? parsed.filter((s) => isString(s) && s !== props.guide.slug)
         : [];
       const next = [props.guide.slug, ...filtered].slice(0, 8);
       localStorage.setItem(props.recentKey, JSON.stringify(next));

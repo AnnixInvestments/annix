@@ -78,7 +78,8 @@ export default function SupplierOnboardingPage() {
   const profileQuery = useSupplierProfile();
   const capabilitiesQuery = useSupplierCapabilities();
 
-  const onboardingStatus = onboardingQuery.data ?? null;
+  const rawData = onboardingQuery.data;
+  const onboardingStatus = rawData ?? null;
 
   const [step, setStep] = useState(1);
   const [companyData, setCompanyData] = useState<SupplierCompanyDto>(initialCompanyData);
@@ -124,7 +125,13 @@ export default function SupplierOnboardingPage() {
       ...prev,
       operationalRegions: prev.operationalRegions?.includes(region)
         ? prev.operationalRegions.filter((r) => r !== region)
-        : [...(prev.operationalRegions || []), region],
+        : [
+            ...(() => {
+              const rawOperationalRegions = prev.operationalRegions;
+              return rawOperationalRegions || [];
+            })(),
+            region,
+          ],
     }));
   };
 
@@ -209,7 +216,14 @@ export default function SupplierOnboardingPage() {
     }
   };
 
-  if (onboardingQuery.isLoading || profileQuery.isLoading || capabilitiesQuery.isLoading) {
+  if (
+    (() => {
+      const rawIsLoading = onboardingQuery.isLoading;
+      const rawProfileIsLoading = profileQuery.isLoading;
+      const rawCapabilitiesIsLoading = capabilitiesQuery.isLoading;
+      return rawIsLoading || rawProfileIsLoading || rawCapabilitiesIsLoading;
+    })()
+  ) {
     return (
       <div className="bg-white rounded-lg shadow-sm p-8 flex justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
@@ -320,7 +334,10 @@ export default function SupplierOnboardingPage() {
                 <input
                   type="text"
                   name="tradingName"
-                  value={companyData.tradingName || ""}
+                  value={(() => {
+                    const rawTradingName = companyData.tradingName;
+                    return rawTradingName || "";
+                  })()}
                   onChange={handleChange}
                   disabled={isReadOnly}
                   className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100"
@@ -345,7 +362,10 @@ export default function SupplierOnboardingPage() {
                 <input
                   type="text"
                   name="taxNumber"
-                  value={companyData.taxNumber || ""}
+                  value={(() => {
+                    const rawTaxNumber = companyData.taxNumber;
+                    return rawTaxNumber || "";
+                  })()}
                   onChange={handleChange}
                   disabled={isReadOnly}
                   className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100"
@@ -356,7 +376,10 @@ export default function SupplierOnboardingPage() {
                 <input
                   type="text"
                   name="vatNumber"
-                  value={companyData.vatNumber || ""}
+                  value={(() => {
+                    const rawVatNumber = companyData.vatNumber;
+                    return rawVatNumber || "";
+                  })()}
                   onChange={handleChange}
                   disabled={isReadOnly}
                   className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100"
@@ -389,7 +412,10 @@ export default function SupplierOnboardingPage() {
                 <input
                   type="text"
                   name="addressLine2"
-                  value={companyData.addressLine2 || ""}
+                  value={(() => {
+                    const rawAddressLine2 = companyData.addressLine2;
+                    return rawAddressLine2 || "";
+                  })()}
                   onChange={handleChange}
                   disabled={isReadOnly}
                   className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100"
@@ -448,7 +474,10 @@ export default function SupplierOnboardingPage() {
                 <input
                   type="text"
                   name="country"
-                  value={companyData.country || "South Africa"}
+                  value={(() => {
+                    const rawCountry = companyData.country;
+                    return rawCountry || "South Africa";
+                  })()}
                   onChange={handleChange}
                   disabled={isReadOnly}
                   className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100"
@@ -460,7 +489,10 @@ export default function SupplierOnboardingPage() {
                   Preferred Currency
                 </label>
                 <CurrencySelect
-                  value={companyData.currencyCode || DEFAULT_CURRENCY}
+                  value={(() => {
+                    const rawCurrencyCode = companyData.currencyCode;
+                    return rawCurrencyCode || DEFAULT_CURRENCY;
+                  })()}
                   onChange={(value) => setCompanyData((prev) => ({ ...prev, currencyCode: value }))}
                   className="mt-1"
                 />
@@ -520,7 +552,10 @@ export default function SupplierOnboardingPage() {
                 <input
                   type="tel"
                   name="primaryPhone"
-                  value={companyData.primaryPhone || ""}
+                  value={(() => {
+                    const rawPrimaryPhone = companyData.primaryPhone;
+                    return rawPrimaryPhone || "";
+                  })()}
                   onChange={handleChange}
                   disabled={isReadOnly}
                   className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100"
@@ -531,7 +566,10 @@ export default function SupplierOnboardingPage() {
                 <input
                   type="email"
                   name="generalEmail"
-                  value={companyData.generalEmail || ""}
+                  value={(() => {
+                    const rawGeneralEmail = companyData.generalEmail;
+                    return rawGeneralEmail || "";
+                  })()}
                   onChange={handleChange}
                   disabled={isReadOnly}
                   className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100"
@@ -542,7 +580,10 @@ export default function SupplierOnboardingPage() {
                 <input
                   type="url"
                   name="website"
-                  value={companyData.website || ""}
+                  value={(() => {
+                    const rawWebsite = companyData.website;
+                    return rawWebsite || "";
+                  })()}
                   onChange={handleChange}
                   disabled={isReadOnly}
                   placeholder="https://"
@@ -561,7 +602,10 @@ export default function SupplierOnboardingPage() {
                 <label className="block text-sm font-medium text-gray-700">Industry Type</label>
                 <select
                   name="industryType"
-                  value={companyData.industryType || ""}
+                  value={(() => {
+                    const rawIndustryType = companyData.industryType;
+                    return rawIndustryType || "";
+                  })()}
                   onChange={handleChange}
                   disabled={isReadOnly}
                   className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100"
@@ -578,7 +622,10 @@ export default function SupplierOnboardingPage() {
                 <label className="block text-sm font-medium text-gray-700">Company Size</label>
                 <select
                   name="companySize"
-                  value={companyData.companySize || ""}
+                  value={(() => {
+                    const rawCompanySize = companyData.companySize;
+                    return rawCompanySize || "";
+                  })()}
                   onChange={handleChange}
                   disabled={isReadOnly}
                   className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100"

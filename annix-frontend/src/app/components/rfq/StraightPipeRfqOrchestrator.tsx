@@ -1,6 +1,7 @@
 "use client";
 
 import { FLANGE_OD } from "@annix/product-data/pipe";
+import { isString, keys } from "es-toolkit/compat";
 import { useRouter, useSearchParams } from "next/navigation";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { GuidedHighlight } from "@/app/components/rfq/shared/GuidedHighlight";
@@ -181,8 +182,10 @@ const calculateLocalPipeResult = (
 
   // Weld length calculations (circumference-based)
   // Each flange requires 2 full welds: 1 inside and 1 outside
-  const circumference = (Math.PI * outsideDiameterMm) / 1000; // in meters
-  const totalFlangeWeldLength = numberOfFlangeWelds * circumference * 2; // x2 for inside + outside welds per flange
+  // in meters
+  const circumference = (Math.PI * outsideDiameterMm) / 1000;
+  // x2 for inside + outside welds per flange
+  const totalFlangeWeldLength = numberOfFlangeWelds * circumference * 2;
 
   const flangeWeightPerUnit = flangeWeightLookup(
     weights,
@@ -202,18 +205,22 @@ const calculateLocalPipeResult = (
     calculatedPipeCount,
     calculatedTotalLength,
     numberOfFlanges,
-    numberOfFlangeConnections, // Bolt set connections for BNW calculations
+    // Bolt set connections for BNW calculations
+    numberOfFlangeConnections,
     numberOfFlangeWelds,
     totalFlangeWeldLength,
     outsideDiameterMm,
     wallThicknessMm,
     totalFlangeWeight,
-    flangeWeightPerUnit, // Include per-unit weight for transparency
-    pressureClassUsed: pressureClassDesignation || "PN16", // Track which pressure class was used
+    // Include per-unit weight for transparency
+    flangeWeightPerUnit,
+    // Track which pressure class was used
+    pressureClassUsed: pressureClassDesignation || "PN16",
     totalBoltWeight: 0,
     totalNutWeight: 0,
     totalSystemWeight,
-    isLocalCalculation: true, // Flag to indicate this was calculated locally
+    // Flag to indicate this was calculated locally
+    isLocalCalculation: true,
   };
 };
 
@@ -612,6 +619,7 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
 
     if (!isAuthenticated) {
       log.info("User not authenticated, redirecting to login to access draft");
+      // eslint-disable-next-line no-restricted-syntax -- SSR guard; isUndefined(window) would throw
       const currentUrl =
         typeof window !== "undefined" ? window.location.pathname + window.location.search : "/rfq";
       router.push(`/customer/login?returnUrl=${encodeURIComponent(currentUrl)}`);
@@ -801,7 +809,7 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
       rawCustomerEmail ||
       rfqData.projectName ||
       rfqData.items.length > 0 ||
-      Object.keys(rfqData.globalSpecs).length > 0;
+      keys(rfqData.globalSpecs).length > 0;
 
     if (!hasContent) return;
 
@@ -874,7 +882,8 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
 
     // Derating curve for temperatures above 200°C (based on EN 1092-1 for P235GH)
     const deratingCurve = [
-      { temp: 200, factor: 1.0 }, // Full rating up to 200°C
+      // Full rating up to 200°C
+      { temp: 200, factor: 1.0 },
       { temp: 250, factor: 0.94 },
       { temp: 300, factor: 0.87 },
       { temp: 350, factor: 0.8 },
@@ -920,15 +929,23 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
     // Pressure class mappings for letter/special designations (bar ratings at ambient)
     const specialMappings: { [key: string]: number } = {
       // BS 10 & AS 2129 Table designations
-      "T/D": 7, // Table D: ~7 bar
-      "T/E": 14, // Table E: ~14 bar
-      "T/F": 21, // Table F: ~21 bar
-      "T/H": 35, // Table H: ~35 bar (AS 2129)
+      // Table D: ~7 bar
+      "T/D": 7,
+      // Table E: ~14 bar
+      "T/E": 14,
+      // Table F: ~21 bar
+      "T/F": 21,
+      // Table H: ~35 bar (AS 2129)
+      "T/H": 35,
       // AWWA C207 Classes (approximate bar ratings)
-      "Class B": 6, // ~86 psi = 6 bar
-      "Class D": 10, // ~150 psi = 10 bar
-      "Class E": 17, // ~250 psi = 17 bar
-      "Class F": 21, // ~300 psi = 21 bar
+      // ~86 psi = 6 bar
+      "Class B": 6,
+      // ~150 psi = 10 bar
+      "Class D": 10,
+      // ~250 psi = 17 bar
+      "Class E": 17,
+      // ~300 psi = 21 bar
+      "Class F": 21,
       // BS 4504 explicit mappings (PN/flange type format)
       "6/3": 6,
       "10/3": 10,
@@ -966,18 +983,26 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
 
     // ASME Class to bar conversion (at ambient temperature ~38°C)
     const asmeClassToBar: { [key: string]: number } = {
-      "75": 10, // Class 75 ≈ 10 bar (B16.47)
-      "150": 20, // Class 150 ≈ 20 bar
-      "300": 51, // Class 300 ≈ 51 bar
-      "400": 68, // Class 400 ≈ 68 bar
-      "600": 102, // Class 600 ≈ 102 bar
-      "900": 153, // Class 900 ≈ 153 bar
-      "1500": 255, // Class 1500 ≈ 255 bar
-      "2500": 425, // Class 2500 ≈ 425 bar
+      // Class 75 ≈ 10 bar (B16.47)
+      "75": 10,
+      // Class 150 ≈ 20 bar
+      "150": 20,
+      // Class 300 ≈ 51 bar
+      "300": 51,
+      // Class 400 ≈ 68 bar
+      "400": 68,
+      // Class 600 ≈ 102 bar
+      "600": 102,
+      // Class 900 ≈ 153 bar
+      "900": 153,
+      // Class 1500 ≈ 255 bar
+      "1500": 255,
+      // Class 2500 ≈ 425 bar
+      "2500": 425,
     };
 
     // Extract rating from designation and apply temperature derating
-    console.log(
+    log.debug(
       "[PT-DEBUG] Processing pressure classes:",
       pressureClasses.map((pc) => pc.designation),
     );
@@ -989,16 +1014,16 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
         // Check if it's a special letter-based designation (BS 10, AS 2129, AWWA, BS 4504)
         if (designation && specialMappings[designation]) {
           ambientRating = specialMappings[designation];
-          console.log(`[PT-DEBUG] ${designation} -> specialMapping -> ${ambientRating} bar`);
+          log.debug(`[PT-DEBUG] ${designation} -> specialMapping -> ${ambientRating} bar`);
         }
         // Check if it's ASME Class designation (75, 150, 300, etc.)
         else if (designation && asmeClassToBar[designation]) {
           ambientRating = asmeClassToBar[designation];
-          console.log(`[PT-DEBUG] ${designation} -> asmeClassToBar -> ${ambientRating} bar`);
+          log.debug(`[PT-DEBUG] ${designation} -> asmeClassToBar -> ${ambientRating} bar`);
         }
         // Check for API 6A psi format (2000 psi, 5000 psi, etc.)
         else {
-          console.log(`[PT-DEBUG] ${designation} checking regex patterns...`);
+          log.debug(`[PT-DEBUG] ${designation} checking regex patterns...`);
           const psiMatch = designation?.match(/^(\d+)\s*psi$/i);
           if (psiMatch) {
             ambientRating = Math.round(parseInt(psiMatch[1], 10) * 0.0689);
@@ -1025,9 +1050,11 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
                   // SABS 1123 uses large numbers (600, 1000, 1600, etc.) - divide by 100
                   // BS 4504 uses small numbers (6, 10, 16, 25, 40, etc.) - use directly
                   if (numericValue >= 500) {
-                    ambientRating = numericValue / 100; // SABS: 1000 → 10 bar
+                    // SABS: 1000 → 10 bar
+                    ambientRating = numericValue / 100;
                   } else {
-                    ambientRating = numericValue; // BS 4504: 10 → 10 bar
+                    // BS 4504: 10 → 10 bar
+                    ambientRating = numericValue;
                   }
                 }
                 // Fallback: try to extract any leading number
@@ -1049,7 +1076,7 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
       })
       .filter((pc) => pc.barRating > 0);
 
-    console.log(
+    log.debug(
       "[PT-DEBUG] classesWithRating after mapping:",
       classesWithRating.map((pc) => ({
         designation: pc.designation,
@@ -1059,7 +1086,7 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
     );
 
     if (classesWithRating.length === 0) {
-      console.log("[PT-DEBUG] ERROR: No pressure classes with valid ratings!");
+      log.debug("[PT-DEBUG] ERROR: No pressure classes with valid ratings!");
       log.warn(
         "No pressure classes with valid ratings found. Input classes:",
         pressureClasses.map((pc) => pc.designation).join(", "),
@@ -1096,7 +1123,8 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
       log.debug(`No suitable class found for ${workingPressureBar} bar, using highest available`);
     }
 
-    return recommended || classesWithRating[classesWithRating.length - 1]; // Return highest if none match
+    // Return highest if none match
+    return recommended || classesWithRating[classesWithRating.length - 1];
   };
 
   // Fallback pressure classes by flange standard - IDs must match database
@@ -1266,7 +1294,7 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
     temperatureCelsius?: number,
     materialGroup?: string,
   ) => {
-    console.log("[PT-DEBUG] fetchAndSelectPressureClass called with:", {
+    log.debug("[PT-DEBUG] fetchAndSelectPressureClass called with:", {
       standardId,
       workingPressureBar,
       temperatureCelsius,
@@ -1275,7 +1303,7 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
     try {
       const { masterDataApi } = await import("@/app/lib/api/client");
       const classes = await masterDataApi.getFlangePressureClassesByStandard(standardId);
-      console.log("[PT-DEBUG] Fetched classes:", classes);
+      log.debug("[PT-DEBUG] Fetched classes:", classes);
 
       const rawCode2 = masterData.flangeStandards?.find((s: any) => s.id === standardId)?.code;
 
@@ -1340,7 +1368,7 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
             }
           } catch (ptError) {
             // Silently fall back to pressure-based calculation if P/T API fails
-            console.log(`[PT-DEBUG] P/T API error for ${standardCode}:`, ptError);
+            log.debug(`[PT-DEBUG] P/T API error for ${standardCode}:`, ptError);
             log.debug(
               `P/T rating API failed for ${standardCode}, using pressure-based calculation:`,
               ptError,
@@ -1349,7 +1377,7 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
         }
 
         // Use pressure-based calculation for all standards (with temperature derating if applicable)
-        console.log(
+        log.debug(
           `[PT-DEBUG] Running fallback calculation for ${standardCode} with ${classes.length} classes:`,
           classes.map((c: any) => c.designation),
         );
@@ -1363,7 +1391,7 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
           temperatureCelsius,
         );
         if (recommended) {
-          console.log(
+          log.debug(
             `[PT-DEBUG] SELECTED: ${recommended.designation} (ID ${recommended.id}) for ${workingPressureBar} bar`,
           );
           log.debug(
@@ -1371,7 +1399,7 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
           );
           return recommended.id;
         } else {
-          console.log(`[PT-DEBUG] Fallback calculation returned null for ${standardCode}`);
+          log.debug(`[PT-DEBUG] Fallback calculation returned null for ${standardCode}`);
           log.warn(`Fallback calculation returned null for ${standardCode}`);
 
           // LAST RESORT: If calculation failed but we have classes, pick one based on working pressure
@@ -1391,7 +1419,7 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
               withRatings.sort((a: any, b: any) => a.barRating - b.barRating);
               const suitable = withRatings.find((c: any) => c.barRating >= targetPressure);
               const selected = suitable || withRatings[withRatings.length - 1];
-              console.log(
+              log.debug(
                 `[PT-DEBUG] LAST RESORT: Selected ${selected.designation} (ID ${selected.id})`,
               );
               return selected.id;
@@ -1400,9 +1428,7 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
         }
       }
 
-      console.log(
-        `[PT-DEBUG] No recommendation found for standardId=${standardId}, returning null`,
-      );
+      log.debug(`[PT-DEBUG] No recommendation found for standardId=${standardId}, returning null`);
       log.debug(`No recommendation found for standardId=${standardId}, returning null`);
       return null;
     } catch (error) {
@@ -1693,7 +1719,8 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
             "NB",
           );
           const rawWallThicknessMm = entry.specs.wallThicknessMm;
-          const wallThickness = rawWallThicknessMm || 6.35; // Default wall thickness
+          // Default wall thickness
+          const wallThickness = rawWallThicknessMm || 6.35;
 
           const rawDesignation4 = masterData.pressureClasses?.find(
             (pc: { id: number; designation: string }) => pc.id === flangePressureClassId,
@@ -1782,7 +1809,8 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
       rfqData.straightPipeEntries.forEach((entry: StraightPipeEntry) => {
         calculateEntry(entry);
       });
-    }, 500); // 500ms debounce delay
+      // 500ms debounce delay
+    }, 500);
 
     return () => clearTimeout(timeoutId);
   }, [
@@ -1974,7 +2002,7 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
     setValidationErrors(errors);
 
     // Only proceed if no validation errors
-    if (Object.keys(errors).length === 0) {
+    if (keys(errors).length === 0) {
       // For unregistered users on page 1, save draft and send welcome email in background
       if (currentStep === 1) {
         draftSaveAndSendRecoveryEmail(isAuthenticated);
@@ -1983,7 +2011,7 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
       scrollToTop();
     } else {
       // Scroll to the first field with an error
-      const firstErrorKey = Object.keys(errors)[0];
+      const firstErrorKey = keys(errors)[0];
       scrollToFirstError(firstErrorKey);
     }
   };
@@ -2297,9 +2325,11 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
           const arcLength = (bendDegrees / 90) * (centerToFace * 2);
 
           // Weight calculation: π/4 × (OD² - ID²) × length × density (kg/m³ for steel)
-          const crossSectionArea = (Math.PI / 4) * (od * od - id * id); // mm²
+          // mm²
+          const crossSectionArea = (Math.PI / 4) * (od * od - id * id);
           const bendWeight =
-            (crossSectionArea / 1000000) * (arcLength / 1000) * STEEL_DENSITY_KG_M3; // kg
+            // kg
+            (crossSectionArea / 1000000) * (arcLength / 1000) * STEEL_DENSITY_KG_M3;
 
           const totalWeight = bendWeight * quantity;
 
@@ -2667,7 +2697,7 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
   const handleUpdateEntry = useCallback(
     (id: string, updates: any) => {
       log.info(
-        `📝 handleUpdateEntry CALLED - id: ${id}, updates keys: ${Object.keys(updates).join(", ")}`,
+        `📝 handleUpdateEntry CALLED - id: ${id}, updates keys: ${keys(updates).join(", ")}`,
       );
       const entry = rfqDataRef.current.items.find((e) => e.id === id);
 
@@ -3269,7 +3299,7 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
       let errorMessage = "Failed to submit RFQ. Please try again.";
       if (error.message) {
         errorMessage = error.message;
-      } else if (typeof error === "string") {
+      } else if (isString(error)) {
         errorMessage = error;
       }
 
@@ -3648,7 +3678,7 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
       let errorMessage = "Failed to re-submit RFQ. Please try again.";
       if (error.message) {
         errorMessage = error.message;
-      } else if (typeof error === "string") {
+      } else if (isString(error)) {
         errorMessage = error;
       }
 
@@ -4113,7 +4143,7 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
                       hasChanges,
                       itemsCount: rfqData.items?.length,
                       straightPipesCount: rfqData.straightPipeEntries?.length,
-                      globalSpecsKeys: Object.keys(rawGlobalSpecs3 || {}).length,
+                      globalSpecsKeys: keys(rawGlobalSpecs3 || {}).length,
                     });
 
                     if (hasChanges) {
@@ -4148,7 +4178,7 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
                       // User progressed to step 3+ (entered specs)
                       (currentStep > 2 &&
                         rfqData.globalSpecs &&
-                        Object.keys(rfqData.globalSpecs).length > 0);
+                        keys(rfqData.globalSpecs).length > 0);
 
                     log.info("Dirty check - hasChanges:", hasChanges, "rfqData:", {
                       items: rfqData.items?.length,

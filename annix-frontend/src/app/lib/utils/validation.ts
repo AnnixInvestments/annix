@@ -1,5 +1,6 @@
 "use client";
 
+import { keys } from "es-toolkit/compat";
 import { fromISO } from "@/app/lib/datetime";
 import {
   validatePipeEntries,
@@ -58,19 +59,19 @@ export function canProceedToNextStep(
   switch (step) {
     case 1: {
       const page1Errors = validatePage1RequiredFields(formData);
-      return Object.keys(page1Errors).length === 0;
+      return keys(page1Errors).length === 0;
     }
 
     case 2: {
       const rawGlobalSpecs = formData.globalSpecs;
       const page2Errors = validatePage2Specifications(rawGlobalSpecs || {});
-      return Object.keys(page2Errors).length === 0;
+      return keys(page2Errors).length === 0;
     }
 
     case 3: {
       if (!entries) return false;
       const page3Errors = validatePage3Items(entries);
-      return Object.keys(page3Errors).length === 0 && entries.length > 0;
+      return keys(page3Errors).length === 0 && entries.length > 0;
     }
 
     default:

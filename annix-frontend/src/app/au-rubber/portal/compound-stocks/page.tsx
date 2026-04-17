@@ -1,5 +1,6 @@
 "use client";
 
+import { isArray } from "es-toolkit/compat";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { TableLoadingState } from "@/app/components/shared/TableComponents";
@@ -45,7 +46,7 @@ function rollsFromExtractedData(
   data: ExtractedDeliveryNoteData | ExtractedDeliveryNoteData[] | null,
 ): ExtractedDeliveryNoteRoll[] {
   if (!data) return [];
-  if (Array.isArray(data)) {
+  if (isArray(data)) {
     return data.flatMap((d) => {
       const rawDRolls = d.rolls;
       return rawDRolls || [];
@@ -577,15 +578,15 @@ export default function CompoundStocksPage() {
         auRubberApiClient.stockLocations(),
       ]);
 
-      const stocks = Array.isArray(stocksData) ? stocksData : [];
-      const movements = Array.isArray(movementsData) ? movementsData : [];
-      const invoices = Array.isArray(invoicesData) ? invoicesData : [];
-      const deliveryNotes = Array.isArray(deliveryNotesData) ? deliveryNotesData : [];
-      const orders = Array.isArray(ordersData) ? ordersData : [];
-      const products = Array.isArray(productsData) ? productsData : [];
+      const stocks = isArray(stocksData) ? stocksData : [];
+      const movements = isArray(movementsData) ? movementsData : [];
+      const invoices = isArray(invoicesData) ? invoicesData : [];
+      const deliveryNotes = isArray(deliveryNotesData) ? deliveryNotesData : [];
+      const orders = isArray(ordersData) ? ordersData : [];
+      const products = isArray(productsData) ? productsData : [];
 
-      setCompounds(Array.isArray(compoundsData) ? compoundsData : []);
-      setLocations(Array.isArray(locationsData) ? locationsData : []);
+      setCompounds(isArray(compoundsData) ? compoundsData : []);
+      setLocations(isArray(locationsData) ? locationsData : []);
 
       const invoiceMap = new Map(invoices.map((inv) => [inv.id, inv]));
       const dnMap = new Map(deliveryNotes.map((dn) => [dn.id, dn]));

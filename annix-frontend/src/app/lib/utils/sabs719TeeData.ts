@@ -19,9 +19,12 @@
 export interface Sabs719TeeDimensions {
   nominalBoreMm: number;
   outsideDiameterMm: number;
-  shortTeeHeightMm: number; // A dimension
-  gussetTeeHeightMm: number; // B dimension
-  gussetSectionMm: number; // C dimension
+  // A dimension
+  shortTeeHeightMm: number;
+  // B dimension
+  gussetTeeHeightMm: number;
+  // C dimension
+  gussetSectionMm: number;
 }
 
 export const SABS_719_TEE_DATA: Sabs719TeeDimensions[] = [
@@ -181,7 +184,8 @@ export type Sabs719TeeType = "short" | "gusset";
  */
 export function getTeeHeight(nominalBoreMm: number, teeType: Sabs719TeeType): number {
   const dims = getSabs719TeeDimensions(nominalBoreMm);
-  if (!dims) return nominalBoreMm; // Fallback
+  // Fallback
+  if (!dims) return nominalBoreMm;
   return teeType === "gusset" ? dims.gussetTeeHeightMm : dims.shortTeeHeightMm;
 }
 
@@ -208,10 +212,12 @@ export function calculateTeeWeight(
 
   const od = dims.outsideDiameterMm;
   const id = od - 2 * wallThicknessMm;
-  const steelDensity = 7840; // kg/m³
+  // kg/m³
+  const steelDensity = 7840;
 
   // Cross-sectional area of pipe wall
-  const pipeArea = (Math.PI / 4) * (od * od - id * id); // mm²
+  // mm²
+  const pipeArea = (Math.PI / 4) * (od * od - id * id);
 
   // Total steel length based on tee type
   const steelLengthMm =
@@ -237,5 +243,6 @@ export function calculateTeeWeight(
     weight += gussetWeightKg;
   }
 
-  return Math.round(weight * 10) / 10; // Round to 1 decimal
+  // Round to 1 decimal
+  return Math.round(weight * 10) / 10;
 }

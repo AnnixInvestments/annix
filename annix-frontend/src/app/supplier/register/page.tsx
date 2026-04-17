@@ -1,5 +1,6 @@
 "use client";
 
+import { isNumber, keys } from "es-toolkit/compat";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import React, { useEffect, useState } from "react";
@@ -378,7 +379,7 @@ export default function SupplierRegistrationPage() {
 
       // Sanitize beeLevel to ensure it's a number
       let sanitizedBeeLevel: number | null = null;
-      if (typeof company.beeLevel === "number") {
+      if (isNumber(company.beeLevel)) {
         sanitizedBeeLevel = company.beeLevel;
       } else if (company.beeLevel) {
         const beeLevelStr = String(company.beeLevel);
@@ -422,7 +423,7 @@ export default function SupplierRegistrationPage() {
       );
 
       // Add document verification results from Nix
-      if (Object.keys(storedVerificationResults).length > 0) {
+      if (keys(storedVerificationResults).length > 0) {
         formData.append("documentVerificationResults", JSON.stringify(storedVerificationResults));
       }
 
@@ -519,7 +520,10 @@ export default function SupplierRegistrationPage() {
           </label>
           <input
             type="text"
-            value={company.legalName || ""}
+            value={(() => {
+              const rawLegalName = company.legalName;
+              return rawLegalName || "";
+            })()}
             onChange={(e) => handleCompanyChange("legalName", e.target.value)}
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
             placeholder="Full legal company name"
@@ -530,7 +534,10 @@ export default function SupplierRegistrationPage() {
           <label className="block text-sm font-medium text-gray-700">Trading Name</label>
           <input
             type="text"
-            value={company.tradingName || ""}
+            value={(() => {
+              const rawTradingName = company.tradingName;
+              return rawTradingName || "";
+            })()}
             onChange={(e) => handleCompanyChange("tradingName", e.target.value)}
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
             placeholder="Trading name (if different)"
@@ -543,7 +550,10 @@ export default function SupplierRegistrationPage() {
           </label>
           <input
             type="text"
-            value={company.registrationNumber || ""}
+            value={(() => {
+              const rawRegistrationNumber = company.registrationNumber;
+              return rawRegistrationNumber || "";
+            })()}
             onChange={(e) => handleCompanyChange("registrationNumber", e.target.value)}
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
             placeholder="e.g., 2023/123456/07"
@@ -554,7 +564,10 @@ export default function SupplierRegistrationPage() {
           <label className="block text-sm font-medium text-gray-700">VAT Number</label>
           <input
             type="text"
-            value={company.vatNumber || ""}
+            value={(() => {
+              const rawVatNumber = company.vatNumber;
+              return rawVatNumber || "";
+            })()}
             onChange={(e) => handleCompanyChange("vatNumber", e.target.value)}
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
             placeholder="VAT registration number"
@@ -564,7 +577,10 @@ export default function SupplierRegistrationPage() {
         <div>
           <label className="block text-sm font-medium text-gray-700">Industry</label>
           <select
-            value={company.industryType || ""}
+            value={(() => {
+              const rawIndustryType = company.industryType;
+              return rawIndustryType || "";
+            })()}
             onChange={(e) => handleCompanyChange("industryType", e.target.value)}
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
           >
@@ -580,7 +596,10 @@ export default function SupplierRegistrationPage() {
         <div>
           <label className="block text-sm font-medium text-gray-700">Company Size</label>
           <select
-            value={company.companySize || ""}
+            value={(() => {
+              const rawCompanySize = company.companySize;
+              return rawCompanySize || "";
+            })()}
             onChange={(e) => handleCompanyChange("companySize", e.target.value)}
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
           >
@@ -602,7 +621,10 @@ export default function SupplierRegistrationPage() {
           </label>
           <input
             type="text"
-            value={company.streetAddress || ""}
+            value={(() => {
+              const rawStreetAddress = company.streetAddress;
+              return rawStreetAddress || "";
+            })()}
             onChange={(e) => handleCompanyChange("streetAddress", e.target.value)}
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
           />
@@ -614,7 +636,10 @@ export default function SupplierRegistrationPage() {
           </label>
           <input
             type="text"
-            value={company.city || ""}
+            value={(() => {
+              const rawCity = company.city;
+              return rawCity || "";
+            })()}
             onChange={(e) => handleCompanyChange("city", e.target.value)}
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
           />
@@ -625,7 +650,10 @@ export default function SupplierRegistrationPage() {
             Province <span className="text-red-500">*</span>
           </label>
           <select
-            value={company.provinceState || ""}
+            value={(() => {
+              const rawProvinceState = company.provinceState;
+              return rawProvinceState || "";
+            })()}
             onChange={(e) => handleCompanyChange("provinceState", e.target.value)}
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
           >
@@ -644,7 +672,10 @@ export default function SupplierRegistrationPage() {
           </label>
           <input
             type="text"
-            value={company.postalCode || ""}
+            value={(() => {
+              const rawPostalCode = company.postalCode;
+              return rawPostalCode || "";
+            })()}
             onChange={(e) => handleCompanyChange("postalCode", e.target.value)}
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
           />
@@ -654,7 +685,10 @@ export default function SupplierRegistrationPage() {
           <label className="block text-sm font-medium text-gray-700">Country</label>
           <input
             type="text"
-            value={company.country || "South Africa"}
+            value={(() => {
+              const rawCountry = company.country;
+              return rawCountry || "South Africa";
+            })()}
             onChange={(e) => handleCompanyChange("country", e.target.value)}
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
           />
@@ -663,7 +697,10 @@ export default function SupplierRegistrationPage() {
         <div>
           <label className="block text-sm font-medium text-gray-700">Preferred Currency</label>
           <CurrencySelect
-            value={company.currencyCode || DEFAULT_CURRENCY}
+            value={(() => {
+              const rawCurrencyCode = company.currencyCode;
+              return rawCurrencyCode || DEFAULT_CURRENCY;
+            })()}
             onChange={(value) => handleCompanyChange("currencyCode", value)}
             className="mt-1"
           />
@@ -678,7 +715,10 @@ export default function SupplierRegistrationPage() {
           </label>
           <input
             type="text"
-            value={company.primaryContactName || ""}
+            value={(() => {
+              const rawPrimaryContactName = company.primaryContactName;
+              return rawPrimaryContactName || "";
+            })()}
             onChange={(e) => handleCompanyChange("primaryContactName", e.target.value)}
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
           />
@@ -690,7 +730,10 @@ export default function SupplierRegistrationPage() {
           </label>
           <input
             type="email"
-            value={company.primaryContactEmail || ""}
+            value={(() => {
+              const rawPrimaryContactEmail = company.primaryContactEmail;
+              return rawPrimaryContactEmail || "";
+            })()}
             onChange={(e) => handleCompanyChange("primaryContactEmail", e.target.value)}
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
           />
@@ -702,7 +745,10 @@ export default function SupplierRegistrationPage() {
           </label>
           <input
             type="tel"
-            value={company.primaryContactPhone || ""}
+            value={(() => {
+              const rawPrimaryContactPhone = company.primaryContactPhone;
+              return rawPrimaryContactPhone || "";
+            })()}
             onChange={(e) => handleCompanyChange("primaryContactPhone", e.target.value)}
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
             placeholder="+27 11 000 6789"
@@ -713,7 +759,10 @@ export default function SupplierRegistrationPage() {
           <label className="block text-sm font-medium text-gray-700">Website</label>
           <input
             type="url"
-            value={company.website || ""}
+            value={(() => {
+              const rawWebsite = company.website;
+              return rawWebsite || "";
+            })()}
             onChange={(e) => handleCompanyChange("website", e.target.value)}
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
             placeholder="https://www.example.com"
@@ -771,7 +820,10 @@ export default function SupplierRegistrationPage() {
           <input
             type="checkbox"
             id="eme"
-            checked={company.isExemptMicroEnterprise || false}
+            checked={(() => {
+              const rawIsExemptMicroEnterprise = company.isExemptMicroEnterprise;
+              return rawIsExemptMicroEnterprise || false;
+            })()}
             onChange={(e) => handleCompanyChange("isExemptMicroEnterprise", e.target.checked)}
             className="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
           />
@@ -785,7 +837,10 @@ export default function SupplierRegistrationPage() {
             <div>
               <label className="block text-sm font-medium text-gray-700">B-BBEE Level</label>
               <select
-                value={company.beeLevel || ""}
+                value={(() => {
+                  const rawBeeLevel = company.beeLevel;
+                  return rawBeeLevel || "";
+                })()}
                 onChange={(e) =>
                   handleCompanyChange(
                     "beeLevel",
@@ -811,7 +866,10 @@ export default function SupplierRegistrationPage() {
                   </label>
                   <input
                     type="date"
-                    value={company.beeCertificateExpiry || ""}
+                    value={(() => {
+                      const rawBeeCertificateExpiry = company.beeCertificateExpiry;
+                      return rawBeeCertificateExpiry || "";
+                    })()}
                     onChange={(e) => handleCompanyChange("beeCertificateExpiry", e.target.value)}
                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                   />
@@ -823,7 +881,10 @@ export default function SupplierRegistrationPage() {
                   </label>
                   <input
                     type="text"
-                    value={company.beeVerificationAgency || ""}
+                    value={(() => {
+                      const rawBeeVerificationAgency = company.beeVerificationAgency;
+                      return rawBeeVerificationAgency || "";
+                    })()}
                     onChange={(e) => handleCompanyChange("beeVerificationAgency", e.target.value)}
                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                     placeholder="Name of SANAS accredited verification agency"
@@ -899,7 +960,15 @@ export default function SupplierRegistrationPage() {
           <input
             type="file"
             accept=".pdf,.jpg,.jpeg,.png"
-            onChange={(e) => handleFileSelect(e.target.files?.[0] || null, "vat")}
+            onChange={(e) =>
+              handleFileSelect(
+                (() => {
+                  const rawFiles = e.target.files?.[0];
+                  return rawFiles || null;
+                })(),
+                "vat",
+              )
+            }
             className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
           />
           {documents.vatDocument && (
@@ -921,7 +990,15 @@ export default function SupplierRegistrationPage() {
           <input
             type="file"
             accept=".pdf,.jpg,.jpeg,.png"
-            onChange={(e) => handleFileSelect(e.target.files?.[0] || null, "registration")}
+            onChange={(e) =>
+              handleFileSelect(
+                (() => {
+                  const rawFiles = e.target.files?.[0];
+                  return rawFiles || null;
+                })(),
+                "registration",
+              )
+            }
             className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
           />
           {documents.companyRegDocument && (
@@ -949,7 +1026,15 @@ export default function SupplierRegistrationPage() {
           <input
             type="file"
             accept=".pdf,.jpg,.jpeg,.png"
-            onChange={(e) => handleFileSelect(e.target.files?.[0] || null, "bee")}
+            onChange={(e) =>
+              handleFileSelect(
+                (() => {
+                  const rawFiles = e.target.files?.[0];
+                  return rawFiles || null;
+                })(),
+                "bee",
+              )
+            }
             className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
           />
           {documents.beeDocument && (
@@ -998,7 +1083,10 @@ export default function SupplierRegistrationPage() {
           </label>
           <input
             type="text"
-            value={profile.firstName || ""}
+            value={(() => {
+              const rawFirstName = profile.firstName;
+              return rawFirstName || "";
+            })()}
             onChange={(e) => handleProfileChange("firstName", e.target.value)}
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
           />
@@ -1010,7 +1098,10 @@ export default function SupplierRegistrationPage() {
           </label>
           <input
             type="text"
-            value={profile.lastName || ""}
+            value={(() => {
+              const rawLastName = profile.lastName;
+              return rawLastName || "";
+            })()}
             onChange={(e) => handleProfileChange("lastName", e.target.value)}
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
           />
@@ -1020,7 +1111,10 @@ export default function SupplierRegistrationPage() {
           <label className="block text-sm font-medium text-gray-700">Job Title</label>
           <input
             type="text"
-            value={profile.jobTitle || ""}
+            value={(() => {
+              const rawJobTitle = profile.jobTitle;
+              return rawJobTitle || "";
+            })()}
             onChange={(e) => handleProfileChange("jobTitle", e.target.value)}
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
             placeholder="e.g., Sales Manager"
@@ -1031,7 +1125,10 @@ export default function SupplierRegistrationPage() {
           <label className="block text-sm font-medium text-gray-700">Direct Phone</label>
           <input
             type="tel"
-            value={profile.directPhone || ""}
+            value={(() => {
+              const rawDirectPhone = profile.directPhone;
+              return rawDirectPhone || "";
+            })()}
             onChange={(e) => handleProfileChange("directPhone", e.target.value)}
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
             placeholder="+27 11 000 6789"
@@ -1042,7 +1139,10 @@ export default function SupplierRegistrationPage() {
           <label className="block text-sm font-medium text-gray-700">Mobile Phone</label>
           <input
             type="tel"
-            value={profile.mobilePhone || ""}
+            value={(() => {
+              const rawMobilePhone = profile.mobilePhone;
+              return rawMobilePhone || "";
+            })()}
             onChange={(e) => handleProfileChange("mobilePhone", e.target.value)}
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
             placeholder="+27 82 000 4567"

@@ -1,3 +1,4 @@
+import { toPairs as entries } from "es-toolkit/compat";
 import type {
   CreateProductCategoryInput,
   CreateRubberCompoundInput,
@@ -83,7 +84,7 @@ export class StockManagementApiClient {
     } = {},
   ): Promise<IssuableProductListResultDto> {
     const params = new URLSearchParams();
-    for (const [key, value] of Object.entries(filters)) {
+    for (const [key, value] of entries(filters)) {
       if (value !== undefined && value !== null) {
         params.set(key, String(value));
       }
@@ -111,7 +112,7 @@ export class StockManagementApiClient {
     filters: IssuanceSessionFiltersDto = {},
   ): Promise<IssuanceSessionListResultDto> {
     const params = new URLSearchParams();
-    for (const [key, value] of Object.entries(filters)) {
+    for (const [key, value] of entries(filters)) {
       if (value !== undefined && value !== null) {
         params.set(key, String(value));
       }
@@ -446,7 +447,7 @@ export class StockManagementApiClient {
     formData.append("file", file);
     const rawHeaders = this.options.headers ? this.options.headers() : {};
     const headers: Record<string, string> = {};
-    for (const [key, value] of Object.entries(rawHeaders)) {
+    for (const [key, value] of entries(rawHeaders)) {
       if (key.toLowerCase() !== "content-type") {
         headers[key] = value;
       }

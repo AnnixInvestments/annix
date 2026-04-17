@@ -184,11 +184,8 @@ export function DefectQuickCheck(props: DefectQuickCheckProps) {
     return WELD_DEFECT_CRITERIA.find((c) => c.code === code && c.defectType === defectType);
   }, [code, defectType]);
 
-  if (!criteria) {
-    return null;
-  }
-
   const isAcceptable = useMemo(() => {
+    if (!criteria) return null;
     if (measuredValueMm === undefined) return null;
 
     if (criteria.maxDimensionMm !== null && criteria.maxDimensionMm === 0) {
@@ -209,6 +206,10 @@ export function DefectQuickCheck(props: DefectQuickCheckProps) {
 
     return true;
   }, [criteria, measuredValueMm, wallThicknessMm]);
+
+  if (!criteria) {
+    return null;
+  }
 
   return (
     <div

@@ -1,5 +1,6 @@
 "use client";
 
+import { isNumber } from "es-toolkit/compat";
 import { useMemo, useState } from "react";
 import { PumpProductCardData } from "./PumpProductCard";
 
@@ -98,7 +99,7 @@ function findHighlightedIndex(
 
   const values = products.map((p) => {
     const val = (p as any)[spec.key];
-    return typeof val === "number" ? val : null;
+    return isNumber(val) ? val : null;
   });
 
   const numericValues = values.filter((v): v is number => v !== null);

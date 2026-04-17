@@ -1,5 +1,6 @@
 "use client";
 
+import { keys } from "es-toolkit/compat";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRef, useState } from "react";
@@ -203,7 +204,7 @@ function ProspectCard({
                     <div className="px-4 py-1 text-xs font-medium text-gray-500 dark:text-gray-400">
                       Change Status
                     </div>
-                    {(Object.keys(statusLabels) as ProspectStatus[]).map((status) => (
+                    {(keys(statusLabels) as ProspectStatus[]).map((status) => (
                       <button
                         key={status}
                         onClick={() => {
@@ -222,6 +223,7 @@ function ProspectCard({
                     <div className="border-t border-gray-100 dark:border-slate-700 my-1" />
                     <button
                       onClick={() => {
+                        // eslint-disable-next-line no-restricted-globals -- legacy sync confirm pending modal migration (issue #175)
                         if (confirm("Delete this prospect?")) {
                           onDelete(prospect.id);
                         }
@@ -964,6 +966,7 @@ export default function ProspectsPage() {
   };
 
   const handleBulkDelete = async () => {
+    // eslint-disable-next-line no-restricted-globals -- legacy sync confirm pending modal migration (issue #175)
     if (confirm(`Delete ${selectedIds.size} prospect(s)?`)) {
       await bulkDelete.mutateAsync(Array.from(selectedIds));
       setSelectedIds(new Set());
@@ -1158,7 +1161,7 @@ export default function ProspectsPage() {
                     />
                     <div className="absolute right-0 mt-1 w-40 bg-white dark:bg-slate-800 rounded-md shadow-lg border border-gray-200 dark:border-slate-700 z-20">
                       <div className="py-1">
-                        {(Object.keys(statusLabels) as ProspectStatus[]).map((status) => (
+                        {(keys(statusLabels) as ProspectStatus[]).map((status) => (
                           <button
                             key={status}
                             onClick={() => handleBulkStatusChange(status)}
@@ -1185,7 +1188,7 @@ export default function ProspectsPage() {
 
         {stats && (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2">
-            {(Object.keys(statusLabels) as ProspectStatus[]).map((status) => {
+            {(keys(statusLabels) as ProspectStatus[]).map((status) => {
               const statusCount = stats[status];
               return (
                 <button

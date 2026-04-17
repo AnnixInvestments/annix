@@ -12,69 +12,111 @@ interface CoastlinePoint {
 // Coverage from Namibia border (west) around to Mozambique border (east)
 const SOUTH_AFRICA_COASTLINE: CoastlinePoint[] = [
   // West Coast (Atlantic)
-  { lat: -28.7167, lng: 16.45 }, // Alexander Bay
-  { lat: -29.2667, lng: 16.8833 }, // Port Nolloth
-  { lat: -30.95, lng: 17.5833 }, // Hondeklip Bay
-  { lat: -31.6333, lng: 18.0167 }, // Lamberts Bay
-  { lat: -32.0833, lng: 18.3333 }, // Elands Bay
-  { lat: -32.75, lng: 17.9333 }, // Saldanha Bay
-  { lat: -33.0167, lng: 17.9333 }, // Langebaan
-  { lat: -33.4833, lng: 18.3667 }, // Melkbosstrand
-  { lat: -33.9167, lng: 18.4167 }, // Cape Town
+  // Alexander Bay
+  { lat: -28.7167, lng: 16.45 },
+  // Port Nolloth
+  { lat: -29.2667, lng: 16.8833 },
+  // Hondeklip Bay
+  { lat: -30.95, lng: 17.5833 },
+  // Lamberts Bay
+  { lat: -31.6333, lng: 18.0167 },
+  // Elands Bay
+  { lat: -32.0833, lng: 18.3333 },
+  // Saldanha Bay
+  { lat: -32.75, lng: 17.9333 },
+  // Langebaan
+  { lat: -33.0167, lng: 17.9333 },
+  // Melkbosstrand
+  { lat: -33.4833, lng: 18.3667 },
+  // Cape Town
+  { lat: -33.9167, lng: 18.4167 },
 
   // Cape Peninsula
-  { lat: -34.0833, lng: 18.35 }, // Hout Bay
-  { lat: -34.2, lng: 18.4333 }, // Simon's Town
-  { lat: -34.35, lng: 18.4833 }, // Cape Point
+  // Hout Bay
+  { lat: -34.0833, lng: 18.35 },
+  // Simon's Town
+  { lat: -34.2, lng: 18.4333 },
+  // Cape Point
+  { lat: -34.35, lng: 18.4833 },
 
   // South Coast (Indian Ocean)
-  { lat: -34.4167, lng: 19.25 }, // Hermanus
-  { lat: -34.5833, lng: 19.6167 }, // Gansbaai
-  { lat: -34.4667, lng: 20.5 }, // Arniston
-  { lat: -34.1833, lng: 22.1333 }, // Mossel Bay
-  { lat: -34.0333, lng: 23.05 }, // George/Wilderness
-  { lat: -34.05, lng: 23.3667 }, // Knysna
-  { lat: -33.9667, lng: 23.9167 }, // Plettenberg Bay
-  { lat: -33.7667, lng: 25.95 }, // Port Elizabeth
-  { lat: -33.0333, lng: 27.9167 }, // East London
+  // Hermanus
+  { lat: -34.4167, lng: 19.25 },
+  // Gansbaai
+  { lat: -34.5833, lng: 19.6167 },
+  // Arniston
+  { lat: -34.4667, lng: 20.5 },
+  // Mossel Bay
+  { lat: -34.1833, lng: 22.1333 },
+  // George/Wilderness
+  { lat: -34.0333, lng: 23.05 },
+  // Knysna
+  { lat: -34.05, lng: 23.3667 },
+  // Plettenberg Bay
+  { lat: -33.9667, lng: 23.9167 },
+  // Port Elizabeth
+  { lat: -33.7667, lng: 25.95 },
+  // East London
+  { lat: -33.0333, lng: 27.9167 },
 
   // East Coast
-  { lat: -31.6, lng: 29.5333 }, // Port St Johns
-  { lat: -30.8667, lng: 30.3833 }, // Port Shepstone
-  { lat: -29.8667, lng: 31.0333 }, // Durban
-  { lat: -29.55, lng: 31.2167 }, // Ballito
-  { lat: -28.75, lng: 32.0667 }, // Richards Bay
-  { lat: -27.5333, lng: 32.6833 }, // St Lucia
-  { lat: -27.0167, lng: 32.9 }, // Kosi Bay
+  // Port St Johns
+  { lat: -31.6, lng: 29.5333 },
+  // Port Shepstone
+  { lat: -30.8667, lng: 30.3833 },
+  // Durban
+  { lat: -29.8667, lng: 31.0333 },
+  // Ballito
+  { lat: -29.55, lng: 31.2167 },
+  // Richards Bay
+  { lat: -28.75, lng: 32.0667 },
+  // St Lucia
+  { lat: -27.5333, lng: 32.6833 },
+  // Kosi Bay
+  { lat: -27.0167, lng: 32.9 },
 ];
 
 // Additional global coastline points for major regions
 const GLOBAL_COASTLINE_SAMPLES: CoastlinePoint[] = [
   // Europe - Mediterranean
-  { lat: 41.9, lng: 12.5 }, // Italy
-  { lat: 36.7, lng: -4.4 }, // Spain
-  { lat: 43.3, lng: 5.37 }, // France
+  // Italy
+  { lat: 41.9, lng: 12.5 },
+  // Spain
+  { lat: 36.7, lng: -4.4 },
+  // France
+  { lat: 43.3, lng: 5.37 },
 
   // Europe - Atlantic
-  { lat: 51.5, lng: 0.1276 }, // UK
-  { lat: 52.37, lng: 4.89 }, // Netherlands
+  // UK
+  { lat: 51.5, lng: 0.1276 },
+  // Netherlands
+  { lat: 52.37, lng: 4.89 },
 
   // Middle East
-  { lat: 25.2, lng: 55.27 }, // UAE
-  { lat: 29.5, lng: 34.92 }, // Red Sea
+  // UAE
+  { lat: 25.2, lng: 55.27 },
+  // Red Sea
+  { lat: 29.5, lng: 34.92 },
 
   // Asia
-  { lat: 1.35, lng: 103.82 }, // Singapore
-  { lat: 22.3, lng: 114.17 }, // Hong Kong
+  // Singapore
+  { lat: 1.35, lng: 103.82 },
+  // Hong Kong
+  { lat: 22.3, lng: 114.17 },
 
   // Australia
-  { lat: -33.87, lng: 151.21 }, // Sydney
-  { lat: -31.95, lng: 115.86 }, // Perth
+  // Sydney
+  { lat: -33.87, lng: 151.21 },
+  // Perth
+  { lat: -31.95, lng: 115.86 },
 
   // Americas
-  { lat: 25.76, lng: -80.19 }, // Miami
-  { lat: 34.05, lng: -118.25 }, // Los Angeles
-  { lat: -22.9, lng: -43.17 }, // Rio de Janeiro
+  // Miami
+  { lat: 25.76, lng: -80.19 },
+  // Los Angeles
+  { lat: 34.05, lng: -118.25 },
+  // Rio de Janeiro
+  { lat: -22.9, lng: -43.17 },
 ];
 
 /**
@@ -82,7 +124,8 @@ const GLOBAL_COASTLINE_SAMPLES: CoastlinePoint[] = [
  * @returns Distance in kilometers
  */
 function haversineDistance(lat1: number, lng1: number, lat2: number, lng2: number): number {
-  const R = 6371; // Earth's radius in kilometers
+  // Earth's radius in kilometers
+  const R = 6371;
 
   const dLat = toRadians(lat2 - lat1);
   const dLng = toRadians(lng2 - lng1);
@@ -175,7 +218,8 @@ export function classifyDetailedMarineInfluence(
 export interface AirSaltContentResult {
   level: "Very Low" | "Low" | "Moderate" | "High" | "Very High";
   isoCategory: "S0" | "S1" | "S2" | "S3";
-  estimatedDeposition: string; // mg/m²/day range
+  // mg/m²/day range
+  estimatedDeposition: string;
 }
 
 /**
@@ -365,7 +409,8 @@ export function marineInfluence(
 
   return {
     influence,
-    distanceToCoastKm: Math.round(distanceToCoastKm * 100) / 100, // Round to 2 decimals
+    // Round to 2 decimals
+    distanceToCoastKm: Math.round(distanceToCoastKm * 100) / 100,
   };
 }
 

@@ -1,5 +1,6 @@
 "use client";
 
+import { isString } from "es-toolkit/compat";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import type { ColdCallSuggestion, RouteStop, ScheduleGap } from "@/app/lib/api/annixRepApi";
@@ -7,7 +8,7 @@ import { fromISO, fromJSDate, nowISO } from "@/app/lib/datetime";
 import { useColdCallSuggestions, usePlanDayRoute, useScheduleGaps } from "@/app/lib/query/hooks";
 
 function formatTime(date: Date | string): string {
-  const d = typeof date === "string" ? fromISO(date) : fromJSDate(date);
+  const d = isString(date) ? fromISO(date) : fromJSDate(date);
   return d.toFormat("HH:mm");
 }
 

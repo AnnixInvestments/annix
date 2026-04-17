@@ -118,6 +118,7 @@ function ConnectionCard({
 
   const handleDisconnect = async () => {
     if (
+      // eslint-disable-next-line no-restricted-globals -- legacy sync confirm pending modal migration (issue #175)
       confirm(
         `Are you sure you want to disconnect "${platformDisplayName}"? This will revoke access.`,
       )
@@ -374,6 +375,7 @@ function PlatformConnectCard({
 
       if (!popup) {
         setIsConnecting(false);
+        // eslint-disable-next-line no-restricted-globals -- legacy sync alert pending modal migration (issue #175)
         alert("Popup blocked. Please allow popups for this site.");
         return;
       }

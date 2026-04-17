@@ -14,6 +14,7 @@ export function usePollingJobs() {
   return useQuery({
     queryKey: adminKeys.pollingJobs.list(),
     queryFn: () => adminApiClient.pollingJobs(),
+    // eslint-disable-next-line no-restricted-syntax -- this is the admin page that configures polling itself
     refetchInterval: 2 * 60 * 1000,
   });
 }
@@ -64,6 +65,7 @@ export function usePollingJobsGlobalSettings() {
   return useQuery({
     queryKey: adminKeys.pollingJobs.globalSettings(),
     queryFn: () => adminApiClient.pollingJobsGlobalSettings(),
+    // eslint-disable-next-line no-restricted-syntax -- this is the admin page that configures polling itself
     refetchInterval: 2 * 60 * 1000,
   });
 }
@@ -92,6 +94,7 @@ export function usePollingConfig() {
     queryKey: adminKeys.pollingJobs.config(),
     queryFn: fetchPollingConfig,
     staleTime: FIVE_MINUTES,
+    // eslint-disable-next-line no-restricted-syntax -- source of truth for usePollingInterval; must poll itself
     refetchInterval: FIVE_MINUTES,
     refetchOnWindowFocus: false,
   });

@@ -44,8 +44,14 @@ export function UserAccessDetails(props: UserAccessDetailsProps) {
                     <div className="mt-1">
                       <p className="text-xs text-gray-600">
                         {access.useCustomPermissions
-                          ? `Custom (${access.permissionCount ?? 0} permissions)`
-                          : (access.roleName ?? "No role assigned")}
+                          ? `Custom (${(() => {
+                              const rawPermissionCount = access.permissionCount;
+                              return rawPermissionCount ?? 0;
+                            })()} permissions)`
+                          : (() => {
+                              const rawRoleName = access.roleName;
+                              return rawRoleName ?? "No role assigned";
+                            })()}
                       </p>
                       {isExpired && <p className="text-xs text-yellow-600 font-medium">Expired</p>}
                       {access.expiresAt && !isExpired && (

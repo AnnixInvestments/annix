@@ -1,3 +1,4 @@
+import { toPairs as entries } from "es-toolkit/compat";
 import { StockControlApiClient } from "./base";
 import type {
   AnalyzedDeliveryNoteData,
@@ -129,7 +130,7 @@ proto.confirmDeliveryNote = async function (id, confirmedData) {
 proto.stockMovements = async function (params) {
   const query = params
     ? "?" +
-      Object.entries(params)
+      entries(params)
         .filter(([, v]) => v !== undefined)
         .map(([k, v]) => `${k}=${encodeURIComponent(String(v))}`)
         .join("&")

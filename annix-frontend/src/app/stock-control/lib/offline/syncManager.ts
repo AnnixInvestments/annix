@@ -25,6 +25,7 @@ type SyncStatusListener = (status: SyncStatus) => void;
 
 const statusListeners: Set<SyncStatusListener> = new Set();
 let currentStatus: SyncStatus = {
+  // eslint-disable-next-line no-restricted-syntax -- SSR guard; isUndefined(navigator) would throw
   isOnline: typeof navigator !== "undefined" ? navigator.onLine : true,
   isSyncing: false,
   pendingMutations: 0,
@@ -152,6 +153,7 @@ export function startBackgroundSync(
 ): void {
   stopBackgroundSync();
 
+  // eslint-disable-next-line no-restricted-syntax -- SSR guard; isUndefined(window) would throw
   if (typeof window === "undefined") return;
 
   const handleOnline = () => {

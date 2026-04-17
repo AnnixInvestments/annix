@@ -525,48 +525,52 @@ export default function ReportsPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200 bg-white">
-              {movements.map((movement) => (
-                <tr key={movement.id} className="hover:bg-gray-50">
-                  <td className="hidden whitespace-nowrap px-3 py-4 text-sm text-gray-500 sm:table-cell sm:px-6">
-                    {formatDateZA(movement.createdAt)}
-                  </td>
-                  <td className="px-3 py-4 sm:px-6">
-                    <div className="text-sm font-medium text-gray-900 break-words">
-                      {(() => {
-                        const msn = movement.stockItem ? movement.stockItem.name : null;
-                        return msn ? msn : "-";
-                      })()}
-                    </div>
-                    <div className="font-mono text-xs text-gray-500">
-                      {(() => {
-                        const msku = movement.stockItem ? movement.stockItem.sku : "";
-                        return msku ? msku : "";
-                      })()}
-                    </div>
-                  </td>
-                  <td className="whitespace-nowrap px-3 py-4 sm:px-6">
-                    <span
-                      className={`inline-flex rounded-full px-2 text-xs font-semibold leading-5 ${movementTypeBadge(movement.movementType)}`}
-                    >
-                      {movement.movementType}
-                    </span>
-                  </td>
-                  <td className="whitespace-nowrap px-3 py-4 text-right text-sm font-medium text-gray-900 sm:px-6">
-                    {movement.quantity}
-                  </td>
-                  <td className="hidden whitespace-nowrap px-3 py-4 text-sm text-gray-500 md:table-cell sm:px-6">
-                    {movement.referenceType
-                      ? `${movement.referenceType} #${movement.referenceId}`
-                      : "-"}
-                  </td>
-                  <td className="hidden truncate px-3 py-4 text-sm text-gray-500 lg:table-cell sm:px-6">
-                    {movement.notes || "-"}
-                  </td>
-                  <td className="hidden whitespace-nowrap px-3 py-4 text-sm text-gray-500 lg:table-cell sm:px-6">
-                    {movement.createdBy || "System"}
-                  </td>
-                </tr>
-              ))}
+              {movements.map((movement) => {
+                const rawNotes = movement.notes;
+                const rawCreatedBy = movement.createdBy;
+                return (
+                  <tr key={movement.id} className="hover:bg-gray-50">
+                    <td className="hidden whitespace-nowrap px-3 py-4 text-sm text-gray-500 sm:table-cell sm:px-6">
+                      {formatDateZA(movement.createdAt)}
+                    </td>
+                    <td className="px-3 py-4 sm:px-6">
+                      <div className="text-sm font-medium text-gray-900 break-words">
+                        {(() => {
+                          const msn = movement.stockItem ? movement.stockItem.name : null;
+                          return msn ? msn : "-";
+                        })()}
+                      </div>
+                      <div className="font-mono text-xs text-gray-500">
+                        {(() => {
+                          const msku = movement.stockItem ? movement.stockItem.sku : "";
+                          return msku ? msku : "";
+                        })()}
+                      </div>
+                    </td>
+                    <td className="whitespace-nowrap px-3 py-4 sm:px-6">
+                      <span
+                        className={`inline-flex rounded-full px-2 text-xs font-semibold leading-5 ${movementTypeBadge(movement.movementType)}`}
+                      >
+                        {movement.movementType}
+                      </span>
+                    </td>
+                    <td className="whitespace-nowrap px-3 py-4 text-right text-sm font-medium text-gray-900 sm:px-6">
+                      {movement.quantity}
+                    </td>
+                    <td className="hidden whitespace-nowrap px-3 py-4 text-sm text-gray-500 md:table-cell sm:px-6">
+                      {movement.referenceType
+                        ? `${movement.referenceType} #${movement.referenceId}`
+                        : "-"}
+                    </td>
+                    <td className="hidden truncate px-3 py-4 text-sm text-gray-500 lg:table-cell sm:px-6">
+                      {rawNotes || "-"}
+                    </td>
+                    <td className="hidden whitespace-nowrap px-3 py-4 text-sm text-gray-500 lg:table-cell sm:px-6">
+                      {rawCreatedBy || "System"}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -586,371 +590,387 @@ export default function ReportsPage() {
     });
   };
 
-  const renderStaffStock = () => (
-    <>
-      <div className="border-b border-gray-200 bg-gray-50 p-3 sm:p-4">
-        <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-end sm:gap-4">
-          <div>
-            <label className="mb-1 block text-xs font-medium text-gray-700">Start Date</label>
-            <input
-              type="date"
-              value={staffFilters.startDate || ""}
-              onChange={(e) => setStaffFilters({ ...staffFilters, startDate: e.target.value })}
-              className="w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm sm:w-auto"
-            />
-          </div>
-          <div>
-            <label className="mb-1 block text-xs font-medium text-gray-700">End Date</label>
-            <input
-              type="date"
-              value={staffFilters.endDate || ""}
-              onChange={(e) => setStaffFilters({ ...staffFilters, endDate: e.target.value })}
-              className="w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm sm:w-auto"
-            />
-          </div>
-          <div>
-            <label className="mb-1 block text-xs font-medium text-gray-700">Department</label>
-            <select
-              value={staffFilters.departmentId || ""}
-              onChange={(e) =>
-                setStaffFilters({
-                  ...staffFilters,
-                  departmentId: e.target.value ? Number(e.target.value) : undefined,
-                })
-              }
-              className="w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm sm:w-auto"
-            >
-              <option value="">All Departments</option>
-              {departments.map((dept) => (
-                <option key={dept.id} value={dept.id}>
-                  {dept.name}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="mb-1 block text-xs font-medium text-gray-700">Staff Member</label>
-            <select
-              value={staffFilters.staffMemberId || ""}
-              onChange={(e) =>
-                setStaffFilters({
-                  ...staffFilters,
-                  staffMemberId: e.target.value ? Number(e.target.value) : undefined,
-                })
-              }
-              className="w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm sm:w-auto"
-            >
-              <option value="">All Staff</option>
-              {staffMembers.map((staff) => (
-                <option key={staff.id} value={staff.id}>
-                  {staff.name}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="mb-1 block text-xs font-medium text-gray-700">Item</label>
-            <select
-              value={staffFilters.stockItemId || ""}
-              onChange={(e) =>
-                setStaffFilters({
-                  ...staffFilters,
-                  stockItemId: e.target.value ? Number(e.target.value) : undefined,
-                })
-              }
-              className="w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm sm:w-auto"
-            >
-              <option value="">All Items</option>
-              {stockItems.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {item.sku} - {item.name}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="col-span-2 sm:col-span-1">
-            <label className="mb-1 block text-xs font-medium text-gray-700">
-              Anomaly Threshold: {staffFilters.anomalyThreshold?.toFixed(1)}x std dev
-            </label>
-            <input
-              type="range"
-              min="1.5"
-              max="3.0"
-              step="0.1"
-              value={staffFilters.anomalyThreshold || 2.0}
-              onChange={(e) =>
-                setStaffFilters({
-                  ...staffFilters,
-                  anomalyThreshold: Number(e.target.value),
-                })
-              }
-              className="w-full sm:w-32"
-            />
-          </div>
-          <button
-            onClick={() =>
-              setStaffFilters({
-                startDate: "",
-                endDate: "",
-                staffMemberId: undefined,
-                departmentId: undefined,
-                stockItemId: undefined,
-                anomalyThreshold: 2.0,
-              })
-            }
-            className="col-span-2 rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-600 hover:bg-gray-100 hover:text-gray-900 sm:col-span-1"
-          >
-            Clear Filters
-          </button>
-        </div>
-      </div>
-
-      {isLoading ? (
-        renderLoading()
-      ) : error ? (
-        renderError()
-      ) : !staffStockReport || staffStockReport.summaries.length === 0 ? (
-        <div className="text-center py-12">
-          <svg
-            className="mx-auto h-12 w-12 text-gray-400"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
-            />
-          </svg>
-          <h3 className="mt-2 text-sm font-medium text-gray-900">No staff stock data</h3>
-          <p className="mt-1 text-sm text-gray-500">
-            No stock has been issued to staff members yet.
-          </p>
-        </div>
-      ) : (
-        <>
-          <div className="grid grid-cols-2 gap-4 p-4 sm:grid-cols-4">
-            <div className="rounded-lg bg-white border border-gray-200 p-4 shadow-sm">
-              <div className="text-sm font-medium text-gray-500">Total Staff</div>
-              <div className="mt-1 text-2xl font-semibold text-gray-900">
-                {staffStockReport.totals.totalStaff}
-              </div>
+  const renderStaffStock = () => {
+    const rawStartDate = staffFilters.startDate;
+    const rawEndDate = staffFilters.endDate;
+    const rawDepartmentId = staffFilters.departmentId;
+    const rawStaffMemberId = staffFilters.staffMemberId;
+    const rawStockItemId = staffFilters.stockItemId;
+    const rawAnomalyThreshold = staffFilters.anomalyThreshold;
+    return (
+      <>
+        <div className="border-b border-gray-200 bg-gray-50 p-3 sm:p-4">
+          <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-end sm:gap-4">
+            <div>
+              <label className="mb-1 block text-xs font-medium text-gray-700">Start Date</label>
+              <input
+                type="date"
+                value={rawStartDate || ""}
+                onChange={(e) => setStaffFilters({ ...staffFilters, startDate: e.target.value })}
+                className="w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm sm:w-auto"
+              />
             </div>
-            <div className="rounded-lg bg-white border border-gray-200 p-4 shadow-sm">
-              <div className="text-sm font-medium text-gray-500">Total Quantity</div>
-              <div className="mt-1 text-2xl font-semibold text-gray-900">
-                {staffStockReport.totals.totalQuantityIssued.toLocaleString()}
-              </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-gray-700">End Date</label>
+              <input
+                type="date"
+                value={rawEndDate || ""}
+                onChange={(e) => setStaffFilters({ ...staffFilters, endDate: e.target.value })}
+                className="w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm sm:w-auto"
+              />
             </div>
-            <div className="rounded-lg bg-white border border-gray-200 p-4 shadow-sm">
-              <div className="text-sm font-medium text-gray-500">Total Value</div>
-              <div className="mt-1 text-2xl font-semibold text-gray-900">
-                {formatZAR(staffStockReport.totals.totalValue)}
-              </div>
-            </div>
-            <div
-              className={`rounded-lg border p-4 shadow-sm ${
-                staffStockReport.totals.anomalyCount > 0
-                  ? "bg-red-50 border-red-200"
-                  : "bg-white border-gray-200"
-              }`}
-            >
-              <div
-                className={`text-sm font-medium ${
-                  staffStockReport.totals.anomalyCount > 0 ? "text-red-600" : "text-gray-500"
-                }`}
+            <div>
+              <label className="mb-1 block text-xs font-medium text-gray-700">Department</label>
+              <select
+                value={rawDepartmentId || ""}
+                onChange={(e) =>
+                  setStaffFilters({
+                    ...staffFilters,
+                    departmentId: e.target.value ? Number(e.target.value) : undefined,
+                  })
+                }
+                className="w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm sm:w-auto"
               >
-                Anomalies Detected
-              </div>
-              <div
-                className={`mt-1 text-2xl font-semibold ${
-                  staffStockReport.totals.anomalyCount > 0 ? "text-red-700" : "text-gray-900"
-                }`}
-              >
-                {staffStockReport.totals.anomalyCount}
-              </div>
-            </div>
-          </div>
-
-          <div>
-            <table className="w-full table-fixed divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th
-                    scope="col"
-                    className="px-3 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 sm:px-6"
-                  >
-                    Staff Member
-                  </th>
-                  <th
-                    scope="col"
-                    className="hidden w-[80px] px-3 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 sm:table-cell sm:px-6"
-                  >
-                    Emp #
-                  </th>
-                  <th
-                    scope="col"
-                    className="hidden w-[120px] px-3 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 md:table-cell sm:px-6"
-                  >
-                    Department
-                  </th>
-                  <th
-                    scope="col"
-                    className="w-[80px] px-3 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500 sm:px-6"
-                  >
-                    Total Qty
-                  </th>
-                  <th
-                    scope="col"
-                    className="hidden w-[110px] px-3 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500 lg:table-cell sm:px-6"
-                  >
-                    Total Value
-                  </th>
-                  <th
-                    scope="col"
-                    className="hidden w-[90px] px-3 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500 lg:table-cell sm:px-6"
-                  >
-                    Issuances
-                  </th>
-                  <th
-                    scope="col"
-                    className="w-[100px] px-3 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500 sm:px-6"
-                  >
-                    Anomaly Score
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200 bg-white">
-                {staffStockReport.summaries.map((summary) => (
-                  <>
-                    <tr
-                      key={summary.staffMemberId}
-                      className={`cursor-pointer ${
-                        summary.isAnomaly ? "bg-red-50 hover:bg-red-100" : "hover:bg-gray-50"
-                      }`}
-                      onClick={() => toggleStaffExpanded(summary.staffMemberId)}
-                    >
-                      <td className="whitespace-nowrap px-3 py-4 sm:px-6">
-                        <div className="flex items-center">
-                          <span
-                            className={`mr-2 transition-transform ${
-                              expandedStaffIds.has(summary.staffMemberId) ? "rotate-90" : ""
-                            }`}
-                          >
-                            <svg
-                              className="w-4 h-4 text-gray-400"
-                              fill="none"
-                              stroke="currentColor"
-                              viewBox="0 0 24 24"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M9 5l7 7-7 7"
-                              />
-                            </svg>
-                          </span>
-                          <div>
-                            <div className="text-sm font-medium text-gray-900">
-                              {summary.isAnomaly && (
-                                <span className="mr-1 text-red-500" title="Anomaly detected">
-                                  !
-                                </span>
-                              )}
-                              {summary.staffName}
-                            </div>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="hidden whitespace-nowrap px-3 py-4 font-mono text-sm text-gray-500 sm:table-cell sm:px-6">
-                        {summary.employeeNumber || "-"}
-                      </td>
-                      <td className="hidden whitespace-nowrap px-3 py-4 text-sm text-gray-500 md:table-cell sm:px-6">
-                        {summary.department || "-"}
-                      </td>
-                      <td className="whitespace-nowrap px-3 py-4 text-right text-sm font-medium text-gray-900 sm:px-6">
-                        {summary.totalQuantityReceived.toLocaleString()}
-                      </td>
-                      <td className="hidden whitespace-nowrap px-3 py-4 text-right text-sm text-gray-900 lg:table-cell sm:px-6">
-                        {formatZAR(summary.totalValue)}
-                      </td>
-                      <td className="hidden whitespace-nowrap px-3 py-4 text-right text-sm text-gray-500 lg:table-cell sm:px-6">
-                        {summary.issuanceCount}
-                      </td>
-                      <td className="whitespace-nowrap px-3 py-4 text-right text-sm sm:px-6">
-                        <span
-                          className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${
-                            summary.isAnomaly
-                              ? "bg-red-100 text-red-800"
-                              : "bg-gray-100 text-gray-800"
-                          }`}
-                        >
-                          {summary.anomalyScore.toFixed(1)}
-                        </span>
-                      </td>
-                    </tr>
-                    {expandedStaffIds.has(summary.staffMemberId) && summary.items.length > 0 && (
-                      <tr key={`${summary.staffMemberId}-items`}>
-                        <td colSpan={7} className="bg-gray-50 px-6 py-3">
-                          <div>
-                            <table className="w-full table-fixed divide-y divide-gray-200">
-                              <thead>
-                                <tr>
-                                  <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                                    Item
-                                  </th>
-                                  <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                                    SKU
-                                  </th>
-                                  <th className="hidden px-3 py-2 text-left text-xs font-medium uppercase tracking-wider text-gray-500 sm:table-cell">
-                                    Category
-                                  </th>
-                                  <th className="px-3 py-2 text-right text-xs font-medium uppercase tracking-wider text-gray-500">
-                                    Quantity
-                                  </th>
-                                  <th className="px-3 py-2 text-right text-xs font-medium uppercase tracking-wider text-gray-500">
-                                    Value
-                                  </th>
-                                </tr>
-                              </thead>
-                              <tbody className="divide-y divide-gray-100">
-                                {summary.items.map((item) => (
-                                  <tr key={item.stockItemId} className="hover:bg-gray-100">
-                                    <td className="whitespace-nowrap px-3 py-2 text-sm text-gray-900">
-                                      {item.stockItemName}
-                                    </td>
-                                    <td className="whitespace-nowrap px-3 py-2 font-mono text-sm text-gray-500">
-                                      {item.sku}
-                                    </td>
-                                    <td className="hidden whitespace-nowrap px-3 py-2 text-sm text-gray-500 sm:table-cell">
-                                      {item.category || "-"}
-                                    </td>
-                                    <td className="whitespace-nowrap px-3 py-2 text-right text-sm font-medium text-gray-900">
-                                      {item.totalQuantity.toLocaleString()}
-                                    </td>
-                                    <td className="whitespace-nowrap px-3 py-2 text-right text-sm text-gray-900">
-                                      {formatZAR(item.totalValue)}
-                                    </td>
-                                  </tr>
-                                ))}
-                              </tbody>
-                            </table>
-                          </div>
-                        </td>
-                      </tr>
-                    )}
-                  </>
+                <option value="">All Departments</option>
+                {departments.map((dept) => (
+                  <option key={dept.id} value={dept.id}>
+                    {dept.name}
+                  </option>
                 ))}
-              </tbody>
-            </table>
+              </select>
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-gray-700">Staff Member</label>
+              <select
+                value={rawStaffMemberId || ""}
+                onChange={(e) =>
+                  setStaffFilters({
+                    ...staffFilters,
+                    staffMemberId: e.target.value ? Number(e.target.value) : undefined,
+                  })
+                }
+                className="w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm sm:w-auto"
+              >
+                <option value="">All Staff</option>
+                {staffMembers.map((staff) => (
+                  <option key={staff.id} value={staff.id}>
+                    {staff.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-gray-700">Item</label>
+              <select
+                value={rawStockItemId || ""}
+                onChange={(e) =>
+                  setStaffFilters({
+                    ...staffFilters,
+                    stockItemId: e.target.value ? Number(e.target.value) : undefined,
+                  })
+                }
+                className="w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm sm:w-auto"
+              >
+                <option value="">All Items</option>
+                {stockItems.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.sku} - {item.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="col-span-2 sm:col-span-1">
+              <label className="mb-1 block text-xs font-medium text-gray-700">
+                Anomaly Threshold: {staffFilters.anomalyThreshold?.toFixed(1)}x std dev
+              </label>
+              <input
+                type="range"
+                min="1.5"
+                max="3.0"
+                step="0.1"
+                value={rawAnomalyThreshold || 2.0}
+                onChange={(e) =>
+                  setStaffFilters({
+                    ...staffFilters,
+                    anomalyThreshold: Number(e.target.value),
+                  })
+                }
+                className="w-full sm:w-32"
+              />
+            </div>
+            <button
+              onClick={() =>
+                setStaffFilters({
+                  startDate: "",
+                  endDate: "",
+                  staffMemberId: undefined,
+                  departmentId: undefined,
+                  stockItemId: undefined,
+                  anomalyThreshold: 2.0,
+                })
+              }
+              className="col-span-2 rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-600 hover:bg-gray-100 hover:text-gray-900 sm:col-span-1"
+            >
+              Clear Filters
+            </button>
           </div>
-        </>
-      )}
-    </>
-  );
+        </div>
+
+        {isLoading ? (
+          renderLoading()
+        ) : error ? (
+          renderError()
+        ) : !staffStockReport || staffStockReport.summaries.length === 0 ? (
+          <div className="text-center py-12">
+            <svg
+              className="mx-auto h-12 w-12 text-gray-400"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
+              />
+            </svg>
+            <h3 className="mt-2 text-sm font-medium text-gray-900">No staff stock data</h3>
+            <p className="mt-1 text-sm text-gray-500">
+              No stock has been issued to staff members yet.
+            </p>
+          </div>
+        ) : (
+          <>
+            <div className="grid grid-cols-2 gap-4 p-4 sm:grid-cols-4">
+              <div className="rounded-lg bg-white border border-gray-200 p-4 shadow-sm">
+                <div className="text-sm font-medium text-gray-500">Total Staff</div>
+                <div className="mt-1 text-2xl font-semibold text-gray-900">
+                  {staffStockReport.totals.totalStaff}
+                </div>
+              </div>
+              <div className="rounded-lg bg-white border border-gray-200 p-4 shadow-sm">
+                <div className="text-sm font-medium text-gray-500">Total Quantity</div>
+                <div className="mt-1 text-2xl font-semibold text-gray-900">
+                  {staffStockReport.totals.totalQuantityIssued.toLocaleString()}
+                </div>
+              </div>
+              <div className="rounded-lg bg-white border border-gray-200 p-4 shadow-sm">
+                <div className="text-sm font-medium text-gray-500">Total Value</div>
+                <div className="mt-1 text-2xl font-semibold text-gray-900">
+                  {formatZAR(staffStockReport.totals.totalValue)}
+                </div>
+              </div>
+              <div
+                className={`rounded-lg border p-4 shadow-sm ${
+                  staffStockReport.totals.anomalyCount > 0
+                    ? "bg-red-50 border-red-200"
+                    : "bg-white border-gray-200"
+                }`}
+              >
+                <div
+                  className={`text-sm font-medium ${
+                    staffStockReport.totals.anomalyCount > 0 ? "text-red-600" : "text-gray-500"
+                  }`}
+                >
+                  Anomalies Detected
+                </div>
+                <div
+                  className={`mt-1 text-2xl font-semibold ${
+                    staffStockReport.totals.anomalyCount > 0 ? "text-red-700" : "text-gray-900"
+                  }`}
+                >
+                  {staffStockReport.totals.anomalyCount}
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <table className="w-full table-fixed divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th
+                      scope="col"
+                      className="px-3 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 sm:px-6"
+                    >
+                      Staff Member
+                    </th>
+                    <th
+                      scope="col"
+                      className="hidden w-[80px] px-3 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 sm:table-cell sm:px-6"
+                    >
+                      Emp #
+                    </th>
+                    <th
+                      scope="col"
+                      className="hidden w-[120px] px-3 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 md:table-cell sm:px-6"
+                    >
+                      Department
+                    </th>
+                    <th
+                      scope="col"
+                      className="w-[80px] px-3 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500 sm:px-6"
+                    >
+                      Total Qty
+                    </th>
+                    <th
+                      scope="col"
+                      className="hidden w-[110px] px-3 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500 lg:table-cell sm:px-6"
+                    >
+                      Total Value
+                    </th>
+                    <th
+                      scope="col"
+                      className="hidden w-[90px] px-3 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500 lg:table-cell sm:px-6"
+                    >
+                      Issuances
+                    </th>
+                    <th
+                      scope="col"
+                      className="w-[100px] px-3 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500 sm:px-6"
+                    >
+                      Anomaly Score
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200 bg-white">
+                  {staffStockReport.summaries.map((summary) => {
+                    const rawEmployeeNumber = summary.employeeNumber;
+                    const rawDepartment = summary.department;
+                    return (
+                      <>
+                        <tr
+                          key={summary.staffMemberId}
+                          className={`cursor-pointer ${
+                            summary.isAnomaly ? "bg-red-50 hover:bg-red-100" : "hover:bg-gray-50"
+                          }`}
+                          onClick={() => toggleStaffExpanded(summary.staffMemberId)}
+                        >
+                          <td className="whitespace-nowrap px-3 py-4 sm:px-6">
+                            <div className="flex items-center">
+                              <span
+                                className={`mr-2 transition-transform ${
+                                  expandedStaffIds.has(summary.staffMemberId) ? "rotate-90" : ""
+                                }`}
+                              >
+                                <svg
+                                  className="w-4 h-4 text-gray-400"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M9 5l7 7-7 7"
+                                  />
+                                </svg>
+                              </span>
+                              <div>
+                                <div className="text-sm font-medium text-gray-900">
+                                  {summary.isAnomaly && (
+                                    <span className="mr-1 text-red-500" title="Anomaly detected">
+                                      !
+                                    </span>
+                                  )}
+                                  {summary.staffName}
+                                </div>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="hidden whitespace-nowrap px-3 py-4 font-mono text-sm text-gray-500 sm:table-cell sm:px-6">
+                            {rawEmployeeNumber || "-"}
+                          </td>
+                          <td className="hidden whitespace-nowrap px-3 py-4 text-sm text-gray-500 md:table-cell sm:px-6">
+                            {rawDepartment || "-"}
+                          </td>
+                          <td className="whitespace-nowrap px-3 py-4 text-right text-sm font-medium text-gray-900 sm:px-6">
+                            {summary.totalQuantityReceived.toLocaleString()}
+                          </td>
+                          <td className="hidden whitespace-nowrap px-3 py-4 text-right text-sm text-gray-900 lg:table-cell sm:px-6">
+                            {formatZAR(summary.totalValue)}
+                          </td>
+                          <td className="hidden whitespace-nowrap px-3 py-4 text-right text-sm text-gray-500 lg:table-cell sm:px-6">
+                            {summary.issuanceCount}
+                          </td>
+                          <td className="whitespace-nowrap px-3 py-4 text-right text-sm sm:px-6">
+                            <span
+                              className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${
+                                summary.isAnomaly
+                                  ? "bg-red-100 text-red-800"
+                                  : "bg-gray-100 text-gray-800"
+                              }`}
+                            >
+                              {summary.anomalyScore.toFixed(1)}
+                            </span>
+                          </td>
+                        </tr>
+                        {expandedStaffIds.has(summary.staffMemberId) &&
+                          summary.items.length > 0 && (
+                            <tr key={`${summary.staffMemberId}-items`}>
+                              <td colSpan={7} className="bg-gray-50 px-6 py-3">
+                                <div>
+                                  <table className="w-full table-fixed divide-y divide-gray-200">
+                                    <thead>
+                                      <tr>
+                                        <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                                          Item
+                                        </th>
+                                        <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                                          SKU
+                                        </th>
+                                        <th className="hidden px-3 py-2 text-left text-xs font-medium uppercase tracking-wider text-gray-500 sm:table-cell">
+                                          Category
+                                        </th>
+                                        <th className="px-3 py-2 text-right text-xs font-medium uppercase tracking-wider text-gray-500">
+                                          Quantity
+                                        </th>
+                                        <th className="px-3 py-2 text-right text-xs font-medium uppercase tracking-wider text-gray-500">
+                                          Value
+                                        </th>
+                                      </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-100">
+                                      {summary.items.map((item) => {
+                                        const rawCategory = item.category;
+                                        return (
+                                          <tr key={item.stockItemId} className="hover:bg-gray-100">
+                                            <td className="whitespace-nowrap px-3 py-2 text-sm text-gray-900">
+                                              {item.stockItemName}
+                                            </td>
+                                            <td className="whitespace-nowrap px-3 py-2 font-mono text-sm text-gray-500">
+                                              {item.sku}
+                                            </td>
+                                            <td className="hidden whitespace-nowrap px-3 py-2 text-sm text-gray-500 sm:table-cell">
+                                              {rawCategory || "-"}
+                                            </td>
+                                            <td className="whitespace-nowrap px-3 py-2 text-right text-sm font-medium text-gray-900">
+                                              {item.totalQuantity.toLocaleString()}
+                                            </td>
+                                            <td className="whitespace-nowrap px-3 py-2 text-right text-sm text-gray-900">
+                                              {formatZAR(item.totalValue)}
+                                            </td>
+                                          </tr>
+                                        );
+                                      })}
+                                    </tbody>
+                                  </table>
+                                </div>
+                              </td>
+                            </tr>
+                          )}
+                      </>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </>
+        )}
+      </>
+    );
+  };
 
   const handleExportCSV = () => {
     if (activeTab === "cost-by-job") {
@@ -1094,20 +1114,26 @@ export default function ReportsPage() {
       {showNoMovementsPopup && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/10 backdrop-blur-md">
           <div className="bg-white rounded-xl shadow-2xl max-w-sm w-full mx-4 overflow-hidden">
-            {profile?.logoUrl && (
-              <div
-                className="flex items-center justify-center p-6 pb-4"
-                style={{
-                  backgroundColor: profile.primaryColor ? `${profile.primaryColor}10` : "#f0fdfa",
-                }}
-              >
-                <img
-                  src={profile.logoUrl}
-                  alt={profile.companyName || "Company"}
-                  className="h-12 max-w-[180px] object-contain"
-                />
-              </div>
-            )}
+            {profile?.logoUrl &&
+              (() => {
+                const rawCompanyName = profile.companyName;
+                return (
+                  <div
+                    className="flex items-center justify-center p-6 pb-4"
+                    style={{
+                      backgroundColor: profile.primaryColor
+                        ? `${profile.primaryColor}10`
+                        : "#f0fdfa",
+                    }}
+                  >
+                    <img
+                      src={profile.logoUrl}
+                      alt={rawCompanyName || "Company"}
+                      className="h-12 max-w-[180px] object-contain"
+                    />
+                  </div>
+                );
+              })()}
             <div className="p-6 pt-4 text-center">
               <svg
                 className="mx-auto h-10 w-10 mb-3"

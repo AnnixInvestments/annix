@@ -37,6 +37,7 @@ export function useRfqDraftStorage(): UseRfqDraftStorageReturn {
   }, []);
 
   const loadDraft = useCallback((): RfqDraftData | null => {
+    // eslint-disable-next-line no-restricted-syntax -- SSR guard; isUndefined(window) would throw
     if (typeof window === "undefined") return null;
 
     try {
@@ -68,6 +69,7 @@ export function useRfqDraftStorage(): UseRfqDraftStorageReturn {
 
   const saveDraft = useCallback(
     (data: Partial<RfqDraftData>) => {
+      // eslint-disable-next-line no-restricted-syntax -- SSR guard; isUndefined(window) would throw
       if (typeof window === "undefined") return;
 
       if (saveTimeoutRef.current) {
@@ -116,6 +118,7 @@ export function useRfqDraftStorage(): UseRfqDraftStorageReturn {
   );
 
   const clearDraft = useCallback(() => {
+    // eslint-disable-next-line no-restricted-syntax -- SSR guard; isUndefined(window) would throw
     if (typeof window === "undefined") return;
 
     try {

@@ -1,5 +1,6 @@
 "use client";
 
+import { keys } from "es-toolkit/compat";
 import Link from "next/link";
 import { useState } from "react";
 import type {
@@ -485,7 +486,7 @@ export default function MeetingsPage() {
           >
             All
           </button>
-          {(Object.keys(statusLabels) as MeetingStatus[]).map((status) => {
+          {(keys(statusLabels) as MeetingStatus[]).map((status) => {
             const colors = statusColors[status];
             return (
               <button

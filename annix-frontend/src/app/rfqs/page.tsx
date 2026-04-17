@@ -19,7 +19,12 @@ export default function RfqListPage() {
     const matchesSearch =
       rfq.rfqNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
       rfq.projectName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (rfq.customerName ?? "").toLowerCase().includes(searchTerm.toLowerCase());
+      (() => {
+        const rawCustomerName = rfq.customerName;
+        return rawCustomerName ?? "";
+      })()
+        .toLowerCase()
+        .includes(searchTerm.toLowerCase());
 
     const matchesStatus = statusFilter === "all" || rfq.status === statusFilter;
 

@@ -18,11 +18,18 @@ const DEFAULT_COLORS = { bg: "bg-gray-50", text: "text-gray-700", border: "borde
 
 export function AppAccessBadge(props: AppAccessBadgeProps) {
   const { access } = props;
-  const colors = APP_COLORS[access.appCode] ?? DEFAULT_COLORS;
+  const rawAPP_COLORS = APP_COLORS[access.appCode];
+  const colors = rawAPP_COLORS ?? DEFAULT_COLORS;
 
   const roleDisplay = access.useCustomPermissions
-    ? `Custom (${access.permissionCount ?? 0})`
-    : (access.roleName ?? "No Role");
+    ? `Custom (${(() => {
+        const rawPermissionCount = access.permissionCount;
+        return rawPermissionCount ?? 0;
+      })()})`
+    : (() => {
+        const rawRoleName = access.roleName;
+        return rawRoleName ?? "No Role";
+      })();
 
   const isExpired = access.expiresAt && checkExpired(access.expiresAt);
 

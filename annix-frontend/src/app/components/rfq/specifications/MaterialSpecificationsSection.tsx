@@ -1,5 +1,6 @@
 "use client";
 
+import { isNumber } from "es-toolkit/compat";
 import React, { useEffect, useRef, useState } from "react";
 import { getFlangeMaterialGroup } from "@/app/components/rfq/utils";
 import { ArSteelWarningBanner } from "@/app/components/rfq/warnings/ArSteelWarningBanner";
@@ -333,7 +334,7 @@ export function MaterialSpecificationsSection(props: MaterialSpecificationsSecti
       return;
     }
 
-    const standardId = typeof rawValue === "number" ? rawValue : Number(rawValue);
+    const standardId = isNumber(rawValue) ? rawValue : Number(rawValue);
     let recommendedPressureClassId: number | undefined;
     const standardChanged = standardId !== globalSpecs?.flangeStandardId;
     const steelSpec = masterData.steelSpecs?.find(

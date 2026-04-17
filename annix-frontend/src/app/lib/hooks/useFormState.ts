@@ -1,3 +1,4 @@
+import { keys } from "es-toolkit/compat";
 import { useCallback, useMemo, useState } from "react";
 
 export interface UseFormStateOptions<TValues extends Record<string, unknown>> {
@@ -56,7 +57,7 @@ export function useFormState<TValues extends Record<string, unknown>>(
     if (!options.validate) return true;
     const result = options.validate(values);
     setErrors(result);
-    return Object.keys(result).length === 0;
+    return keys(result).length === 0;
   }, [options, values]);
 
   const reset = useCallback(
@@ -68,7 +69,7 @@ export function useFormState<TValues extends Record<string, unknown>>(
     [options.initialValues],
   );
 
-  const isValid = useMemo(() => Object.keys(errors).length === 0, [errors]);
+  const isValid = useMemo(() => keys(errors).length === 0, [errors]);
 
   return {
     values,

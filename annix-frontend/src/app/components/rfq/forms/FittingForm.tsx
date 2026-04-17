@@ -1,6 +1,7 @@
 "use client";
 
 import { NACE_MAX_HARDNESS_HRC } from "@annix/product-data/steel";
+import { toPairs as entries, keys } from "es-toolkit/compat";
 import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { WorkingConditionsSection } from "@/app/components/rfq/sections/WorkingConditionsSection";
 import { ClosureLengthSelector } from "@/app/components/rfq/selectors/ClosureLengthSelector";
@@ -1271,7 +1272,7 @@ function FittingFormComponent({
                                     pipeUpdates.pipeLengthBMm = pipeLengthB;
                                     pipeUpdates.pipeLengthBMmAuto = pipeLengthB;
                                   }
-                                  if (Object.keys(pipeUpdates).length > 0) {
+                                  if (keys(pipeUpdates).length > 0) {
                                     onUpdateEntry(entry.id, { specs: pipeUpdates });
                                   }
                                 }
@@ -1508,7 +1509,7 @@ function FittingFormComponent({
                                         pipeUpdates.pipeLengthBMm = pipeLengthB;
                                         pipeUpdates.pipeLengthBMmAuto = pipeLengthB;
                                       }
-                                      if (Object.keys(pipeUpdates).length > 0) {
+                                      if (keys(pipeUpdates).length > 0) {
                                         onUpdateEntry(entry.id, { specs: pipeUpdates });
                                       }
                                     }
@@ -5205,7 +5206,7 @@ function FittingFormComponent({
                                     1 × {branchNB}NB {isUnequalTeeCalc ? "Tee " : ""}Flange
                                   </p>
                                 )}
-                                {Object.entries(stubFlangesByNB).map(([nb, count]) => (
+                                {entries(stubFlangesByNB).map(([nb, count]) => (
                                   <p key={nb} className="text-orange-700">
                                     {count as number} × {nb}NB Stub Flange
                                   </p>

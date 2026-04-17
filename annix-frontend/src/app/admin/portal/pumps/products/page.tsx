@@ -65,8 +65,14 @@ export default function PumpProductsPage() {
 
       return {
         ...type,
-        priceMin: pricingTier?.basePriceRange.min || 0,
-        priceMax: pricingTier?.basePriceRange.max || 0,
+        priceMin: (() => {
+          const rawMin = pricingTier?.basePriceRange.min;
+          return rawMin || 0;
+        })(),
+        priceMax: (() => {
+          const rawMax = pricingTier?.basePriceRange.max;
+          return rawMax || 0;
+        })(),
       };
     });
 
@@ -328,7 +334,10 @@ export default function PumpProductsPage() {
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {product.apiStandard || "-"}
+                      {(() => {
+                        const rawApiStandard = product.apiStandard;
+                        return rawApiStandard || "-";
+                      })()}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                       {product.priceMin > 0 ? (

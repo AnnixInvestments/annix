@@ -1,6 +1,7 @@
 "use client";
 
 import { Tube } from "@react-three/drei";
+import { keys } from "es-toolkit/compat";
 import { useMemo } from "react";
 import * as THREE from "three";
 import { ArcCurve, SaddleCurve } from "@/app/lib/3d/curves";
@@ -28,7 +29,7 @@ const flangeColor = FLANGE_MATERIALS.standard;
 const blankFlangeColor = FLANGE_MATERIALS.blank;
 
 function closestFlangeNb(nb: number): number {
-  const availableNBs = Object.keys(FLANGE_DATA)
+  const availableNBs = keys(FLANGE_DATA)
     .map(Number)
     .filter((k) => k <= nb);
   return availableNBs.pop() || 200;

@@ -1,6 +1,7 @@
 "use client";
 
 import { useQueryClient } from "@tanstack/react-query";
+import { keys } from "es-toolkit/compat";
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import React, { useCallback, useEffect, useRef, useState } from "react";
@@ -85,7 +86,8 @@ function fileTypeIcon(filename: string): { color: string; label: string } {
     md: { color: "text-purple-500", label: "MD" },
     csv: { color: "text-green-500", label: "CSV" },
   };
-  return icons[ext] || { color: "text-gray-400", label: ext.toUpperCase() || "FILE" };
+  const rawIcons = icons[ext];
+  return rawIcons || { color: "text-gray-400", label: ext.toUpperCase() || "FILE" };
 }
 
 function formatFileSize(bytes: number): string {
@@ -153,8 +155,10 @@ export default function SecureDocumentsPage() {
   const updateMutation = useUpdateSecureDocument();
   const deleteMutation = useDeleteSecureDocument();
 
-  const documents = secureDocsQuery.data ?? [];
-  const localDocuments = localDocsQuery.data ?? [];
+  const rawSecureDocsData = secureDocsQuery.data;
+  const documents = rawSecureDocsData ?? [];
+  const rawLocalDocsData = localDocsQuery.data;
+  const localDocuments = rawLocalDocsData ?? [];
 
   const [actionMessage, setActionMessage] = useState<{
     type: "success" | "error";
@@ -259,11 +263,44 @@ export default function SecureDocumentsPage() {
     if (sortColumn === "updatedAt") {
       return direction * (fromISO(a.updatedAt).toMillis() - fromISO(b.updatedAt).toMillis());
     } else if (sortColumn === "title") {
-      return direction * (a.title || "").localeCompare(b.title || "");
+      return (
+        direction *
+        (() => {
+          const rawTitle = a.title;
+          return rawTitle || "";
+        })().localeCompare(
+          (() => {
+            const rawTitle = b.title;
+            return rawTitle || "";
+          })(),
+        )
+      );
     } else if (sortColumn === "description") {
-      return direction * (a.description || "").localeCompare(b.description || "");
+      return (
+        direction *
+        (() => {
+          const rawDescription = a.description;
+          return rawDescription || "";
+        })().localeCompare(
+          (() => {
+            const rawDescription = b.description;
+            return rawDescription || "";
+          })(),
+        )
+      );
     } else if (sortColumn === "author") {
-      return direction * (a.author || "").localeCompare(b.author || "");
+      return (
+        direction *
+        (() => {
+          const rawAuthor = a.author;
+          return rawAuthor || "";
+        })().localeCompare(
+          (() => {
+            const rawAuthor = b.author;
+            return rawAuthor || "";
+          })(),
+        )
+      );
     }
     return 0;
   });
@@ -273,7 +310,10 @@ export default function SecureDocumentsPage() {
 
   const secureDocsByFolder = secureDocuments.reduce(
     (acc, doc) => {
-      const folder = doc.folder || ".";
+      const folder = (() => {
+        const rawFolder = doc.folder;
+        return rawFolder || ".";
+      })();
       if (!acc[folder]) {
         acc[folder] = [];
       }
@@ -283,7 +323,7 @@ export default function SecureDocumentsPage() {
     {} as Record<string, UnifiedDocument[]>,
   );
 
-  const sortedSecureFolders = Object.keys(secureDocsByFolder).sort((a, b) => {
+  const sortedSecureFolders = keys(secureDocsByFolder).sort((a, b) => {
     if (a === ".") return -1;
     if (b === ".") return 1;
     return a.localeCompare(b);
@@ -301,7 +341,7 @@ export default function SecureDocumentsPage() {
     {} as Record<string, UnifiedDocument[]>,
   );
 
-  const sortedLocalFolders = Object.keys(localDocsByFolder).sort((a, b) => {
+  const sortedLocalFolders = keys(localDocsByFolder).sort((a, b) => {
     if (a === ".") return -1;
     if (b === ".") return 1;
     return a.localeCompare(b);
@@ -476,8 +516,14 @@ export default function SecureDocumentsPage() {
       updateUrl(
         selectedDocument.slug,
         "edit",
-        state.paneMode ?? editorPaneMode,
-        state.fullscreen ?? editorFullscreen,
+        (() => {
+          const rawPaneMode = state.paneMode;
+          return rawPaneMode ?? editorPaneMode;
+        })(),
+        (() => {
+          const rawFullscreen = state.fullscreen;
+          return rawFullscreen ?? editorFullscreen;
+        })(),
       );
     }
   };
@@ -675,7 +721,10 @@ export default function SecureDocumentsPage() {
 
       const result = await adminApiClient.uploadNixDocument(
         uploadingFile.file,
-        uploadingFile.title || undefined,
+        (() => {
+          const rawTitle = uploadingFile.title;
+          return rawTitle || undefined;
+        })(),
         undefined,
         uploadingFile.processWithNix,
       );
@@ -703,14 +752,24 @@ export default function SecureDocumentsPage() {
         setUploadingFiles((prev) =>
           prev.map((f) =>
             f.id === uploadingFile.id
-              ? { ...f, status: "error", error: result.error || "Upload failed" }
+              ? {
+                  ...f,
+                  status: "error",
+                  error: (() => {
+                    const rawError = result.error;
+                    return rawError || "Upload failed";
+                  })(),
+                }
               : f,
           ),
         );
         setNixUploadResult({
           fileName: uploadingFile.file.name,
           success: false,
-          error: result.error || "Upload failed",
+          error: (() => {
+            const rawError = result.error;
+            return rawError || "Upload failed";
+          })(),
         });
       }
     } catch (err: unknown) {
@@ -1022,83 +1081,48 @@ export default function SecureDocumentsPage() {
             </div>
           </div>
         )}
-        {secureDocsQuery.isLoading || isLoadingDocument ? (
-          <div className="flex items-center justify-center py-12">
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#323288] mx-auto"></div>
-              <p className="mt-4 text-gray-600">Loading...</p>
+        {(() => {
+          const rawIsLoading = secureDocsQuery.isLoading;
+          return rawIsLoading || isLoadingDocument ? (
+            <div className="flex items-center justify-center py-12">
+              <div className="text-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#323288] mx-auto"></div>
+                <p className="mt-4 text-gray-600">Loading...</p>
+              </div>
             </div>
-          </div>
-        ) : unifiedDocuments.length === 0 ? (
-          <div
-            className={`text-center py-12 px-6 transition-colors ${isDragging ? "bg-[#323288]/5 border-2 border-dashed border-[#323288]" : ""}`}
-            onDragOver={handleDragOver}
-            onDragLeave={handleDragLeave}
-            onDrop={handleDrop}
-          >
-            <svg
-              className="mx-auto h-12 w-12 text-gray-400"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
+          ) : unifiedDocuments.length === 0 ? (
+            <div
+              className={`text-center py-12 px-6 transition-colors ${isDragging ? "bg-[#323288]/5 border-2 border-dashed border-[#323288]" : ""}`}
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-              />
-            </svg>
-            <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-gray-100">
-              No documents
-            </h3>
-            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-              Create your first secure document or drag and drop a markdown file
-            </p>
-            <div className="mt-4 flex justify-center space-x-3">
-              <button
-                onClick={() => fileInputRef.current?.click()}
-                className="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700"
+              <svg
+                className="mx-auto h-12 w-12 text-gray-400"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
               >
-                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
-                  />
-                </svg>
-                Import File
-              </button>
-              <button
-                onClick={handleCreateNew}
-                className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-[#323288] hover:bg-[#4a4da3]"
-              >
-                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 4v16m8-8H4"
-                  />
-                </svg>
-                Create Document
-              </button>
-            </div>
-          </div>
-        ) : (
-          <>
-            {selectedIds.size > 0 && (
-              <div className="bg-[#323288]/5 border-b border-[#323288]/20 px-6 py-3 flex items-center justify-between">
-                <span className="text-sm font-medium text-[#323288]">
-                  {selectedIds.size} document{selectedIds.size !== 1 ? "s" : ""} selected
-                </span>
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                />
+              </svg>
+              <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-gray-100">
+                No documents
+              </h3>
+              <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                Create your first secure document or drag and drop a markdown file
+              </p>
+              <div className="mt-4 flex justify-center space-x-3">
                 <button
-                  onClick={() => setShowBulkDeleteConfirm(true)}
-                  className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-red-600 hover:text-red-800 hover:bg-red-50 rounded"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700"
                 >
                   <svg
-                    className="w-4 h-4 mr-1.5"
+                    className="w-4 h-4 mr-2"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -1107,139 +1131,355 @@ export default function SecureDocumentsPage() {
                       strokeLinecap="round"
                       strokeLinejoin="round"
                       strokeWidth={2}
-                      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                      d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
                     />
                   </svg>
-                  Delete Selected
+                  Import File
+                </button>
+                <button
+                  onClick={handleCreateNew}
+                  className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-[#323288] hover:bg-[#4a4da3]"
+                >
+                  <svg
+                    className="w-4 h-4 mr-2"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 4v16m8-8H4"
+                    />
+                  </svg>
+                  Create Document
                 </button>
               </div>
-            )}
-            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-              <thead className="bg-gray-50 dark:bg-gray-800">
-                <tr>
-                  <th scope="col" className="w-12 px-4 py-3">
-                    <input
-                      type="checkbox"
-                      checked={allSelected}
-                      ref={(el) => {
-                        if (el) el.indeterminate = someSelected;
-                      }}
-                      onChange={toggleSelectAll}
-                      className="h-4 w-4 rounded border-gray-300 text-[#323288] focus:ring-[#323288]"
-                    />
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 select-none"
-                    onClick={() => handleSort("title")}
+            </div>
+          ) : (
+            <>
+              {selectedIds.size > 0 && (
+                <div className="bg-[#323288]/5 border-b border-[#323288]/20 px-6 py-3 flex items-center justify-between">
+                  <span className="text-sm font-medium text-[#323288]">
+                    {selectedIds.size} document{selectedIds.size !== 1 ? "s" : ""} selected
+                  </span>
+                  <button
+                    onClick={() => setShowBulkDeleteConfirm(true)}
+                    className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-red-600 hover:text-red-800 hover:bg-red-50 rounded"
                   >
-                    <div className="flex items-center gap-1">
-                      Title
-                      {sortColumn === "title" && (
-                        <svg
-                          className="w-4 h-4"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
+                    <svg
+                      className="w-4 h-4 mr-1.5"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                      />
+                    </svg>
+                    Delete Selected
+                  </button>
+                </div>
+              )}
+              <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                <thead className="bg-gray-50 dark:bg-gray-800">
+                  <tr>
+                    <th scope="col" className="w-12 px-4 py-3">
+                      <input
+                        type="checkbox"
+                        checked={allSelected}
+                        ref={(el) => {
+                          if (el) el.indeterminate = someSelected;
+                        }}
+                        onChange={toggleSelectAll}
+                        className="h-4 w-4 rounded border-gray-300 text-[#323288] focus:ring-[#323288]"
+                      />
+                    </th>
+                    <th
+                      scope="col"
+                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 select-none"
+                      onClick={() => handleSort("title")}
+                    >
+                      <div className="flex items-center gap-1">
+                        Title
+                        {sortColumn === "title" && (
+                          <svg
+                            className="w-4 h-4"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d={sortDirection === "asc" ? "M5 15l7-7 7 7" : "M19 9l-7 7-7-7"}
+                            />
+                          </svg>
+                        )}
+                      </div>
+                    </th>
+                    <th
+                      scope="col"
+                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 select-none"
+                      onClick={() => handleSort("description")}
+                    >
+                      <div className="flex items-center gap-1">
+                        Description
+                        {sortColumn === "description" && (
+                          <svg
+                            className="w-4 h-4"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d={sortDirection === "asc" ? "M5 15l7-7 7 7" : "M19 9l-7 7-7-7"}
+                            />
+                          </svg>
+                        )}
+                      </div>
+                    </th>
+                    <th
+                      scope="col"
+                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 select-none"
+                      onClick={() => handleSort("author")}
+                    >
+                      <div className="flex items-center gap-1">
+                        Author
+                        {sortColumn === "author" && (
+                          <svg
+                            className="w-4 h-4"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d={sortDirection === "asc" ? "M5 15l7-7 7 7" : "M19 9l-7 7-7-7"}
+                            />
+                          </svg>
+                        )}
+                      </div>
+                    </th>
+                    <th
+                      scope="col"
+                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 select-none"
+                      onClick={() => handleSort("updatedAt")}
+                    >
+                      <div className="flex items-center gap-1">
+                        Last Updated
+                        {sortColumn === "updatedAt" && (
+                          <svg
+                            className="w-4 h-4"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d={sortDirection === "asc" ? "M5 15l7-7 7 7" : "M19 9l-7 7-7-7"}
+                            />
+                          </svg>
+                        )}
+                      </div>
+                    </th>
+                    <th scope="col" className="relative px-6 py-3">
+                      <span className="sr-only">Actions</span>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
+                  {sortedSecureFolders.map((folder) => (
+                    <React.Fragment key={`secure-folder-${folder}`}>
+                      {folder !== "." && (
+                        <tr
+                          className="bg-purple-50 dark:bg-purple-900/30 hover:bg-purple-100 dark:hover:bg-purple-900/50 cursor-pointer select-none"
+                          onClick={() => toggleFolder(folder)}
                         >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d={sortDirection === "asc" ? "M5 15l7-7 7 7" : "M19 9l-7 7-7-7"}
-                          />
-                        </svg>
+                          <td className="w-12 px-4 py-3">
+                            <svg
+                              className={`w-4 h-4 text-purple-600 dark:text-purple-400 transition-transform ${collapsedFolders.has(folder) ? "" : "rotate-90"}`}
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M9 5l7 7-7 7"
+                              />
+                            </svg>
+                          </td>
+                          <td colSpan={5} className="px-6 py-3">
+                            <div className="flex items-center">
+                              <svg
+                                className="w-5 h-5 text-purple-500 dark:text-purple-400 mr-3"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"
+                                />
+                              </svg>
+                              <span className="text-sm font-medium text-purple-900 dark:text-purple-200">
+                                {folder}
+                              </span>
+                              <span className="ml-2 text-xs text-purple-600 dark:text-purple-400">
+                                ({secureDocsByFolder[folder].length} document
+                                {secureDocsByFolder[folder].length !== 1 ? "s" : ""})
+                              </span>
+                            </div>
+                          </td>
+                        </tr>
                       )}
-                    </div>
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 select-none"
-                    onClick={() => handleSort("description")}
-                  >
-                    <div className="flex items-center gap-1">
-                      Description
-                      {sortColumn === "description" && (
-                        <svg
-                          className="w-4 h-4"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d={sortDirection === "asc" ? "M5 15l7-7 7 7" : "M19 9l-7 7-7-7"}
-                          />
-                        </svg>
-                      )}
-                    </div>
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 select-none"
-                    onClick={() => handleSort("author")}
-                  >
-                    <div className="flex items-center gap-1">
-                      Author
-                      {sortColumn === "author" && (
-                        <svg
-                          className="w-4 h-4"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d={sortDirection === "asc" ? "M5 15l7-7 7 7" : "M19 9l-7 7-7-7"}
-                          />
-                        </svg>
-                      )}
-                    </div>
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 select-none"
-                    onClick={() => handleSort("updatedAt")}
-                  >
-                    <div className="flex items-center gap-1">
-                      Last Updated
-                      {sortColumn === "updatedAt" && (
-                        <svg
-                          className="w-4 h-4"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d={sortDirection === "asc" ? "M5 15l7-7 7 7" : "M19 9l-7 7-7-7"}
-                          />
-                        </svg>
-                      )}
-                    </div>
-                  </th>
-                  <th scope="col" className="relative px-6 py-3">
-                    <span className="sr-only">Actions</span>
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
-                {sortedSecureFolders.map((folder) => (
-                  <React.Fragment key={`secure-folder-${folder}`}>
-                    {folder !== "." && (
+                      {(folder === "." || !collapsedFolders.has(folder)) &&
+                        secureDocsByFolder[folder].map((doc) => (
+                          <tr
+                            key={doc.id}
+                            onClick={() => handleUnifiedDocumentClick(doc)}
+                            className={`hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition-colors ${selectedIds.has(doc.id) ? "bg-[#323288]/5" : ""} ${folder !== "." ? "bg-purple-50/30 dark:bg-purple-900/20" : ""}`}
+                          >
+                            <td className="w-12 px-4 py-4" onClick={(e) => e.stopPropagation()}>
+                              <input
+                                type="checkbox"
+                                checked={selectedIds.has(doc.id)}
+                                onChange={() => toggleSelect(doc.id)}
+                                className="h-4 w-4 rounded border-gray-300 text-[#323288] focus:ring-[#323288]"
+                              />
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className={`flex items-center ${folder !== "." ? "pl-6" : ""}`}>
+                                <svg
+                                  className="w-5 h-5 text-gray-400 mr-3"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                                  />
+                                </svg>
+                                <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                                  {doc.title}
+                                </span>
+                                {doc.folder === "Nix" && (
+                                  <span className="ml-2 px-1.5 py-0.5 text-xs font-medium bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400 rounded">
+                                    Nix
+                                  </span>
+                                )}
+                                {doc.folder === "Attachments" && (
+                                  <span className="ml-2 px-1.5 py-0.5 text-xs font-medium bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400 rounded">
+                                    Attachment
+                                  </span>
+                                )}
+                              </div>
+                            </td>
+                            <td className="px-6 py-4">
+                              <span className="text-sm text-gray-500 dark:text-gray-400 truncate max-w-xs block">
+                                {(() => {
+                                  const rawDescription = doc.description;
+                                  return rawDescription || "-";
+                                })()}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                              {(() => {
+                                const rawAuthor = doc.author;
+                                return rawAuthor || "-";
+                              })()}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                              {formatDateZA(doc.updatedAt)}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                              <div className="flex items-center gap-2 justify-end">
+                                <div className="relative group">
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleEditDocument(doc.id, doc.slug);
+                                    }}
+                                    className="p-1.5 text-[#323288] hover:text-[#252560] hover:bg-[#323288]/10 rounded"
+                                  >
+                                    <svg
+                                      className="w-5 h-5"
+                                      fill="none"
+                                      stroke="currentColor"
+                                      viewBox="0 0 24 24"
+                                    >
+                                      <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth={2}
+                                        d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                                      />
+                                    </svg>
+                                  </button>
+                                  <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 text-xs !text-white bg-slate-800 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50 shadow-lg">
+                                    Edit document
+                                  </span>
+                                </div>
+                                <div className="relative group">
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setShowDeleteConfirm(doc.id);
+                                    }}
+                                    className="p-1.5 text-red-600 hover:text-red-800 hover:bg-red-50 rounded"
+                                  >
+                                    <svg
+                                      className="w-5 h-5"
+                                      fill="none"
+                                      stroke="currentColor"
+                                      viewBox="0 0 24 24"
+                                    >
+                                      <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth={2}
+                                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                                      />
+                                    </svg>
+                                  </button>
+                                  <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 text-xs !text-white bg-slate-800 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50 shadow-lg">
+                                    Delete document
+                                  </span>
+                                </div>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                    </React.Fragment>
+                  ))}
+                  {sortedLocalFolders.map((folder) => (
+                    <React.Fragment key={`local-folder-${folder}`}>
                       <tr
-                        className="bg-purple-50 dark:bg-purple-900/30 hover:bg-purple-100 dark:hover:bg-purple-900/50 cursor-pointer select-none"
-                        onClick={() => toggleFolder(folder)}
+                        className="bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50 cursor-pointer select-none"
+                        onClick={() => toggleFolder(`local:${folder}`)}
                       >
                         <td className="w-12 px-4 py-3">
                           <svg
-                            className={`w-4 h-4 text-purple-600 dark:text-purple-400 transition-transform ${collapsedFolders.has(folder) ? "" : "rotate-90"}`}
+                            className={`w-4 h-4 text-blue-600 dark:text-blue-400 transition-transform ${collapsedFolders.has(`local:${folder}`) ? "" : "rotate-90"}`}
                             fill="none"
                             stroke="currentColor"
                             viewBox="0 0 24 24"
@@ -1255,7 +1495,7 @@ export default function SecureDocumentsPage() {
                         <td colSpan={5} className="px-6 py-3">
                           <div className="flex items-center">
                             <svg
-                              className="w-5 h-5 text-purple-500 dark:text-purple-400 mr-3"
+                              className="w-5 h-5 text-blue-500 dark:text-blue-400 mr-3"
                               fill="none"
                               stroke="currentColor"
                               viewBox="0 0 24 24"
@@ -1267,233 +1507,74 @@ export default function SecureDocumentsPage() {
                                 d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"
                               />
                             </svg>
-                            <span className="text-sm font-medium text-purple-900 dark:text-purple-200">
-                              {folder}
+                            <span className="text-sm font-medium text-blue-900 dark:text-blue-200">
+                              {folder === "." ? "Codebase Root" : folder}
                             </span>
-                            <span className="ml-2 text-xs text-purple-600 dark:text-purple-400">
-                              ({secureDocsByFolder[folder].length} document
-                              {secureDocsByFolder[folder].length !== 1 ? "s" : ""})
+                            <span className="ml-2 text-xs text-blue-600 dark:text-blue-400">
+                              ({localDocsByFolder[folder].length} file
+                              {localDocsByFolder[folder].length !== 1 ? "s" : ""})
                             </span>
                           </div>
                         </td>
                       </tr>
-                    )}
-                    {(folder === "." || !collapsedFolders.has(folder)) &&
-                      secureDocsByFolder[folder].map((doc) => (
-                        <tr
-                          key={doc.id}
-                          onClick={() => handleUnifiedDocumentClick(doc)}
-                          className={`hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition-colors ${selectedIds.has(doc.id) ? "bg-[#323288]/5" : ""} ${folder !== "." ? "bg-purple-50/30 dark:bg-purple-900/20" : ""}`}
-                        >
-                          <td className="w-12 px-4 py-4" onClick={(e) => e.stopPropagation()}>
-                            <input
-                              type="checkbox"
-                              checked={selectedIds.has(doc.id)}
-                              onChange={() => toggleSelect(doc.id)}
-                              className="h-4 w-4 rounded border-gray-300 text-[#323288] focus:ring-[#323288]"
-                            />
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className={`flex items-center ${folder !== "." ? "pl-6" : ""}`}>
-                              <svg
-                                className="w-5 h-5 text-gray-400 mr-3"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={2}
-                                  d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
-                                />
-                              </svg>
-                              <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                                {doc.title}
-                              </span>
-                              {doc.folder === "Nix" && (
-                                <span className="ml-2 px-1.5 py-0.5 text-xs font-medium bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400 rounded">
-                                  Nix
-                                </span>
-                              )}
-                              {doc.folder === "Attachments" && (
-                                <span className="ml-2 px-1.5 py-0.5 text-xs font-medium bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400 rounded">
-                                  Attachment
-                                </span>
-                              )}
-                            </div>
-                          </td>
-                          <td className="px-6 py-4">
-                            <span className="text-sm text-gray-500 dark:text-gray-400 truncate max-w-xs block">
-                              {doc.description || "-"}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                            {doc.author || "-"}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                            {formatDateZA(doc.updatedAt)}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                            <div className="flex items-center gap-2 justify-end">
-                              <div className="relative group">
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleEditDocument(doc.id, doc.slug);
-                                  }}
-                                  className="p-1.5 text-[#323288] hover:text-[#252560] hover:bg-[#323288]/10 rounded"
-                                >
-                                  <svg
-                                    className="w-5 h-5"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    viewBox="0 0 24 24"
-                                  >
-                                    <path
-                                      strokeLinecap="round"
-                                      strokeLinejoin="round"
-                                      strokeWidth={2}
-                                      d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                                    />
-                                  </svg>
-                                </button>
-                                <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 text-xs !text-white bg-slate-800 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50 shadow-lg">
-                                  Edit document
-                                </span>
-                              </div>
-                              <div className="relative group">
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setShowDeleteConfirm(doc.id);
-                                  }}
-                                  className="p-1.5 text-red-600 hover:text-red-800 hover:bg-red-50 rounded"
-                                >
-                                  <svg
-                                    className="w-5 h-5"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    viewBox="0 0 24 24"
-                                  >
-                                    <path
-                                      strokeLinecap="round"
-                                      strokeLinejoin="round"
-                                      strokeWidth={2}
-                                      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                                    />
-                                  </svg>
-                                </button>
-                                <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 text-xs !text-white bg-slate-800 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50 shadow-lg">
-                                  Delete document
-                                </span>
-                              </div>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                  </React.Fragment>
-                ))}
-                {sortedLocalFolders.map((folder) => (
-                  <React.Fragment key={`local-folder-${folder}`}>
-                    <tr
-                      className="bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50 cursor-pointer select-none"
-                      onClick={() => toggleFolder(`local:${folder}`)}
-                    >
-                      <td className="w-12 px-4 py-3">
-                        <svg
-                          className={`w-4 h-4 text-blue-600 dark:text-blue-400 transition-transform ${collapsedFolders.has(`local:${folder}`) ? "" : "rotate-90"}`}
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M9 5l7 7-7 7"
-                          />
-                        </svg>
-                      </td>
-                      <td colSpan={5} className="px-6 py-3">
-                        <div className="flex items-center">
-                          <svg
-                            className="w-5 h-5 text-blue-500 dark:text-blue-400 mr-3"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
+                      {!collapsedFolders.has(`local:${folder}`) &&
+                        localDocsByFolder[folder].map((doc) => (
+                          <tr
+                            key={doc.id}
+                            onClick={() => handleUnifiedDocumentClick(doc)}
+                            className="hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition-colors bg-blue-50/30 dark:bg-blue-900/20"
                           >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"
-                            />
-                          </svg>
-                          <span className="text-sm font-medium text-blue-900 dark:text-blue-200">
-                            {folder === "." ? "Codebase Root" : folder}
-                          </span>
-                          <span className="ml-2 text-xs text-blue-600 dark:text-blue-400">
-                            ({localDocsByFolder[folder].length} file
-                            {localDocsByFolder[folder].length !== 1 ? "s" : ""})
-                          </span>
-                        </div>
-                      </td>
-                    </tr>
-                    {!collapsedFolders.has(`local:${folder}`) &&
-                      localDocsByFolder[folder].map((doc) => (
-                        <tr
-                          key={doc.id}
-                          onClick={() => handleUnifiedDocumentClick(doc)}
-                          className="hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition-colors bg-blue-50/30 dark:bg-blue-900/20"
-                        >
-                          <td className="w-12 px-4 py-4">
-                            <span className="w-4 h-4 block" />
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="flex items-center pl-6">
-                              <svg
-                                className="w-5 h-5 text-blue-400 mr-3"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={2}
-                                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                                />
-                              </svg>
-                              <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                                {doc.filePath?.split("/").pop()?.replace(".md", "") || doc.title}
+                            <td className="w-12 px-4 py-4">
+                              <span className="w-4 h-4 block" />
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="flex items-center pl-6">
+                                <svg
+                                  className="w-5 h-5 text-blue-400 mr-3"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                                  />
+                                </svg>
+                                <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                                  {doc.filePath?.split("/").pop()?.replace(".md", "") || doc.title}
+                                </span>
+                              </div>
+                            </td>
+                            <td className="px-6 py-4">
+                              <span className="text-sm text-gray-500 dark:text-gray-400 truncate max-w-xs block">
+                                {(() => {
+                                  const rawFilePath = doc.filePath;
+                                  return rawFilePath || "-";
+                                })()}
                               </span>
-                            </div>
-                          </td>
-                          <td className="px-6 py-4">
-                            <span className="text-sm text-gray-500 dark:text-gray-400 truncate max-w-xs block">
-                              {doc.filePath || "-"}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                            Codebase
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                            {formatDateZA(doc.updatedAt)}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                            <span className="text-xs text-gray-400 italic whitespace-nowrap">
-                              Read-only
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
-                  </React.Fragment>
-                ))}
-              </tbody>
-            </table>
-          </>
-        )}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                              Codebase
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                              {formatDateZA(doc.updatedAt)}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                              <span className="text-xs text-gray-400 italic whitespace-nowrap">
+                                Read-only
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                    </React.Fragment>
+                  ))}
+                </tbody>
+              </table>
+            </>
+          );
+        })()}
       </div>
 
       {uploadingFiles.length > 0 && (

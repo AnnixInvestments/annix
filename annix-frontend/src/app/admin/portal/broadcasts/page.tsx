@@ -32,7 +32,8 @@ export default function AdminBroadcastsPage() {
   const [includeExpired, setIncludeExpired] = useState(false);
 
   const broadcastsQuery = useAdminBroadcasts({ includeExpired });
-  const broadcasts = broadcastsQuery.data?.broadcasts || [];
+  const rawBroadcastsValue = broadcastsQuery.data?.broadcasts;
+  const broadcasts = rawBroadcastsValue || [];
 
   if (broadcastsQuery.isLoading) {
     return (

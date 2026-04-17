@@ -1,5 +1,6 @@
 "use client";
 
+import { keys } from "es-toolkit/compat";
 import { useParams, useRouter } from "next/navigation";
 import { ErrorDisplay, LoadingSpinner, StatusBadge } from "@/app/admin/components";
 import { formatDateZA } from "@/app/lib/datetime";
@@ -18,59 +19,114 @@ export default function AdminRfqDetailPage() {
     return <LoadingSpinner message="Loading RFQ details..." />;
   }
 
-  if (rfqDetailQuery.error || !rfq) {
+  const rawError = rfqDetailQuery.error;
+  if (rawError || !rfq) {
     return (
       <ErrorDisplay
         title="Error Loading RFQ"
-        message={(rfqDetailQuery.error as Error)?.message || "RFQ not found"}
+        message={(() => {
+          const rawMessage = (rfqDetailQuery.error as Error)?.message;
+          return rawMessage || "RFQ not found";
+        })()}
         onRetry={() => rfqDetailQuery.refetch()}
       />
     );
   }
 
-  const allItems = fullDraft?.straightPipeEntries || [];
-  const globalSpecs = fullDraft?.globalSpecs || {};
-  const formData = fullDraft?.formData || {};
+  const allItems = (() => {
+    const rawStraightPipeEntries = fullDraft?.straightPipeEntries;
+    return rawStraightPipeEntries || [];
+  })();
+  const globalSpecs = (() => {
+    const rawGlobalSpecs = fullDraft?.globalSpecs;
+    return rawGlobalSpecs || {};
+  })();
+  const formData = (() => {
+    const rawFormData = fullDraft?.formData;
+    return rawFormData || {};
+  })();
 
   const getTotalWeight = () => {
     return allItems.reduce((total: number, entry: any) => {
       const weight =
         entry.itemType === "bend" || entry.itemType === "fitting"
-          ? entry.calculation?.totalWeight || 0
-          : entry.calculation?.totalSystemWeight || 0;
+          ? (() => {
+              const rawTotalWeight = entry.calculation?.totalWeight;
+              return rawTotalWeight || 0;
+            })()
+          : (() => {
+              const rawTotalSystemWeight = entry.calculation?.totalSystemWeight;
+              return rawTotalSystemWeight || 0;
+            })();
       return total + weight;
     }, 0);
   };
 
   const getTotalLength = () => {
     return allItems.reduce((total: number, entry: any) => {
-      const qty = entry.specs?.quantityValue || 1;
+      const qty = (() => {
+        const rawQuantityValue = entry.specs?.quantityValue;
+        return rawQuantityValue || 1;
+      })();
 
       if (entry.itemType === "bend") {
-        const nb = entry.specs?.nominalBoreMm || 0;
-        const bendRadiusType = entry.specs?.bendType || "1.5D";
+        const nb = (() => {
+          const rawNominalBoreMm = entry.specs?.nominalBoreMm;
+          return rawNominalBoreMm || 0;
+        })();
+        const bendRadiusType = (() => {
+          const rawBendType = entry.specs?.bendType;
+          return rawBendType || "1.5D";
+        })();
         const radiusFactor = parseFloat(bendRadiusType.replace("D", "")) || 1.5;
         const bendRadiusMm = nb * radiusFactor;
-        const bendAngleRad = ((entry.specs?.bendDegrees || 90) * Math.PI) / 180;
+        const bendAngleRad =
+          ((() => {
+            const rawBendDegrees = entry.specs?.bendDegrees;
+            return rawBendDegrees || 90;
+          })() *
+            Math.PI) /
+          180;
         const arcLengthM = (bendRadiusMm / 1000) * bendAngleRad;
-        const tangents = entry.specs?.tangentLengths || [];
+        const tangents = (() => {
+          const rawTangentLengths = entry.specs?.tangentLengths;
+          return rawTangentLengths || [];
+        })();
         const tangentLengthM =
           tangents.reduce((sum: number, t: number) => sum + (t || 0), 0) / 1000;
         return total + (arcLengthM + tangentLengthM) * qty;
       }
 
       if (entry.itemType === "fitting") {
-        const lengthAMm = entry.specs?.pipeLengthAMm || 0;
-        const lengthBMm = entry.specs?.pipeLengthBMm || 0;
+        const lengthAMm = (() => {
+          const rawPipeLengthAMm = entry.specs?.pipeLengthAMm;
+          return rawPipeLengthAMm || 0;
+        })();
+        const lengthBMm = (() => {
+          const rawPipeLengthBMm = entry.specs?.pipeLengthBMm;
+          return rawPipeLengthBMm || 0;
+        })();
         const totalLengthM = (lengthAMm + lengthBMm) / 1000;
         return total + totalLengthM * qty;
       }
 
       if (entry.specs?.quantityType === "total_length") {
-        return total + (entry.specs.quantityValue || 0);
+        return (
+          total +
+          (() => {
+            const rawQuantityValue = entry.specs.quantityValue;
+            return rawQuantityValue || 0;
+          })()
+        );
       } else {
-        const numPipes = entry.specs?.quantityValue || 1;
-        const pipeLength = entry.specs?.individualPipeLength || 0;
+        const numPipes = (() => {
+          const rawQuantityValue = entry.specs?.quantityValue;
+          return rawQuantityValue || 1;
+        })();
+        const pipeLength = (() => {
+          const rawIndividualPipeLength = entry.specs?.individualPipeLength;
+          return rawIndividualPipeLength || 0;
+        })();
         return total + numPipes * pipeLength;
       }
     }, 0);
@@ -97,7 +153,10 @@ export default function AdminRfqDetailPage() {
           </button>
           <h1 className="text-2xl font-bold text-gray-900">{rfq.projectName}</h1>
           <p className="mt-1 text-sm text-gray-600">
-            {fullDraft?.draftNumber || `RFQ #${rfq.id}`}
+            {(() => {
+              const rawDraftNumber = fullDraft?.draftNumber;
+              return rawDraftNumber || `RFQ #${rfq.id}`;
+            })()}
             {rfq.isUnregistered && (
               <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800">
                 Unregistered Customer
@@ -119,13 +178,21 @@ export default function AdminRfqDetailPage() {
           <div>
             <p className="text-sm text-gray-600">Customer</p>
             <p className="font-medium text-gray-900">
-              {rfq.customerName || formData.customerName || "N/A"}
+              {(() => {
+                const rawCustomerName = rfq.customerName;
+                const rawFormCustomerName = formData.customerName;
+                return rawCustomerName || rawFormCustomerName || "N/A";
+              })()}
             </p>
           </div>
           <div>
             <p className="text-sm text-gray-600">Contact Email</p>
             <p className="font-medium text-gray-900">
-              {rfq.customerEmail || formData.customerEmail || "N/A"}
+              {(() => {
+                const rawCustomerEmail = rfq.customerEmail;
+                const rawFormCustomerEmail = formData.customerEmail;
+                return rawCustomerEmail || rawFormCustomerEmail || "N/A";
+              })()}
             </p>
           </div>
           {formData.customerPhone && (
@@ -137,8 +204,16 @@ export default function AdminRfqDetailPage() {
           <div>
             <p className="text-sm text-gray-600">Required Date</p>
             <p className="font-medium text-gray-900">
-              {rfq.requiredDate || formData.requiredDate
-                ? formatDateZA(rfq.requiredDate || formData.requiredDate)
+              {(() => {
+                const rawRequiredDate = rfq.requiredDate;
+                return rawRequiredDate || formData.requiredDate;
+              })()
+                ? formatDateZA(
+                    (() => {
+                      const rawRequiredDate = rfq.requiredDate;
+                      return rawRequiredDate || formData.requiredDate;
+                    })(),
+                  )
                 : "Not specified"}
             </p>
           </div>
@@ -160,7 +235,7 @@ export default function AdminRfqDetailPage() {
       </div>
 
       {/* Global Specifications */}
-      {Object.keys(globalSpecs).length > 0 && (
+      {keys(globalSpecs).length > 0 && (
         <div className="bg-white border border-gray-200 rounded-lg shadow p-6">
           <h3 className="text-lg font-semibold text-gray-800 mb-4">Global Specifications</h3>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
@@ -239,7 +314,10 @@ export default function AdminRfqDetailPage() {
             <div className="text-center">
               <p className="text-sm font-medium text-blue-700">Completion</p>
               <p className="text-2xl font-bold text-blue-900">
-                {fullDraft?.completionPercentage || 0}%
+                {(() => {
+                  const rawCompletionPercentage = fullDraft?.completionPercentage;
+                  return rawCompletionPercentage || 0;
+                })()}%
               </p>
             </div>
           </div>
@@ -253,7 +331,12 @@ export default function AdminRfqDetailPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <p className="text-sm text-gray-600">Name</p>
-              <p className="font-medium text-gray-900">{formData.createdBy.name || "N/A"}</p>
+              <p className="font-medium text-gray-900">
+                {(() => {
+                  const rawName = formData.createdBy.name;
+                  return rawName || "N/A";
+                })()}
+              </p>
             </div>
             <div>
               <p className="text-sm text-gray-600">Email</p>
@@ -267,9 +350,18 @@ export default function AdminRfqDetailPage() {
 }
 
 function ItemCard({ entry, index, globalSpecs }: { entry: any; index: number; globalSpecs: any }) {
-  const specs = entry.specs || {};
-  const calculation = entry.calculation || {};
-  const itemType = entry.itemType || "pipe";
+  const specs = (() => {
+    const rawSpecs = entry.specs;
+    return rawSpecs || {};
+  })();
+  const calculation = (() => {
+    const rawCalculation = entry.calculation;
+    return rawCalculation || {};
+  })();
+  const itemType = (() => {
+    const rawItemType = entry.itemType;
+    return rawItemType || "pipe";
+  })();
 
   const bgColor =
     itemType === "bend" ? "bg-purple-50" : itemType === "fitting" ? "bg-green-50" : "bg-gray-50";
@@ -283,10 +375,19 @@ function ItemCard({ entry, index, globalSpecs }: { entry: any; index: number; gl
 
   const totalWeight =
     itemType === "bend" || itemType === "fitting"
-      ? calculation.totalWeight || 0
-      : calculation.totalSystemWeight || 0;
+      ? (() => {
+          const rawTotalWeight = calculation.totalWeight;
+          return rawTotalWeight || 0;
+        })()
+      : (() => {
+          const rawTotalSystemWeight = calculation.totalSystemWeight;
+          return rawTotalSystemWeight || 0;
+        })();
 
-  const qty = specs.quantityValue || 1;
+  const qty = (() => {
+    const rawQuantityValue = specs.quantityValue;
+    return rawQuantityValue || 1;
+  })();
   const weightPerItem = qty > 0 ? totalWeight / qty : 0;
 
   return (
@@ -334,9 +435,19 @@ function ItemCard({ entry, index, globalSpecs }: { entry: any; index: number; gl
 
 function BendSpecs({ specs, calculation, weightPerItem, globalSpecs }: any) {
   const { data: nbToOdMap = {} } = useNbToOdMap();
-  const nb = specs.nominalBoreMm || 0;
-  const od = calculation.outsideDiameterMm || nbToOdMap[nb] || nb * 1.05;
-  const wt = specs.wallThicknessMm || calculation.wallThicknessMm || 0;
+  const nb = (() => {
+    const rawNominalBoreMm = specs.nominalBoreMm;
+    return rawNominalBoreMm || 0;
+  })();
+  const od = (() => {
+    const rawOutsideDiameterMm = calculation.outsideDiameterMm;
+    return rawOutsideDiameterMm || nbToOdMap[nb] || nb * 1.05;
+  })();
+  const wt = (() => {
+    const rawWallThicknessMm = specs.wallThicknessMm;
+    const rawCalcWallThicknessMm = calculation.wallThicknessMm;
+    return rawWallThicknessMm || rawCalcWallThicknessMm || 0;
+  })();
 
   return (
     <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
@@ -354,19 +465,39 @@ function BendSpecs({ specs, calculation, weightPerItem, globalSpecs }: any) {
       </div>
       <div>
         <span className="text-gray-500">Angle:</span>
-        <span className="ml-1 font-medium">{specs.bendDegrees || 90}°</span>
+        <span className="ml-1 font-medium">
+          {(() => {
+            const rawBendDegrees = specs.bendDegrees;
+            return rawBendDegrees || 90;
+          })()}°
+        </span>
       </div>
       <div>
         <span className="text-gray-500">Type:</span>
-        <span className="ml-1 font-medium">{specs.bendType || "1.5D"}</span>
+        <span className="ml-1 font-medium">
+          {(() => {
+            const rawBendType = specs.bendType;
+            return rawBendType || "1.5D";
+          })()}
+        </span>
       </div>
       <div>
         <span className="text-gray-500">Bend Type:</span>
-        <span className="ml-1 font-medium">{specs.bendItemType || "SEGMENTED"}</span>
+        <span className="ml-1 font-medium">
+          {(() => {
+            const rawBendItemType = specs.bendItemType;
+            return rawBendItemType || "SEGMENTED";
+          })()}
+        </span>
       </div>
       <div>
         <span className="text-gray-500">Qty:</span>
-        <span className="ml-1 font-medium">{specs.quantityValue || 1}</span>
+        <span className="ml-1 font-medium">
+          {(() => {
+            const rawQuantityValue = specs.quantityValue;
+            return rawQuantityValue || 1;
+          })()}
+        </span>
       </div>
       <div>
         <span className="text-gray-500">Weight/item:</span>
@@ -414,20 +545,43 @@ function BendSpecs({ specs, calculation, weightPerItem, globalSpecs }: any) {
 
 function FittingSpecs({ specs, calculation, weightPerItem, globalSpecs }: any) {
   const { data: nbToOdMap = {} } = useNbToOdMap();
-  const nb = specs.nominalDiameterMm || 0;
-  const branchNb = specs.branchNominalDiameterMm || nb;
-  const od = calculation.outsideDiameterMm || nbToOdMap[nb] || nb * 1.05;
-  const wt = specs.wallThicknessMm || calculation.wallThicknessMm || 0;
+  const nb = (() => {
+    const rawNominalDiameterMm = specs.nominalDiameterMm;
+    return rawNominalDiameterMm || 0;
+  })();
+  const branchNb = (() => {
+    const rawBranchNominalDiameterMm = specs.branchNominalDiameterMm;
+    return rawBranchNominalDiameterMm || nb;
+  })();
+  const od = (() => {
+    const rawOutsideDiameterMm = calculation.outsideDiameterMm;
+    return rawOutsideDiameterMm || nbToOdMap[nb] || nb * 1.05;
+  })();
+  const wt = (() => {
+    const rawWallThicknessMm = specs.wallThicknessMm;
+    const rawCalcWallThicknessMm = calculation.wallThicknessMm;
+    return rawWallThicknessMm || rawCalcWallThicknessMm || 0;
+  })();
 
   return (
     <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
       <div>
         <span className="text-gray-500">Type:</span>
-        <span className="ml-1 font-medium">{specs.fittingType || "TEE"}</span>
+        <span className="ml-1 font-medium">
+          {(() => {
+            const rawFittingType = specs.fittingType;
+            return rawFittingType || "TEE";
+          })()}
+        </span>
       </div>
       <div>
         <span className="text-gray-500">Standard:</span>
-        <span className="ml-1 font-medium">{specs.fittingStandard || "N/A"}</span>
+        <span className="ml-1 font-medium">
+          {(() => {
+            const rawFittingStandard = specs.fittingStandard;
+            return rawFittingStandard || "N/A";
+          })()}
+        </span>
       </div>
       <div>
         <span className="text-gray-500">Main NB:</span>
@@ -449,7 +603,12 @@ function FittingSpecs({ specs, calculation, weightPerItem, globalSpecs }: any) {
       </div>
       <div>
         <span className="text-gray-500">Qty:</span>
-        <span className="ml-1 font-medium">{specs.quantityValue || 1}</span>
+        <span className="ml-1 font-medium">
+          {(() => {
+            const rawQuantityValue = specs.quantityValue;
+            return rawQuantityValue || 1;
+          })()}
+        </span>
       </div>
       <div>
         <span className="text-gray-500">Weight/item:</span>
@@ -488,12 +647,32 @@ function FittingSpecs({ specs, calculation, weightPerItem, globalSpecs }: any) {
 
 function PipeSpecs({ specs, calculation, weightPerItem, globalSpecs }: any) {
   const { data: nbToOdMap = {} } = useNbToOdMap();
-  const nb = specs.nominalBoreMm || 0;
-  const od = calculation.outsideDiameterMm || nbToOdMap[nb] || nb * 1.05;
-  const wt = specs.wallThicknessMm || 0;
-  const qty = specs.quantityType === "total_length" ? 1 : specs.quantityValue || 1;
+  const nb = (() => {
+    const rawNominalBoreMm = specs.nominalBoreMm;
+    return rawNominalBoreMm || 0;
+  })();
+  const od = (() => {
+    const rawOutsideDiameterMm = calculation.outsideDiameterMm;
+    return rawOutsideDiameterMm || nbToOdMap[nb] || nb * 1.05;
+  })();
+  const wt = (() => {
+    const rawWallThicknessMm = specs.wallThicknessMm;
+    return rawWallThicknessMm || 0;
+  })();
+  const qty =
+    specs.quantityType === "total_length"
+      ? 1
+      : (() => {
+          const rawQuantityValue = specs.quantityValue;
+          return rawQuantityValue || 1;
+        })();
   const lengthPerPipe =
-    specs.quantityType === "total_length" ? specs.quantityValue : specs.individualPipeLength || 0;
+    specs.quantityType === "total_length"
+      ? specs.quantityValue
+      : (() => {
+          const rawIndividualPipeLength = specs.individualPipeLength;
+          return rawIndividualPipeLength || 0;
+        })();
 
   return (
     <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">

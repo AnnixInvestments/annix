@@ -176,8 +176,24 @@ export default function HdpeFittingCalculator(props: HdpeFittingCalculatorProps)
     return found || { numButtwelds: 0, isMolded: false, isFabricated: false };
   };
 
-  const totalWeight = results.reduce((sum, r) => sum + (r?.weightKg || 0), 0);
-  const totalCost = results.reduce((sum, r) => sum + (r?.totalCost || 0), 0);
+  const totalWeight = results.reduce(
+    (sum, r) =>
+      sum +
+      (() => {
+        const rawWeightKg = r?.weightKg;
+        return rawWeightKg || 0;
+      })(),
+    0,
+  );
+  const totalCost = results.reduce(
+    (sum, r) =>
+      sum +
+      (() => {
+        const rawTotalCost = r?.totalCost;
+        return rawTotalCost || 0;
+      })(),
+    0,
+  );
   const totalWelds = results.reduce((sum, r, i) => {
     const entry = entries[i];
     const info = fittingInfo(entry.fittingTypeCode);

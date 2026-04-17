@@ -1,3 +1,4 @@
+import { isArray } from "es-toolkit/compat";
 import {
   type DeliveryNote,
   type JobCard,
@@ -73,7 +74,7 @@ export function createOfflineApiClient(options: ApiClientOptions) {
       const rawItems = responseData.items;
       const items = (rawItems || responseData.data) ?? responseData;
 
-      if (Array.isArray(items)) {
+      if (isArray(items)) {
         await store.saveAll(items);
         await offlineSyncMeta.updateLastSync(cacheKey);
       }

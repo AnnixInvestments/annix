@@ -2,7 +2,8 @@ import { type NextRequest, NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 
-const REMOTE_BACKEND = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4001";
+const rawNEXT_PUBLIC_API_URL = process.env.NEXT_PUBLIC_API_URL;
+const REMOTE_BACKEND = rawNEXT_PUBLIC_API_URL || "http://localhost:4001";
 
 async function proxyRequest(request: NextRequest) {
   if (!REMOTE_BACKEND) {

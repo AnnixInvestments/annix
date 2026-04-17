@@ -91,6 +91,7 @@ export function StockTakePage() {
       await refetchSelected();
     } catch (err) {
       console.error("Action failed", err);
+      // eslint-disable-next-line no-restricted-globals -- legacy sync alert pending modal migration (issue #175)
       alert(err instanceof Error ? err.message : "Action failed");
     }
   };
@@ -253,6 +254,7 @@ function StockTakeDetail(props: DetailProps) {
       setHoldLineId(null);
       setHoldNotes("");
       setHoldReason("damaged");
+      // eslint-disable-next-line no-restricted-globals -- legacy sync alert pending modal migration (issue #175)
       alert(`Moved ${line.productId} to hold queue`);
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : String(e);
@@ -340,6 +342,7 @@ function StockTakeDetail(props: DetailProps) {
             <button
               type="button"
               onClick={() => {
+                // eslint-disable-next-line no-restricted-globals -- legacy sync prompt pending modal migration (issue #175)
                 const reason = prompt("Rejection reason?");
                 if (reason) onAction(() => mutations.reject(stockTake.id, reason));
               }}

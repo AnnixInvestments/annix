@@ -1,3 +1,4 @@
+import { toPairs as entries } from "es-toolkit/compat";
 import { throwIfNotOk } from "./apiError";
 
 export interface ApiClientTokenStore {
@@ -144,7 +145,7 @@ export const createApiClient = (options: ApiClientOptions): ApiClient => {
     const formData = new FormData();
     formData.append("file", file);
     if (extraFields) {
-      Object.entries(extraFields).forEach(([key, value]) => {
+      entries(extraFields).forEach(([key, value]) => {
         formData.append(key, value);
       });
     }

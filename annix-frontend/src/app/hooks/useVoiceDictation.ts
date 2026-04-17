@@ -74,11 +74,13 @@ export function useVoiceDictation(options: UseVoiceDictationOptions = {}): UseVo
   const recognitionRef = useRef<SpeechRecognition | null>(null);
 
   useEffect(() => {
+    // eslint-disable-next-line no-restricted-syntax -- SSR guard; isUndefined(window) would throw
     if (typeof window === "undefined") {
       return;
     }
 
-    const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const rawSpeechRecognition = window.SpeechRecognition;
+    const SpeechRecognitionAPI = rawSpeechRecognition || window.webkitSpeechRecognition;
 
     if (SpeechRecognitionAPI) {
       setIsSupported(true);

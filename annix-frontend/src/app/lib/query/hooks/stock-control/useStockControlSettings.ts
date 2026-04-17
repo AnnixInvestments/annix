@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { isArray } from "es-toolkit/compat";
 import type { CompanyRole, StockControlTeamMember } from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { stockControlKeys } from "../../keys/stockControlKeys";
@@ -8,7 +9,7 @@ export function useCompanyRoles() {
     queryKey: stockControlKeys.settings.companyRoles(),
     queryFn: async () => {
       const data = await stockControlApiClient.companyRoles();
-      return Array.isArray(data) ? data : [];
+      return isArray(data) ? data : [];
     },
   });
 }
@@ -18,7 +19,7 @@ export function useSettingsTeamMembers() {
     queryKey: stockControlKeys.settings.teamMembers(),
     queryFn: async () => {
       const data = await stockControlApiClient.teamMembers();
-      return Array.isArray(data) ? data : [];
+      return isArray(data) ? data : [];
     },
   });
 }
@@ -101,7 +102,7 @@ export function useUserLocationAssignments() {
     queryKey: [...stockControlKeys.settings.all, "user-locations"] as const,
     queryFn: async () => {
       const data = await stockControlApiClient.userLocationAssignments();
-      return Array.isArray(data) ? data : [];
+      return isArray(data) ? data : [];
     },
   });
 }

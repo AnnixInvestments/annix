@@ -1,5 +1,6 @@
 "use client";
 
+import { toPairs as entries } from "es-toolkit/compat";
 import { CalendarDays, Grid3X3, List, Loader2 } from "lucide-react";
 import { useState } from "react";
 import { formatDateZA, fromISO, now } from "@/app/lib/datetime";
@@ -225,7 +226,7 @@ export default function TaxCalendarPage() {
       </div>
 
       <div className="flex flex-wrap gap-2">
-        {Object.entries(TYPE_COLORS).map(([type, colorClass]) => (
+        {entries(TYPE_COLORS).map(([type, colorClass]) => (
           <span
             key={type}
             className={`inline-flex items-center gap-1.5 px-2 py-1 rounded text-xs font-medium border ${colorClass}`}

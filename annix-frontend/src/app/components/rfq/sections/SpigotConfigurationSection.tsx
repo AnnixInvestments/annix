@@ -1,5 +1,6 @@
 "use client";
 
+import { keys } from "es-toolkit/compat";
 import React, { memo, useCallback, useMemo } from "react";
 import { Select } from "@/app/components/ui/Select";
 import { STEEL_SPEC_NB_FALLBACK } from "@/app/lib/config/rfq";
@@ -61,7 +62,7 @@ function SpigotConfigurationSectionComponent({
   }, [steelSpecs, effectiveSpigotSpecId]);
 
   const filteredNBOptions = useMemo(() => {
-    const matchingPrefix = Object.keys(STEEL_SPEC_NB_FALLBACK).find((prefix) =>
+    const matchingPrefix = keys(STEEL_SPEC_NB_FALLBACK).find((prefix) =>
       spigotSpecName.toUpperCase().includes(prefix.toUpperCase()),
     );
     const validNBsForSpec = matchingPrefix ? STEEL_SPEC_NB_FALLBACK[matchingPrefix] : nominalBores;

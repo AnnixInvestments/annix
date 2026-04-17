@@ -1,5 +1,6 @@
 "use client";
 
+import { toPairs as entries } from "es-toolkit/compat";
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { useToast } from "@/app/components/Toast";
@@ -61,7 +62,8 @@ export function RoleManagementPanel(props: RoleManagementPanelProps) {
   );
 
   const { data: roleProductsData } = useRbacRoleProducts(selectedRoleId ?? 0);
-  const enabledProducts = roleProductsData?.productKeys || [];
+  const rawProductKeys = roleProductsData?.productKeys;
+  const enabledProducts = rawProductKeys || [];
 
   useEffect(() => {
     if (isOpen && appDetails.roles.length > 0 && !selectedRoleId) {
@@ -115,6 +117,7 @@ export function RoleManagementPanel(props: RoleManagementPanelProps) {
 
   const handleDeleteRole = (role: RbacAppRole) => {
     if (
+      // eslint-disable-next-line no-restricted-globals -- legacy sync confirm pending modal migration (issue #175)
       !confirm(
         `Are you sure you want to delete the role "${role.name}"? Users with this role will be reassigned to the default role.`,
       )
@@ -132,7 +135,8 @@ export function RoleManagementPanel(props: RoleManagementPanelProps) {
             "success",
           );
           if (selectedRoleId === role.id) {
-            setSelectedRoleId(appDetails.roles.find((r) => r.id !== role.id)?.id || null);
+            const rawId = appDetails.roles.find((r) => r.id !== role.id)?.id;
+            setSelectedRoleId(rawId || null);
           }
         },
         onError: (err) => {
@@ -161,7 +165,7 @@ export function RoleManagementPanel(props: RoleManagementPanelProps) {
   if (!isOpen) return null;
 
   const isRfqPlatform = appDetails.code === "rfq-platform";
-  const productFlags = Object.entries(RFQ_PRODUCT_FLAG_MAP) as [string, ProductFlagMeta][];
+  const productFlags = entries(RFQ_PRODUCT_FLAG_MAP) as [string, ProductFlagMeta][];
 
   return createPortal(
     <div className="fixed inset-0 z-[9999] overflow-hidden">
@@ -237,7 +241,10 @@ export function RoleManagementPanel(props: RoleManagementPanelProps) {
                         setIsCreating(false);
                         setEditingRole(null);
                       }}
-                      isSubmitting={createMutation.isPending || updateMutation.isPending}
+                      isSubmitting={(() => {
+                        const rawIsPending = createMutation.isPending;
+                        return rawIsPending || updateMutation.isPending;
+                      })()}
                     />
                   )}
 

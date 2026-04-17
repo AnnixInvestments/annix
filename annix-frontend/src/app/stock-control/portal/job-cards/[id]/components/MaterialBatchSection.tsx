@@ -1,5 +1,6 @@
 "use client";
 
+import { values } from "es-toolkit/compat";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type {
   CoatingAnalysis,
@@ -200,7 +201,7 @@ function groupByProduct(records: IssuanceBatchRecord[]): GroupedProduct[] {
       },
     };
   }, {});
-  return Object.values(grouped);
+  return values(grouped);
 }
 
 function CertLinkStatus(statusProps: {

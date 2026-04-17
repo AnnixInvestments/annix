@@ -100,7 +100,8 @@ function CustomerLoginContent() {
         errorMessage.includes("Account is pending")
       ) {
         setIsEmailNotVerified(true);
-        setError(errorMessage); // Use the actual error message from backend
+        // Use the actual error message from backend
+        setError(errorMessage);
       } else if (errorMessage.includes("Device fingerprint mismatch")) {
         setError(
           "This device is not registered for this account. " +

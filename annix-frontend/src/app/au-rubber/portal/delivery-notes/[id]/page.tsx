@@ -1,5 +1,6 @@
 "use client";
 
+import { isArray, isObject } from "es-toolkit/compat";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
@@ -80,15 +81,15 @@ export default function DeliveryNoteDetailPage() {
   const note = noteData ? noteData : null;
   const items: RubberDeliveryNoteItemDto[] = useMemo(() => {
     const data = itemsQuery.data;
-    return Array.isArray(data) ? data : [];
+    return isArray(data) ? data : [];
   }, [itemsQuery.data]);
   const availableCocs = useMemo(() => {
     const data = cocsQuery.data;
-    return Array.isArray(data) ? data : [];
+    return isArray(data) ? data : [];
   }, [cocsQuery.data]);
   const companies = useMemo(() => {
     const data = companiesQuery.data;
-    return Array.isArray(data) ? data : [];
+    return isArray(data) ? data : [];
   }, [companiesQuery.data]);
 
   const noteLoading = noteQuery.isLoading;
@@ -146,13 +147,13 @@ export default function DeliveryNoteDetailPage() {
 
   const initializeEditableData = (): EditableExtractedData[] => {
     if (!note?.extractedData) return [];
-    const items = Array.isArray(note.extractedData) ? note.extractedData : [note.extractedData];
+    const items = isArray(note.extractedData) ? note.extractedData : [note.extractedData];
     return items
       .filter((item): item is ExtractedDeliveryNoteData => item !== null && item !== undefined)
       .map((item) => ({
         ...item,
         rolls: item.rolls
-          ?.filter((r): r is ExtractedDeliveryNoteRoll => r != null && typeof r === "object")
+          ?.filter((r): r is ExtractedDeliveryNoteRoll => r != null && isObject(r))
           .map((roll) => ({ ...roll })),
       }));
   };
@@ -525,7 +526,7 @@ export default function DeliveryNoteDetailPage() {
         );
       };
 
-      if (Array.isArray(note.extractedData)) {
+      if (isArray(note.extractedData)) {
         return (
           note.extractedData.length > 0 &&
           note.extractedData.some((item) => item && hasFields(item))
@@ -538,7 +539,7 @@ export default function DeliveryNoteDetailPage() {
   const displayData: EditableExtractedData[] = isEditing
     ? editedData
     : note.extractedData
-      ? (Array.isArray(note.extractedData) ? note.extractedData : [note.extractedData]).filter(
+      ? (isArray(note.extractedData) ? note.extractedData : [note.extractedData]).filter(
           (item): item is ExtractedDeliveryNoteData => item !== null && item !== undefined,
         )
       : [];
@@ -577,7 +578,7 @@ export default function DeliveryNoteDetailPage() {
           <div className="mt-2 flex items-center space-x-3">
             {typeBadge(note.deliveryNoteType)}
             {statusBadge(note.status)}
-            {!Array.isArray(note.extractedData) && note.extractedData?.userCorrected && (
+            {!isArray(note.extractedData) && note.extractedData?.userCorrected && (
               <span className="px-2 py-1 text-xs bg-purple-100 text-purple-800 rounded-full">
                 User Corrected
               </span>
@@ -924,7 +925,7 @@ export default function DeliveryNoteDetailPage() {
                   const rawDnCustomerReference = dn.customerReference;
                   return dn.rolls && dn.rolls.length > 0
                     ? dn.rolls
-                        .filter((r): r is EditableRoll => r != null && typeof r === "object")
+                        .filter((r): r is EditableRoll => r != null && isObject(r))
                         .map((roll, rollIdx) => {
                           const rawRollRollNumber = roll.rollNumber;
                           const rawRollRollNumber2 = roll.rollNumber;

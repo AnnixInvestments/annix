@@ -1,3 +1,4 @@
+import { values } from "es-toolkit/compat";
 import { describe, expect, it } from "vitest";
 import {
   calculateInnerDiameter,
@@ -383,7 +384,7 @@ describe("HDPE Configuration Tests", () => {
       });
 
       it("all grades should have density between 930-960 kg/m³", () => {
-        Object.values(HDPE_GRADES).forEach((grade) => {
+        values(HDPE_GRADES).forEach((grade) => {
           expect(grade.densityKgM3).toBeGreaterThanOrEqual(930);
           expect(grade.densityKgM3).toBeLessThanOrEqual(960);
         });

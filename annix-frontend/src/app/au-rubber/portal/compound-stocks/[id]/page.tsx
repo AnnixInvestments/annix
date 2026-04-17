@@ -1,5 +1,6 @@
 "use client";
 
+import { isArray } from "es-toolkit/compat";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Breadcrumb } from "@/app/au-rubber/components/Breadcrumb";
@@ -43,7 +44,7 @@ export default function CompoundStockDetailPage() {
         auRubberApiClient.compoundMovements({ compoundStockId: stockId }),
       ]);
       setStock(stockData);
-      setMovements(Array.isArray(movementsData) ? movementsData : []);
+      setMovements(isArray(movementsData) ? movementsData : []);
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err : new Error("Failed to load data"));

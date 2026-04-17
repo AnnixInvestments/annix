@@ -36,7 +36,8 @@ function ProviderCard({
     outlook: { name: "Microsoft Outlook", emoji: "📧", color: "#0078d4" },
   };
 
-  const config = providerConfig[provider.provider] ?? {
+  const rawProviderConfig = providerConfig[provider.provider];
+  const config = rawProviderConfig ?? {
     name: provider.provider,
     emoji: "📆",
     color: "#555",
@@ -49,7 +50,8 @@ function ProviderCard({
     disconnected: { label: "Not connected", color: "#71767b" },
   };
 
-  const status = statusConfig[provider.status] ?? statusConfig.disconnected;
+  const rawStatusConfig = statusConfig[provider.status];
+  const status = rawStatusConfig ?? statusConfig.disconnected;
 
   if (provider.connected) {
     return (

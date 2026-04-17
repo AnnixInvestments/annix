@@ -1,5 +1,6 @@
 "use client";
 
+import { toPairs as entries } from "es-toolkit/compat";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { useConfirm } from "@/app/au-rubber/hooks/useConfirm";
@@ -408,7 +409,7 @@ export default function RbacPage() {
               </button>
             </div>
             <div className="px-6 py-4 space-y-4">
-              {Object.entries(permissionsByCategory).map(([category, perms]) => (
+              {entries(permissionsByCategory).map(([category, perms]) => (
                 <div key={category}>
                   <h4 className="text-sm font-medium text-gray-700 mb-2">{category}</h4>
                   <div className="space-y-2">

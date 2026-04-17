@@ -48,7 +48,8 @@ function SupplierBoqsContent() {
 
   const statusFilter = filterStatus === "all" ? undefined : filterStatus;
   const boqsQuery = useSupplierBoqs(statusFilter);
-  const boqs = boqsQuery.data ?? [];
+  const rawData = boqsQuery.data;
+  const boqs = rawData ?? [];
 
   const filteredBoqs = boqs.filter((boq) => {
     if (!searchTerm) return true;
@@ -188,7 +189,10 @@ function SupplierBoqsContent() {
                       </td>
                       <td className="px-4 py-4">
                         <div className="text-sm text-gray-900">
-                          {boq.customerInfo?.company || boq.customerInfo?.name || "-"}
+                          {(() => {
+                            const rawCompany = boq.customerInfo?.company;
+                            return rawCompany || boq.customerInfo?.name || "-";
+                          })()}
                         </div>
                         {boq.customerInfo?.email && (
                           <div className="text-xs text-gray-500">{boq.customerInfo.email}</div>
@@ -196,7 +200,11 @@ function SupplierBoqsContent() {
                       </td>
                       <td className="px-4 py-4">
                         <div className="text-sm text-gray-900">
-                          {boq.projectInfo?.name || boq.title || "-"}
+                          {(() => {
+                            const rawName = boq.projectInfo?.name;
+                            const rawTitle = boq.title;
+                            return rawName || rawTitle || "-";
+                          })()}
                         </div>
                       </td>
                       <td className="px-4 py-4 whitespace-nowrap">

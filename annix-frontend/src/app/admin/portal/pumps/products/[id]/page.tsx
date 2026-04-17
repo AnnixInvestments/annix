@@ -43,7 +43,10 @@ export default function PumpProductDetailPage() {
     ) || PUMP_PRICING_TIERS.newPumps[0];
 
   const relevantManufacturers = PUMP_MANUFACTURERS.filter((mfr) =>
-    (mfr.productsOffered ?? []).some(
+    (() => {
+      const rawProductsOffered = mfr.productsOffered;
+      return rawProductsOffered ?? [];
+    })().some(
       (productOffered: string) =>
         product?.category.toLowerCase().includes(productOffered.toLowerCase()) ||
         productOffered.toLowerCase().includes(product?.category.toLowerCase() || ""),
@@ -77,7 +80,10 @@ export default function PumpProductDetailPage() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900">{product.label}</h1>
           <p className="mt-1 text-sm text-gray-600">
-            {product.category} pump - {product.apiStandard || "General purpose"}
+            {product.category} pump - {(() => {
+              const rawApiStandard = product.apiStandard;
+              return rawApiStandard || "General purpose";
+            })()}
           </p>
         </div>
         <div className="flex items-center space-x-3">

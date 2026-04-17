@@ -1,5 +1,6 @@
 "use client";
 
+import { isArray } from "es-toolkit/compat";
 import Link from "next/link";
 import { useState } from "react";
 import { formatDateZA } from "@/app/lib/datetime";
@@ -119,7 +120,7 @@ export default function PaintDftsPage() {
                 const avgStr = avg != null ? Number(avg).toFixed(1) : "-";
                 const specStr = `${rec.specMinMicrons}-${rec.specMaxMicrons}`;
                 const readings = rec.readings;
-                const readingCount = Array.isArray(readings) ? readings.length : 0;
+                const readingCount = isArray(readings) ? readings.length : 0;
                 return (
                   <tr key={rec.id} className="hover:bg-gray-50">
                     <td className="whitespace-nowrap px-4 py-3 text-sm">

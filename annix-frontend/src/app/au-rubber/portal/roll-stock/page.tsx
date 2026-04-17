@@ -1,5 +1,6 @@
 "use client";
 
+import { isArray } from "es-toolkit/compat";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import {
@@ -84,13 +85,13 @@ export default function RollStockPage() {
         auRubberApiClient.productCodings(),
         auRubberApiClient.stockLocations(),
       ]);
-      setRolls(Array.isArray(rollsData) ? rollsData : []);
-      setCompanies(Array.isArray(companiesData) ? companiesData : []);
-      const compounds = (Array.isArray(codingsData) ? codingsData : []).filter(
+      setRolls(isArray(rollsData) ? rollsData : []);
+      setCompanies(isArray(companiesData) ? companiesData : []);
+      const compounds = (isArray(codingsData) ? codingsData : []).filter(
         (c) => c.codingType === "COMPOUND",
       );
       setCompoundCodings(compounds);
-      setLocations(Array.isArray(locationsData) ? locationsData : []);
+      setLocations(isArray(locationsData) ? locationsData : []);
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err : new Error("Failed to load data"));

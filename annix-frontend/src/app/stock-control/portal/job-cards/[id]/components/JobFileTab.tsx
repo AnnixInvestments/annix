@@ -177,65 +177,70 @@ export function JobFileTab(props: JobFileTabProps) {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-100">
-              {jobFiles.map((file) => (
-                <tr key={file.id} className="hover:bg-gray-50">
-                  <td className="px-3 py-2">
-                    <div className="flex items-center gap-2">
-                      <FileText className="h-4 w-4 text-gray-400 flex-shrink-0" />
-                      <div className="min-w-0">
-                        <p className="text-sm font-medium text-gray-900 truncate max-w-[300px]">
-                          {file.aiGeneratedName || file.originalFilename}
-                        </p>
-                        {file.aiGeneratedName === null && (
-                          <div className="flex items-center gap-1 mt-0.5">
-                            <Loader2 className="h-3 w-3 text-amber-500 animate-spin" />
-                            <span className="text-[10px] text-amber-600">Analyzing...</span>
-                          </div>
-                        )}
-                        {file.aiGeneratedName && file.aiGeneratedName !== file.originalFilename && (
-                          <p className="text-[10px] text-gray-400 truncate max-w-[300px]">
-                            {file.originalFilename}
+              {jobFiles.map((file) => {
+                const rawAiGeneratedName = file.aiGeneratedName;
+                const rawUploadedByName = file.uploadedByName;
+                return (
+                  <tr key={file.id} className="hover:bg-gray-50">
+                    <td className="px-3 py-2">
+                      <div className="flex items-center gap-2">
+                        <FileText className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium text-gray-900 truncate max-w-[300px]">
+                            {rawAiGeneratedName || file.originalFilename}
                           </p>
+                          {file.aiGeneratedName === null && (
+                            <div className="flex items-center gap-1 mt-0.5">
+                              <Loader2 className="h-3 w-3 text-amber-500 animate-spin" />
+                              <span className="text-[10px] text-amber-600">Analyzing...</span>
+                            </div>
+                          )}
+                          {file.aiGeneratedName &&
+                            file.aiGeneratedName !== file.originalFilename && (
+                              <p className="text-[10px] text-gray-400 truncate max-w-[300px]">
+                                {file.originalFilename}
+                              </p>
+                            )}
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-3 py-2">
+                      <FileTypeBadge fileType={file.fileType} />
+                    </td>
+                    <td className="px-3 py-2 text-sm text-gray-600">{rawUploadedByName || "-"}</td>
+                    <td className="px-3 py-2 text-sm text-gray-600">
+                      {formatDateZA(file.createdAt)}
+                    </td>
+                    <td className="px-3 py-2">
+                      <div className="flex items-center justify-end gap-1">
+                        <button
+                          onClick={() => onView(file)}
+                          className="p-1.5 text-gray-400 hover:text-teal-600 transition-colors"
+                          title="View"
+                        >
+                          <Eye className="h-4 w-4" />
+                        </button>
+                        <button
+                          onClick={() => onDownload(file)}
+                          className="p-1.5 text-gray-400 hover:text-blue-600 transition-colors"
+                          title="Download"
+                        >
+                          <Download className="h-4 w-4" />
+                        </button>
+                        {(currentUserId === null || file.uploadedById === currentUserId) && (
+                          <button
+                            onClick={() => onDelete(file.id)}
+                            className="p-1.5 text-gray-400 hover:text-red-600 transition-colors"
+                            title="Delete"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
                         )}
                       </div>
-                    </div>
-                  </td>
-                  <td className="px-3 py-2">
-                    <FileTypeBadge fileType={file.fileType} />
-                  </td>
-                  <td className="px-3 py-2 text-sm text-gray-600">{file.uploadedByName || "-"}</td>
-                  <td className="px-3 py-2 text-sm text-gray-600">
-                    {formatDateZA(file.createdAt)}
-                  </td>
-                  <td className="px-3 py-2">
-                    <div className="flex items-center justify-end gap-1">
-                      <button
-                        onClick={() => onView(file)}
-                        className="p-1.5 text-gray-400 hover:text-teal-600 transition-colors"
-                        title="View"
-                      >
-                        <Eye className="h-4 w-4" />
-                      </button>
-                      <button
-                        onClick={() => onDownload(file)}
-                        className="p-1.5 text-gray-400 hover:text-blue-600 transition-colors"
-                        title="Download"
-                      >
-                        <Download className="h-4 w-4" />
-                      </button>
-                      {(currentUserId === null || file.uploadedById === currentUserId) && (
-                        <button
-                          onClick={() => onDelete(file.id)}
-                          className="p-1.5 text-gray-400 hover:text-red-600 transition-colors"
-                          title="Delete"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -248,64 +253,68 @@ export function JobFileTab(props: JobFileTabProps) {
         </div>
       )}
 
-      {viewingFile && (
-        <div className="fixed inset-0 z-50 overflow-y-auto" role="dialog" aria-modal="true">
-          <div className="flex min-h-full items-center justify-center p-4">
-            <div
-              className="fixed inset-0 bg-black/10 backdrop-blur-md"
-              onClick={onCloseViewer}
-              aria-hidden="true"
-            />
-            <div className="relative w-full max-w-4xl rounded-lg bg-white p-6 shadow-xl max-h-[90vh] overflow-auto">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-gray-900 truncate pr-8">
-                  {viewingFile.file.aiGeneratedName || viewingFile.file.originalFilename}
-                </h3>
-                <button
+      {viewingFile &&
+        (() => {
+          const viewingAiName = viewingFile.file.aiGeneratedName;
+          return (
+            <div className="fixed inset-0 z-50 overflow-y-auto" role="dialog" aria-modal="true">
+              <div className="flex min-h-full items-center justify-center p-4">
+                <div
+                  className="fixed inset-0 bg-black/10 backdrop-blur-md"
                   onClick={onCloseViewer}
-                  className="absolute top-4 right-4 p-1 text-gray-400 hover:text-gray-600 transition-colors"
-                >
-                  <X className="h-5 w-5" />
-                </button>
-              </div>
-
-              {viewingFile.file.mimeType === "application/pdf" && (
-                <iframe
-                  src={viewingFile.url}
-                  className="w-full rounded border border-gray-200"
-                  style={{ height: "70vh" }}
-                  title={viewingFile.file.originalFilename}
+                  aria-hidden="true"
                 />
-              )}
-
-              {viewingFile.file.mimeType.startsWith("image/") && (
-                <img
-                  src={viewingFile.url}
-                  alt={viewingFile.file.originalFilename}
-                  className="w-full rounded"
-                />
-              )}
-
-              {!viewingFile.file.mimeType.startsWith("image/") &&
-                viewingFile.file.mimeType !== "application/pdf" && (
-                  <div className="text-center py-12">
-                    <FileText className="mx-auto h-12 w-12 text-gray-300 mb-3" />
-                    <p className="text-sm text-gray-500 mb-4">
-                      Preview not available for this file type
-                    </p>
+                <div className="relative w-full max-w-4xl rounded-lg bg-white p-6 shadow-xl max-h-[90vh] overflow-auto">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-semibold text-gray-900 truncate pr-8">
+                      {viewingAiName || viewingFile.file.originalFilename}
+                    </h3>
                     <button
-                      onClick={() => onDownload(viewingFile.file)}
-                      className="inline-flex items-center px-4 py-2 text-sm font-medium rounded-md bg-teal-600 text-white hover:bg-teal-700 transition-colors"
+                      onClick={onCloseViewer}
+                      className="absolute top-4 right-4 p-1 text-gray-400 hover:text-gray-600 transition-colors"
                     >
-                      <Download className="h-4 w-4 mr-2" />
-                      Download File
+                      <X className="h-5 w-5" />
                     </button>
                   </div>
-                )}
+
+                  {viewingFile.file.mimeType === "application/pdf" && (
+                    <iframe
+                      src={viewingFile.url}
+                      className="w-full rounded border border-gray-200"
+                      style={{ height: "70vh" }}
+                      title={viewingFile.file.originalFilename}
+                    />
+                  )}
+
+                  {viewingFile.file.mimeType.startsWith("image/") && (
+                    <img
+                      src={viewingFile.url}
+                      alt={viewingFile.file.originalFilename}
+                      className="w-full rounded"
+                    />
+                  )}
+
+                  {!viewingFile.file.mimeType.startsWith("image/") &&
+                    viewingFile.file.mimeType !== "application/pdf" && (
+                      <div className="text-center py-12">
+                        <FileText className="mx-auto h-12 w-12 text-gray-300 mb-3" />
+                        <p className="text-sm text-gray-500 mb-4">
+                          Preview not available for this file type
+                        </p>
+                        <button
+                          onClick={() => onDownload(viewingFile.file)}
+                          className="inline-flex items-center px-4 py-2 text-sm font-medium rounded-md bg-teal-600 text-white hover:bg-teal-700 transition-colors"
+                        >
+                          <Download className="h-4 w-4 mr-2" />
+                          Download File
+                        </button>
+                      </div>
+                    )}
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
-      )}
+          );
+        })()}
     </div>
   );
 }

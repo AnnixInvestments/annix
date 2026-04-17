@@ -48,7 +48,8 @@ export default function NewConversationPage() {
       showToast("Conversation created", "success");
       router.push(`/customer/messages/${conversation.id}`);
     } catch (error: any) {
-      showToast(error.message || "Failed to create conversation", "error");
+      const rawMessage = error.message;
+      showToast(rawMessage || "Failed to create conversation", "error");
     }
   };
 

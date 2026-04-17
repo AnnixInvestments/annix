@@ -58,6 +58,7 @@ function annixRepTokenStorage(): Storage {
 }
 
 function readAnnixRepToken(key: string): string | null {
+  // eslint-disable-next-line no-restricted-syntax -- SSR guard; isUndefined(window) would throw
   if (typeof window === "undefined") return null;
   return localStorage.getItem(key) ?? sessionStorage.getItem(key);
 }

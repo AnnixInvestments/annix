@@ -1,5 +1,6 @@
 "use client";
 
+import { toPairs as entries } from "es-toolkit/compat";
 import { useRouter } from "next/navigation";
 import { useCallback, useRef, useState } from "react";
 import { createPortal } from "react-dom";
@@ -337,7 +338,7 @@ export default function BundleUploadPage() {
               </div>
 
               <div className="flex flex-wrap gap-3">
-                {Object.entries(typeCounts).map(([type, count]) => {
+                {entries(typeCounts).map(([type, count]) => {
                   const rawColor = ENTITY_COLORS[type];
                   const colorClass = rawColor ? rawColor : ENTITY_COLORS.unknown;
                   const rawLabel = ENTITY_LABELS[type];

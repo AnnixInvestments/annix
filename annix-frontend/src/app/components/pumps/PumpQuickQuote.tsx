@@ -1,5 +1,6 @@
 "use client";
 
+import { keys } from "es-toolkit/compat";
 import React, { useCallback, useState } from "react";
 import { PumpProductCardData } from "./PumpProductCard";
 
@@ -102,7 +103,7 @@ export function PumpQuickQuote(props: PumpQuickQuoteProps) {
     }
 
     setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    return keys(newErrors).length === 0;
   }, [step, productQuantities, customerInfo]);
 
   const handleNext = useCallback(() => {

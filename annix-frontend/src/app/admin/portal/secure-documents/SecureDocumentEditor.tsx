@@ -1,6 +1,7 @@
 "use client";
 
 import type { ICommand } from "@uiw/react-md-editor";
+import { isArray, isBoolean, isNumber, isString } from "es-toolkit/compat";
 import dynamic from "next/dynamic";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useTheme } from "@/app/components/ThemeProvider";
@@ -10,10 +11,10 @@ import MermaidBlock from "./MermaidBlock";
 const MDEditor = dynamic(() => import("@uiw/react-md-editor"), { ssr: false });
 
 function extractText(node: React.ReactNode): string {
-  if (typeof node === "string") return node;
-  if (typeof node === "number") return String(node);
-  if (node === null || node === undefined || typeof node === "boolean") return "";
-  if (Array.isArray(node)) return node.map(extractText).join("");
+  if (isString(node)) return node;
+  if (isNumber(node)) return String(node);
+  if (node === null || node === undefined || isBoolean(node)) return "";
+  if (isArray(node)) return node.map(extractText).join("");
   if (React.isValidElement(node)) {
     const props = node.props as { children?: React.ReactNode };
     return extractText(props.children);
@@ -60,18 +61,54 @@ export default function SecureDocumentEditor(props: SecureDocumentEditorProps) {
     onSave,
     onBack,
   } = props;
-  const [title, setTitle] = useState(initialData?.title || document?.title || "");
+  const [title, setTitle] = useState(
+    (() => {
+      const rawTitle = initialData?.title;
+      return rawTitle || document?.title || "";
+    })(),
+  );
   const [description, setDescription] = useState(
-    initialData?.description || document?.description || "",
+    (() => {
+      const rawDescription = initialData?.description;
+      return rawDescription || document?.description || "";
+    })(),
   );
-  const [folder, setFolder] = useState(initialData?.folder || document?.folder || "");
-  const [content, setContent] = useState(initialData?.content || document?.content || "");
-  const [savedTitle, setSavedTitle] = useState(initialData?.title || document?.title || "");
+  const [folder, setFolder] = useState(
+    (() => {
+      const rawFolder = initialData?.folder;
+      return rawFolder || document?.folder || "";
+    })(),
+  );
+  const [content, setContent] = useState(
+    (() => {
+      const rawContent = initialData?.content;
+      return rawContent || document?.content || "";
+    })(),
+  );
+  const [savedTitle, setSavedTitle] = useState(
+    (() => {
+      const rawTitle = initialData?.title;
+      return rawTitle || document?.title || "";
+    })(),
+  );
   const [savedDescription, setSavedDescription] = useState(
-    initialData?.description || document?.description || "",
+    (() => {
+      const rawDescription = initialData?.description;
+      return rawDescription || document?.description || "";
+    })(),
   );
-  const [savedFolder, setSavedFolder] = useState(initialData?.folder || document?.folder || "");
-  const [savedContent, setSavedContent] = useState(initialData?.content || document?.content || "");
+  const [savedFolder, setSavedFolder] = useState(
+    (() => {
+      const rawFolder = initialData?.folder;
+      return rawFolder || document?.folder || "";
+    })(),
+  );
+  const [savedContent, setSavedContent] = useState(
+    (() => {
+      const rawContent = initialData?.content;
+      return rawContent || document?.content || "";
+    })(),
+  );
   const [isSaving, setIsSaving] = useState(false);
   const [editorHeight, setEditorHeight] = useState(500);
   const [localPaneMode, setLocalPaneMode] = useState<EditorPaneMode>(paneMode);
@@ -89,14 +126,54 @@ export default function SecureDocumentEditor(props: SecureDocumentEditorProps) {
 
   useEffect(() => {
     if (document) {
-      setTitle(document.title || "");
-      setDescription(document.description || "");
-      setFolder(document.folder || "");
-      setContent(document.content || "");
-      setSavedTitle(document.title || "");
-      setSavedDescription(document.description || "");
-      setSavedFolder(document.folder || "");
-      setSavedContent(document.content || "");
+      setTitle(
+        (() => {
+          const rawTitle = document.title;
+          return rawTitle || "";
+        })(),
+      );
+      setDescription(
+        (() => {
+          const rawDescription = document.description;
+          return rawDescription || "";
+        })(),
+      );
+      setFolder(
+        (() => {
+          const rawFolder = document.folder;
+          return rawFolder || "";
+        })(),
+      );
+      setContent(
+        (() => {
+          const rawContent = document.content;
+          return rawContent || "";
+        })(),
+      );
+      setSavedTitle(
+        (() => {
+          const rawTitle = document.title;
+          return rawTitle || "";
+        })(),
+      );
+      setSavedDescription(
+        (() => {
+          const rawDescription = document.description;
+          return rawDescription || "";
+        })(),
+      );
+      setSavedFolder(
+        (() => {
+          const rawFolder = document.folder;
+          return rawFolder || "";
+        })(),
+      );
+      setSavedContent(
+        (() => {
+          const rawContent = document.content;
+          return rawContent || "";
+        })(),
+      );
     }
   }, [document?.id]);
 
@@ -355,8 +432,10 @@ export default function SecureDocumentEditor(props: SecureDocumentEditorProps) {
                         React.isValidElement(child) && child.type === "code",
                     );
                     if (codeChild) {
-                      const codeClassName =
-                        (codeChild.props as { className?: string }).className || "";
+                      const codeClassName = (() => {
+                        const rawClassName = (codeChild.props as { className?: string }).className;
+                        return rawClassName || "";
+                      })();
                       if (/language-mermaid/.test(codeClassName)) {
                         const text = extractText(
                           (codeChild.props as { children?: React.ReactNode }).children,

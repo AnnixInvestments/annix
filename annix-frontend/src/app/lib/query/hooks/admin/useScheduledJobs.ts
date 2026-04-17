@@ -11,6 +11,7 @@ export function useScheduledJobs() {
   return useQuery({
     queryKey: adminKeys.scheduledJobs.list(),
     queryFn: () => adminApiClient.scheduledJobs(),
+    // eslint-disable-next-line no-restricted-syntax -- value sourced from usePollingInterval() above
     refetchInterval,
   });
 }
@@ -72,6 +73,7 @@ export function useScheduledJobsSyncStatus() {
   return useQuery({
     queryKey: [...adminKeys.scheduledJobs.all, "sync-status"],
     queryFn: () => adminApiClient.scheduledJobsSyncStatus(),
+    // eslint-disable-next-line no-restricted-syntax -- value sourced from usePollingInterval() above
     refetchInterval,
   });
 }
@@ -81,6 +83,7 @@ export function useScheduledJobsGlobalSettings() {
   return useQuery({
     queryKey: [...adminKeys.scheduledJobs.all, "global-settings"],
     queryFn: () => adminApiClient.scheduledJobsGlobalSettings(),
+    // eslint-disable-next-line no-restricted-syntax -- value sourced from usePollingInterval() above
     refetchInterval,
   });
 }

@@ -88,6 +88,7 @@ export function useJobCardJobFiles(jobId: number, confirmFn: ConfirmFn) {
       }, 4000);
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Failed to upload files";
+      // eslint-disable-next-line no-restricted-globals -- legacy sync alert pending modal migration (issue #175)
       alert(msg);
     } finally {
       setIsUploading(false);
@@ -108,6 +109,7 @@ export function useJobCardJobFiles(jobId: number, confirmFn: ConfirmFn) {
         setJobFiles((prev) => prev.filter((f) => f.id !== fileId));
       } catch (err) {
         const msg = err instanceof Error ? err.message : "Failed to delete file";
+        // eslint-disable-next-line no-restricted-globals -- legacy sync alert pending modal migration (issue #175)
         alert(msg);
       }
     },
@@ -121,6 +123,7 @@ export function useJobCardJobFiles(jobId: number, confirmFn: ConfirmFn) {
         setViewingFile({ file, url });
       } catch (err) {
         const msg = err instanceof Error ? err.message : "Failed to load file";
+        // eslint-disable-next-line no-restricted-globals -- legacy sync alert pending modal migration (issue #175)
         alert(msg);
       }
     },
@@ -134,6 +137,7 @@ export function useJobCardJobFiles(jobId: number, confirmFn: ConfirmFn) {
         window.open(url, "_blank");
       } catch (err) {
         const msg = err instanceof Error ? err.message : "Failed to download file";
+        // eslint-disable-next-line no-restricted-globals -- legacy sync alert pending modal migration (issue #175)
         alert(msg);
       }
     },

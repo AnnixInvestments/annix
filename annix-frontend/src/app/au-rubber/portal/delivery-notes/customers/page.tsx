@@ -1,5 +1,6 @@
 "use client";
 
+import { isArray } from "es-toolkit/compat";
 import { FileText, Link2, Loader2, X } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -105,7 +106,7 @@ export default function CustomerDeliveryNotesPage() {
     data: ExtractedDeliveryNoteData | ExtractedDeliveryNoteData[] | null,
   ): ExtractedDeliveryNoteData | null => {
     if (!data) return null;
-    if (Array.isArray(data)) {
+    if (isArray(data)) {
       const rawDataAt0 = data[0];
       return rawDataAt0 || null;
     }
@@ -350,6 +351,7 @@ export default function CustomerDeliveryNotesPage() {
   };
 
   const handleDeleteNote = async (id: number, dnNumber: string) => {
+    // eslint-disable-next-line no-restricted-globals -- legacy sync confirm pending modal migration (issue #175)
     if (!confirm(`Delete delivery note ${dnNumber}?`)) return;
     try {
       await auRubberApiClient.deleteDeliveryNote(id);

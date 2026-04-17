@@ -1,5 +1,6 @@
 "use client";
 
+import { keys } from "es-toolkit/compat";
 import { useMemo, useState } from "react";
 
 interface PipeItem {
@@ -264,7 +265,7 @@ export function SurfaceAreaCalculator(props: SurfaceAreaCalculatorProps) {
                       }
                       className="w-full px-2 py-1 text-xs border border-gray-300 rounded"
                     >
-                      {Object.keys(NB_TO_OD_MAP).map((nb) => (
+                      {keys(NB_TO_OD_MAP).map((nb) => (
                         <option key={nb} value={nb}>
                           DN{nb}
                         </option>

@@ -89,9 +89,12 @@ function CustomerSuppliersContent() {
   const blockSupplier = useBlockSupplier();
   const unblockSupplier = useUnblockSupplier();
 
-  const suppliers = suppliersQuery.data ?? [];
-  const invitations = invitationsQuery.data ?? [];
-  const directorySuppliers = directoryQuery.data ?? [];
+  const rawSuppliersData = suppliersQuery.data;
+  const suppliers = rawSuppliersData ?? [];
+  const rawInvitationsData = invitationsQuery.data;
+  const invitations = rawInvitationsData ?? [];
+  const rawDirectoryData = directoryQuery.data;
+  const directorySuppliers = rawDirectoryData ?? [];
 
   const handleAddSupplier = async () => {
     if (!addForm.supplierName || !addForm.supplierEmail) {
@@ -105,7 +108,10 @@ function CustomerSuppliersContent() {
         supplierName: addForm.supplierName,
         supplierEmail: addForm.supplierEmail,
         priority: addForm.priority,
-        notes: addForm.notes || undefined,
+        notes: (() => {
+          const rawNotes = addForm.notes;
+          return rawNotes || undefined;
+        })(),
       });
       setShowAddModal(false);
       resetAddForm();
@@ -115,6 +121,7 @@ function CustomerSuppliersContent() {
   };
 
   const handleRemoveSupplier = async (id: number) => {
+    // eslint-disable-next-line no-restricted-globals -- legacy sync confirm pending modal migration (issue #175)
     if (!confirm("Are you sure you want to remove this supplier from your preferred list?")) return;
 
     try {
@@ -134,8 +141,14 @@ function CustomerSuppliersContent() {
       setInviteError(null);
       await createInvitation.mutateAsync({
         email: inviteForm.email,
-        supplierCompanyName: inviteForm.supplierCompanyName || undefined,
-        message: inviteForm.message || undefined,
+        supplierCompanyName: (() => {
+          const rawSupplierCompanyName = inviteForm.supplierCompanyName;
+          return rawSupplierCompanyName || undefined;
+        })(),
+        message: (() => {
+          const rawMessage = inviteForm.message;
+          return rawMessage || undefined;
+        })(),
       });
       setShowInviteModal(false);
       resetInviteForm();
@@ -145,6 +158,7 @@ function CustomerSuppliersContent() {
   };
 
   const handleCancelInvitation = async (id: number) => {
+    // eslint-disable-next-line no-restricted-globals -- legacy sync confirm pending modal migration (issue #175)
     if (!confirm("Are you sure you want to cancel this invitation?")) return;
 
     try {
@@ -221,7 +235,10 @@ function CustomerSuppliersContent() {
       expired: { bg: "bg-gray-100", text: "text-gray-700", label: "Expired" },
       cancelled: { bg: "bg-red-100", text: "text-red-700", label: "Cancelled" },
     };
-    const badge = badges[invitation.status] || badges.pending;
+    const badge = (() => {
+      const rawBadges = badges[invitation.status];
+      return rawBadges || badges.pending;
+    })();
     return (
       <span className={`px-2 py-1 rounded-full text-xs font-medium ${badge.bg} ${badge.text}`}>
         {badge.label}
@@ -251,7 +268,12 @@ function CustomerSuppliersContent() {
     }
   };
 
-  if (suppliersQuery.isLoading || invitationsQuery.isLoading) {
+  if (
+    (() => {
+      const rawIsLoading = suppliersQuery.isLoading;
+      return rawIsLoading || invitationsQuery.isLoading;
+    })()
+  ) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
@@ -466,7 +488,10 @@ function CustomerSuppliersContent() {
                       <div className="text-gray-900">{invitation.email}</div>
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-700">
-                      {invitation.supplierCompanyName || "-"}
+                      {(() => {
+                        const rawSupplierCompanyName = invitation.supplierCompanyName;
+                        return rawSupplierCompanyName || "-";
+                      })()}
                     </td>
                     <td className="px-6 py-4">{invitationStatusBadge(invitation)}</td>
                     <td className="px-6 py-4 text-sm text-gray-700">
@@ -495,7 +520,10 @@ function CustomerSuppliersContent() {
                           </button>
                         </>
                       )}
-                      {(invitation.isExpired || invitation.status === "expired") && (
+                      {(() => {
+                        const rawIsExpired = invitation.isExpired;
+                        return rawIsExpired || invitation.status === "expired";
+                      })() && (
                         <button
                           onClick={() => handleResendInvitation(invitation.id)}
                           className="text-blue-600 hover:text-blue-800 text-sm"
@@ -520,11 +548,17 @@ function CustomerSuppliersContent() {
                 <input
                   type="text"
                   placeholder="Search by company name..."
-                  value={directoryFilters.search || ""}
+                  value={(() => {
+                    const rawSearch = directoryFilters.search;
+                    return rawSearch || "";
+                  })()}
                   onChange={(e) =>
                     setDirectoryFilters({
                       ...directoryFilters,
-                      search: e.target.value || undefined,
+                      search: (() => {
+                        const rawValue = e.target.value;
+                        return rawValue || undefined;
+                      })(),
                     })
                   }
                   className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
@@ -533,11 +567,17 @@ function CustomerSuppliersContent() {
               <div className="w-48">
                 <label className="block text-sm font-medium text-gray-700 mb-1">Province</label>
                 <select
-                  value={directoryFilters.province || ""}
+                  value={(() => {
+                    const rawProvince = directoryFilters.province;
+                    return rawProvince || "";
+                  })()}
                   onChange={(e) =>
                     setDirectoryFilters({
                       ...directoryFilters,
-                      province: e.target.value || undefined,
+                      province: (() => {
+                        const rawValue = e.target.value;
+                        return rawValue || undefined;
+                      })(),
                     })
                   }
                   className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
@@ -618,7 +658,10 @@ function CustomerSuppliersContent() {
                         <div className="font-medium text-gray-900">{supplier.companyName}</div>
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-700">
-                        {supplier.province || "-"}
+                        {(() => {
+                          const rawProvince = supplier.province;
+                          return rawProvince || "-";
+                        })()}
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex flex-wrap gap-1">

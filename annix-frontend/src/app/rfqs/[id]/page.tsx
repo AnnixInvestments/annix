@@ -228,8 +228,13 @@ export default function RfqDetailsPage() {
                     <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-lg p-4">
                       <p className="text-xs text-gray-600 mb-1">Schedule</p>
                       <p className="text-xl font-bold text-purple-600">
-                        {item.straightPipeDetails.scheduleNumber ||
-                          `${formatNumber(item.straightPipeDetails.wallThicknessMm)} mm`}
+                        {(() => {
+                          const rawScheduleNumber = item.straightPipeDetails.scheduleNumber;
+                          return (
+                            rawScheduleNumber ||
+                            `${formatNumber(item.straightPipeDetails.wallThicknessMm)} mm`
+                          );
+                        })()}
                       </p>
                     </div>
                     {item.straightPipeDetails.steelSpecification && (

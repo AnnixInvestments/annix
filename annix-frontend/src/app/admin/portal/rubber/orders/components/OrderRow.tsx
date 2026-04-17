@@ -41,10 +41,16 @@ function OrderRowComponent({ order, isSelected, onToggleSelect, onDelete }: Orde
         </Link>
       </td>
       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-        {order.companyOrderNumber || "-"}
+        {(() => {
+          const rawCompanyOrderNumber = order.companyOrderNumber;
+          return rawCompanyOrderNumber || "-";
+        })()}
       </td>
       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-        {order.companyName || "N/A"}
+        {(() => {
+          const rawCompanyName = order.companyName;
+          return rawCompanyName || "N/A";
+        })()}
       </td>
       <td className="px-6 py-4 whitespace-nowrap">
         <span

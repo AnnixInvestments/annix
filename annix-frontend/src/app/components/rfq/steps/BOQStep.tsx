@@ -1,6 +1,7 @@
 "use client";
 
 import { FLANGE_OD } from "@annix/product-data/pipe";
+import { isString, keys, values } from "es-toolkit/compat";
 import React, { useCallback, useState } from "react";
 import * as XLSX from "xlsx";
 import { useOptionalAdminAuth } from "@/app/context/AdminAuthContext";
@@ -68,7 +69,7 @@ export default function BOQStep(props: {
   );
   const formatDate = (date: Date | string | undefined) => {
     if (!date) return "Not specified";
-    if (typeof date === "string") {
+    if (isString(date)) {
       return formatDateLongZA(date);
     }
     return fromJSDate(date).toLocaleString({ year: "numeric", month: "long", day: "numeric" });
@@ -117,7 +118,8 @@ export default function BOQStep(props: {
     unit: string;
     weight: number;
     entries: string[];
-    welds?: Record<string, number>; // e.g., { "Pipe Weld": 2.5, "Flange Weld": 1.2 }
+    // e.g., { "Pipe Weld": 2.5, "Flange Weld": 1.2 }
+    welds?: Record<string, number>;
     intAreaM2?: number;
     extAreaM2?: number;
   };
@@ -147,13 +149,17 @@ export default function BOQStep(props: {
         case "FBE":
           return { fixed: 2, loose: 0, rotating: 0 };
         case "FOE_LF":
-          return { fixed: 1, loose: 1, rotating: 0 }; // 1 fixed + 1 loose = 2 physical flanges
+          // 1 fixed + 1 loose = 2 physical flanges
+          return { fixed: 1, loose: 1, rotating: 0 };
         case "FOE_RF":
-          return { fixed: 1, loose: 0, rotating: 1 }; // 1 fixed + 1 rotating = 2 physical flanges
+          // 1 fixed + 1 rotating = 2 physical flanges
+          return { fixed: 1, loose: 0, rotating: 1 };
         case "2X_RF":
-          return { fixed: 0, loose: 0, rotating: 2 }; // 2 rotating flanges
+          // 2 rotating flanges
+          return { fixed: 0, loose: 0, rotating: 2 };
         case "2xLF":
-          return { fixed: 0, loose: 4, rotating: 0 }; // 2 stub-on + 2 loose backing flanges = 4 flanges
+          // 2 stub-on + 2 loose backing flanges = 4 flanges
+          return { fixed: 0, loose: 4, rotating: 0 };
         default:
           return { fixed: 0, loose: 0, rotating: 0 };
       }
@@ -164,17 +170,22 @@ export default function BOQStep(props: {
         case "PE":
           return { fixed: 0, loose: 0, rotating: 0 };
         case "FAE":
-          return { fixed: 3, loose: 0, rotating: 0 }; // Flanged All Ends (3 fixed)
+          // Flanged All Ends (3 fixed)
+          return { fixed: 3, loose: 0, rotating: 0 };
         case "F2E":
           return { fixed: 2, loose: 0, rotating: 0 };
         case "F2E_LF":
-          return { fixed: 2, loose: 1, rotating: 0 }; // 2 fixed + 1 loose
+          // 2 fixed + 1 loose
+          return { fixed: 2, loose: 1, rotating: 0 };
         case "F2E_RF":
-          return { fixed: 2, loose: 0, rotating: 1 }; // 2 fixed + 1 rotating
+          // 2 fixed + 1 rotating
+          return { fixed: 2, loose: 0, rotating: 1 };
         case "3X_RF":
-          return { fixed: 0, loose: 0, rotating: 3 }; // 3 rotating
+          // 3 rotating
+          return { fixed: 0, loose: 0, rotating: 3 };
         case "2X_RF_FOE":
-          return { fixed: 1, loose: 0, rotating: 2 }; // 1 fixed + 2 rotating
+          // 1 fixed + 2 rotating
+          return { fixed: 1, loose: 0, rotating: 2 };
         default:
           return { fixed: 0, loose: 0, rotating: 0 };
       }
@@ -192,10 +203,12 @@ export default function BOQStep(props: {
     // For fittings, branch flanges are handled separately
     if (itemType === "fitting") {
       if (config === "FAE" || config === "3X_RF" || config === "2X_RF_FOE") {
-        return { main: 2, branch: 1 }; // Main run has 2 flanges, branch has 1
+        // Main run has 2 flanges, branch has 1
+        return { main: 2, branch: 1 };
       }
       if (config === "F2E_LF" || config === "F2E_RF") {
-        return { main: 1, branch: 1 }; // 1 main flange + 1 branch flange (loose/rotating)
+        // 1 main flange + 1 branch flange (loose/rotating)
+        return { main: 1, branch: 1 };
       }
       if (config === "F2E") return { main: 2, branch: 0 };
       if (config === "PE") return { main: 0, branch: 0 };
@@ -282,7 +295,8 @@ export default function BOQStep(props: {
       const bendEndConfig = rawBendEndConfiguration || "PE";
       const bendFlangeCount = getFlangeCountFromConfig(bendEndConfig, "bend");
       if (bendFlangeCount.main > 0) {
-        const flangeWeldLength = bendFlangeCount.main * qty * ((Math.PI * od) / 1000) * 2; // x2 for inside + outside
+        // x2 for inside + outside
+        const flangeWeldLength = bendFlangeCount.main * qty * ((Math.PI * od) / 1000) * 2;
         if (flangeWeldLength > 0) welds["Flange Weld"] = flangeWeldLength;
       }
 
@@ -315,7 +329,7 @@ export default function BOQStep(props: {
           unit: "Each",
           weight: bendWeight * qty,
           entries: [itemNumber],
-          welds: Object.keys(welds).length > 0 ? welds : undefined,
+          welds: keys(welds).length > 0 ? welds : undefined,
           intAreaM2: intAreaM2 > 0 ? intAreaM2 : undefined,
           extAreaM2: extAreaM2 > 0 ? extAreaM2 : undefined,
         });
@@ -571,7 +585,8 @@ export default function BOQStep(props: {
       const branchWt = rawBranchWallThicknessMm || wt;
 
       // Calculate fitting welds (tee weld + flange welds)
-      const teeWeldLength = qty * ((Math.PI * od) / 1000); // One tee weld per fitting
+      // One tee weld per fitting
+      const teeWeldLength = qty * ((Math.PI * od) / 1000);
       let flangeWeldLength = 0;
       if (fittingFlangeCount.main > 0) {
         flangeWeldLength = fittingFlangeCount.main * qty * ((Math.PI * od) / 1000) * 2;
@@ -664,7 +679,7 @@ export default function BOQStep(props: {
           unit: "Each",
           weight: fittingWeight * qty,
           entries: [itemNumber],
-          welds: Object.keys(welds).length > 0 ? welds : undefined,
+          welds: keys(welds).length > 0 ? welds : undefined,
           intAreaM2: intAreaM2 > 0 ? intAreaM2 : undefined,
           extAreaM2: extAreaM2 > 0 ? extAreaM2 : undefined,
         });
@@ -903,7 +918,8 @@ export default function BOQStep(props: {
       const pipeWeldCount = rawPipeWeldsPerUnit || 0;
       const rawOutsideDiameterMm3 = entry.calculation?.outsideDiameterMm;
       const od = rawOutsideDiameterMm3 || 0;
-      const pipeWeldLength = pipeWeldCount * pipeQty * ((Math.PI * od) / 1000); // circumference per weld
+      // circumference per weld
+      const pipeWeldLength = pipeWeldCount * pipeQty * ((Math.PI * od) / 1000);
 
       const rawCalculatedTotalLength = entry.calculation?.calculatedTotalLength;
 
@@ -950,7 +966,7 @@ export default function BOQStep(props: {
           unit: "Each",
           weight: pipeWeight,
           entries: [itemNumber],
-          welds: Object.keys(welds).length > 0 ? welds : undefined,
+          welds: keys(welds).length > 0 ? welds : undefined,
           intAreaM2: intAreaM2 > 0 ? intAreaM2 : undefined,
           extAreaM2: extAreaM2 > 0 ? extAreaM2 : undefined,
         });
@@ -1144,7 +1160,7 @@ export default function BOQStep(props: {
     if (showWeldColumns) {
       itemsArray.forEach((item) => {
         if (item.welds) {
-          Object.keys(item.welds).forEach((wt) => allWeldTypes.add(wt));
+          keys(item.welds).forEach((wt) => allWeldTypes.add(wt));
         }
       });
     }
@@ -1228,7 +1244,7 @@ export default function BOQStep(props: {
             <tbody>
               {itemsArray.map((item, idx) => {
                 const totalWeld = item.welds
-                  ? Object.values(item.welds).reduce((sum, v) => sum + v, 0)
+                  ? values(item.welds).reduce((sum, v) => sum + v, 0)
                   : 0;
                 const rowBg = idx % 2 === 0 ? "bg-transparent" : "bg-gray-50 dark:bg-gray-800/30";
                 return (
@@ -1304,7 +1320,7 @@ export default function BOQStep(props: {
       if (includeWelds) {
         Array.from(items.values()).forEach((item) => {
           if (item.welds) {
-            Object.keys(item.welds).forEach((wt) => allWeldTypes.add(wt));
+            keys(item.welds).forEach((wt) => allWeldTypes.add(wt));
           }
         });
       }
@@ -1345,7 +1361,7 @@ export default function BOQStep(props: {
 
     const addToCombined = (items: Map<string, ConsolidatedItem>, category: string) => {
       Array.from(items.values()).forEach((item) => {
-        const totalWeld = item.welds ? Object.values(item.welds).reduce((sum, v) => sum + v, 0) : 0;
+        const totalWeld = item.welds ? values(item.welds).reduce((sum, v) => sum + v, 0) : 0;
         combinedData.push({
           "#": globalRowNum++,
           Category: category,

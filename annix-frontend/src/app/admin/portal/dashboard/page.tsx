@@ -305,8 +305,12 @@ export default function AdminDashboardPage() {
   const jobsQuery = useScheduledJobs();
 
   const stats = dashboardQuery.data;
-  const feedback = feedbackQuery.data || [];
-  const jobs = (jobsQuery.data || []) as ScheduledJobDto[];
+  const rawData = feedbackQuery.data;
+  const feedback = rawData || [];
+  const jobs = (() => {
+    const rawData = jobsQuery.data;
+    return rawData || [];
+  })() as ScheduledJobDto[];
 
   const openFeedbackCount = feedback.filter((f) => f.status !== "resolved").length;
 

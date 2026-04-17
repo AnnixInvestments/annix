@@ -1,5 +1,6 @@
 "use client";
 
+import { toPairs as entries } from "es-toolkit/compat";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import type { InviteUserDto, RbacAppDetail } from "@/app/lib/api/adminApi";
@@ -28,7 +29,8 @@ export function InviteUserModal(props: InviteUserModalProps) {
       setFirstName("");
       setLastName("");
       setUseCustomPermissions(false);
-      setSelectedRoleCode(appDetails.roles.find((r) => r.isDefault)?.code || null);
+      const rawCode = appDetails.roles.find((r) => r.isDefault)?.code;
+      setSelectedRoleCode(rawCode || null);
       setSelectedPermissions([]);
       setExpiresAt("");
     }
@@ -38,7 +40,8 @@ export function InviteUserModal(props: InviteUserModalProps) {
 
   const permissionsByCategory = appDetails.permissions.reduce(
     (acc, perm) => {
-      const category = perm.category ?? "General";
+      const rawCategory = perm.category;
+      const category = rawCategory ?? "General";
       if (!acc[category]) acc[category] = [];
       acc[category].push(perm);
       return acc;
@@ -151,7 +154,14 @@ export function InviteUserModal(props: InviteUserModalProps) {
                 <label className="block text-sm font-medium text-gray-700 mb-2">Role</label>
                 <select
                   value={selectedRoleCode ?? ""}
-                  onChange={(e) => setSelectedRoleCode(e.target.value || null)}
+                  onChange={(e) =>
+                    setSelectedRoleCode(
+                      (() => {
+                        const rawValue = e.target.value;
+                        return rawValue || null;
+                      })(),
+                    )
+                  }
                   className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
                 >
                   <option value="">Select a role...</option>
@@ -176,7 +186,7 @@ export function InviteUserModal(props: InviteUserModalProps) {
                   Permissions ({selectedPermissions.length} selected)
                 </label>
                 <div className="space-y-4 max-h-48 overflow-y-auto border border-gray-200 rounded-md p-3">
-                  {Object.entries(permissionsByCategory).map(([category, perms]) => (
+                  {entries(permissionsByCategory).map(([category, perms]) => (
                     <div key={category}>
                       <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
                         {category}

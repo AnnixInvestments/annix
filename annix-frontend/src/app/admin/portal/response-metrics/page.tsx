@@ -66,13 +66,16 @@ export default function ResponseMetricsPage() {
   const slaQuery = useAdminSlaConfig();
   const updateSlaMutation = useUpdateSlaConfig();
 
-  const metrics = metricsQuery.data ?? null;
-  const slaConfig = slaQuery.data ?? null;
+  const rawMetricsData = metricsQuery.data;
+  const metrics = rawMetricsData ?? null;
+  const rawSlaData = slaQuery.data;
+  const slaConfig = rawSlaData ?? null;
 
   const [isEditingSla, setIsEditingSla] = useState(false);
   const [editedSla, setEditedSla] = useState<SlaConfig | null>(null);
 
-  const isLoading = metricsQuery.isLoading || slaQuery.isLoading;
+  const rawIsLoadingValue = metricsQuery.isLoading;
+  const isLoading = rawIsLoadingValue || slaQuery.isLoading;
 
   const handleEditSla = () => {
     setEditedSla(slaConfig ? { ...slaConfig } : null);

@@ -1,5 +1,6 @@
 "use client";
 
+import { keys, values } from "es-toolkit/compat";
 import { useEffect, useState } from "react";
 import type {
   AllocationPlanItem,
@@ -220,13 +221,13 @@ export function AllocationPlanSection(props: AllocationPlanSectionProps) {
   }
 
   const groups = groupedItems(plan.items);
-  const groupKeys = Object.keys(groups).sort((a, b) => {
+  const groupKeys = keys(groups).sort((a, b) => {
     if (a === "__standalone__") return 1;
     if (b === "__standalone__") return -1;
     return a.localeCompare(b);
   });
 
-  const hasSelectedItems = Object.values(packCounts).some((count) => count > 0);
+  const hasSelectedItems = values(packCounts).some((count) => count > 0);
 
   return (
     <div className="bg-white shadow rounded-lg overflow-hidden">

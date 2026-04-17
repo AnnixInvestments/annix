@@ -755,11 +755,12 @@ export default function DeliveriesPage() {
                 </button>
                 <button
                   onClick={handleCreate}
-                  disabled={
-                    createMutation.isPending ||
-                    !createForm.deliveryNumber ||
-                    !createForm.supplierName
-                  }
+                  disabled={(() => {
+                    const createPending = createMutation.isPending;
+                    const rawDeliveryNumber = createForm.deliveryNumber;
+                    const rawSupplierName = createForm.supplierName;
+                    return createPending || !rawDeliveryNumber || !rawSupplierName;
+                  })()}
                   className="px-4 py-2 text-sm font-medium text-white bg-teal-600 border border-transparent rounded-md hover:bg-teal-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
                 >
                   {createMutation.isPending ? "Creating..." : "Create Delivery Note"}

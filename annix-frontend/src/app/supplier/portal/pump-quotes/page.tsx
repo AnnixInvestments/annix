@@ -273,7 +273,8 @@ function SupplierPumpQuotesContent() {
         ) : (
           <div className="divide-y divide-gray-100">
             {filteredRequests.map((request) => {
-              const statusStyle = STATUS_STYLES[request.status] ?? STATUS_STYLES.pending;
+              const rawSTATUS_STYLES = STATUS_STYLES[request.status];
+              const statusStyle = rawSTATUS_STYLES ?? STATUS_STYLES.pending;
               const daysLeft = daysUntilDeadline(request.requiredDate);
               const canQuote = request.status === "pending" || request.status === "viewed";
 
@@ -316,7 +317,10 @@ function SupplierPumpQuotesContent() {
                         </div>
                       </div>
 
-                      {(request.flowRate || request.totalHead) && (
+                      {(() => {
+                        const rawFlowRate = request.flowRate;
+                        return rawFlowRate || request.totalHead;
+                      })() && (
                         <div className="mt-2 text-sm text-gray-600">
                           <span className="font-medium">Specs:</span>{" "}
                           {request.flowRate ? `${request.flowRate} m³/h` : "N/A"}{" "}

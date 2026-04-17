@@ -204,6 +204,7 @@ export function AllocationsTab(props: AllocationsTabProps) {
                               </button>
                               <button
                                 onClick={() => {
+                                  // eslint-disable-next-line no-restricted-globals -- legacy sync prompt pending modal migration (issue #175)
                                   const reason = prompt("Enter rejection reason:");
                                   if (reason) {
                                     onRejectAllocation(allocation.id, reason);

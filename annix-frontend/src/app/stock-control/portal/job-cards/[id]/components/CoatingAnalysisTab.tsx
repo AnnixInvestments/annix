@@ -1,5 +1,6 @@
 "use client";
 
+import { keys } from "es-toolkit/compat";
 import { useState } from "react";
 import type {
   CoatingAnalysis,
@@ -168,7 +169,7 @@ export function CoatingAnalysisTab(props: CoatingAnalysisTabProps) {
   const [pmEditError, setPmEditError] = useState<string | null>(null);
   const showStockDecision = props.showStockDecision;
   const isPmEditable = showStockDecision || props.isAdmin;
-  const hasPmEdits = Object.keys(pmEdits).length > 0;
+  const hasPmEdits = keys(pmEdits).length > 0;
   const [correctionField, setCorrectionField] = useState("coatingSpec");
   const [correctionValue, setCorrectionValue] = useState("");
   const [isSavingCorrection, setIsSavingCorrection] = useState(false);
@@ -737,22 +738,27 @@ export function CoatingAnalysisTab(props: CoatingAnalysisTabProps) {
         </div>
       )}
 
-      {coatingAnalysis && coatingAnalysis.status === "failed" && (
-        <div className="mt-6 pt-4 border-t border-gray-200">
-          <div className="flex items-center justify-between">
-            <div className="text-sm text-red-600">
-              Coating analysis failed: {coatingAnalysis.error || "Unknown error"}
+      {coatingAnalysis &&
+        coatingAnalysis.status === "failed" &&
+        (() => {
+          const rawAnalysisError = coatingAnalysis.error;
+          return (
+            <div className="mt-6 pt-4 border-t border-gray-200">
+              <div className="flex items-center justify-between">
+                <div className="text-sm text-red-600">
+                  Coating analysis failed: {rawAnalysisError || "Unknown error"}
+                </div>
+                <button
+                  onClick={onRunAnalysis}
+                  disabled={isAnalysing}
+                  className="text-sm text-teal-600 hover:text-teal-800 disabled:text-gray-400"
+                >
+                  {isAnalysing ? "Analysing..." : "Retry"}
+                </button>
+              </div>
             </div>
-            <button
-              onClick={onRunAnalysis}
-              disabled={isAnalysing}
-              className="text-sm text-teal-600 hover:text-teal-800 disabled:text-gray-400"
-            >
-              {isAnalysing ? "Analysing..." : "Retry"}
-            </button>
-          </div>
-        </div>
-      )}
+          );
+        })()}
 
       {(!coatingAnalysis ||
         (coatingAnalysis.status === "analysed" && coatingAnalysis.coats.length === 0)) && (

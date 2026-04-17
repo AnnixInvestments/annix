@@ -14,11 +14,16 @@
  * All dimensions in mm
  */
 export interface FlangeDimensions {
-  dn: number; // Nominal diameter (mm)
-  flangeOdMm: number; // Flange outside diameter
-  boreIdMm: number; // Bore ID (matches pipe ID approximately)
-  raisedFaceDiaMm: number; // Raised face diameter (for RF flanges)
-  hubLengthMm: number; // Hub/neck length for weld neck flanges
+  // Nominal diameter (mm)
+  dn: number;
+  // Flange outside diameter
+  flangeOdMm: number;
+  // Bore ID (matches pipe ID approximately)
+  boreIdMm: number;
+  // Raised face diameter (for RF flanges)
+  raisedFaceDiaMm: number;
+  // Hub/neck length for weld neck flanges
+  hubLengthMm: number;
 }
 
 export const ANSI_B165_CLASS_150_FLANGES: FlangeDimensions[] = [
@@ -106,7 +111,8 @@ const FLANGE_DIMENSIONS_BY_CLASS: Record<string, FlangeDimensions[]> = {
   "600": ANSI_B165_CLASS_600_FLANGES,
   "CLASS 600": ANSI_B165_CLASS_600_FLANGES,
   PN100: ANSI_B165_CLASS_600_FLANGES,
-  "900": ANSI_B165_CLASS_600_FLANGES, // Use Class 600 as approximation for higher classes
+  // Use Class 600 as approximation for higher classes
+  "900": ANSI_B165_CLASS_600_FLANGES,
   "CLASS 900": ANSI_B165_CLASS_600_FLANGES,
   "1500": ANSI_B165_CLASS_600_FLANGES,
   "CLASS 1500": ANSI_B165_CLASS_600_FLANGES,
@@ -134,7 +140,8 @@ export function getFlangeDimensionsByDn(
  * Calculate circular area in m² from diameter in mm
  */
 function circularAreaM2(diameterMm: number): number {
-  const radiusM = diameterMm / 2000; // Convert mm to m
+  // Convert mm to m
+  const radiusM = diameterMm / 2000;
   return Math.PI * radiusM * radiusM;
 }
 
@@ -156,23 +163,32 @@ export interface SurfaceAreaParams {
   insideDiameterMm: number;
   pipeLengthM: number;
   numberOfFlanges: number;
-  dn?: number; // Optional - for flange dimension lookup
-  pressureClass?: string; // Optional - pressure class for flange dimension lookup
+  // Optional - for flange dimension lookup
+  dn?: number;
+  // Optional - pressure class for flange dimension lookup
+  pressureClass?: string;
 }
 
 export interface SurfaceAreaResult {
   // External coating
-  externalPipeAreaM2: number; // Pipe external surface
-  externalFlangeBackAreaM2: number; // Back of flanges (annular area)
-  totalExternalAreaM2: number; // Total for external coating
+  // Pipe external surface
+  externalPipeAreaM2: number;
+  // Back of flanges (annular area)
+  externalFlangeBackAreaM2: number;
+  // Total for external coating
+  totalExternalAreaM2: number;
 
   // Internal coating
-  internalPipeAreaM2: number; // Pipe internal surface
-  internalFlangeFaceAreaM2: number; // Flange face (raised face area)
-  totalInternalAreaM2: number; // Total for internal coating
+  // Pipe internal surface
+  internalPipeAreaM2: number;
+  // Flange face (raised face area)
+  internalFlangeFaceAreaM2: number;
+  // Total for internal coating
+  totalInternalAreaM2: number;
 
   // Combined
-  totalSurfaceAreaM2: number; // Total surface area
+  // Total surface area
+  totalSurfaceAreaM2: number;
 
   // Details
   flangeDataAvailable: boolean;
@@ -192,7 +208,8 @@ export function calculateComprehensiveSurfaceArea(params: SurfaceAreaParams): Su
     params;
 
   // Add 100mm (0.1m) allowance per flange/end for surface protection overlap
-  const FLANGE_ALLOWANCE_M = 0.1; // 100mm per end
+  // 100mm per end
+  const FLANGE_ALLOWANCE_M = 0.1;
   const effectivePipeLengthM = pipeLengthM + numberOfFlanges * FLANGE_ALLOWANCE_M;
 
   // External pipe surface area: π × OD × Length (with flange allowance)

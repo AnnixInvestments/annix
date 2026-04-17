@@ -1,5 +1,6 @@
 "use client";
 
+import { toPairs as entries, keys } from "es-toolkit/compat";
 import type React from "react";
 import { useState } from "react";
 import type { JobCard, JobCardAttachment, JobCardVersion } from "@/app/lib/api/stockControlApi";
@@ -243,11 +244,11 @@ export function DetailsTab({
               )}
             </div>
           </dl>
-          {jobCard.customFields && Object.keys(jobCard.customFields).length > 0 && (
+          {jobCard.customFields && keys(jobCard.customFields).length > 0 && (
             <div className="mt-6 pt-4 border-t border-gray-200">
               <h4 className="text-sm font-medium text-gray-500 mb-3">Custom Fields</h4>
               <dl className="grid grid-cols-2 gap-x-4 gap-y-4">
-                {Object.entries(jobCard.customFields).map(([key, value]) => (
+                {entries(jobCard.customFields).map(([key, value]) => (
                   <div key={key}>
                     <dt className="text-sm font-medium text-gray-500">{key}</dt>
                     <dd className="text-sm text-gray-900">{value}</dd>

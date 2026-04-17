@@ -1,3 +1,4 @@
+import { toPairs as entries } from "es-toolkit/compat";
 import { describe, expect, it } from "vitest";
 import {
   calculateArrowSize,
@@ -238,7 +239,7 @@ describe("rendering3DStandards", () => {
 
   describe("Material Constants Validation", () => {
     it("should have valid PBR values for pipe materials", () => {
-      Object.entries(PIPE_MATERIALS).forEach(([name, material]) => {
+      entries(PIPE_MATERIALS).forEach(([name, material]) => {
         expect(material.metalness).toBeGreaterThanOrEqual(0);
         expect(material.metalness).toBeLessThanOrEqual(1);
         expect(material.roughness).toBeGreaterThanOrEqual(0);
@@ -249,7 +250,7 @@ describe("rendering3DStandards", () => {
     });
 
     it("should have valid PBR values for weld materials", () => {
-      Object.entries(WELD_MATERIALS).forEach(([name, material]) => {
+      entries(WELD_MATERIALS).forEach(([name, material]) => {
         expect(material.metalness).toBeGreaterThanOrEqual(0);
         expect(material.metalness).toBeLessThanOrEqual(1);
         expect(material.roughness).toBeGreaterThanOrEqual(0);
@@ -260,7 +261,7 @@ describe("rendering3DStandards", () => {
     });
 
     it("should have valid PBR values for flange materials", () => {
-      Object.entries(FLANGE_MATERIALS).forEach(([name, material]) => {
+      entries(FLANGE_MATERIALS).forEach(([name, material]) => {
         expect(material.metalness).toBeGreaterThanOrEqual(0);
         expect(material.metalness).toBeLessThanOrEqual(1);
         expect(material.roughness).toBeGreaterThanOrEqual(0);
@@ -271,7 +272,7 @@ describe("rendering3DStandards", () => {
     });
 
     it("should have valid PBR values for steelwork materials", () => {
-      Object.entries(STEELWORK_MATERIALS).forEach(([name, material]) => {
+      entries(STEELWORK_MATERIALS).forEach(([name, material]) => {
         expect(material.metalness).toBeGreaterThanOrEqual(0);
         expect(material.metalness).toBeLessThanOrEqual(1);
         expect(material.roughness).toBeGreaterThanOrEqual(0);

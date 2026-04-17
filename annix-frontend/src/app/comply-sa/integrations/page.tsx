@@ -1,5 +1,6 @@
 "use client";
 
+import { isArray } from "es-toolkit/compat";
 import { BookOpen, DollarSign, Info, Loader2, Plug, Receipt, Users } from "lucide-react";
 import type { IntegrationItem } from "@/app/lib/query/hooks";
 import { useIntegrationsList } from "@/app/lib/query/hooks";
@@ -113,7 +114,7 @@ function IntegrationCard({ integration }: { integration: IntegrationItem }) {
 export default function IntegrationsPage() {
   const { data, isLoading } = useIntegrationsList();
 
-  const integrations: IntegrationItem[] = Array.isArray(data) ? data : FALLBACK_INTEGRATIONS;
+  const integrations: IntegrationItem[] = isArray(data) ? data : FALLBACK_INTEGRATIONS;
 
   if (isLoading) {
     return (

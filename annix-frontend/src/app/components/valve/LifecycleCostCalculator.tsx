@@ -1,5 +1,6 @@
 "use client";
 
+import { toPairs as entries } from "es-toolkit/compat";
 import { useCallback, useMemo, useState } from "react";
 import { currencyByCode, DEFAULT_CURRENCY } from "@/app/lib/currencies";
 
@@ -276,7 +277,7 @@ export default function LifecycleCostCalculator() {
                   onChange={(e) => updateValveSpec("valveType", e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                 >
-                  {Object.entries(VALVE_TYPE_LABELS).map(([value, label]) => (
+                  {entries(VALVE_TYPE_LABELS).map(([value, label]) => (
                     <option key={value} value={value}>
                       {label}
                     </option>

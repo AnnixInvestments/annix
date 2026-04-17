@@ -15,6 +15,7 @@ export class PortalTokenStore {
   }
 
   private loadFromStorage() {
+    // eslint-disable-next-line no-restricted-syntax -- SSR guard; isUndefined(window) would throw
     if (typeof window === "undefined") return;
     const localAccess = localStorage.getItem(this.keys.accessToken);
     const sessionAccess = sessionStorage.getItem(this.keys.accessToken);
@@ -52,6 +53,7 @@ export class PortalTokenStore {
     this.accessTokenValue = accessToken;
     this.refreshTokenValue = refreshToken;
     this.rememberMeValue = rememberMe;
+    // eslint-disable-next-line no-restricted-syntax -- SSR guard; isUndefined(window) would throw
     if (typeof window === "undefined") return;
     const primary = rememberMe ? localStorage : sessionStorage;
     const secondary = rememberMe ? sessionStorage : localStorage;
@@ -63,6 +65,7 @@ export class PortalTokenStore {
 
   updateAccessToken(accessToken: string) {
     this.accessTokenValue = accessToken;
+    // eslint-disable-next-line no-restricted-syntax -- SSR guard; isUndefined(window) would throw
     if (typeof window === "undefined") return;
     const storage = this.rememberMeValue ? localStorage : sessionStorage;
     storage.setItem(this.keys.accessToken, accessToken);
@@ -72,6 +75,7 @@ export class PortalTokenStore {
     this.accessTokenValue = null;
     this.refreshTokenValue = null;
     this.rememberMeValue = false;
+    // eslint-disable-next-line no-restricted-syntax -- SSR guard; isUndefined(window) would throw
     if (typeof window === "undefined") return;
     localStorage.removeItem(this.keys.accessToken);
     localStorage.removeItem(this.keys.refreshToken);

@@ -1,5 +1,6 @@
 "use client";
 
+import { toPairs as entries, values } from "es-toolkit/compat";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
@@ -259,7 +260,7 @@ export function GlobalSearchModal({ isOpen, onClose }: GlobalSearchModalProps) {
     };
   }, {});
 
-  const flatResults = Object.values(groupedResults).flat();
+  const flatResults = values(groupedResults).flat();
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
@@ -443,7 +444,7 @@ export function GlobalSearchModal({ isOpen, onClose }: GlobalSearchModalProps) {
             )}
 
             {!loading &&
-              Object.entries(groupedResults).map(([type, items]) => {
+              entries(groupedResults).map(([type, items]) => {
                 const config = TYPE_CONFIG[type as GlobalSearchResultItem["type"]];
                 return (
                   <div key={type} className="py-2">

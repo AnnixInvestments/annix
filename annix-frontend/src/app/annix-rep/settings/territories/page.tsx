@@ -270,6 +270,7 @@ function TerritoryCard({
   const assignedEmail = assignedMember?.user?.email;
 
   const handleDelete = async () => {
+    // eslint-disable-next-line no-restricted-globals -- legacy sync confirm pending modal migration (issue #175)
     if (confirm(`Are you sure you want to delete "${territory.name}"?`)) {
       await deleteTerritory.mutateAsync(territory.id);
     }

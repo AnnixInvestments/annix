@@ -54,11 +54,14 @@ const emptyAreaReading = (index: number): AreaReadingRow => ({
 });
 
 const parseSolutions = (solutions: QcPullTestSolution[]): SolutionRow[] =>
-  solutions.map((s) => ({
-    product: s.product,
-    batchNumber: s.batchNumber ?? "",
-    result: s.result,
-  }));
+  solutions.map((s) => {
+    const rawBatchNumber = s.batchNumber;
+    return {
+      product: s.product,
+      batchNumber: rawBatchNumber ?? "",
+      result: s.result,
+    };
+  });
 
 const numericPartOfReading = (raw: string): string => {
   const match = raw.trim().match(/^[\d.]+/);

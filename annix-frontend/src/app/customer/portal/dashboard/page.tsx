@@ -27,8 +27,10 @@ function CustomerDashboardContent() {
   const draftsQuery = useCustomerDrafts();
   const deleteDraftMutation = useDeleteDraft();
 
-  const dashboard = dashboardQuery.data ?? null;
-  const drafts = draftsQuery.data ?? [];
+  const rawDashboardData = dashboardQuery.data;
+  const dashboard = rawDashboardData ?? null;
+  const rawDraftsData = draftsQuery.data;
+  const drafts = rawDraftsData ?? [];
 
   const [deletingDraftId, setDeletingDraftId] = useState<number | null>(null);
 
@@ -38,6 +40,7 @@ function CustomerDashboardContent() {
   };
 
   const handleDeleteDraft = async (draftId: number) => {
+    // eslint-disable-next-line no-restricted-globals -- legacy sync confirm pending modal migration (issue #175)
     if (!confirm("Are you sure you want to delete this draft? This action cannot be undone.")) {
       return;
     }
@@ -59,7 +62,8 @@ function CustomerDashboardContent() {
 
   const getStepName = (step: number) => {
     const steps = ["Project Details", "Specifications", "Items", "Review", "BOQ"];
-    return steps[step - 1] || `Step ${step}`;
+    const rawSteps = steps[step - 1];
+    return rawSteps || `Step ${step}`;
   };
 
   const getStatusDisplay = (status: RfqDraftStatus): { label: string; className: string } => {
@@ -125,7 +129,10 @@ function CustomerDashboardContent() {
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-500">Total RFQs</p>
               <p className="text-2xl font-semibold text-gray-900">
-                {dashboard?.rfqStats.total || 0}
+                {(() => {
+                  const rawTotal = dashboard?.rfqStats.total;
+                  return rawTotal || 0;
+                })()}
               </p>
             </div>
           </div>
@@ -153,7 +160,10 @@ function CustomerDashboardContent() {
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-500">Pending</p>
               <p className="text-2xl font-semibold text-gray-900">
-                {dashboard?.rfqStats.pending || 0}
+                {(() => {
+                  const rawPending = dashboard?.rfqStats.pending;
+                  return rawPending || 0;
+                })()}
               </p>
             </div>
           </div>
@@ -181,7 +191,10 @@ function CustomerDashboardContent() {
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-500">Quoted</p>
               <p className="text-2xl font-semibold text-gray-900">
-                {dashboard?.rfqStats.quoted || 0}
+                {(() => {
+                  const rawQuoted = dashboard?.rfqStats.quoted;
+                  return rawQuoted || 0;
+                })()}
               </p>
             </div>
           </div>
@@ -209,7 +222,10 @@ function CustomerDashboardContent() {
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-500">Accepted</p>
               <p className="text-2xl font-semibold text-gray-900">
-                {dashboard?.rfqStats.accepted || 0}
+                {(() => {
+                  const rawAccepted = dashboard?.rfqStats.accepted;
+                  return rawAccepted || 0;
+                })()}
               </p>
             </div>
           </div>
@@ -257,7 +273,11 @@ function CustomerDashboardContent() {
                         {getStatusDisplay(draft.status).label}
                       </span>
                       <h3 className="text-sm font-medium text-gray-900 truncate">
-                        {draft.customerRfqReference || draft.projectName || "Untitled Project"}
+                        {(() => {
+                          const rawCustomerRfqReference = draft.customerRfqReference;
+                          const rawProjectName = draft.projectName;
+                          return rawCustomerRfqReference || rawProjectName || "Untitled Project";
+                        })()}
                       </h3>
                       {draft.isConverted && draft.supplierCounts && (
                         <div className="flex items-center gap-2 ml-auto">
@@ -614,7 +634,10 @@ function CustomerDashboardContent() {
                     : "bg-yellow-100 text-yellow-800"
                 }`}
               >
-                {dashboard?.profile.accountStatus || "Unknown"}
+                {(() => {
+                  const rawAccountStatus = dashboard?.profile.accountStatus;
+                  return rawAccountStatus || "Unknown";
+                })()}
               </span>
             </div>
 
@@ -652,7 +675,10 @@ function CustomerDashboardContent() {
             <div className="flex justify-between items-center py-2">
               <span className="text-sm text-gray-500">Registered IP</span>
               <span className="text-sm text-gray-900 font-mono">
-                {dashboard?.security.registeredIp || "N/A"}
+                {(() => {
+                  const rawRegisteredIp = dashboard?.security.registeredIp;
+                  return rawRegisteredIp || "N/A";
+                })()}
               </span>
             </div>
           </div>

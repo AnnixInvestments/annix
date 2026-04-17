@@ -23,13 +23,16 @@ function CustomerRfqsContent() {
   const draftsQuery = useCustomerDrafts();
   const deleteDraftMutation = useDeleteDraft();
 
-  const rfqs = rfqsQuery.data ?? [];
-  const allRfqs = draftsQuery.data ?? [];
+  const rawRfqsData = rfqsQuery.data;
+  const rfqs = rawRfqsData ?? [];
+  const rawDraftsData = draftsQuery.data;
+  const allRfqs = rawDraftsData ?? [];
 
   const [filter, setFilter] = useState<string>("all");
   const [activeTab, setActiveTab] = useState<"rfqs" | "rfq-list">("rfq-list");
 
   const handleDeleteDraft = async (draftId: number) => {
+    // eslint-disable-next-line no-restricted-globals -- legacy sync confirm pending modal migration (issue #175)
     if (!confirm("Are you sure you want to delete this draft?")) return;
     try {
       await deleteDraftMutation.mutateAsync(draftId);
@@ -52,12 +55,14 @@ function CustomerRfqsContent() {
 
   const getStatusBadgeClass = (status: string) => {
     const config = statusConfig[status.toLowerCase() as RfqDraftStatus];
-    return config?.class || "bg-gray-100 text-gray-800";
+    const rawClass = config?.class;
+    return rawClass || "bg-gray-100 text-gray-800";
   };
 
   const getStatusLabel = (status: string) => {
     const config = statusConfig[status.toLowerCase() as RfqDraftStatus];
-    return config?.label || status;
+    const rawLabel = config?.label;
+    return rawLabel || status;
   };
 
   const filteredRfqs =
@@ -358,13 +363,19 @@ function CustomerRfqsContent() {
                       <span
                         className={`text-sm font-medium ${rfq.isConverted ? "text-blue-700" : "text-amber-700"}`}
                       >
-                        {rfq.rfqNumber || rfq.draftNumber}
+                        {(() => {
+                          const rawRfqNumber = rfq.rfqNumber;
+                          return rawRfqNumber || rfq.draftNumber;
+                        })()}
                       </span>
                     </td>
                     <td className="px-6 py-4">
                       <div>
                         <span className="text-sm font-medium text-gray-900">
-                          {rfq.customerRfqReference || "-"}
+                          {(() => {
+                            const rawCustomerRfqReference = rfq.customerRfqReference;
+                            return rawCustomerRfqReference || "-";
+                          })()}
                         </span>
                         {rfq.projectName && (
                           <p className="text-xs text-gray-500">{rfq.projectName}</p>

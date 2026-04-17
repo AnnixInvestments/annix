@@ -26,11 +26,21 @@ export default function ReviewDashboardPage() {
     isLoading: loading,
     error: queryError,
   } = useReviews(activeTab, reviewParams);
-  const reviews = reviewData?.data || [];
+  const rawData = reviewData?.data;
+  const reviews = rawData || [];
   const pagination = {
-    page: reviewData?.page || 1,
-    totalPages: reviewData?.totalPages || 1,
-    total: reviewData?.total || 0,
+    page: (() => {
+      const rawPage = reviewData?.page;
+      return rawPage || 1;
+    })(),
+    totalPages: (() => {
+      const rawTotalPages = reviewData?.totalPages;
+      return rawTotalPages || 1;
+    })(),
+    total: (() => {
+      const rawTotal = reviewData?.total;
+      return rawTotal || 0;
+    })(),
   };
 
   const reviewAction = useReviewAction();
@@ -306,6 +316,7 @@ export default function ReviewDashboardPage() {
                               </button>
                               <button
                                 onClick={() => {
+                                  // eslint-disable-next-line no-restricted-globals -- legacy sync prompt pending modal migration (issue #175)
                                   const comments = prompt("Enter reason for changes:");
                                   if (comments) {
                                     handleAction(
@@ -322,6 +333,7 @@ export default function ReviewDashboardPage() {
                               </button>
                               <button
                                 onClick={() => {
+                                  // eslint-disable-next-line no-restricted-globals -- legacy sync prompt pending modal migration (issue #175)
                                   const comments = prompt("Enter reason for rejection:");
                                   if (comments) {
                                     handleAction(

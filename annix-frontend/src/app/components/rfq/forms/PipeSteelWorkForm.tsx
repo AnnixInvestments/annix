@@ -1,5 +1,6 @@
 "use client";
 
+import { isArray } from "es-toolkit/compat";
 import { useEffect } from "react";
 import { SmartNotesDropdown } from "@/app/components/rfq/selectors/SmartNotesDropdown";
 import SplitPaneLayout from "@/app/components/rfq/shared/SplitPaneLayout";
@@ -297,7 +298,7 @@ export default function PipeSteelWorkForm(props: PipeSteelWorkFormProps) {
               </h4>
               <SmartNotesDropdown
                 selectedNotes={
-                  entry.notes ? (Array.isArray(entry.notes) ? entry.notes : [entry.notes]) : []
+                  entry.notes ? (isArray(entry.notes) ? entry.notes : [entry.notes]) : []
                 }
                 onNotesChange={(newNotes) =>
                   onUpdateEntry(entry.id, { notes: newNotes.join("\n") })

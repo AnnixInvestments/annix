@@ -17,6 +17,7 @@ export default function ServiceWorkerRegistration() {
   const [showUpdatePrompt, setShowUpdatePrompt] = useState(false);
 
   useEffect(() => {
+    // eslint-disable-next-line no-restricted-syntax -- SSR guard; isUndefined(window) would throw
     if (typeof window === "undefined" || !("serviceWorker" in navigator)) {
       return;
     }

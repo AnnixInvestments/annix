@@ -1,5 +1,6 @@
 "use client";
 
+import { isArray, keys } from "es-toolkit/compat";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { StockManagementApiClient } from "../api/stockManagementApi";
@@ -215,7 +216,7 @@ export function IssueStockPage() {
       .then((data) => {
         const rawTotals = data.totals;
         const totals = rawTotals == null ? data : rawTotals;
-        setCpoIssuedTotals(Array.isArray(totals) ? totals : []);
+        setCpoIssuedTotals(isArray(totals) ? totals : []);
         const rawPerJc = data.perJc;
         setCpoPerJcIssued(rawPerJc == null ? {} : rawPerJc);
       })
@@ -516,7 +517,7 @@ export function IssueStockPage() {
   }, [currentStep, selectedProductSpec]);
 
   const derivedCoatStatusMap = useMemo(() => {
-    const hasBackendData = Object.keys(coatStatusMap).length > 0;
+    const hasBackendData = keys(coatStatusMap).length > 0;
     if (hasBackendData) return coatStatusMap;
     if (cpoIssuedTotals.length === 0 || cpoChildJcs.length === 0) return coatStatusMap;
 
@@ -797,6 +798,7 @@ export function IssueStockPage() {
       setPhotoResult({ matches: result.matches });
     } catch (err) {
       console.error("Photo identification failed", err);
+      // eslint-disable-next-line no-restricted-globals -- legacy sync alert pending modal migration (issue #175)
       alert("Photo identification failed");
     } finally {
       setPhotoCapturing(false);
@@ -857,7 +859,10 @@ export function IssueStockPage() {
           productId: row.product.id,
           jobCardId: rowJobCardId,
           litres: row.quantity,
-          batchNumber: row.batchNumber || null,
+          batchNumber: (() => {
+            const rawBatchNumber = row.batchNumber;
+            return rawBatchNumber || null;
+          })(),
           cpoProRataSplit: hasSplits ? proRataMap : null,
           itemCoatAllocations: paintCoatAllocs,
         };
@@ -886,7 +891,10 @@ export function IssueStockPage() {
           productId: row.product.id,
           jobCardId: rowJobCardId,
           volumeL: row.quantity,
-          batchNumber: row.batchNumber || null,
+          batchNumber: (() => {
+            const rawBatchNumber = row.batchNumber;
+            return rawBatchNumber || null;
+          })(),
         };
       }
       return {
@@ -894,7 +902,10 @@ export function IssueStockPage() {
         productId: row.product.id,
         jobCardId: rowJobCardId,
         quantity: row.quantity,
-        batchNumber: row.batchNumber || null,
+        batchNumber: (() => {
+          const rawBatchNumber = row.batchNumber;
+          return rawBatchNumber || null;
+        })(),
       };
     });
     const sessionCpoId = target != null && target.kind === "cpo" ? target.id : null;
@@ -1340,7 +1351,7 @@ export function IssueStockPage() {
                             const jcIdStr = String(jc.id);
                             const jcIssued = cpoPerJcIssued[jcIdStr];
                             if (!jcIssued) return null;
-                            const issuedProductIds = Object.keys(jcIssued).map(Number);
+                            const issuedProductIds = keys(jcIssued).map(Number);
                             if (issuedProductIds.length === 0) return null;
                             const jcExtCoats = jc.coats.filter((ct) => ct.area === "external");
                             const hasIntCoat = jcExtCoats.some(

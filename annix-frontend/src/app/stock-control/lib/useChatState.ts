@@ -1,5 +1,6 @@
 "use client";
 
+import { values } from "es-toolkit/compat";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
 import type {
@@ -9,6 +10,7 @@ import type {
 } from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { nowISO } from "@/app/lib/datetime";
+import { log } from "@/app/lib/logger";
 
 type ChatMsg = ChatMessageResponse;
 
@@ -116,7 +118,7 @@ export function useChatState() {
             };
       });
     } catch (e) {
-      console.debug("Chat poll failed:", errorMessage(e, "Unknown error"));
+      log.debug("Chat poll failed:", errorMessage(e, "Unknown error"));
     }
   }, [messagingEnabled]);
 
@@ -138,7 +140,7 @@ export function useChatState() {
           : { ...prev, convMessages: merged, convLastMessageId: lastNew.id };
       });
     } catch (e) {
-      console.debug("Conversation poll failed:", errorMessage(e, "Unknown error"));
+      log.debug("Conversation poll failed:", errorMessage(e, "Unknown error"));
     }
   }, [messagingEnabled]);
 
@@ -166,7 +168,7 @@ export function useChatState() {
         const convs = await stockControlApiClient.chatConversations();
         updateState({ conversations: convs });
       } catch (e) {
-        console.debug("Fetch conversations failed:", errorMessage(e, "Unknown error"));
+        log.debug("Fetch conversations failed:", errorMessage(e, "Unknown error"));
       }
     };
 
@@ -183,7 +185,7 @@ export function useChatState() {
         const counts = await stockControlApiClient.chatUnreadCounts();
         updateState({ convUnreadCounts: counts });
       } catch (e) {
-        console.debug("Fetch unread counts failed:", errorMessage(e, "Unknown error"));
+        log.debug("Fetch unread counts failed:", errorMessage(e, "Unknown error"));
       }
     };
 
@@ -207,7 +209,7 @@ export function useChatState() {
         stockControlApiClient
           .markConversationRead(state.activeConversation.id)
           .catch((e) =>
-            console.debug("Failed to mark conversation read:", errorMessage(e, "Unknown error")),
+            log.debug("Failed to mark conversation read:", errorMessage(e, "Unknown error")),
           );
       }
       setTimeout(() => inputRef.current?.focus(), 100);
@@ -216,7 +218,7 @@ export function useChatState() {
 
   const currentMessages = state.view === "conversation" ? state.convMessages : state.messages;
 
-  const totalDmUnread = Object.values(state.convUnreadCounts).reduce((a, b) => a + b, 0);
+  const totalDmUnread = values(state.convUnreadCounts).reduce((a, b) => a + b, 0);
   const totalUnread = state.unreadCount + totalDmUnread;
 
   const open = useCallback(() => {

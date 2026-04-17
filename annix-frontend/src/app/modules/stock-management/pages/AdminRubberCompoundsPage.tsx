@@ -144,8 +144,18 @@ export function AdminRubberCompoundsPage() {
                   <td className="px-4 py-3 font-mono text-xs">{compound.code}</td>
                   <td className="px-4 py-3 text-sm">{compound.name}</td>
                   <td className="px-4 py-3 text-xs">{compound.compoundFamily}</td>
-                  <td className="px-4 py-3 text-xs">{compound.shoreHardness ?? "—"}</td>
-                  <td className="px-4 py-3 text-xs">{compound.densityKgPerM3 ?? "—"}</td>
+                  <td className="px-4 py-3 text-xs">
+                    {(() => {
+                      const rawShoreHardness = compound.shoreHardness;
+                      return rawShoreHardness ?? "—";
+                    })()}
+                  </td>
+                  <td className="px-4 py-3 text-xs">
+                    {(() => {
+                      const rawDensityKgPerM3 = compound.densityKgPerM3;
+                      return rawDensityKgPerM3 ?? "—";
+                    })()}
+                  </td>
                   <td className="px-4 py-3">
                     <span className={`px-2 py-0.5 text-xs font-semibold rounded ${statusClass}`}>
                       {status}
@@ -193,7 +203,10 @@ export function AdminRubberCompoundsPage() {
               <div>
                 <label className="block text-xs font-medium text-gray-700">Family</label>
                 <select
-                  value={draft.compoundFamily ?? "SBR"}
+                  value={(() => {
+                    const rawCompoundFamily = draft.compoundFamily;
+                    return rawCompoundFamily ?? "SBR";
+                  })()}
                   onChange={(e) => setDraft({ ...draft, compoundFamily: e.target.value })}
                   className="mt-1 w-full border border-gray-300 rounded px-3 py-2 text-sm"
                 >
@@ -208,7 +221,10 @@ export function AdminRubberCompoundsPage() {
                 <label className="block text-xs font-medium text-gray-700">Shore Hardness</label>
                 <input
                   type="number"
-                  value={draft.shoreHardness ?? ""}
+                  value={(() => {
+                    const rawShoreHardness = draft.shoreHardness;
+                    return rawShoreHardness ?? "";
+                  })()}
                   onChange={(e) =>
                     setDraft({
                       ...draft,
@@ -222,7 +238,10 @@ export function AdminRubberCompoundsPage() {
                 <label className="block text-xs font-medium text-gray-700">Density (kg/m³)</label>
                 <input
                   type="number"
-                  value={draft.densityKgPerM3 ?? ""}
+                  value={(() => {
+                    const rawDensityKgPerM3 = draft.densityKgPerM3;
+                    return rawDensityKgPerM3 ?? "";
+                  })()}
                   onChange={(e) =>
                     setDraft({
                       ...draft,

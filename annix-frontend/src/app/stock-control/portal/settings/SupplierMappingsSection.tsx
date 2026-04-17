@@ -1,5 +1,6 @@
 "use client";
 
+import { toPairs as entries, keys } from "es-toolkit/compat";
 import { useCallback, useEffect, useState } from "react";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 
@@ -104,9 +105,9 @@ export function SupplierMappingsSection() {
             </div>
           )}
 
-          {!isLoading && Object.keys(grouped).length > 0 && (
+          {!isLoading && keys(grouped).length > 0 && (
             <div className="space-y-4">
-              {Object.entries(grouped)
+              {entries(grouped)
                 .sort(([a], [b]) => a.localeCompare(b))
                 .map(([supplier, supplierMappings]) => (
                   <div key={supplier}>

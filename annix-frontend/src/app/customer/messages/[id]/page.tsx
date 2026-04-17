@@ -23,7 +23,8 @@ export default function CustomerConversationDetailPage() {
   const sendMessageMutation = useSendCustomerMessage();
   const archiveMutation = useArchiveCustomerConversation();
 
-  const conversation = conversationQuery.data ?? null;
+  const rawData = conversationQuery.data;
+  const conversation = rawData ?? null;
   const [currentUserId, setCurrentUserId] = useState<number>(0);
   const [localMessages, setLocalMessages] = useState<
     typeof conversation extends null ? never : NonNullable<typeof conversation>["messages"]
@@ -68,7 +69,8 @@ export default function CustomerConversationDetailPage() {
 
       setLocalMessages((prev) => [...prev, newMessage]);
     } catch (error: any) {
-      showToast(error.message || "Failed to send message", "error");
+      const rawMessage = error.message;
+      showToast(rawMessage || "Failed to send message", "error");
     }
   };
 
@@ -80,7 +82,8 @@ export default function CustomerConversationDetailPage() {
       showToast("Conversation archived", "success");
       router.push("/customer/messages");
     } catch (error: any) {
-      showToast(error.message || "Failed to archive conversation", "error");
+      const rawMessage2 = error.message;
+      showToast(rawMessage2 || "Failed to archive conversation", "error");
     }
   };
 

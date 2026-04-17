@@ -130,7 +130,8 @@ export default function JobCardsPage() {
   const [dedupResult, setDedupResult] = useState<{ merged: number; groups: number } | null>(null);
 
   useEffect(() => {
-    if (dedupRanRef.current || !isAdmin) return;
+    const alreadyRan = dedupRanRef.current;
+    if (alreadyRan || !isAdmin) return;
     dedupRanRef.current = true;
     deduplicateMutation.mutate(undefined, {
       onSuccess: (result) => {
@@ -779,125 +780,133 @@ export default function JobCardsPage() {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {jobCards.map((job) => (
-                  <tr
-                    key={job.id}
-                    className="hover:bg-gray-50 cursor-pointer"
-                    onClick={() => router.push(`/stock-control/portal/job-cards/${job.id}`)}
-                  >
-                    <td className="px-3 py-3 whitespace-nowrap">
-                      <Link
-                        href={`/stock-control/portal/job-cards/${job.id}`}
-                        className="text-sm font-medium text-teal-700 hover:text-teal-900 truncate block"
-                      >
-                        {job.jobNumber}
-                        {job.jtDnNumber ? ` / ${job.jtDnNumber}` : ""}
-                      </Link>
-                      {job.parentJobCardId ? (
-                        <span className="ml-1.5 inline-flex px-1.5 py-0.5 text-[10px] font-medium rounded bg-indigo-50 text-indigo-600">
-                          Delivery
-                        </span>
-                      ) : null}
-                    </td>
-                    <td className="hidden lg:table-cell px-3 py-3 whitespace-nowrap text-sm text-gray-500 truncate">
-                      {job.jcNumber || "-"}
-                    </td>
-                    <td className="hidden xl:table-cell px-3 py-3 whitespace-nowrap text-sm text-gray-500">
-                      {job.pageNumber || "-"}
-                    </td>
-                    <td className="px-3 py-3 text-sm text-gray-900 truncate max-w-0">
-                      {job.jobName}
-                    </td>
-                    <td className="hidden md:table-cell px-3 py-3 text-sm text-gray-500 truncate max-w-0">
-                      {job.customerName || "-"}
-                    </td>
-                    <td className="px-3 py-3 whitespace-nowrap">
-                      <StatusBadge status={job.status} />
-                      {job.cpoId ? (
-                        <span className="ml-1 px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-purple-100 text-purple-800">
-                          CPO
-                        </span>
-                      ) : null}
-                    </td>
-                    <td className="hidden xl:table-cell px-3 py-3 whitespace-nowrap">
-                      <CompactWorkflowStepper
-                        workflowStatus={
-                          job.effectiveWorkflowStatus || job.workflowStatus || job.status
-                        }
-                      />
-                    </td>
-                    <td className="hidden lg:table-cell px-3 py-3 whitespace-nowrap">
-                      {dataBookStatuses[job.id] ? (
-                        <span className="inline-flex items-center gap-1.5">
-                          {dataBookStatuses[job.id].exists && !dataBookStatuses[job.id].isStale ? (
-                            <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                              Compiled
-                            </span>
-                          ) : dataBookStatuses[job.id].exists &&
-                            dataBookStatuses[job.id].isStale ? (
-                            <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-amber-100 text-amber-800">
-                              Stale
-                            </span>
-                          ) : null}
-                          {dataBookStatuses[job.id].certificateCount > 0 ? (
-                            <span className="px-2 inline-flex text-xs leading-5 font-medium rounded-full bg-blue-100 text-blue-700">
-                              {dataBookStatuses[job.id].certificateCount} cert
-                              {dataBookStatuses[job.id].certificateCount !== 1 ? "s" : ""}
-                            </span>
-                          ) : null}
-                        </span>
-                      ) : (
-                        <span className="text-xs text-gray-400">-</span>
-                      )}
-                    </td>
-                    <td className="px-3 py-3 whitespace-nowrap text-sm text-gray-500">
-                      {formatDateZA(job.createdAt)}
-                    </td>
-                    <td className="px-3 py-3 whitespace-nowrap text-right text-sm">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setConfirmDelete({ id: job.id, jobNumber: job.jobNumber });
-                        }}
-                        disabled={deletingId === job.id}
-                        className="text-gray-400 hover:text-red-600 disabled:opacity-50"
-                        title="Delete job card"
-                      >
-                        {deletingId === job.id ? (
-                          <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
-                            <circle
-                              className="opacity-25"
-                              cx="12"
-                              cy="12"
-                              r="10"
-                              stroke="currentColor"
-                              strokeWidth="4"
-                            />
-                            <path
-                              className="opacity-75"
-                              fill="currentColor"
-                              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
-                            />
-                          </svg>
+                {jobCards.map((job) => {
+                  const rawJcNumber = job.jcNumber;
+                  const rawPageNumber = job.pageNumber;
+                  const rawCustomerName = job.customerName;
+                  const rawEffectiveWorkflowStatus = job.effectiveWorkflowStatus;
+                  const rawWorkflowStatus = job.workflowStatus;
+                  return (
+                    <tr
+                      key={job.id}
+                      className="hover:bg-gray-50 cursor-pointer"
+                      onClick={() => router.push(`/stock-control/portal/job-cards/${job.id}`)}
+                    >
+                      <td className="px-3 py-3 whitespace-nowrap">
+                        <Link
+                          href={`/stock-control/portal/job-cards/${job.id}`}
+                          className="text-sm font-medium text-teal-700 hover:text-teal-900 truncate block"
+                        >
+                          {job.jobNumber}
+                          {job.jtDnNumber ? ` / ${job.jtDnNumber}` : ""}
+                        </Link>
+                        {job.parentJobCardId ? (
+                          <span className="ml-1.5 inline-flex px-1.5 py-0.5 text-[10px] font-medium rounded bg-indigo-50 text-indigo-600">
+                            Delivery
+                          </span>
+                        ) : null}
+                      </td>
+                      <td className="hidden lg:table-cell px-3 py-3 whitespace-nowrap text-sm text-gray-500 truncate">
+                        {rawJcNumber || "-"}
+                      </td>
+                      <td className="hidden xl:table-cell px-3 py-3 whitespace-nowrap text-sm text-gray-500">
+                        {rawPageNumber || "-"}
+                      </td>
+                      <td className="px-3 py-3 text-sm text-gray-900 truncate max-w-0">
+                        {job.jobName}
+                      </td>
+                      <td className="hidden md:table-cell px-3 py-3 text-sm text-gray-500 truncate max-w-0">
+                        {rawCustomerName || "-"}
+                      </td>
+                      <td className="px-3 py-3 whitespace-nowrap">
+                        <StatusBadge status={job.status} />
+                        {job.cpoId ? (
+                          <span className="ml-1 px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-purple-100 text-purple-800">
+                            CPO
+                          </span>
+                        ) : null}
+                      </td>
+                      <td className="hidden xl:table-cell px-3 py-3 whitespace-nowrap">
+                        <CompactWorkflowStepper
+                          workflowStatus={
+                            rawEffectiveWorkflowStatus || rawWorkflowStatus || job.status
+                          }
+                        />
+                      </td>
+                      <td className="hidden lg:table-cell px-3 py-3 whitespace-nowrap">
+                        {dataBookStatuses[job.id] ? (
+                          <span className="inline-flex items-center gap-1.5">
+                            {dataBookStatuses[job.id].exists &&
+                            !dataBookStatuses[job.id].isStale ? (
+                              <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                                Compiled
+                              </span>
+                            ) : dataBookStatuses[job.id].exists &&
+                              dataBookStatuses[job.id].isStale ? (
+                              <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-amber-100 text-amber-800">
+                                Stale
+                              </span>
+                            ) : null}
+                            {dataBookStatuses[job.id].certificateCount > 0 ? (
+                              <span className="px-2 inline-flex text-xs leading-5 font-medium rounded-full bg-blue-100 text-blue-700">
+                                {dataBookStatuses[job.id].certificateCount} cert
+                                {dataBookStatuses[job.id].certificateCount !== 1 ? "s" : ""}
+                              </span>
+                            ) : null}
+                          </span>
                         ) : (
-                          <svg
-                            className="w-5 h-5"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                            />
-                          </svg>
+                          <span className="text-xs text-gray-400">-</span>
                         )}
-                      </button>
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+                      <td className="px-3 py-3 whitespace-nowrap text-sm text-gray-500">
+                        {formatDateZA(job.createdAt)}
+                      </td>
+                      <td className="px-3 py-3 whitespace-nowrap text-right text-sm">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setConfirmDelete({ id: job.id, jobNumber: job.jobNumber });
+                          }}
+                          disabled={deletingId === job.id}
+                          className="text-gray-400 hover:text-red-600 disabled:opacity-50"
+                          title="Delete job card"
+                        >
+                          {deletingId === job.id ? (
+                            <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                              <circle
+                                className="opacity-25"
+                                cx="12"
+                                cy="12"
+                                r="10"
+                                stroke="currentColor"
+                                strokeWidth="4"
+                              />
+                              <path
+                                className="opacity-75"
+                                fill="currentColor"
+                                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                              />
+                            </svg>
+                          ) : (
+                            <svg
+                              className="w-5 h-5"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                              />
+                            </svg>
+                          )}
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </>
@@ -1167,7 +1176,12 @@ export default function JobCardsPage() {
                 </button>
                 <button
                   onClick={handleCreate}
-                  disabled={createJobCard.isPending || !createForm.jobNumber || !createForm.jobName}
+                  disabled={(() => {
+                    const jobPending = createJobCard.isPending;
+                    const rawJobNumber = createForm.jobNumber;
+                    const rawJobName = createForm.jobName;
+                    return jobPending || !rawJobNumber || !rawJobName;
+                  })()}
                   className="px-4 py-2 text-sm font-medium text-white bg-teal-600 border border-transparent rounded-md hover:bg-teal-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
                 >
                   {createJobCard.isPending ? "Creating..." : "Create Job Card"}

@@ -894,6 +894,7 @@ export default function TranscriptPage() {
   };
 
   const handleRetranscribe = async () => {
+    // eslint-disable-next-line no-restricted-globals -- legacy sync confirm pending modal migration (issue #175)
     if (confirm("This will delete the existing transcript and create a new one. Continue?")) {
       await retranscribe.mutateAsync(recording.id);
       refetchTranscript();

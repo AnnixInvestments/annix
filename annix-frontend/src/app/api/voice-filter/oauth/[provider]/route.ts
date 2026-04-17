@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const VOICE_FILTER_BACKEND_URL = process.env.VOICE_FILTER_BACKEND_URL || "http://localhost:47823";
-const FRONTEND_URL = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
+const rawVOICE_FILTER_BACKEND_URLValue = process.env.VOICE_FILTER_BACKEND_URL;
+const VOICE_FILTER_BACKEND_URL = rawVOICE_FILTER_BACKEND_URLValue || "http://localhost:47823";
+const rawNEXT_PUBLIC_BASE_URL = process.env.NEXT_PUBLIC_BASE_URL;
+const FRONTEND_URL = rawNEXT_PUBLIC_BASE_URL || "http://localhost:3000";
 const OAUTH_REDIRECT_URI = `${FRONTEND_URL}/api/voice-filter/oauth/callback`;
 
 interface OAuthConfig {
@@ -12,24 +14,36 @@ interface OAuthConfig {
 
 const OAUTH_CONFIGS: Record<string, OAuthConfig> = {
   google: {
-    clientId: process.env.GOOGLE_CLIENT_ID ?? "",
+    clientId: (() => {
+      const rawGOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
+      return rawGOOGLE_CLIENT_ID ?? "";
+    })(),
     authUrl: "https://accounts.google.com/o/oauth2/v2/auth",
     scopes: ["email", "profile", "https://www.googleapis.com/auth/calendar.readonly"],
   },
   microsoft: {
-    clientId: process.env.MICROSOFT_CLIENT_ID ?? "",
+    clientId: (() => {
+      const rawMICROSOFT_CLIENT_ID = process.env.MICROSOFT_CLIENT_ID;
+      return rawMICROSOFT_CLIENT_ID ?? "";
+    })(),
     authUrl: "https://login.microsoftonline.com/common/oauth2/v2.0/authorize",
     scopes: ["openid", "email", "profile", "User.Read", "Calendars.Read", "offline_access"],
   },
   zoom: {
-    clientId: process.env.ZOOM_CLIENT_ID ?? "",
+    clientId: (() => {
+      const rawZOOM_CLIENT_ID = process.env.ZOOM_CLIENT_ID;
+      return rawZOOM_CLIENT_ID ?? "";
+    })(),
     authUrl: "https://zoom.us/oauth/authorize",
     scopes: ["user:read"],
   },
 };
 
 const APPLE_CONFIG = {
-  clientId: process.env.APPLE_CLIENT_ID ?? "",
+  clientId: (() => {
+    const rawAPPLE_CLIENT_ID = process.env.APPLE_CLIENT_ID;
+    return rawAPPLE_CLIENT_ID ?? "";
+  })(),
   authUrl: "https://appleid.apple.com/auth/authorize",
   scopes: ["name", "email"],
 };

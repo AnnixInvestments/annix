@@ -1,5 +1,6 @@
 "use client";
 
+import { toPairs as entries, keys } from "es-toolkit/compat";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import {
@@ -633,10 +634,7 @@ export default function CustomersPage() {
       return direction * (aTierName || "").localeCompare(bTierName || "");
     if (sortColumn === "contact") return direction * (aPhone || "").localeCompare(bPhone || "");
     if (sortColumn === "emailConfig")
-      return (
-        direction *
-        (Object.keys(aEmailConfig || {}).length - Object.keys(bEmailConfig || {}).length)
-      );
+      return direction * (keys(aEmailConfig || {}).length - keys(bEmailConfig || {}).length);
     if (sortColumn === "isCompoundOwner")
       return direction * (Number(a.isCompoundOwner) - Number(b.isCompoundOwner));
     if (sortColumn === "products")
@@ -668,7 +666,7 @@ export default function CustomersPage() {
   const handleSave = async () => {
     try {
       setIsSaving(true);
-      const addressEntries = Object.entries(formData.address).filter(([, v]) => v.trim() !== "");
+      const addressEntries = entries(formData.address).filter(([, v]) => v.trim() !== "");
       const cleanedAddress = addressEntries.length > 0 ? Object.fromEntries(addressEntries) : null;
 
       const emailConfig: Record<string, string> = {};
@@ -701,7 +699,7 @@ export default function CustomersPage() {
         contactPerson: rawPayloadContactPerson || undefined,
         address: cleanedAddress || undefined,
         availableProducts: formData.availableProducts,
-        emailConfig: Object.keys(emailConfig).length > 0 ? emailConfig : undefined,
+        emailConfig: keys(emailConfig).length > 0 ? emailConfig : undefined,
       };
 
       if (editingCompany) {
@@ -878,7 +876,7 @@ export default function CustomersPage() {
                 const rawEmailConfig = customer.emailConfig;
                 const rawCustomerCode = customer.code;
                 const rawCustomerPhone = customer.phone;
-                const emailCount = Object.keys(rawEmailConfig || {}).length;
+                const emailCount = keys(rawEmailConfig || {}).length;
                 return (
                   <tr key={customer.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap">

@@ -17,6 +17,7 @@ export function AddToHomeScreen() {
   const [isInstalled, setIsInstalled] = useState(false);
 
   useEffect(() => {
+    // eslint-disable-next-line no-restricted-syntax -- SSR guard; isUndefined(window) would throw
     if (typeof window === "undefined") return;
 
     if (window.matchMedia("(display-mode: standalone)").matches) {

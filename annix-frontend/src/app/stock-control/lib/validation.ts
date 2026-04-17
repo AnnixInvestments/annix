@@ -1,3 +1,5 @@
+import { isString } from "es-toolkit/compat";
+
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export function isValidEmail(email: string): boolean {
@@ -15,5 +17,5 @@ export function isNonNegativeNumber(value: unknown): boolean {
 }
 
 export function isNonEmptyString(value: unknown): boolean {
-  return typeof value === "string" && value.trim().length > 0;
+  return isString(value) && value.trim().length > 0;
 }

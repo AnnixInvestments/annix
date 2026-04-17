@@ -1,5 +1,6 @@
 "use client";
 
+import { keys } from "es-toolkit/compat";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -225,32 +226,53 @@ export default function CustomerRegistrationPage() {
           if (fieldResult.extracted && !autoFilledFields.includes(fieldResult.field)) {
             const stringValue = String(fieldResult.extracted);
             if (fieldResult.field === "companyName" || fieldResult.field === "legalName") {
-              companyUpdates.legalName = companyUpdates.legalName || stringValue;
+              companyUpdates.legalName = (() => {
+                const rawLegalName = companyUpdates.legalName;
+                return rawLegalName || stringValue;
+              })();
               autoFilledFields.push("legalName");
             } else if (fieldResult.field === "vatNumber") {
-              companyUpdates.vatNumber = companyUpdates.vatNumber || stringValue;
+              companyUpdates.vatNumber = (() => {
+                const rawVatNumber = companyUpdates.vatNumber;
+                return rawVatNumber || stringValue;
+              })();
               autoFilledFields.push("vatNumber");
             } else if (fieldResult.field === "registrationNumber") {
-              companyUpdates.registrationNumber = companyUpdates.registrationNumber || stringValue;
+              companyUpdates.registrationNumber = (() => {
+                const rawRegistrationNumber = companyUpdates.registrationNumber;
+                return rawRegistrationNumber || stringValue;
+              })();
               autoFilledFields.push("registrationNumber");
             } else if (fieldResult.field === "streetAddress") {
-              companyUpdates.streetAddress = companyUpdates.streetAddress || stringValue;
+              companyUpdates.streetAddress = (() => {
+                const rawStreetAddress = companyUpdates.streetAddress;
+                return rawStreetAddress || stringValue;
+              })();
               autoFilledFields.push("streetAddress");
             } else if (fieldResult.field === "city") {
-              companyUpdates.city = companyUpdates.city || stringValue;
+              companyUpdates.city = (() => {
+                const rawCity = companyUpdates.city;
+                return rawCity || stringValue;
+              })();
               autoFilledFields.push("city");
             } else if (fieldResult.field === "provinceState") {
-              companyUpdates.provinceState = companyUpdates.provinceState || stringValue;
+              companyUpdates.provinceState = (() => {
+                const rawProvinceState = companyUpdates.provinceState;
+                return rawProvinceState || stringValue;
+              })();
               autoFilledFields.push("provinceState");
             } else if (fieldResult.field === "postalCode") {
-              companyUpdates.postalCode = companyUpdates.postalCode || stringValue;
+              companyUpdates.postalCode = (() => {
+                const rawPostalCode = companyUpdates.postalCode;
+                return rawPostalCode || stringValue;
+              })();
               autoFilledFields.push("postalCode");
             }
           }
         });
       });
 
-      if (Object.keys(companyUpdates).length > 0) {
+      if (keys(companyUpdates).length > 0) {
         setCompany((prev) => ({ ...prev, ...companyUpdates }));
       }
 
@@ -280,8 +302,14 @@ export default function CustomerRegistrationPage() {
   const handleSkipDocuments = () => {
     log.info("User skipped document upload during registration", {
       timestamp: nowISO(),
-      userEmail: user.email || "not yet provided",
-      companyName: company.legalName || "not yet provided",
+      userEmail: (() => {
+        const rawEmail = user.email;
+        return rawEmail || "not yet provided";
+      })(),
+      companyName: (() => {
+        const rawLegalName = company.legalName;
+        return rawLegalName || "not yet provided";
+      })(),
     });
     setDocumentsSkipped(true);
     setShowSkipConfirmation(false);
@@ -710,7 +738,10 @@ export default function CustomerRegistrationPage() {
           </label>
           <input
             type="text"
-            value={company.legalName || ""}
+            value={(() => {
+              const rawLegalName = company.legalName;
+              return rawLegalName || "";
+            })()}
             onChange={(e) => handleCompanyChange("legalName", e.target.value)}
             className={`mt-1 block w-full rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 ${
               nixState.autoFilledFields.includes("legalName")
@@ -725,7 +756,10 @@ export default function CustomerRegistrationPage() {
           <label className="block text-sm font-medium text-gray-700">Trading Name</label>
           <input
             type="text"
-            value={company.tradingName || ""}
+            value={(() => {
+              const rawTradingName = company.tradingName;
+              return rawTradingName || "";
+            })()}
             onChange={(e) => handleCompanyChange("tradingName", e.target.value)}
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
             placeholder="Trading name (if different)"
@@ -741,7 +775,10 @@ export default function CustomerRegistrationPage() {
           </label>
           <input
             type="text"
-            value={company.registrationNumber || ""}
+            value={(() => {
+              const rawRegistrationNumber = company.registrationNumber;
+              return rawRegistrationNumber || "";
+            })()}
             onChange={(e) => handleCompanyChange("registrationNumber", e.target.value)}
             className={`mt-1 block w-full rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 ${
               nixState.autoFilledFields.includes("registrationNumber")
@@ -761,7 +798,10 @@ export default function CustomerRegistrationPage() {
           </label>
           <input
             type="text"
-            value={company.vatNumber || ""}
+            value={(() => {
+              const rawVatNumber = company.vatNumber;
+              return rawVatNumber || "";
+            })()}
             onChange={(e) => handleCompanyChange("vatNumber", e.target.value)}
             className={`mt-1 block w-full rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 ${
               nixState.autoFilledFields.includes("vatNumber")
@@ -775,7 +815,10 @@ export default function CustomerRegistrationPage() {
         <div>
           <label className="block text-sm font-medium text-gray-700">Industry</label>
           <select
-            value={company.industry || ""}
+            value={(() => {
+              const rawIndustry = company.industry;
+              return rawIndustry || "";
+            })()}
             onChange={(e) => handleCompanyChange("industry", e.target.value)}
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
           >
@@ -791,7 +834,10 @@ export default function CustomerRegistrationPage() {
         <div>
           <label className="block text-sm font-medium text-gray-700">Company Size</label>
           <select
-            value={company.companySize || ""}
+            value={(() => {
+              const rawCompanySize = company.companySize;
+              return rawCompanySize || "";
+            })()}
             onChange={(e) => handleCompanyChange("companySize", e.target.value)}
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
           >
@@ -817,7 +863,10 @@ export default function CustomerRegistrationPage() {
           </label>
           <input
             type="text"
-            value={company.streetAddress || ""}
+            value={(() => {
+              const rawStreetAddress = company.streetAddress;
+              return rawStreetAddress || "";
+            })()}
             onChange={(e) => handleCompanyChange("streetAddress", e.target.value)}
             className={`mt-1 block w-full rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 ${
               nixState.autoFilledFields.includes("streetAddress")
@@ -836,7 +885,10 @@ export default function CustomerRegistrationPage() {
           </label>
           <input
             type="text"
-            value={company.city || ""}
+            value={(() => {
+              const rawCity = company.city;
+              return rawCity || "";
+            })()}
             onChange={(e) => handleCompanyChange("city", e.target.value)}
             className={`mt-1 block w-full rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 ${
               nixState.autoFilledFields.includes("city")
@@ -854,7 +906,10 @@ export default function CustomerRegistrationPage() {
             )}
           </label>
           <select
-            value={company.provinceState || ""}
+            value={(() => {
+              const rawProvinceState = company.provinceState;
+              return rawProvinceState || "";
+            })()}
             onChange={(e) => handleCompanyChange("provinceState", e.target.value)}
             className={`mt-1 block w-full rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 ${
               nixState.autoFilledFields.includes("provinceState")
@@ -880,7 +935,10 @@ export default function CustomerRegistrationPage() {
           </label>
           <input
             type="text"
-            value={company.postalCode || ""}
+            value={(() => {
+              const rawPostalCode = company.postalCode;
+              return rawPostalCode || "";
+            })()}
             onChange={(e) => handleCompanyChange("postalCode", e.target.value)}
             className={`mt-1 block w-full rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 ${
               nixState.autoFilledFields.includes("postalCode")
@@ -896,7 +954,10 @@ export default function CustomerRegistrationPage() {
           </label>
           <input
             type="text"
-            value={company.country || ""}
+            value={(() => {
+              const rawCountry = company.country;
+              return rawCountry || "";
+            })()}
             onChange={(e) => handleCompanyChange("country", e.target.value)}
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
           />
@@ -907,7 +968,10 @@ export default function CustomerRegistrationPage() {
             Preferred Currency <span className="text-red-500">*</span>
           </label>
           <CurrencySelect
-            value={company.currencyCode || DEFAULT_CURRENCY}
+            value={(() => {
+              const rawCurrencyCode = company.currencyCode;
+              return rawCurrencyCode || DEFAULT_CURRENCY;
+            })()}
             onChange={(value) => handleCompanyChange("currencyCode", value)}
             className="mt-1"
           />
@@ -923,7 +987,10 @@ export default function CustomerRegistrationPage() {
           </label>
           <input
             type="tel"
-            value={company.primaryPhone || ""}
+            value={(() => {
+              const rawPrimaryPhone = company.primaryPhone;
+              return rawPrimaryPhone || "";
+            })()}
             onChange={(e) => handleCompanyChange("primaryPhone", e.target.value)}
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
             placeholder="+27 11 000 6789"
@@ -934,7 +1001,10 @@ export default function CustomerRegistrationPage() {
           <label className="block text-sm font-medium text-gray-700">Fax Number</label>
           <input
             type="tel"
-            value={company.faxNumber || ""}
+            value={(() => {
+              const rawFaxNumber = company.faxNumber;
+              return rawFaxNumber || "";
+            })()}
             onChange={(e) => handleCompanyChange("faxNumber", e.target.value)}
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
           />
@@ -944,7 +1014,10 @@ export default function CustomerRegistrationPage() {
           <label className="block text-sm font-medium text-gray-700">General Email</label>
           <input
             type="email"
-            value={company.generalEmail || ""}
+            value={(() => {
+              const rawGeneralEmail = company.generalEmail;
+              return rawGeneralEmail || "";
+            })()}
             onChange={(e) => handleCompanyChange("generalEmail", e.target.value)}
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
             placeholder="info@example.com"
@@ -955,7 +1028,10 @@ export default function CustomerRegistrationPage() {
           <label className="block text-sm font-medium text-gray-700">Website</label>
           <input
             type="url"
-            value={company.website || ""}
+            value={(() => {
+              const rawWebsite = company.website;
+              return rawWebsite || "";
+            })()}
             onChange={(e) => handleCompanyChange("website", e.target.value)}
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
             placeholder="https://www.example.com"
@@ -992,7 +1068,10 @@ export default function CustomerRegistrationPage() {
           </label>
           <input
             type="text"
-            value={user.firstName || ""}
+            value={(() => {
+              const rawFirstName = user.firstName;
+              return rawFirstName || "";
+            })()}
             onChange={(e) => handleUserChange("firstName", e.target.value)}
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
           />
@@ -1004,7 +1083,10 @@ export default function CustomerRegistrationPage() {
           </label>
           <input
             type="text"
-            value={user.lastName || ""}
+            value={(() => {
+              const rawLastName = user.lastName;
+              return rawLastName || "";
+            })()}
             onChange={(e) => handleUserChange("lastName", e.target.value)}
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
           />
@@ -1014,7 +1096,10 @@ export default function CustomerRegistrationPage() {
           <label className="block text-sm font-medium text-gray-700">Job Title</label>
           <input
             type="text"
-            value={user.jobTitle || ""}
+            value={(() => {
+              const rawJobTitle = user.jobTitle;
+              return rawJobTitle || "";
+            })()}
             onChange={(e) => handleUserChange("jobTitle", e.target.value)}
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
             placeholder="e.g., Project Manager"
@@ -1025,7 +1110,10 @@ export default function CustomerRegistrationPage() {
           <label className="block text-sm font-medium text-gray-700">Direct Phone</label>
           <input
             type="tel"
-            value={user.directPhone || ""}
+            value={(() => {
+              const rawDirectPhone = user.directPhone;
+              return rawDirectPhone || "";
+            })()}
             onChange={(e) => handleUserChange("directPhone", e.target.value)}
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
             placeholder="+27 11 000 6789"
@@ -1036,7 +1124,10 @@ export default function CustomerRegistrationPage() {
           <label className="block text-sm font-medium text-gray-700">Mobile Phone</label>
           <input
             type="tel"
-            value={user.mobilePhone || ""}
+            value={(() => {
+              const rawMobilePhone = user.mobilePhone;
+              return rawMobilePhone || "";
+            })()}
             onChange={(e) => handleUserChange("mobilePhone", e.target.value)}
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
             placeholder="+27 82 000 4567"
@@ -1075,7 +1166,10 @@ export default function CustomerRegistrationPage() {
           </label>
           <input
             type="email"
-            value={user.email || ""}
+            value={(() => {
+              const rawEmail = user.email;
+              return rawEmail || "";
+            })()}
             onChange={(e) => handleUserChange("email", e.target.value)}
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
             placeholder="your.email@example.com"
@@ -1088,7 +1182,10 @@ export default function CustomerRegistrationPage() {
           </label>
           <input
             type="password"
-            value={user.password || ""}
+            value={(() => {
+              const rawPassword = user.password;
+              return rawPassword || "";
+            })()}
             onChange={(e) => handleUserChange("password", e.target.value)}
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
           />

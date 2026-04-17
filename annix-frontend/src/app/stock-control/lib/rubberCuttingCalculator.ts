@@ -569,7 +569,8 @@ function parseFittingDimensions(description: string): {
   }
   const allDims = [...description.matchAll(/\b(\d{3,5})\s*[xX]\s*(\d{3,5})\b/gi)];
   const standaloneDim = allDims.find((m) => {
-    const afterIdx = (m.index || 0) + m[0].length;
+    const rawIndex = m.index;
+    const afterIdx = (rawIndex || 0) + m[0].length;
     const after = description.substring(afterIdx);
     return !/^\s*(?:mm\s*)?NB/i.test(after);
   });
@@ -671,7 +672,9 @@ function calculateItemSurfaceArea(item: ParsedPipeItem): {
   }
 
   if (item.itemType === "tee") {
-    const mainLengthMm = (item.fittingLengthAMm || 0) + (item.fittingLengthBMm || 0);
+    const rawFittingA = item.fittingLengthAMm;
+    const rawFittingB = item.fittingLengthBMm;
+    const mainLengthMm = (rawFittingA || 0) + (rawFittingB || 0);
     const effectiveMainMm = mainLengthMm > 0 ? mainLengthMm : item.lengthMm;
     const mainExtM2 = (Math.PI * item.odMm * (effectiveMainMm + flangeAllowanceMm)) / 1_000_000;
     const branchExtM2 = (2.7 * item.odMm * item.odMm) / 1_000_000;
@@ -1365,7 +1368,9 @@ function scorePlyCombination(
     stockScore = Array.from(thicknessMap.entries()).reduce((score, [thickness]) => {
       const available = stockQuery.rolls.filter((r) => r.thicknessMm === thickness);
       const totalAvailable = available.reduce((s, r) => s + r.quantityAvailable, 0);
-      const needed = plies.find((p) => p.thicknessMm === thickness)?.totalRollsNeeded || 0;
+      const foundPly = plies.find((p) => p.thicknessMm === thickness);
+      const rawNeeded = foundPly?.totalRollsNeeded;
+      const needed = rawNeeded || 0;
       return score + (totalAvailable >= needed ? 1000 : totalAvailable > 0 ? 500 : 0);
     }, 0);
   }
@@ -1436,6 +1441,7 @@ export function calculateCuttingPlan(
 
   const hasPipeItems = parsedItems.length > 0;
   const genericM2Total = genericM2Items.reduce((sum, item) => sum + item.m2, 0);
+  const rawThicknessMm = rubberSpec?.thicknessMm;
 
   const emptyPlan: CuttingPlan = {
     rolls: [],
@@ -1448,7 +1454,7 @@ export function calculateCuttingPlan(
     genericM2Total,
     rubberSpec,
     plies: [],
-    totalThicknessMm: rubberSpec?.thicknessMm || 0,
+    totalThicknessMm: rawThicknessMm || 0,
     isMultiPly: false,
     offcuts: [],
   };
@@ -1511,7 +1517,7 @@ export function calculateCuttingPlan(
     genericM2Total,
     rubberSpec,
     plies,
-    totalThicknessMm: rubberSpec?.thicknessMm || 0,
+    totalThicknessMm: rawThicknessMm || 0,
     isMultiPly,
     offcuts: allOffcuts,
   };

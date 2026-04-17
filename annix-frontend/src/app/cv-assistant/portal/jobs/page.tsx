@@ -21,6 +21,7 @@ export default function JobsPage() {
   };
 
   const handleDelete = (job: JobPosting) => {
+    // eslint-disable-next-line no-restricted-globals -- legacy sync confirm pending modal migration (issue #175)
     if (!confirm(`Are you sure you want to delete "${job.title}"?`)) return;
     deleteMutation.mutate(job.id);
   };

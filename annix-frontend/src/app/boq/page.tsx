@@ -22,11 +22,21 @@ export default function BoqListPage() {
 
   const uploadMutation = useUploadBoq();
 
-  const boqs = boqQuery.data?.data || [];
+  const rawData = boqQuery.data?.data;
+  const boqs = rawData || [];
   const pagination = {
-    page: boqQuery.data?.page || 1,
-    totalPages: boqQuery.data?.totalPages || 1,
-    total: boqQuery.data?.total || 0,
+    page: (() => {
+      const rawPage = boqQuery.data?.page;
+      return rawPage || 1;
+    })(),
+    totalPages: (() => {
+      const rawTotalPages = boqQuery.data?.totalPages;
+      return rawTotalPages || 1;
+    })(),
+    total: (() => {
+      const rawTotal = boqQuery.data?.total;
+      return rawTotal || 0;
+    })(),
   };
 
   const [showUploadModal, setShowUploadModal] = useState(false);
@@ -525,7 +535,10 @@ export default function BoqListPage() {
                 <div className="mt-6 flex gap-3">
                   <button
                     onClick={handleUpload}
-                    disabled={uploadMutation.isPending || !uploadFile || !uploadTitle.trim()}
+                    disabled={(() => {
+                      const rawIsPending = uploadMutation.isPending;
+                      return rawIsPending || !uploadFile || !uploadTitle.trim();
+                    })()}
                     className="flex-1 px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                   >
                     {uploadMutation.isPending ? (

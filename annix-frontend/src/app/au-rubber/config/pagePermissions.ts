@@ -1,3 +1,4 @@
+import { keys } from "es-toolkit/compat";
 export const PAGE_PERMISSIONS: Record<string, string> = {
   "/au-rubber/portal/dashboard": "dashboard:view",
   "/au-rubber/portal/orders": "orders:view",
@@ -39,6 +40,6 @@ export function permissionForPath(pathname: string): string | null {
     return exactMatch;
   }
 
-  const matchingKey = Object.keys(PAGE_PERMISSIONS).find((key) => pathname.startsWith(`${key}/`));
+  const matchingKey = keys(PAGE_PERMISSIONS).find((key) => pathname.startsWith(`${key}/`));
   return matchingKey ? PAGE_PERMISSIONS[matchingKey] : null;
 }

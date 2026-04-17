@@ -1,5 +1,6 @@
 "use client";
 
+import { isNumber } from "es-toolkit/compat";
 import Link from "next/link";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { HdpeSpecificationsSection } from "@/app/components/rfq/specifications/HdpeSpecificationsSection";
@@ -1025,7 +1026,8 @@ export default function SpecificationsStep(props: {
       if (iso === "C5" || iso === "CX") return "High";
       if (iso === "C3" || iso === "C4") return "Moderate";
       if (iso === "C1" || iso === "C2") return "Moderate";
-      return "High"; // Default for mining is High (outdoor)
+      // Default for mining is High (outdoor)
+      return "High";
     }
     return null;
   };
@@ -1867,8 +1869,7 @@ export default function SpecificationsStep(props: {
                                 return;
                               }
 
-                              const standardId =
-                                typeof rawValue === "number" ? rawValue : Number(rawValue);
+                              const standardId = isNumber(rawValue) ? rawValue : Number(rawValue);
                               let recommendedPressureClassId: number | null = null;
                               const standardChanged = standardId !== globalSpecs?.flangeStandardId;
                               const steelSpec = masterData.steelSpecs?.find(
@@ -1878,7 +1879,7 @@ export default function SpecificationsStep(props: {
                                 steelSpec?.steelSpecName,
                               );
 
-                              console.log("[PT-DEBUG] handleFlangeStandardSelect called:", {
+                              log.debug("[PT-DEBUG] handleFlangeStandardSelect called:", {
                                 standardId,
                                 workingPressureBar: globalSpecs?.workingPressureBar,
                                 workingTemperatureC: globalSpecs?.workingTemperatureC,
@@ -1894,18 +1895,18 @@ export default function SpecificationsStep(props: {
                                       globalSpecs.workingTemperatureC,
                                       materialGroup,
                                     )) || null;
-                                  console.log(
+                                  log.debug(
                                     "[PT-DEBUG] fetchAndSelectPressureClass returned:",
                                     recommendedPressureClassId,
                                   );
                                 } else if (standardId) {
-                                  console.log(
+                                  log.debug(
                                     "[PT-DEBUG] No workingPressureBar, just fetching classes",
                                   );
                                   await fetchAndSelectPressureClass(standardId);
                                 }
                               } catch (error) {
-                                console.log(
+                                log.debug(
                                   "[PT-DEBUG] Error in fetchAndSelectPressureClass:",
                                   error,
                                 );
@@ -1934,7 +1935,7 @@ export default function SpecificationsStep(props: {
 
                                 if (suitable.length > 0) {
                                   newPressureClassId = suitable[0].id;
-                                  console.log(
+                                  log.debug(
                                     "[PT-DEBUG] FALLBACK: Selected",
                                     suitable[0].designation,
                                     "for",
@@ -1953,14 +1954,14 @@ export default function SpecificationsStep(props: {
                                     },
                                   );
                                   newPressureClassId = sorted[0].id;
-                                  console.log(
+                                  log.debug(
                                     "[PT-DEBUG] FALLBACK: Selected highest",
                                     sorted[0].designation,
                                   );
                                 }
                               }
 
-                              console.log(
+                              log.debug(
                                 "[PT-DEBUG] Setting flangePressureClassId to:",
                                 newPressureClassId,
                               );
@@ -2119,11 +2120,11 @@ export default function SpecificationsStep(props: {
                                   seen.add(pc.displayValue);
                                   return true;
                                 });
-                              console.log(
+                              log.debug(
                                 "[PT-DEBUG] Dropdown options:",
                                 result.map((pc: any) => `${pc.displayValue}(ID ${pc.id})`),
                               );
-                              console.log(
+                              log.debug(
                                 "[PT-DEBUG] Selected value:",
                                 globalSpecs?.flangePressureClassId,
                               );

@@ -32,7 +32,8 @@ export default function RubberCodingsPage() {
   const saveMutation = useSaveRubberCoding();
   const deleteMutation = useDeleteRubberCoding();
 
-  const codings = codingsQuery.data ?? [];
+  const rawData = codingsQuery.data;
+  const codings = rawData ?? [];
 
   const paginatedCodings = codings.slice(
     currentPage * ITEMS_PER_PAGE,
@@ -313,7 +314,12 @@ export default function RubberCodingsPage() {
                 </button>
                 <button
                   onClick={handleSave}
-                  disabled={saveMutation.isPending || !formData.code || !formData.name}
+                  disabled={(() => {
+                    const rawIsPending = saveMutation.isPending;
+                    const rawFormCode = formData.code;
+                    const rawFormName = formData.name;
+                    return rawIsPending || !rawFormCode || !rawFormName;
+                  })()}
                   className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50"
                 >
                   {saveMutation.isPending ? "Saving..." : "Save"}

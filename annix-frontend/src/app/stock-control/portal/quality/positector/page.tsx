@@ -1,5 +1,6 @@
 "use client";
 
+import { isArray } from "es-toolkit/compat";
 import { useRef, useState } from "react";
 import type {
   PositectorBatchDetail,
@@ -85,7 +86,7 @@ export default function PositectorPage() {
       setLoadingBatches(true);
       setSelectedBatch(null);
       const data = await batchesMutation.mutateAsync(device.id);
-      setBatches(Array.isArray(data) ? data : []);
+      setBatches(isArray(data) ? data : []);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load batches");
       setBatches([]);
@@ -308,25 +309,28 @@ export default function PositectorPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200 bg-white">
-                  {batches.map((batch) => (
-                    <tr
-                      key={batch.buid}
-                      className={`cursor-pointer hover:bg-gray-50 ${
-                        selectedBatch?.buid === batch.buid ? "bg-blue-50" : ""
-                      }`}
-                      onClick={() => handleSelectBatch(batch.buid)}
-                    >
-                      <td className="px-4 py-3 text-sm font-mono text-gray-900">{batch.buid}</td>
-                      <td className="px-4 py-3 text-sm text-gray-500">{batch.name ?? "-"}</td>
-                      <td className="px-4 py-3 text-sm text-gray-500">
-                        {probeTypeLabel(batch.probeType)}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-gray-500">{batch.readingCount}</td>
-                      <td className="px-4 py-3 text-right text-sm">
-                        <button className="text-blue-600 hover:text-blue-800">View</button>
-                      </td>
-                    </tr>
-                  ))}
+                  {batches.map((batch) => {
+                    const rawBatchName = batch.name;
+                    return (
+                      <tr
+                        key={batch.buid}
+                        className={`cursor-pointer hover:bg-gray-50 ${
+                          selectedBatch?.buid === batch.buid ? "bg-blue-50" : ""
+                        }`}
+                        onClick={() => handleSelectBatch(batch.buid)}
+                      >
+                        <td className="px-4 py-3 text-sm font-mono text-gray-900">{batch.buid}</td>
+                        <td className="px-4 py-3 text-sm text-gray-500">{rawBatchName ?? "-"}</td>
+                        <td className="px-4 py-3 text-sm text-gray-500">
+                          {probeTypeLabel(batch.probeType)}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-500">{batch.readingCount}</td>
+                        <td className="px-4 py-3 text-right text-sm">
+                          <button className="text-blue-600 hover:text-blue-800">View</button>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -334,93 +338,102 @@ export default function PositectorPage() {
         </div>
       )}
 
-      {selectedBatch && (
-        <div className="space-y-4 rounded-lg border border-gray-200 bg-white p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-lg font-semibold text-gray-900">
-                Batch: {selectedBatch.header.batchName ?? selectedBatch.buid}
-              </h2>
-              <div className="mt-1 flex items-center gap-4 text-sm text-gray-500">
-                <span>Probe: {probeTypeLabel(selectedBatch.header.probeType)}</span>
-                <span>Units: {selectedBatch.header.units ?? "-"}</span>
-                <span>Readings: {selectedBatch.readings.length}</span>
-                <span
-                  className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
-                    selectedBatch.suggestedEntityType !== "unknown"
-                      ? "bg-green-100 text-green-800"
-                      : "bg-gray-100 text-gray-800"
-                  }`}
-                >
-                  Maps to: {(() => {
-                    const etl = ENTITY_TYPE_LABELS[selectedBatch.suggestedEntityType];
-                    return etl ? etl : "Unknown";
-                  })()}
-                </span>
+      {selectedBatch &&
+        (() => {
+          const rawBatchHeaderName = selectedBatch.header.batchName;
+          const rawUnits = selectedBatch.header.units;
+          return (
+            <div className="space-y-4 rounded-lg border border-gray-200 bg-white p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-lg font-semibold text-gray-900">
+                    Batch: {rawBatchHeaderName ?? selectedBatch.buid}
+                  </h2>
+                  <div className="mt-1 flex items-center gap-4 text-sm text-gray-500">
+                    <span>Probe: {probeTypeLabel(selectedBatch.header.probeType)}</span>
+                    <span>Units: {rawUnits ?? "-"}</span>
+                    <span>Readings: {selectedBatch.readings.length}</span>
+                    <span
+                      className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
+                        selectedBatch.suggestedEntityType !== "unknown"
+                          ? "bg-green-100 text-green-800"
+                          : "bg-gray-100 text-gray-800"
+                      }`}
+                    >
+                      Maps to: {(() => {
+                        const etl = ENTITY_TYPE_LABELS[selectedBatch.suggestedEntityType];
+                        return etl ? etl : "Unknown";
+                      })()}
+                    </span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  {selectedBatch.suggestedEntityType !== "unknown" && (
+                    <button
+                      onClick={() => setShowImportWizard(true)}
+                      className="rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700"
+                    >
+                      Import to Job Card
+                    </button>
+                  )}
+                  <button
+                    onClick={() => setSelectedBatch(null)}
+                    className="text-sm text-gray-500 hover:text-gray-700"
+                  >
+                    Close
+                  </button>
+                </div>
               </div>
-            </div>
-            <div className="flex items-center gap-3">
-              {selectedBatch.suggestedEntityType !== "unknown" && (
-                <button
-                  onClick={() => setShowImportWizard(true)}
-                  className="rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700"
-                >
-                  Import to Job Card
-                </button>
-              )}
-              <button
-                onClick={() => setSelectedBatch(null)}
-                className="text-sm text-gray-500 hover:text-gray-700"
-              >
-                Close
-              </button>
-            </div>
-          </div>
 
-          {loadingBatch ? (
-            <p className="text-sm text-gray-500">Loading batch data...</p>
-          ) : (
-            <div className="overflow-hidden rounded-lg border border-gray-200">
-              <div className="max-h-96 overflow-y-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="sticky top-0 bg-gray-50">
-                    <tr>
-                      <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">
-                        #
-                      </th>
-                      <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">
-                        Value
-                      </th>
-                      <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">
-                        Units
-                      </th>
-                      <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">
-                        Timestamp
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-200 bg-white">
-                    {selectedBatch.readings.map((reading) => (
-                      <tr key={reading.index} className="hover:bg-gray-50">
-                        <td className="px-4 py-2 text-sm text-gray-500">{reading.index}</td>
-                        <td className="px-4 py-2 text-sm font-medium text-gray-900">
-                          {reading.value}
-                        </td>
-                        <td className="px-4 py-2 text-sm text-gray-500">
-                          {reading.units ?? selectedBatch.header.units ?? "-"}
-                        </td>
-                        <td className="px-4 py-2 text-sm text-gray-500">
-                          {reading.timestamp ?? "-"}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              {loadingBatch ? (
+                <p className="text-sm text-gray-500">Loading batch data...</p>
+              ) : (
+                <div className="overflow-hidden rounded-lg border border-gray-200">
+                  <div className="max-h-96 overflow-y-auto">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead className="sticky top-0 bg-gray-50">
+                        <tr>
+                          <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">
+                            #
+                          </th>
+                          <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">
+                            Value
+                          </th>
+                          <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">
+                            Units
+                          </th>
+                          <th className="px-4 py-2 text-left text-xs font-medium uppercase text-gray-500">
+                            Timestamp
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-200 bg-white">
+                        {selectedBatch.readings.map((reading) => {
+                          const rawReadingUnits = reading.units;
+                          const rawTimestamp = reading.timestamp;
+                          return (
+                            <tr key={reading.index} className="hover:bg-gray-50">
+                              <td className="px-4 py-2 text-sm text-gray-500">{reading.index}</td>
+                              <td className="px-4 py-2 text-sm font-medium text-gray-900">
+                                {reading.value}
+                              </td>
+                              <td className="px-4 py-2 text-sm text-gray-500">
+                                {rawReadingUnits ?? rawUnits ?? "-"}
+                              </td>
+                              <td className="px-4 py-2 text-sm text-gray-500">
+                                {rawTimestamp ?? "-"}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
             </div>
-          )}
-        </div>
-      )}
+          );
+        })()}
 
       {lastImportResult && (
         <div
@@ -916,7 +929,10 @@ function ImportWizardModal({
       <div className="w-full max-w-lg rounded-lg bg-white p-6 shadow-xl">
         <h2 className="mb-1 text-lg font-semibold text-gray-900">Import Batch to Job Card</h2>
         <p className="mb-4 text-sm text-gray-500">
-          {batch.readings.length} readings from {batch.header.batchName ?? batch.buid}
+          {batch.readings.length} readings from {(() => {
+            const rawHeaderBatchName = batch.header.batchName;
+            return rawHeaderBatchName ?? batch.buid;
+          })()}
         </p>
 
         {error && <div className="mb-4 rounded-md bg-red-50 p-3 text-sm text-red-700">{error}</div>}

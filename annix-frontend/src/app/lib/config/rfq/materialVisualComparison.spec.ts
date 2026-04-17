@@ -1,3 +1,4 @@
+import { values } from "es-toolkit/compat";
 import { describe, expect, it } from "vitest";
 import {
   FLANGE_MATERIALS,
@@ -93,9 +94,9 @@ describe("Material Visual Comparison Tests", () => {
 
     it("all metal materials should have metalness >= 0.7", () => {
       const allMaterials = [
-        ...Object.values(PIPE_MATERIALS),
-        ...Object.values(FLANGE_MATERIALS),
-        ...Object.values(STEELWORK_MATERIALS),
+        ...values(PIPE_MATERIALS),
+        ...values(FLANGE_MATERIALS),
+        ...values(STEELWORK_MATERIALS),
       ];
       allMaterials.forEach((material) => {
         expect(material.metalness).toBeGreaterThanOrEqual(0.7);
@@ -186,10 +187,10 @@ describe("Material Visual Comparison Tests", () => {
   describe("Color Consistency", () => {
     it("all colors should be valid hex format", () => {
       const allMaterials = [
-        ...Object.values(PIPE_MATERIALS),
-        ...Object.values(WELD_MATERIALS),
-        ...Object.values(FLANGE_MATERIALS),
-        ...Object.values(STEELWORK_MATERIALS),
+        ...values(PIPE_MATERIALS),
+        ...values(WELD_MATERIALS),
+        ...values(FLANGE_MATERIALS),
+        ...values(STEELWORK_MATERIALS),
       ];
       allMaterials.forEach((material) => {
         expect(material.color).toMatch(/^#[0-9A-Fa-f]{6}$/);

@@ -361,7 +361,8 @@ export function ChatPanel() {
               <p className="text-sm text-gray-400 text-center py-8">No conversations yet</p>
             )}
             {state.conversations.map((conv) => {
-              const displayName = conversationDisplayName(conv, user?.id || 0);
+              const rawUserId = user?.id;
+              const displayName = conversationDisplayName(conv, rawUserId || 0);
               const rawValue = state.convUnreadCounts[String(conv.id)];
               const unread = rawValue || 0;
               return (

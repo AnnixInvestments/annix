@@ -70,6 +70,7 @@ export function AdminProductDatasheetsPage() {
       await refetch();
     } catch (err) {
       console.error("Upload failed", err);
+      // eslint-disable-next-line no-restricted-globals -- legacy sync alert pending modal migration (issue #175)
       alert(err instanceof Error ? err.message : "Upload failed");
     } finally {
       setUploading(false);
@@ -266,7 +267,14 @@ export function AdminProductDatasheetsPage() {
                 <input
                   type="file"
                   accept="application/pdf,image/*"
-                  onChange={(e) => setUploadFile(e.target.files?.[0] ?? null)}
+                  onChange={(e) =>
+                    setUploadFile(
+                      (() => {
+                        const rawFiles = e.target.files?.[0];
+                        return rawFiles ?? null;
+                      })(),
+                    )
+                  }
                   className="mt-1 w-full text-sm"
                 />
               </div>

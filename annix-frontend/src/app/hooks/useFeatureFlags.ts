@@ -12,7 +12,8 @@ export function useFeatureFlags() {
     staleTime: 5 * 60 * 1000,
   });
 
-  const flags = query.data ?? null;
+  const rawData = query.data;
+  const flags = rawData ?? null;
 
   const isEnabled = useCallback(
     (flagKey: string): boolean => {

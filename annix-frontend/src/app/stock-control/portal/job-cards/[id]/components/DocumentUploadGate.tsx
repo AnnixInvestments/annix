@@ -115,9 +115,12 @@ export function DocumentUploadGate(props: DocumentUploadGateProps) {
   const gateDoc = (category: ReconciliationDocCategory) =>
     gateStatus?.documents.find((d) => d.category === category) || null;
 
-  const requiredCount = gateStatus?.documents.filter((d) => d.required).length || 0;
-  const uploadedRequiredCount =
-    gateStatus?.documents.filter((d) => d.required && d.uploaded).length || 0;
+  const rawRequiredLength = gateStatus?.documents.filter((d) => d.required).length;
+  const requiredCount = rawRequiredLength || 0;
+  const rawUploadedRequiredLength = gateStatus?.documents.filter(
+    (d) => d.required && d.uploaded,
+  ).length;
+  const uploadedRequiredCount = rawUploadedRequiredLength || 0;
 
   return (
     <>

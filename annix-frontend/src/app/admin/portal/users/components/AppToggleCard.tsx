@@ -24,8 +24,14 @@ export function AppToggleCard(props: AppToggleCardProps) {
 
   const roleDisplay = access
     ? access.useCustomPermissions
-      ? `Custom (${access.permissionCount ?? 0} permissions)`
-      : (access.roleName ?? "No role assigned")
+      ? `Custom (${(() => {
+          const rawPermissionCount = access.permissionCount;
+          return rawPermissionCount ?? 0;
+        })()} permissions)`
+      : (() => {
+          const rawRoleName = access.roleName;
+          return rawRoleName ?? "No role assigned";
+        })()
     : null;
 
   const handleToggle = () => {

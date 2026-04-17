@@ -1,6 +1,7 @@
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { toPairs as entries } from "es-toolkit/compat";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createHowToLoader } from "./loader";
 
@@ -25,7 +26,7 @@ const sampleGuide = (overrides: Record<string, string> = {}) => {
     relatedPaths: "[]",
   };
   const merged = { ...defaults, ...overrides };
-  const frontmatter = Object.entries(merged)
+  const frontmatter = entries(merged)
     .map(([k, v]) => `${k}: ${v}`)
     .join("\n");
   return `---\n${frontmatter}\n---\n\n## Heading\n\nBody content`;

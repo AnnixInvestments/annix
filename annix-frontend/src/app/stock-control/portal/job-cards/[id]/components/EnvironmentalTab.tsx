@@ -1,5 +1,6 @@
 "use client";
 
+import { isArray } from "es-toolkit/compat";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { QcEnvironmentalRecordResponse } from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
@@ -85,7 +86,7 @@ export function EnvironmentalTab(props: EnvironmentalTabProps) {
       setIsLoading(true);
       setError(null);
       const data = await stockControlApiClient.environmentalRecordsForJobCard(jobCardId);
-      setRecords(Array.isArray(data) ? data : []);
+      setRecords(isArray(data) ? data : []);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load environmental records");
     } finally {

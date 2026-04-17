@@ -54,7 +54,8 @@ export function SupplierAuthProvider(props: { children: ReactNode }) {
         isAuthenticated: true,
         isLoading: false,
         supplier: {
-          id: 0, // Will be fetched from profile
+          // Will be fetched from profile
+          id: 0,
           email: dashboard.profile.email,
           firstName: dashboard.profile.firstName,
           lastName: dashboard.profile.lastName,
@@ -101,8 +102,11 @@ export function SupplierAuthProvider(props: { children: ReactNode }) {
 
       const dashboard = await supplierApiClient.getDashboard();
 
-      const supplierName =
-        response.supplier.firstName || response.supplier.companyName || "Supplier";
+      const supplierName = (() => {
+        const rawFirstName = response.supplier.firstName;
+        const rawCompanyName = response.supplier.companyName;
+        return rawFirstName || rawCompanyName || "Supplier";
+      })();
       localStorage.setItem("supplierName", supplierName);
 
       setState({

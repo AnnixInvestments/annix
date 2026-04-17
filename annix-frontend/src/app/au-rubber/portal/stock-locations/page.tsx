@@ -1,5 +1,6 @@
 "use client";
 
+import { isArray } from "es-toolkit/compat";
 import { useEffect, useState } from "react";
 import {
   Pagination,
@@ -42,7 +43,7 @@ export default function StockLocationsPage() {
     try {
       setIsLoading(true);
       const data = await auRubberApiClient.stockLocations(showInactive);
-      setLocations(Array.isArray(data) ? data : []);
+      setLocations(isArray(data) ? data : []);
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err : new Error("Failed to load data"));

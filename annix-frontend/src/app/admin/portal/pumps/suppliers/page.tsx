@@ -35,7 +35,10 @@ export default function PumpSuppliersPage() {
       (m) =>
         m.name.toLowerCase().includes(query) ||
         m.description.toLowerCase().includes(query) ||
-        (m.productsOffered ?? []).some((p) => p.toLowerCase().includes(query)),
+        (() => {
+          const rawProductsOffered = m.productsOffered;
+          return rawProductsOffered ?? [];
+        })().some((p) => p.toLowerCase().includes(query)),
     );
   }, [searchQuery]);
 
@@ -46,7 +49,10 @@ export default function PumpSuppliersPage() {
       (s) =>
         s.name.toLowerCase().includes(query) ||
         s.description.toLowerCase().includes(query) ||
-        (s.productsOffered ?? []).some((p) => p.toLowerCase().includes(query)),
+        (() => {
+          const rawProductsOffered = s.productsOffered;
+          return rawProductsOffered ?? [];
+        })().some((p) => p.toLowerCase().includes(query)),
     );
   }, [searchQuery]);
 
@@ -57,7 +63,10 @@ export default function PumpSuppliersPage() {
       (s) =>
         s.name.toLowerCase().includes(query) ||
         s.description.toLowerCase().includes(query) ||
-        (s.productsOffered ?? []).some((p) => p.toLowerCase().includes(query)),
+        (() => {
+          const rawProductsOffered = s.productsOffered;
+          return rawProductsOffered ?? [];
+        })().some((p) => p.toLowerCase().includes(query)),
     );
   }, [searchQuery]);
 

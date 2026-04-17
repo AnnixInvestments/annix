@@ -1,5 +1,6 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import { isArray } from "es-toolkit/compat";
 import { asNumber, asString, asStringArray, parseFrontmatter } from "./frontmatter";
 import { extractHeadings } from "./slugify";
 import type { HowToGuide, HowToGuideFrontmatter, HowToHeading } from "./types";
@@ -22,7 +23,7 @@ export const createHowToLoader = <TRole extends string>(
   config: HowToLoaderConfig<TRole>,
 ): HowToLoader<TRole> => {
   const validateRoles = (value: unknown): TRole[] => {
-    if (!Array.isArray(value)) return [];
+    if (!isArray(value)) return [];
     return value.filter((r): r is TRole => config.allRoles.includes(r as TRole));
   };
 

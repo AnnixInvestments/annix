@@ -117,8 +117,10 @@ export function calculateSaddleWeldVolume(params: {
   const diameterRatio = branchOdMm / mainOdMm;
   const weldLengthMm =
     diameterRatio >= 0.95
-      ? STEINMETZ_FACTOR * branchOdMm // Equal diameters - use Steinmetz
-      : Math.PI * branchOdMm * Math.sqrt(1 + diameterRatio * diameterRatio); // Unequal - approximation
+      ? // Equal diameters - use Steinmetz
+        STEINMETZ_FACTOR * branchOdMm
+      : // Unequal - approximation
+        Math.PI * branchOdMm * Math.sqrt(1 + diameterRatio * diameterRatio);
 
   const rawFilletLegSizeMm2 = config?.filletLegSizeMm;
 
@@ -204,7 +206,8 @@ export function calculateBendWeldVolume(params: {
   let saddleWeldVolumeCm3 = 0;
   if (params.hasSweepTeeSaddleWeld) {
     const saddleWeld = calculateSaddleWeldVolume({
-      branchOdMm: params.mainOdMm, // Equal diameter for sweep tees
+      // Equal diameter for sweep tees
+      branchOdMm: params.mainOdMm,
       mainOdMm: params.mainOdMm,
       wallThicknessMm: params.mainWallThicknessMm,
       config: params.config,
