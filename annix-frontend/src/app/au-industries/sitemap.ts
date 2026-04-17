@@ -1,11 +1,12 @@
+// eslint-disable-next-line no-restricted-imports -- server component cannot import the "use client" datetime wrapper; sitemap.ts is rendered at build time on the server
+import { DateTime } from "luxon";
 import type { MetadataRoute } from "next";
-import { fromISO, now } from "@/app/lib/datetime";
 import { resolveBaseUrl } from "@/lib/api-config";
 
 const SITE_URL = "https://auind.co.za";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const currentDate = now().toJSDate();
+  const currentDate = DateTime.now().toJSDate();
   const entries: MetadataRoute.Sitemap = [
     {
       url: SITE_URL,
@@ -51,7 +52,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         .filter((page: { isHomePage: boolean }) => !page.isHomePage)
         .map((page: { slug: string; updatedAt: string }) => ({
           url: `${SITE_URL}/${page.slug}`,
-          lastModified: fromISO(page.updatedAt).toJSDate(),
+          lastModified: DateTime.fromISO(page.updatedAt).toJSDate(),
           changeFrequency: "weekly" as const,
           priority: 0.7,
         }));
